@@ -32,7 +32,7 @@ export DOMAIN
 echo "Domain: ${DOMAIN}"
 
 # Clone the repository
-git clone https://github.com/scidsg/tip-line.git
+git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd tip-line
@@ -43,7 +43,7 @@ pip3 install pgpy
 pip3 install -r requirements.txt
 
 # Create a systemd service
-cat > /etc/systemd/system/tip-line.service << EOL
+cat > /etc/systemd/system/hush-line.service << EOL
 [Unit]
 Description=Tip-Line Web App
 After=network.target
@@ -58,8 +58,8 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
-systemctl enable tip-line.service
-systemctl start tip-line.service
+systemctl enable hush-line.service
+systemctl start hush-line.service
 
 # Check if the application is running and listening on the expected address and port
 sleep 5
@@ -69,7 +69,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Configure Nginx
-cat > /etc/nginx/sites-available/tip-line.nginx << EOL
+cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
     listen 80;
     server_name ${DOMAIN};
@@ -98,7 +98,7 @@ EOL
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
 fi
-ln -sf /etc/nginx/sites-available/tip-line.nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
 # Obtain SSL certificate
