@@ -68,6 +68,22 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
     error_exit
 fi
 
+# Create Tor configuration file
+sudo tee /etc/tor/torrc << EOL
+HiddenServiceDir /var/lib/tor/hidden_service/
+HiddenServicePort 80 127.0.0.1:80
+EOL
+
+# Restart Tor service
+sudo systemctl restart tor.service
+
+# Get the Onion address
+ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
+
+# Enable the Tor hidden service
+sudo ln -sf /etc/nginx/sites-available/hush-line-tor.nginx /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
@@ -87,6 +103,8 @@ server {
     
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
         add_header X-Frame-Options DENY;
+        $ONION_ADDRESS;
+        add_header Onion-Location $ONION_ADDRESS$request_uri;
         add_header X-Content-Type-Options nosniff;
         add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
         add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
@@ -107,6 +125,6 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 
-echo "Installation complete! The Tip-Line Web App should now be accessible at https://$DOMAIN"
+echo "Installation complete! The Tip-Line Web App should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS"
 
 # Disable the trap before exiting
