@@ -4,7 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor python3-smtplib
 
 # Function to display error message and exit
 error_exit() {
@@ -21,12 +21,25 @@ DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 
+# Prompt user for mail server
+MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for mail server username
+MAIL_USERNAME=$(whiptail --inputbox "Enter your mail server username:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for mail server password
+MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
+
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
     DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
 done
 
 export DOMAIN
+export EMAIL
+export MAIL_SERVER
+export MAIL_USERNAME
+export MAIL_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
@@ -40,6 +53,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
+pip3 install Flask-Mail
 pip3 install -r requirements.txt
 
 # Create a systemd service
@@ -52,6 +66,11 @@ After=network.target
 User=root
 WorkingDirectory=$PWD
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
+Environment="DOMAIN=$DOMAIN"
+Environment="EMAIL=$EMAIL"
+Environment="MAIL_SERVER=$MAIL_SERVER"
+Environment="MAIL_USERNAME=$MAIL_USERNAME"
+Environment="MAIL_PASSWORD=$MAIL_PASSWORD"
 Restart=always
 
 [Install]
