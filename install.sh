@@ -21,19 +21,6 @@ MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
 # Prompt user for mail server password
 MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
 
-# Debug: Print the value of the INPUTS variable
-echo "Inputs: ${INPUTS}"
-
-if [ $exitstatus = 0 ]; then
-    # Separate email address, SMTP server, and password values from the INPUTS string
-    EMAIL=$(echo "$INPUTS" | sed -n 1p)
-    MAIL_SERVER=$(echo "$INPUTS" | sed -n 2p)
-    MAIL_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
-else
-    echo "User cancelled the prompt."
-    exit 1
-fi
-
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
