@@ -18,11 +18,17 @@ INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email 
 "SMTP Server" 2 1 "" 2 15 20 0 \
 "SMTP Password" 3 1 "" 3 15 20 0 \
 3>&1 1>&2 2>&3)
+exitstatus=$?
 
-# Separate email address, SMTP server, and password values from the INPUTS string
-EMAIL=$(echo "$INPUTS" | sed -n 1p)
-MAIL_SERVER=$(echo "$INPUTS" | sed -n 2p)
-MAIL_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
+if [ $exitstatus = 0 ]; then
+    # Separate email address, SMTP server, and password values from the INPUTS string
+    EMAIL=$(echo "$INPUTS" | sed -n 1p)
+    MAIL_SERVER=$(echo "$INPUTS" | sed -n 2p)
+    MAIL_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
+else
+    echo "User cancelled the prompt."
+    exit 1
+fi
 
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
