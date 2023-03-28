@@ -24,9 +24,6 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 # Prompt user for mail server
 MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
 
-# Prompt user for mail server username
-MAIL_USERNAME=$(whiptail --inputbox "Enter your mail server username:" 8 60 3>&1 1>&2 2>&3)
-
 # Prompt user for mail server password
 MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
 
@@ -69,7 +66,7 @@ ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Environment="DOMAIN=$DOMAIN"
 Environment="EMAIL=$EMAIL"
 Environment="MAIL_SERVER=$MAIL_SERVER"
-Environment="MAIL_USERNAME=$MAIL_USERNAME"
+Environment="MAIL_USERNAME=$EMAIL"
 Environment="MAIL_PASSWORD=$MAIL_PASSWORD"
 Restart=always
 
