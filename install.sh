@@ -58,19 +58,6 @@ export EMAIL
 export MAIL_SERVER
 export MAIL_PASSWORD_HASHED
 
-from passlib.hash import sha256_crypt
-
-password = "mypassword"
-
-# Hash the password
-hashed_password = sha256_crypt.hash(password)
-
-# Verify the password
-if sha256_crypt.verify("mypassword", hashed_password):
-    print("Password is valid")
-else:
-    print("Password is not valid")
-
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
 
