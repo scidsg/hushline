@@ -115,5 +115,5 @@ nginx -t && systemctl restart nginx || error_exit
 ## Obtain SSL certificate:
 
 ```
-certbot --nginx --agree-tos --non-interactive --email YOUR_EMAIL --agree-tos
+certbot --nginx --agree-tos --non-interactive --email YOUR_EMAIL --agree-tos -d DOMAIN_NAME
 ```
