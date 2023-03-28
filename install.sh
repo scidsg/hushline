@@ -4,7 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor
 
 # Function to display error message and exit
 error_exit() {
@@ -70,6 +70,7 @@ fi
 
 # Create Tor configuration file
 sudo tee /etc/tor/torrc << EOL
+RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:80
 EOL
