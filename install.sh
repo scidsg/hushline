@@ -20,6 +20,9 @@ INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email 
 3>&1 1>&2 2>&3)
 exitstatus=$?
 
+# Debug: Print the value of the INPUTS variable
+echo "Inputs: ${INPUTS}"
+
 if [ $exitstatus = 0 ]; then
     # Separate email address, SMTP server, and password values from the INPUTS string
     EMAIL=$(echo "$INPUTS" | sed -n 1p)
