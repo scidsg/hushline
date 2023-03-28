@@ -91,6 +91,7 @@ button {
 	color: #fff;
 	width: 50%;
 	min-width: 240px;
+	cursor: pointer;
 }
 
 footer p {
