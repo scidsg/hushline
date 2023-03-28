@@ -84,6 +84,14 @@ server {
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
     }
+    
+        add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
+        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+        add_header Referrer-Policy "no-referrer";
+        add_header X-XSS-Protection "1; mode=block";
 }
 EOL
 
@@ -95,6 +103,9 @@ nginx -t && systemctl restart nginx || error_exit
 
 # Obtain SSL certificate
 certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $DOMAIN
+
+# Set up cron job to renew SSL certificate
+(crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 
 echo "Installation complete! The Tip-Line Web App should now be accessible at https://$DOMAIN"
 
