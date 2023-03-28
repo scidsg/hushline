@@ -10,12 +10,6 @@
        url("fonts/serif/PlayfairDisplay-Medium.woff2") format("woff2");
 }
 
-@font-face {
-  font-family: "IBM Mono";
-  src: url("fonts/mono/regular.woff") format("woff"),
-       url("fonts/mono/regular.woff2") format("woff2");
-}
-
 html {
   box-sizing: border-box;
 }
@@ -31,8 +25,9 @@ body {
 	align-items: center;
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 	margin: 0;
-	height: 100vh;
-	padding: 0 2rem;
+	min-height: 100vh;
+	height: auto;
+	padding: 2rem 2rem .5rem 2rem;
 }
 
 h1, p, label, input {
@@ -41,11 +36,18 @@ h1, p, label, input {
 
 h1 {
 	font-weight: 700;
-	font-size: 4rem;
+	font-size: 3.5rem;
 	line-height: 1.1;
 	text-align: center;
-	margin: 0;
+	margin: 0 0 0 0;
 	font-family: 'Playfair', serif;
+}
+
+.emoji {
+	font-size: 3rem;
+	margin-top: 2rem;
+	margin-bottom: .5rem;
+	display: block;
 }
 
 h1 + p {
@@ -61,12 +63,13 @@ label {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	margin-bottom: 2rem;
 }
 
 textarea {
 	padding: .75rem 1rem;
 	width: 100%;
-	margin: .5rem 0 1.5rem 0;
+	margin: 0 0 1.5rem 0;
 	font-size: 1.125rem;
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 	border-radius: .25rem;
@@ -86,9 +89,17 @@ button {
 	min-width: 240px;
 }
 
+footer p {
+	font-size: .875rem;
+}
+
 @media only screen and (max-width: 768px) {
 	h1 {
 		font-size: 3rem;
 	}
+
+	.emoji {
+	font-size: 2.5rem;
+}
 
 }

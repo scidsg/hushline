@@ -14,7 +14,7 @@
     <title>Message App</title>
 </head>
 <body>
-    <h1>Hush Line</h1>
+    <h1><span class="emoji">🤫</span>Hush Line</h1>
     <p>An anonymous tip line.</p>
     <form id="signup-form" action="/save_message" method="post">
         <textarea name="message" rows="10" cols="60" required></textarea>
@@ -23,5 +23,6 @@
     </form>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <footer><p>Made with ✊ by <a href="" target="_blank" rel="noopener noreferrer">Science &amp; Design</a>. <a href="" target="_blank" rel="noopener noreferrer">Clone this project</a>.</p></footer>
 </body>
 </html>
