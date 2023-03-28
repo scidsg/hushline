@@ -96,6 +96,9 @@ nginx -t && systemctl restart nginx || error_exit
 # Obtain SSL certificate
 certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $DOMAIN
 
+# Set up cron job to renew SSL certificate
+(crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
+
 echo "Installation complete! The Tip-Line Web App should now be accessible at https://$DOMAIN"
 
 # Disable the trap before exiting
