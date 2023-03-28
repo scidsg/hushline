@@ -1,5 +1,29 @@
 #!/bin/bash
 
+# Show an informational message box
+whiptail --title "Information" --msgbox "Thanks for installing Hush Line, your private suggestion box and tip line! This automated installation process sets up a working web app, requests an SSL certificate from Let's Encrypt, configures a Tor onion service, and creates an email server that sends you the encrypted messages.\nPlease note that this assumes that your website's DNS records are pointing to this server." 10 60
+
+# Show an informational message box
+whiptail --title "Information" --msgbox "First, I'll ask for the domain name we're configuring." 10 60
+
+# Prompt user for domain name
+DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
+
+# Show an informational message box
+whiptail --title "Information" --msgbox "Finally, we'll collect the information for your email server." 10 60
+
+# Prompt user for email address, SMTP server, and password using a form
+INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email server details:" 15 50 0 \
+"Email Address" 1 1 "" 1 15 20 0 \
+"SMTP Server" 2 1 "" 2 15 20 0 \
+"SMTP Password" 3 1 "" 3 15 20 0 \
+3>&1 1>&2 2>&3)
+
+# Separate email address, SMTP server, and password values from the INPUTS string
+EMAIL=$(echo "$INPUTS" | sed -n 1p)
+SMTP_SERVER=$(echo "$INPUTS" | sed -n 2p)
+SMTP_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
+
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
@@ -14,18 +38,6 @@ error_exit() {
 
 # Trap any errors and call the error_exit function
 trap error_exit ERR
-
-# Prompt user for domain name
-DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for email
-EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for mail server
-MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for mail server password
-MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
