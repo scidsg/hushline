@@ -1,5 +1,5 @@
 # Hush Line
-Hush-Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
+Hush Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
 
 ![hush-cover](https://user-images.githubusercontent.com/28545431/228141667-89fbaeb8-8282-4f86-a575-bdb29f9ffe31.png)
 
