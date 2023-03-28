@@ -72,7 +72,6 @@ fi
 sudo tee /etc/tor/torrc << EOL
 RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/hidden_service/
-HiddenServicePort 80 127.0.0.1:80
 HiddenServicePort 80 127.0.0.1:5000
 EOL
 
