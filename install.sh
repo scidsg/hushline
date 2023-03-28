@@ -35,7 +35,7 @@ echo "Domain: ${DOMAIN}"
 git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
-cd tip-line
+cd hush-line
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
