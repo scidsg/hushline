@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Function to hash a password using SHA256 and salt
+function hash_password() {
+    local password="$1"
+    local salt=$(openssl rand -hex 8)
+    local hashed_password=$(echo -n "${password}${salt}" | sha256sum | awk '{print $1}')
+    echo "${hashed_password}:${salt}"
+}
+
 # Show an informational message box
 whiptail --title "Information" --msgbox "Thanks for installing Hush Line, your private suggestion box and tip line! This automated installation process sets up a working web app, requests an SSL certificate from Let's Encrypt, configures a Tor onion service, and creates an email server that sends you the encrypted messages.\n\nPlease note that this assumes that your website's DNS records are pointing to this server." 20 80
 
@@ -20,6 +28,10 @@ MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
 
 # Prompt user for mail server password
 MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
+
+# Hash the password and salt it before storing it in the MAIL_PASSWORD_HASHED environment variable
+MAIL_PASSWORD_HASHED=$(hash_password "$MAIL_PASSWORD")
+export MAIL_PASSWORD_HASHED
 
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
