@@ -9,9 +9,9 @@ Hush Line is a reasonably secure and anonymous tip line that you can set up on y
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/master/install.sh | bash
 ```
 
-![demo](https://user-images.githubusercontent.com/28545431/228141719-00e0a284-f694-4045-8707-9ec5ca3070d2.gif)
+![demo](https://user-images.githubusercontent.com/28545431/228352833-b9c3f435-612c-4419-844e-66605ba41c44.gif)
 
-Requirements
+**Requirements**
 
 - Debian-based Linux distribution (e.g. Ubuntu)
 - git
