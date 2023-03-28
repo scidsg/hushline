@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Show an informational message box
-whiptail --title "Information" --msgbox "Thanks for installing Hush Line, your private suggestion box and tip line! This automated installation process sets up a working web app, requests an SSL certificate from Let's Encrypt, configures a Tor onion service, and creates an email server that sends you the encrypted messages.\nPlease note that this assumes that your website's DNS records are pointing to this server." 10 60
+whiptail --title "Information" --msgbox "Thanks for installing Hush Line, your private suggestion box and tip line! This automated installation process sets up a working web app, requests an SSL certificate from Let's Encrypt, configures a Tor onion service, and creates an email server that sends you the encrypted messages.\nPlease note that this assumes that your website's DNS records are pointing to this server." 20 80
 
 # Show an informational message box
 whiptail --title "Information" --msgbox "First, I'll ask for the domain name we're configuring." 10 60
