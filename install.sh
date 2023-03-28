@@ -12,13 +12,14 @@ DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 # Show an informational message box
 whiptail --title "Information" --msgbox "Finally, I need the information for your email server." 10 60
 
-# Prompt user for email address, SMTP server, and password using a form
-INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email server details:" 10 60 0 \
-"Email Address" 1 1 "" 1 15 20 0 \
-"SMTP Server" 2 1 "" 2 15 20 0 \
-"SMTP Password" 3 1 "" 3 15 20 0 \
-3>&1 1>&2 2>&3)
-exitstatus=$?
+# Prompt user for email
+EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for mail server
+MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for mail server password
+MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
 
 # Debug: Print the value of the INPUTS variable
 echo "Inputs: ${INPUTS}"
