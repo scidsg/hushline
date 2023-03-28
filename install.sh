@@ -111,6 +111,9 @@ EOL
 # Restart Tor service
 sudo systemctl restart tor.service
 
+# Wait for Tor to create the hidden service directory and the hostname file
+sleep 10
+
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
