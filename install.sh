@@ -13,7 +13,7 @@ DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 whiptail --title "Information" --msgbox "Finally, I need the information for your email server." 10 60
 
 # Prompt user for email address, SMTP server, and password using a form
-INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email server details:" 15 50 0 \
+INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email server details:" 10 60 0 \
 "Email Address" 1 1 "" 1 15 20 0 \
 "SMTP Server" 2 1 "" 2 15 20 0 \
 "SMTP Password" 3 1 "" 3 15 20 0 \
