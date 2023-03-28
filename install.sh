@@ -82,7 +82,7 @@ sudo systemctl restart tor.service
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
 # Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line-tor.nginx /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
 
 # Configure Nginx
@@ -104,7 +104,6 @@ server {
     
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
         add_header X-Frame-Options DENY;
-        $ONION_ADDRESS;
         add_header Onion-Location $ONION_ADDRESS$request_uri;
         add_header X-Content-Type-Options nosniff;
         add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
