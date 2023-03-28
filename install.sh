@@ -21,8 +21,8 @@ INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email 
 
 # Separate email address, SMTP server, and password values from the INPUTS string
 EMAIL=$(echo "$INPUTS" | sed -n 1p)
-SMTP_SERVER=$(echo "$INPUTS" | sed -n 2p)
-SMTP_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
+MAIL_SERVER=$(echo "$INPUTS" | sed -n 2p)
+MAIL_PASSWORD=$(echo "$INPUTS" | sed -n 3p)
 
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
@@ -47,7 +47,6 @@ done
 export DOMAIN
 export EMAIL
 export MAIL_SERVER
-export MAIL_USERNAME
 export MAIL_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
