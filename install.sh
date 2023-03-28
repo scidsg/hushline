@@ -10,7 +10,7 @@ whiptail --title "Information" --msgbox "First, I'll ask for the domain name we'
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
 # Show an informational message box
-whiptail --title "Information" --msgbox "Finally, we'll collect the information for your email server." 10 60
+whiptail --title "Information" --msgbox "Finally, I need the information for your email server." 10 60
 
 # Prompt user for email address, SMTP server, and password using a form
 INPUTS=$(whiptail --title "Email Server Configuration" --form "Enter your email server details:" 15 50 0 \
