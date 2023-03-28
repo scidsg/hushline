@@ -3,7 +3,7 @@
 ## Easy Install
 
 ```
-curl -sSL https://raw.githubusercontent.com/scidsg/tip-line/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/master/install.sh | bash
 ```
 
 To deploy your Flask application to a production environment, you can follow these general steps:
