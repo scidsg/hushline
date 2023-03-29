@@ -32,8 +32,10 @@ def encrypt_message(message, public_key_path):
 
 def send_email(encrypted_message):
     decrypted_password = decrypt_password(os.environ['MAIL_PASSWORD_HASHED'], os.environ['SECRET_KEY'])
-    mail = Mail(app)
-    mail.server.password = decrypted_password
+    
+    # Update the app configuration with the decrypted password
+    app.config['MAIL_PASSWORD'] = decrypted_password
+    
     msg = Message("New Encrypted Message", sender=app.config['MAIL_USERNAME'], recipients=[os.environ['EMAIL']])
     msg.body = "You have received a new encrypted message:\n\n" + encrypted_message
     mail.send(msg)
