@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['MAIL_SERVER'] = os.environ['MAIL_SERVER']
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = os.environ['MAIL_USERNAME']
-app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWORD']
+app.config['MAIL_PASSWORD_HASHED'] = os.environ['MAIL_PASSWORD_HASHED']
 app.config['MAIL_USE_SSL'] = True
 
 mail = Mail(app)
