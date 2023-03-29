@@ -164,6 +164,7 @@ http {
         ##
         geoip_country /usr/share/GeoIP/GeoIP.dat;
         log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
+
         access_log /var/log/nginx/access.log privacy;
 }
 
