@@ -89,6 +89,7 @@ Environment="EMAIL=$EMAIL"
 Environment="MAIL_SERVER=$MAIL_SERVER"
 Environment="MAIL_USERNAME=$EMAIL"
 Environment="MAIL_PASSWORD_HASHED=$MAIL_PASSWORD_HASHED"
+Environment="SECRET_KEY=$SECRET_KEY"
 Restart=always
 
 [Install]
