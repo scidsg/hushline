@@ -9,7 +9,13 @@ document.addEventListener("DOMContentLoaded", function() {
             method: 'POST',
             body: formData
         });
-        const result = await response.json();
+
+        // Log the server's response text
+        const responseText = await response.text();
+        console.log("Server response text:", responseText);
+
+        // Parse the response as JSON
+        const result = JSON.parse(responseText);
 
         if (result.success) {
             alert("Your message has been successfully encrypted and submitted.");
