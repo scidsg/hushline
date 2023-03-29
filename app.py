@@ -38,4 +38,5 @@ def save_message():
     send_email(encrypted_message)
     return jsonify({'success': True})
 if __name__ == '__main__':
-app.run(debug=True)
+  
+    app.run(debug=True)
