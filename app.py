@@ -15,9 +15,7 @@ def encrypt_message(message, public_key_path):
 def index():
     return render_template('index.html')
 
-def save_message():  
 @app.route('/save_message', methods=['POST'])
-
 def save_message():
     message = request.form['message']
     encrypted_message = encrypt_message(message, 'public_key.asc')
@@ -27,5 +25,4 @@ def save_message():
     return jsonify({'success': True})
 
 if __name__ == '__main__':
-
     app.run(debug=True)
