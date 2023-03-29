@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify
 from flask_mail import Mail, Message
 import os
 import pgpy
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
 
 app = Flask(__name__)
 
@@ -9,10 +11,15 @@ app = Flask(__name__)
 app.config['MAIL_SERVER'] = os.environ['MAIL_SERVER']
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = os.environ['MAIL_USERNAME']
-app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWORD']
+app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWORD_HASHED']
 app.config['MAIL_USE_SSL'] = True
 
 mail = Mail(app)
+
+def decrypt_password(encrypted_password, secret_key):
+    cipher = AES.new(secret_key, AES.MODE_ECB)
+    decrypted_password = unpad(cipher.decrypt(encrypted_password), AES.block_size).decode('utf-8')
+    return decrypted_password
 
 def encrypt_message(message, public_key_path):
     with open(public_key_path, 'r') as key_file:
@@ -22,6 +29,9 @@ def encrypt_message(message, public_key_path):
     return encrypted_message
 
 def send_email(encrypted_message):
+    decrypted_password = decrypt_password(os.environ['MAIL_PASSWORD_HASHED'], os.environ['SECRET_KEY'])
+    mail = Mail(app)
+    mail.server.password = decrypted_password
     msg = Message("New Encrypted Message", sender=app.config['MAIL_USERNAME'], recipients=[os.environ['EMAIL']])
     msg.body = "You have received a new encrypted message:\n\n" + encrypted_message
     mail.send(msg)
