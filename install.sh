@@ -76,6 +76,7 @@ EOL
 
 # Restart Tor service
 sudo systemctl restart tor.service
+sleep 10
 
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
