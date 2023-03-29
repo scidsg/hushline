@@ -17,9 +17,10 @@ app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
 
 def decrypt_password(encrypted_password, secret_key):
+    secret_key = bytes.fromhex(secret_key)  # Add this line to convert the secret_key to bytes
     cipher = AES.new(secret_key, AES.MODE_ECB)
-    decrypted_password = unpad(cipher.decrypt(encrypted_password), AES.block_size).decode('utf-8')
-    return decrypted_password
+    decrypted_password = cipher.decrypt(base64.b64decode(encrypted_password))
+    return decrypted_password.decode("utf-8").strip()
 
 def encrypt_message(message, public_key_path):
     with open(public_key_path, 'r') as key_file:
