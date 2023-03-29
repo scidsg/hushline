@@ -56,7 +56,7 @@ done
 export DOMAIN
 export EMAIL
 export MAIL_SERVER
-export MAIL_PASSWORD_HASHED
+export MAIL_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
