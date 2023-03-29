@@ -4,7 +4,13 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
+
+# Enable privacy preserving logging
+geoip_country /usr/share/GeoIP/GeoIP.dat;
+log_format privacy '0.0.0.0 - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "-" $geoip_country_code';
+
+access_log /var/log/nginx/access.log privacy;
 
 # Function to display error message and exit
 error_exit() {
