@@ -1,7 +1,5 @@
 #!/bin/bash
 
-whiptail --title "Welcome!" --msgbox "Thanks for using Hush Line - your personal and private suggestion box or tip line./n/nMake sure your website's DNS records point to this server before proceeding." 8 40
-
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
@@ -19,21 +17,11 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-whiptail --title "Website Address" --msgbox "What's the website address for where you're deploying Hush Line?" 8 40
-
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
-whiptail --title "Email Settings" --msgbox "Let's configure the email settings. You'll need your email, SMTP addresses, and password for your email service." 8 40
-
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for SMTP server
-SMTP_SERVER=$(whiptail --inputbox "Enter your SMTP server:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for SMTP email password
-SMTP_PASSWORD=$(whiptail --passwordbox "Enter your SMTP email password:" 8 60 3>&1 1>&2 2>&3)
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -41,8 +29,6 @@ until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
 done
 export DOMAIN
 export EMAIL
-export SMTP_SERVER
-export SMTP_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
@@ -57,14 +43,6 @@ source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
 pip3 install -r requirements.txt
-
-# Create .env file with email configuration
-cat > .env << EOL
-SMTP_SERVER=${SMTP_SERVER}
-SMTP_PORT=465
-SMTP_EMAIL=${EMAIL}
-SMTP_PASSWORD=${SMTP_PASSWORD}
-EOL
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
