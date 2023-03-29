@@ -27,11 +27,11 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 MAIL_SERVER=$(whiptail --inputbox "Enter your mail server:" 8 60 3>&1 1>&2 2>&3)
 
 # Prompt user for mail server password
+SECRET_KEY=$(openssl rand -hex 16)
 MAIL_PASSWORD=$(whiptail --passwordbox "Enter your mail server password:" 8 60 3>&1 1>&2 2>&3)
-
-# Hash the password and salt it before storing it in the MAIL_PASSWORD_HASHED environment variable
-MAIL_PASSWORD_HASHED=$(hash_password "$MAIL_PASSWORD")
-export MAIL_PASSWORD_HASHED
+MAIL_PASSWORD_ENCRYPTED=$(echo -n "${MAIL_PASSWORD}" | openssl aes-256-cbc -a -salt -k "${SECRET_KEY}")
+export SECRET_KEY
+export MAIL_PASSWORD_ENCRYPTED
 
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
