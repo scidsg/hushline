@@ -20,10 +20,13 @@ def encrypt_message(message, public_key_path):
     public_key, _ = pgpy.PGPKey.from_blob(key_data)  # Extract the key from the tuple
     encrypted_message = str(public_key.encrypt(pgpy.PGPMessage.new(message)))
     return encrypted_message
+  
 def send_email(encrypted_message):
     msg = Message("New Encrypted Message", sender=app.config['MAIL_USERNAME'], recipients=[os.environ['EMAIL']])
     msg.body = "You have received a new encrypted message:\n\n" + encrypted_message
-    mail.send(msg)
+    with app.app_context():
+        mail.connect()
+        mail.send(msg)
     
 @app.route('/')
 def index():
