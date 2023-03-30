@@ -17,6 +17,8 @@ SENDER_PASSWORD = config.get('EMAIL', 'SenderPassword')
 RECIPIENT_EMAIL = config.get('EMAIL', 'RecipientEmail')
 SMTP_SERVER = config.get('EMAIL', 'SMTPServer')
 
+EMAIL = os.environ.get('EMAIL', SENDER_EMAIL)
+
 def send_email_notification(subject, body):
     msg = EmailMessage()
     msg.set_content(body)
