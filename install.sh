@@ -4,7 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database smtplib
 
 access_log /var/log/nginx/access.log privacy;
 
