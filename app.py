@@ -45,6 +45,9 @@ def save_message():
     encrypted_message = encrypt_message(message, 'public_key.asc')
     with open('messages.txt', 'a') as f:
         f.write(encrypted_message + '\n\n')
+    # Send the email notification
+    send_email_notification('New Hush Line Message', 'A new encrypted message has been submitted.')
+
     return jsonify({'success': True})
 
 if __name__ == '__main__':
