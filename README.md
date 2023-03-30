@@ -6,7 +6,7 @@ Hush Line is a reasonably secure and anonymous tip line that you can set up on y
 ## Easy Install
 
 ```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install.sh | bash
 ```
 
 ![demo](https://user-images.githubusercontent.com/28545431/228354332-010d5124-286a-44fe-9b65-1bdaf3165ad1.gif)
