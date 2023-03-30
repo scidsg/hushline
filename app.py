@@ -26,7 +26,7 @@ def send_email_notification(subject, body):
     msg['From'] = "notifications@hushline.app"
     msg['To'] = RECIPIENT_EMAIL
 
-    with smtplib.SMTP(SMTP_SERVER, 587) as server:
+    with smtplib.SMTP(SMTP_SERVER, 465) as server:
         server.starttls()
         server.login(EMAIL, SENDER_PASSWORD)
         server.send_message(msg)
