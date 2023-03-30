@@ -1,8 +1,32 @@
 from flask import Flask, render_template, request, jsonify
 import os
 import pgpy
+import configparser
+import smtplib
+from email.message import EmailMessage
 
 app = Flask(__name__)
+
+# Read the configuration
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Use the config values for email settings
+SENDER_EMAIL = config.get('EMAIL', 'SenderEmail')
+SENDER_PASSWORD = config.get('EMAIL', 'SenderPassword')
+RECIPIENT_EMAIL = config.get('EMAIL', 'RecipientEmail')
+SMTP_SERVER = config.get('EMAIL', 'SMTPServer')
+
+def send_email_notification(subject, body):
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg['Subject'] = New Hush Line Message
+    msg['From'] = "notifications@hushline.app"
+    msg['To'] = EMAIL
+
+    with smtplib.SMTP_SSL(SMTP_SERVER, 465) as server:
+        server.login(EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
 
 def encrypt_message(message, public_key_path):
     with open(public_key_path, 'r') as key_file:
