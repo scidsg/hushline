@@ -52,6 +52,7 @@ pip3 install -r requirements.txt
 
 # Create a systemd service
 cat > config.ini << EOL
+[EMAIL]
 SenderEmail = notifications@hushline.app
 SenderPassword = $SENDER_PASSWORD
 RecipientEmail = $EMAIL
