@@ -23,12 +23,20 @@ DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 
+# Prompt user for SMTP server
+SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g. smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for sender email password
+SENDER_PASSWORD=$(whiptail --passwordbox "Enter the sender email password for notifications:" 8 60 3>&1 1>&2 2>&3)
+
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
     DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
 done
 export DOMAIN
 export EMAIL
+export SMTP_SERVER
+export SENDER_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
@@ -43,6 +51,14 @@ source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
 pip3 install -r requirements.txt
+
+# Create a systemd service
+cat > config.ini << EOL
+SenderEmail = notifications@hushline.app
+SenderPassword = $SENDER_PASSWORD
+RecipientEmail = $EMAIL
+SMTPServer = $SMTP_SERVER
+EOL
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
