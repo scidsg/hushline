@@ -24,7 +24,7 @@ def send_email_notification(subject, body):
     msg.set_content(body)
     msg['Subject'] = "New Hush Line Message"
     msg['From'] = "notifications@hushline.app"
-    msg['To'] = EMAIL
+    msg['To'] = RECIPIENT_EMAIL
 
     with smtplib.SMTP_SSL(SMTP_SERVER, 465) as server:
         server.login(EMAIL, SENDER_PASSWORD)
