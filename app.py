@@ -1,35 +1,25 @@
 from flask import Flask, render_template, request, jsonify
+from flask_mail import Mail, Message
 import os
 import pgpy
-import configparser
-import smtplib
-from email.message import EmailMessage
 
 app = Flask(__name__)
 
-# Read the configuration
-config = configparser.ConfigParser()
-config.read('config.ini')
+# Configure Flask-Mail
+app.config['MAIL_SERVER'] = os.environ['SMTP_SERVER']
+app.config['MAIL_PORT'] = int(os.environ['SMTP_PORT'])
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ['EMAIL']
+app.config['MAIL_PASSWORD'] = os.environ['SMTP_PASSWORD']
 
-# Use the config values for email settings
-SENDER_EMAIL = config.get('EMAIL', 'SenderEmail')
-SENDER_PASSWORD = config.get('EMAIL', 'SenderPassword')
-RECIPIENT_EMAIL = config.get('EMAIL', 'RecipientEmail')
-SMTP_SERVER = config.get('EMAIL', 'SMTPServer')
+mail = Mail(app)
 
-EMAIL = os.environ.get('EMAIL', SENDER_EMAIL)
-
-def send_email_notification(subject, body):
-    msg = EmailMessage()
-    msg.set_content(body)
-    msg['Subject'] = "New Hush Line Message"
-    msg['From'] = "notifications@hushline.app"
-    msg['To'] = RECIPIENT_EMAIL
-
-    with smtplib.SMTP(SMTP_SERVER, 465) as server:
-        server.starttls()
-        server.login(EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
+def send_email(subject, body):
+    msg = Message(subject,
+                  sender=os.environ['EMAIL'],
+                  recipients=[os.environ['EMAIL']])
+    msg.body = body
+    mail.send(msg)
 
 def encrypt_message(message, public_key_path):
     with open(public_key_path, 'r') as key_file:
@@ -48,9 +38,7 @@ def save_message():
     encrypted_message = encrypt_message(message, 'public_key.asc')
     with open('messages.txt', 'a') as f:
         f.write(encrypted_message + '\n\n')
-    # Send the email notification
-    send_email_notification('New Hush Line Message', 'A new encrypted message has been submitted.')
-
+    send_email('New encrypted message received', encrypted_message)
     return jsonify({'success': True})
 
 if __name__ == '__main__':
