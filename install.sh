@@ -48,6 +48,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
+pip3 install flask_mail
 pip3 install -r requirements.txt
 
 # Create a systemd service
