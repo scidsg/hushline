@@ -6,8 +6,6 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
 
-access_log /var/log/nginx/access.log privacy;
-
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
