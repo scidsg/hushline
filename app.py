@@ -20,7 +20,7 @@ SMTP_SERVER = config.get('EMAIL', 'SMTPServer')
 def send_email_notification(subject, body):
     msg = EmailMessage()
     msg.set_content(body)
-    msg['Subject'] = New Hush Line Message
+    msg['Subject'] = "New Hush Line Message"
     msg['From'] = "notifications@hushline.app"
     msg['To'] = EMAIL
 
