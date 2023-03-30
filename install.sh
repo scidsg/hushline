@@ -67,14 +67,17 @@ Description=Tip-Line Web App
 After=network.target
 [Service]
 User=root
+Environment=SMTP_SERVER=$SMTP_SERVER
+Environment=SENDER_PASSWORD=$SENDER_PASSWORD
+Environment=EMAIL=$EMAIL
+Environment=DOMAIN=$DOMAIN
 WorkingDirectory=$PWD
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Restart=always
 [Install]
 WantedBy=multi-user.target
 EOL
-systemctl enable hush-line.service
-systemctl start hush-line.service
+
 
 # Check if the application is running and listening on the expected address and port
 sleep 5
