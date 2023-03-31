@@ -1,7 +1,7 @@
 # Hush Line
 Hush Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
 
-![hush-cover](https://user-images.githubusercontent.com/28545431/228141667-89fbaeb8-8282-4f86-a575-bdb29f9ffe31.png)
+![social](https://user-images.githubusercontent.com/28545431/229231707-c0103aae-b740-4325-bf25-47822681ae2f.png)
 
 ## Easy Install
 
@@ -32,6 +32,12 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 ## Email Notifications
 
-Hush Line uses SMTP to send email notifications. You'll need your email and SMTP addresses, a port number, and a password.
-We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
+Hush Line uses SMTP to send email notifications. To get it working, find your: 
+
+- Email Address
+- SMTP Address
+- Port Number
+- Password
+
+👉 We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
 Your messages are encrypted, so Google won't be able to read their contents.
