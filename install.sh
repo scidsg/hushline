@@ -23,6 +23,9 @@ whiptail --title "Hush Line Installation" --msgbox "Hush Line provides a simple 
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
+# Welcome Prompt
+whiptail --title "Email Setup" --msgbox "Now we'll set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a burner address or a Gmail account with a one-time password." 16 64
+
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 
