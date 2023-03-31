@@ -6,6 +6,8 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
 
+access_log /var/log/nginx/access.log privacy;
+
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
@@ -15,17 +17,14 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
+# Welcome Prompt
+whiptail --title "Information" --msgbox "Hush Line is a confidential tip line for your sources, colleagues, clients, or patients./n/nAfter installation, you'll have a private tip line, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent." 20 65
+
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for SMTP server
-SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g. smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for sender email password
-SENDER_PASSWORD=$(whiptail --passwordbox "Enter the sender email password for notifications:" 8 60 3>&1 1>&2 2>&3)
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -33,14 +32,12 @@ until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
 done
 export DOMAIN
 export EMAIL
-export SMTP_SERVER
-export SENDER_PASSWORD
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
 
 # Clone the repository
-git clone -b email-notifications https://github.com/scidsg/hush-line.git
+git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
@@ -48,38 +45,23 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
-pip3 install flask_mail
 pip3 install -r requirements.txt
-
-# Create a systemd service
-cat > config.ini << EOL
-[EMAIL]
-SenderEmail = notifications@hushline.app
-SenderPassword = $SENDER_PASSWORD
-RecipientEmail = $EMAIL
-SMTPServer = $SMTP_SERVER
-EOL
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
 [Unit]
 Description=Tip-Line Web App
 After=network.target
-
 [Service]
 User=root
 WorkingDirectory=$PWD
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Restart=always
-
 [Install]
 WantedBy=multi-user.target
 EOL
-
-# Start the hush-line service
-sudo systemctl daemon-reload
-sudo systemctl enable hush-line.service
-sudo systemctl start hush-line.service
+systemctl enable hush-line.service
+systemctl start hush-line.service
 
 # Check if the application is running and listening on the expected address and port
 sleep 5
@@ -122,18 +104,14 @@ server {
         proxy_read_timeout 300s;
     }
     
-    listen 443 ssl;
-    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
-    add_header X-Frame-Options DENY;
-    add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
-    add_header X-Content-Type-Options nosniff;
-    add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
-    add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
-    add_header Referrer-Policy "no-referrer";
-    add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+        add_header X-Frame-Options DENY;
+        add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
+        add_header X-Content-Type-Options nosniff;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
+        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+        add_header Referrer-Policy "no-referrer";
+        add_header X-XSS-Protection "1; mode=block";
 }
 EOL
 
