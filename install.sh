@@ -9,7 +9,7 @@ cat << "EOF"
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
                                                
-Your Private Suggestion Box 
+🤫 Your Private Suggestion Box 
 https://hushline.app
 
 EOF
