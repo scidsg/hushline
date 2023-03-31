@@ -18,13 +18,21 @@ error_exit() {
 trap error_exit ERR
 
 # Welcome Prompt
-whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, make sure your DNS settings are pointing to this server." 16 64
+whiptail --title "Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
 
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
+# Welcome Prompt
+whiptail --title "Email Setup" --msgbox "Now we'll set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a burner address or a Gmail account with a one-time password." 16 64
+
 # Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for email notification settings
+NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
+NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
+NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -32,12 +40,15 @@ until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
 done
 export DOMAIN
 export EMAIL
+export NOTIFY_PASSWORD
+export NOTIFY_SMTP_SERVER
+export NOTIFY_SMTP_PORT
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
 
 # Clone the repository
-git clone https://github.com/scidsg/hush-line.git
+git clone -b email-notifications https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
@@ -55,11 +66,17 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$PWD
+Environment="DOMAIN=$DOMAIN"
+Environment="EMAIL=$EMAIL"
+Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
+Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
+Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Restart=always
 [Install]
 WantedBy=multi-user.target
 EOL
+
 systemctl enable hush-line.service
 systemctl start hush-line.service
 
@@ -184,6 +201,9 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
-echo "Installation complete! The Tip-Line Web App should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS"
+echo "✅ Installation complete! Hush Line should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS.
+
+Have feedback? Send us an email at hushline@scidsg.org.
+"
 
 # Disable the trap before exiting

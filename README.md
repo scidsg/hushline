@@ -39,7 +39,7 @@ sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-cer
 ## Clone the repository:
 
 ```
-git clone https://github.com/scidsg/hush-line.git
+git clone -b email-notifications https://github.com/scidsg/hush-line.git
 ```
 
 ## Create a virtual environment and install dependencies:
