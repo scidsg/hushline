@@ -36,9 +36,9 @@ def send_email_notification(message):
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = sender_email
-    msg['Subject'] = "New Secure Message Received"
+    msg['Subject'] = "New Hush Line Message Received"
 
-    body = f"A new secure message has been received:\n\n{message}"
+    body = f"{message}"
     msg.attach(MIMEText(body, 'plain'))
 
     try:
