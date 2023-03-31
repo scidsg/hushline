@@ -220,7 +220,7 @@ echo "✅ Installation complete!
 https://$DOMAIN
 http://$ONION_ADDRESS
 
-Hush Line is a product by Science & Design./n/nHave feedback? Send us an email at hushline@scidsg.org./n/nLearn more about us at https://scidsg.org.
+Hush Line is a product by Science & Design.\n\nHave feedback? Send us an email at hushline@scidsg.org.\n\nLearn more about us at https://scidsg.org.
 "
 
 # Disable the trap before exiting
