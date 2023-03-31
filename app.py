@@ -2,22 +2,35 @@ from flask import Flask, render_template, request, jsonify
 from flask_mail import Mail, Message
 import os
 import pgpy
+import configparser
 
 app = Flask(__name__)
 
+# Load email configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+smtp_server = config.get('EMAIL', 'SMTPServer')
+sender_password = config.get('EMAIL', 'SenderPassword')
+email = config.get('EMAIL', 'RecipientEmail')
+
 # Configure Flask-Mail
-app.config['MAIL_SERVER'] = os.environ['SMTP_SERVER']
-app.config['MAIL_PORT'] = int(os.environ['SMTP_PORT'])
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ['EMAIL']
-app.config['MAIL_PASSWORD'] = os.environ['SMTP_PASSWORD']
+app.config.update(
+    MAIL_SERVER=smtp_server,
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME="notifications@hushline.app",
+    MAIL_PASSWORD=sender_password,
+    MAIL_DEFAULT_SENDER="notifications@hushline.app",
+    MAIL_RECIPIENT=email
+)
 
 mail = Mail(app)
 
 def send_email(subject, body):
     msg = Message(subject,
-                  sender=os.environ['EMAIL'],
-                  recipients=[os.environ['EMAIL']])
+                  sender=email,
+                  recipients=[email])
     msg.body = body
     mail.send(msg)
 
