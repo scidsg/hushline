@@ -31,7 +31,6 @@ NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., s
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
-
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
     DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
@@ -116,7 +115,6 @@ server {
         proxy_connect_timeout 300s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
-        limit_req zone=mylimit burst=5 nodelay;
     }
     
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
@@ -182,8 +180,6 @@ http {
         ##
         geoip_country /usr/share/GeoIP/GeoLite2-Country.mmdb;
         log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
-
-        limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=1r/s;
 
         access_log /var/log/nginx/access.log privacy;
 }
