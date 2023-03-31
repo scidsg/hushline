@@ -39,6 +39,7 @@ export DOMAIN
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
+export NOTIFY_SMTP_PORT
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
