@@ -32,5 +32,6 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 ## Email Notifications
 
-Hush Line sends an email notification with the encrypted messages that sources submit. Passwords are stored in plaintext, so our recommendation is to use a Gmail account with a one-time password. Since the messages are encrypted, Google can't see the contents. 
-
+Hush Line uses SMTP to send email notifications. You'll need your email and SMTP addresses, a port number, and a password.
+We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
+Your messages are encrypted, so Google won't be able to read their contents.
