@@ -4,15 +4,9 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip2 geoipupdate
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
+
 access_log /var/log/nginx/access.log privacy;
-
-# Configure GeoIP2 module
-sudo sh -c "echo 'load_module /usr/lib/nginx/modules/ngx_http_geoip2_module.so;' > /etc/nginx/modules-enabled/50-mod-http-geoip2.conf"
-
-# Download and configure GeoIP2 databases
-sudo geoipupdate -d /usr/share/GeoIP
-sudo sed -i 's|GeoIP2-Country|GeoLite2-Country|g' /etc/nginx/nginx.conf
 
 # Function to display error message and exit
 error_exit() {
@@ -24,7 +18,7 @@ error_exit() {
 trap error_exit ERR
 
 # Welcome Prompt
-whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, make sure your DNS settings are pointing to this server." 16 64
+whiptail --title "Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, make sure your DNS settings are pointing to this server." 16 64
 
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
@@ -71,17 +65,11 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$PWD
-Environment="DOMAIN=$DOMAIN"
-Environment="EMAIL=$EMAIL"
-Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
-Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
-Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Restart=always
 [Install]
 WantedBy=multi-user.target
 EOL
-
 systemctl enable hush-line.service
 systemctl start hush-line.service
 
@@ -187,12 +175,8 @@ http {
         ##
         # Enable privacy preserving logging
         ##
-        geoip2 /usr/share/GeoIP/GeoLite2-Country.mmdb {
-        auto_reload 5m;
-        \$geoip2_data_country_code source=\$remote_addr country iso_code;
-};
-log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" $geoip2_data_country_code';
-
+        geoip_country /usr/share/GeoIP/GeoIP.dat;
+        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
 
         access_log /var/log/nginx/access.log privacy;
 }
