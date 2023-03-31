@@ -15,6 +15,9 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
+# Clone the repository
+git clone https://github.com/scidsg/hush-line.git
+
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
 
@@ -44,9 +47,6 @@ export NOTIFY_SMTP_PORT
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
-
-# Clone the repository
-git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
