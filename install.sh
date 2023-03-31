@@ -201,7 +201,9 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
-echo "Installation complete! Hush Line should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS.
-Have feedback? Send us an emaiil at hushline@scidsg.org."
+echo "✅ Installation complete! Hush Line should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS.
+
+Have feedback? Send us an email at hushline@scidsg.org.
+"
 
 # Disable the trap before exiting
