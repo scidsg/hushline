@@ -11,6 +11,7 @@ cat << "EOF"
                                                
 Your Private Suggestion Box 
 https://hushline.app
+
 EOF
 
 sleep 3
