@@ -217,6 +217,9 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 echo "✅ Installation complete! Hush Line should now be accessible at https://$DOMAIN and http://$ONION_ADDRESS.
 
+Have feedback? Send us an email at hushline@scidsg.org.
+"
+
 # Add your ASCII art here
 cat << "EOF" >> ~/.bashrc
   _    _           _       _      _            
@@ -227,11 +230,10 @@ cat << "EOF" >> ~/.bashrc
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
                                                
 Your Private Suggestion Box 
+https://$DOMAIN
+http://$ONION_ADDRESS
 https://hushline.app
 
 EOF
-
-Have feedback? Send us an email at hushline@scidsg.org.
-"
 
 # Disable the trap before exiting
