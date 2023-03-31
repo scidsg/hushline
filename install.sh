@@ -46,7 +46,7 @@ export NOTIFY_SMTP_PORT
 echo "Domain: ${DOMAIN}"
 
 # Clone the repository
-git clone -b email-notifications https://github.com/scidsg/hush-line.git
+git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
