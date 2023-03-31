@@ -29,7 +29,7 @@ def save_message():
     encrypted_message = encrypt_message(message, 'public_key.asc')
     with open('messages.txt', 'a') as f:
         f.write(encrypted_message + '\n\n')
-    send_email_notification(message)
+    send_email_notification(encrypted_message)
     return jsonify({'success': True})
 
 def send_email_notification(message):
