@@ -4,8 +4,15 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip2 geoip2-database
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip2 geoipupdate
 access_log /var/log/nginx/access.log privacy;
+
+# Configure GeoIP2 module
+sudo sh -c "echo 'load_module /usr/lib/nginx/modules/ngx_http_geoip2_module.so;' > /etc/nginx/modules-enabled/50-mod-http-geoip2.conf"
+
+# Download and configure GeoIP2 databases
+sudo geoipupdate -d /usr/share/GeoIP
+sudo sed -i 's|GeoIP2-Country|GeoLite2-Country|g' /etc/nginx/nginx.conf
 
 # Function to display error message and exit
 error_exit() {
