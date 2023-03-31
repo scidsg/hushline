@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Add your ASCII art here
+cat << "EOF"
+  _    _      _ _
+ | |  | |    | | |
+ | |__| | ___| | | ___
+ |  __  |/ _ \ | |/ _ \
+ | |  | |  __/ | | (_) |
+ |_|  |_|\___|_|_|\___/ 
+
+EOF
+sleep 3
+
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
