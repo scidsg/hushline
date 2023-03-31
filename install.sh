@@ -65,11 +65,17 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$PWD
+Environment="DOMAIN=$DOMAIN"
+Environment="EMAIL=$EMAIL"
+Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
+Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
+Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
 ExecStart=$PWD/venv/bin/python3 $PWD/app.py
 Restart=always
 [Install]
 WantedBy=multi-user.target
 EOL
+
 systemctl enable hush-line.service
 systemctl start hush-line.service
 
