@@ -117,6 +117,7 @@ server {
         proxy_connect_timeout 300s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
+        limit_req zone=mylimit burst=5 nodelay;
     }
     
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
@@ -182,6 +183,8 @@ http {
         ##
         geoip_country /usr/share/GeoIP/GeoLite2-Country.mmdb;
         log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
+
+        limit_req_zone $binary_remote_addr zone=mylimit:10m rate=1r/s;
 
         access_log /var/log/nginx/access.log privacy;
 }
