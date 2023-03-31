@@ -4,8 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database
-
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip2 geoip2-database
 access_log /var/log/nginx/access.log privacy;
 
 # Function to display error message and exit
@@ -181,8 +180,12 @@ http {
         ##
         # Enable privacy preserving logging
         ##
-        geoip_country /usr/share/GeoIP/GeoLite2-Country.mmdb;
-        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
+        geoip2 /usr/share/GeoIP/GeoLite2-Country.mmdb {
+        auto_reload 5m;
+        \$geoip2_data_country_code source=\$remote_addr country iso_code;
+};
+log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" $geoip2_data_country_code';
+
 
         access_log /var/log/nginx/access.log privacy;
 }
