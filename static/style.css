@@ -65,7 +65,7 @@ label {
 	font-weight: 700;
 }
 
-#signup-form {
+#message-form {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
