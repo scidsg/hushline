@@ -10,6 +10,12 @@
        url("fonts/serif/PlayfairDisplay-Medium.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "Playfair Bold";
+  src: url("fonts/serif/PlayfairDisplay-Bold.woff") format("woff"),
+       url("fonts/serif/PlayfairDisplay-Bold.woff2") format("woff2");
+}
+
 html {
   box-sizing: border-box;
 }
@@ -41,7 +47,7 @@ h1 {
 	line-height: 1.1;
 	text-align: center;
 	margin: 0 0 0 0;
-	font-family: 'Playfair', serif;
+	font-family: 'Playfair Bold', serif;
 }
 
 .emoji {
