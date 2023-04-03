@@ -334,7 +334,7 @@ server {
         add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
         add_header X-Content-Type-Options nosniff;
         add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
-        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+        add_header Permissions-Policy 'geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()';
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
 }
