@@ -36,7 +36,7 @@ INSTALL_TYPE=$(whiptail --title "Installation Type" --menu "Choose an installati
     "1" "Tor-only" \
     "2" "Tor + public web" 3>&1 1>&2 2>&3)
 
-if [ "$INSTALL_TYPE" != "1" ]; then
+if [ "$INSTALL_TYPE" != "2" ]; then
 
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
@@ -217,7 +217,7 @@ whiptail --title "🤫 Hush Line Installation Complete" --msgbox "Installation c
 
 fi
 
-if [ "$INSTALL_TYPE" != "2" ]; then
+if [ "$INSTALL_TYPE" != "1" ]; then
 
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
