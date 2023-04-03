@@ -213,14 +213,8 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
-✅ Installation complete!
-                                               
-http://$ONION_ADDRESS
+whiptail --title "🤫 Hush Line Installation Complete" --msgbox "Installation complete!\n\nYour site should be reachable at on the Tor Browser http://${ONION_ADDRESS}\n\nHush Line is a product by Science & Design. Learn more about us at https://scidsg.org.\n\nHave feedback? Send us an email at hushline@scidsg.org." 16 64
 
-Hush Line is a product by Science & Design. Learn more about us at https://scidsg.org.
-
-Have feedback? Send us an email at hushline@scidsg.org.
-"
 fi
 
 if [ "$INSTALL_TYPE" != "2" ]; then
@@ -409,15 +403,9 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
-echo "
-✅ Installation complete!
-                                               
-https://$DOMAIN
-http://$ONION_ADDRESS
 
-Hush Line is a product by Science & Design. Learn more about us at https://scidsg.org.
+whiptail --title "🤫 Hush Line Installation Complete" --msgbox "Installation complete!\n\nYour site should be reachable at https://$DOMAIN and http://${ONION_ADDRESS}\n\nHush Line is a product by Science & Design. Learn more about us at https://scidsg.org.\n\nHave feedback? Send us an email at hushline@scidsg.org." 16 64
 
-Have feedback? Send us an email at hushline@scidsg.org.
-"
 fi
+
 # Disable the trap before exiting
