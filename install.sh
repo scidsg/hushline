@@ -52,10 +52,6 @@ NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., s
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
-# Check for valid domain name format
-until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
-    DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
-done
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
