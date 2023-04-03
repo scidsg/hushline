@@ -220,6 +220,8 @@ whiptail --title "🤫 Hush Line Installation Complete" --msgbox "Installation c
 
 fi
 
+fi
+
 if [ "$INSTALL_TYPE" != "2" ]; then
 
 # Clone the repository
