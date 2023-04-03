@@ -209,7 +209,6 @@ nginx -t && systemctl restart nginx || error_exit
 echo "
 ✅ Installation complete!
                                                
-https://$DOMAIN
 http://$ONION_ADDRESS
 Hush Line is a product by Science & Design. Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org.
