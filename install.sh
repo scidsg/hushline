@@ -746,6 +746,8 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 
 fi
 
+fi
+
 whiptail --title "🤫 Hush Line Installation Complete" --msgbox "Installation complete!\n\nYour site should be reachable at https://$DOMAIN and http://${ONION_ADDRESS}\n\nHush Line is a product by Science & Design. Learn more about us at https://scidsg.org.\n\nHave feedback? Send us an email at hushline@scidsg.org." 16 64
 
 fi
