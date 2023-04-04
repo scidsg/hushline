@@ -119,6 +119,7 @@ RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:5000
 EOL
+}
 
 check_application() {
     sleep 5
