@@ -28,6 +28,115 @@ error_exit() {
     exit 1
 }
 
+clone_and_install_dependencies() {
+# Clone the repository
+git clone https://github.com/scidsg/hush-line.git
+
+# Create a virtual environment and install dependencies
+cd hush-line
+python3 -m venv venv
+source venv/bin/activate
+pip3 install flask
+pip3 install pgpy
+pip3 install -r requirements.txt
+}
+
+configure_nginx() {
+# Configure Nginx
+cat > /etc/nginx/nginx.conf << EOL
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+events {
+        worker_connections 768;
+        # multi_accept on;
+}
+http {
+        ##
+        # Basic Settings
+        ##
+        sendfile on;
+        tcp_nopush on;
+        types_hash_max_size 2048;
+        # server_tokens off;
+        # server_names_hash_bucket_size 64;
+        # server_name_in_redirect off;
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+        ##
+        # SSL Settings
+        ##
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+        ssl_prefer_server_ciphers on;
+        ##
+        # Logging Settings
+        ##
+        # access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+        ##
+        # Gzip Settings
+        ##
+        gzip on;
+        # gzip_vary on;
+        # gzip_proxied any;
+        # gzip_comp_level 6;
+        # gzip_buffers 16 8k;
+        # gzip_http_version 1.1;
+        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+        ##
+        # Virtual Host Configs
+        ##
+        include /etc/nginx/conf.d/*.conf;
+        include /etc/nginx/sites-enabled/*;
+        ##
+        # Enable privacy preserving logging
+        ##
+        geoip_country /usr/share/GeoIP/GeoIP.dat;
+        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
+
+        access_log /var/log/nginx/access.log privacy;
+}
+
+EOL
+
+if [ -e "/etc/nginx/sites-enabled/default" ]; then
+    rm /etc/nginx/sites-enabled/default
+fi
+ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx || error_exit
+}
+
+configure_onion_service() {
+# Create Tor configuration file
+sudo tee /etc/tor/torrc << EOL
+RunAsDaemon 1
+HiddenServiceDir /var/lib/tor/hidden_service/
+HiddenServicePort 80 127.0.0.1:5000
+EOL
+
+# Restart Tor service
+sudo systemctl restart tor.service
+sleep 10
+
+# Get the Onion address
+ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
+
+# Enable the Tor hidden service
+sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+}
+
+prompt_email() {
+# Prompt user for email
+EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
+
+# Prompt user for email notification settings
+NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
+NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
+NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+}
+
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
@@ -44,29 +153,16 @@ whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a si
 # Welcome Prompt
 whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a burner address or a Gmail account with a one-time password." 16 64
 
-# Prompt user for email
-EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
 # Prompt user for email notification settings
-NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+prompt_email
 
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
 
-# Clone the repository
-git clone https://github.com/scidsg/hush-line.git
-
-# Create a virtual environment and install dependencies
-cd hush-line
-python3 -m venv venv
-source venv/bin/activate
-pip3 install flask
-pip3 install pgpy
-pip3 install -r requirements.txt
+# Clone the repository and create a virtual environment and install dependencies
+clone_and_install_dependencies
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
@@ -98,22 +194,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-sudo tee /etc/tor/torrc << EOL
-RunAsDaemon 1
-HiddenServiceDir /var/lib/tor/hidden_service/
-HiddenServicePort 80 127.0.0.1:5000
-EOL
-
-# Restart Tor service
-sudo systemctl restart tor.service
-sleep 10
-
-# Get the Onion address
-ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
-
-# Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+configure_onion_service
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
@@ -143,68 +224,7 @@ server {
 EOL
 
 # Configure Nginx
-cat > /etc/nginx/nginx.conf << EOL
-user www-data;
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
-events {
-        worker_connections 768;
-        # multi_accept on;
-}
-http {
-        ##
-        # Basic Settings
-        ##
-        sendfile on;
-        tcp_nopush on;
-        types_hash_max_size 2048;
-        # server_tokens off;
-        # server_names_hash_bucket_size 64;
-        # server_name_in_redirect off;
-        include /etc/nginx/mime.types;
-        default_type application/octet-stream;
-        ##
-        # SSL Settings
-        ##
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
-        ssl_prefer_server_ciphers on;
-        ##
-        # Logging Settings
-        ##
-        # access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
-        ##
-        # Gzip Settings
-        ##
-        gzip on;
-        # gzip_vary on;
-        # gzip_proxied any;
-        # gzip_comp_level 6;
-        # gzip_buffers 16 8k;
-        # gzip_http_version 1.1;
-        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-        ##
-        # Virtual Host Configs
-        ##
-        include /etc/nginx/conf.d/*.conf;
-        include /etc/nginx/sites-enabled/*;
-        ##
-        # Enable privacy preserving logging
-        ##
-        geoip_country /usr/share/GeoIP/GeoIP.dat;
-        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
-
-        access_log /var/log/nginx/access.log privacy;
-}
-
-EOL
-
-if [ -e "/etc/nginx/sites-enabled/default" ]; then
-    rm /etc/nginx/sites-enabled/default
-fi
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx || error_exit
+configure_nginx
 
 echo "
 ✅ Installation complete!
@@ -226,13 +246,8 @@ DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 # Welcome Prompt
 whiptail --title "Email Setup" --msgbox "Now we'll set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a burner address or a Gmail account with a one-time password." 16 64
 
-# Prompt user for email
-EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
 # Prompt user for email notification settings
-NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+prompt_email
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -247,16 +262,8 @@ export NOTIFY_SMTP_PORT
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
 
-# Clone the repository
-git clone https://github.com/scidsg/hush-line.git
-
-# Create a virtual environment and install dependencies
-cd hush-line
-python3 -m venv venv
-source venv/bin/activate
-pip3 install flask
-pip3 install pgpy
-pip3 install -r requirements.txt
+# Clone the repository and create a virtual environment and install dependencies
+clone_and_install_dependencies
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
@@ -288,22 +295,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-sudo tee /etc/tor/torrc << EOL
-RunAsDaemon 1
-HiddenServiceDir /var/lib/tor/hidden_service/
-HiddenServicePort 80 127.0.0.1:5000
-EOL
-
-# Restart Tor service
-sudo systemctl restart tor.service
-sleep 10
-
-# Get the Onion address
-ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
-
-# Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+configure_onion_service
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
@@ -333,68 +325,7 @@ server {
 EOL
 
 # Configure Nginx
-cat > /etc/nginx/nginx.conf << EOL
-user www-data;
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
-events {
-        worker_connections 768;
-        # multi_accept on;
-}
-http {
-        ##
-        # Basic Settings
-        ##
-        sendfile on;
-        tcp_nopush on;
-        types_hash_max_size 2048;
-        # server_tokens off;
-        # server_names_hash_bucket_size 64;
-        # server_name_in_redirect off;
-        include /etc/nginx/mime.types;
-        default_type application/octet-stream;
-        ##
-        # SSL Settings
-        ##
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
-        ssl_prefer_server_ciphers on;
-        ##
-        # Logging Settings
-        ##
-        # access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
-        ##
-        # Gzip Settings
-        ##
-        gzip on;
-        # gzip_vary on;
-        # gzip_proxied any;
-        # gzip_comp_level 6;
-        # gzip_buffers 16 8k;
-        # gzip_http_version 1.1;
-        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-        ##
-        # Virtual Host Configs
-        ##
-        include /etc/nginx/conf.d/*.conf;
-        include /etc/nginx/sites-enabled/*;
-        ##
-        # Enable privacy preserving logging
-        ##
-        geoip_country /usr/share/GeoIP/GeoIP.dat;
-        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
-
-        access_log /var/log/nginx/access.log privacy;
-}
-
-EOL
-
-if [ -e "/etc/nginx/sites-enabled/default" ]; then
-    rm /etc/nginx/sites-enabled/default
-fi
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx || error_exit
+configure_nginx
 
 # Obtain SSL certificate
 certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $DOMAIN
