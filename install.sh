@@ -41,6 +41,11 @@ pip3 install pgpy
 pip3 install -r requirements.txt
 }
 
+enable_hushline() {
+systemctl enable hush-line.service
+systemctl start hush-line.service
+}
+
 configure_nginx() {
 # Configure Nginx
 cat > /etc/nginx/nginx.conf << EOL
@@ -115,6 +120,14 @@ HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:5000
 EOL
 
+check_application(){
+    sleep 5
+if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
+    echo "The application is not running as expected. Please check the application logs for more details."
+    error_exit
+fi
+}
+
 # Restart Tor service
 sudo systemctl restart tor.service
 sleep 10
@@ -183,15 +196,10 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
-systemctl enable hush-line.service
-systemctl start hush-line.service
+enable_hushline
 
 # Check if the application is running and listening on the expected address and port
-sleep 5
-if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
-    echo "The application is not running as expected. Please check the application logs for more details."
-    error_exit
-fi
+check_application
 
 # Create Tor configuration file
 configure_onion_service
@@ -284,15 +292,10 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
-systemctl enable hush-line.service
-systemctl start hush-line.service
+enable_hushline
 
 # Check if the application is running and listening on the expected address and port
-sleep 5
-if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
-    echo "The application is not running as expected. Please check the application logs for more details."
-    error_exit
-fi
+check_application
 
 # Create Tor configuration file
 configure_onion_service
