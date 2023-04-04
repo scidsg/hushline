@@ -120,7 +120,7 @@ HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:5000
 EOL
 
-check_application(){
+check_application() {
     sleep 5
 if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
     echo "The application is not running as expected. Please check the application logs for more details."
