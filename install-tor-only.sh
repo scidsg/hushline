@@ -51,7 +51,7 @@ export NOTIFY_SMTP_PORT
 git clone https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
-cd onion-line
+cd hush-line
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
