@@ -197,40 +197,6 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
-
-# Generate an ECC key pair for the Tor hidden service
-jce torcert --action create
-
-# Get the certificate path and private key path
-CERTIFICATE_PATH=$(find . -name "fullchain.pem")
-PRIVATE_KEY_PATH=$(find . -name "privkey.pem")
-
-# Add SSL configuration to the Nginx hush-line configuration
-sudo sed -i "/server {/a \
-    listen 443 ssl http2;\n\
-    server_name $DOMAIN;\n\
-    ssl_certificate $CERTIFICATE_PATH;\n\
-    ssl_certificate_key $PRIVATE_KEY_PATH;\n\
-    ssl_protocols TLSv1.2 TLSv1.3;\n\
-    ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384';\n\
-    ssl_prefer_server_ciphers on;\n\
-    ssl_session_cache shared:SSL:50m;\n\
-    ssl_session_timeout 1d;\n\
-    ssl_session_tickets off;\n\
-    ssl_stapling on;\n\
-    ssl_stapling_verify on;\n\
-    resolver 8.8.8.8 8.8.4.4 valid=300s;\n\
-    resolver_timeout 5s;\n\
-    add_header Strict-Transport-Security 'max-age=63072000; includeSubdomains; preload' always;\n\
-    add_header X-Content-Type-Options nosniff always;\n\
-    add_header X-Frame-Options SAMEORIGIN always;\n\
-    add_header X-Xss-Protection '1; mode=block' always;\n\
-    add_header Referrer-Policy 'strict-origin-when-cross-origin' always;\n\
-" /etc/nginx/sites-available/hush-line.nginx
-
-# Reload Nginx configuration
-sudo nginx -t && sudo systemctl restart nginx
-
 echo "
 ✅ Installation complete!
                                                
