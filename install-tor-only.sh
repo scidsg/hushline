@@ -32,7 +32,7 @@ error_exit() {
 trap error_exit ERR
 
 # Welcome Prompt
-whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where censorship is prevalent.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
+whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP and available on a .onion address so anyone can message you, even from locations where the internet is censored." 16 64
 
 # Email Prompt
 whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a burner address or a Gmail account with a one-time password." 16 64
