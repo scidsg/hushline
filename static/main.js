@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     // Show the spinner
-    spinner.hidden = false;
+    spinner.style.display = 'inline-block';
 
     const formData = new FormData(form);
     const response = await fetch(form.action, {
@@ -29,6 +29,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Hide the spinner
-    spinner.hidden = true;
+    spinner.style.display = 'none';
   });
 });
