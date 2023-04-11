@@ -29,6 +29,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const pgpOwnerInfo = document.getElementById("pgp-owner-info");
 
   pgpInfoBtn.addEventListener("click", function () {
+  if (pgpOwnerInfo.style.display === "block") {
+    pgpOwnerInfo.style.display = "none";
+  } else {
     pgpOwnerInfo.style.display = "block";
     pgpInfoBtn.disabled = true;
 
@@ -56,5 +59,5 @@ document.addEventListener("DOMContentLoaded", function () {
       pgpInfoBtn.disabled = false;
     };
     xhr.send();
-  });
+  }
 });
