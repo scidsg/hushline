@@ -232,7 +232,7 @@ footer p {
 	margin: 0;
 	font-size: .825rem;
 	letter-spacing: .025rem;
-	color: #595959;
+	color: #333;
 }
 
 @media only screen and (max-width: 768px) {
