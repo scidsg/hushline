@@ -114,11 +114,10 @@ button {
   position: absolute;
   left: 50%; /* Change right to left and set it to 50% */
   top: 50%;
-  transform: translate(-50%, -50%); /* Update the transform property */
-  background-color: #333; /* Add the background color */
+  transform: translate(-50%, -50%) rotate(0deg); /* Correct the transform property */
+  background-color: #1d1d1c; /* Add the background color */
   z-index: 1; /* Add this line to position the spinner on top of the button text */
 }
-
 
 .button-wrapper {
     position: relative;
