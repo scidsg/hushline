@@ -109,6 +109,10 @@ button {
   animation: spin 1s linear infinite;
 }
 
+.hidden {
+	display: none;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
