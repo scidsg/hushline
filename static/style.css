@@ -135,6 +135,10 @@ button {
     position: relative;
 }
 
+.button-text-hidden {
+  color: rgba(255,255,255,0.3);
+}
+
 .hidden {
 	display: none;
 }
