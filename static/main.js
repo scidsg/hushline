@@ -34,18 +34,15 @@ document.addEventListener("DOMContentLoaded", function () {
     spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
-});
 
   const pgpInfoBtn = document.getElementById("pgp-info-btn");
   const pgpOwnerInfo = document.getElementById("pgp-owner-info");
 
-  pgpInfoBtn.addEventListener("click", function () {
-  if (pgpOwnerInfo.style.display === "block") {
-    pgpOwnerInfo.style.display = "none";
-  } else {
-    pgpOwnerInfo.style.display = "block";
-    pgpInfoBtn.disabled = true;
+  // Hide the pgpInfoBtn initially
+  pgpInfoBtn.style.display = "none";
 
+  // Fetch the PGP info when the page loads
+  const fetchPGPInfo = async () => {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "/pgp_owner_info");
     xhr.onload = function () {
@@ -59,17 +56,26 @@ document.addEventListener("DOMContentLoaded", function () {
         pgpKeyId.textContent = result.key_id;
         pgpExpires.textContent = result.expires;
 
-        pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
+        // Show the pgpInfoBtn once the data is fetched
+        pgpInfoBtn.style.display = "inline-block";
       } else {
         console.error(xhr.statusText);
       }
-      pgpInfoBtn.disabled = false;
     };
     xhr.onerror = function () {
       console.error(xhr.statusText);
-      pgpInfoBtn.disabled = false;
     };
     xhr.send();
-  }
-}); 
+  };
 
+  fetchPGPInfo();
+
+  pgpInfoBtn.addEventListener("click", function () {
+    if (pgpOwnerInfo.style.display === "block") {
+      pgpOwnerInfo.style.display = "none";
+    } else {
+      pgpOwnerInfo.style.display = "block";
+      pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
+    }
+  });
+});
