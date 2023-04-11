@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     // Show the spinner and change the button text color
-    spinner.classList.remove("hidden");
+    spinner.style.display = 'inline-block';
     submitButton.classList.add("button-text-hidden");
 
     const formData = new FormData(form);
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Hide the spinner and restore the button text color
-    spinner.classList.add("hidden");
+    spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
 });
