@@ -114,7 +114,7 @@ footer p {
 	text-align: center;
 }
 
-#pgp-info {
+#pgp-info, #id-card {
 	position: absolute;
 	top: 1rem;
 	right: 1rem;
