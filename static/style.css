@@ -118,7 +118,7 @@ button {
   top: 50%;
   transform: translate(-50%, -50%);
   background-color: #1d1d1c;
-  z-index: 1;
+  z-index: 10;
 }
 
 /* Add the @keyframes rule for the spinning animation */
