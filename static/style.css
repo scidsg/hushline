@@ -145,6 +145,10 @@ footer p {
 	gap: 1rem;
 }
 
+.hidden {
+	display: none;
+}
+
 @media only screen and (max-width: 768px) {
 	
 	h1 {
@@ -157,6 +161,14 @@ footer p {
 
 	#pgp-info {
 		position: initial;
+		width: 50%;
+	}
+
+}
+
+@media only screen and (max-width: 480px) {
+
+	#pgp-info {
 		width: 100%;
 	}
 

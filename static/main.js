@@ -27,14 +27,19 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 (async function () {
-    const response = await fetch('/pgp_owner_info');
-    const result = await response.json();
-    const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
-    const pgpKeyIdElement = document.getElementById('pgp-key-id');
-    const pgpExpiresElement = document.getElementById('pgp-expires');
-    
-    pgpOwnerInfoElement.innerHTML = result.owner_info.replace('\n', '<br>');
-    pgpKeyIdElement.textContent = result.key_id;
-    pgpExpiresElement.textContent = result.expires;
+  const response = await fetch('/pgp_owner_info');
+  const result = await response.json();
+  const pgpInfoElement = document.getElementById('pgp-info');
+  const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
+  const pgpKeyIdElement = document.getElementById('pgp-key-id');
+  const pgpExpiresElement = document.getElementById('pgp-expires');
+
+  pgpOwnerInfoElement.textContent = result.owner_info;
+  pgpKeyIdElement.textContent = result.key_id;
+  pgpExpiresElement.textContent = result.expires;
+
+  // Remove the 'hidden' class to show the PGP information
+  pgpInfoElement.classList.remove('hidden');
 })();
+
 
