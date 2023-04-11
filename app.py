@@ -53,13 +53,10 @@ def pgp_owner_info():
     with open('public_key.asc', 'r') as key_file:
         key_data = key_file.read()
     public_key, _ = pgpy.PGPKey.from_blob(key_data)
-    owner = f"Owner: {public_key.userids[0].name} <{public_key.userids[0].email}>"
-    key_id = f"Key ID: {public_key.keyid}"
-    created = f"Created: {public_key.created}"
+    owner = f"{public_key.userids[0].name}\n{public_key.userids[0].email}"
+    key_id = f"Key ID: {str(public_key.fingerprint)[-16:]}"  # Change this line
     expires = f"Expires: {public_key.expires_at}"
-    response_data = {'owner_info': owner, 'key_id': key_id, 'created': created, 'expires': expires}
-    print("Sending JSON object:", response_data)  # Add this line to log the JSON object
-    return jsonify(response_data)
+    return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
 if __name__ == '__main__':
     app.run(debug=True)
