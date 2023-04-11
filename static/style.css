@@ -119,6 +119,7 @@ footer p {
 	background-color: white;
 	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
 	padding: 1rem;
+	width: fit-content;
 }
 
 #pgp-info h3 {
@@ -161,15 +162,10 @@ footer p {
 
 	#pgp-info {
 		position: initial;
-		width: 50%;
 	}
 
 }
 
 @media only screen and (max-width: 480px) {
-
-	#pgp-info {
-		width: 100%;
-	}
 
 }
