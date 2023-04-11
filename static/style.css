@@ -229,7 +229,7 @@ footer p {
 }
 
 #pgp-owner-info h3 {
-	margin: 0;
+	margin: 0 0 .125rem 0;
 	font-size: .825rem;
 	letter-spacing: .025rem;
 	color: #333;
