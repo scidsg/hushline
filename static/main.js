@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", function() {
 (async function () {
   const response = await fetch('/pgp_owner_info');
   const result = await response.json();
+  const ownerHeading = document.getElementById('owner-heading');
   const pgpInfoElement = document.getElementById('pgp-info');
   const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
   const pgpKeyIdElement = document.getElementById('pgp-key-id');
@@ -39,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function() {
     pgpExpiresElement.textContent = result.expires;
 
   // Remove the 'hidden' class to show the PGP information
-  pgpInfoElement.classList.remove('hidden');
+  // pgpInfoElement.classList.remove('hidden');
 })();
 
 $(document).ready(function() {
