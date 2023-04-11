@@ -114,52 +114,21 @@ footer p {
 	text-align: center;
 }
 
-#pgp-info {
-	position: absolute;
-	top: 1rem;
-	right: 1rem;
-	border: 1px solid rgba(0,0,0,0.1);
-	border-radius: .25rem;
-	background-color: white;
-	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
-	padding: 1rem;
-	width: fit-content;
+#pgp-info-btn {
+    display: block;
+    margin-bottom: 1rem;
 }
 
-#pgp-info a {
-	position: absolute;
-	top: 1rem;
-	right: 1rem;
+#pgp-info-btn i {
+    margin-right: 0.5rem;
 }
 
-#pgp-info h3 {
-	font-size: .75rem;
-	margin: 0 0 .125rem 0;
-	color: #595959;
+#pgp-owner-info {
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+    max-height: 0;
 }
 
-#pgp-info p {
-	font-size: .75rem;
-	margin: 0;
-}
-
-#pgp-info p:first-of-type {
-	font-family: 'Atkinson Bold', sans-serif;
-}
-
-#pgp-info .pgp-meta p:first-of-type {
-	font-family: 'Atkinson Hyperlegible', sans-serif;
-}
-
-.pgp-meta {
-	display: flex;
-	gap: 1rem;
-	margin-top: .25rem;
-}
-
-.hidden {
-	display: none;
-}
 
 @media only screen and (max-width: 768px) {
 	
