@@ -18,6 +18,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <button id="pgp-info-btn" class="btn btn-outline-primary">🔑</button>
+
+    <div id="pgp-owner-info" class="card mt-3">
+        <div class="card-header">
+            <h3 class="card-title">Owner Info</h3>
+        </div>
+        <div class="card-body">
+            <p id="pgp-owner"></p>
+            <p id="pgp-key-id"></p>
+            <p id="pgp-expires"></p>
+        </div>
+    </div>
     <h1><span class="emoji">🤫</span>Hush Line</h1>
     <p>Spill the tea without getting burned. <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;More</a>.</p>
     <form id="message-form" action="/save_message" method="POST">

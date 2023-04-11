@@ -5,6 +5,12 @@
 }
 
 @font-face {
+  font-family: "Atkinson Bold";
+  src: url("fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
+       url("fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+}
+
+@font-face {
   font-family: "Playfair";
   src: url("fonts/serif/PlayfairDisplay-Medium.woff") format("woff"),
        url("fonts/serif/PlayfairDisplay-Medium.woff2") format("woff2");
@@ -143,18 +149,106 @@ button {
 	display: none;
 }
 
+.spinner {
+  display: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-left-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #1d1d1c;
+  z-index: 1;
+}
+
+.hidden {
+	display: none;
+}
+
+/* Add the @keyframes rule for the spinning animation */
+@keyframes spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.button-container {
+    position: relative;
+}
+
+.button-text-hidden {
+  color: rgba(255,255,255,0);
+}
+
 footer p {
 	font-size: .75rem;
 	text-align: center;
 }
 
+#pgp-info-btn {
+    display: none;
+    margin-bottom: 1rem;
+    background-color: white;
+   	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+   	position: fixed;
+   	top: 1rem;
+   	right: 1rem;
+   	width: 2.5rem;
+  	height: 2.5rem;
+  	min-width: auto;
+  	justify-content: center;
+	  align-items: center;
+  	outline: 1px solid rgba(0,0,0,0.05);
+  	cursor: pointer;
+}
+
+#pgp-owner-info {
+	display: none;
+  overflow: hidden;
+  transition: max-height 0.4s ease-out;
+	font-size: .825rem;
+	background-color: white;
+	padding: 1rem;
+	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+	outline: 1px solid rgba(0,0,0,0.05);
+	border-radius: .25rem;
+	position: absolute;
+	top: 4.5rem;
+	right: 1rem;
+}
+
+#pgp-owner-info p {
+	margin: 0;
+}
+
+#pgp-owner-info h3 {
+	margin: 0;
+	font-size: .825rem;
+}
+
 @media only screen and (max-width: 768px) {
+	
 	h1 {
 		font-size: 3rem;
 	}
 
 	.emoji {
-	font-size: 2.5rem;
+		font-size: 2.5rem;
+	}
+
+	#pgp-info {
+		position: initial;
+	}
+
 }
+
+@media only screen and (max-width: 480px) {
 
 }
