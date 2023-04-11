@@ -120,6 +120,10 @@ footer p {
 	margin: 0;
 }
 
+#pgp-info p:first-of-type {
+	font-family: 'Playfair Bold';
+}
+
 @media only screen and (max-width: 768px) {
 	h1 {
 		font-size: 3rem;
