@@ -136,7 +136,7 @@ footer p {
 	font-family: 'Atkinson Bold', sans-serif;
 }
 
-.pgp-meta p:first-of-type {
+#pgp-info .pgp-meta p:first-of-type {
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 }
 
