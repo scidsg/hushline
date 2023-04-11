@@ -5,6 +5,12 @@
 }
 
 @font-face {
+  font-family: "Atkinson Bold";
+  src: url("fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
+       url("fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+}
+
+@font-face {
   font-family: "Playfair";
   src: url("fonts/serif/PlayfairDisplay-Medium.woff") format("woff"),
        url("fonts/serif/PlayfairDisplay-Medium.woff2") format("woff2");
@@ -117,13 +123,17 @@ footer p {
 
 #pgp-info h3 {
 	font-size: .825rem;
-	margin: 0 0 .5rem 0;
+	margin: 0 0 .125rem 0;
 	color: #595959;
 }
 
 #pgp-info p {
 	font-size: .75rem;
 	margin: 0;
+}
+
+#pgp-info p:first-of-type {
+	font-family: 'Atkinson Bold';
 }
 
 @media only screen and (max-width: 768px) {
