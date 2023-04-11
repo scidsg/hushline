@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function() {
     pgpExpiresElement.textContent = result.expires;
 
   // Remove the 'hidden' class to show the PGP information
-  pgpInfoElement.classList.add('hidden');
+  pgpInfoElement.classList.remove('hidden');
 })();
 
 $(document).ready(function() {
