@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         // Log the server's response text
-        const responseText = await response.text();
+        const responseText = await response.json();
         console.log("Server response text:", responseText);
 
         // Parse the response as JSON
