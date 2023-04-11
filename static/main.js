@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const pgpKeyId = document.getElementById("pgp-key-id");
         const pgpExpires = document.getElementById("pgp-expires");
 
-        pgpOwnerName.textContent = result.owner_info.replace('\n', '<br>');
+        pgpOwnerNameElement.innerHTML = result.owner_info.replace('\n', '<br>');
         pgpKeyId.textContent = result.key_id;
         pgpExpires.textContent = result.expires;
 
