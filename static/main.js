@@ -37,15 +37,13 @@ document.addEventListener("DOMContentLoaded", function () {
     xhr.onload = function () {
       if (xhr.status === 200) {
         const result = JSON.parse(xhr.responseText);
-        const pgpOwnerName = document.getElementById("pgp-owner-name");
-        const pgpOwnerEmail = document.getElementById("pgp-owner-email");
+        const pgpOwnerName = document.getElementById("pgp-owner");
         const pgpKeyId = document.getElementById("pgp-key-id");
         const pgpExpires = document.getElementById("pgp-expires");
 
-        pgpOwnerName.textContent = result.owner_name;
-        pgpOwnerEmail.textContent = result.owner_email;
+        pgpOwnerName.textContent = result.owner_info.replace('\n', '<br>');
         pgpKeyId.textContent = result.key_id;
-        pgpExpires.textContent = result.expires_date;
+        pgpExpires.textContent = result.expires;
 
         pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
       } else {
