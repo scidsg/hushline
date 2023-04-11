@@ -34,17 +34,17 @@ document.addEventListener("DOMContentLoaded", function() {
   const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
   const pgpKeyIdElement = document.getElementById('pgp-key-id');
   const pgpExpiresElement = document.getElementById('pgp-expires');
+  const keyButton = document.querySelector('.key-button');
 
-    pgpOwnerInfoElement.innerHTML = result.owner_info.replace('\n', '<br>'); // Change this line
-    pgpKeyIdElement.textContent = result.key_id;
-    pgpExpiresElement.textContent = result.expires;
+  pgpOwnerInfoElement.innerHTML = result.owner_info.replace('\n', '<br>');
+  pgpKeyIdElement.textContent = result.key_id;
+  pgpExpiresElement.textContent = result.expires;
 
-  // Remove the 'hidden' class to show the PGP information
-  pgpInfoElement.classList.remove('hidden');
-})();
+  // Add the 'hidden' class to the PGP information div
+  pgpInfoElement.classList.add('hidden');
 
-$(document).ready(function() {
-  $('.key-button').on('click', function() {
-    $('#pgp-info p').toggleClass('show');
+  // Add an event listener to toggle the PGP information div
+  keyButton.addEventListener('click', function() {
+    pgpInfoElement.classList.toggle('hidden');
   });
-});
+})();
