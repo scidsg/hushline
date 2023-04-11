@@ -31,12 +31,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Hide the spinner and restore the button text color
-    spinner.style.display = 'initial';
+    spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
 
   const pgpInfoBtn = document.getElementById("pgp-info-btn");
   const pgpOwnerInfo = document.getElementById("pgp-owner-info");
+
+  // Hide the pgpInfoBtn initially
+  pgpInfoBtn.style.display = "none";
 
   // Fetch the PGP info when the page loads
   const fetchPGPInfo = async () => {
@@ -54,7 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pgpExpires.textContent = result.expires;
 
         // Show the pgpInfoBtn once the data is fetched
-        pgpInfoBtn.classList.remove("hidden");
+        pgpInfoBtn.style.display = "inline-block";
       } else {
         console.error(xhr.statusText);
       }
