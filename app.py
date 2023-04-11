@@ -54,10 +54,10 @@ def pgp_owner_info():
         key_data = key_file.read()
     public_key, _ = pgpy.PGPKey.from_blob(key_data)
     owner = f"Owner: {public_key.userids[0].name} <{public_key.userids[0].email}>"
-    fingerprint = f"Fingerprint: {public_key.fingerprint}"
+    key_id = f"Key ID: {public_key.key_id}"
     created = f"Created: {public_key.created}"
     expires = f"Expires: {public_key.expires_at}"
-    return jsonify({'owner_info': owner, 'fingerprint': fingerprint, 'created': created, 'expires': expires})
+    return jsonify({'owner_info': owner, 'key_id': key_id, 'created': created, 'expires': expires})
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -39,4 +39,3 @@ document.addEventListener("DOMContentLoaded", function() {
     pgpCreatedElement.textContent = result.created;
     pgpExpiresElement.textContent = result.expires;
 })();
-
