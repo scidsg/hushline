@@ -128,6 +128,7 @@ footer p {
   	justify-content: center;
 	  align-items: center;
   	outline: 1px solid rgba(0,0,0,0.05);
+  	cursor: pointer;
 }
 
 #pgp-owner-info {
