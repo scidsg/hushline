@@ -118,7 +118,7 @@ button {
   top: 50%;
   transform: translate(-50%, -50%);
   background-color: #1d1d1c;
-  z-index: 10;
+  z-index: 1;
 }
 
 /* Add the @keyframes rule for the spinning animation */
@@ -137,10 +137,6 @@ button {
 
 .button-text-hidden {
   color: rgba(255,255,255,0);
-}
-
-.hidden {
-	display: none !important;
 }
 
 footer p {
@@ -188,6 +184,9 @@ footer p {
 	font-size: .825rem;
 }
 
+.hidden {
+	display: none !important;
+}
 
 @media only screen and (max-width: 768px) {
 	
