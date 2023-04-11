@@ -107,14 +107,14 @@ button {
 
 .spinner {
   display: none;
-  width: 30px;
-  height: 30px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-left-color: #ffffff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   position: absolute;
-  left: 50%;
+  right: 0;
   top: 50%;
   transform: translate(-50%, -50%);
   background-color: #1d1d1c;
