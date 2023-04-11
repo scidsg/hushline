@@ -25,3 +25,10 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 });
+
+(async function () {
+  const response = await fetch('/pgp_owner_info');
+  const result = await response.json();
+  const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
+  pgpOwnerInfoElement.textContent = result.owner_info;
+})();
