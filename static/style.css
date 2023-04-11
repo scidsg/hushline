@@ -142,7 +142,11 @@ footer p {
 	}
 
 	.emoji {
-	font-size: 2.5rem;
-}
+		font-size: 2.5rem;
+	}
+
+	#pgp-info {
+		position: initial;
+	}
 
 }
