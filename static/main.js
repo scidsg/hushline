@@ -37,11 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
     xhr.onload = function () {
       if (xhr.status === 200) {
         const result = JSON.parse(xhr.responseText);
-        const pgpOwnerName = document.getElementById("pgp-owner");
+        const pgpOwner = document.getElementById("pgp-owner");
         const pgpKeyId = document.getElementById("pgp-key-id");
         const pgpExpires = document.getElementById("pgp-expires");
 
-        pgpOwnerName.textContent = result.owner_name;
+        pgpOwner.textContent = result.owner_info;
         pgpKeyId.textContent = result.key_id;
         pgpExpires.textContent = result.expires;
 
