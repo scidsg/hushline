@@ -133,7 +133,7 @@ footer p {
 }
 
 #pgp-info p:first-of-type {
-	font-family: 'Atkinson Bold';
+	font-family: 'Atkinson Bold', sans-serif;
 }
 
 @media only screen and (max-width: 768px) {
