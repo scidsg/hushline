@@ -43,3 +43,8 @@ document.addEventListener("DOMContentLoaded", function() {
 })();
 
 
+$(document).ready(function() {
+  $('#keyBbutton').on('click', function() {
+    $('#pgp-info p').toggleClass('show');
+  });
+});
