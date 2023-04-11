@@ -18,12 +18,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div id="pgp-info" class="hidden">
+    <div id="pgp-info">
         <h3>Owner Info</h3>
-        <p id="pgp-owner-info"></p>
+        <p id="pgp-owner-info" class="hidden"></p>
         <div class="pgp-meta">
-            <p id="pgp-key-id"></p>
-            <p id="pgp-expires"></p>
+            <p id="pgp-key-id"></p class="hidden">
+            <p id="pgp-expires"></p class="hidden">
         </div>
         <a href="#" class="key-button" role="button">🔑</a>
     </div>
