@@ -30,13 +30,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const response = await fetch('/pgp_owner_info');
     const result = await response.json();
     const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
-    const pgpFingerprintElement = document.getElementById('pgp-fingerprint');
-    const pgpCreatedElement = document.getElementById('pgp-created');
-    const pgpExpiresElement = document.getElementById('pgp-expires');
-    
-    pgpOwnerInfoElement.textContent = result.owner_info;
-    pgpFingerprintElement.textContent = result.fingerprint;
-    pgpCreatedElement.textContent = result.created;
-    pgpExpiresElement.textContent = result.expires;
+    pgpOwnerInfoElement.innerHTML = result.owner_info;
 })();
 
