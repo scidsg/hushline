@@ -28,8 +28,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 (async function () {
     const response = await fetch('/pgp_owner_info');
-    const responseText = await response.text(); // Add this line
-    console.log("Server response text:", responseText); // Add this line
     const result = await response.json();
     const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
     const pgpKeyIdElement = document.getElementById('pgp-key-id');
@@ -39,3 +37,4 @@ document.addEventListener("DOMContentLoaded", function() {
     pgpKeyIdElement.textContent = result.key_id;
     pgpExpiresElement.textContent = result.expires;
 })();
+
