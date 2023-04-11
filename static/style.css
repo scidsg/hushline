@@ -101,6 +101,8 @@ button {
 	width: 50%;
 	min-width: 240px;
 	cursor: pointer;
+	position: relative;
+	z-index: 1;
 }
 
 .spinner {
@@ -115,7 +117,7 @@ button {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  background-color: #333;
+  background-color: #1d1d1c;
   z-index: 1;
 }
 
