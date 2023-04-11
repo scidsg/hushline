@@ -127,12 +127,30 @@ footer p {
   	min-width: auto;
   	justify-content: center;
 	  align-items: center;
+  	outline: 1px solid rgba(0,0,0,0.05);
 }
 
 #pgp-owner-info {
-    overflow: hidden;
-    transition: max-height 0.4s ease-out;
-    max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-out;
+  max-height: 0;
+	font-size: .825rem;
+	background-color: white;
+	padding: 1rem;
+	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+	outline: 1px solid rgba(0,0,0,0.05);
+	border-radius: .25rem;
+	position: absolute;
+	top: 4.5rem;
+	right: 1rem;
+}
+
+#pgp-owner-info p {
+	margin: 0;
+}
+
+#pgp-owner-info h5 {
+	margin: 0;
 }
 
 
