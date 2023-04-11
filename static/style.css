@@ -117,6 +117,16 @@ footer p {
 #pgp-info-btn {
     display: block;
     margin-bottom: 1rem;
+    background-color: white;
+   	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+   	position: absolute;
+   	top: 1rem;
+   	right: 1rem;
+   	width: 2.5rem;
+  	height: 2.5rem;
+  	min-width: auto;
+  	justify-content: center;
+	  align-items: center;
 }
 
 #pgp-info-btn i {
