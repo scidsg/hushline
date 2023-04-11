@@ -135,15 +135,8 @@ button {
     position: relative;
 }
 
-
 .hidden {
 	display: none;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 footer p {
