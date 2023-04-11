@@ -34,9 +34,9 @@ document.addEventListener("DOMContentLoaded", function() {
   const pgpKeyIdElement = document.getElementById('pgp-key-id');
   const pgpExpiresElement = document.getElementById('pgp-expires');
 
-  pgpOwnerInfoElement.textContent = result.owner_info;
-  pgpKeyIdElement.textContent = result.key_id;
-  pgpExpiresElement.textContent = result.expires;
+    pgpOwnerInfoElement.innerHTML = result.owner_info.replace('\n', '<br>'); // Change this line
+    pgpKeyIdElement.textContent = result.key_id;
+    pgpExpiresElement.textContent = result.expires;
 
   // Remove the 'hidden' class to show the PGP information
   pgpInfoElement.classList.remove('hidden');
