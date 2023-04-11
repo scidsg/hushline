@@ -54,7 +54,7 @@ def pgp_owner_info():
         key_data = key_file.read()
     public_key, _ = pgpy.PGPKey.from_blob(key_data)
     owner = f"{public_key.userids[0].name}\n{public_key.userids[0].email}"
-    key_id = f"Key ID: {str(public_key.fingerprint)[-16:]}"  # Change this line
+    key_id = f"Key ID: {str(public_key.fingerprint)[-8:]}"  # Change this line
     expires = f"Expires: {public_key.expires_at}"
     return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
