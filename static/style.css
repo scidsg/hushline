@@ -126,6 +126,12 @@ footer p {
 	width: fit-content;
 }
 
+#pgp-info a {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+}
+
 #pgp-info h3 {
 	font-size: .75rem;
 	margin: 0 0 .125rem 0;
