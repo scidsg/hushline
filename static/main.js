@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", function() {
 (async function () {
     const response = await fetch('/pgp_owner_info');
     const result = await response.json();
+    console.log("Received JSON object:", result); // Add this line to log the JSON object
     const pgpOwnerInfoElement = document.getElementById('pgp-owner-info');
     const pgpKeyIdElement = document.getElementById('pgp-key-id');
     const pgpCreatedElement = document.getElementById('pgp-created');
