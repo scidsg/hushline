@@ -18,14 +18,22 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div id="pgp-info" class="hidden">
-        <h3>Owner Info</h3>
-        <p id="pgp-owner-info"></p>
-        <div class="pgp-meta">
-            <p id="pgp-key-id"></p>
-            <p id="pgp-expires"></p>
+    <button id="pgp-info-btn" class="btn btn-outline-primary">
+        <i class="bi bi-key"></i> PGP Owner Info
+    </button>
+
+    <div id="pgp-owner-info" class="card mt-3" style="display:none;">
+        <div class="card-header">
+            <h5 class="card-title">Owner Info</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> <span id="pgp-owner-name"></span></p>
+            <p><strong>Email:</strong> <span id="pgp-owner-email"></span></p>
+            <p><strong>Key ID:</strong> <span id="pgp-key-id"></span></p>
+            <p><strong>Expires:</strong> <span id="pgp-expires"></span></p>
         </div>
     </div>
+
     <h1><span class="emoji">🤫</span>Hush Line</h1>
     <p>Spill the tea without getting burned. <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;More</a>.</p>
     <form id="message-form" action="/save_message" method="POST">
