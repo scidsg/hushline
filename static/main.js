@@ -34,4 +34,49 @@ document.addEventListener("DOMContentLoaded", function () {
     spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
+  
+  const pgpInfoBtn = document.getElementById("pgp-info-btn");
+  const pgpOwnerInfo = document.getElementById("pgp-owner-info");
+
+  // Hide the pgpInfoBtn initially
+  pgpInfoBtn.style.display = "none";
+
+  // Fetch the PGP info when the page loads
+  const fetchPGPInfo = async () => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "/pgp_owner_info");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        const result = JSON.parse(xhr.responseText);
+        const pgpOwner = document.getElementById("pgp-owner");
+        const pgpKeyId = document.getElementById("pgp-key-id");
+        const pgpExpires = document.getElementById("pgp-expires");
+
+        pgpOwner.textContent = result.owner_info;
+        pgpKeyId.textContent = result.key_id;
+        pgpExpires.textContent = result.expires;
+
+        // Show the pgpInfoBtn once the data is fetched
+        pgpInfoBtn.style.display = "flex";
+      } else {
+        console.error(xhr.statusText);
+      }
+    };
+    xhr.onerror = function () {
+      console.error(xhr.statusText);
+    };
+    xhr.send();
+  };
+
+  fetchPGPInfo();
+
+  pgpInfoBtn.addEventListener("click", function () {
+    if (pgpOwnerInfo.style.display === "block") {
+      pgpOwnerInfo.style.display = "none";
+    } else {
+      pgpOwnerInfo.style.display = "block";
+      pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
+    }
+  });
+
 });
