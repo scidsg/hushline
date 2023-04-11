@@ -154,6 +154,7 @@ footer p {
 .pgp-meta {
 	display: flex;
 	gap: 1rem;
+	margin-top: .25rem;
 }
 
 .hidden {
