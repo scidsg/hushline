@@ -105,8 +105,17 @@ button {
 	z-index: 1;
 }
 
-.spinner {
+.spinner-wrapper {
   display: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #1d1d1c;
+}
+
+.spinner {
   width: 1.5rem;
   height: 1.5rem;
   border: 2px solid rgba(255, 255, 255, 0.1);
@@ -114,12 +123,11 @@ button {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   position: absolute;
-  right: 0;
+  left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  background-color: #1d1d1c;
-  z-index: 1;
 }
+
 
 /* Add the @keyframes rule for the spinning animation */
 @keyframes spin {
