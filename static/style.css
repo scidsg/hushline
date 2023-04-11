@@ -115,8 +115,13 @@ footer p {
 	padding: 1rem;
 }
 
+#pgp-info h3 {
+	font-size: .75rem;
+	color: #595959;
+}
+
 #pgp-info p {
-	font-size: .875rem;
+	font-size: .75rem;
 	margin: 0;
 }
 
