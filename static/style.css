@@ -140,6 +140,11 @@ footer p {
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 }
 
+.pgp-meta {
+	display: flex;
+	gap: 1rem;
+}
+
 @media only screen and (max-width: 768px) {
 	
 	h1 {
