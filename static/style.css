@@ -133,7 +133,6 @@ footer p {
 #pgp-owner-info {
   overflow: hidden;
   transition: max-height 0.4s ease-out;
-  max-height: 0;
 	font-size: .825rem;
 	background-color: white;
 	padding: 1rem;
