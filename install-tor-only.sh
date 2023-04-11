@@ -101,6 +101,10 @@ sleep 10
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
+# Enable the Tor hidden service
+sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
@@ -127,10 +131,6 @@ server {
         add_header X-XSS-Protection "1; mode=block";
 }
 EOL
-
-# Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
 
 # Configure Nginx
 cat > /etc/nginx/nginx.conf << EOL
@@ -196,54 +196,14 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
-# Set the app status in a file
-if [ $? -eq 0 ]; then
-    echo "running" > /var/log/hush-line-status
-else
-    echo "not running" > /var/log/hush-line-status
-fi
-
-# Add the display_app_status function to the user's .bashrc
-cat >> ~/.bashrc << EOL
-# Check the Hush Line app status and display a red or green dot indicator with additional information
-display_app_status() {
-    if [ -f /var/log/hush-line-status ]; then
-        STATUS=\$(cat /var/log/hush-line-status)
-        ONION_ADDRESS=\$(cat /var/lib/tor/hidden_service/hostname 2>/dev/null)
-
-        if [ "\$STATUS" == "running" ]; then
-            printf "\$(tput setaf 2)●\$(tput sgr0) Hush Line is running.\n"
-            if [ ! -z "\$ONION_ADDRESS" ]; then
-                printf "http://\$ONION_ADDRESS\n"
-            else
-                printf "Onion Address not found. Check /var/lib/tor/hidden_service/hostname for the address.\n"
-            fi
-        else
-            printf "\$(tput setaf 1)●\$(tput sgr0) Hush Line is not running.\n"
-            echo "Troubleshooting steps:"
-            echo "1. Check the application logs with 'journalctl -u hush-line.service' or 'cat /var/log/nginx/error.log'."
-            echo "2. Make sure all required services are running with 'systemctl status hush-line.service' and 'systemctl status nginx'."
-            echo "3. Check the application's configuration files for any errors."
-            echo "4. Restart the Hush Line app and related services with 'systemctl restart hush-line.service' and 'systemctl restart nginx'."
-        fi
-    fi
-}
-
-# Add display_app_status function to ~/.bashrc
-echo "display_app_status" >> ~/.bashrc
-EOL
-sleep 5
-
-# Call the display_app_status function after the installation
-source ~/.bashrc
-
 echo "
 ✅ Installation complete!
                                                
-Hush Line is a product by Science & Design. Learn more at https://scidsg.org.
+http://$ONION_ADDRESS
+
+Hush Line is a product by Science & Design. Learn more about us at https://scidsg.org.
 
 Have feedback? Send us an email at hushline@scidsg.org.
 "
 
 # Disable the trap before exiting
-trap - ERR
