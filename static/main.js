@@ -42,9 +42,8 @@ document.addEventListener("DOMContentLoaded", function() {
   pgpInfoElement.classList.remove('hidden');
 })();
 
-
 $(document).ready(function() {
-  $('#keyBbutton').on('click', function() {
+  $('.key-button').on('click', function() {
     $('#pgp-info p').toggleClass('show');
   });
 });
