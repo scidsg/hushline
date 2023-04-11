@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pgpExpires.textContent = result.expires;
 
         // Show the pgpInfoBtn once the data is fetched
-        pgpInfoBtn.style.display = "inline-block";
+        pgpInfoBtn.style.display = "flex";
       } else {
         console.error(xhr.statusText);
       }
