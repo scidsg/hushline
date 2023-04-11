@@ -44,6 +44,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 $(document).ready(function() {
   $('#keyButton').on('click', function() {
-    $('.key-info').toggleClass('hidden');
+    $('#key-info').toggleClass('hidden');
   });
 });
