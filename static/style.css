@@ -139,6 +139,10 @@ button {
   color: rgba(255,255,255,0);
 }
 
+.hidden {
+	display: none;
+}
+
 footer p {
 	font-size: .75rem;
 	text-align: center;
@@ -184,9 +188,6 @@ footer p {
 	font-size: .825rem;
 }
 
-.hidden {
-	display: none;
-}
 
 @media only screen and (max-width: 768px) {
 	
