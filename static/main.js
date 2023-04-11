@@ -28,11 +28,12 @@ document.addEventListener("DOMContentLoaded", function () {
       form.reset();
     } else {
       alert("An error occurred. Please try again.");
-    }
 
     // Hide the spinner and restore the button text color
     spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
+    
+    }
   });
 
   const pgpInfoBtn = document.getElementById("pgp-info-btn");
