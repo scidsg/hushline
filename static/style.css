@@ -85,6 +85,10 @@ textarea {
 	resize: none;
 }
 
+.parent-container {
+  position: relative;
+}
+
 button {
 	padding: 1rem;
 	font-size: 1rem;
@@ -100,18 +104,21 @@ button {
 }
 
 .spinner {
+  display: none;
   width: 30px;
   height: 30px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #1d1d1c;
+  border: 4px solid rgba(255, 255, 255, 0.1); /* Change the border color to white */
+  border-left-color: #ffffff; /* Change the border-left-color to white */
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  display: none;
   position: absolute;
-  right: 20px;
+  left: 50%; /* Change right to left and set it to 50% */
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%); /* Update the transform property */
+  background-color: #333; /* Add the background color */
+  z-index: 1; /* Add this line to position the spinner on top of the button text */
 }
+
 
 .button-wrapper {
     position: relative;
