@@ -157,7 +157,7 @@ footer p {
     margin-bottom: 1rem;
     background-color: white;
    	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
-   	position: absolute;
+   	position: fixed;
    	top: 1rem;
    	right: 1rem;
    	width: 2.5rem;
