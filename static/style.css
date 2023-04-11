@@ -109,7 +109,7 @@ button {
   display: none;
   width: 1.5rem;
   height: 1.5rem;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-left-color: #ffffff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
