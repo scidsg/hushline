@@ -31,7 +31,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Hide the spinner and restore the button text color
-    spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
 
