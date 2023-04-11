@@ -100,14 +100,23 @@ button {
 }
 
 .spinner {
-  display: inline-block;
   width: 30px;
   height: 30px;
   border: 4px solid rgba(0, 0, 0, 0.1);
   border-left-color: #1d1d1c;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  display: none;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
 }
+
+.button-wrapper {
+    position: relative;
+}
+
 
 .hidden {
 	display: none;
