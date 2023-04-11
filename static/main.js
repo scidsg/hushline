@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
   } else {
     pgpOwnerInfo.style.display = "block";
     pgpInfoBtn.disabled = true;
-
+    }
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "/pgp_owner_info");
     xhr.onload = function () {
