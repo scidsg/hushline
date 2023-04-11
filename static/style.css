@@ -91,6 +91,10 @@ textarea {
 	resize: none;
 }
 
+.button-container {
+  position: relative;
+}
+
 button {
 	padding: 1rem;
 	font-size: 1rem;
@@ -103,6 +107,46 @@ button {
 	width: 50%;
 	min-width: 240px;
 	cursor: pointer;
+	position: relative;
+	z-index: 1;
+}
+
+.spinner {
+  display: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-left-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #1d1d1c;
+  z-index: 1;
+}
+
+/* Add the @keyframes rule for the spinning animation */
+@keyframes spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.button-wrapper {
+    position: relative;
+}
+
+.button-text-hidden {
+  color: rgba(255,255,255,0);
+}
+
+.hidden {
+	display: none;
 }
 
 .spinner {
@@ -188,7 +232,6 @@ footer p {
 	margin: 0;
 	font-size: .825rem;
 }
-
 
 @media only screen and (max-width: 768px) {
 	

@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
     spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
-
+  
   const pgpInfoBtn = document.getElementById("pgp-info-btn");
   const pgpOwnerInfo = document.getElementById("pgp-owner-info");
 
@@ -78,4 +78,5 @@ document.addEventListener("DOMContentLoaded", function () {
       pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
     }
   });
+
 });
