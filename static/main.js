@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("An error occurred. Please try again.");
     }
   });
+});
 
   const pgpInfoBtn = document.getElementById("pgp-info-btn");
   const pgpOwnerInfo = document.getElementById("pgp-owner-info");
