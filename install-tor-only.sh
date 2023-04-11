@@ -48,7 +48,7 @@ export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
 
 # Clone the repository
-git clone https://github.com/scidsg/hush-line.git
+git clone -b spinner https://github.com/scidsg/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
@@ -101,10 +101,6 @@ sleep 10
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
-# Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
-
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
@@ -131,6 +127,10 @@ server {
         add_header X-XSS-Protection "1; mode=block";
 }
 EOL
+
+# Enable the Tor hidden service
+sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
 
 # Configure Nginx
 cat > /etc/nginx/nginx.conf << EOL
@@ -232,6 +232,7 @@ display_app_status() {
 # Add display_app_status function to ~/.bashrc
 echo "display_app_status" >> ~/.bashrc
 EOL
+sleep 5
 
 # Call the display_app_status function after the installation
 source ~/.bashrc
