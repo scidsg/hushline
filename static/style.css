@@ -231,6 +231,8 @@ footer p {
 #pgp-owner-info h3 {
 	margin: 0;
 	font-size: .825rem;
+	letter-spacing: .025rem;
+	color: #595959;
 }
 
 @media only screen and (max-width: 768px) {
