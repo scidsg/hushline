@@ -121,10 +121,6 @@ button {
   z-index: 1;
 }
 
-.hidden {
-	display: none;
-}
-
 /* Add the @keyframes rule for the spinning animation */
 @keyframes spin {
   0% {
@@ -144,7 +140,7 @@ button {
 }
 
 .hidden {
-	display: none;
+	display: none !important;
 }
 
 footer p {
