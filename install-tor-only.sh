@@ -196,14 +196,34 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
+display_status_indicator() {
+    local status="$(systemctl is-active hush-line.service)"
+    if [ "$status" = "active" ]; then
+        printf "\n\033[32m●\033[0m Hush Line is running\n$ONION_ADDRESS\n\n"
+    else
+        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
+    fi
+}
+
 echo "
 ✅ Installation complete!
                                                
-http://$ONION_ADDRESS
+Hush Line is a product by Science & Design. 
+Learn more about us at https://scidsg.org.
+Have feedback? Send us an email at hushline@scidsg.org."
 
-Hush Line is a product by Science & Design. Learn more about us at https://scidsg.org.
+# Add the function definition and call to user's .bashrc or .bash_profile
+echo "display_status_indicator() {
+    local status=\"\$(systemctl is-active hush-line.service)\"
+    if [ \"\$status\" = \"active\" ]; then
+        printf \"\n\033[32m●\033[0m Hush Line is running\nhttp://$ONION_ADDRESS\n\n\"
+    else
+        printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
+    fi
+}" >> ~/.bashrc
 
-Have feedback? Send us an email at hushline@scidsg.org.
-"
+echo "display_status_indicator" >> ~/.bashrc
+source ~/.bashrc
 
 # Disable the trap before exiting
+trap - ERR
