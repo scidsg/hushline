@@ -227,8 +227,8 @@ echo "
 Hush Line is a product by Science & Design. 
 Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org."
-
-# Add the function definition and call to user's .bashrc or .bash_profile
+                                                
+# Add the function definition and call to the global /etc/bash.bashrc
 echo "display_status_indicator() {
     local status=\"\$(systemctl is-active hush-line.service)\"
     if [ \"\$status\" = \"active\" ]; then
