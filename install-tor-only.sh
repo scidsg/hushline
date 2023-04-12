@@ -101,10 +101,6 @@ sleep 10
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
-# Enable the Tor hidden service
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
-
 # Configure Nginx
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
@@ -189,6 +185,10 @@ http {
 }
 
 EOL
+
+# Enable the Tor hidden service
+sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
