@@ -216,6 +216,36 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 echo "
+
+display_status_indicator() {
+    local status="$(systemctl is-active hush-line.service)"
+    if [ "$status" = "active" ]; then
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n\"
+    else
+        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
+    fi
+}
+
+echo "
+✅ Installation complete!
+                                               
+Hush Line is a product by Science & Design. 
+Learn more about us at https://scidsg.org.
+Have feedback? Send us an email at hushline@scidsg.org."
+
+# Add the function definition and call to user's .bashrc or .bash_profile
+echo "display_status_indicator() {
+    local status=\"\$(systemctl is-active hush-line.service)\"
+    if [ \"\$status\" = \"active\" ]; then
+        printf \"\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n\"
+    else
+        printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
+    fi
+}" >> ~/.bashrc
+
+echo "display_status_indicator" >> ~/.bashrc
+source ~/.bashrc
+
 ✅ Installation complete!
                                                
 https://$DOMAIN
@@ -227,3 +257,4 @@ Have feedback? Send us an email at hushline@scidsg.org.
 "
 
 # Disable the trap before exiting
+trap - ERR
