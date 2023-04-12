@@ -22,6 +22,12 @@
        url("fonts/serif/PlayfairDisplay-Bold.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "Mono";
+  src: url("fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
+       url("fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
 html {
   box-sizing: border-box;
 }
@@ -141,10 +147,6 @@ button {
     position: relative;
 }
 
-.button-text-hidden {
-  color: rgba(255,255,255,0);
-}
-
 .hidden {
 	display: none;
 }
@@ -167,16 +169,6 @@ button {
 
 .hidden {
 	display: none;
-}
-
-/* Add the @keyframes rule for the spinning animation */
-@keyframes spin {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
 }
 
 .button-container {
@@ -222,6 +214,7 @@ footer p {
 	position: absolute;
 	top: 4rem;
 	right: 1rem;
+	font-family: 'Mono', monospace;
 }
 
 #pgp-owner-info p {
