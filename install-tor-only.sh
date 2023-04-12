@@ -220,10 +220,10 @@ echo "display_status_indicator() {
     else
         printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
     fi
-}" >> ~/.bashrc
+}" | sudo tee -a /etc/bash.bashrc
 
-echo "display_status_indicator" >> ~/.bashrc
-source ~/.bashrc
+echo "display_status_indicator" | sudo tee -a /etc/bash.bashrc
+source /etc/bash.bashrc
 
 # Disable the trap before exiting
 trap - ERR
