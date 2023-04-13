@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Add your ASCII art here
+# Welcome message and ASCII art
 cat << "EOF"
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
