@@ -37,13 +37,9 @@ whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a si
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
-# Welcome Prompt
+# Email notification setup
 whiptail --title "Email Setup" --msgbox "Now we'll set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
-
-# Prompt user for email
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-
-# Prompt user for email notification settings
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
@@ -75,7 +71,7 @@ pip3 install -r requirements.txt
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
 [Unit]
-Description=Tip-Line Web App
+Description=Hush Line Web App
 After=network.target
 [Service]
 User=root
@@ -142,7 +138,7 @@ server {
 }
 EOL
 
-# Configure Nginx
+# Configure Nginx with privacy-preserving logging
 cat > /etc/nginx/nginx.conf << EOL
 user www-data;
 worker_processes auto;
@@ -200,7 +196,6 @@ http {
 
 EOL
 
-# Enable the Tor hidden service
 sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
 
@@ -216,6 +211,7 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 
+# System status indicator
 display_status_indicator() {
     local status="$(systemctl is-active hush-line.service)"
     if [ "$status" = "active" ]; then
@@ -248,7 +244,7 @@ Hush Line is a product by Science & Design.
 Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org."
 
-# Add the function definition and call to user's .bashrc or .bash_profile
+# Display system status on login
 echo "display_status_indicator() {
     local status=\"\$(systemctl is-active hush-line.service)\"
     if [ \"\$status\" = \"active\" ]; then
