@@ -69,6 +69,7 @@ h1 {
 
 h1 + p {
 	margin-bottom: 2rem;
+	margin-top: .5rem;
 	text-align: center;
 }
 
