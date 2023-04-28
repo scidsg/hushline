@@ -89,7 +89,7 @@ header .wrapper {
 }
 
 p {
-	margin-bottom: 1.125rem;
+	margin-bottom: 1.5rem;
 	max-width: 640px;
 	width: 100%;
 	text-align: center;
@@ -114,7 +114,7 @@ label {
 textarea {
 	padding: 1rem;
 	width: 100%;
-	margin: 0 0 .5rem 0;
+	margin: 0 0 .25rem 0;
 	font-size: 1rem;
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 	border-radius: .25rem;
