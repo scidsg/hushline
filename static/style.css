@@ -45,7 +45,7 @@ body {
 	margin: 0;
 	min-height: 100vh;
 	height: auto;
-	padding: 2rem;
+	padding: 8rem 2rem 1rem 2rem;
 	background-color: #eeeff5;
 }
 
@@ -54,23 +54,42 @@ h1, p, a, label, input {
 }
 
 h1 {
-	font-size: 3.5rem;
-	line-height: 1.1;
-	text-align: center;
-	margin: 0 0 0 0;
-	font-family: 'Atkinson Bold', sans-serif;
+	font-size: 1.25rem;
+	letter-spacing: .0125rem;
+	font-family: 'Playfair Bold', serif;
+}
+
+header {
+	position: fixed;
+	top: 0;
+	width: 100%;
+	background-color: white !important;
+	display: flex;
+	justify-content: center;
+}
+
+header .wrapper {
+	max-width: 1280px;
+	width: 100%;
+	padding: .75rem 1.5rem .825rem 1.5rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .emoji {
-	font-size: 3rem;
+	font-size: 2.75rem;
 	margin-bottom: .5rem;
 	display: block;
 }
 
-h1 + p {
-	margin-bottom: 2rem;
-	margin-top: .5rem;
+p {
+	margin-bottom: 1.125rem;
+	max-width: 640px;
+	width: 100%;
 	text-align: center;
+	font-size: .825rem;
+	color: #4F4F4F;
 }
 
 label {
@@ -83,19 +102,22 @@ label {
 	flex-direction: column;
 	align-items: center;
 	margin-bottom: 2rem;
+	max-width: 640px;
+	width: 100%;
 }
 
 textarea {
 	padding: 1rem;
 	width: 100%;
-	margin: 0 0 1.5rem 0;
-	font-size: 1.125rem;
+	margin: 0 0 .5rem 0;
+	font-size: 1rem;
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 	border-radius: .25rem;
 	border: 0;
 	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
 	outline: 1px solid rgba(0,0,0,0.05);
 	resize: none;
+	max-width: 640px;
 }
 
 .button-container {
@@ -116,6 +138,17 @@ button {
 	cursor: pointer;
 	position: relative;
 	z-index: 1;
+}
+
+.btn {
+	padding: .75rem 1rem;
+	font-size: .875rem;
+	border-radius: 50vw;
+	border: 1px solid rgba(0,0,0,0.1);
+	text-decoration: none;
+	height: fit-content;
+	font-family: 'Atkinson Bold', sans-serif;
+  letter-spacing: .05rem;
 }
 
 .spinner {
@@ -185,56 +218,56 @@ footer p {
 	text-align: center;
 }
 
-#pgp-info-btn {
-    display: none;
-    margin-bottom: 1rem;
-    background-color: white;
-   	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
-   	position: fixed;
-   	top: 1rem;
-   	right: 1rem;
-   	width: 2.5rem;
-  	height: 2.5rem;
-  	min-width: auto;
-  	justify-content: center;
-	  align-items: center;
-  	outline: 1px solid rgba(0,0,0,0.05);
-  	cursor: pointer;
-}
-
 #pgp-owner-info {
-	display: none;
   overflow: hidden;
   transition: max-height 0.4s ease-out;
-	font-size: .825rem;
-	background-color: white;
-	padding: 1rem;
+	background-color: rgba(255,255,255,.5);
+	padding: .625rem 1rem .75rem 1rem;
 	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
 	outline: 1px solid rgba(0,0,0,0.05);
 	border-radius: .25rem;
-	position: fixed;
-	top: 4rem;
-	right: 1rem;
 	font-family: 'Mono', monospace;
+	width: 100%;
+	max-width: 640px;
+	display: flex !important;
+	flex-direction: row;
+	gap: .75rem;
+	margin-bottom: .625rem;
+}
+
+#pgp-owner-info  p {
+	font-size: .75rem !important;
+}
+
+.card-header {
+	width: fit-content;
+}
+
+.pgp-meta {
+	display: flex;
+	flex-direction: row;
+	font-size: .75rem !important;
+	gap: .75rem;
+	margin-top: .125rem;
+}
+
+.pgp-meta p {
+	color: #878787;
 }
 
 #pgp-owner-info p {
 	margin: 0;
-	line-height: 1.5;
+	width: fit-content;
 }
 
 #pgp-owner-info h3 {
-	margin: 0 0 .25rem 0;
-	font-size: .825rem;
-	letter-spacing: .025rem;
+	margin: 0;
+	font-size: .75rem;
 	color: #333;
+	font-weight: normal;
 }
 
 @media only screen and (max-width: 768px) {
-	
-	h1 {
-		font-size: 3rem;
-	}
 
 	.emoji {
 		font-size: 2.5rem;
