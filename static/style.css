@@ -143,6 +143,7 @@ button {
 	cursor: pointer;
 	position: relative;
 	z-index: 1;
+	letter-spacing: .05rem;
 }
 
 .btn {
