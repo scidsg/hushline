@@ -37,7 +37,7 @@
         </div>
     </div>
     <form id="message-form" action="/save_message" method="POST">
-        <textarea name="message" rows="10" cols="60" required placeholder="If you'd like a response please leave a contact method..."></textarea>
+        <textarea name="message" rows="10" cols="60" required placeholder="Please leave a contact method if you'd like a response..."></textarea>
         <p>🔒 Your message will be encrypted and only readable by the owner of the address above</p>
         <div class="button-container">
           <button type="submit" id="submit-button">Submit</button>
@@ -46,6 +46,5 @@
     </form>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
-    <footer><p>Made with ✊ by <a href="https://scidsg.org" target="_blank" rel="noopener noreferrer">Science &amp; Design</a> / <a href="https://github.com/scidsg/hush-line/blob/main/terms-of-service.md" target="_blank" rel="noopener noreferrer">Terms of Service</a></p></footer>
 </body>
 </html>

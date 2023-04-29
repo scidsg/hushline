@@ -50,7 +50,7 @@ body {
 	margin: 0;
 	min-height: 100vh;
 	height: auto;
-	padding: 7rem 2rem 1rem 2rem;
+	padding: 6.5rem 2rem 1rem 2rem;
 	background-color: #eeeff5;
 }
 
@@ -287,5 +287,17 @@ footer p {
 }
 
 @media only screen and (max-width: 480px) {
+	textarea {
+		height: 48vh;
+	}
 
+	body {
+		padding: 6.25rem 1.25rem 0 1.25rem;
+		justify-content: flex-start;
+	}
+
+	#pgp-owner-info {
+		margin-bottom: 1rem;
+
+	}
 }
