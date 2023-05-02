@@ -115,7 +115,7 @@ ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
     listen 80;
-    server_name ${DOMAIN};
+    server_name $DOMAIN;
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
@@ -136,6 +136,15 @@ server {
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
 }
+server {
+    listen 80;
+    server_name $ONION_ADDRESS.$DOMAIN;
+
+    location / {
+        proxy_pass http://localhost:5000;
+    }
+}
+
 EOL
 
 # Configure Nginx with privacy-preserving logging
@@ -156,7 +165,7 @@ http {
         tcp_nopush on;
         types_hash_max_size 2048;
         # server_tokens off;
-        # server_names_hash_bucket_size 64;
+        server_names_hash_bucket_size 128;
         # server_name_in_redirect off;
         include /etc/nginx/mime.types;
         default_type application/octet-stream;
@@ -205,8 +214,11 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
-# Obtain SSL certificate
-certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $DOMAIN
+SERVER_IP=$(curl -s ifconfig.me)
+WIDTH=$(tput cols)
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
+# Request the certificates
+certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
@@ -215,7 +227,7 @@ certbot --nginx --agree-tos --non-interactive --email ${EMAIL} --agree-tos -d $D
 display_status_indicator() {
     local status="$(systemctl is-active hush-line.service)"
     if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\n$ONION_ADDRESS\n\n"
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n"
     else
         printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
     fi
@@ -248,7 +260,7 @@ Have feedback? Send us an email at hushline@scidsg.org."
 echo "display_status_indicator() {
     local status=\"\$(systemctl is-active hush-line.service)\"
     if [ \"\$status\" = \"active\" ]; then
-        printf \"\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n\"
+        printf \"\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n\"
     else
         printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
     fi
