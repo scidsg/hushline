@@ -1,7 +1,7 @@
 # Hush Line
 Hush Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
 
-![wiki-cover](https://user-images.githubusercontent.com/28545431/235570354-c77abe77-deb0-4d83-ab24-66603238a7f3.png)
+![wiki-cover](https://user-images.githubusercontent.com/28545431/235570788-51e55fe0-8774-453d-a3bf-5517b6d27e60.png)
 
 ## Easy Install
 👉 We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
