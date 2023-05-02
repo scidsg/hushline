@@ -16,6 +16,3 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install.sh | b
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install-tor-only.sh | bash
 ```
-
-![demo](https://user-images.githubusercontent.com/28545431/228354332-010d5124-286a-44fe-9b65-1bdaf3165ad1.gif)
-
