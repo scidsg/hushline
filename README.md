@@ -16,3 +16,11 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install.sh | b
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install-tor-only.sh | bash
 ```
+
+## Next Steps
+Configure two-factor for your server:
+```
+wget https://raw.githubusercontent.com/scidsg/tools/main/two-factor-setup.sh
+chmod +x two-factor-setup.sh
+./two-factor-setup.sh
+```
