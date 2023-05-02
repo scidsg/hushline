@@ -302,3 +302,13 @@ footer p {
 
 	}
 }
+
+@media only screen and (max-width: 390px) {
+	button {
+		width: 100%;
+	}
+	
+	.button-container {
+		width: 100%;
+	}
+}
