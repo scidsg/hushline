@@ -60,6 +60,48 @@ During the installation process, the script configures the following components:
 * Certbot for SSL certificate management.
 * Automatic updates via unattended-upgrades.
 
+### Recommended Email Setup
+
+For the email service configuration during Hush Line installation, we recommend using a Gmail account with a one-time password. This approach enhances security, as one-time passwords are valid only for a single login session. Please note that Hush Line stores email passwords in plaintext; however, your messages are encrypted, so Google won't be able to read their contents.
+
+
+#### Setting up Gmail with One-Time Passwords
+
+If you don't have a Gmail account, create one at gmail.com.
+
+Enable 2-Step Verification:
+
+1. Sign in to your Google Account.
+
+2. Go to the 2-Step Verification page.
+
+3. Click on "Get Started."
+
+4. Follow the prompts to enable 2-Step Verification.
+
+#### Generate an App Password:
+
+1. Go to the App Passwords page.
+
+2. Click on "Select App" and choose "Mail."
+
+3. Click on "Select Device" and choose "Other."
+
+4. Enter a descriptive name (e.g., "Hush Line") and click on "Generate."
+
+5. A 16-character password will be generated. Save this password, as you'll need it during Hush Line installation.
+
+#### Configuring Hush Line with Gmail
+
+During the Hush Line installation process, when prompted for email configuration:
+
+* Enter your Gmail address
+* Enter the one-time password you generated in the previous section
+* SMTP server address: smtp.gmail.com
+* SMTP server port: 465
+
+By following these steps, you'll ensure a more secure email configuration for your Hush Line instance.
+
 ## Maintaining and Updating
 
 **Regular updates:** The unattended-upgrades package is configured to automatically update your server, including security updates. No manual intervention is needed.
