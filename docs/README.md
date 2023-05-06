@@ -84,6 +84,10 @@ The script will guide you through the installation process, prompting you for th
 
 Before installation, ensure your domain's DNS settings are correctly pointing to your server's IP address.
 
+#### Onion Binding 
+
+Hush Line includes an onion diescoverability method called Sauteed Onions which links registered domain names with their corresponding onion addresses, enhancing the discoverability of onion sites while maintaining privacy and security. By embedding these associations within TLS certificates, Sauteed Onions makes them publicly accessible in append-only Certificate Transparency (CT) logs. This approach is crucial for combating censorship, as it enables users to access onion sites even when the original domain is blocked or unavailable. As a result, Sauteed Onions strengthens the relationship between registered domain names, HTTPS, and onion sites, ensuring that users can securely and privately access crucial information and services.
+
 Verify that Hush Line is running by accessing the application using the provided addresses.
 
 ## Configuration
@@ -95,6 +99,7 @@ During the installation process, the script configures the following components:
 * Nginx reverse proxy server for SSL termination and forwarding requests to the Flask application.
 * Certbot for SSL certificate management.
 * Automatic updates via unattended-upgrades.
+
 
 ### Recommended Email Setup
 
