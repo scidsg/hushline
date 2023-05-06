@@ -2,13 +2,13 @@
 
 ## Table of Contents
 
-* Introduction
-* Architecture Overview
-* Installation
-* Configuration
-* Maintaining and Updating
-* Troubleshooting
-* Support and Contact
+* [Introduction](#introduction)
+* [Architecture Overview](#architecture-overview)
+* [Installation](#installation)
+* [Configuration](#configuration)
+* [Maintaining and Updating](#maintaining-and-updating)
+* [Troubleshooting](#troubleshooting)
+* [Support and Contact](#support-and-contact)
 
 ## Introduction
 
