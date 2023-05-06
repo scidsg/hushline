@@ -50,7 +50,7 @@ Using Hush Line is simple and straightforward. Follow the steps below to send a 
 * If it is a regular web address (URL), open it in a web browser.
 * If it is an onion address (.onion), you will need to use the Tor Browser to access it. Download and install the Tor Browser from the [official website](https://torproject.org) if you don't have it already.
 
-3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Verify the address of who you're sending the message tom, then type your message into the provided text box. If you scanned a QR code for the address from a physical e-ink display, the information presented on the screen should match the info on the website.
+3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Verify the address of who you're sending the message tom, then type your message into the provided text box.
 
 4. **Send the message:** After composing your message, click the "Submit" or "Send" button to securely send the message. The platform will encrypt your message using the recipient's PGP public key, ensuring that only they can decrypt and read it.
 
