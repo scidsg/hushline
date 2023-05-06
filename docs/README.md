@@ -39,6 +39,22 @@ Some specific use cases for Hush Line include:
 
 With its focus on security and privacy, Hush Line employs technologies such as PGP encryption, Tor, onion binding, HTTPS, and SMTP to ensure safe and reliable communication for its users.
 
+### Using the app
+
+Using Hush Line is simple and straightforward. Follow the steps below to send a secure, anonymous message through the platform:
+
+1. **Obtain the Hush Line address:** The person hosting the Hush Line will provide you with their Hush Line address, which may be a regular web address (URL) or an onion address (.onion) for accessing via the Tor network.
+
+2. **Access the Hush Line address:**
+* If it is a regular web address (URL), open it in a web browser.
+* If it is an onion address (.onion), you will need to use the Tor Browser to access it. Download and install the Tor Browser from the [official website](https://torproject.org) if you don't have it already.
+
+3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Type your message into the provided text box.
+
+4. **Send the message:** After composing your message, click the "Submit" or "Send" button to securely send the message. The platform will encrypt your message using the recipient's PGP public key, ensuring that only they can decrypt and read it.
+
+By following these steps, you can safely and anonymously share sensitive information with the intended recipient through Hush Line.
+
 ## Architecture Overview
 
 Hush Line is built using the following components:
