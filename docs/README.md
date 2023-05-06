@@ -92,5 +92,6 @@ Check the logs for Hush Line, Nginx, and Tor for any error messages or clues:
 If you have any questions, feedback, or need assistance, please contact us at:
 
 **Website:** https://scidsg.org
-**Email:** hushline@scidsg.org
+
+**Email:** support@scidsg.org
 
