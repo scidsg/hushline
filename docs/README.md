@@ -6,11 +6,12 @@
 2. [Intended Use](#intended-use)
 3. [Architecture Overview](#architecture-overview)
 4. [Installation](#installation)
-5. [Configuration](#configuration)
-6. [Maintaining and Updating](#maintaining-and-updating)
-7. [E-Ink Displays](#e-ink-displays)
-8. [Troubleshooting](#troubleshooting)
-9. [Support and Contact](#support-and-contact)
+5. [Security Measures](#security-measures)
+6. [Configuration](#configuration)
+7. [Maintaining and Updating](#maintaining-and-updating)
+8. [E-Ink Displays](#e-ink-displays)
+9. [Troubleshooting](#troubleshooting)
+10. [Support and Contact](#support-and-contact)
 
 ## Introduction
 
@@ -84,11 +85,24 @@ The script will guide you through the installation process, prompting you for th
 
 Before installation, ensure your domain's DNS settings are correctly pointing to your server's IP address.
 
-#### Onion Binding 
-
-Hush Line includes an onion diescoverability method called Sauteed Onions which links registered domain names with their corresponding onion addresses, enhancing the discoverability of onion sites while maintaining privacy and security. By embedding these associations within TLS certificates, Sauteed Onions makes them publicly accessible in append-only Certificate Transparency (CT) logs. This approach is crucial for combating censorship, as it enables users to access onion sites even when the original domain is blocked or unavailable. As a result, Sauteed Onions strengthens the relationship between registered domain names, HTTPS, and onion sites, ensuring that users can securely and privately access crucial information and services.
-
 Verify that Hush Line is running by accessing the application using the provided addresses.
+
+## Security Measures
+
+Hush Line takes several precautions to ensure the privacy and security of its users. Here are some of the key security measures in place:
+
+1. **Message encryption:** The application uses PGP (Pretty Good Privacy) encryption to secure your messages. PGP is a data encryption method often used for encrypting, decrypting, and signing emails. Each message is encrypted using your public PGP key and can only be decrypted using your private PGP key.
+2. **Secure transmission:** The application is configured to use HTTPS, a secure version of HTTP. HTTPS encrypts all the data transferred between the client (the person sending the message) and the server (your server).
+3. **Email notifications:** The system sends you an encrypted email when receiving a new message. This ensures that even the notifications about incoming messages remain private.
+4. **Tor network:** The application sets up a .onion domain, allowing access through the Tor network. The Tor network routes your data through several different servers around the world, making it very difficult for anyone to track the source or destination of the data.
+5. **Private server:** The application is set up on your own server. This means you have full control over the data, and there's no third-party involved who could potentially access the data.
+6. **Privacy-focused logging:** Nginx, the web server used by the application, is configured to preserve privacy in its logging. IP addresses are anonymized, and only the country code of the client is logged.
+7. **Automatic updates:** The application configures unattended-upgrades, which automatically installs security updates. This ensures that your server stays up-to-date with the latest security patches.
+8. **Restricted headers and permissions:** The Nginx configuration includes several headers designed to increase the security of the application, like preventing the app from being embedded into an iframe (X-Frame-Options: DENY), instructing the browser only to use HTTPS (Strict-Transport-Security) and not allowing third-party content to load (Content-Security-Policy: default-src 'self').
+9. **Secure storage of messages:** Messages are stored in an encrypted format on the server. The server doesn't store any information about who sent the message, preserving the anonymity of your sources.
+10. **Secure email transmission:** The application uses SMTP over SSL/TLS for sending emails, ensuring that the emails are securely transmitted over the network.
+
+By implementing these security measures, Hush Line ensures that users can confidently share sensitive information without fear of compromising their privacy or security
 
 ## Configuration
 
