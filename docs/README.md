@@ -123,26 +123,19 @@ For the email service configuration during Hush Line installation, we recommend 
 
 If you don't have a Gmail account, create one at gmail.com.
 
-Enable 2-Step Verification:
+##### Enable 2-Step Verification:
 
 1. Sign in to your Google Account.
-
 2. Go to the 2-Step Verification page.
-
 3. Click on "Get Started."
-
 4. Follow the prompts to enable 2-Step Verification.
 
-#### Generate an App Password:
+##### Generate an App Password:
 
 1. Go to the App Passwords page.
-
 2. Click on "Select App" and choose "Mail."
-
 3. Click on "Select Device" and choose "Other."
-
 4. Enter a descriptive name (e.g., "Hush Line") and click on "Generate."
-
 5. A 16-character password will be generated. Save this password, as you'll need it during Hush Line installation.
 
 #### Configuring Hush Line with Gmail
