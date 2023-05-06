@@ -52,7 +52,7 @@ Using Hush Line is simple and straightforward. Follow the steps below to send a 
 
 3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Verify the address of who you're sending the message tom, then type your message into the provided text box.
 
-4. **Send the message:** After composing your message, click the "Submit" or "Send" button to securely send the message. The platform will encrypt your message using the recipient's PGP public key, ensuring that only they can decrypt and read it.
+4. **Send the message:** After composing your message, click the "Submit" button to securely send the message. The platform will encrypt your message using the recipient's PGP public key, ensuring that only they can decrypt and read it.
 
 By following these steps, you can safely and anonymously share sensitive information with the intended recipient through Hush Line.
 
@@ -114,7 +114,6 @@ During the installation process, the script configures the following components:
 * Certbot for SSL certificate management.
 * Automatic updates via unattended-upgrades.
 
-
 ### Recommended Email Setup
 
 For the email service configuration during Hush Line installation, we recommend using a Gmail account with a one-time password. This approach enhances security, as one-time passwords are valid only for a single login session. Please note that Hush Line stores email passwords in plaintext; however, your messages are encrypted, so Google won't be able to read their contents.
@@ -164,7 +163,6 @@ In this section, we'll discuss how to set up an e-ink display for your Hush Line
 ### Setup
 
 To set up the e-ink display, exectue the following command in your terminal:
-
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/tools/main/hushline-eink-rpi-display.sh | bash
 ```
@@ -199,7 +197,6 @@ These scripts are automatically run on boot and before shutdown, respectively. Y
 ## Troubleshooting
 
 If Hush Line is not running, check the status using the following command:
-
 ```
 systemctl status hush-line.service
 ```
