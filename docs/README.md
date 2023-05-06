@@ -52,9 +52,7 @@ Hush Line is built using the following components:
 
 ## Installation
 
-Save the provided installation script as a shell script (e.g., install_hush_line.sh).
-
-Run the script in the terminal with the following command:
+To install Hush Line, simply run the script in the terminal with the following command:
 
 ### Tor + Public Web
 ```
