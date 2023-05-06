@@ -2,20 +2,42 @@
 
 ## Table of Contents
 
-* [Introduction](#introduction)
-* [Architecture Overview](#architecture-overview)
-* [Installation](#installation)
-* [Configuration](#configuration)
-* [Maintaining and Updating](#maintaining-and-updating)
-* [E-Ink Displays](#e-ink-displays)
-* [Troubleshooting](#troubleshooting)
-* [Support and Contact](#support-and-contact)
+1. [Introduction](#introduction)
+2. [Intended Use](#intended-use)
+3. [Architecture Overview](#architecture-overview)
+4. [Installation](#installation)
+5. [Configuration](#configuration)
+6. [Maintaining and Updating](#maintaining-and-updating)
+7. [E-Ink Displays](#e-ink-displays)
+8. [Troubleshooting](#troubleshooting)
+9. [Support and Contact](#support-and-contact)
 
 ## Introduction
 
 Hush Line is a secure and anonymous tip line and suggestion box application. It allows users to receive messages securely from sources, colleagues, clients, or patients. The application is designed to be self-hosted, with PGP encryption, HTTPS, and a .onion address for Tor access, ensuring maximum privacy and security for both the sender and receiver.
 
 This documentation provides an overview of the application's architecture, installation instructions, configuration details, maintenance procedures, troubleshooting tips, and support information.
+
+## Intended Use
+
+Hush Line is designed to be a self-hosted, secure, anonymous tip line and suggestion box that protects user privacy and message confidentiality. Its primary users and use cases include:
+
+* **Journalists and newsrooms:** Hush Line provides a safe way for the public to leave confidential tips and allows journalists to securely communicate with sources.
+* **Employers and boardrooms:** By offering an anonymous channel for colleagues to leave suggestions or report concerns, Hush Line can help build trust within the workplace.
+* **Educators and school staff:** Hush Line serves as a secure platform for students to share information with trusted staff members, maintaining student anonymity and privacy.
+
+Hush Line is especially important in areas with internet censorship, providing users a free and open-source platform to share sensitive information without fear.
+
+Some specific use cases for Hush Line include:
+
+* Providing sources with a trustworthy way to send information, ensuring their privacy is protected.
+* Offering students a safe way to share information with school staff while protecting their identity.
+* Allowing employees to report workplace abuse securely and privately, ensuring their identity is kept secret to avoid retaliation.
+* Enabling students to report sensitive information anonymously to help bring about change without impacting their educational experience.
+* Building trust within a team by ensuring that employees can share sensitive information without risking their careers.
+* Facilitating communication with a Hush Line user even in countries with blocked access to the Tor Network and the original URL.
+
+With its focus on security and privacy, Hush Line employs technologies such as PGP encryption, Tor, onion binding, HTTPS, and SMTP to ensure safe and reliable communication for its users.
 
 ## Architecture Overview
 
