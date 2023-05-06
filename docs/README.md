@@ -49,7 +49,7 @@ Using Hush Line is simple and straightforward. Follow the steps below to send a 
 * If it is a regular web address (URL), open it in a web browser.
 * If it is an onion address (.onion), you will need to use the Tor Browser to access it. Download and install the Tor Browser from the [official website](https://torproject.org) if you don't have it already.
 
-3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Type your message into the provided text box.
+3. **Compose your message:** Once you have accessed the Hush Line address, you will see a simple interface for composing your message. Verify the address of who you're sending the message tom, then type your message into the provided text box. If you scanned a QR code for the address from a physical e-ink display, the information presented on the screen should match the info on the website.
 
 4. **Send the message:** After composing your message, click the "Submit" or "Send" button to securely send the message. The platform will encrypt your message using the recipient's PGP public key, ensuring that only they can decrypt and read it.
 
@@ -104,7 +104,6 @@ During the installation process, the script configures the following components:
 ### Recommended Email Setup
 
 For the email service configuration during Hush Line installation, we recommend using a Gmail account with a one-time password. This approach enhances security, as one-time passwords are valid only for a single login session. Please note that Hush Line stores email passwords in plaintext; however, your messages are encrypted, so Google won't be able to read their contents.
-
 
 #### Setting up Gmail with One-Time Passwords
 
@@ -177,6 +176,8 @@ The e-ink display will show:
 * PGP public key information (name, email, key ID, and expiration date)
 
 The script will refresh the e-ink display every minute to provide up-to-date information.
+
+![display](https://user-images.githubusercontent.com/28545431/236600758-f1acc31a-b8a8-408e-b77f-ca62b593b6b5.png)
 
 ### E-Ink Display Management
 
