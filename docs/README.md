@@ -70,6 +70,8 @@ During the installation process, the script configures the following components:
 
 In this section, we'll discuss how to set up an e-ink display for your Hush Line project. The e-ink display will show the status of your Hush Line instance, onion address, and QR code for easy access to the service. The script provided will install necessary packages and configure the Raspberry Pi for proper communication with the e-ink display.
 
+![hush-line-display](https://user-images.githubusercontent.com/28545431/236598264-728eb43a-d23c-4dac-a13d-7487e3fe88ea.png)
+
 ### Setup
 
 To set up the e-ink display, exectue the following command in your terminal:
