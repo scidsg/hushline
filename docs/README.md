@@ -172,6 +172,8 @@ The e-ink display will show:
 
 The script will refresh the e-ink display every minute to provide up-to-date information.
 
+![display](https://user-images.githubusercontent.com/28545431/236600758-f1acc31a-b8a8-408e-b77f-ca62b593b6b5.png)
+
 ### E-Ink Display Management
 
 The provided script includes two Python scripts for managing the e-ink display:
