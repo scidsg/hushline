@@ -20,7 +20,7 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install-tor-on
 ## Add a Display
 When hosted on a Raspberry Pi, you can optionally add an e-ink display that makes it easy for people in your phycial location to discover and access your Hush Line. Teachers can place one on their desks in a classroom, a school can host one in the common area where students gather, or a manager can have one in a team's collaboration space. 
 
-![eink](https://user-images.githubusercontent.com/28545431/236694608-30a8f841-6539-4800-b67f-33a3dc8a4dc3.png)
+![eink](https://user-images.githubusercontent.com/28545431/236719289-f5e4cc11-861d-4c99-a80f-d5e434c50c3c.png)
 
 The current working models:
 * [waveshare 2.7inch E-Ink Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
