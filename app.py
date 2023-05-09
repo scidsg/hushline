@@ -59,4 +59,4 @@ def pgp_owner_info():
     return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
