@@ -2,8 +2,6 @@
 
 # Welcome message and ASCII art
 cat << "EOF"
-
-Test 7
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -22,7 +20,7 @@ sleep 3
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip python3-flask nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades
+sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn
 
 # Function to display error message and exit
 error_exit() {
@@ -58,6 +56,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
+pip3 install gunicorn
 pip3 install -r requirements.txt
 
 # Create a systemd service
@@ -73,7 +72,7 @@ Environment="EMAIL=$EMAIL"
 Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
 Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
 Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
-ExecStart=gunicorn -w 4 -b 0.0.0.0:5000 app.app:app
+ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
 Restart=always
 [Install]
 WantedBy=multi-user.target
