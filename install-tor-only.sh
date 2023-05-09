@@ -68,12 +68,13 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$PWD
+Environment="PATH=$PWD/venv/bin:$PATH"
 Environment="DOMAIN=localhost"
 Environment="EMAIL=$EMAIL"
 Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
 Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
 Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
-ExecStart=gunicorn -w 4 -b 0.0.0.0:5000 app:app
+ExecStart=gunicorn -w 4 -b 0.0.0.0:5000 app.app:app
 Restart=always
 [Install]
 WantedBy=multi-user.target
