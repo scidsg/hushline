@@ -3,7 +3,7 @@
 # Welcome message and ASCII art
 cat << "EOF"
 
-TEST 2
+TEST 3
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -223,9 +223,8 @@ sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
 
-sleep 10
-
 sudo systemctl daemon-reload
+sleep 3
 sudo systemctl restart hush-line.service
 
 echo "
