@@ -9,12 +9,12 @@ Your messages are encrypted, so Google won't be able to read their contents.
 
 ### Tor + Public Web
 ```
-curl -sSL https://raw.githubusercontent.com/glenn-sorrentino/hush-line/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install.sh | bash
 ```
 
 ### Tor-Only
 ```
-curl -sSL https://raw.githubusercontent.com/glenn-sorrentino/hush-line/main/install-tor-only.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install-tor-only.sh | bash
 ```
 
 ## Add a Display
