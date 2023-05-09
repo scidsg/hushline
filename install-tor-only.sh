@@ -2,6 +2,7 @@
 
 # Welcome message and ASCII art
 cat << "EOF"
+TEST 9
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
