@@ -3,7 +3,7 @@
 # Welcome message and ASCII art
 cat << "EOF"
 
-TEST 3
+TEST 4
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -188,6 +188,10 @@ http {
 
 EOL
 
+sudo systemctl daemon-reload
+sleep 3
+sudo systemctl restart hush-line.service
+
 sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
 
@@ -222,10 +226,6 @@ echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt
 sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
-
-sudo systemctl daemon-reload
-sleep 3
-sudo systemctl restart hush-line.service
 
 echo "
 ✅ Installation complete!
