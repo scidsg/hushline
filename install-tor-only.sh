@@ -3,7 +3,7 @@
 # Welcome message and ASCII art
 cat << "EOF"
 
-TEST 5
+TEST 6
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -43,7 +43,6 @@ NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., s
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
-export DOMAIN
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
@@ -119,15 +118,15 @@ server {
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
     }
-    
-        add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
-        add_header X-Frame-Options DENY;
-        add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
-        add_header X-Content-Type-Options nosniff;
-        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
-        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
-        add_header Referrer-Policy "no-referrer";
-        add_header X-XSS-Protection "1; mode=block";
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+    add_header X-Frame-Options DENY;
+    add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
+    add_header X-Content-Type-Options nosniff;
+    add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'";
+    add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+    add_header Referrer-Policy "no-referrer";
+    add_header X-XSS-Protection "1; mode=block";
 }
 EOL
 
@@ -156,28 +155,26 @@ http {
         ##
         # SSL Settings
         ##
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+                ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers on;
+
         ##
         # Logging Settings
         ##
-        # access_log /var/log/nginx/access.log;
+        access_log /var/log/nginx/access.log;
         error_log /var/log/nginx/error.log;
+
         ##
         # Gzip Settings
         ##
         gzip on;
-        # gzip_vary on;
-        # gzip_proxied any;
-        # gzip_comp_level 6;
-        # gzip_buffers 16 8k;
-        # gzip_http_version 1.1;
-        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
         ##
         # Virtual Host Configs
         ##
         include /etc/nginx/conf.d/*.conf;
         include /etc/nginx/sites-enabled/*;
+
         ##
         # Enable privacy preserving logging
         ##
@@ -226,27 +223,18 @@ echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt
 
 sudo systemctl restart unattended-upgrades
 
-echo "Automatic updates have been installed and configured."
+# Clean up after the installation
+sudo apt-get clean
 
-echo "
-✅ Installation complete!
-                                               
-Hush Line is a product by Science & Design. 
-Learn more about us at https://scidsg.org.
-Have feedback? Send us an email at hushline@scidsg.org."
-                                                
-# Display system status on login
-echo "display_status_indicator() {
-    local status=\"\$(systemctl is-active hush-line.service)\"
-    if [ \"\$status\" = \"active\" ]; then
-        printf \"\n\033[32m●\033[0m Hush Line is running\nhttp://$ONION_ADDRESS\n\n\"
-    else
-        printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
-    fi
-}" >> /etc/bash.bashrc
+echo -e "\nHush Line installation complete!\n"
 
-echo "display_status_indicator" >> /etc/bash.bashrc
-source /etc/bash.bashrc
+display_status_indicator
 
-# Disable the trap before exiting
-trap - ERR
+echo "To check the status of Hush Line, run:"
+echo "sudo systemctl status hush-line.service"
+
+echo "To start/stop/restart Hush Line, run:"
+echo "sudo systemctl start/stop/restart hush-line.service"
+
+echo "To check Hush Line logs, run:"
+echo "sudo journalctl -u hush-line.service"
