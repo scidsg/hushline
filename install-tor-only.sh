@@ -2,7 +2,7 @@
 
 # Welcome message and ASCII art
 cat << "EOF"
-TEST 9
+TEST 10
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -49,7 +49,7 @@ export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
 
 # Clone the repository
-git clone https://github.com/scidsg/hush-line.git
+git clone https://github.com/glenn-sorrentino/hush-line.git
 
 # Create a virtual environment and install dependencies
 cd hush-line
