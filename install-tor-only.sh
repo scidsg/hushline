@@ -3,7 +3,7 @@
 # Welcome message and ASCII art
 cat << "EOF"
 
-TEST 1
+TEST 2
   _    _           _       _      _            
  | |  | |         | |     | |    (_)           
  | |__| |_   _ ___| |__   | |     _ _ __   ___ 
@@ -223,6 +223,11 @@ sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
 
+sleep 10
+
+sudo systemctl daemon-reload
+sudo systemctl restart hush-line.service
+
 echo "
 ✅ Installation complete!
                                                
@@ -242,10 +247,6 @@ echo "display_status_indicator() {
 
 echo "display_status_indicator" >> /etc/bash.bashrc
 source /etc/bash.bashrc
-sleep 5
-
-sudo systemctl daemon-reload
-sudo systemctl restart hush-line.service
 
 # Disable the trap before exiting
 trap - ERR
