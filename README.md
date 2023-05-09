@@ -14,7 +14,7 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install.sh | b
 
 ### Tor-Only
 ```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/install-tor-only.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/glenn-sorrentino/main/install-tor-only.sh | bash
 ```
 
 ## Add a Display
