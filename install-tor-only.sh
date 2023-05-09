@@ -20,7 +20,7 @@ sleep 3
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades
+sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn
 
 # Function to display error message and exit
 error_exit() {
@@ -71,7 +71,7 @@ Environment="EMAIL=$EMAIL"
 Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
 Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
 Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
-ExecStart=$PWD/venv/bin/python3 $PWD/app.py
+ExecStart=gunicorn -w 4 -b 0.0.0.0:5000 app:app
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -240,6 +240,8 @@ echo "display_status_indicator() {
 
 echo "display_status_indicator" >> /etc/bash.bashrc
 source /etc/bash.bashrc
+sudo systemctl daemon-reload
+sudo systemctl restart hush-line.service
 
 # Disable the trap before exiting
 trap - ERR
