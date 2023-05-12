@@ -120,7 +120,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     # Add the new text
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
     instruction_text = "Scan the QR code and open the link in Tor Browser to send a private Hush Line message:"
-    max_width = int(epd.width * 1.825)
+    max_width = int(epd.width * 1)
     chars_per_line = max_width // font_instruction.getsize('A')[0]
 
     # make sure chars_per_line is at least 1
