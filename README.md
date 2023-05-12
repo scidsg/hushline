@@ -36,13 +36,7 @@ When hosted on a Raspberry Pi, you can optionally add an e-ink display that make
 ![eink](https://user-images.githubusercontent.com/28545431/236740191-84184588-8bcb-4cc6-b41d-a9aa6e50c68b.png)
 
 The current working models:
-* [waveshare 2.13" E-Ink Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
 * [waveshare 2.7" E-Ink Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
-
-### Waveshare 2.13" E-Ink Display
-```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_13in_eink-display.sh | bash
-```
 
 ### Waveshare 2.7" E-Ink Display
 ```
