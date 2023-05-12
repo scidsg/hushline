@@ -30,7 +30,7 @@ This device displays the encoded URL for your main Hush Line app, instructions, 
 
 And since this device only points to your main Hush Line app and contains no sensitive data, you don't have to worry if you lose it.
 
-## Add a Display
+## Add a Display to Your Pi Server
 When hosted on a Raspberry Pi, you can optionally add an e-ink display that makes it easy for people in your phycial location to discover and access your Hush Line. Teachers can place one on their desks in a classroom, a school can host one in the common area where students gather, or a manager can have one in a team's collaboration space. 
 
 ![eink](https://user-images.githubusercontent.com/28545431/236740191-84184588-8bcb-4cc6-b41d-a9aa6e50c68b.png)
