@@ -7,10 +7,11 @@ cat << "EOF"
  / _  / / // / (_-< / _ \      / /__ / /  / _ \/ -_)     / (_ / / _ \
 /_//_/  \_,_/ /___//_//_/     /____//_/  /_//_/\__/      \___/  \___/
 
-🤫 Your Private Suggestion Box Companion
+🤫 The Companion To Your Private Tip Line
 https://hushline.app
 
 EOF
+sleep 3
 
 # Welcome Prompt
 whiptail --title "E-Ink Display Setup" --msgbox "The e-paper hat communicates with the Raspberry Pi using the SPI interface, so you need to enable it.\n\nNavigate to \"Interface Options\" > \"SPI\" and select \"Yes\" to enable the SPI interface." 12 64

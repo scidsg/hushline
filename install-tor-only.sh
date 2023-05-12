@@ -9,11 +9,10 @@ cat << "EOF"
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
                                                
-🤫 Your Private Suggestion Box 
-https://hushline.app
+🤫 A free tool by Science & Design - https://scidsg.org
+Your anonymous tip line and suggestion box. 
 
 EOF
-
 sleep 3
 
 #Update and upgrade
