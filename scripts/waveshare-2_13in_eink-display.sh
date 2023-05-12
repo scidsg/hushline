@@ -105,7 +105,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     qr_img = qr.make_image(fill_color="black", back_color="white")
 
     # Resize QR code to full height
-    qr_size = int(epd.height * 0.25)  # adjust the multiplier as needed
+    qr_size = int(epd.height * 0.5)  # adjust the multiplier as needed
     resized_qr_img = qr_img.resize((qr_size, qr_size), Image.NEAREST)
 
     x_pos_qr = 2
@@ -118,7 +118,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     y_pos_instruction = y_pos_info
 
     # Add the new text
-    font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 11)
+    font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
     instruction_text = "Scan the QR code and open the link in Tor Browser to send a private Hush Line message:"
     max_width = int(epd.width * 1.825)
     chars_per_line = max_width // font_instruction.getsize('A')[0]
@@ -133,7 +133,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
         y_pos_instruction += font_instruction.getsize(line)[1]
 
     # Display the PGP owner information
-    font_info = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 10)
+    font_info = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
     y_pos_info = y_pos_instruction + 10
 
     pgp_info = f'{name} <{email}>\nKey ID: {key_id[-8:]}\nExp: {time.strftime("%Y-%m-%d", time.gmtime(int(expires)))}'
@@ -267,7 +267,7 @@ fi
 
 # Download splash screen image
 cd /home/pi/hush-line
-wget https://raw.githubusercontent.com/scidsg/brand-resources/main/logos/splash.png
+wget https://raw.githubusercontent.com/scidsg/brand-resources/main/logos/splash-sm.png
 
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
