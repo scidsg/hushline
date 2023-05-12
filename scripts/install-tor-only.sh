@@ -19,7 +19,12 @@ sleep 3
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn
+sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
+pip3 install --upgrade pip
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
 
 # Function to display error message and exit
 error_exit() {
@@ -56,6 +61,7 @@ source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
 pip3 install gunicorn
+pip3 install cryptography
 pip3 install -r requirements.txt
 
 # Create a systemd service
