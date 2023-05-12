@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Welcome message and ASCII art
-cat << "EOF"                                                        
-                                                            
+cat << "EOF"                                                                                                                
    __             _____      __      _____      __    _ __  
  /'__`\  _______ /\ '__`\  /'__`\   /\ '__`\  /'__`\ /\`'__\
 /\  __/ /\______\\ \ \L\ \/\ \L\.\_ \ \ \L\ \/\  __/ \ \ \/ 
@@ -119,7 +118,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
 
     # Add the new text
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
-    instruction_text = "Scan the QR code and open the link in Tor Browser to send a private Hush Line message:"
+    instruction_text = "Scan the QR code to send a private Hush Line message."
     max_width = int(epd.width * 1)
     chars_per_line = max_width // font_instruction.getsize('A')[0]
 
@@ -216,7 +215,7 @@ if __name__ == '__main__':
 EOL
 
 # Create a new script to display status on the e-ink display
-cat > /home/pi/hush-line/clear_display.py << EOL
+cat > /etc/systemd/system/display_status.service << EOL
 import sys
 from waveshare_epd import epd2in13_V3
 from PIL import Image
