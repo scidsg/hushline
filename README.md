@@ -18,7 +18,7 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/instal
 ```
 
 ## Hush Line Go
-Take Hush Line with you when you're on the go to make sharing your address easy. With the e-paper display, once the text is written, it will remain indefinitely without requiring power.
+Take Hush Line Go with you when you're on the move to make sharing your address easy. With the e-paper display, once the text is written, it will remain indefinitely without requiring power.
 
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/companion-device.sh | bash
