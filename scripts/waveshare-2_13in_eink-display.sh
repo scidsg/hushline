@@ -119,7 +119,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     # Add the new text
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
     instruction_text = "Scan the QR code to send a private Hush Line message."
-    max_width = int(epd.width * 1)
+    max_width = int(epd.width * .75)
     chars_per_line = max_width // font_instruction.getsize('A')[0]
 
     # make sure chars_per_line is at least 1
@@ -216,29 +216,18 @@ EOL
 
 # Create a new script to display status on the e-ink display
 cat > /etc/systemd/system/display_status.service << EOL
-import sys
-from waveshare_epd import epd2in13_V3
-from PIL import Image
+[Unit]
+Description=Display status on e-Paper
+After=network.target
 
-def clear_screen(epd):
-    print("Clearing the screen")
-    image = Image.new('1', (epd.height, epd.width), 255)
-    image_rotated = image.rotate(90, expand=True)
-    epd.display(epd.getbuffer(image_rotated))
-    epd.sleep()
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/hush-line/display_status.py
+User=pi
+Restart=always
+RestartSec=5
 
-def main():
-    print("Starting clear_display script")
-    epd = epd2in13_V3.EPD()
-    epd.init()
-    clear_screen(epd)
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        sys.exit(1)
+[Install]
+WantedBy=multi-user.target
 EOL
 
 # Clear display before shutdown
@@ -258,11 +247,6 @@ WantedBy=halt.target reboot.target shutdown.target
 EOL
 sudo systemctl daemon-reload
 sudo systemctl enable clear-display.service
-
-# Add a line to the .bashrc to run the display_status.py script on boot
-if ! grep -q "sudo python3 /home/pi/hush-line/display_status.py" /home/pi/.bashrc; then
-    echo "sudo python3 /home/pi/hush-line/display_status.py &" >> /home/pi/.bashrc
-fi
 
 # Download splash screen image
 cd /home/pi/hush-line
