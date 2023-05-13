@@ -246,5 +246,7 @@ echo "display_status_indicator() {
 echo "display_status_indicator" >> /etc/bash.bashrc
 source /etc/bash.bashrc
 
+sudo systemctl restart hush-line
+
 # Disable the trap before exiting
 trap - ERR
