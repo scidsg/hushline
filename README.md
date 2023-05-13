@@ -35,16 +35,16 @@ And since this device only points to your main Hush Line app and contains no sen
 ## Add a Display to Your Pi Server
 When hosted on a Raspberry Pi, you can optionally add an e-ink display that makes it easy for people in your phycial location to discover and access your Hush Line. Teachers can place one on their desks in a classroom, a school can host one in the common area where students gather, or a manager can have one in a team's collaboration space. 
 
-![eink](https://user-images.githubusercontent.com/28545431/236740191-84184588-8bcb-4cc6-b41d-a9aa6e50c68b.png)
-
-Supported models:
-* [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
-* [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
-
-### Waveshare 2.7" E-Ink Display
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_7in-eink-display.sh | bash
 ```
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_13in_eink-display.sh | bash
 ```
+
+Supported models:
+* [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
+* [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
+
+![Frame 3](https://github.com/scidsg/hush-line/assets/28545431/c20448ca-a4fb-4045-8146-900fa23b9b7e)
+![213](https://github.com/scidsg/hush-line/assets/28545431/8336b178-d0e1-43c3-b1dc-87c5756dc582)
