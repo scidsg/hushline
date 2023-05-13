@@ -20,7 +20,6 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
-pip3 install --upgrade pip
 
 # Function to display error message and exit
 error_exit() {
@@ -40,6 +39,7 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
 
 export DOMAIN
 export EMAIL
@@ -59,6 +59,9 @@ pip3 install pgpy
 pip3 install gunicorn
 pip3 install cryptography
 pip3 install -r requirements.txt
+
+# Download the public PGP key and rename to public_key.asc
+wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
