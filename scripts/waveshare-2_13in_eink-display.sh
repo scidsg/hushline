@@ -105,7 +105,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     qr_img = qr.make_image(fill_color="black", back_color="white")
 
     # Resize QR code to full height
-    qr_size = int(epd.height * 0.5)  # adjust the multiplier as needed
+    qr_size = int(epd.height * 0.495)  # adjust the multiplier as needed
     resized_qr_img = qr_img.resize((qr_size, qr_size), Image.NEAREST)
 
     x_pos_qr = 0
