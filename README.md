@@ -19,6 +19,8 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/instal
 
 ## Hush Line Go
 Take Hush Line Go with you when you're on the move to make sharing your address easy. With the e-paper display, once the text is written, it will remain indefinitely without requiring power.
+Supported display:
+[Adafruit 2.13" Monochrome E-Ink Bonnet](https://www.adafruit.com/product/4687)
 
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/companion-device.sh | bash
@@ -35,10 +37,14 @@ When hosted on a Raspberry Pi, you can optionally add an e-ink display that make
 
 ![eink](https://user-images.githubusercontent.com/28545431/236740191-84184588-8bcb-4cc6-b41d-a9aa6e50c68b.png)
 
-The current working models:
-* [waveshare 2.7" E-Ink Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
+Supported models:
+* [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
+* [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
 
 ### Waveshare 2.7" E-Ink Display
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_7in-eink-display.sh | bash
+```
+```
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_13in_eink-display.sh | bash
 ```
