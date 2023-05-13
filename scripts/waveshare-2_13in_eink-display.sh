@@ -113,7 +113,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     image.paste(resized_qr_img, (x_pos_qr, y_pos_qr))
 
     # Calculate the starting position for the status, instruction and PGP information text
-    x_pos_info = x_pos_qr + resized_qr_img.width + 5
+    x_pos_info = x_pos_qr + resized_qr_img.width + 4
     y_pos_info = y_pos_qr
     y_pos_instruction = y_pos_info + 5
 
