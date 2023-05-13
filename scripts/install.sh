@@ -19,7 +19,7 @@ sleep 3
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
 
 # Function to display error message and exit
 error_exit() {
@@ -42,6 +42,7 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -67,6 +68,9 @@ pip3 install flask
 pip3 install pgpy
 pip3 install gunicorn
 pip3 install -r requirements.txt
+
+# Clone the repository
+git clone https://github.com/scidsg/hush-line.git
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
