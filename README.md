@@ -1,5 +1,5 @@
 # Hush Line
-Hush Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
+Hush Line is a self-hosted, lightweight private tip line and anonymous suggestion box. Journalists and newsrooms can use Hush Line to give the public an easy way to submit anonymous tips. Educators and schools can use Hush Line to provide students with a safe way to send a message to an adult they trust. And workplaces can use it by Boards and senior executives hosting a Hush Line instance and providing employees a trustworthy way to securely report ethical or legal issues without revealing their identities.
 
 ![hush-cover](https://github.com/scidsg/hush-line/assets/28545431/fe633078-8c93-4953-9de7-b02b5a229c27)
 
