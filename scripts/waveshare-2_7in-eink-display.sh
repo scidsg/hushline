@@ -101,7 +101,7 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     # Add the new text
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 11)
     instruction_text = "Scan the QR code and open the link in Tor Browser to send a private message:"
-    y_pos_instruction = y_pos_status + font_status.getsize(status)[1] + 6
+    y_pos_instruction = y_pos_status + font_status.getsize(status)[1] + 7
     max_width = epd.height - 20
     chars_per_line = max_width // font_instruction.getsize('A')[0]
     wrapped_instruction = textwrap.wrap(instruction_text, width=40)
@@ -131,7 +131,7 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     resized_qr_img = qr_img.resize(new_size, Image.NEAREST)
 
     x_pos = 5
-    y_pos = y_pos_instruction + font_instruction.getsize(wrapped_instruction[-1])[1] - 6
+    y_pos = y_pos_instruction + font_instruction.getsize(wrapped_instruction[-1])[1] - 7
     image.paste(resized_qr_img, (x_pos, y_pos))
 
     # Calculate the starting position for the PGP information text
