@@ -92,16 +92,16 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     image = Image.new('1', (epd.height, epd.width), 255)
     draw = ImageDraw.Draw(image)
 
-    font_status = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 14)
+    font_status = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 12)
 
     x_pos_status = 10
-    y_pos_status = 14
+    y_pos_status = 12
     draw.text((x_pos_status, y_pos_status), status, font=font_status, fill=0)
 
     # Add the new text
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 11)
     instruction_text = "Scan the QR code and open the link in Tor Browser to send a private message:"
-    y_pos_instruction = y_pos_status + font_status.getsize(status)[1] + 8
+    y_pos_instruction = y_pos_status + font_status.getsize(status)[1] + 6
     max_width = epd.height - 20
     chars_per_line = max_width // font_instruction.getsize('A')[0]
     wrapped_instruction = textwrap.wrap(instruction_text, width=40)
@@ -131,7 +131,7 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     resized_qr_img = qr_img.resize(new_size, Image.NEAREST)
 
     x_pos = 5
-    y_pos = y_pos_instruction + font_instruction.getsize(wrapped_instruction[-1])[1] - 5
+    y_pos = y_pos_instruction + font_instruction.getsize(wrapped_instruction[-1])[1] - 6
     image.paste(resized_qr_img, (x_pos, y_pos))
 
     # Calculate the starting position for the PGP information text
