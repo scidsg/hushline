@@ -19,6 +19,7 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/instal
 
 ## Hush Line Go
 Take Hush Line Go with you when you're on the move to make sharing your address easy. With the e-paper display, once the text is written, it will remain indefinitely without requiring power.
+
 Supported display:
 [Adafruit 2.13" Monochrome E-Ink Bonnet](https://www.adafruit.com/product/4687)
 
