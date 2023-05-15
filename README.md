@@ -49,4 +49,4 @@ Supported models:
 * [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
 * [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
 
-![display-demo](https://github.com/scidsg/hush-line/assets/28545431/ddc9906e-bbb6-4293-a78b-a34ba52b912c)
+![display-demo](https://github.com/scidsg/hush-line/assets/28545431/95ac97ef-12f6-4d32-9079-90341abc1186)
