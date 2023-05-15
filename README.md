@@ -1,7 +1,6 @@
 # Hush Line
 Hush Line is a reasonably secure and anonymous tip line that you can set up on your own domain name.
 
-![wiki-cover](https://user-images.githubusercontent.com/28545431/235570788-51e55fe0-8774-453d-a3bf-5517b6d27e60.png)
 
 ## Easy Install
 👉 We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
@@ -47,5 +46,4 @@ Supported models:
 * [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
 * [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
 
-![Frame 3](https://github.com/scidsg/hush-line/assets/28545431/c20448ca-a4fb-4045-8146-900fa23b9b7e)
-![213](https://github.com/scidsg/hush-line/assets/28545431/8336b178-d0e1-43c3-b1dc-87c5756dc582)
+![display-demo](https://github.com/scidsg/hush-line/assets/28545431/ddc9906e-bbb6-4293-a78b-a34ba52b912c)
