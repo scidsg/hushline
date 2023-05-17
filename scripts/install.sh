@@ -21,6 +21,12 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
 
+# Create a new non-root user for the application
+adduser --disabled-password --gecos "" hushlineuser
+
+# Change to the new user's home directory
+cd /home/hushlineuser
+
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
@@ -69,8 +75,15 @@ pip3 install pgpy
 pip3 install gunicorn
 pip3 install -r requirements.txt
 
+# Change the ownership of the application files to the new user
+chown -R hushlineuser:hushlineuser /home/hushlineuser/hush-line
+
 # Download the public PGP key and rename to public_key.asc
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
+
+# Change the owner of the file to hushlineuser and give him read permissions
+chown hushlineuser:hushlineuser public_key.asc
+chmod 400 public_key.asc
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
@@ -78,7 +91,7 @@ cat > /etc/systemd/system/hush-line.service << EOL
 Description=Hush Line Web App
 After=network.target
 [Service]
-User=root
+User=hushlineuser
 WorkingDirectory=$PWD
 Environment="DOMAIN=localhost"
 Environment="EMAIL=$EMAIL"
