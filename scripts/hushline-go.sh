@@ -2,12 +2,11 @@
 
 # Welcome message and ASCII art
 cat << "EOF"
-    __  __                    __             __     _                         ______       
-   / / / /  __  __   _____   / /_           / /    (_)   ____   ___          / ____/  ____ 
-  / /_/ /  / / / /  / ___/  / __ \         / /    / /   / __ \ / _ \        / / __   / __ \
- / __  /  / /_/ /  (__  )  / / / /        / /___ / /   / / / //  __/       / /_/ /  / /_/ /
-/_/ /_/   \__,_/  /____/  /_/ /_/        /_____//_/   /_/ /_/ \___/        \____/   \____/ 
-                                                      
+   __ __              __         __    _                   _____     
+  / // / __ __  ___  / /        / /   (_)  ___  ___       / ___/ ___ 
+ / _  / / // / (_-< / _ \      / /__ / /  / _ \/ -_)     / (_ / / _ \
+/_//_/  \_,_/ /___//_//_/     /____//_/  /_//_/\__/      \___/  \___/
+                                                                                                                           
 🤫 A free tool by Science & Design - https://scidsg.org
 Your anonymous tip line and suggestion box. 
 
@@ -28,7 +27,18 @@ sudo pip3 install adafruit-circuitpython-epd qrcode pgpy requests python-gnupg
 
 # Ask the user for the Hush Line address and PGP key address
 HUSH_LINE_ADDRESS=$(whiptail --inputbox "What's the Hush Line address?" 8 78 --title "Hush Line address" 3>&1 1>&2 2>&3)
+
+# Check for valid URL format
+until [[ $HUSH_LINE_ADDRESS =~ ^http(s)?://[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}.*$ ]]; do
+    HUSH_LINE_ADDRESS=$(whiptail --inputbox "Invalid URL format. Please enter a valid URL including http:// or https:// :" 8 78 --title "Hush Line address" 3>&1 1>&2 2>&3)
+done
+
 PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 78 --title "PGP key address" 3>&1 1>&2 2>&3)
+
+# Check for valid URL format
+until [[ $PGP_KEY_ADDRESS =~ ^http(s)?://[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}.*$ ]]; do
+    PGP_KEY_ADDRESS=$(whiptail --inputbox "Invalid URL format. Please enter a valid URL including http:// or https:// :" 8 78 --title "PGP key address" 3>&1 1>&2 2>&3)
+done
 
 # Download the key and rename to public_key.asc
 mkdir -p /home/pi/hush-line/
