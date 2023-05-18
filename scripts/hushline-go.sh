@@ -21,7 +21,7 @@ sudo raspi-config
 # Install the necessary dependencies
 sudo apt-get update 
 sudo apt-get -y dist-upgrade
-sudo apt-get -y install python3-pip fonts-dejavu python3-pillow
+sudo apt-get -y install python3-pip fonts-dejavu python3-pillow unattended-upgrades
 
 # Install the Adafruit EPD library
 sudo pip3 install adafruit-circuitpython-epd qrcode pgpy requests python-gnupg
@@ -244,7 +244,22 @@ sudo systemctl enable app-status
 cd /home/pi/hush-line
 wget https://raw.githubusercontent.com/scidsg/brand-resources/main/logos/splash-sm.png
 
+# Enable the "security" and "updates" repositories
+sudo sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-security";/"\${distro_id}:\${distro_codename}-security";/g' /etc/apt/apt.conf.d/50unattended-upgrades
+sudo sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-updates";/"\${distro_id}:\${distro_codename}-updates";/g' /etc/apt/apt.conf.d/50unattended-upgrades
+sudo sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
+sudo sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Dependencies "true";|Unattended-Upgrade::Remove-Unused-Dependencies "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
+
+sudo dpkg-reconfigure --priority=low unattended-upgrades
+
+# Configure unattended-upgrades
+echo 'Unattended-Upgrade::Automatic-Reboot "true";' | sudo tee -a /etc/apt/apt.conf.d/50unattended-upgrades
+echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt/apt.conf.d/50unattended-upgrades
+
+sudo systemctl restart unattended-upgrades
 sudo apt-get -y autoremove
+
+echo "Automatic updates have been installed and configured."
 
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
