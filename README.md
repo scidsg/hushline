@@ -26,7 +26,7 @@ Supported display:
 [Adafruit 2.13" Monochrome E-Ink Bonnet](https://www.adafruit.com/product/4687)
 
 ```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/companion-device.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/hushline-go.sh | bash
 ```
 
 ![IMG_4686](https://github.com/scidsg/hush-line/assets/28545431/4b91ff4b-53f0-4be8-b8ec-f5f94361fbd8)
