@@ -37,3 +37,5 @@ Supported models:
 
 ## Hush Line Go
 Now that your Hush Line server is online you can add a device that that you can take with you when you're on the go. Clip it to your bag, carry it on a keychain, or wear it around your neck. Ready to get started? [Head to the Hush Line Go repository](https://github.com/scidsg/hush-line-go/tree/main).
+
+![238079003-4b91ff4b-53f0-4be8-b8ec-f5f94361fbd8](https://github.com/scidsg/hush-line/assets/28545431/a88fb6cf-c6f1-4e75-9f0a-af59def365cc)
