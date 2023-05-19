@@ -34,3 +34,6 @@ Supported models:
 * [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
 
 ![display-demo](https://github.com/scidsg/hush-line/assets/28545431/ffa0b88d-7b6d-42c1-9323-3fc581b9552d)
+
+## Hush Line Go
+Now that your Hush Line server is online you can add a device that that you can take with you when you're on the go. Clip it to your bag, carry it on a keychain, or wear it around your neck. Ready to get started? [Head to the Hush Line Go repository](https://github.com/scidsg/hush-line-go/tree/main).
