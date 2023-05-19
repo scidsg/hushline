@@ -80,6 +80,7 @@ export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
+export PGP_KEY_ADDRESS
 
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
