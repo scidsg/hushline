@@ -47,11 +47,24 @@ NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email addre
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
 
-export DOMAIN
+# Add 'https://' to the PGP_KEY_ADDRESS if it doesn't already begin with 'http://' or 'https://'
+if ! [[ $PGP_KEY_ADDRESS =~ ^http(s)?:// ]]; then
+    PGP_KEY_ADDRESS="https://$PGP_KEY_ADDRESS"
+fi
+
+# Validate the URL
+until [[ $PGP_KEY_ADDRESS =~ ^http(s)?://[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}.*$ ]]; do
+    PGP_KEY_ADDRESS=$(whiptail --inputbox "Invalid URL format. Please enter a valid URL including http:// or https:// :" 8 78 --title "PGP key address" 3>&1 1>&2 2>&3)
+    if ! [[ $PGP_KEY_ADDRESS =~ ^http(s)?:// ]]; then
+        PGP_KEY_ADDRESS="https://$PGP_KEY_ADDRESS"
+    fi
+done
+
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
+export PGP_KEY_ADDRESS
 
 # Clone the repository
 git clone https://github.com/scidsg/hush-line.git
