@@ -40,7 +40,7 @@ trap error_exit ERR
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where the internet is censored.\n\nBefore you begin, ensure your website's DNS settings point to this server." 16 64
 
 # Prompt user for domain name
-DOMAIN=$(whiptail --inputbox "Enter your domain name (don't include http:// or https://):" 8 60 3>&1 1>&2 2>&3)
+DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
 
 # Remove 'http://' or 'https://' from the DOMAIN if it exists
 DOMAIN=${DOMAIN#http://}
