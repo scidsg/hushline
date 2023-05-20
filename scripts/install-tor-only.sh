@@ -21,12 +21,6 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
 
-# Create a new non-root user for the application
-adduser --disabled-password --gecos "" hushlineuser
-
-# Change to the new user's home directory
-cd /home/hushlineuser
-
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
@@ -47,24 +41,11 @@ NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email addre
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
 
-# Add 'https://' to the PGP_KEY_ADDRESS if it doesn't already begin with 'http://' or 'https://'
-if ! [[ $PGP_KEY_ADDRESS =~ ^http(s)?:// ]]; then
-    PGP_KEY_ADDRESS="https://$PGP_KEY_ADDRESS"
-fi
-
-# Validate the URL
-until [[ $PGP_KEY_ADDRESS =~ ^http(s)?://[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}.*$ ]]; do
-    PGP_KEY_ADDRESS=$(whiptail --inputbox "Invalid URL format. Please enter a valid URL including http:// or https:// :" 8 78 --title "PGP key address" 3>&1 1>&2 2>&3)
-    if ! [[ $PGP_KEY_ADDRESS =~ ^http(s)?:// ]]; then
-        PGP_KEY_ADDRESS="https://$PGP_KEY_ADDRESS"
-    fi
-done
-
+export DOMAIN
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
-export PGP_KEY_ADDRESS
 
 # Clone the repository
 git clone https://github.com/scidsg/hush-line.git
@@ -79,15 +60,8 @@ pip3 install gunicorn
 pip3 install cryptography
 pip3 install -r requirements.txt
 
-# Change the ownership of the application files to the new user
-chown -R hushlineuser:hushlineuser /home/hushlineuser/hush-line
-
 # Download the public PGP key and rename to public_key.asc
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
-
-# Change the owner of the file to hushlineuser and give him read permissions
-chown hushlineuser:hushlineuser public_key.asc
-chmod 400 public_key.asc
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
@@ -95,7 +69,7 @@ cat > /etc/systemd/system/hush-line.service << EOL
 Description=Hush Line Web App
 After=network.target
 [Service]
-User=hushlineuser
+User=root
 WorkingDirectory=$PWD
 Environment="DOMAIN=localhost"
 Environment="EMAIL=$EMAIL"
