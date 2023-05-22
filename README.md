@@ -27,13 +27,9 @@ When hosted on a Raspberry Pi, you can optionally add an e-ink display that make
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_7in-eink-display.sh | bash
 ```
-```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_13in_eink-display.sh | bash
-```
 
-Supported models:
-* [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm)
-* [waveshare 2.13" E-Paper Display HAT](https://www.waveshare.com/product/raspberry-pi/displays/e-paper/2.13inch-e-paper-hat.htm)
+Supported model:
+* [waveshare 2.7" E-Paper Display HAT](https://www.waveshare.com/2.7inch-e-paper-hat.htm) (Recommended)
 
 ![display-demo](https://github.com/scidsg/hush-line/assets/28545431/ffa0b88d-7b6d-42c1-9323-3fc581b9552d)
 
