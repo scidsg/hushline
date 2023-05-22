@@ -1,9 +1,7 @@
 # Hush Line
 [Hush Line](https://hushline.app) is a self-hosted, lightweight private tip line and anonymous suggestion box. Journalists and newsrooms can use Hush Line to give the public an easy way to submit anonymous tips. Educators and schools can use Hush Line to provide students with a safe way to send a message to an adult they trust. And workplaces can use it by Boards of Directors and senior executives hosting a Hush Line instance and providing employees a trustworthy way to securely report ethical or legal issues without revealing their identities.
 
-Hush Line uses your PGP key to encrypt messages, Tor for privacy, HTTPS for secure data transmission, and SMTP for email. Your server will even be configured to scrub visitor's IP addresses. For deployments to public websites, we incorporate a technique known as onion binding which "associates registered domain names with onion addresses. These associations are established in TLS certificates, making them publicly enumerable in append-only CT logs.
-
-One of the most prominent use-cases of [onion binding] is to help users defeat censorship of TLS sites: onionsites can be used if they are discoverable, which is what [onion binding] helps with. This tightens the relation between registered domain names, HTTPS, and onionsites."
+Hush Line uses your PGP key to encrypt messages, Tor for privacy, HTTPS for secure data transmission, and SMTP for email. Your server will even be configured to scrub visitor's IP addresses. For deployments to public websites, we incorporate a technique known as onion binding which "associates registered domain names with onion addresses. These associations are established in TLS certificates, making them publicly enumerable in append-only CT logs. &#91;[1](#references)&#93;"
 
 [Click here for a full installation tutorial.](https://scidsg.medium.com/installing-and-configuring-hush-line-on-a-raspberry-pi-daefc3865020)
 
@@ -43,3 +41,6 @@ Supported models:
 Now that your Hush Line server is online you can add a device that that you can take with you when you're on the go. Clip it to your bag, carry it on a keychain, or wear it around your neck. Ready to get started? [Head to the Hush Line Go repository](https://github.com/scidsg/hush-line-go/tree/main).
 
 ![238079003-4b91ff4b-53f0-4be8-b8ec-f5f94361fbd8](https://github.com/scidsg/hush-line/assets/28545431/a88fb6cf-c6f1-4e75-9f0a-af59def365cc)
+
+## References
+1. https://www.sauteed-onions.org/
