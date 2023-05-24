@@ -11,14 +11,8 @@ Hush Line uses your public PGP key to encrypt messages, Tor for privacy, HTTPS f
 👉 We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
 Your messages are encrypted, so Google won't be able to read their contents.
 
-### Tor + Public Web
 ```
 curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/install.sh | bash
-```
-
-### Tor-Only
-```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/install-tor-only.sh | bash
 ```
 
 ## Add a Display to Your Pi Server
