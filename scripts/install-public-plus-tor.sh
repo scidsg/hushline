@@ -4,7 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx whiptail tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev
 
 # Function to display error message and exit
 error_exit() {
@@ -15,19 +15,29 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-# Email Notification Setup
-whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
+# Prompt user for domain name
+DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
+
+# Email notification setup
+whiptail --title "Email Setup" --msgbox "Now we'll set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
 
+# Check for valid domain name format
+until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
+    DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
+done
 export DOMAIN
 export EMAIL
 export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
+
+# Debug: Print the value of the DOMAIN variable
+echo "Domain: ${DOMAIN}"
 
 # Clone the repository
 git clone https://github.com/scidsg/hush-line.git
@@ -39,11 +49,10 @@ source venv/bin/activate
 pip3 install flask
 pip3 install pgpy
 pip3 install gunicorn
-pip3 install cryptography
 pip3 install -r requirements.txt
 
-# Download the public PGP key and rename to public_key.asc
-wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
+# Clone the repository
+git clone https://github.com/scidsg/hush-line.git
 
 # Create a systemd service
 cat > /etc/systemd/system/hush-line.service << EOL
@@ -92,7 +101,7 @@ ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 cat > /etc/nginx/sites-available/hush-line.nginx << EOL
 server {
     listen 80;
-    server_name localhost;
+    server_name $DOMAIN;
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
@@ -113,6 +122,15 @@ server {
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
 }
+server {
+    listen 80;
+    server_name $ONION_ADDRESS.$DOMAIN;
+
+    location / {
+        proxy_pass http://localhost:5000;
+    }
+}
+
 EOL
 
 # Configure Nginx with privacy-preserving logging
@@ -133,7 +151,7 @@ http {
         tcp_nopush on;
         types_hash_max_size 2048;
         # server_tokens off;
-        # server_names_hash_bucket_size 64;
+        server_names_hash_bucket_size 128;
         # server_name_in_redirect off;
         include /etc/nginx/mime.types;
         default_type application/octet-stream;
@@ -182,11 +200,20 @@ fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
+SERVER_IP=$(curl -s ifconfig.me)
+WIDTH=$(tput cols)
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
+# Request the certificates
+certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+
+# Set up cron job to renew SSL certificate
+(crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
+
 # System status indicator
 display_status_indicator() {
     local status="$(systemctl is-active hush-line.service)"
     if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\n$ONION_ADDRESS\n\n"
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n"
     else
         printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
     fi
@@ -214,12 +241,12 @@ echo "
 Hush Line is a product by Science & Design. 
 Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org."
-                                                
+
 # Display system status on login
 echo "display_status_indicator() {
     local status=\"\$(systemctl is-active hush-line.service)\"
     if [ \"\$status\" = \"active\" ]; then
-        printf \"\n\033[32m●\033[0m Hush Line is running\nhttp://$ONION_ADDRESS\n\n\"
+        printf \"\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n\"
     else
         printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
     fi
