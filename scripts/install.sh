@@ -9,9 +9,9 @@ cat << "EOF"
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
                                                
-🤫 A free tool by Science & Design - https://scidsg.org
-Your anonymous tip line and suggestion box. 
+🤫 Your anonymous tip line and suggestion box. 
 
+A free tool by Science & Design - https://scidsg.org
 EOF
 sleep 3
 
