@@ -34,8 +34,8 @@ else
     echo "You chose Cancel."
 fi
 
-OPTION_DISPLAY=$(whiptail --title "E-Ink Display" --menu "How would you like to add an e-ink display?" 15 60 4 \
-"1" "Yes" \
+OPTION_DISPLAY=$(whiptail --title "E-Ink Display" --menu "Would you like to add an e-ink display?" 15 60 4 \
+"1" 'Yes, I have a Waveshare 2.7" e-ink display' \
 "2" "No"  3>&1 1>&2 2>&3)
 
 exitstatus=$?
