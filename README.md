@@ -12,7 +12,7 @@ Hush Line uses your public PGP key to encrypt messages, Tor for privacy, HTTPS f
 Your messages are encrypted, so Google won't be able to read their contents.
 
 ```
-curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/install.sh | bash
+curl -sSL https://install.hushline.app | bash
 ```
 
 ## Add a Display to Your Pi Server
