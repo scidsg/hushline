@@ -27,7 +27,7 @@ if not sender_email or not sender_password or not smtp_server or not smtp_port:
 # Load the public key into memory on startup
 with open('public_key.asc', 'r') as key_file:
     key_data = key_file.read()
-    PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)  # Extract the key from the tuple
+    PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data) # Extract the key from the tuple
 
 def encrypt_message(message):
     encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
