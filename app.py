@@ -4,13 +4,25 @@ import pgpy
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import logging
+
+# setup a logger
+log = logging.getLogger(__name__)
+log.setLevel(os.environ.get('LOG_LEVEL', 'INFO').upper())
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+log.addHandler(handler)
+log.info('Starting Hush Line')
 
 app = Flask(__name__)
 
-sender_email = os.environ['EMAIL']
-sender_password = os.environ['NOTIFY_PASSWORD']
-smtp_server = os.environ['NOTIFY_SMTP_SERVER']
+sender_email = os.environ.get('EMAIL', None)
+sender_password = os.environ.get('NOTIFY_PASSWORD', None)
+smtp_server = os.environ.get('NOTIFY_SMTP_SERVER', None)
 smtp_port = int(os.environ['NOTIFY_SMTP_PORT'])
+
+if not sender_email or not sender_password or not smtp_server or not smtp_port:
+    log.warn('Missing email notification configuration(s). Email notifications will not be sent.')
 
 def encrypt_message(message, public_key_path):
     with open(public_key_path, 'r') as key_file:
@@ -46,7 +58,7 @@ def send_email_notification(message):
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, sender_email, msg.as_string())
     except Exception as e:
-        print(f"Error sending email notification: {e}")
+        log.error(f"Error sending email notification: {e}")
 
 @app.route('/pgp_owner_info')
 def pgp_owner_info():
