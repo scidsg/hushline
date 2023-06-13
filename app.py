@@ -4,19 +4,33 @@ import pgpy
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import logging
+
+# setup a logger
+log = logging.getLogger(__name__)
+log.setLevel(os.environ.get('LOG_LEVEL', 'INFO').upper())
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+log.addHandler(handler)
+log.info('Starting Hush Line')
 
 app = Flask(__name__)
 
-sender_email = os.environ['EMAIL']
-sender_password = os.environ['NOTIFY_PASSWORD']
-smtp_server = os.environ['NOTIFY_SMTP_SERVER']
+sender_email = os.environ.get('EMAIL', None)
+sender_password = os.environ.get('NOTIFY_PASSWORD', None)
+smtp_server = os.environ.get('NOTIFY_SMTP_SERVER', None)
 smtp_port = int(os.environ['NOTIFY_SMTP_PORT'])
 
-def encrypt_message(message, public_key_path):
-    with open(public_key_path, 'r') as key_file:
-        key_data = key_file.read()
-    public_key, _ = pgpy.PGPKey.from_blob(key_data)  # Extract the key from the tuple
-    encrypted_message = str(public_key.encrypt(pgpy.PGPMessage.new(message)))
+if not sender_email or not sender_password or not smtp_server or not smtp_port:
+    log.warn('Missing email notification configuration(s). Email notifications will not be sent.')
+
+# Load the public key into memory on startup
+with open('public_key.asc', 'r') as key_file:
+    key_data = key_file.read()
+    PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data) # Extract the key from the tuple
+
+def encrypt_message(message):
+    encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
     return encrypted_message
 
 @app.route('/')
@@ -26,7 +40,7 @@ def index():
 @app.route('/save_message', methods=['POST'])
 def save_message():
     message = request.form['message']
-    encrypted_message = encrypt_message(message, 'public_key.asc')
+    encrypted_message = encrypt_message(message)
     with open('messages.txt', 'a') as f:
         f.write(encrypted_message + '\n\n')
     send_email_notification(encrypted_message)
@@ -46,16 +60,13 @@ def send_email_notification(message):
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, sender_email, msg.as_string())
     except Exception as e:
-        print(f"Error sending email notification: {e}")
+        log.error(f"Error sending email notification: {e}")
 
 @app.route('/pgp_owner_info')
 def pgp_owner_info():
-    with open('public_key.asc', 'r') as key_file:
-        key_data = key_file.read()
-    public_key, _ = pgpy.PGPKey.from_blob(key_data)
-    owner = f"{public_key.userids[0].name}\n{public_key.userids[0].email}"
-    key_id = f"Key ID: {str(public_key.fingerprint)[-8:]}"
-    expires = f"Exp: {public_key.expires_at.strftime('%Y-%m-%d')}"
+    owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
+    key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
+    expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
     return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
 if __name__ == '__main__':
