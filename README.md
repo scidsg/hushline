@@ -19,7 +19,7 @@ Hush Line uses your public PGP key to encrypt messages, Tor for privacy, HTTPS f
 
 ## Hush Line Go
 
-For increased threat models, Hush Line Go is a device you take with you while your server is safely running somewhere else. It checks your server's uptime and displays the same relevant information for accessing your tip line. [Head to the Hush Line Go repository](https://github.com/scidsg/hush-line-go/tree/main).
+For increased threat models where someone might want to set up a Hush Line instance without sharing publicly, Hush Line Go is a device you take with you while your server is safely running somewhere else. It checks your server's uptime and displays the same relevant information for submitting a private message. [Head to the Hush Line Go repository](https://github.com/scidsg/hush-line-go/tree/main).
 
 ![238079003-4b91ff4b-53f0-4be8-b8ec-f5f94361fbd8](https://github.com/scidsg/hush-line/assets/28545431/a88fb6cf-c6f1-4e75-9f0a-af59def365cc)
 
