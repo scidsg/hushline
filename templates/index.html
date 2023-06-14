@@ -7,7 +7,7 @@
     <meta name="description" content="A reasonably private and secure personal tip line.">
     <meta name="theme-color" content="#1d1d1c">
 
-    <title>Hush Line - Your Private Suggestion Box</title>
+    <title>Hush Line</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}" sizes="32x32">
@@ -21,7 +21,7 @@
     <header>
         <div class="wrapper">
             <h1>🤫 Hush Line</h1>
-            <a href="https://hushline.app" class="btn" target="_blank" rel="noopener noreferrer">Learn More</a>
+            <a href="https://en.wikipedia.org/wiki/Tina_Turner" class="btn destructive" rel="noopener noreferrer">Emergency Exit</a>
         </div>
     </header>
     <div id="pgp-owner-info" class="card mt-3">
@@ -38,7 +38,7 @@
     </div>
     <form id="message-form" action="/save_message" method="POST">
         <textarea name="message" rows="10" cols="60" required placeholder="Please leave a contact method if you'd like a response..."></textarea>
-        <p>🔒 Your message will be encrypted and only readable by the owner of the address above</p>
+        <p>🔒 Your message will be encrypted and only readable by the owner of the address above. <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
         <div class="button-container">
           <button type="submit" id="submit-button">Submit</button>
           <span class="spinner hidden"></span>

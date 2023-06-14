@@ -33,6 +33,10 @@
   color: white;
 }
 
+.destructive {
+	color: #AD1414;
+}
+
 html {
   box-sizing: border-box;
 }
@@ -123,6 +127,10 @@ textarea {
 	outline: 1px solid rgba(0,0,0,0.05);
 	resize: none;
 	max-width: 640px;
+}
+
+textarea + p > a {
+	color: #4F4F4F !important;
 }
 
 .button-container {
