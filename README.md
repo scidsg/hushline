@@ -1,11 +1,8 @@
 # Hush Line 🤫
 
-[Hush Line](https://hushline.app) is a self-hosted, free and open-source app providing organizations and individuals with a censorship-resistant way to receive private messages from their community.
+[Hush Line](https://hushline.app) is a self-hosted, free and open-source app providing organizations and individuals with a censorship-resistant way to receive private messages from their community. Hush Line fosters trust and builds resilience by putting your community's privacy and security first.
 
 ## Easy Install
-
-👉 We recommend using a Gmail account with a one-time password since we store passwords in plaintext.
-Your messages are encrypted, so Google won't be able to read their contents.
 
 ```bash
 curl -sSL https://install.hushline.app | bash
