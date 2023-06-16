@@ -15,7 +15,7 @@ Hush Line uses your public PGP key to encrypt messages, Tor for privacy, HTTPS f
 
 [Check out the full installation tutorial on Medium.](https://scidsg.medium.com/installing-and-configuring-hush-line-on-a-raspberry-pi-daefc3865020)
 
-![hush-cover](https://github.com/scidsg/hush-line/assets/28545431/fe633078-8c93-4953-9de7-b02b5a229c27)
+![hush-cover](https://github.com/scidsg/hush-line/assets/28545431/204f5d03-2454-4c49-8c5a-a91d3de3f81f)
 
 ## Hush Line Go
 
