@@ -19,7 +19,7 @@ app = Flask(__name__)
 sender_email = os.environ.get('EMAIL', None)
 sender_password = os.environ.get('NOTIFY_PASSWORD', None)
 smtp_server = os.environ.get('NOTIFY_SMTP_SERVER', None)
-smtp_port = int(os.environ['NOTIFY_SMTP_PORT'])
+smtp_port = int(os.environ.get('NOTIFY_SMTP_PORT', 0))
 
 if not sender_email or not sender_password or not smtp_server or not smtp_port:
     log.warn('Missing email notification configuration(s). Email notifications will not be sent.')
