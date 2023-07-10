@@ -66,7 +66,7 @@ def display_splash_screen(epd, image_path, display_time):
     height_ratio = target_height / image.height
     target_width = int(image.width * height_ratio)
 
-    image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    image = image.resize((target_width, target_height), Image.BICUBIC)
     image_bw = Image.new("1", (epd.height, epd.width), 255)
     paste_x = (epd.height - target_width) // 2
     paste_y = (epd.width - target_height) // 2
