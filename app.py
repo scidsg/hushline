@@ -19,7 +19,7 @@ app = Flask(__name__)
 sender_email = os.environ.get('EMAIL', None)
 sender_password = os.environ.get('NOTIFY_PASSWORD', None)
 smtp_server = os.environ.get('NOTIFY_SMTP_SERVER', None)
-smtp_port = int(os.environ['NOTIFY_SMTP_PORT'])
+smtp_port = int(os.environ.get('NOTIFY_SMTP_PORT', 0))
 
 if not sender_email or not sender_password or not smtp_server or not smtp_port:
     log.warn('Missing email notification configuration(s). Email notifications will not be sent.')
@@ -66,7 +66,10 @@ def send_email_notification(message):
 def pgp_owner_info():
     owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
     key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
-    expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
+    if PUBLIC_KEY.expires_at is not None:
+        expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
+    else:
+        expires = f"Exp: never"
     return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
 if __name__ == '__main__':
