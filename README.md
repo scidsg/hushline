@@ -1,6 +1,6 @@
 # Hush Line 🤫
 
-[Hush Line](https://hushline.app) is a self-hosted, free and open-source app providing organizations and individuals with a censorship-resistant way to receive private messages from their community. Hush Line fosters trust and builds resilience by putting your community's privacy and security first.
+[Hush Line](https://hushline.app) is a self-hosted, free and open-source app providing organizations and individuals with a censorship-resistant way to receive private messages from their community. Hush Line fosters trust and builds resilience by offering a safe and secure way of making their voices heard.
 
 ## Easy Install
 
