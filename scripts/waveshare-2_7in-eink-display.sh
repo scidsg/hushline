@@ -218,7 +218,7 @@ def main():
             print(f'Onion address: {onion_address}')
             name, email, key_id, expires = get_pgp_owner_info(pgp_owner_info_url)
             display_status(epd, status, onion_address, name, email, key_id, expires)
-            time.sleep(60)
+            time.sleep(300)
     except KeyboardInterrupt:
         clear_screen(epd)
         print('Exiting...')
