@@ -55,7 +55,7 @@ import qrcode
 import requests
 import gnupg
 import traceback
-from waveshare_epd import epd2in7
+from waveshare_epd import epd2in7_V2
 from PIL import Image, ImageDraw, ImageFont
 from PIL import ImageOps
 print(Image.__version__)
@@ -97,7 +97,7 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     font_status = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 13)
 
     x_pos_status = 10
-    y_pos_status = 12
+    y_pos_status = 10
     draw.text((x_pos_status, y_pos_status), status, font=font_status, fill=0)
 
     # Add the new text
@@ -200,7 +200,7 @@ def clear_screen(epd):
 
 def main():
     print("Starting main function")
-    epd = epd2in7.EPD()
+    epd = epd2in7_V2.EPD()
     epd.init()
     print("EPD initialized")
 
