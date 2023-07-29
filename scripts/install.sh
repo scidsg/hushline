@@ -34,21 +34,4 @@ else
     echo "You chose Cancel."
 fi
 
-OPTION_DISPLAY=$(whiptail --title "E-Ink Display" --menu "Would you like to add an e-ink display?" 15 60 4 \
-"1" 'Yes, I have a Waveshare 2.7" e-ink display' \
-"2" "No"  3>&1 1>&2 2>&3)
-
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-    echo "Your chosen option:" $OPTION_DISPLAY
-    if [ $OPTION_DISPLAY = "1" ]; then
-        curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_7in-eink-display.sh | bash
-    elif [ $OPTION_DISPLAY = "2" ]; then
-        echo "You can add an e-ink display at any time in the future by simply running: curl -sSL https://raw.githubusercontent.com/scidsg/hush-line/main/scripts/waveshare-2_7in-eink-display.sh | bash"
-    fi
-else
-    echo "You chose Cancel."
-fi
-
-
 
