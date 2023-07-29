@@ -10,7 +10,7 @@
 - Price: $4/mo
 3. Log in to your new Droplet using SSH:
 ```
-ssh@root@<IP>
+ssh root@<IP>
 ```
 4. To install Hush Line, simply execute the following command:
 ```
@@ -41,7 +41,7 @@ http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
 2. Install Raspberry Pi OS 64-bit to a micro SD card.
 3. Log in to your Pi using SSH:
 ```
-ssh@pi@<IP>
+ssh pi@<IP>
 ```
 4. To install Hush Line, simply execute the following command:
 ```
