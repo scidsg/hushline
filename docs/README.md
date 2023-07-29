@@ -16,6 +16,7 @@ ssh root@<IP>
 ```
 curl -sSL https://install.hushline.app | bash
 ```
+- You can choose a Tor-only install, or Tor and a public domain. I'm choosing Tor-only.
 5. You'll need an SMTP-compatible email service. I'm using Gmail in my example:
 - Google account
 - SMTP address: smtp.gmail.com
@@ -47,8 +48,7 @@ ssh pi@<IP>
 ```
 curl -sSL https://install.hushline.app | bash
 ```
-
-- You can choose a Tor-only install, or Tor and a public domain.
+- You can choose a Tor-only install, or Tor and a public domain. I'm choosing Tor-only.
 
 5. You'll need an SMTP-compatible email service. I'm using Gmail in my example:
 - Google account
