@@ -8,12 +8,12 @@
 curl -sSL https://install.hushline.app | bash
 ```
 
-### System Requirements
+## System Requirements
 
-#### VPS
+### VPS
 - OS: Debian 11 x64
 
-#### Raspberry Pi
+### Raspberry Pi
 - Hardware: Pi 4, Pi 3B+
 - OS: Raspberry Pi OS
 
