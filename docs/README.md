@@ -4,7 +4,7 @@
 
 1. Go to digitalocean.com and create a new account or log in to an existing one.
 2. Create a new Droplet.
-- OS: Debian 11 x64
+- OS: Debian 11/12 x64
 - Droplet type: Basic
 - CPU options: Regular
 - Price: $4/mo
