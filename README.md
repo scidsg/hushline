@@ -11,11 +11,11 @@ curl -sSL https://install.hushline.app | bash
 ## System Requirements
 
 ### VPS
-- OS: Debian 11/12 x64
+- **OS:** Debian 11/12 x64
 
 ### Raspberry Pi
-- Hardware: Raspberry Pi 4/3B+
-- OS: Raspberry Pi OS (64-bit)
+- **Hardware:** Raspberry Pi 4/3B+
+- **OS:** Raspberry Pi OS (64-bit)
 
 Hush Line uses your public PGP key to encrypt messages, Tor for privacy, HTTPS for secure data transmission, and SMTP for email. Your server will even be configured to scrub visitors' IP addresses. For deployments to public websites, we incorporate a technique known as onion binding, which "associates registered domain names with onion addresses. These associations are established in TLS certificates, making them publicly enumerable in append-only CT logs. &#91;[1](#references)&#93;"
 
