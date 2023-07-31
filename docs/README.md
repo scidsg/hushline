@@ -16,7 +16,7 @@ ssh root@<IP>
 ```
 sudo su
 ```
-5. Next, it's a good idea to update your system and remove unused software before running any new commands:
+5. Next, it's recommended to update your system and remove unused software before running any new commands:
 ```
 apt update && apt -y dist-upgrade && apt -y autoremove
 ```
@@ -55,7 +55,7 @@ ssh pi@<IP>
 ```
 sudo su
 ```
-5. Next, it's a good idea to update your system and remove unused software before running any new commands:
+5. Next, it's recommended to update your system and remove unused software before running any new commands:
 ```
 apt update && apt -y dist-upgrade && apt -y autoremove
 ```
