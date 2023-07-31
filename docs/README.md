@@ -47,7 +47,7 @@ http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
 
 ## Installing on Raspberry Pi
 1. Download the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
-2. Install Raspberry Pi OS 64-bit to a micro SD card.
+2. Install Raspberry Pi OS (64-bit) to a micro SD card.
 3. Log in to your Pi using SSH:
 ```
 ssh pi@<IP>
