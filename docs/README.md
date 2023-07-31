@@ -32,8 +32,7 @@ curl -sSL https://install.hushline.app | bash
 - Port: 465
 8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demoo@scidsg.org. 
 - You need the address of your key, not the search result. For the example above, I would enter https://keys.openpgp.org/vks/v1/by-fingerprint/7B437253F81116E1B1DBFF69D5F9B36A5DC2CAF0 into the appropriate prompt.
-9. Enable unattended-upgrades.
-10. When the installation completes, you'll see your Hush Line address:
+9. When the installation completes, you'll see your Hush Line address:
 ```
 ✅ Installation complete!
                                                
@@ -73,8 +72,7 @@ curl -sSL https://install.hushline.app | bash
 - Port: 465
 8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demoo@scidsg.org. 
 - You need the address of your key, not the search result. For the example above, I would enter https://keys.openpgp.org/vks/v1/by-fingerprint/7B437253F81116E1B1DBFF69D5F9B36A5DC2CAF0 into the appropriate prompt.
-9. Enable unattended-upgrades.
-10. When the installation completes, you'll see your Hush Line address:
+9. When the installation completes, you'll see your Hush Line address:
 ```
 ✅ Installation complete!
                                                
