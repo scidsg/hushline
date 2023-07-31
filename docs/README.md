@@ -2,8 +2,8 @@
 
 ## Installing on Digital Ocean
 
-1. Go to digitalocean.com and create a new account or log in to an existing one.
-2. Create a new Droplet.
+1. Go to [digitalocean.com](digitalocean.com) and create a new account or log in to an existing one.
+2. [Create a new Droplet](https://docs.digitalocean.com/products/droplets/how-to/create/).
 - OS: Debian 11/12 x64
 - Droplet type: Basic
 - CPU options: Regular
@@ -25,12 +25,12 @@ apt update && apt -y dist-upgrade && apt -y autoremove
 curl -sSL https://install.hushline.app | bash
 ```
 - You can choose a Tor-only install, or Tor and a public domain. I'm choosing Tor-only.
-7. You'll need an SMTP-compatible email service. I'm using Gmail in my example:
-- Google account
+7. You'll need an SMTP-compatible email service. I'm using Gmail in my example and need the following information:
+- Gmail address
 - SMTP address: smtp.gmail.com
-- One-time/App password
+- [App password](https://support.google.com/accounts/answer/185833?hl=en)
 - Port: 465
-8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demoo@scidsg.org. 
+8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demo@scidsg.org. 
 - You need the address of your key, not the search result. For the example above, I would enter https://keys.openpgp.org/vks/v1/by-fingerprint/7B437253F81116E1B1DBFF69D5F9B36A5DC2CAF0 into the appropriate prompt.
 9. When the installation completes, you'll see your Hush Line address:
 ```
@@ -64,13 +64,12 @@ apt update && apt -y dist-upgrade && apt -y autoremove
 curl -sSL https://install.hushline.app | bash
 ```
 - You can choose a Tor-only install, or Tor and a public domain. I'm choosing Tor-only.
-
-7. You'll need an SMTP-compatible email service. I'm using Gmail in my example:
-- Google account
+7. You'll need an SMTP-compatible email service. I'm using Gmail in my example and need the following information:
+- Gmail address
 - SMTP address: smtp.gmail.com
-- One-time/App password
+- [App password](https://support.google.com/accounts/answer/185833?hl=en)
 - Port: 465
-8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demoo@scidsg.org. 
+8. Make sure your public PGP key is uploaded to a public keyserver. For example: https://keys.openpgp.org/search?q=demo@scidsg.org. 
 - You need the address of your key, not the search result. For the example above, I would enter https://keys.openpgp.org/vks/v1/by-fingerprint/7B437253F81116E1B1DBFF69D5F9B36A5DC2CAF0 into the appropriate prompt.
 9. When the installation completes, you'll see your Hush Line address:
 ```
