@@ -144,7 +144,7 @@ button {
 	border-radius: 50vw;
 	border: none;
 	font-weight: 700;
-	background-color: #9E4BDD;
+	background: linear-gradient(135deg, #9E4BDD 0%, #7D25C1 100%);
 	color: #fff;
 	width: 50%;
 	min-width: 240px;
@@ -163,7 +163,7 @@ button {
 	height: fit-content;
 	font-family: 'Atkinson Bold', sans-serif;
   letter-spacing: .05rem;
-  color: #9E4BDD;
+  color: #7D25C1;
 }
 
 .spinner {
