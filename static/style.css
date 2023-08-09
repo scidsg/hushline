@@ -55,7 +55,7 @@ body {
 	min-height: 100vh;
 	height: auto;
 	padding: 6.5rem 2rem 1rem 2rem;
-	background: linear-gradient(135deg, #FAF3FF 0%, #EFDEFF 100%);
+	background: linear-gradient(135deg, #FCF9FF 0%, #EFDEFF 100%);
 }
 
 h1, p, a, label, input {
