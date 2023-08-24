@@ -8,7 +8,8 @@
 curl -sSL https://install.hushline.app | bash
 ```
 
-To install a 2.7" Waveshare e-Paper display:
+### Install a 2.7" Waveshare e-Paper Display:
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-eink-display.sh | bash
 ```
