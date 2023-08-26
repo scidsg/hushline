@@ -55,7 +55,7 @@ body {
 	min-height: 100vh;
 	height: auto;
 	padding: 6.5rem 2rem 1rem 2rem;
-	background: linear-gradient(135deg, #FCF9FF 0%, #EFDEFF 100%);
+	background-color: #F6EFFF;
 }
 
 h1, p, a, label, input {
@@ -144,7 +144,7 @@ button {
 	border-radius: 50vw;
 	border: none;
 	font-weight: 700;
-	background: linear-gradient(135deg, #9E4BDD 0%, #7D25C1 100%);
+	background-color: #7D25C1;
 	color: #fff;
 	width: 50%;
 	min-width: 240px;
