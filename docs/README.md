@@ -24,7 +24,7 @@ sudo su
 
 ### Step 3: Install Hush Line
 
-1. To install Hush Line, simply execute the following command. This guide uses a Tor-only install.
+1. To install Hush Line, simply execute the following command:
 ```
 curl -sSL https://install.hushline.app | bash
 ```
