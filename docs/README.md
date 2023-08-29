@@ -1,4 +1,4 @@
-# Hush Line Installation
+# Installation Guide
 
 ## Tor-only install using Digital Ocean
 
