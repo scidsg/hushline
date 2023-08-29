@@ -1,8 +1,8 @@
 # Installation Guide
 
-![Option 1: Digital Ocean](#Option-1-Digital-Ccean)
+![Option 1: Digital Ocean](#Option-1:-Digital-Ccean)
 
-![Option 2: Raspberry Pi](#Option-2-Raspberry-Pi)
+![Option 2: Raspberry Pi](#Option-2:-Raspberry-Pi)
 
 ## Option 1: Digital Ocean
 
@@ -68,7 +68,7 @@ http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
 ```
 2. To access your tip line, download [Tor Browser](https://torproject.org/download) and enter the onion address above.
 
-## Option 2: Installing on Raspberry Pi
+## Option 2: Raspberry Pi
 
 ### Requirements
 - **Hardware:** [Raspberry Pi 4](https://www.amazon.com/Raspberry-Model-2019-Quad-Bluetooth/dp/B07TC2BK1X/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=ee402e41cd98b8767ed54b1531ed1666&camp=1789&creative=9325)/[3B+](https://www.amazon.com/ELEMENT-Element14-Raspberry-Pi-Motherboard/dp/B07P4LSDYV/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=d76c1db453c42244fe465c9c56601303&camp=1789&creative=9325)
