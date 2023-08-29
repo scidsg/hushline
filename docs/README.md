@@ -1,8 +1,7 @@
 # Installation Guide
 
-[Option 1: Digital Ocean](#option-1-digital-ocean)
-
-[Option 2: Raspberry Pi](#option-2-raspberry-pi)
+- [Option 1: Digital Ocean](#option-1-digital-ocean)
+- [Option 2: Raspberry Pi](#option-2-raspberry-pi)
 
 ## Option 1: Digital Ocean
 
