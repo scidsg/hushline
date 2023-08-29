@@ -1,6 +1,10 @@
 # Installation Guide
 
-## Tor-only install using Digital Ocean
+![Option 1: Digital Ocean](#Option-1-Digital-Ccean)
+
+![Option 2: Raspberry Pi](#Option-2-Raspberry-Pi)
+
+## Option 1: Digital Ocean
 
 ### Step 1: Create a Digital Ocean account
 
@@ -49,7 +53,6 @@ curl -sSL https://install.hushline.app | bash
 5. After creating your key, choose to upload it to a public keyserver. You'll need to confirm your email address before it finishes uploading. 
 6. On the appropriate prompt during install, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/7B437253F81116E1B1DBFF69D5F9B36A5DC2CAF0 into the appropriate prompt.
 
-
 ### Step 6: Access Hush Line
 
 1. When the installation completes, you'll see your Hush Line address:
@@ -65,7 +68,7 @@ http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
 ```
 2. To access your tip line, download [Tor Browser](https://torproject.org/download) and enter the onion address above.
 
-## Installing on Raspberry Pi
+## Option 2: Installing on Raspberry Pi
 
 ### Requirements
 - **Hardware:** [Raspberry Pi 4](https://www.amazon.com/Raspberry-Model-2019-Quad-Bluetooth/dp/B07TC2BK1X/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=ee402e41cd98b8767ed54b1531ed1666&camp=1789&creative=9325)/[3B+](https://www.amazon.com/ELEMENT-Element14-Raspberry-Pi-Motherboard/dp/B07P4LSDYV/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=d76c1db453c42244fe465c9c56601303&camp=1789&creative=9325)
