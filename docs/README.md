@@ -59,7 +59,7 @@
 
 ### Step 4: Email Notifications
 
-1. To receive tip notifications, you'll need an SMTP-compatible email service. We're using Gmail in our example and need the following information:
+1. You'll need an SMTP-compatible email service to receive tip notifications. We're using Gmail in our example and need the following information:
 - Gmail address
 - SMTP address: smtp.gmail.com
 - [App password](https://support.google.com/accounts/answer/185833?hl=en)
