@@ -5,19 +5,24 @@
 ### Requirements
 - **Hardware:** [Raspberry Pi 4](https://www.amazon.com/Raspberry-Model-2019-Quad-Bluetooth/dp/B07TC2BK1X/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=ee402e41cd98b8767ed54b1531ed1666&camp=1789&creative=9325)/[3B+](https://www.amazon.com/ELEMENT-Element14-Raspberry-Pi-Motherboard/dp/B07P4LSDYV/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=d76c1db453c42244fe465c9c56601303&camp=1789&creative=9325)
 - **Storage:** [Micro SD Card](https://www.amazon.com/SanDisk-128GB-MicroSDXC-Memory-Adapter/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=fd8f40cfc6e84e328e3246af7159eb40&camp=1789&creative=9325)
+- **SD Card Adapter:** [SD Card Reader](https://www.amazon.com/SanDisk-MobileMate-microSD-Card-Reader?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=40c1d3e78e132a951b46e61aab13e4e7&camp=1789&creative=9325) 
 - **OS:** Raspberry Pi OS (64-bit)
 - **Display** (Optional): [Waveshare 2.7" e-Paper display](https://www.amazon.com/2-7inch-HAT-Resolution-Electronic-Communicating/dp/B075FQKSZ9/?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=6963f1303b9d2b8ade8f92f37f2fda26&camp=1789&creative=9325)
 - (👆 Affiliate links)
 
+
+<a target="_blank" href="https://www.amazon.com/SanDisk-MobileMate-microSD-Card-Reader?&_encoding=UTF8&tag=scidsg-20&linkCode=ur2&linkId=40c1d3e78e132a951b46e61aab13e4e7&camp=1789&creative=9325">Adapter</a>
+
 ### Step 1: Install Raspberry Pi OS
 1. Download and open the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
 2. Choose Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
-3. Next, click storage and select your micro SD card.
-4. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
+3. If you have an SD card slot in your computer, insert your card. Otherwise, plug your adapter into a USB port and insert your card. 
+4. Next, click storage and select your micro SD card.
+5. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
    - Enable SSH and create a strong password.
    - Add your Wi-Fi information.
    - Adjust other settings as desired.
-5. Click "Write".
+6. Click "Write".
 
 ### Step 2: Log in to your Pi
 #### Router Settings
