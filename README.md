@@ -8,11 +8,7 @@
 curl -sSL https://install.hushline.app | bash
 ```
 
-### Install an e-Paper Display:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-eink-display.sh | bash
-```
+Check out our [installation guide](https://github.com/scidsg/hushline/blob/main/docs/README.md) for more details.
 
 ## System Requirements
 
