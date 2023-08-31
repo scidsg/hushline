@@ -26,14 +26,18 @@
 6. Click "Write".
 
 ### Step 2: Log in to your Pi
+
+#### Boot Up Your Pi
+1. Insert your SD card into the Raspberry Pi. You'll find it on the bottom of the board, opposite of the ethernet ports.
+2. Plug it in using your new power supply.
+
 #### Router Settings
-1. Find your IP address by booting up your Pi. Wait a couple of minutes for it to boot up completely.
-2. Go to your router admin settings and look for your connected devices. Your device should be named "raspberrypi."
-3. Take note of its IP address. Its format might look like "192.168.0.4."
-4. Next, look for "IP Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, it gets assigned a different IP address. We want to assign your device an IP so you can have a predictable path to log back into your device.
+1. To find your Pi's IP address after booting up your Pi, go to your router's admin settings and look for your connected devices. Your device should be named "raspberrypi."
+2. Take note of its IP address. Its format might look like "192.168.0.4."
+3. Next, look for "IP Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, it'll get assigned a different IP address. We want to assign your device an IP so you can have a predictable address in case you need to log back into your device. Assign it the IP address it currently has.
 
 #### Raspberry Pi   
-1. Open a Terminal, and log in to your Pi using SSH:
+1. Now that you've found your IP address, open a Terminal on your computer, and log in to your Pi using SSH:
 ```
 ssh pi@<IP>
 ```
@@ -59,16 +63,16 @@ curl -sSL https://install.hushline.app | bash
 - If our Gmail address is myburneremail@gmail.com, email notifications will be delivered to that Gmail account.
   - Remember that you can forward messages to any address in your Gmail settings.
 
-### Step 5: Create and add your PGP key
+### Step 5: Create And Add Your PGP Key
 
-#### MacOS
+#### MacOS Instructions
 
 1. Download and install [GPG Suite](https://gpgtools.org/).
 2. Open GPG Keychain.
 3. Click "New" at the top of the window.
 4. Create a key for the email address of your tip line. _You do not have to use your notification email address_. Science & Design uses "tips@scidsg.org" for our purposes. It's critical to enter an email address you own that can receive a confirmation email.
 5. After creating your key, choose to upload it to a public keyserver. You'll need to confirm your email address before it finishes uploading. 
-6. On the appropriate prompt during installation, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/D278DD437B275C8668989A4B425C6C74405C3EB1 into the appropriate prompt.
+6. On the appropriate prompt during installation, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/D278DD437B275C8668989A4B425C6C74405C3EB1.
 
 ### Step 6: Access Hush Line
 
