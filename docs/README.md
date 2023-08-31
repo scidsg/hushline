@@ -42,15 +42,16 @@
    ```
    ssh pi@<IP>
    ```
-3. We'll install Hush Line as root:
+
+### Step 3: Install Hush Line
+
+1. We'll install Hush Line as root:
    
    ```
    sudo su
    ```
 
-### Step 3: Install Hush Line
-
-1. To install Hush Line, execute the following command:
+2. To start the installation process, execute the following command:
 
    ```
    curl -sSL https://install.hushline.app | bash
