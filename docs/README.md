@@ -38,20 +38,23 @@
 
 #### Raspberry Pi   
 1. Now that you've found your IP address, open a Terminal on your computer and log in to your Pi using SSH:
-```
-ssh pi@<IP>
-```
-2. We'll install Hush Line as root:
-```
-sudo su
-```
+   
+   ```
+   ssh pi@<IP>
+   ```
+3. We'll install Hush Line as root:
+   
+   ```
+   sudo su
+   ```
 
 ### Step 3: Install Hush Line
 
 1. To install Hush Line, execute the following command:
-```
-curl -sSL https://install.hushline.app | bash
-```
+
+   ```
+   curl -sSL https://install.hushline.app | bash
+   ```
 
 ### Step 4: Email Notifications
 
@@ -77,6 +80,7 @@ curl -sSL https://install.hushline.app | bash
 ### Step 6: Access Hush Line
 
 1. When the installation completes, you'll see your Hush Line address:
+   
    ```
    ✅ Installation complete!
                                                
@@ -87,17 +91,18 @@ curl -sSL https://install.hushline.app | bash
    ● Hush Line is running
    http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
    ```
-2. To access your tip line, download [Tor Browser](https://torproject.org/download) and enter the onion address above.
+3. To access your tip line, download [Tor Browser](https://torproject.org/download) and enter the onion address above.
 
 ### Step 7: Add An E-Paper Display (optional)
 
 1. We support the Waveshare 2.7" e-paper display. Attach the display to your Pi's GPIO pins with your Pi powered off. Make sure it's seated securely.
 2. Next, execute the following command:
+   
    ```
    curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-eink-display.sh | bash
    ```
-3. Follow the prompts to enable the SPI interface.
-4. When the installation completes, the device will reboot. You'll see the Hush Line splash screen, followed by information about your tip line. It will look like this:
+4. Follow the prompts to enable the SPI interface.
+5. When the installation completes, the device will reboot. You'll see the Hush Line splash screen, followed by information about your tip line. It will look like this:
    
    <img width="350" alt="Group 27" src="https://github.com/scidsg/hushline/assets/28545431/8fd840d2-c2b9-4ba3-b0f8-bbe105c1baa2">
 
