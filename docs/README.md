@@ -28,7 +28,7 @@
 ### Step 2: Log in to your Pi
 
 #### Boot Up Your Pi
-1. Insert your SD card into the Raspberry Pi. You'll find it on the bottom of the board, opposite of the ethernet ports.
+1. Insert your SD card into the Raspberry Pi. You'll find the card slot on the bottom of the board, opposite of the ethernet ports.
 2. Plug it in using your new power supply.
 
 #### Router Settings
