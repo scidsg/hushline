@@ -25,7 +25,7 @@
 ### Step 2: Log in to your Pi
 
 #### Boot Up Your Pi
-1. Insert your SD card into the Raspberry Pi. You'll find the card slot on the bottom of the board, opposite of the ethernet ports.
+1. Insert your SD card into the Raspberry Pi. You'll find the card slot on the bottom of the board, opposite the ethernet ports.
 2. Plug it in using your new power supply.
 
 #### Router Settings
@@ -34,7 +34,7 @@
 3. (_Optional, but recommended_) Next, look for "Address Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, your Pi will get assigned a different IP address. We want to assign it an IP so you can have a predictable address in case you need to log back into your Pi. Assign it the IP address it currently has and give it a descriptive name.
    - For **Netgear routers**, try the Advanced tab > Setup > LAN Setup > Address Reservations > Add.
    - For **TP-Link routers**, try Advanced > DHCP Server > Address Reservation > Add.
-   - All routers are different, so make sure to look at the manufacturer's instructions if you can't find the settings.
+   - All routers are different, so look at the manufacturer's instructions if you can't find the settings.
 
 #### Raspberry Pi   
 1. Now that you've found your IP address, open a Terminal on your computer and log in to your Pi using SSH:
