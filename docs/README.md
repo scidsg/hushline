@@ -13,7 +13,7 @@
 
 ### Step 1: Install Raspberry Pi OS
 1. Download and open the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
-2. Click Choose OS > Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
+2. Click _Choose OS > Raspberry Pi OS (other) > Raspberry Pi OS (64-bit)_.
 3. If you have an SD card slot on your computer, insert your card. Otherwise, plug your adapter into a USB port and insert your card. 
 4. Next, click Choose Storage and select your micro SD card.
 5. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
@@ -32,8 +32,8 @@
 1. To find your Pi's IP address after booting up, go to your router's admin settings and look for your connected devices. Your device should be named "raspberrypi."
 2. Take note of its IP address. Its format might look like "192.168.0.4."
 3. (_Optional, but recommended_) Next, look for "Address Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, your Pi will get assigned a different IP address. We want to assign it an IP so you can have a predictable address in case you need to log back into your Pi. Assign it the IP address it currently has and give it a descriptive name.
-   - For **Netgear routers**, try the Advanced tab > Setup > LAN Setup > Address Reservations > Add.
-   - For **TP-Link routers**, try Advanced > DHCP Server > Address Reservation > Add.
+   - For **Netgear routers**, try the _Advanced tab > Setup > LAN Setup > Address Reservations > Add_.
+   - For **TP-Link routers**, try _Advanced > DHCP Server > Address Reservation > Add_.
    - All routers are different, so look at the manufacturer's instructions if you can't find the settings.
 
 #### Raspberry Pi   
