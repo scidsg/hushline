@@ -16,7 +16,7 @@
 ### Step 1: Install Raspberry Pi OS
 1. Download and open the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
 2. Choose Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
-3. If you have an SD card slot in your computer, insert your card. Otherwise, plug your adapter into a USB port and insert your card. 
+3. If you have an SD card slot on your computer, insert your card. Otherwise, plug your adapter into a USB port and insert your card. 
 4. Next, click storage and select your micro SD card.
 5. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
    - Enable SSH and create a strong password.
@@ -65,7 +65,7 @@ curl -sSL https://install.hushline.app | bash
 1. Download and install [GPG Suite](https://gpgtools.org/).
 2. Open GPG Keychain.
 3. Click "New" at the top of the window.
-4. Create a key for the email address of your tip line. _You do not have to use your notification email address_. Science & Design uses "tips@scidsg.org" for our purposes. It's critical to enter an email address that you own that can receive a confirmation email.
+4. Create a key for the email address of your tip line. _You do not have to use your notification email address_. Science & Design uses "tips@scidsg.org" for our purposes. It's critical to enter an email address you own that can receive a confirmation email.
 5. After creating your key, choose to upload it to a public keyserver. You'll need to confirm your email address before it finishes uploading. 
 6. On the appropriate prompt during installation, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/D278DD437B275C8668989A4B425C6C74405C3EB1 into the appropriate prompt.
 
