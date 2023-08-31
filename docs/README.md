@@ -72,19 +72,33 @@ curl -sSL https://install.hushline.app | bash
 3. Click "New" at the top of the window.
 4. Create a key for the email address of your tip line. _You do not have to use your notification email address_. Science & Design uses "tips@scidsg.org" for our purposes. It's critical to enter an email address you own that can receive a confirmation email.
 5. After creating your key, choose to upload it to a public keyserver. You'll need to confirm your email address before it finishes uploading. 
-6. On the appropriate prompt during installation, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/D278DD437B275C8668989A4B425C6C74405C3EB1.
+6. On the appropriate prompt during installation, enter the address of your uploaded key. For example, for our key seen at https://keys.openpgp.org/search?q=demo@scidsg.org, we would enter https://keys.openpgp.org/vks/v1/by-fingerprint/D278DD437B275C8668989A4B425C6C74405C3EB1. 
 
 ### Step 6: Access Hush Line
 
 1. When the installation completes, you'll see your Hush Line address:
-```
-✅ Installation complete!
+   ```
+   ✅ Installation complete!
                                                
-Hush Line is a product by Science & Design. 
-Learn more about us at https://scidsg.org.
-Have feedback? Send us an email at hushline@scidsg.org.
+   Hush Line is a product by Science & Design. 
+   Learn more about us at https://scidsg.org.
+   Have feedback? Send us an email at hushline@scidsg.org.
 
-● Hush Line is running
-http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
-```
+   ● Hush Line is running
+   http://vfalkrrucjb7pztjskfumnqytpze5iimu4i2t2ygwv6ntylvylt2flad.onion
+   ```
 2. To access your tip line, download [Tor Browser](https://torproject.org/download) and enter the onion address above.
+
+### Step 7: Add An E-Paper Display (optional)
+
+1. We support the Waveshare 2.7" e-paper display. With your Pi powered off, attach the display to your Pi's GPIO pins. Make sure it's seated securely.
+2. Next, execute the following command:
+   ```
+   curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-eink-display.sh | bash
+   ```
+3. Follow the prompts to enable the SPI interface.
+4. When the installation completes, the device will reboot. You'll see the Hush Line splash screen, followed by information about your tip line. It will look like this:
+   
+   <img width="350" alt="Group 27" src="https://github.com/scidsg/hushline/assets/28545431/8fd840d2-c2b9-4ba3-b0f8-bbe105c1baa2">
+
+
