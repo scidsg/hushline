@@ -13,9 +13,9 @@
 
 ### Step 1: Install Raspberry Pi OS
 1. Download and open the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
-2. Choose Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
+2. Click Choose OS > Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
 3. If you have an SD card slot on your computer, insert your card. Otherwise, plug your adapter into a USB port and insert your card. 
-4. Next, click storage and select your micro SD card.
+4. Next, click Choose Storage and select your micro SD card.
 5. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
    - Enable SSH and create a strong password.
    - Add your Wi-Fi information.
