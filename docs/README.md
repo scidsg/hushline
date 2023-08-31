@@ -34,7 +34,9 @@
 #### Router Settings
 1. To find your Pi's IP address after booting up, go to your router's admin settings and look for your connected devices. Your device should be named "raspberrypi."
 2. Take note of its IP address. Its format might look like "192.168.0.4."
-3. (_Optional, but recommended_) Next, look for "IP Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, it'll get assigned a different IP address. We want to assign your device an IP so you can have a predictable address in case you need to log back into your device. Assign it the IP address it currently has.
+3. (_Optional, but recommended_) Next, look for "Address Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, your Pi will get assigned a different IP address. We want to assign it an IP so you can have a predictable address in case you need to log back into your Pi. Assign it the IP address it currently has and give it a descriptive name.
+   - For Netgear routers, try the Advanced tab > Setup > LAN Setup > Address Reservations > Add.
+   - For TP-Link routers, try Advanced > DHCP Server > Address Reservation > Add.
 
 #### Raspberry Pi   
 1. Now that you've found your IP address, open a Terminal on your computer, and log in to your Pi using SSH:
