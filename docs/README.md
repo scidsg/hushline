@@ -11,14 +11,13 @@
 
 ### Step 1: Install Raspberry Pi OS
 1. Download and open the official Raspberry Pi Imager: https://www.raspberrypi.com/software/
-2. Click on the Settings button in the bottom right of the window.
-3. Choose Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
-4. Next, click storage and select your micro SD card.
-5. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
+2. Choose Raspberry Pi OS (other) > Raspberry Pi OS (64-bit).
+3. Next, click storage and select your micro SD card.
+4. Before writing the operating system to the card, click the Settings button in the bottom-right of the window.
    - Enable SSH and create a strong password.
    - Add your Wi-Fi information.
    - Adjust other settings as desired.
-6. Click "Write".
+5. Click "Write".
 
 ### Step 2: Log in to your Pi
 #### Router Settings
