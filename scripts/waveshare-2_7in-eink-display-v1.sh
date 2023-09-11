@@ -262,7 +262,7 @@ fi
 
 # Download splash screen image
 cd /home/pi/hush-line
-wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
+wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash-sm.png
 
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
