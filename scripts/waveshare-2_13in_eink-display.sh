@@ -32,7 +32,6 @@ pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
 pip3 install requests python-gnupg
 
-
 # Install other Python packages
 pip3 install RPi.GPIO spidev
 apt-get -y autoremove
@@ -54,9 +53,11 @@ import textwrap
 import qrcode
 import requests
 import gnupg
+import traceback
 from waveshare_epd import epd2in13_V3
 from PIL import Image, ImageDraw, ImageFont
 from PIL import ImageOps
+print(Image.__version__)
 
 def display_splash_screen(epd, image_path, display_time):
     print(f'Displaying splash screen: {image_path}')
@@ -66,7 +67,7 @@ def display_splash_screen(epd, image_path, display_time):
     height_ratio = target_height / image.height
     target_width = int(image.width * height_ratio)
 
-    image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    image = image.resize((target_width, target_height), Image.BICUBIC)
     image_bw = Image.new("1", (epd.height, epd.width), 255)
     paste_x = (epd.height - target_width) // 2
     paste_y = (epd.width - target_height) // 2
@@ -121,7 +122,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     font_instruction = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
     instruction_text = "Scan the QR code to send a private Hush Line message:"
     max_width = int(epd.width * .9)
-    chars_per_line = max_width // font_instruction.getsize('A')[0]
+    chars_per_line = max_width // draw.textsize('A', font=font_instruction)[0]
 
     # make sure chars_per_line is at least 1
     chars_per_line = max(1, chars_per_line)
@@ -130,7 +131,7 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     wrapped_instruction = textwrap.wrap(instruction_text, width=chars_per_line)
     for line in wrapped_instruction:
         draw.text((x_pos_info, y_pos_instruction), line, font=font_instruction, fill=0)
-        y_pos_instruction += font_instruction.getsize(line)[1]
+        y_pos_instruction += draw.textsize(line, font=font_instruction)[1]
 
     # Display the PGP owner information
     font_info = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 10)
@@ -148,9 +149,9 @@ def display_status(epd, onion_address, name, email, key_id, expires):
     for i, line in enumerate(wrapped_pgp_info):
         draw.text((x_pos_info, y_pos_info), line, font=font_info, fill=0)
         if i < len(wrapped_pgp_info) - 1 and wrapped_pgp_info[i + 1] == '':
-            y_pos_info += font_info.getsize(line)[1] + empty_line_spacing
+            y_pos_info += draw.textsize(line, font=font_info)[1] + empty_line_spacing
         else:
-            y_pos_info += font_info.getsize(line)[1] + line_spacing
+            y_pos_info += draw.textsize(line, font=font_info)[1] + line_spacing
 
     # Display the image on the e-ink display
     epd.display(epd.getbuffer(image.rotate(90, expand=True)))  # Rotate the image before displaying
