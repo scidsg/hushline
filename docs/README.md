@@ -28,7 +28,7 @@
 1. Insert your SD card into the Raspberry Pi. You'll find the card slot on the bottom of the board, opposite the ethernet ports.
 2. Plug it in using your new power supply.
 
-#### Router Settings (optional)
+#### Router Settings
 
 1. To find your Pi's IP address after booting up, go to your router's admin settings and look for your connected devices. Your device should be named "raspberrypi."
 2. Take note of its IP address. Its format might look like "192.168.0.4."
