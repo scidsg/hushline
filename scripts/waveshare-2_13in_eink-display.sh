@@ -269,7 +269,7 @@ fi
 # Download splash screen image
 cd /home/pi/hush-line
 wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash-sm.png
-pip3 uninstall Pillow
+pip3 uninstall -y Pillow
 pip3 install Pillow
 
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
