@@ -63,7 +63,7 @@ def display_splash_screen(epd, image_path, display_time):
     print(f'Displaying splash screen: {image_path}')
     image = Image.open(image_path).convert("L")
 
-    target_height = int(epd.width * 1)
+    target_height = int(epd.width * 0.75)
     height_ratio = target_height / image.height
     target_width = int(image.width * height_ratio)
 
@@ -268,9 +268,7 @@ fi
 
 # Download splash screen image
 cd /home/pi/hush-line
-wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash-sm.png
-pip3 uninstall -y Pillow
-pip3 install Pillow
+wget https://raw.githubusercontent.com/scidsg/brand-resources/main/logos/splash-sm.png
 
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
