@@ -29,6 +29,7 @@
 2. Plug it in using your new power supply.
 
 #### Router Settings
+
 1. To find your Pi's IP address after booting up, go to your router's admin settings and look for your connected devices. Your device should be named "raspberrypi."
 2. Take note of its IP address. Its format might look like "192.168.0.4."
 3. (_Optional, but recommended_) Next, look for "Address Reservations" in your router settings. It may also be called "Static IP Addresses." Sometimes, when your router or device reboots, your Pi will get assigned a different IP address. We want to assign it an IP so you can have a predictable address in case you need to log back into your Pi. Assign it the IP address it currently has and give it a descriptive name.
@@ -106,5 +107,3 @@
 5. When the installation completes, the device will reboot. You'll see the Hush Line splash screen, followed by information about your tip line. It will look like this:
    
    <img width="350" alt="Group 27" src="https://github.com/scidsg/hushline/assets/28545431/8fd840d2-c2b9-4ba3-b0f8-bbe105c1baa2">
-
-
