@@ -63,7 +63,7 @@ def display_splash_screen(epd, image_path, display_time):
     print(f'Displaying splash screen: {image_path}')
     image = Image.open(image_path).convert("L")
 
-    target_height = int(epd.width * 0.75)
+    target_height = int(epd.width * 1)
     height_ratio = target_height / image.height
     target_width = int(image.width * height_ratio)
 
