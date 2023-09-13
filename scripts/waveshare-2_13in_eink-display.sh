@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Welcome message and ASCII art
-cat << "EOF"                                                        
+cat <<"EOF"
                                                             
    __             _____      __      _____      __    _ __  
  /'__`\  _______ /\ '__`\  /'__`\   /\ '__`\  /'__`\ /\`'__\
@@ -45,7 +45,7 @@ else
 fi
 
 # Create a new script to display status on the e-ink display
-cat > /home/pi/hush-line/display_status.py << EOL
+cat >/home/pi/hush-line/display_status.py <<EOL
 import os
 import sys
 import time
@@ -217,7 +217,7 @@ if __name__ == '__main__':
 EOL
 
 # Create a new script to display status on the e-ink display
-cat > /home/pi/hush-line/clear_display.py << EOL
+cat >/home/pi/hush-line/clear_display.py <<EOL
 import sys
 from waveshare_epd import epd2in13_V3
 from PIL import Image
@@ -244,7 +244,7 @@ if __name__ == '__main__':
 EOL
 
 # Clear display before shutdown
-cat > /etc/systemd/system/clear-display.service << EOL
+cat >/etc/systemd/system/clear-display.service <<EOL
 [Unit]
 Description=Clear e-Paper display before shutdown
 DefaultDependencies=no
@@ -263,7 +263,7 @@ sudo systemctl enable clear-display.service
 
 # Add a line to the .bashrc to run the display_status.py script on boot
 if ! grep -q "sudo python3 /home/pi/hush-line/display_status.py" /home/pi/.bashrc; then
-    echo "sudo python3 /home/pi/hush-line/display_status.py &" >> /home/pi/.bashrc
+    echo "sudo python3 /home/pi/hush-line/display_status.py &" >>/home/pi/.bashrc
 fi
 
 # Download splash screen image
