@@ -56,7 +56,7 @@ pip3 install -r requirements.txt
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
 
 # Create a systemd service
-cat > /etc/systemd/system/hush-line.service << EOL
+cat >/etc/systemd/system/hush-line.service <<EOL
 [Unit]
 Description=Hush Line Web App
 After=network.target
@@ -85,7 +85,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-sudo tee /etc/tor/torrc << EOL
+sudo tee /etc/tor/torrc <<EOL
 RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:5000
@@ -99,7 +99,7 @@ sleep 10
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
 
 # Configure Nginx
-cat > /etc/nginx/sites-available/hush-line.nginx << EOL
+cat >/etc/nginx/sites-available/hush-line.nginx <<EOL
 server {
     listen 80;
     server_name $DOMAIN;
@@ -135,7 +135,7 @@ server {
 EOL
 
 # Configure Nginx with privacy-preserving logging
-cat > /etc/nginx/nginx.conf << EOL
+cat >/etc/nginx/nginx.conf <<EOL
 user www-data;
 worker_processes auto;
 pid /run/nginx.pid;
@@ -208,7 +208,10 @@ whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records 
 certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 # Set up cron job to renew SSL certificate
-(crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
+(
+    crontab -l 2>/dev/null
+    echo "30 2 * * 1 /usr/bin/certbot renew --quiet"
+) | crontab -
 
 # System status indicator
 display_status_indicator() {
@@ -252,9 +255,9 @@ echo "display_status_indicator() {
     else
         printf \"\n\033[31m●\033[0m Hush Line is not running\n\n\"
     fi
-}" >> /etc/bash.bashrc
+}" >>/etc/bash.bashrc
 
-echo "display_status_indicator" >> /etc/bash.bashrc
+echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
 sudo systemctl restart hush-line
