@@ -20,6 +20,10 @@ sender_email = os.environ.get("EMAIL", None)
 sender_password = os.environ.get("NOTIFY_PASSWORD", None)
 smtp_server = os.environ.get("NOTIFY_SMTP_SERVER", None)
 smtp_port = int(os.environ.get("NOTIFY_SMTP_PORT", 0))
+hushline_title = os.environ.get("HUSHLINE_TITLE", "🤫 Hush Line")
+hushline_close_app_link = os.environ.get(
+    "HUSHLINE_CLOSE_APP_LINK", "https://en.wikipedia.org/wiki/Tina_Turner"
+)
 
 if not sender_email or not sender_password or not smtp_server or not smtp_port:
     log.warn(
@@ -39,7 +43,11 @@ def encrypt_message(message):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        title=hushline_title,
+        close_app_link=hushline_close_app_link,
+    )
 
 
 @app.route("/save_message", methods=["POST"])

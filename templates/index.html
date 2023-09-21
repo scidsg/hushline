@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="author" content="Glenn Sorrentino, Science & Design, Inc.">
@@ -7,21 +8,27 @@
     <meta name="description" content="A reasonably private and secure personal tip line.">
     <meta name="theme-color" content="#7D25C1">
 
-    <title>Hush Line</title>
+    <title>{{ title }}</title>
 
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}" sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}" sizes="16x16">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-192x192.png') }}" sizes="192x192">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-512x512.png') }}" sizes="512x512">
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}"
+        sizes="32x32">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}"
+        sizes="16x16">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-192x192.png') }}"
+        sizes="192x192">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-512x512.png') }}"
+        sizes="512x512">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <header>
         <div class="wrapper">
-            <h1>🤫 Hush Line</h1>
-            <a href="https://en.wikipedia.org/wiki/Tina_Turner" class="btn" rel="noopener noreferrer">Close App</a>
+            <h1>{{ title }}</h1>
+            <a href="{{ close_app_link }}" class="btn" rel="noopener noreferrer">Close App</a>
         </div>
     </header>
     <div id="pgp-owner-info" class="card mt-3">
@@ -37,14 +44,17 @@
         </div>
     </div>
     <form id="message-form" action="/save_message" method="POST">
-        <textarea name="message" rows="10" cols="60" required placeholder="Please leave a contact method if you'd like a response..."></textarea>
-        <p>🔒 Your message will be encrypted and only readable by the owner of the address above. <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
+        <textarea name="message" rows="10" cols="60" required
+            placeholder="Please leave a contact method if you'd like a response..."></textarea>
+        <p>🔒 Your message will be encrypted and only readable by the owner of the address above. <a
+                href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
         <div class="button-container">
-          <button type="submit" id="submit-button">Submit</button>
-          <span class="spinner hidden"></span>
+            <button type="submit" id="submit-button">Submit</button>
+            <span class="spinner hidden"></span>
         </div>
     </form>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
+
 </html>

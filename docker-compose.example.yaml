@@ -12,4 +12,3 @@ services:
       - NOTIFY_SMTP_SERVER=smtp.gmail.com
       - NOTIFY_SMTP_PORT=465
       - NOTIFY_PASSWORD=yourpassword
-      - PGP_KEY_ADDRESS=https://example.com/key.asc
