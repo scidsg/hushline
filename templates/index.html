@@ -35,15 +35,15 @@
         <div class="card-header">
             <h3 class="card-title">To:</h3>
         </div>
-        {% if pgp_enabled %}
         <div class="card-body">
-            <p id="pgp-owner"></p>
+            <p id="recipient">{{ recipient }}</p>
+            {% if pgp_enabled %}
             <div class="pgp-meta">
-                <p id="pgp-key-id"></p>
-                <p id="pgp-expires"></p>
+                <p id="pgp-key-id">{{ pgp_key_id }}</p>
+                <p id="pgp-expires">{{ pgp_expires }}</p>
             </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
     <form id="message-form" action="/save_message" method="POST">
         <textarea name="message" rows="10" cols="60" required

@@ -8,9 +8,12 @@ services:
     volumes:
       - ./public_key.asc:/app/public_key.asc:ro
     environment:
-      - EMAIL=email@example.com
-      - NOTIFY_SMTP_SERVER=smtp.gmail.com
-      - NOTIFY_SMTP_PORT=465
-      - NOTIFY_PASSWORD=yourpassword
-      - HUSHLINE_PGP_ENABLED=true
-      - HUSHLINE_PGP_FILENAME=public_key.asc
+      - RECIPIENT_NAME=Your Name
+      - RECIPIENT_EMAIL=recipient@example.com
+      - SENDER_EMAIL=sender@example.com
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_USER=username@example.com
+      - SMTP_PASSWORD=yourpassword
+      - PGP_ENABLED=true
+      - PGP_FILENAME=public_key.asc

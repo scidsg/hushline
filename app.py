@@ -16,18 +16,21 @@ log.info("Starting Hush Line")
 
 app = Flask(__name__)
 
-sender_email = os.environ.get("EMAIL", None)
-sender_password = os.environ.get("NOTIFY_PASSWORD", None)
-smtp_server = os.environ.get("NOTIFY_SMTP_SERVER", None)
-smtp_port = int(os.environ.get("NOTIFY_SMTP_PORT", 0))
-title = os.environ.get("HUSHLINE_TITLE", "🤫 Hush Line")
+recipient_name = os.environ.get("RECIPIENT_NAME", None)
+recipient_email = os.environ.get("RECIPIENT_EMAIL", None)
+sender_email = os.environ.get("SENDER_EMAIL", None)
+smtp_server = os.environ.get("SMTP_SERVER", None)
+smtp_port = int(os.environ.get("SMTP_PORT", 465))
+smtp_user = os.environ.get("SMTP_USER", None)
+smtp_password = os.environ.get("SMTP_PASSWORD", None)
+title = os.environ.get("TITLE", "🤫 Hush Line")
 close_app_link = os.environ.get(
-    "HUSHLINE_CLOSE_APP_LINK", "https://en.wikipedia.org/wiki/Tina_Turner"
+    "CLOSE_APP_LINK", "https://en.wikipedia.org/wiki/Tina_Turner"
 )
-pgp_enabled = os.environ.get("HUSHLINE_PGP_ENABLED", "true").lower() == "true"
-pgp_filename = os.environ.get("HUSHLINE_PGP_FILENAME", "public_key.asc")
+pgp_enabled = os.environ.get("PGP_ENABLED", "true").lower() == "true"
+pgp_filename = os.environ.get("PGP_FILENAME", "public_key.asc")
 
-if not sender_email or not sender_password or not smtp_server or not smtp_port:
+if not smtp_server or not smtp_port or not smtp_user or not smtp_password:
     log.warn(
         "Missing email notification configuration(s). Email notifications will not be sent."
     )
@@ -47,11 +50,26 @@ if pgp_enabled:
 
 @app.route("/")
 def index():
+    if pgp_enabled:
+        recipient = f"{PUBLIC_KEY.userids[0].name}\n<{PUBLIC_KEY.userids[0].email}>"
+        pgp_key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
+        if PUBLIC_KEY.expires_at is not None:
+            pgp_expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
+        else:
+            pgp_expires = f"Exp: never"
+    else:
+        recipient = f"{recipient_name} <{recipient_email}>"
+        pgp_key_id = None
+        pgp_expires = None
+
     return render_template(
         "index.html",
         title=title,
         close_app_link=close_app_link,
+        recipient=recipient,
         pgp_enabled=pgp_enabled,
+        pgp_key_id=pgp_key_id,
+        pgp_expires=pgp_expires,
     )
 
 
@@ -63,14 +81,13 @@ def save_message():
 
     with open("messages.txt", "a") as f:
         f.write(message + "\n\n")
-    send_email_notification(message)
-    return jsonify({"success": True})
+    return jsonify(send_email_notification(message))
 
 
 def send_email_notification(message):
     msg = MIMEMultipart()
     msg["From"] = sender_email
-    msg["To"] = sender_email
+    msg["To"] = f"{recipient_name} <{recipient_email}>"
     msg["Subject"] = "🤫 New Hush Line Message Received"
 
     body = f"{message}"
@@ -78,24 +95,12 @@ def send_email_notification(message):
 
     try:
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, sender_email, msg.as_string())
+            server.login(smtp_user, smtp_password)
+            server.sendmail(sender_email, recipient_email, msg.as_string())
+        return {"success": True}
     except Exception as e:
         log.error(f"Error sending email notification: {e}")
-
-
-@app.route("/pgp_owner_info")
-def pgp_owner_info():
-    if pgp_enabled:
-        owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
-        key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
-        if PUBLIC_KEY.expires_at is not None:
-            expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
-        else:
-            expires = f"Exp: never"
-        return jsonify({"owner_info": owner, "key_id": key_id, "expires": expires})
-    else:
-        return jsonify(False)
+        return {"success": False, "error": str(e)}
 
 
 if __name__ == "__main__":
