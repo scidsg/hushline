@@ -12,11 +12,11 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-cd /home/pi/hush-line/templates
+cd /home/pi/hushline/templates
 mv index.html index.html.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/templates/index.html
 
-cd /home/pi/hush-line/static
+cd /home/pi/hushline/static
 mv style.css style.css.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/static/style.css
 
@@ -29,8 +29,8 @@ Have feedback? Send us an email at hushline@scidsg.org."
 
 sudo systemctl restart hush-line
 
-rm /home/pi/hush-line/static/style.css.old
-rm /home/pi/hush-line/templates/index.html.old
+rm /home/pi/hushline/static/style.css.old
+rm /home/pi/hushline/templates/index.html.old
 
 # Disable the trap before exiting
 trap - ERR
