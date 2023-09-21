@@ -35,6 +35,7 @@
         <div class="card-header">
             <h3 class="card-title">To:</h3>
         </div>
+        {% if pgp_enabled %}
         <div class="card-body">
             <p id="pgp-owner"></p>
             <div class="pgp-meta">
@@ -42,12 +43,18 @@
                 <p id="pgp-expires"></p>
             </div>
         </div>
+        {% endif %}
     </div>
     <form id="message-form" action="/save_message" method="POST">
         <textarea name="message" rows="10" cols="60" required
             placeholder="Please leave a contact method if you'd like a response..."></textarea>
+        {% if pgp_enabled %}
         <p>🔒 Your message will be encrypted and only readable by the owner of the address above. <a
                 href="https://hushline.app" target="_blank" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
+        {% else %}
+        <p>🔒 Your message will be anonymously emailed to the address above. <a href="https://hushline.app"
+                target="_blank" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
+        {% endif %}
         <div class="button-container">
             <button type="submit" id="submit-button">Submit</button>
             <span class="spinner hidden"></span>

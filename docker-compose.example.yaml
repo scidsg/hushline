@@ -12,3 +12,5 @@ services:
       - NOTIFY_SMTP_SERVER=smtp.gmail.com
       - NOTIFY_SMTP_PORT=465
       - NOTIFY_PASSWORD=yourpassword
+      - HUSHLINE_PGP_ENABLED=true
+      - HUSHLINE_PGP_FILENAME=public_key.asc

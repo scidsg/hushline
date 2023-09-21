@@ -44,6 +44,12 @@ document.addEventListener("DOMContentLoaded", function () {
     xhr.onload = function () {
       if (xhr.status === 200) {
         const result = JSON.parse(xhr.responseText);
+        // If result is false
+        if (!result) {
+          console.error("No PGP owner info.");
+          return;
+        }
+
         const pgpOwner = document.getElementById("pgp-owner");
         const pgpKeyId = document.getElementById("pgp-key-id");
         const pgpExpires = document.getElementById("pgp-expires");
