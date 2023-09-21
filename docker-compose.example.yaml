@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:80"
+    volumes:
+      - ./public_key.asc:/app/public_key.asc:ro
+    environment:
+      - EMAIL=email@example.com
+      - NOTIFY_SMTP_SERVER=smtp.gmail.com
+      - NOTIFY_SMTP_PORT=465
+      - NOTIFY_PASSWORD=yourpassword
+      - PGP_KEY_ADDRESS=https://example.com/key.asc
