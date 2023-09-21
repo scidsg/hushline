@@ -79,8 +79,6 @@ def save_message():
     if pgp_enabled:
         message = encrypt_message(message)
 
-    with open("messages.txt", "a") as f:
-        f.write(message + "\n\n")
     return jsonify(send_email_notification(message))
 
 
