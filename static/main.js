@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const result = JSON.parse(responseText);
 
     if (result.success) {
-      alert("Your message has been successfully submitted.");
+      alert("Your message has been successfully encrypted and submitted.");
       form.reset();
     } else {
       alert("An error occurred. Please try again.");
@@ -34,4 +34,39 @@ document.addEventListener("DOMContentLoaded", function () {
     spinner.style.display = 'none';
     submitButton.classList.remove("button-text-hidden");
   });
+
+  const pgpOwnerInfo = document.getElementById("pgp-owner-info");
+
+  // Fetch the PGP info when the page loads
+  const fetchPGPInfo = async () => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "/pgp_owner_info");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        const result = JSON.parse(xhr.responseText);
+        const pgpOwner = document.getElementById("pgp-owner");
+        const pgpKeyId = document.getElementById("pgp-key-id");
+        const pgpExpires = document.getElementById("pgp-expires");
+
+        // Add angle brackets around the email
+        const emailRegex = /([\w.-]+@[\w.-]+\.\w+)/;
+        const modifiedOwnerInfo = result.owner_info.replace(emailRegex, '<$1>');
+        pgpOwner.textContent = modifiedOwnerInfo;
+        pgpKeyId.textContent = result.key_id;
+        pgpExpires.textContent = result.expires;
+
+        // Display the PGP owner info right away
+        pgpOwnerInfo.style.display = "block";
+        pgpOwnerInfo.style.maxHeight = pgpOwnerInfo.scrollHeight + "px";
+      } else {
+        console.error(xhr.statusText);
+      }
+    };
+    xhr.onerror = function () {
+      console.error(xhr.statusText);
+    };
+    xhr.send();
+  };
+
+  fetchPGPInfo();
 });
