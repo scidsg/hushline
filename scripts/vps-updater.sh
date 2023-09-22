@@ -12,11 +12,11 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-cd ~/hush-line/templates
+cd ~/hushline/templates
 mv index.html index.html.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/templates/index.html
 
-cd ~/hush-line/static
+cd ~/hushline/static
 mv style.css style.css.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/static/style.css
 
