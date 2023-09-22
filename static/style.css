@@ -166,22 +166,6 @@ button {
   color: #7D25C1;
 }
 
-.spinner {
-  display: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #ffffff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  background-color: #7D25C1;
-  z-index: 1;
-}
-
 /* Add the @keyframes rule for the spinning animation */
 @keyframes spin {
   0% {
@@ -212,7 +196,7 @@ button {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  background-color: #1d1d1c;
+  background-color: #7D25C1;
   z-index: 1;
 }
 
