@@ -29,8 +29,8 @@ Have feedback? Send us an email at hushline@scidsg.org."
 
 sudo systemctl restart hush-line
 
-rm ~/hush-line/static/style.css.old
-rm ~/hush-line/templates/index.html.old
+rm ~/hushline/static/style.css.old
+rm ~/hushline/templates/index.html.old
 
 # Disable the trap before exiting
 trap - ERR
