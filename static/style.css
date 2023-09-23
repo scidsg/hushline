@@ -113,7 +113,7 @@ form.setup-form button {
 }
 
 .setup-form input:focus {
-	 outline: 1px solid #7D25C1;
+	 outline: 2px solid #7D25C1;
 }
 
 .emoji {
