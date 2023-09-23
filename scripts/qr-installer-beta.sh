@@ -62,21 +62,42 @@ from waveshare_epd import epd2in7
 from PIL import Image, ImageDraw, ImageFont
 
 def generate_qr_code(data):
-    # Generate the QR code
+    print("Generating QR code...")
     qr = qrcode.QRCode(
-        version=1,  # controls the size of the QR Code
-        error_correction=qrcode.constants.ERROR_CORRECT_L,  # controls the error correction used for the QR Code
-        box_size=10,  # controls how many pixels each “box” of the QR code is
-        border=4,  # controls how many boxes thick the border should be
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
     )
     qr.add_data(data)
     qr.make(fit=True)
     img = qr.make_image(fill='black', back_color='white')
+    img = img.convert('1')  # Convert to 1-bit image
     
-    # Since the e-paper display needs images in a 1-bit format, we convert it
-    img = img.convert('1')
+    # Calculate the new size preserving aspect ratio
+    base_width, base_height = img.size
+    aspect_ratio = float(base_width) / float(base_height)
+    new_height = int(epd2in7.EPD_HEIGHT)
+    new_width = int(aspect_ratio * new_height)
+
+    if new_width > epd2in7.EPD_WIDTH:
+        new_width = epd2in7.EPD_WIDTH
+        new_height = int(new_width / aspect_ratio)
+
+    # Calculate position to paste
+    x_pos = (epd2in7.EPD_WIDTH - new_width) // 2
+    y_pos = (epd2in7.EPD_HEIGHT - new_height) // 2
     
-    return img
+    img_resized = img.resize((new_width, new_height))
+    
+    # Create a blank (white) image to paste the QR code on
+    img_blank = Image.new('1', (epd2in7.EPD_WIDTH, epd2in7.EPD_HEIGHT), 255)
+    img_blank.paste(img_resized, (x_pos, y_pos))
+
+    # Save to disk for debugging
+    img_blank.save("debug_qr_code.png")
+    
+    return img_blank
 
 def main():
     epd = epd2in7.EPD()
