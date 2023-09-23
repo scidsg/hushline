@@ -105,6 +105,7 @@ form.setup-form button {
   outline: 1px solid rgba(0,0,0,0.1);
   box-shadow: 0px 4px 12px -4px rgba(0,0,0,0.15);
   border: none;
+  font-size: 1rem;
 }
 
 .setup-form label {
