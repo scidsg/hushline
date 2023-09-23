@@ -86,6 +86,37 @@ header .wrapper {
 	align-items: center;
 }
 
+form.setup-form {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+form.setup-form button {
+	align-self: center;
+}
+
+.setup-form input {
+	padding: .75rem;
+  margin-bottom: 1rem;
+  border-radius: .25rem;
+  outline: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0px 4px 12px -4px rgba(0,0,0,0.15);
+  border: none;
+  font-size: 1rem;
+}
+
+.setup-form label {
+	font-size: .925rem;
+	margin-bottom: .5rem;
+}
+
+.setup-form input:focus {
+	 outline: 2px solid #7D25C1;
+}
+
 .emoji {
 	font-size: 2.75rem;
 	margin-bottom: .5rem;
