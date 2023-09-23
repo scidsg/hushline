@@ -31,8 +31,6 @@ source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
 pip3 install -r requirements.txt
 
-LOCAL_IP=$(hostname -I | awk '{print $1}')
-
 # Launch Flask app for setup
 nohup python3 setup_server_beta.py --host=0.0.0.0 &
 
@@ -41,7 +39,7 @@ sleep 5
 # Display the QR code from the file
 cat /tmp/qr_code.txt
 
-echo "The Flask app for setup is running. Please complete the setup by navigating to http://${LOCAL_IP}:5000/setup."
+echo "The Flask app for setup is running. Please complete the setup by navigating to http://hushline.local:5000/setup."
 
 # Wait for user to complete setup form
 while [ ! -f "/tmp/setup_config.json" ]; do
@@ -56,7 +54,7 @@ NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 PGP_KEY_ADDRESS=$(jq -r '.pgp_key_address' /tmp/setup_config.json)
 
 # Kill the Flask setup process
-pkill -f setup_server.py
+pkill -f setup_server_beta.py
 
 # Download the public PGP key and rename to public_key.asc
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
