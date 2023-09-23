@@ -112,6 +112,10 @@ form.setup-form button {
 	margin-bottom: .5rem;
 }
 
+.setup-form input:focus {
+	 outline: 1px solid #7D25C1;
+}
+
 .emoji {
 	font-size: 2.75rem;
 	margin-bottom: .5rem;
