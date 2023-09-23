@@ -15,4 +15,9 @@ curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/wavesha
 curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_13in_eink-display.sh | bash
 ```
 
-https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_13in_eink-display.sh
+## QR Beta Installer
+```
+curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/qr-installer-beta.sh | bash
+```
+
+
