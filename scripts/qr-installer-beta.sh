@@ -34,6 +34,74 @@ source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
 pip3 install -r requirements.txt
 
+# Install Waveshare e-Paper library
+git clone https://github.com/waveshare/e-Paper.git
+pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
+pip3 install qrcode[pil]
+pip3 install requests python-gnupg
+
+# Install other Python packages
+pip3 install RPi.GPIO spidev
+apt-get -y autoremove
+
+# Enable SPI interface
+if ! grep -q "dtparam=spi=on" /boot/config.txt; then
+    echo "dtparam=spi=on" | sudo tee -a /boot/config.txt
+    echo "SPI interface enabled."
+else
+    echo "SPI interface is already enabled."
+fi
+
+# Create a new script to display status on the e-ink display
+cat >/home/pi/hushline/display-setup-qr-beta.py <<EOL
+import os
+import sys
+import time
+import qrcode
+from waveshare_epd import epd2in7
+from PIL import Image, ImageDraw, ImageFont
+
+def generate_qr_code(data):
+    # Generate the QR code
+    qr = qrcode.QRCode(
+        version=1,  # controls the size of the QR Code
+        error_correction=qrcode.constants.ERROR_CORRECT_L,  # controls the error correction used for the QR Code
+        box_size=10,  # controls how many pixels each “box” of the QR code is
+        border=4,  # controls how many boxes thick the border should be
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+    
+    # Since the e-paper display needs images in a 1-bit format, we convert it
+    img = img.convert('1')
+    
+    return img
+
+def main():
+    epd = epd2in7.EPD()
+    epd.init()
+
+    # Generate QR code for your URL or data
+    qr_code_image = generate_qr_code("http://hushline.local:5000/setup")
+
+    # Clear frame memory
+    epd.Clear(0xFF)
+    
+    # Display the QR code
+    epd.display(epd.getbuffer(qr_code_image))
+
+    time.sleep(2)
+
+    # You could also put it to sleep or perform other operations on the display here
+    epd.sleep()
+    
+if __name__ == "__main__":
+    main()
+EOL
+
+nohup python3 display-setup-qr-beta.py --host=0.0.0.0 &
+
 # Launch Flask app for setup
 nohup python3 setup_server_beta.py --host=0.0.0.0 &
 
