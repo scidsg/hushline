@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#Run as root
+if [[ $EUID -ne 0 ]]; then
+  echo "Script needs to run as root. Elevating permissions now."
+  exec sudo /bin/bash "$0" "$@"
+fi
+
 # Welcome message
 cat <<"EOF"
 The QR installer is only intended for Tor-only installs on a local device.
@@ -20,9 +26,6 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
 sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq
-
-# Clone your repository containing Flask app
-# git clone https://github.com/scidsg/hushline.git
 
 # Create a virtual environment and install dependencies
 cd hushline
