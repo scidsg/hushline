@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Welcome message
+cat <<"EOF"
+The QR installer is only intended for Tor-only installs on a local device.
+EOF
+sleep 3
+
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
@@ -28,7 +34,7 @@ pip3 install -r requirements.txt
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 
 # Launch Flask app for setup
-nohup python3 setup_server.py --host=0.0.0.0 &
+nohup python3 setup_server_beta.py --host=0.0.0.0 &
 
 sleep 5
 
@@ -219,6 +225,9 @@ sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
 
+# Configure e-paper display
+curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-qr-eink-display-v1-beta.sh | bash
+
 echo "
 ✅ Installation complete!
                                                
@@ -240,6 +249,8 @@ echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
 sudo systemctl restart hush-line
+
+sudo reboot
 
 # Disable the trap before exiting
 trap - ERR
