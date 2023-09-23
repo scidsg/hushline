@@ -50,7 +50,7 @@ NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 PGP_KEY_ADDRESS=$(jq -r '.pgp_key_address' /tmp/setup_config.json)
 
 # Kill the Flask setup process
-pkill -f setup_server.py
+pkill -f scripts/setup_server.py
 
 # Download the public PGP key and rename to public_key.asc
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
