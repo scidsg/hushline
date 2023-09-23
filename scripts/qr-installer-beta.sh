@@ -121,7 +121,7 @@ if __name__ == "__main__":
     main()
 EOL
 
-nohup python3 display-setup-qr-beta.py --host=0.0.0.0 &
+nohup ./venv/bin/python3 display-setup-qr-beta.py --host=0.0.0.0 &
 
 # Launch Flask app for setup
 nohup python3 setup_server_beta.py --host=0.0.0.0 &
