@@ -15,7 +15,6 @@ sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail 
 # Clone the repositories
 git clone https://github.com/waveshare/e-Paper.git
 git clone https://github.com/scidsg/hushline.git
-chmod +x /home/hush/hushline/scripts/blackbox-beta-installer.sh
 
 mv e-Paper/ hushline/
 
