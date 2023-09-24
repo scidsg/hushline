@@ -53,7 +53,7 @@ else
 fi
 
 # Create a new script to display status on the e-ink display
-cat >/home/pi/hushline/display-setup-qr-beta.py <<EOL
+cat >/home/hush/hushline/display-setup-qr-beta.py <<EOL
 import os
 import sys
 import time
