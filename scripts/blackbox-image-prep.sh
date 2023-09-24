@@ -18,7 +18,7 @@ Description=Blackbox Installer
 After=multi-user.target
 
 [Service]
-ExecStart=/home/hush/hushline/scripts/blackbox-beta-installer.sh
+ExecStart=/home/hush/hushline/blackbox-installer.sh
 Type=oneshot
 RemainAfterExit=yes
 
