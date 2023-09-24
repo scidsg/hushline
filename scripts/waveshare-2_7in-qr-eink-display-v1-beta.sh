@@ -183,10 +183,10 @@ def main():
     print("EPD initialized")
 
     # Display splash screen
-    splash_image_path = "/home/pi/hushline/splash.png"
+    splash_image_path = "/home/hush/hushline/splash.png"
     display_splash_screen(epd, splash_image_path, 3)
 
-    pgp_owner_info_url = "/home/pi/hushline/public_key.asc"
+    pgp_owner_info_url = "/home/hush/hushline/public_key.asc"
 
     try:
         while True:
@@ -251,7 +251,7 @@ Before=shutdown.target reboot.target halt.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 /home/pi/hushline/clear_display.py
+ExecStart=/usr/bin/python3 /home/hush/hushline/clear_display.py
 TimeoutStartSec=0
 
 [Install]
@@ -261,8 +261,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable clear-display.service
 
 # Add a line to the .bashrc to run the display_status.py script on boot
-if ! grep -q "sudo python3 /home/hush/hushline/display_status.py" /home/pi/.bashrc; then
-    echo "sudo python3 /home/hush/hushline/display_status.py &" >>/home/pi/.bashrc
+if ! grep -q "sudo python3 /home/hush/hushline/display_status.py" /home/hush/.bashrc; then
+    echo "sudo python3 /home/hush/hushline/display_status.py &" >>/home/hush/.bashrc
 fi
 
 # Download splash screen image
