@@ -7,6 +7,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 git clone https://github.com/scidsg/hushline.git
+chmod +x /home/hush/hushline/scripts/qr-installer-beta.sh
 
 # Create a new script to display status on the e-ink display
 cat >/etc/systemd/system/blackbox-installer.service <<EOL
