@@ -513,6 +513,6 @@ wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
 
-sudo systemctl disable blackbox-installer.service
+sudo systemctl disable qr-installer.service
 
 sudo reboot
