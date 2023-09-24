@@ -6,12 +6,6 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
-# Welcome message
-cat <<"EOF"
-The QR installer is only intended for Tor-only installs on a local device.
-EOF
-sleep 3
-
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
@@ -21,10 +15,6 @@ error_exit() {
 # Trap any errors and call error_exit function
 trap error_exit ERR
 
-# Welcome Prompt
-whiptail --title "E-Ink Display Setup" --msgbox "The e-paper hat communicates with the Raspberry Pi using the SPI interface, so you need to enable it.\n\nNavigate to \"Interface Options\" > \"SPI\" and select \"Yes\" to enable the SPI interface." 12 64
-sudo raspi-config
-
 # Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
@@ -32,7 +22,7 @@ sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq
 
 # Create a virtual environment and install dependencies
-cd hushline
+cd /home/hush/hushline
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
