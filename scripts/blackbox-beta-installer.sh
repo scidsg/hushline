@@ -490,10 +490,6 @@ if ! grep -q "sudo python3 /home/pi/hushline/display_status.py" /home/pi/.bashrc
     echo "sudo python3 /home/pi/hushline/display_status.py &" >>/home/pi/.bashrc
 fi
 
-# Download splash screen image
-cd /home/pi/hushline
-wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
-
 echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
 
