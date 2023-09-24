@@ -6,7 +6,6 @@ apt-get -y dist-upgrade
 apt-get install -y python3-pip whiptail
 
 # Install Waveshare e-Paper library
-git clone https://github.com/waveshare/e-Paper.git
 pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
 pip3 install requests python-gnupg
