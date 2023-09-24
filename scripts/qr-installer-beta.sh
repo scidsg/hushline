@@ -21,6 +21,10 @@ error_exit() {
 # Trap any errors and call error_exit function
 trap error_exit ERR
 
+# Welcome Prompt
+whiptail --title "E-Ink Display Setup" --msgbox "The e-paper hat communicates with the Raspberry Pi using the SPI interface, so you need to enable it.\n\nNavigate to \"Interface Options\" > \"SPI\" and select \"Yes\" to enable the SPI interface." 12 64
+sudo raspi-config
+
 # Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
@@ -342,4 +346,4 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-eink-display-v1.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-qr-eink-display-v1-beta.sh | bash
