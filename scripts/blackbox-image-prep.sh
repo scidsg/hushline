@@ -16,6 +16,8 @@ sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail 
 git clone https://github.com/waveshare/e-Paper.git
 git clone https://github.com/scidsg/hushline.git
 
+mv e-Paper/ hushline/
+
 # Install Waveshare e-Paper library
 pip3 install /home/hush/hushline/e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
@@ -25,8 +27,6 @@ pip3 install requests python-gnupg
 pip3 install RPi.GPIO spidev
 
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
-
-mv e-paper/ hushline/
 
 # Clear display before shutdown
 cat >/etc/systemd/system/blackbox-installer.service <<EOL
