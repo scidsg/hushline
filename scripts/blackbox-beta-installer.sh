@@ -21,26 +21,10 @@ error_exit() {
 # Trap any errors and call error_exit function
 trap error_exit ERR
 
-# Update and upgrade
-sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
-
-# Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq
-
-# Install Waveshare e-Paper library
-pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
-pip3 install qrcode[pil]
-pip3 install requests python-gnupg
-
-# Install other Python packages
-pip3 install RPi.GPIO spidev
-
 # Create a virtual environment and install dependencies
 cd hushline
 python3 -m venv venv
 source venv/bin/activate
-pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
-pip3 install -r requirements.txt
 
 nohup ./venv/bin/python3 blackbox-setup.py --host=0.0.0.0 &
 
