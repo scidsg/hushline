@@ -27,6 +27,16 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 
+# Install Waveshare e-Paper library
+pip3 install /home/hush/hushline/e-Paper/RaspberryPi_JetsonNano/python/
+pip3 install qrcode[pil]
+pip3 install requests python-gnupg
+
+# Install other Python packages
+pip3 install RPi.GPIO spidev
+
+pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
+
 nohup ./venv/bin/python3 blackbox-setup.py --host=0.0.0.0 &
 
 # Launch Flask app for setup
