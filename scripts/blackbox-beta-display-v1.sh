@@ -1,43 +1,5 @@
 #!/bin/bash
 
-# Welcome message and ASCII art
-cat <<"EOF"
-                                                            
-   __             _____      __      _____      __    _ __  
- /'__`\  _______ /\ '__`\  /'__`\   /\ '__`\  /'__`\ /\`'__\
-/\  __/ /\______\\ \ \L\ \/\ \L\.\_ \ \ \L\ \/\  __/ \ \ \/ 
-\ \____\\/______/ \ \ ,__/\ \__/.\_\ \ \ ,__/\ \____\ \ \_\ 
- \/____/           \ \ \/  \/__/\/_/  \ \ \/  \/____/  \/_/ 
-                    \ \_\              \ \_\                
-                     \/_/               \/_/                
-A free tool by Science & Design - https://scidsg.org
-
-Make it easy for people around you to discover and use your Hush Line instance.
-
-EOF
-sleep 3
-
-# Install required packages for e-ink display
-apt update && apt-get -y dist-upgrade && apt -y autoremove
-
-# Install Waveshare e-Paper library
-git clone https://github.com/waveshare/e-Paper.git
-pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
-pip3 install qrcode[pil]
-pip3 install requests python-gnupg
-
-# Install other Python packages
-pip3 install RPi.GPIO spidev
-apt-get -y autoremove
-
-# Enable SPI interface
-if ! grep -q "dtparam=spi=on" /boot/config.txt; then
-    echo "dtparam=spi=on" | sudo tee -a /boot/config.txt
-    echo "SPI interface enabled."
-else
-    echo "SPI interface is already enabled."
-fi
-
 # Create a new script to display status on the e-ink display
 cat >/home/pi/hushline/display_status.py <<EOL
 import os
@@ -283,3 +245,8 @@ fi
 # Download splash screen image
 cd /home/pi/hushline
 wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
+
+echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
+sleep 3
+
+sudo reboot
