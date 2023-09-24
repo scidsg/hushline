@@ -22,7 +22,7 @@ error_exit() {
 trap error_exit ERR
 
 # Create a virtual environment and install dependencies
-cd /home/hush/hushline
+cd hushline
 python3 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
