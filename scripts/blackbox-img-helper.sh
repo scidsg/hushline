@@ -9,6 +9,9 @@ fi
 # Enable SPI interface
 raspi-config
 
+# Update system
+apt update && apt -y dist-upgrade && apt -y autoremove
+
 git clone https://github.com/scidsg/hushline.git
 chmod +x /home/hush/hushline/scripts/qr-installer-beta.sh
 
