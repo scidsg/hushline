@@ -1,24 +1,9 @@
 #!/bin/bash
 
-# Welcome message and ASCII art
-cat <<"EOF"
-                                                            
-   __             _____      __      _____      __    _ __  
- /'__`\  _______ /\ '__`\  /'__`\   /\ '__`\  /'__`\ /\`'__\
-/\  __/ /\______\\ \ \L\ \/\ \L\.\_ \ \ \L\ \/\  __/ \ \ \/ 
-\ \____\\/______/ \ \ ,__/\ \__/.\_\ \ \ ,__/\ \____\ \ \_\ 
- \/____/           \ \ \/  \/__/\/_/  \ \ \/  \/____/  \/_/ 
-                    \ \_\              \ \_\                
-                     \/_/               \/_/                
-A free tool by Science & Design - https://scidsg.org
-
-Make it easy for people around you to discover and use your Hush Line instance.
-
-EOF
-sleep 3
-
 # Install required packages for e-ink display
-apt update && apt-get -y dist-upgrade && apt -y autoremove
+apt update
+apt-get -y dist-upgrade
+apt-get install -y python3-pip whiptail
 
 # Install Waveshare e-Paper library
 git clone https://github.com/waveshare/e-Paper.git
@@ -39,7 +24,7 @@ else
 fi
 
 # Create a new script to display status on the e-ink display
-cat >/home/pi/hushline/display_status.py <<EOL
+cat >/home/hush/hushline/display_status.py <<EOL
 import os
 import sys
 import time
@@ -231,7 +216,7 @@ if __name__ == '__main__':
 EOL
 
 # Create a new script to display status on the e-ink display
-cat >/home/pi/hushline/clear_display.py <<EOL
+cat >/home/hush/hushline/clear_display.py <<EOL
 import sys
 from waveshare_epd import epd2in7
 from PIL import Image
@@ -283,3 +268,8 @@ fi
 # Download splash screen image
 cd /home/pi/hushline
 wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
+
+echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
+sleep 3
+
+sudo reboot
