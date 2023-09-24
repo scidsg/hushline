@@ -6,6 +6,8 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+git clone https://github.com/scidsg/hushline.git
+
 # Create a new script to display status on the e-ink display
 cat >/etc/systemd/system/blackbox-installer.service <<EOL
 [Unit]
