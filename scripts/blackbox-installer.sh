@@ -6,6 +6,8 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+raspi-config
+
 git clone https://github.com/scidsg/hushline.git
 chmod +x /home/hush/hushline/scripts/qr-installer-beta.sh
 
