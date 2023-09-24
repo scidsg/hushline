@@ -3,7 +3,7 @@
 # Install required packages for e-ink display
 apt update
 apt-get -y dist-upgrade
-apt-get install -y python3-pip whiptail
+apt-get install -y python3-pip
 
 # Install Waveshare e-Paper library
 pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
