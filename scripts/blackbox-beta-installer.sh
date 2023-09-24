@@ -25,6 +25,7 @@ trap error_exit ERR
 cd hushline
 python3 -m venv venv
 source venv/bin/activate
+pip3 install -r requirements.txt
 
 nohup ./venv/bin/python3 blackbox-setup.py --host=0.0.0.0 &
 
