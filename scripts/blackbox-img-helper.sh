@@ -6,6 +6,7 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+# Enable SPI interface
 raspi-config
 
 git clone https://github.com/scidsg/hushline.git
@@ -30,3 +31,4 @@ sudo systemctl enable blackbox-installer.service
 
 sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq
 
+sudo reboot
