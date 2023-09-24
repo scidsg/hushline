@@ -29,7 +29,11 @@ pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
 pip3 install -r requirements.txt
 
 # Install Waveshare e-Paper library
-git clone https://github.com/waveshare/e-Paper.git
+if [ ! -d "e-Paper" ]; then
+    git clone https://github.com/waveshare/e-Paper.git
+else
+    echo "Directory e-Paper already exists. Skipping clone."
+fi
 pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
 pip3 install requests python-gnupg
