@@ -23,6 +23,7 @@ sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail 
 
 # Create a virtual environment and install dependencies
 cd /home/hush/hushline
+git pull
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
