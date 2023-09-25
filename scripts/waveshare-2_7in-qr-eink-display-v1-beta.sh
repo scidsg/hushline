@@ -259,10 +259,25 @@ EOL
 sudo systemctl daemon-reload
 sudo systemctl enable clear-display.service
 
-# Add a line to the .bashrc to run the display_status.py script on boot
-if ! grep -q "sudo python3 /home/hush/hushline/display_status.py" /home/hush/.bashrc; then
-    echo "sudo python3 /home/hush/hushline/display_status.py &" >>/home/hush/.bashrc
-fi
+# Create a systemd service to run the display_status.py script on boot
+cat >/etc/systemd/system/display-status.service <<EOL
+[Unit]
+Description=Display Hush Line Information on E-Paper Display
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/bin/python3 /home/hush/hushline/display_status.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Enable and start the new service
+sudo systemctl daemon-reload
+sudo systemctl enable display-status.service
+sudo systemctl start display-status.service
 
 # Download splash screen image
 cd /home/hush/hushline
