@@ -168,8 +168,9 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
-systemctl enable hush-line.service
-systemctl start hush-line.service
+sudo systemctl daemon-reload
+sudo systemctl enable hush-line.service
+sudo systemctl start hush-line.service
 
 # Check if the application is running and listening on the expected address and port
 sleep 5
