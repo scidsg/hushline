@@ -342,4 +342,4 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/waveshare-2_7in-qr-eink-display-v1-beta.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/blackbox/v1/waveshare-2_7in-qr-eink-display-v1-beta.sh | bash
