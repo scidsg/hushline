@@ -57,7 +57,7 @@ import os
 import sys
 import time
 import qrcode
-from waveshare_epd import epd2in7
+from waveshare_epd import epd2in7_V2
 from PIL import Image, ImageDraw, ImageFont
 
 def generate_qr_code(data):
@@ -76,21 +76,21 @@ def generate_qr_code(data):
     # Calculate the new size preserving aspect ratio
     base_width, base_height = img.size
     aspect_ratio = float(base_width) / float(base_height)
-    new_height = int(epd2in7.EPD_HEIGHT)
+    new_height = int(epd2in7_V2.EPD_HEIGHT)
     new_width = int(aspect_ratio * new_height)
 
-    if new_width > epd2in7.EPD_WIDTH:
-        new_width = epd2in7.EPD_WIDTH
+    if new_width > epd2in7_V2.EPD_WIDTH:
+        new_width = epd2in7_V2.EPD_WIDTH
         new_height = int(new_width / aspect_ratio)
 
     # Calculate position to paste
-    x_pos = (epd2in7.EPD_WIDTH - new_width) // 2
-    y_pos = (epd2in7.EPD_HEIGHT - new_height) // 2
+    x_pos = (epd2in7_V2.EPD_WIDTH - new_width) // 2
+    y_pos = (epd2in7_V2.EPD_HEIGHT - new_height) // 2
     
     img_resized = img.resize((new_width, new_height))
     
     # Create a blank (white) image to paste the QR code on
-    img_blank = Image.new('1', (epd2in7.EPD_WIDTH, epd2in7.EPD_HEIGHT), 255)
+    img_blank = Image.new('1', (epd2in7_V2.EPD_WIDTH, epd2in7_V2.EPD_HEIGHT), 255)
     img_blank.paste(img_resized, (x_pos, y_pos))
 
     # Save to disk for debugging
@@ -99,7 +99,7 @@ def generate_qr_code(data):
     return img_blank
 
 def main():
-    epd = epd2in7.EPD()
+    epd = epd2in7_V2.EPD()
     epd.init()
 
     # Generate QR code for your URL or data
@@ -342,4 +342,4 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/blackbox/v1/waveshare-2_7in-qr-eink-display-v1-beta.sh | bash
+curl -sSL https://raw.githubusercontent.com/scidsg/hushline/main/scripts/blackbox/v1/waveshare-2_7in-qr-eink-display-v2-beta.sh | bash

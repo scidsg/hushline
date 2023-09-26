@@ -32,7 +32,7 @@ import qrcode
 import requests
 import gnupg
 import traceback
-from waveshare_epd import epd2in7
+from waveshare_epd import epd2in7_V2
 from PIL import Image, ImageDraw, ImageFont
 from PIL import ImageOps
 print(Image.__version__)
@@ -177,7 +177,7 @@ def clear_screen(epd):
 
 def main():
     print("Starting main function")
-    epd = epd2in7.EPD()
+    epd = epd2in7_V2.EPD()
     epd.init()
     print("EPD initialized")
 
@@ -217,7 +217,7 @@ EOL
 # Create a new script to display status on the e-ink display
 cat >/home/hush/hushline/clear_display.py <<EOL
 import sys
-from waveshare_epd import epd2in7
+from waveshare_epd import epd2in7_V2
 from PIL import Image
 
 def clear_screen(epd):
@@ -229,7 +229,7 @@ def clear_screen(epd):
 
 def main():
     print("Starting clear_display script")
-    epd = epd2in7.EPD()
+    epd = epd2in7_V2.EPD()
     epd.init()
     clear_screen(epd)
 
