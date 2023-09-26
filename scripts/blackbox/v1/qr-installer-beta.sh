@@ -123,7 +123,7 @@ EOL
 nohup ./venv/bin/python3 display-setup-qr-beta.py --host=0.0.0.0 &
 
 # Launch Flask app for setup
-nohup python3 setup_server_beta.py --host=0.0.0.0 &
+nohup python3 blackbox-setup.py --host=0.0.0.0 &
 
 sleep 5
 
@@ -145,7 +145,7 @@ NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 PGP_KEY_ADDRESS=$(jq -r '.pgp_key_address' /tmp/setup_config.json)
 
 # Kill the Flask setup process
-pkill -f setup_server_beta.py
+pkill -f blackbox-setup.py
 
 # Download the public PGP key and rename to public_key.asc
 wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc

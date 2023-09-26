@@ -44,25 +44,10 @@ def index():
     if not setup_complete:
         return redirect(url_for('setup'))
     
-    return 'Setup complete! The installation script will now resume.'
-
-def get_local_ip():
-    local_ip = ''
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # use an external facing address
-        s.connect(("hushline.app", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-    except Exception as e:
-        print(f"Could not obtain local IP: {e}")
-        local_ip = "127.0.0.1"
-
-    return local_ip
+    return '👍 Successfully submitted! The installation script will now resume.'
 
 if __name__ == '__main__':
-    local_ip = get_local_ip()
-    qr = segno.make(f'http://{local_ip}:5000/setup')
+    qr = segno.make(f'http://hushline.local:5000/setup')
     with open("/tmp/qr_code.txt", "w") as f:
         qr.terminal(out=f)
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='hushline.local', port=5000)
