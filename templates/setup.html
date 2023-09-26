@@ -19,28 +19,29 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="setupBody">
     <header>
         <div class="wrapper">
-            <h1>🤫 Hush Line</h1>
-            <a href="https://en.wikipedia.org/wiki/Tina_Turner" class="btn" rel="noopener noreferrer">Close App</a>
+            <h1>⚙️ Hush Line Setup</h1>
         </div>
     </header>
+    <p>👋 Hush Line requires an SMTP-enabled email account - Gmail or Riseup, for example - and a PGP key that's been uploaded to a public keyserver.</p>
+    <p>Not sure what to do? That's okay, <a href="https://medium.com/@scidsg/installing-and-configuring-hush-line-on-a-raspberry-pi-daefc3865020" target="_blank" rel="noopener noreferrer">you can find a comprehensive installation guide here</a>.</p>
     <form class="setup-form" action="/setup" method="post">
         <label for="email">Email</label>
         <input type="email" name="email" required>
         
         <label for="smtp_server">SMTP Server</label>
-        <input type="text" name="smtp_server" required>
+        <input type="text" name="smtp_server" placeholder="smtp.gmail.com" required>
 
         <label for="password">Password</label>
         <input type="password" name="password" required>
 
         <label for="smtp_port">SMTP Port</label>
-        <input type="number" name="smtp_port" required>
+        <input type="number" name="smtp_port" placeholder="465" required>
 
         <label for="pgp_key_address">Key Address</label>
-        <input type="text" name="pgp_key_address" required>
+        <input type="url" name="pgp_key_address" placeholder="https://" required>
         
         <button type="submit">Submit</button>
     </form>

@@ -86,6 +86,23 @@ header .wrapper {
 	align-items: center;
 }
 
+.setupBody p {
+	text-align: left;
+	font-size: 1rem;
+	color: #333;
+}
+
+.setupBody p:first-of-type {
+	margin-bottom: .5rem;
+	margin-top: 1rem;
+}
+
+.setupBody p:last-of-type {
+	margin-bottom: 2rem;
+	padding-bottom: 2rem;
+	border-bottom: 1px solid rgba(125,37,193,0.15);
+}
+
 form.setup-form {
   display: flex;
   flex-direction: column;
@@ -96,6 +113,8 @@ form.setup-form {
 
 form.setup-form button {
 	align-self: center;
+	margin-bottom: 2rem;
+	margin-top: .5rem;
 }
 
 .setup-form input {
@@ -134,7 +153,6 @@ p {
 
 label {
 	display: block;
-	font-weight: 700;
 }
 
 #message-form {
