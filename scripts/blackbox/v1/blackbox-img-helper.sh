@@ -22,7 +22,7 @@ Description=Blackbox Installation Helper
 After=multi-user.target
 
 [Service]
-ExecStart=/home/hush/hushline/scripts/hushline/v1/qr-installer-beta.sh
+ExecStart=/home/hush/hushline/scripts/v1/qr-installer-beta.sh
 Type=oneshot
 RemainAfterExit=yes
 
