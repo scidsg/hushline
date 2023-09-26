@@ -26,6 +26,7 @@ cd /home/hush/hushline
 git restore --source=HEAD --staged --worktree -- .
 git reset HEAD -- .
 git clean -fd .
+git config pull.rebase false
 git pull
 
 python3 -m venv venv
