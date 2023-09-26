@@ -13,7 +13,7 @@ raspi-config
 apt update && apt -y dist-upgrade && apt -y autoremove
 
 git clone https://github.com/scidsg/hushline.git
-chmod +x /home/hush/hushline/scripts/blackbox/v1/qr-installer-beta.sh
+chmod +x /home/hush/hushline/scripts/blackbox/v2/qr-installer-beta.sh
 
 # Create a new script to display status on the e-ink display
 cat >/etc/systemd/system/blackbox-installer.service <<EOL
