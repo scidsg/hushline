@@ -287,5 +287,6 @@ echo "✅ E-ink display configuration complete. Rebooting your Raspberry Pi..."
 sleep 3
 
 sudo systemctl disable blackbox-installer.service
+sleep 3
 
 sudo reboot
