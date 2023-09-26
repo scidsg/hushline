@@ -106,7 +106,7 @@ def main():
     qr_code_image = generate_qr_code("http://hushline.local:5000/setup")
 
     # Clear frame memory
-    epd.Clear(0xFF)
+    epd.Clear()
     
     # Display the QR code
     epd.display(epd.getbuffer(qr_code_image))
