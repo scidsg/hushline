@@ -29,13 +29,17 @@ echo "
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
  
- 👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+ 👇 Please paste your public PGP key, then press Enter:"
 
 # Read the PGP key
-oldIFS=$IFS    # Preserve the old value of IFS
-IFS=           # Set IFS to an empty string
-read -d '' -r PGP_PUBLIC_KEY
-IFS=$oldIFS    # Restore the old value of IFS
+PGP_PUBLIC_KEY=""
+while :
+do
+    if ! IFS= read -r -t 2 LINE; then
+        break
+    fi
+    PGP_PUBLIC_KEY+="$LINE"$'\n'
+done
 
 export DOMAIN
 export EMAIL
