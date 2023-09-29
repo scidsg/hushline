@@ -32,15 +32,15 @@ echo "
  👇 Please paste your public PGP key, then press Enter:"
 
 PGP_PUBLIC_KEY=""
+end_delimiter="-----END PGP PUBLIC KEY BLOCK-----"
 
 while IFS= read -r LINE; do
-    # If the line is empty, break out of the loop
-    if [[ -z "$LINE" ]]; then
+    PGP_PUBLIC_KEY+="$LINE"$'\n'
+    # If the end delimiter is detected, break out of the loop
+    if [[ "$LINE" == "$end_delimiter" ]]; then
         break
     fi
-    PGP_PUBLIC_KEY+="$LINE"$'\n'
 done
-
 
 export DOMAIN
 export EMAIL
