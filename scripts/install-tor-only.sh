@@ -32,11 +32,10 @@ echo "
  👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
 
 # Read the PGP key
-PGP_PUBLIC_KEY=""
-while IFS= read -r LINE; do
-    [[ $LINE == "END" ]] && break
-    PGP_PUBLIC_KEY+="$LINE"$'\n'
-done
+oldIFS=$IFS    # Preserve the old value of IFS
+IFS=           # Set IFS to an empty string
+read -d '' -r PGP_PUBLIC_KEY
+IFS=$oldIFS    # Restore the old value of IFS
 
 export DOMAIN
 export EMAIL
