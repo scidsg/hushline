@@ -31,15 +31,16 @@ echo "
  
  👇 Please paste your public PGP key, then press Enter:"
 
-# Read the PGP key
 PGP_PUBLIC_KEY=""
-while :
-do
-    if ! IFS= read -r -t 2 LINE; then
+
+while IFS= read -r LINE; do
+    # If the line is empty, break out of the loop
+    if [[ -z "$LINE" ]]; then
         break
     fi
     PGP_PUBLIC_KEY+="$LINE"$'\n'
 done
+
 
 export DOMAIN
 export EMAIL
