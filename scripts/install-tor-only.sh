@@ -21,7 +21,7 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
-PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
+PGP_PUBLIC_KEY=$(whiptail --inputbox "Please paste your public PGP key:" 16 60 --title "Public PGP Key" 3>&1 1>&2 2>&3)
 
 export DOMAIN
 export EMAIL
@@ -43,8 +43,8 @@ pip3 install gunicorn
 pip3 install cryptography
 pip3 install -r requirements.txt
 
-# Download the public PGP key and rename to public_key.asc
-wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
+# Save the provided PGP key to a file
+echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
 # Create a systemd service
 cat >/etc/systemd/system/hush-line.service <<EOL
