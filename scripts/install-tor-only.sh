@@ -21,7 +21,16 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
-PGP_PUBLIC_KEY=$(whiptail --inputbox "Please paste your public PGP key:" 16 60 --title "Public PGP Key" 3>&1 1>&2 2>&3)
+
+# Instruct the user
+echo "Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+
+# Read the PGP key
+PGP_PUBLIC_KEY=""
+while IFS= read -r LINE; do
+    [[ $LINE == "END" ]] && break
+    PGP_PUBLIC_KEY+="$LINE"$'\n'
+done
 
 export DOMAIN
 export EMAIL
