@@ -23,7 +23,13 @@ NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email addre
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
 # Instruct the user
-echo "Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+echo "
+  ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
+ | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
+ |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
+ |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
+ 
+ 👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
 
 # Read the PGP key
 PGP_PUBLIC_KEY=""
