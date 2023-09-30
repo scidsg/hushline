@@ -24,7 +24,26 @@ EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
 NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
-PGP_KEY_ADDRESS=$(whiptail --inputbox "What's the address for your PGP key?" 8 60 --title "PGP Key Address" 3>&1 1>&2 2>&3)
+
+# Instruct the user
+echo "
+  ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
+ | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
+ |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
+ |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
+ 
+ 👇 Please paste your public PGP key, then press Enter:"
+
+PGP_PUBLIC_KEY=""
+end_delimiter="-----END PGP PUBLIC KEY BLOCK-----"
+
+while IFS= read -r LINE; do
+    PGP_PUBLIC_KEY+="$LINE"$'\n'
+    # If the end delimiter is detected, break out of the loop
+    if [[ "$LINE" == "$end_delimiter" ]]; then
+        break
+    fi
+done
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
