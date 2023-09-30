@@ -29,7 +29,7 @@ echo "
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
 
-👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+👇 Please paste your public PGP key and press Enter."
 
 PGP_PUBLIC_KEY=""
 while IFS= read -r LINE < /dev/tty; do
