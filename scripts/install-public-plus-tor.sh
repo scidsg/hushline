@@ -34,11 +34,10 @@ echo "
 
 👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
 
-# Read the PGP key
 PGP_PUBLIC_KEY=""
 while IFS= read -r LINE < /dev/tty; do
-    [[ $LINE == "END" ]] && break
     PGP_PUBLIC_KEY+="$LINE"$'\n'
+    [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
 done
 
 # Check for valid domain name format
