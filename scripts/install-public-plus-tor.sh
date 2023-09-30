@@ -54,9 +54,6 @@ export NOTIFY_SMTP_PORT
 # Debug: Print the value of the DOMAIN variable
 echo "Domain: ${DOMAIN}"
 
-# Clone the repository
-git clone https://github.com/scidsg/hushline.git
-
 # Create a virtual environment and install dependencies
 cd hushline
 python3 -m venv venv
