@@ -24,18 +24,22 @@ NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):"
 
 # Instruct the user
 echo "
-  ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
- | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
- |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
- |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
- 
-👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+ ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
+| _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
+|  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
+|_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
 
-# Read the PGP key
+Please paste your public PGP key and then press Enter."
+
 PGP_PUBLIC_KEY=""
-while IFS= read -r LINE < /dev/tty; do
-    [[ $LINE == "END" ]] && break
+end_delimiter="-----END PGP PUBLIC KEY BLOCK-----"
+
+while IFS= read -r LINE; do
     PGP_PUBLIC_KEY+="$LINE"$'\n'
+    # If the end delimiter is detected, break out of the loop
+    if [[ "$LINE" == "$end_delimiter" ]]; then
+        break
+    fi
 done
 
 export DOMAIN
