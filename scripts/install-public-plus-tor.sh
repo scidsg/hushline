@@ -31,13 +31,13 @@ echo "
  | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
-
-👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+ 
+👇 Please paste your public PGP key and press Enter."
 
 # Read the PGP key
 PGP_PUBLIC_KEY=""
 while IFS= read -r LINE < /dev/tty; do
-    [[ $LINE == "END" ]] && break
+    [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
     PGP_PUBLIC_KEY+="$LINE"$'\n'
 done
 
@@ -64,8 +64,8 @@ pip3 install pgpy
 pip3 install gunicorn
 pip3 install -r requirements.txt
 
-# Download the public PGP key and rename to public_key.asc
-wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
+# Save the provided PGP key to a file
+echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
 # Create a systemd service
 cat >/etc/systemd/system/hush-line.service <<EOL
