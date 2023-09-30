@@ -44,9 +44,6 @@ export NOTIFY_PASSWORD
 export NOTIFY_SMTP_SERVER
 export NOTIFY_SMTP_PORT
 
-# Clone the repository
-git clone https://github.com/scidsg/hushline.git
-
 # Create a virtual environment and install dependencies
 cd hushline
 python3 -m venv venv
