@@ -9,7 +9,7 @@ cat <<"EOF"
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
                                                
-🤫 Your anonymous tip line and suggestion box. 
+🤫 A self-hosted, anonymous tip line.
 
 A free tool by Science & Design - https://scidsg.org
 EOF
