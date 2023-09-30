@@ -33,7 +33,7 @@ echo "
 
 # Read the PGP key
 PGP_PUBLIC_KEY=""
-while IFS= read -r LINE; do
+while IFS= read -r LINE < /dev/tty; do
     [[ $LINE == "END" ]] && break
     PGP_PUBLIC_KEY+="$LINE"$'\n'
 done
