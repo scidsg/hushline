@@ -28,13 +28,13 @@ echo "
  | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
- 
+
 👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
 
 # Read the PGP key
 PGP_PUBLIC_KEY=""
 while IFS= read -r LINE < /dev/tty; do
-    [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
+    [[ $LINE == "END" ]] && break
     PGP_PUBLIC_KEY+="$LINE"$'\n'
 done
 
