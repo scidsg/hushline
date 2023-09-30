@@ -29,7 +29,7 @@ echo "
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
  
- 👇 Please paste your public PGP key, then press Enter:"
+Please paste your public PGP key and then press Enter."
 
 PGP_PUBLIC_KEY=""
 end_delimiter="-----END PGP PUBLIC KEY BLOCK-----"
