@@ -24,8 +24,6 @@ NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):"
 
 # Instruct the user
 echo "
-
-v new
   ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
  | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
