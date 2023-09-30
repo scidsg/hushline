@@ -31,18 +31,14 @@ echo "
  | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
  |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
  |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
- 
- 👇 Please paste your public PGP key, then press Enter:"
 
+👇 Please paste your public PGP key. Once finished, type END on a new line and press Enter."
+
+# Read the PGP key
 PGP_PUBLIC_KEY=""
-end_delimiter="-----END PGP PUBLIC KEY BLOCK-----"
-
 while IFS= read -r LINE; do
+    [[ $LINE == "END" ]] && break
     PGP_PUBLIC_KEY+="$LINE"$'\n'
-    # If the end delimiter is detected, break out of the loop
-    if [[ "$LINE" == "$end_delimiter" ]]; then
-        break
-    fi
 done
 
 # Check for valid domain name format
