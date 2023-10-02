@@ -337,7 +337,7 @@ HUSHLINE_PATH=""
 if [[ $(uname -n) == *"raspberrypi"* ]]; then
     HUSHLINE_PATH="/home/hush/hushline"
 else
-    HUSHLINE_PATH="/hushline"
+    HUSHLINE_PATH="/root/hushline" # Adjusted to /root/hushline for the root user on VPS
 fi
 
 send_email() {
