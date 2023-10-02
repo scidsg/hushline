@@ -305,7 +305,7 @@ echo "UFW configuration complete."
 if [[ $(uname -n) == *"hushline"* ]]; then
     HUSHLINE_PATH="/home/hush/hushline"
 else
-    HUSHLINE_PATH="hushline"
+    HUSHLINE_PATH="~/hushline"
 fi
 
 send_email() {

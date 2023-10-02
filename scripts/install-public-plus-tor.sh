@@ -335,7 +335,7 @@ echo "UFW configuration complete."
 if [[ $(uname -n) == *"raspberrypi"* ]]; then
     HUSHLINE_PATH="/home/hush/hushline"
 else
-    HUSHLINE_PATH="hushline"
+    HUSHLINE_PATH="~/hushline"
 fi
 
 send_email() {
