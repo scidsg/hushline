@@ -10,7 +10,7 @@
 curl -sSL https://install.hushline.app | bash
 ```
 
-Check out our [installation guide](https://github.com/scidsg/hushline/blob/main/docs/README.md) for more details.
+Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
 
 ## Why Hush Line?
 
