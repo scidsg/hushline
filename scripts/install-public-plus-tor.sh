@@ -63,8 +63,8 @@ pip3 install pgpy
 pip3 install gunicorn
 pip3 install -r requirements.txt
 
-# Download the public PGP key and rename to public_key.asc
-wget $PGP_KEY_ADDRESS -O $PWD/public_key.asc
+# Save the provided PGP key to a file
+echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
 # Create a systemd service
 cat >/etc/systemd/system/hush-line.service <<EOL
