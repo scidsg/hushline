@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#Run as root
+if [[ $EUID -ne 0 ]]; then
+  echo "Script needs to run as root. Elevating permissions now."
+  exec sudo /bin/bash "$0" "$@"
+fi
+
 #Update and upgrade
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
