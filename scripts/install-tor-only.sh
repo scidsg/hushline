@@ -4,7 +4,7 @@
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools
+sudo apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban
 
 # Function to display error message and exit
 error_exit() {
@@ -220,6 +220,58 @@ echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt
 sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
+
+# Configure Fail2Ban
+
+echo "Configuring fail2ban..."
+
+sudo systemctl start fail2ban
+sudo systemctl enable fail2ban
+sudo cp /etc/fail2ban/jail.{conf,local}
+
+cat >/etc/fail2ban/jail.local <<EOL
+[DEFAULT]
+bantime  = 10m
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+
+# 404 Errors
+[nginx-http-auth]
+enabled  = true
+filter   = nginx-http-auth
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+# Rate Limiting
+[nginx-limit-req]
+enabled  = true
+filter   = nginx-limit-req
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+#403 Errors
+[nginx-botsearch]
+enabled  = true
+filter   = nginx-botsearch
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 10
+
+#Bad Bots and Crawlers
+[nginx-badbots]
+enabled  = true
+filter   = nginx-badbots
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 2
+EOL
+
+sudo systemctl restart fail2ban
 
 echo "
 ✅ Installation complete!
