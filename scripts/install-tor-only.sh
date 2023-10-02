@@ -301,6 +301,46 @@ echo "y" | ufw enable
 
 echo "UFW configuration complete."
 
+send_email() {
+    python3 << END
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import pgpy
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+def send_notification_email(smtp_server, smtp_port, email, password):
+    subject = "🎉 Hush Line Installation Complete"
+    message = "Hush Line has been successfully installed!\n\nYour Hush Line address is http://$ONION_ADDRESS."
+
+    # Load the public key from its path
+    with open('/home/hush/hushline/public_key.asc', 'r') as key_file:
+        key_data = key_file.read()
+        PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)
+
+    # Encrypt the message
+    encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
+
+    # Construct the email
+    msg = MIMEMultipart()
+    msg['From'] = email
+    msg['To'] = email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(encrypted_message, 'plain'))
+
+    try:
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        server.login(email, password)
+        server.sendmail(email, [email], msg.as_string())
+        server.quit()
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+send_notification_email("$NOTIFY_SMTP_SERVER", $NOTIFY_SMTP_PORT, "$EMAIL", "$NOTIFY_PASSWORD")
+END
+}
+
 echo "
 ✅ Installation complete!
                                                
@@ -322,6 +362,8 @@ echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
 sudo systemctl restart hush-line
+
+send_email
 
 # Disable the trap before exiting
 trap - ERR
