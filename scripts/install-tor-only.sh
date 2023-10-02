@@ -254,7 +254,7 @@ port     = http,https
 logpath  = /var/log/nginx/error.log
 maxretry = 5
 
-#403 Errors
+# 403 Errors
 [nginx-botsearch]
 enabled  = true
 filter   = nginx-botsearch
@@ -262,7 +262,7 @@ port     = http,https
 logpath  = /var/log/nginx/access.log
 maxretry = 10
 
-#Bad Bots and Crawlers
+# Bad Bots and Crawlers
 [nginx-badbots]
 enabled  = true
 filter   = nginx-badbots
