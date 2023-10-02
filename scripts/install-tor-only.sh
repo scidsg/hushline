@@ -322,7 +322,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def send_notification_email(smtp_server, smtp_port, email, password):
     subject = "🎉 Hush Line Installation Complete"
-    message = "Hush Line has been successfully installed!\n\nYour onion address is $ONION_ADDRESS."
+    message = "Hush Line has been successfully installed!\n\nYour Hush Line address is $ONION_ADDRESS."
 
     # Load the public key from its path
     key_path = os.path.expanduser('$HUSHLINE_PATH/public_key.asc')  # Use os to expand the path
