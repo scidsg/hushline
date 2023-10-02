@@ -318,7 +318,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import pgpy
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+from cryptography.utils import CryptographyDeprecationWarning
+
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 def send_notification_email(smtp_server, smtp_port, email, password):
     subject = "🎉 Hush Line Installation Complete"
