@@ -19,7 +19,7 @@ trap error_exit ERR
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq
+sudo apt-get -y install git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq fail2ban ufw
 
 # Create a virtual environment and install dependencies
 cd /home/hush/hushline
@@ -319,6 +319,80 @@ echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt
 sudo systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
+
+# Configure Fail2Ban
+
+echo "Configuring fail2ban..."
+
+sudo systemctl start fail2ban
+sudo systemctl enable fail2ban
+sudo cp /etc/fail2ban/jail.{conf,local}
+
+cat >/etc/fail2ban/jail.local <<EOL
+[DEFAULT]
+bantime  = 10m
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+
+# 404 Errors
+[nginx-http-auth]
+enabled  = true
+filter   = nginx-http-auth
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+# Rate Limiting
+[nginx-limit-req]
+enabled  = true
+filter   = nginx-limit-req
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+#403 Errors
+[nginx-botsearch]
+enabled  = true
+filter   = nginx-botsearch
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 10
+
+#Bad Bots and Crawlers
+[nginx-badbots]
+enabled  = true
+filter   = nginx-badbots
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 2
+EOL
+
+sudo systemctl restart fail2ban
+
+# Configure UFW (Uncomplicated Firewall)
+
+echo "Configuring UFW..."
+
+# Default rules
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+# Allow SSH (modify as per your requirements)
+ufw allow ssh
+ufw limit ssh/tcp
+
+# Logging
+ufw logging on
+
+# Enable UFW non-interactively
+echo "y" | ufw enable
+
+echo "UFW configuration complete."
 
 echo "
 ✅ Installation complete!
