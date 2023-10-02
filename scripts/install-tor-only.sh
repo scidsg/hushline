@@ -324,7 +324,7 @@ warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 def send_notification_email(smtp_server, smtp_port, email, password):
     subject = "🎉 Hush Line Installation Complete"
-    message = "Hush Line has been successfully installed!\n\nYour Hush Line address is:\nhttp://$ONION_ADDRESS\n\nTo access your Hush Line, enter your address in <a href="https://torproject.org/download">Tor Browser</a>."
+    message = "Hush Line has been successfully installed!\n\nYour Hush Line address is:\nhttp://$ONION_ADDRESS\n\nTo access your Hush Line, enter your address in Tor Browser. If you still need to download it, get it from https://torproject.org/download."
 
     # Load the public key from its path
     key_path = os.path.expanduser('$HUSHLINE_PATH/public_key.asc')  # Use os to expand the path
