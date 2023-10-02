@@ -301,6 +301,13 @@ echo "y" | ufw enable
 
 echo "UFW configuration complete."
 
+# Detect the environment (Raspberry Pi or VPS) based on the hostname or any other distinct characteristic
+if [[ $(uname -n) == *"hushline"* ]]; then
+    HUSHLINE_PATH="/home/hush/hushline"
+else
+    HUSHLINE_PATH="/hushline"
+fi
+
 send_email() {
     python3 << END
 import smtplib
@@ -312,10 +319,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def send_notification_email(smtp_server, smtp_port, email, password):
     subject = "🎉 Hush Line Installation Complete"
-    message = "Hush Line has been successfully installed!\n\nYour Hush Line address is http://$ONION_ADDRESS."
+    message = "Hush Line has been successfully installed!\n\nYour onion address is $ONION_ADDRESS."
 
     # Load the public key from its path
-    with open('/home/hush/hushline/public_key.asc', 'r') as key_file:
+    with open('$HUSHLINE_PATH/public_key.asc', 'r') as key_file: # Use the dynamic path
         key_data = key_file.read()
         PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)
 
