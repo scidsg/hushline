@@ -334,7 +334,7 @@ echo "UFW configuration complete."
 HUSHLINE_PATH=""
 
 # Detect the environment (Raspberry Pi or VPS) based on some characteristic
-if [[ $(uname -n) == *"raspberrypi"* ]]; then
+if [[ $(uname -n) == *"hushline"* ]]; then
     HUSHLINE_PATH="/home/hush/hushline"
 else
     HUSHLINE_PATH="/root/hushline" # Adjusted to /root/hushline for the root user on VPS
