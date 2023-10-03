@@ -40,8 +40,9 @@
         <label for="smtp_port">SMTP Port</label>
         <input type="number" name="smtp_port" placeholder="465" required>
 
-        <label for="pgp_key_address">Key Address</label>
-        <input type="url" name="pgp_key_address" placeholder="https://" required>
+        <label for="pgp_public_key">Public PGP Key</label>
+        <textarea name="pgp_public_key" rows="10" cols="50" required></textarea>
+
         
         <button type="submit">Submit</button>
     </form>
