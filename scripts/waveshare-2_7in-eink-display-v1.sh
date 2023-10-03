@@ -153,7 +153,13 @@ def display_status(epd, status, onion_address, name, email, key_id, expires):
     max_width = epd.height - x_pos_info - 5
     chars_per_line = max_width // (font_info.getbbox('A')[2] - font_info.getbbox('A')[0])
 
-    pgp_info = f'{name} <{email}>\nKey ID: {key_id[-8:]}\nExp: {time.strftime("%Y-%m-%d", time.gmtime(int(expires)))}'
+    # Check if 'expires' is non-empty and numeric before converting
+    if expires and expires.isdigit():
+        expiry_date = time.strftime("%Y-%m-%d", time.gmtime(int(expires)))
+    else:
+        expiry_date = "Never"  # or some other appropriate default or message
+
+    pgp_info = f'{name} <{email}>\nKey ID: {key_id[-8:]}\nExp: {expiry_date}'
     wrapped_pgp_info = []
 
     for line in pgp_info.split('\n'):
