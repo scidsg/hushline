@@ -10,7 +10,7 @@ fi
 sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban
+sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw
 
 # Function to display error message and exit
 error_exit() {
