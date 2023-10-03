@@ -45,7 +45,7 @@ else
 fi
 
 # Create a new script to display status on the e-ink display
-cat >/home/pi/hushline/display_status.py <<EOL
+cat >/home/hush/hushline/display_status.py <<EOL
 import os
 import sys
 import time
@@ -282,8 +282,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable clear-display.service
 
 # Add a line to the .bashrc to run the display_status.py script on boot
-if ! grep -q "sudo python3 /home/pi/hushline/display_status.py" /home/pi/.bashrc; then
-    echo "sudo python3 /home/pi/hushline/display_status.py &" >>/home/pi/.bashrc
+if ! grep -q "sudo python3 /home/hush/hushline/display_status.py" /home/pi/.bashrc; then
+    echo "sudo python3 /home/hush/hushline/display_status.py &" >>/home/pi/.bashrc
 fi
 
 # Download splash screen image
