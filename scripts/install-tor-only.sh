@@ -82,6 +82,9 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
+# Make config read-only
+chmod 444 /etc/systemd/system/hush-line.service
+
 systemctl enable hush-line.service
 systemctl start hush-line.service
 
