@@ -69,7 +69,7 @@ def pgp_owner_info():
     if PUBLIC_KEY.expires_at is not None:
         expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
     else:
-        expires = f"Exp: never"
+        expires = f"Exp: Never"
     return jsonify({'owner_info': owner, 'key_id': key_id, 'expires': expires})
 
 if __name__ == '__main__':
