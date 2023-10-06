@@ -29,7 +29,14 @@ apt-get -y install whiptail curl git wget sudo
 
 # Clone the repository in the user's home directory
 cd $HOME
-git clone https://github.com/scidsg/hushline.git
+# Check if the hushline directory already exists
+if [[ ! -d hushline ]]; then
+    # If not, clone the repository
+    git clone https://github.com/scidsg/hushline.git
+else
+    # Optional: Inform the user that the directory already exists and the cloning step will be skipped
+    echo "The directory 'hushline' already exists, skipping clone step."
+fi
 
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where the internet is censored.\n\nIf deploying to a public website, ensure your DNS settings point to this server." 16 64
