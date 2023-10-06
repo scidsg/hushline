@@ -156,62 +156,7 @@ server {
 EOL
 
 # Configure Nginx with privacy-preserving logging
-cat >/etc/nginx/nginx.conf <<EOL
-user www-data;
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
-events {
-        worker_connections 768;
-        # multi_accept on;
-}
-http {
-        ##
-        # Basic Settings
-        ##
-        sendfile on;
-        tcp_nopush on;
-        types_hash_max_size 2048;
-        # server_tokens off;
-        server_names_hash_bucket_size 128;
-        # server_name_in_redirect off;
-        include /etc/nginx/mime.types;
-        default_type application/octet-stream;
-        ##
-        # SSL Settings
-        ##
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
-        ssl_prefer_server_ciphers on;
-        ##
-        # Logging Settings
-        ##
-        # access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
-        ##
-        # Gzip Settings
-        ##
-        gzip on;
-        # gzip_vary on;
-        # gzip_proxied any;
-        # gzip_comp_level 6;
-        # gzip_buffers 16 8k;
-        # gzip_http_version 1.1;
-        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-        ##
-        # Virtual Host Configs
-        ##
-        include /etc/nginx/conf.d/*.conf;
-        include /etc/nginx/sites-enabled/*;
-        ##
-        # Enable privacy preserving logging
-        ##
-        geoip_country /usr/share/GeoIP/GeoIP.dat;
-        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
-
-        access_log /var/log/nginx/access.log privacy;
-}
-
-EOL
+mv /home/hush/hushline/assets/nginx.conf /etc/nginx
 
 sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
@@ -271,47 +216,8 @@ sudo systemctl start fail2ban
 sudo systemctl enable fail2ban
 sudo cp /etc/fail2ban/jail.{conf,local}
 
-cat >/etc/fail2ban/jail.local <<EOL
-[DEFAULT]
-bantime  = 10m
-findtime = 10m
-maxretry = 5
-
-[sshd]
-enabled = true
-
-# 404 Errors
-[nginx-http-auth]
-enabled  = true
-filter   = nginx-http-auth
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
-
-# Rate Limiting
-[nginx-limit-req]
-enabled  = true
-filter   = nginx-limit-req
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
-
-# 403 Errors
-[nginx-botsearch]
-enabled  = true
-filter   = nginx-botsearch
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 10
-
-# Bad Bots and Crawlers
-[nginx-badbots]
-enabled  = true
-filter   = nginx-badbots
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 2
-EOL
+# Configure fail2ban
+mv /home/hush/hushline/assets/jail.local /etc/fail2ban
 
 sudo systemctl restart fail2ban
 

@@ -1,0 +1,39 @@
+[DEFAULT]
+bantime  = 10m
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+
+# 404 Errors
+[nginx-http-auth]
+enabled  = true
+filter   = nginx-http-auth
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+# Rate Limiting
+[nginx-limit-req]
+enabled  = true
+filter   = nginx-limit-req
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 5
+
+# 403 Errors
+[nginx-botsearch]
+enabled  = true
+filter   = nginx-botsearch
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 10
+
+# Bad Bots and Crawlers
+[nginx-badbots]
+enabled  = true
+filter   = nginx-badbots
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 2
