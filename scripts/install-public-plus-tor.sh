@@ -117,6 +117,7 @@ sleep 10
 
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
+SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
 cat >/etc/nginx/sites-available/hush-line.nginx <<EOL
@@ -145,7 +146,7 @@ server {
 }
 server {
     listen 80;
-    server_name $ONION_ADDRESS.$DOMAIN;
+    server_name $SAUTEED_ONION_ADDRESS.$DOMAIN;
 
     location / {
         proxy_pass http://localhost:5000;
@@ -155,62 +156,7 @@ server {
 EOL
 
 # Configure Nginx with privacy-preserving logging
-cat >/etc/nginx/nginx.conf <<EOL
-user www-data;
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
-events {
-        worker_connections 768;
-        # multi_accept on;
-}
-http {
-        ##
-        # Basic Settings
-        ##
-        sendfile on;
-        tcp_nopush on;
-        types_hash_max_size 2048;
-        # server_tokens off;
-        server_names_hash_bucket_size 128;
-        # server_name_in_redirect off;
-        include /etc/nginx/mime.types;
-        default_type application/octet-stream;
-        ##
-        # SSL Settings
-        ##
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
-        ssl_prefer_server_ciphers on;
-        ##
-        # Logging Settings
-        ##
-        # access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
-        ##
-        # Gzip Settings
-        ##
-        gzip on;
-        # gzip_vary on;
-        # gzip_proxied any;
-        # gzip_comp_level 6;
-        # gzip_buffers 16 8k;
-        # gzip_http_version 1.1;
-        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-        ##
-        # Virtual Host Configs
-        ##
-        include /etc/nginx/conf.d/*.conf;
-        include /etc/nginx/sites-enabled/*;
-        ##
-        # Enable privacy preserving logging
-        ##
-        geoip_country /usr/share/GeoIP/GeoIP.dat;
-        log_format privacy '0.0.0.0 - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "-" \$geoip_country_code';
-
-        access_log /var/log/nginx/access.log privacy;
-}
-
-EOL
+mv /home/hush/hushline/assets/nginx.conf /etc/nginx
 
 sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
@@ -223,10 +169,11 @@ nginx -t && systemctl restart nginx || error_exit
 
 SERVER_IP=$(curl -s ifconfig.me)
 WIDTH=$(tput cols)
-whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
 # Request the certificates
-sleep 10
-certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+echo "Waiting for 60 seconds to give DNS time to update..."
+sleep 60
+certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 # Set up cron job to renew SSL certificate
 (
@@ -238,7 +185,7 @@ certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive 
 display_status_indicator() {
     local status="$(systemctl is-active hush-line.service)"
     if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n"
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n"
     else
         printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
     fi
@@ -269,47 +216,8 @@ sudo systemctl start fail2ban
 sudo systemctl enable fail2ban
 sudo cp /etc/fail2ban/jail.{conf,local}
 
-cat >/etc/fail2ban/jail.local <<EOL
-[DEFAULT]
-bantime  = 10m
-findtime = 10m
-maxretry = 5
-
-[sshd]
-enabled = true
-
-# 404 Errors
-[nginx-http-auth]
-enabled  = true
-filter   = nginx-http-auth
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
-
-# Rate Limiting
-[nginx-limit-req]
-enabled  = true
-filter   = nginx-limit-req
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
-
-# 403 Errors
-[nginx-botsearch]
-enabled  = true
-filter   = nginx-botsearch
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 10
-
-# Bad Bots and Crawlers
-[nginx-badbots]
-enabled  = true
-filter   = nginx-badbots
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 2
-EOL
+# Configure fail2ban
+mv /home/hush/hushline/assets/jail.local /etc/fail2ban
 
 sudo systemctl restart fail2ban
 
