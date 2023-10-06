@@ -29,13 +29,18 @@ apt-get -y install whiptail curl git wget sudo
 
 # Clone the repository in the user's home directory
 cd $HOME
-# Check if the hushline directory already exists
 if [[ ! -d hushline ]]; then
-    # If not, clone the repository
+    # If the hushline directory does not exist, clone the repository
     git clone https://github.com/scidsg/hushline.git
 else
-    # Optional: Inform the user that the directory already exists and the cloning step will be skipped
-    echo "The directory 'hushline' already exists, skipping clone step."
+    # If the hushline directory exists, clean the working directory and pull the latest changes
+    echo "The directory 'hushline' already exists, updating repository..."
+    cd hushline
+    git restore --source=HEAD --staged --worktree -- .
+    git reset HEAD -- .
+    git clean -fd .
+    git config pull.rebase false
+    git pull
 fi
 
 # Welcome Prompt
