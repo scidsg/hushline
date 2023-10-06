@@ -117,6 +117,7 @@ sleep 10
 
 # Get the Onion address
 ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
+SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
 cat >/etc/nginx/sites-available/hush-line.nginx <<EOL
@@ -145,7 +146,7 @@ server {
 }
 server {
     listen 80;
-    server_name $ONION_ADDRESS.$DOMAIN;
+    server_name $SAUTEED_ONION_ADDRESS.$DOMAIN;
 
     location / {
         proxy_pass http://localhost:5000;
@@ -223,10 +224,11 @@ nginx -t && systemctl restart nginx || error_exit
 
 SERVER_IP=$(curl -s ifconfig.me)
 WIDTH=$(tput cols)
-whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
 # Request the certificates
-sleep 10
-certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+echo "Waiting for 60 seconds to give DNS time to update..."
+sleep 60
+certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 # Set up cron job to renew SSL certificate
 (
@@ -238,7 +240,7 @@ certbot --nginx -d $DOMAIN,$ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive 
 display_status_indicator() {
     local status="$(systemctl is-active hush-line.service)"
     if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\nhttps://$ONION_ADDRESS.$DOMAIN\n\n"
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n"
     else
         printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
     fi
