@@ -53,6 +53,10 @@ OPTION=$(whiptail --title "Installation Type" --menu "How would you like to inst
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
     echo "Your chosen option:" $OPTION
+    
+    # Change to the user's home directory before accessing install-tor-only.sh
+    cd $HOME
+    
     if [ $OPTION = "1" ]; then
         chmod +x hushline/scripts/install-tor-only.sh
         ./hushline/scripts/install-tor-only.sh
