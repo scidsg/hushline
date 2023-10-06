@@ -22,13 +22,26 @@ EOF
 sleep 3
 
 #Update and upgrade
-sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
+apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install whiptail curl git wget sudo
+apt-get -y install whiptail curl git wget sudo
 
-# Clone the repository
-git clone https://github.com/scidsg/hushline.git
+# Clone the repository in the user's home directory
+cd $HOME
+if [[ ! -d hushline ]]; then
+    # If the hushline directory does not exist, clone the repository
+    git clone https://github.com/scidsg/hushline.git
+else
+    # If the hushline directory exists, clean the working directory and pull the latest changes
+    echo "The directory 'hushline' already exists, updating repository..."
+    cd hushline
+    git restore --source=HEAD --staged --worktree -- .
+    git reset HEAD -- .
+    git clean -fd .
+    git config pull.rebase false
+    git pull
+fi
 
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where the internet is censored.\n\nIf deploying to a public website, ensure your DNS settings point to this server." 16 64
@@ -40,6 +53,10 @@ OPTION=$(whiptail --title "Installation Type" --menu "How would you like to inst
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
     echo "Your chosen option:" $OPTION
+    
+    # Change to the user's home directory before accessing install-tor-only.sh
+    cd $HOME
+    
     if [ $OPTION = "1" ]; then
         chmod +x hushline/scripts/install-tor-only.sh
         ./hushline/scripts/install-tor-only.sh
