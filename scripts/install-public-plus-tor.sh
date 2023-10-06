@@ -318,6 +318,9 @@ source /etc/bash.bashrc
 
 sudo systemctl restart hush-line
 
+rm -r /home/hush/hushline/assets
+rm /home/hush/hushline/scripts/install*
+
 send_email
 
 # Disable the trap before exiting
