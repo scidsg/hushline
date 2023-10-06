@@ -22,12 +22,13 @@ EOF
 sleep 3
 
 #Update and upgrade
-sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
+apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install whiptail curl git wget sudo
+apt-get -y install whiptail curl git wget sudo
 
-# Clone the repository
+# Clone the repository in the user's home directory
+cd $HOME
 git clone https://github.com/scidsg/hushline.git
 
 # Welcome Prompt
