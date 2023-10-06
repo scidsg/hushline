@@ -7,10 +7,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 #Update and upgrade
-sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
+apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Install required packages
-sudo apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw
+apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw
 
 # Function to display error message and exit
 error_exit() {
@@ -79,7 +79,7 @@ Description=Hush Line Web App
 After=network.target
 [Service]
 User=root
-WorkingDirectory=$PWD
+WorkingDirectory=$HOME/hushline
 Environment="DOMAIN=localhost"
 Environment="EMAIL=$EMAIL"
 Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
@@ -105,18 +105,18 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-sudo tee /etc/tor/torrc <<EOL
+tee /etc/tor/torrc <<EOL
 RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 80 127.0.0.1:5000
 EOL
 
 # Restart Tor service
-sudo systemctl restart tor.service
+systemctl restart tor.service
 sleep 10
 
 # Get the Onion address
-ONION_ADDRESS=$(sudo cat /var/lib/tor/hidden_service/hostname)
+ONION_ADDRESS=$(cat /var/lib/tor/hidden_service/hostname)
 SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
@@ -152,14 +152,13 @@ server {
         proxy_pass http://localhost:5000;
     }
 }
-
 EOL
 
 # Configure Nginx with privacy-preserving logging
-mv /home/hush/hushline/assets/nginx.conf /etc/nginx
+mv $HOME/hushline/assets/nginx.conf /etc/nginx
 
-sudo ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
@@ -192,19 +191,19 @@ display_status_indicator() {
 }
 
 # Enable the "security" and "updates" repositories
-sudo sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-security";/"\${distro_id}:\${distro_codename}-security";/g' /etc/apt/apt.conf.d/50unattended-upgrades
-sudo sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-updates";/"\${distro_id}:\${distro_codename}-updates";/g' /etc/apt/apt.conf.d/50unattended-upgrades
-sudo sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
-sudo sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Dependencies "true";|Unattended-Upgrade::Remove-Unused-Dependencies "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
+sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-security";/"\${distro_id}:\${distro_codename}-security";/g' /etc/apt/apt.conf.d/50unattended-upgrades
+sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-updates";/"\${distro_id}:\${distro_codename}-updates";/g' /etc/apt/apt.conf.d/50unattended-upgrades
+sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
+sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Dependencies "true";|Unattended-Upgrade::Remove-Unused-Dependencies "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
 
-sudo sh -c 'echo "APT::Periodic::Update-Package-Lists \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
-sudo sh -c 'echo "APT::Periodic::Unattended-Upgrade \"1\";" >> /etc/apt/apt.conf.d/20auto-upgrades'
+sh -c 'echo "APT::Periodic::Update-Package-Lists \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
+sh -c 'echo "APT::Periodic::Unattended-Upgrade \"1\";" >> /etc/apt/apt.conf.d/20auto-upgrades'
 
 # Configure unattended-upgrades
-echo 'Unattended-Upgrade::Automatic-Reboot "true";' | sudo tee -a /etc/apt/apt.conf.d/50unattended-upgrades
-echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | sudo tee -a /etc/apt/apt.conf.d/50unattended-upgrades
+echo 'Unattended-Upgrade::Automatic-Reboot "true";' | tee -a /etc/apt/apt.conf.d/50unattended-upgrades
+echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | tee -a /etc/apt/apt.conf.d/50unattended-upgrades
 
-sudo systemctl restart unattended-upgrades
+systemctl restart unattended-upgrades
 
 echo "Automatic updates have been installed and configured."
 
@@ -212,14 +211,14 @@ echo "Automatic updates have been installed and configured."
 
 echo "Configuring fail2ban..."
 
-sudo systemctl start fail2ban
-sudo systemctl enable fail2ban
-sudo cp /etc/fail2ban/jail.{conf,local}
+systemctl start fail2ban
+systemctl enable fail2ban
+cp /etc/fail2ban/jail.{conf,local}
 
 # Configure fail2ban
-mv /home/hush/hushline/assets/jail.local /etc/fail2ban
+mv $HOME/hushline/assets/jail.local /etc/fail2ban
 
-sudo systemctl restart fail2ban
+systemctl restart fail2ban
 
 # Configure UFW (Uncomplicated Firewall)
 
@@ -247,7 +246,7 @@ HUSHLINE_PATH=""
 
 # Detect the environment (Raspberry Pi or VPS) based on some characteristic
 if [[ $(uname -n) == *"hushline"* ]]; then
-    HUSHLINE_PATH="/home/hush/hushline"
+    HUSHLINE_PATH="$HOME/hushline"
 else
     HUSHLINE_PATH="/root/hushline" # Adjusted to /root/hushline for the root user on VPS
 fi
@@ -316,7 +315,7 @@ echo "display_status_indicator() {
 echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
-sudo systemctl restart hush-line
+systemctl restart hush-line
 
 rm -r /home/hush/hushline/assets
 rm /home/hush/hushline/scripts/install*
