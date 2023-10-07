@@ -313,8 +313,8 @@ source /etc/bash.bashrc
 
 systemctl restart hush-line
 
-rm -r /home/hush/hushline/assets
-rm /home/hush/hushline/scripts/install*
+rm -r $HOME/hushline/assets
+rm $HOME/hushline/scripts/install*
 
 send_email
 
