@@ -25,7 +25,7 @@ sleep 3
 apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Install required packages
-apt-get -y install whiptail curl git wget sudo systemctl
+apt -y install whiptail curl git wget sudo
 
 # Clone the repository in the user's home directory
 cd $HOME
