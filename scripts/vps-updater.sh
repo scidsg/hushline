@@ -1,7 +1,13 @@
 #!/bin/bash
 
+#Run as root
+if [[ $EUID -ne 0 ]]; then
+  echo "Script needs to run as root. Elevating permissions now."
+  exec sudo /bin/bash "$0" "$@"
+fi
+
 #Update and upgrade
-sudo apt update && sudo apt -y dist-upgrade && sudo apt -y autoremove
+apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Function to display error message and exit
 error_exit() {
@@ -12,11 +18,11 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-cd ~/hushline/templates
+cd $HOME/hushline/templates
 mv index.html index.html.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/templates/index.html
 
-cd ~/hushline/static
+cd $HOME/hushline/static
 mv style.css style.css.old
 wget https://raw.githubusercontent.com/scidsg/hushline/main/static/style.css
 
@@ -27,10 +33,10 @@ Hush Line is a product by Science & Design.
 Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org."
 
-sudo systemctl restart hush-line
+systemctl restart hush-line
 
-rm ~/hushline/static/style.css.old
-rm ~/hushline/templates/index.html.old
+rm $HOME/hushline/static/style.css.old
+rm $HOME/hushline/templates/index.html.old
 
 # Disable the trap before exiting
 trap - ERR

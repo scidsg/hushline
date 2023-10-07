@@ -105,11 +105,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-tee /etc/tor/torrc <<EOL
-RunAsDaemon 1
-HiddenServiceDir /var/lib/tor/hidden_service/
-HiddenServicePort 80 127.0.0.1:5000
-EOL
+mv $HOME/hushline/assets/torrc /etc/tor
 
 # Restart Tor service
 systemctl restart tor.service
