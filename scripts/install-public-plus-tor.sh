@@ -320,3 +320,8 @@ send_email
 
 # Disable the trap before exiting
 trap - ERR
+
+# Reboot the device
+echo "Rebooting..."
+sleep 5
+reboot
