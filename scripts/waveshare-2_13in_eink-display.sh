@@ -37,14 +37,6 @@ pip3 install requests python-gnupg
 pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
-# Enable SPI interface
-if ! grep -q "dtparam=spi=on" /boot/config.txt; then
-    echo "dtparam=spi=on" | sudo tee -a /boot/config.txt
-    echo "SPI interface enabled."
-else
-    echo "SPI interface is already enabled."
-fi
-
 # Create a new script to display status on the e-ink display
 cat >/home/pi/hushline/display_status.py <<EOL
 import os
