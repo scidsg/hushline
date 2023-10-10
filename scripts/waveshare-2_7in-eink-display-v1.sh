@@ -22,9 +22,10 @@ apt update
 apt-get -y dist-upgrade
 apt-get install -y python3-pip whiptail
 
-# Welcome Prompt
-whiptail --title "E-Ink Display Setup" --msgbox "The e-paper hat communicates with the Raspberry Pi using the SPI interface, so you need to enable it.\n\nNavigate to \"Interface Options\" > \"SPI\" and select \"Yes\" to enable the SPI interface." 12 64
-sudo raspi-config
+# Enable SPI interface
+# 0 for enable; 1 to disable
+# See: https://www.raspberrypi.com/documentation/computers/configuration.html#spi-nonint
+sudo raspi-config nonint do_spi 0
 
 # Install Waveshare e-Paper library
 git clone https://github.com/waveshare/e-Paper.git
