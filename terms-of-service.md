@@ -18,6 +18,6 @@ The creators and contributors of Hush Line reserve the right to modify or termin
 The creators and contributors of Hush Line do not endorse or warrant any third-party products or services that may be advertised on or linked to from this App.
 
 ## Governing Law
-Hush Line is governed by and construed in accordance with the laws of [insert your country/state/province], and any disputes relating to Hush Line shall be subject to the exclusive jurisdiction of the courts of [insert your country/state/province].
+Hush Line is governed by and construed in accordance with the laws of California, US, and any disputes relating to Hush Line shall be subject to the exclusive jurisdiction of the courts of California, US.
 
 By using Hush Line, you agree to all of the above terms and conditions. If you do not agree to these terms and conditions, do not use Hush Line.
