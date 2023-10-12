@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#Run as root
+if [[ $EUID -ne 0 ]]; then
+  echo "Script needs to run as root. Elevating permissions now."
+  exec sudo /bin/bash "$0" "$@"
+fi
+
 # Welcome message and ASCII art
 cat <<"EOF"
                                                             
@@ -25,9 +31,10 @@ apt-get install -y python3-pip whiptail
 # Enable SPI interface
 # 0 for enable; 1 to disable
 # See: https://www.raspberrypi.com/documentation/computers/configuration.html#spi-nonint
-sudo raspi-config nonint do_spi 0
+raspi-config nonint do_spi 0
 
 # Install Waveshare e-Paper library
+cd $HOME/hushline
 git clone https://github.com/waveshare/e-Paper.git
 pip3 install ./e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
