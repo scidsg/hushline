@@ -57,6 +57,19 @@ while : ; do  # This creates an infinite loop, which will only be broken when th
     fi
 done  # End of the loop
 
+# Create a directory for the environment file with restricted permissions
+mkdir -p /etc/hushline
+chmod 700 /etc/hushline
+
+# Create an environment file with restricted permissions
+cat << EOL > /etc/hushline/environment
+EMAIL=$EMAIL
+NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER
+NOTIFY_PASSWORD=$NOTIFY_PASSWORD
+NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT
+EOL
+chmod 600 /etc/hushline/environment
+
 # Instruct the user
 echo "
   ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
@@ -100,11 +113,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$HOME/hushline
-Environment="DOMAIN=localhost"
-Environment="EMAIL=$EMAIL"
-Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
-Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
-Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
+EnvironmentFile=-/etc/hushline/environment
 ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
 Restart=always
 [Install]
