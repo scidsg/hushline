@@ -142,7 +142,7 @@ if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
 fi
 ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx || error_exit
+(nginx -t && systemctl restart nginx) || error_exit
 
 # System status indicator
 display_status_indicator() {
