@@ -21,12 +21,41 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
-# Email Notification Setup
-whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
-EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
-NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+# Enter and test SMTP credentials
+test_smtp_credentials() {
+    python3 << END
+import smtplib
+
+def test_smtp_credentials(smtp_server, smtp_port, email, password):
+    try:
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        server.login(email, password)
+        server.quit()
+        return True
+    except smtplib.SMTPException as e:
+        print(f"SMTP Error: {e}")
+        return False
+
+if test_smtp_credentials("$NOTIFY_SMTP_SERVER", $NOTIFY_SMTP_PORT, "$EMAIL", "$NOTIFY_PASSWORD"):
+    exit(0)  # Exit with status 0 if credentials are correct
+else:
+    exit(1)  # Exit with status 1 if credentials are incorrect
+END
+}
+
+while : ; do  # This creates an infinite loop, which will only be broken when the SMTP credentials are verified successfully
+    whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
+    EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
+    NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
+    NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
+    NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
+
+    if test_smtp_credentials; then
+        break  # If credentials are correct, break the infinite loop
+    else
+        whiptail --title "SMTP Credential Error" --msgbox "SMTP credentials are invalid. Please check your SMTP server address, port, email, and password, and try again." 10 60
+    fi
+done  # End of the loop
 
 # Instruct the user
 echo "
