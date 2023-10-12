@@ -106,7 +106,7 @@ pip3 install -r requirements.txt
 echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
 # Create a systemd service
-cat >/etc/systemd/system/hush-line.service <<EOL
+cat >/etc/systemd/system/hushline.service <<EOL
 [Unit]
 Description=Hush Line Web App
 After=network.target
@@ -121,10 +121,10 @@ WantedBy=multi-user.target
 EOL
 
 # Make config read-only
-chmod 444 /etc/systemd/system/hush-line.service
+chmod 444 /etc/systemd/system/hushline.service
 
-systemctl enable hush-line.service
-systemctl start hush-line.service
+systemctl enable hushline.service
+systemctl start hushline.service
 
 # Check if the application is running and listening on the expected address and port
 sleep 5
@@ -184,7 +184,7 @@ ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 
 # System status indicator
 display_status_indicator() {
-    local status="$(systemctl is-active hush-line.service)"
+    local status="$(systemctl is-active hushline.service)"
     if [ "$status" = "active" ]; then
         printf "\n\033[32m●\033[0m Hush Line is running\n$ONION_ADDRESS\n\n"
     else
@@ -297,7 +297,7 @@ Have feedback? Send us an email at hushline@scidsg.org."
 
 # Display system status on login
 echo "display_status_indicator() {
-    local status=\"\$(systemctl is-active hush-line.service)\"
+    local status=\"\$(systemctl is-active hushline.service)\"
     if [ \"\$status\" = \"active\" ]; then
         printf \"\n\033[32m●\033[0m Hush Line is running\nhttp://$ONION_ADDRESS\n\n\"
     else
