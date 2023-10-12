@@ -340,7 +340,7 @@ echo "display_status_indicator() {
 echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
-systemctl restart hush-line
+systemctl restart hushline
 
 rm -r $HOME/hushline/assets
 rm $HOME/hushline/scripts/install*
