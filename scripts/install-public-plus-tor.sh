@@ -154,7 +154,7 @@ ONION_ADDRESS=$(cat /var/lib/tor/hidden_service/hostname)
 SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
-cat >/etc/nginx/sites-available/hush-line.nginx <<EOL
+cat >/etc/nginx/sites-available/hushline.nginx <<EOL
 server {
     listen 80;
     server_name $DOMAIN;
@@ -191,13 +191,13 @@ EOL
 # Configure Nginx with privacy-preserving logging
 mv $HOME/hushline/assets/nginx.conf /etc/nginx
 
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
 fi
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 (nginx -t && systemctl restart nginx) || error_exit
 
 SERVER_IP=$(curl -s ifconfig.me)
