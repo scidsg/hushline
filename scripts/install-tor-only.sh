@@ -85,6 +85,8 @@ while IFS= read -r LINE < /dev/tty; do
     [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
 done
 
+echo "Public PGP key received.\nContinuing with installation process..."
+
 export DOMAIN
 export EMAIL
 export NOTIFY_PASSWORD
