@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "5001:80"
+    volumes:
+      - ./public_key.asc:/app/public_key.asc:ro
+    environment:
+      - RECIPIENT_NAME=Your Name
+      - RECIPIENT_EMAIL=recipient@example.com
+      - SENDER_EMAIL=sender@example.com
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_USER=username@example.com
+      - SMTP_PASSWORD=yourpassword
+      - TITLE=🤫 Hush Line
+      - CLOSE_APP_LINK=https://en.wikipedia.org/wiki/Tina_Turner
+      - PGP_ENABLED=true
+      - PGP_FILENAME=public_key.asc

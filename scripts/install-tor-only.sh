@@ -154,18 +154,9 @@ display_status_indicator() {
     fi
 }
 
-# Enable the "security" and "updates" repositories
-sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-security";/"\${distro_id}:\${distro_codename}-security";/g' /etc/apt/apt.conf.d/50unattended-upgrades
-sed -i 's/\/\/\s\+"\${distro_id}:\${distro_codename}-updates";/"\${distro_id}:\${distro_codename}-updates";/g' /etc/apt/apt.conf.d/50unattended-upgrades
-sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
-sed -i 's|//\s*Unattended-Upgrade::Remove-Unused-Dependencies "true";|Unattended-Upgrade::Remove-Unused-Dependencies "true";|' /etc/apt/apt.conf.d/50unattended-upgrades
-
-sh -c 'echo "APT::Periodic::Update-Package-Lists \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
-sh -c 'echo "APT::Periodic::Unattended-Upgrade \"1\";" >> /etc/apt/apt.conf.d/20auto-upgrades'
-
-# Configure unattended-upgrades
-echo 'Unattended-Upgrade::Automatic-Reboot "true";' | tee -a /etc/apt/apt.conf.d/50unattended-upgrades
-echo 'Unattended-Upgrade::Automatic-Reboot-Time "02:00";' | tee -a /etc/apt/apt.conf.d/50unattended-upgrades
+# Configure Unattended Upgrades
+mv $HOME/hushline/assets/50unattended-upgrades /etc/apt/apt.conf.d
+mv $HOME/hushline/assets/20auto-upgrades /etc/apt/apt.conf.d
 
 systemctl restart unattended-upgrades
 
