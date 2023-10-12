@@ -10,6 +10,8 @@ curl --proto '=https' --tlsv1.2 -sSfL https://install.hushline.app | bash
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
 
+![Frame 71](https://github.com/scidsg/hushline/assets/28545431/62aaaa08-3230-4952-a956-12ca3f67e901)
+
 ## Why Hush Line?
 
 Other tools in this space include SecureDrop and GlobalLeaks, two robust, widely adopted whistleblowing platforms whose installation can be complicated for non-technical users. Some systems require an admin to configure it and special infrastructure for it to operate. The security posture of these platforms is increased because the chances are high that you'll receive malicious and dirty data when you allow people to send you files anonymously. Both require significant time and money to manage. It's not much easier for the person sending a message, either. They might have to create accounts, download new software, or manage PGP keys. It requires a significant commitment. Even tools like Signal or Protonmail require end-users to reveal information about themselves unless they can find disposable phone numbers and email addresses. Not a requirement everyone feels comfortable with.
