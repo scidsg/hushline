@@ -118,20 +118,8 @@ pip3 install -r requirements.txt
 # Save the provided PGP key to a file
 echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
-# Create a systemd service
-cat >/etc/systemd/system/hushline.service <<EOL
-[Unit]
-Description=Hush Line Web App
-After=network.target
-[Service]
-User=root
-WorkingDirectory=$HOME/hushline
-EnvironmentFile=-/etc/hushline/environment
-ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
-Restart=always
-[Install]
-WantedBy=multi-user.target
-EOL
+# Move systemd service
+mv $HOME/hushline/assets/service/hushline.service /etc/systemd/system/
 
 # Make config read-only
 chmod 444 /etc/systemd/system/hushline.service
@@ -147,7 +135,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-mv $HOME/hushline/assets/torrc /etc/tor
+mv $HOME/hushline/assets/config/torrc /etc/tor
 
 # Restart Tor service
 systemctl restart tor.service
@@ -193,7 +181,7 @@ server {
 EOL
 
 # Configure Nginx with privacy-preserving logging
-mv $HOME/hushline/assets/nginx.conf /etc/nginx
+mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
 
 ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
@@ -229,8 +217,8 @@ display_status_indicator() {
 }
 
 # Enable the "security" and "updates" repositories
-mv $HOME/hushline/assets/50unattended-upgrades /etc/apt/apt.conf.d
-mv $HOME/hushline/assets/20auto-upgrades /etc/apt/apt.conf.d
+mv $HOME/hushline/assets/config/50unattended-upgrades /etc/apt/apt.conf.d
+mv $HOME/hushline/assets/config/20auto-upgrades /etc/apt/apt.conf.d
 
 systemctl restart unattended-upgrades
 
@@ -245,7 +233,7 @@ systemctl enable fail2ban
 cp /etc/fail2ban/jail.{conf,local}
 
 # Configure fail2ban
-mv $HOME/hushline/assets/jail.local /etc/fail2ban
+mv $HOME/hushline/assets/config/jail.local /etc/fail2ban
 
 systemctl restart fail2ban
 
@@ -347,7 +335,6 @@ source /etc/bash.bashrc
 systemctl restart hushline
 
 rm -r $HOME/hushline/assets
-rm $HOME/hushline/scripts/install*
 
 send_email
 
