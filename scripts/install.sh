@@ -41,6 +41,7 @@ else
     git clean -fd .
     git config pull.rebase false
     git pull
+    cd $HOME # return to HOME for next steps
 fi
 
 # Welcome Prompt
