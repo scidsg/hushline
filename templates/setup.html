@@ -46,5 +46,17 @@
         
         <button type="submit">Submit</button>
     </form>
+    <script>
+        // automatically fill in gmail smtp info if user enters @gmail.com into the email field
+        document.getElementsByName("email")[0].addEventListener("change", (event) => {
+          if (event.isComposing || event.keyCode === 229) {
+            return;
+          }
+          if (document.getElementsByName("email")[0].value.includes("@gmail.com") == true) {
+            document.getElementsByName("smtp_port")[0].value = "465";
+            document.getElementsByName("smtp_server")[0].value = "smtp.gmail.com";
+          }
+        });
+    </script>
 </body>
 </html>
