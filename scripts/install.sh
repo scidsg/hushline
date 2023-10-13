@@ -44,6 +44,9 @@ else
     cd $HOME # return to HOME for next steps
 fi
 
+# "reset" the terminal window before running first whiptail prompt
+reset
+
 # Welcome Prompt
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where the internet is censored.\n\nIf deploying to a public website, ensure your DNS settings point to this server." 16 64
 
