@@ -62,11 +62,11 @@ if [ $exitstatus = 0 ]; then
     cd $HOME
     
     if [ $OPTION = "1" ]; then
-        chmod +x hushline/scripts/install-tor-only.sh
-        ./hushline/scripts/install-tor-only.sh
+        chmod +x hushline/assets/scripts/install-tor-only.sh
+        ./hushline/assets/scripts/install-tor-only.sh
     elif [ $OPTION = "2" ]; then
-        chmod +x hushline/scripts/install-public-plus-tor.sh
-        ./hushline/scripts/install-public-plus-tor.sh
+        chmod +x hushline/assets/scripts/install-public-plus-tor.sh
+        ./hushline/assets/scripts/install-public-plus-tor.sh
     fi
 else
     echo "You chose Cancel."
