@@ -53,8 +53,12 @@
             return;
           }
           if (document.getElementsByName("email")[0].value.includes("@gmail.com") == true) {
-            document.getElementsByName("smtp_port")[0].value = "465";
-            document.getElementsByName("smtp_server")[0].value = "smtp.gmail.com";
+            // Only make changes if smtp_port and smtp_server fields are both currently empty 
+            // (we don't want to overwrite a different port or server URL that user has already entered!)
+            if (document.getElementsByName("smtp_port")[0].value == "" && document.getElementsByName("smtp_server")[0].value == "") {
+              document.getElementsByName("smtp_port")[0].value = "465";
+              document.getElementsByName("smtp_server")[0].value = "smtp.gmail.com";
+            }
           }
         });
     </script>
