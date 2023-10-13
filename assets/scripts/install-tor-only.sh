@@ -116,12 +116,8 @@ Description=Hush Line Web App
 After=network.target
 [Service]
 User=root
-WorkingDirectory=$PWD
-Environment="DOMAIN=localhost"
-Environment="EMAIL=$EMAIL"
-Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
-Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
-Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
+WorkingDirectory=$HOME/hushline
+EnvironmentFile=-/etc/hushline/environment
 ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
 Restart=always
 [Install]
