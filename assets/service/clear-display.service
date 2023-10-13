@@ -1,0 +1,12 @@
+[Unit]
+Description=Clear e-Paper display before shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/hush/hushline/clear_display.py
+TimeoutStartSec=0
+
+[Install]
+WantedBy=halt.target reboot.target shutdown.target
