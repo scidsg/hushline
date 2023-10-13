@@ -88,6 +88,10 @@ while IFS= read -r LINE < /dev/tty; do
     [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
 done
 
+echo "
+👍 Public PGP key received.
+Continuing with installation process..."
+
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
     DOMAIN=$(whiptail --inputbox "Invalid domain name format. Please enter a valid domain name:" 8 60 3>&1 1>&2 2>&3)
