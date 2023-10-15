@@ -31,11 +31,9 @@ with open("public_key.asc", "r") as key_file:
     key_data = key_file.read()
     PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)  # Extract the key from the tuple
 
-
 def encrypt_message(message):
     encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
     return encrypted_message
-
 
 @app.route("/")
 def index():
@@ -70,7 +68,6 @@ def send_email_notification(message):
     except Exception as e:
         log.error(f"Error sending email notification: {e}")
 
-
 @app.route("/pgp_owner_info")
 def pgp_owner_info():
     owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
@@ -80,7 +77,6 @@ def pgp_owner_info():
     else:
         expires = f"Exp: Never"
     return jsonify({"owner_info": owner, "key_id": key_id, "expires": expires})
-
 
 if __name__ == "__main__":
     app.run()
