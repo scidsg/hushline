@@ -41,6 +41,10 @@ def encrypt_message(message):
 def index():
     return render_template("index.html")
 
+@app.route("/info")
+def info():
+    return render_template("info.html", title=title, recipient=recipient_name)
+
 
 @app.route("/save_message", methods=["POST"])
 def save_message():
