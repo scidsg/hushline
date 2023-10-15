@@ -43,8 +43,7 @@ def index():
 
 @app.route("/info")
 def info():
-    return render_template("info.html", title=title, recipient=recipient_name)
-
+    return render_template("info.html")
 
 @app.route("/save_message", methods=["POST"])
 def save_message():
@@ -54,7 +53,6 @@ def save_message():
         f.write(encrypted_message + "\n\n")
     send_email_notification(encrypted_message)
     return jsonify({"success": True})
-
 
 def send_email_notification(message):
     msg = MIMEMultipart()
