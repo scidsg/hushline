@@ -174,6 +174,54 @@ server {
 }
 EOL
 
+# Create Info Page
+cat >/home/hush/hushline/templates/info.html <<EOL
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="Science & Design, Inc.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A reasonably private and secure personal tip line.">
+    <meta name="theme-color" content="#7D25C1">
+
+    <title>Hush Line Info</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}" sizes="32x32">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}" sizes="16x16">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-192x192.png') }}" sizes="192x192">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-512x512.png') }}" sizes="512x512">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="info">
+    <header>
+        <div class="wrapper">
+            <h1>B14CKB0X</h1>
+            <a href="https://en.wikipedia.org/wiki/Special:Random" class="btn" rel="noopener noreferrer">Close App</a>
+        </div>
+    </header>
+    <section>
+        <div class="wrapper">
+            <h2>👋<br>Welcome to Hush Line</h2>
+            <p>Hush Line is an anonymous tip line. You should use it when you have information you think shows evidence of wrongdoing, including:</p>
+            <ul>
+                <li>a violation of law, rule, or regulation,</li>
+                <li>gross mismanagement,</li>
+                <li>a gross waste of funds,</li>
+                <li>abuse of authority, or</li>
+                <li>a substantial danger to public health or safety.</li>
+            </ul>
+            <p>To use Hush Line, first, <a href="https://www.torproject.org/download/" target="_blank">download Tor Browser</a>, then use it to visit: <pre>$ONION_ADDRESS</pre></p>
+        </div>
+    </section>
+    <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
+EOL
+
 # Configure Nginx with privacy-preserving logging
 mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
 
