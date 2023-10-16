@@ -174,6 +174,28 @@ server {
 }
 EOL
 
+# Configure Nginx with privacy-preserving logging
+mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
+
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx
+
+if [ -e "/etc/nginx/sites-enabled/default" ]; then
+    rm /etc/nginx/sites-enabled/default
+fi
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
+(nginx -t && systemctl restart nginx) || error_exit
+
+# System status indicator
+display_status_indicator() {
+    local status="$(systemctl is-active hushline.service)"
+    if [ "$status" = "active" ]; then
+        printf "\n\033[32m●\033[0m Hush Line is running\n$ONION_ADDRESS\n\n"
+    else
+        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
+    fi
+}
+
 # Create Info Page
 cat >$HOME/hushline/templates/info.html <<EOL
 <!DOCTYPE html>
@@ -221,28 +243,6 @@ cat >$HOME/hushline/templates/info.html <<EOL
 </body>
 </html>
 EOL
-
-# Configure Nginx with privacy-preserving logging
-mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
-
-ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx
-
-if [ -e "/etc/nginx/sites-enabled/default" ]; then
-    rm /etc/nginx/sites-enabled/default
-fi
-ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
-(nginx -t && systemctl restart nginx) || error_exit
-
-# System status indicator
-display_status_indicator() {
-    local status="$(systemctl is-active hushline.service)"
-    if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\n$ONION_ADDRESS\n\n"
-    else
-        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
-    fi
-}
 
 # Configure Unattended Upgrades
 mv $HOME/hushline/assets/config/50unattended-upgrades /etc/apt/apt.conf.d
