@@ -193,7 +193,7 @@ server {
 EOL
 
 # Create Info Page
-cat >/home/hush/hushline/templates/info.html <<EOL
+cat >$HOME/hushline/templates/info.html <<EOL
 <!DOCTYPE html>
 <html lang="en">
 <head>
