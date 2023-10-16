@@ -89,12 +89,21 @@ body.info h2 {
 	font-family: 'Atkinson Bold', sans-serif;
 }
 
-body.info pre {
+.info pre {
 	text-align: left;
 	font-size: .875rem;
-	padding: 1rem 0;
+	line-height: 1.5;
+	color: #f2f2f2;
+	padding: .75rem 1rem;
 	word-wrap: break-word;
   white-space: normal;
+  width: fit-content;
+  white-space: break-spaces;
+  word-wrap: anywhere;
+  margin-top: 1.5rem;
+  background-color: white;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: .25rem;
 }
 
 h1, p, a, label, input, ul, pre {
