@@ -45,6 +45,12 @@ html {
   box-sizing: inherit;
 }
 
+.wrapper {
+	max-width: 1280px;
+	width: 100%;
+	padding: 0 1.5rem;
+}
+
 body {
 	display: flex;
 	flex-direction: column;
@@ -56,6 +62,26 @@ body {
 	height: auto;
 	padding: 6.5rem 2rem 1rem 2rem;
 	background-color: #F6EFFF;
+}
+
+body.info {
+	padding: 5.5rem 0 6.5rem 0;
+}
+
+body.info p {
+	text-align: left;
+	font-size: 1.125rem;
+	margin: .5rem 0;
+}
+
+body.info ul {
+	padding-left: 1rem;
+	font-size: 1.125rem;
+}
+
+body.info section {
+	max-width: 1280px;
+	width: 100%;
 }
 
 h1, p, a, label, input {
@@ -329,6 +355,10 @@ footer p {
 		position: initial;
 	}
 
+	body.info h2 {
+		font-size: 2.5rem;
+	}
+
 }
 
 @media only screen and (max-width: 480px) {
@@ -344,6 +374,14 @@ footer p {
 	#pgp-owner-info {
 		margin-bottom: 1rem;
 
+	}
+
+	body.info {
+		padding: 6.5rem 0 5rem 0;
+	}
+
+	body.info h2 {
+		font-size: 2rem;
 	}
 }
 
