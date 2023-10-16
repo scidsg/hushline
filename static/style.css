@@ -84,6 +84,11 @@ body.info section {
 	width: 100%;
 }
 
+body.info h2 {
+	font-size: 3rem;
+	font-family: 'Atkinson Bold', sans-serif;
+}
+
 h1, p, a, label, input {
 	color: #1d1d1c;
 }
