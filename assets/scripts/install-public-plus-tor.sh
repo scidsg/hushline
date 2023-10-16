@@ -342,7 +342,7 @@ warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 def send_notification_email(smtp_server, smtp_port, email, password):
     subject = "🎉 Hush Line Installation Complete"
-    message = "Hush Line has been successfully installed!\n\nYour Hush Line addresses are:\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\nTo send a message, enter your onion address into Tor Browser, or the non-onion address into a browser like Firefox, Chrome, or Safari. If you still need to download Tor Browser, get it from https://torproject.org/download.\n\nHush Line is a free and open-source tool by Science & Design, Inc. Learn more about us at https://scidsg.org.\n\nIf you've found this resource useful, please consider making a donation at https://opencollective.com/scidsg."
+    message = "Hush Line has been successfully installed!\n\nYour Hush Line addresses are:\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\nTo send a message, enter your onion address into Tor Browser, or the non-onion address into a browser like Firefox, Chrome, or Safari. To find information about your Hush Line, including tips for when to use it, visit: $ONION_ADDRESS/info or $DOMAIN/info. If you still need to download Tor Browser, get it from https://torproject.org/download.\n\nHush Line is a free and open-source tool by Science & Design, Inc. Learn more about us at https://scidsg.org.\n\nIf you've found this resource useful, please consider making a donation at https://opencollective.com/scidsg."
 
     # Load the public key from its path
     key_path = os.path.expanduser('$HUSHLINE_PATH/public_key.asc')  # Use os to expand the path
