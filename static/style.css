@@ -97,8 +97,8 @@ body.info pre {
   white-space: normal;
 }
 
-h1, p, a, label, input {
-	color: #1d1d1c;
+h1, p, a, label, input, ul, pre {
+	color: #1d1d1c !important;
 }
 
 h1 {
