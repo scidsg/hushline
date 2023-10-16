@@ -192,6 +192,42 @@ server {
 }
 EOL
 
+# Configure Nginx with privacy-preserving logging
+mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
+
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx
+
+if [ -e "/etc/nginx/sites-enabled/default" ]; then
+    rm /etc/nginx/sites-enabled/default
+fi
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
+(nginx -t && systemctl restart nginx) || error_exit
+
+SERVER_IP=$(curl -s ifconfig.me)
+WIDTH=$(tput cols)
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
+# Request the certificates
+echo "Waiting for 2 minutes to give DNS time to update..."
+sleep 120
+certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+
+# Set up cron job to renew SSL certificate
+(
+    crontab -l 2>/dev/null
+    echo "30 2 * * 1 /usr/bin/certbot renew --quiet"
+) | crontab -
+
+# System status indicator
+display_status_indicator() {
+    local status="$(systemctl is-active hushline.service)"
+    if [ "$status" = "active" ]; then
+        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n"
+    else
+        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
+    fi
+}
+
 # Create Info Page
 cat >$HOME/hushline/templates/info.html <<EOL
 <!DOCTYPE html>
@@ -239,42 +275,6 @@ cat >$HOME/hushline/templates/info.html <<EOL
 </body>
 </html>
 EOL
-
-# Configure Nginx with privacy-preserving logging
-mv $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
-
-ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx
-
-if [ -e "/etc/nginx/sites-enabled/default" ]; then
-    rm /etc/nginx/sites-enabled/default
-fi
-ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
-(nginx -t && systemctl restart nginx) || error_exit
-
-SERVER_IP=$(curl -s ifconfig.me)
-WIDTH=$(tput cols)
-whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
-# Request the certificates
-echo "Waiting for 2 minutes to give DNS time to update..."
-sleep 120
-certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
-
-# Set up cron job to renew SSL certificate
-(
-    crontab -l 2>/dev/null
-    echo "30 2 * * 1 /usr/bin/certbot renew --quiet"
-) | crontab -
-
-# System status indicator
-display_status_indicator() {
-    local status="$(systemctl is-active hushline.service)"
-    if [ "$status" = "active" ]; then
-        printf "\n\033[32m●\033[0m Hush Line is running\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\n"
-    else
-        printf "\n\033[31m●\033[0m Hush Line is not running\n\n"
-    fi
-}
 
 # Enable the "security" and "updates" repositories
 mv $HOME/hushline/assets/config/50unattended-upgrades /etc/apt/apt.conf.d
