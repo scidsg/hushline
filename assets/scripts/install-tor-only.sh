@@ -235,7 +235,7 @@ cat >$HOME/hushline/templates/info.html <<EOL
                 <li>abuse of authority, or</li>
                 <li>a substantial danger to public health or safety.</li>
             </ul>
-            <p>To use Hush Line, visit <pre>$ONION_ADDRESS</pre> in <a href="https://www.torproject.org/download/" target="_blank">Tor Browser.</a></p>
+            <p>To use Hush Line, first, <a href="https://www.torproject.org/download/" target="_blank">download Tor Browser</a>, then use it to visit: <pre>$ONION_ADDRESS</pre>.</p>
         </div>
     </section>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
