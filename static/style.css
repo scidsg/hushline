@@ -134,6 +134,27 @@ header .wrapper {
 	align-items: center;
 }
 
+header h1 a {
+	text-decoration: none;
+}
+
+header h1 a:hover {
+	text-decoration: underline;
+}
+
+header nav {
+	display: flex;
+	flex-direction: row;
+}
+
+header nav li {
+	list-style: none;
+}
+
+header nav li:last-of-type {
+	margin-left: 1rem;
+}
+
 .setupBody p {
 	text-align: left;
 	font-size: 1rem;
