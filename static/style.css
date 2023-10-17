@@ -151,6 +151,15 @@ header nav li {
 	list-style: none;
 }
 
+header nav li a {
+	font-size: .9125rem;
+	text-decoration: none;
+}
+
+header nav li a:hover {
+	text-decoration: underline;
+}
+
 header nav li:last-of-type {
 	margin-left: 1rem;
 }
