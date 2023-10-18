@@ -232,7 +232,11 @@ p {
 }
 
 label {
-	display: block;
+  display: block;
+  font-size: .825rem;
+  align-self: start;
+  margin-bottom: .5rem;
+  margin-top: .5rem;
 }
 
 #message-form {
