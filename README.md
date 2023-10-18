@@ -10,7 +10,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://install.hushline.app | bash
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
 
-![cover](https://github.com/scidsg/hushline/assets/28545431/9a62285c-946d-4857-8acf-9392e09a4b5d)
+![cover](https://github.com/scidsg/hushline/assets/28545431/31180813-f142-4f04-be23-4ffb04fc282c)
 
 ## Why Hush Line?
 
