@@ -238,7 +238,7 @@ p {
 
 label {
   display: block;
-  font-size: .825rem;
+  font-size: .9125rem;
   align-self: start;
   margin-bottom: .5rem;
   margin-top: .5rem;
@@ -442,10 +442,6 @@ footer p {
 
 	body.info {
 		padding: 6.5rem 0 5rem 0;
-	}
-
-	body.info h2 {
-		font-size: 2rem;
 	}
 }
 
