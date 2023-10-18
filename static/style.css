@@ -115,7 +115,7 @@ h1 {
 	font-size: 1.25rem;
 	letter-spacing: .0125rem;
 	font-family: 'Playfair', serif;
-	color: #1c1c1c;
+	color: #1c1c1c !important;
 }
 
 header {
