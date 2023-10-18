@@ -271,7 +271,7 @@ cat >$HOME/hushline/templates/info.html <<EOL
             <p>To send a Hush Line message from Tor Browser, visit: <pre>http://$ONION_ADDRESS</pre></p>
             <p>If you prefer to use a browser like Firefox, Safari, or Chrome, you can submit a Hush Line message here: <pre>https://$DOMAIN</pre></p>
             <p>🆘 If you're in immediate danger, stop what you're doing and contact your local authorities.</p>
-            <p><a href="https://hushline.app" target="_blank" aria-label="Learn about Hush Line" rel="noopener noreferrer">Hush Line</a> is a free and open source product by <a href="https://scidsg.org" aria-label="Learn about Science & Design, Inc." target="_blank" rel="noopener noreferrer">Science & Design, Inc.</a> If you've found this tool helpful, <a href="https://opencollective.com/scidsg" target="_blank" aria-label="Donate to support our work" rel="noopener noreferrer">please consider supporting our work!</p>
+            <p><a href="https://hushline.app" target="_blank" aria-label="Learn about Hush Line" rel="noopener noreferrer">Hush Line</a> is a free and open-source product by <a href="https://scidsg.org" aria-label="Learn about Science & Design, Inc." target="_blank" rel="noopener noreferrer">Science & Design, Inc.</a> If you've found this tool helpful, <a href="https://opencollective.com/scidsg" target="_blank" aria-label="Donate to support our work" rel="noopener noreferrer">please consider supporting our work!</p>
         </div>
     </section>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
