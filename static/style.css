@@ -439,10 +439,6 @@ footer p {
 		margin-bottom: 1rem;
 
 	}
-
-	body.info {
-		padding: 6.5rem 0 5rem 0;
-	}
 }
 
 @media only screen and (max-width: 390px) {
