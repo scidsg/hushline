@@ -267,7 +267,10 @@ cat >$HOME/hushline/templates/info.html <<EOL
                 <li>abuse of authority, or</li>
                 <li>a substantial danger to public health or safety.</li>
             </ul>
-            <p>To send a Hush Line message, first, <a href="https://www.torproject.org/download/" target="_blank">download Tor Browser</a>, then use it to visit: <pre>http://$ONION_ADDRESS</pre></p>
+            <p>If you have an elevated threat-level - government whistleblowers or users in areas experiencing internet censorship, for example - only use <a href="https://www.torproject.org/download/" target="_blank">download Tor Browser</a> when submitting a message.</p>
+            <p>To send a Hush Line message from Tor Browser, visit: <pre>http://$ONION_ADDRESS</pre></p>
+            <p>If you prefer to use a browser like Firefox, Safari, or Chrome, you can submit a Hush Line message here: <pre>https://$DOMAIN</pre></p>
+            <p>If you're in immediate danger, stop what you're doing and contact your local authorities.</p>
         </div>
     </section>
     <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
