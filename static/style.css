@@ -296,8 +296,7 @@ button {
 button:focus {
 	position: relative;
 	box-sizing: border-box;
-	outline: 2px solid #ffffff;
-	box-shadow: 0px 8px 12px rgb(125 37 193 / 25%);
+	outline: 6px double #7D25C1;
 }
 
 .btn {
