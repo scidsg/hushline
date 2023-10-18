@@ -107,13 +107,15 @@ body.info h2 {
 }
 
 h1, p, a, label, input, ul, pre {
-	color: #1d1d1c !important;
+	color: #525252;
+
 }
 
 h1 {
 	font-size: 1.25rem;
 	letter-spacing: .0125rem;
 	font-family: 'Playfair', serif;
+	color: #1c1c1c;
 }
 
 header {
@@ -228,7 +230,7 @@ p {
 	width: 100%;
 	text-align: center;
 	font-size: .825rem;
-	color: #4F4F4F;
+  color: #525252;
 }
 
 label {
@@ -237,6 +239,7 @@ label {
   align-self: start;
   margin-bottom: .5rem;
   margin-top: .5rem;
+  color: #525252;
 }
 
 #message-form {
@@ -263,7 +266,7 @@ textarea {
 }
 
 textarea + p > a {
-	color: #4F4F4F !important;
+  color: #525252;
 }
 
 .button-container {
@@ -383,10 +386,6 @@ footer p {
 	font-size: .75rem !important;
 	gap: .75rem;
 	margin-top: .125rem;
-}
-
-.pgp-meta p {
-	color: #878787;
 }
 
 #pgp-owner-info p {
