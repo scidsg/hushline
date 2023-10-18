@@ -262,7 +262,7 @@ textarea {
 	font-family: 'Atkinson Hyperlegible', sans-serif;
 	border-radius: .25rem;
 	border: 0;
-	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+	box-shadow: 0px 10px 25px -10px #4F167B2B;
 	outline: 1px solid rgba(0,0,0,0.05);
 	resize: none;
 	max-width: 640px;
@@ -367,7 +367,7 @@ footer p {
   transition: max-height 0.4s ease-out;
 	background-color: rgba(255,255,255,.65);
 	padding: .75rem 1rem;
-	box-shadow: 0px 10px 25px -10px rgba(0,0,0,0.15);
+	box-shadow: 0px 10px 25px -10px #4F167B2B;
 	outline: 1px solid rgba(0,0,0,0.05);
 	border-radius: .25rem;
 	font-family: 'Mono', monospace;
