@@ -93,7 +93,7 @@ body.info h2 {
 	text-align: left;
 	font-size: .875rem;
 	line-height: 1.5;
-	color: #595959;
+	color: #333;
 	padding: .75rem 1rem;
 	word-wrap: break-word;
   white-space: normal;
@@ -108,13 +108,16 @@ body.info h2 {
 
 h1, p, a, label, input, ul, pre {
 	color: #525252;
-
 }
 
 h1 {
 	font-size: 1.25rem;
 	letter-spacing: .0125rem;
 	font-family: 'Playfair', serif;
+	color: #1c1c1c !important;
+}
+
+h1 a {
 	color: #1c1c1c !important;
 }
 
