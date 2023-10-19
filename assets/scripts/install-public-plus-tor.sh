@@ -315,9 +315,6 @@ ufw allow 443/tcp
 ufw allow ssh
 ufw limit ssh/tcp
 
-# Logging
-ufw logging on
-
 # Enable UFW non-interactively
 echo "y" | ufw enable
 
