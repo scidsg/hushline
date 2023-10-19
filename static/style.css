@@ -291,6 +291,10 @@ button {
 	position: relative;
 	z-index: 1;
 	letter-spacing: .05rem;
+	min-height: 48px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 button:focus {
@@ -309,6 +313,10 @@ button:focus {
 	font-family: 'Atkinson Bold', sans-serif;
   letter-spacing: .05rem;
   color: #7D25C1 !important;
+  min-height: 48px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 /* Add the @keyframes rule for the spinning animation */
