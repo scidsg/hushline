@@ -1,11 +1,11 @@
-# 🤫 Hush Line
+# 🤫 Hush Line Personal Server
 
 [Hush Line](https://hushline.app) is a free and open-source, self-hosted anonymous tip line that makes it easy for organizations or individuals to install and use. It's intended for journalists and newsrooms to offer a public tip line; by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
 ## Easy Install:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://home-server.hushline.app | bash
+curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | bash
 ```
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
