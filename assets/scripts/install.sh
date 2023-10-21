@@ -72,6 +72,7 @@ mv hushline.local.pem /etc/nginx/
 mv hushline.local-key.pem /etc/nginx/
 echo "Certificate and key for hushline.local have been created and moved to /etc/nginx/."
 
+cd /home/hush/hushline
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
