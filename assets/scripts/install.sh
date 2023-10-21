@@ -93,7 +93,7 @@ pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
 # Create a new script to capture information
-cp /home/hush/hushline/assets/python/home-server-setup.py /home/hush/hushline
+cp /home/hush/hushline/assets/python/hushline_setup.py /home/hush/hushline
 
 # Configure Nginx
 cp /home/hush/hushline/assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
