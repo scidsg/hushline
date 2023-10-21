@@ -300,7 +300,7 @@ source /etc/bash.bashrc
 
 systemctl restart hushline
 
-cp /home/hush/hushline/assets/python/send-email.py /home/hush/hushline
+cp /home/hush/hushline/assets/python/send_email.py /home/hush/hushline
 nohup ./venv/bin/python3 send_email.py "$NOTIFY_SMTP_SERVER" "$NOTIFY_SMTP_PORT" "$EMAIL" "$NOTIFY_PASSWORD" "$HUSHLINE_PATH" "$ONION_ADDRESS"
 
 deactivate
@@ -308,5 +308,6 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-chmod +x /home/hush/hushline/assets/scripts/display.sh
-./home/hush/hushline/assets/scripts/display.sh
+cd $HOME
+chmod +x hushline/assets/scripts/display.sh
+./hushline/assets/scripts/display.sh
