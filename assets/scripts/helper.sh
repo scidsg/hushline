@@ -21,6 +21,8 @@ A free tool by Science & Design - https://scidsg.org
 EOF
 sleep 3
 
+whiptail --title "Hush Line Home Server" --msgbox "The Hush Line Home Server is meant to be deployed to a Raspberry Pi, either headless, or with a Waveshare e-Paper 2.7\" display. If you want to install Hush Line to a VPS, use the install script in the repository's main branch. " 16 64
+
 # Enable SPI interface
 raspi-config nonint do_spi 0
 
