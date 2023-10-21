@@ -87,7 +87,6 @@ body.info section {
 body.info h2 {
 	font-size: 3rem;
 	font-family: 'Atkinson Bold', sans-serif;
-	line-height: 1.1;
 }
 
 .info pre {
@@ -222,6 +221,34 @@ a:focus {
 	 outline: 2px solid #7D25C1;
 }
 
+body.success {
+	height: 100%;
+  padding: 0 2rem !important;
+  margin: 0;
+  display: flex;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+body.success p {
+	width: 100%;
+  font-size: 1.5rem;
+  margin-bottom: .5rem;
+	max-width: 640px;
+}
+
+body.success p:last-of-type {
+	margin-top: 0;
+	margin-bottom: 6rem;
+}
+
+.success-emoji {
+	font-size: 3rem;
+	line-height: 1.7;
+}
+
 .emoji {
 	font-size: 2.75rem;
 	margin-bottom: .5rem;
@@ -292,10 +319,6 @@ button {
 	position: relative;
 	z-index: 1;
 	letter-spacing: .05rem;
-	min-height: 48px;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 }
 
 button:focus {
@@ -314,10 +337,6 @@ button:focus {
 	font-family: 'Atkinson Bold', sans-serif;
   letter-spacing: .05rem;
   color: #7D25C1 !important;
-  min-height: 48px;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 }
 
 /* Add the @keyframes rule for the spinning animation */
@@ -446,7 +465,13 @@ footer p {
 
 	#pgp-owner-info {
 		margin-bottom: 1rem;
+	}
+	body.success p {
+	  font-size: 1.25rem;
+	}
 
+	.success-emoji {
+		font-size: 2rem;
 	}
 }
 
