@@ -87,6 +87,7 @@ body.info section {
 body.info h2 {
 	font-size: 3rem;
 	font-family: 'Atkinson Bold', sans-serif;
+	line-height: 1.1;
 }
 
 .info pre {
