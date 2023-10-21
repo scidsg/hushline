@@ -5,7 +5,7 @@
 ## Easy Install:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://install.hushline.app | bash
+curl --proto '=https' --tlsv1.2 -sSfL https://home-server.hushline.app | bash
 ```
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
