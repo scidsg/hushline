@@ -6,21 +6,6 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
-# Welcome message and ASCII art
-cat <<"EOF"
-  _    _           _       _      _            
- | |  | |         | |     | |    (_)           
- | |__| |_   _ ___| |__   | |     _ _ __   ___ 
- |  __  | | | / __| '_ \  | |    | | '_ \ / _ \
- | |  | | |_| \__ \ | | | | |____| | | | |  __/
- |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
-                                               
-🤫 A self-hosted, anonymous tip line.
-
-A free tool by Science & Design - https://scidsg.org
-EOF
-sleep 3
-
 # Update and upgrade non-interactively
 export DEBIAN_FRONTEND=noninteractive
 apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove

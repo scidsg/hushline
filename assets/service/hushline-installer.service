@@ -1,0 +1,11 @@
+[Unit]
+Description=Hush Line Home Server Installation Helper
+After=multi-user.target
+
+[Service]
+ExecStart=/home/hush/hushline/assets/scripts/install.sh
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
