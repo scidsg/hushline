@@ -301,7 +301,7 @@ Have feedback? Send us an email at hushline@scidsg.org."
 
 # Display system status on login
 echo "display_status_indicator() {
-    local status=\"\$(systemctl is-active blackbox.service)\"
+    local status=\"\$(systemctl is-active hushline.service)\"
     if [ \"\$status\" = \"active\" ]; then
         printf \"\n\033[32m●\033[0m Hush Line is running\nhttp://$ONION_ADDRESS\n\n\"
     else
@@ -312,7 +312,7 @@ echo "display_status_indicator() {
 echo "display_status_indicator" >>/etc/bash.bashrc
 source /etc/bash.bashrc
 
-systemctl restart blackbox
+systemctl restart hushline
 
 cp /home/hush/hushline/assets/python/send-email.py /home/hush/hushline
 nohup ./venv/bin/python3 send_email.py "$NOTIFY_SMTP_SERVER" "$NOTIFY_SMTP_PORT" "$EMAIL" "$NOTIFY_PASSWORD" "$HUSHLINE_PATH" "$ONION_ADDRESS"
@@ -322,4 +322,5 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/scidsg/blackbox/main/scripts/display.sh | bash
+chmod +x /home/hush/hushline/assets/scripts/display.sh
+./home/hush/hushline/assets/scripts/display.sh
