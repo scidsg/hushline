@@ -78,14 +78,14 @@ export CAROOT="/home/hush/.local/share/mkcert"
 mkdir -p "$CAROOT"  # Ensure the directory exists
 mkcert -install
 
-# Create a certificate for blackbox.local
-echo "Creating certificate for blackbox.local..."
-mkcert blackbox.local
+# Create a certificate for hushline.local
+echo "Creating certificate for hushline.local..."
+mkcert hushline.local
 
 # Move and link the certificates to Nginx's directory (optional, modify as needed)
-mv blackbox.local.pem /etc/nginx/
-mv blackbox.local-key.pem /etc/nginx/
-echo "Certificate and key for blackbox.local have been created and moved to /etc/nginx/."
+mv hushline.local.pem /etc/nginx/
+mv hushline.local-key.pem /etc/nginx/
+echo "Certificate and key for hushline.local have been created and moved to /etc/nginx/."
 
 python3 -m venv venv
 source venv/bin/activate
@@ -134,7 +134,7 @@ sleep 5
 
 cat /tmp/qr_code.txt
 
-echo "The Flask app for setup is running. Please complete the setup by navigating to https://blackbox.local/setup."
+echo "The Flask app for setup is running. Please complete the setup by navigating to https://hushline.local/setup."
 
 # Wait for user to complete setup form
 while [ ! -f "/tmp/setup_config.json" ]; do
@@ -148,7 +148,7 @@ NOTIFY_PASSWORD=$(jq -r '.password' /tmp/setup_config.json)
 NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 
 # Kill the Flask setup process and delete the install script
-pkill -f blackbox-setup.py
+pkill -f hushline_setup.py
 rm /home/hush/hushline/hushline_setup.py
 rm /etc/nginx/sites-available/hushline-setup.nginx
 rm /etc/nginx/sites-enabled/hushline-setup.nginx
