@@ -81,7 +81,7 @@ def display_status(epd, status, local_address, name, email, key_id, expires):
         box_size=3,
         border=2,
     )
-    qr.add_data(f"http://{local_address}")
+    qr.add_data(f"https://{local_address}")
     qr.make(fit=True)
 
     qr_img = qr.make_image(fill_color="black", back_color="white")
