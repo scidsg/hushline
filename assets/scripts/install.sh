@@ -308,6 +308,6 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-cd $HOME
-chmod +x hushline/assets/scripts/display.sh
-./hushline/assets/scripts/display.sh
+cd /home/hush/hushline/assets/scripts
+chmod +x display.sh
+./display.sh
