@@ -6,6 +6,7 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+# Check to see if internet connection is available before proceeding
 check_internet_connection() {
     while true; do
         # Ping Google's public DNS for a quick check.
