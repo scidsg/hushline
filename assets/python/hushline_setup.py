@@ -43,12 +43,11 @@ def setup():
 
     return render_template('setup.html')
 
-@app.route('/')
+@app.route("/")
 def index():
     if not setup_complete:
-        return redirect(url_for('setup'))
-    
-    return '👍 Successfully submitted! The installation script will now resume.'
+        return redirect(url_for("setup"))
+    return render_template("success.html")
 
 if __name__ == '__main__':
     qr = segno.make(f'https://hushline.local/setup')
