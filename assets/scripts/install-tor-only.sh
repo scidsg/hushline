@@ -220,7 +220,7 @@ cat >$HOME/hushline/templates/info.html <<EOL
 <body class="info">
     <header>
         <div class="wrapper">
-            <h1><a href="/" target="_blank">🤫 Hush Line</a></h1>
+            <h1><a href="/">🤫 Hush Line</a></h1>
             <a href="https://en.wikipedia.org/wiki/Special:Random" class="btn" rel="noopener noreferrer">Close App</a>
         </div>
     </header>
