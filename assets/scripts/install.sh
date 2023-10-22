@@ -184,16 +184,16 @@ sleep 10
 ONION_ADDRESS=$(cat /var/lib/tor/hidden_service/hostname)
 
 # Configure Nginx
-cp /home/hush/hushline/assets/nginx/hush-line.nginx /etc/nginx/sites-available
+cp /home/hush/hushline/assets/nginx/hushline.nginx /etc/nginx/sites-available
 cp /home/hush/hushline/assets/nginx/nginx.conf /etc/nginx
 
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
 fi
-ln -sf /etc/nginx/sites-available/hush-line.nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
 # System status indicator
