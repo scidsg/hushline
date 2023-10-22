@@ -20,9 +20,9 @@ onion_address = sys.argv[6]
 def send_installation_complete_email(
     smtp_server, smtp_port, email, password, hushline_path, onion_address
 ):
-    subject = "🎉 Blackbox Installation Complete"
+    subject = "🎉 Hush Line Personal Server Setup Complete"
     message = (
-        "Blackbox has been successfully installed! In a moment, your device will reboot.\n\nYou can visit your tip line when you see \"Blackbox is running\" on your e-Paper display. If you can't immediately connect, don't panic; this is normal, as your device's information sometimes takes a few minutes to publish.\n\nYour Hush Line address is:\nhttp://"
+        "Hush Line has been successfully installed! In a moment, your device will reboot.\n\nYou can visit your tip line when you see \"Hush Line is running\" on your e-Paper display. If you can't immediately connect, don't panic; this is normal, as your device's information sometimes takes a few minutes to publish.\n\nYour Hush Line address is:\nhttp://"
         + onion_address
         + "\n\nTo send a message, enter your address into Tor Browser. To find information about your Hush Line, including tips for when to use it, visit: http://"
         + onion_address
