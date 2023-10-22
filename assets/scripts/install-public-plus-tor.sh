@@ -48,9 +48,9 @@ END
 
 while : ; do  # This creates an infinite loop, which will only be broken when the SMTP credentials are verified successfully
     whiptail --title "Email Setup" --msgbox "Let's set up email notifications. You'll receive an encrypted email when someone submits a new message.\n\nAvoid using your primary email address since your password is stored in plaintext.\n\nInstead, we recommend using a Gmail account with a one-time password." 16 64
-    EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 3>&1 1>&2 2>&3)
+    EMAIL=$(whiptail --inputbox "Enter the SMTP email:" 8 60 3>&1 1>&2 2>&3)
     NOTIFY_SMTP_SERVER=$(whiptail --inputbox "Enter the SMTP server address (e.g., smtp.gmail.com):" 8 60 3>&1 1>&2 2>&3)
-    NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the password for the email address:" 8 60 3>&1 1>&2 2>&3)
+    NOTIFY_PASSWORD=$(whiptail --passwordbox "Enter the SMTP password:" 8 60 3>&1 1>&2 2>&3)
     NOTIFY_SMTP_PORT=$(whiptail --inputbox "Enter the SMTP server port (e.g., 465):" 8 60 3>&1 1>&2 2>&3)
 
     if test_smtp_credentials; then
