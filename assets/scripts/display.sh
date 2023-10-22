@@ -36,7 +36,7 @@ systemctl start display-status.service
 cd /home/hush/hushline
 wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
 
-echo "✅ E-ink display configuration complete. Rebooting Blackbox..."
+echo "✅ E-ink display configuration complete. Rebooting Hush Line..."
 sleep 3
 
 systemctl disable hushline-installer.service
