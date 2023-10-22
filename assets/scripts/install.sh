@@ -93,7 +93,7 @@ pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
 # Create a new script to capture information
-cp /home/hush/hushline/assets/python/hushline_setup.py /home/hush/hushline
+cp /home/hush/hushline/assets/python/web_setup.py /home/hush/hushline
 
 # Configure Nginx
 cp /home/hush/hushline/assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
@@ -109,12 +109,12 @@ ln -sf /etc/nginx/sites-available/hushline-setup.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
 # Move script to display status on the e-ink display
-cp /home/hush/hushline/assets/python/qr_setup.py /home/hush/hushline
+cp /home/hush/hushline/assets/python/qr_setup_link.py /home/hush/hushline
 
-nohup ./venv/bin/python3 qr_setup.py --host=0.0.0.0 &
+nohup ./venv/bin/python3 qr_setup_link.py --host=0.0.0.0 &
 
 # Launch Flask app for setup
-nohup ./venv/bin/python3 hushline_setup.py --host=0.0.0.0 &
+nohup ./venv/bin/python3 web_setup.py --host=0.0.0.0 &
 
 sleep 5
 
@@ -134,8 +134,8 @@ NOTIFY_PASSWORD=$(jq -r '.password' /tmp/setup_config.json)
 NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 
 # Kill the Flask setup process and delete the install script
-pkill -f hushline_setup.py
-rm /home/hush/hushline/hushline_setup.py
+pkill -f web_setup.py
+rm /home/hush/hushline/web_setup.py
 rm /etc/nginx/sites-available/hushline-setup.nginx
 rm /etc/nginx/sites-enabled/hushline-setup.nginx
 
