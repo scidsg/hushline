@@ -21,12 +21,12 @@ pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
 # Create a new script to display status on the e-ink display
-mv /home/hush/blackbox/python/display_status.py /home/hush/hushline
-mv /home/hush/blackbox/python/clear_display.py /home/hush/hushline
+mv /home/hush/hushline/assets/python/display_status.py /home/hush/hushline
+mv /home/hush/hushline/assets/python/clear_display.py /home/hush/hushline
 
 # Clear display before shutdown
-mv /home/hush/blackbox/service/clear-display.service /etc/systemd/system
-mv /home/hush/blackbox/service/display-status.service /etc/systemd/system
+mv /home/hush/hushline/assets/service/clear-display.service /etc/systemd/system
+mv /home/hush/hushline/assets/service/display-status.service /etc/systemd/system
 systemctl daemon-reload
 systemctl enable clear-display.service
 systemctl enable display-status.service
