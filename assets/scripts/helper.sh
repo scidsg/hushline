@@ -65,7 +65,7 @@ ufw deny proto tcp from any to any port 22
 # Enable UFW non-interactively
 echo "y" | ufw enable
 
-echo "🔒 Firewall configured."
+echo "🔒 Firewall enabled."
 
 # Block Bluetooth
 echo "Disabling Bluetooth..."
