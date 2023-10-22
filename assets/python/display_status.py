@@ -34,11 +34,11 @@ def get_onion_address():
         return f.read().strip()
 
 def get_service_status():
-    status = os.popen('systemctl is-active hush-line.service').read().strip()
+    status = os.popen('systemctl is-active hushline.service').read().strip()
     if status == 'active':
-        return '✔ Blackbox is running'
+        return '✔ Hush Line is running'
     else:
-        return '⨯ Blackbox is not running'
+        return '⨯ Hush Line is not running'
 
 def display_status(epd, status, onion_address, name, email, key_id, expires):
     print(f'Displaying status: {status}, Onion address: {onion_address}')
