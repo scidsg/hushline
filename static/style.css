@@ -385,7 +385,7 @@ footer p {
 	display: flex !important;
 	flex-direction: row;
 	gap: .75rem;
-	margin-bottom: .625rem;
+	margin-bottom: 1rem;
 	height: fit-content !important;
 }
 
@@ -442,11 +442,6 @@ footer p {
 	body {
 		padding: 5.75rem 1.25rem 0 1.25rem;
 		justify-content: flex-start;
-	}
-
-	#pgp-owner-info {
-		margin-bottom: 1rem;
-
 	}
 }
 
