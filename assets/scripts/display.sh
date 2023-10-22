@@ -39,7 +39,7 @@ wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash
 echo "✅ E-ink display configuration complete. Rebooting Blackbox..."
 sleep 3
 
-systemctl disable blackbox-installer.service
+systemctl disable hushline-installer.service
 sleep 3
 
 reboot
