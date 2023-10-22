@@ -23,7 +23,7 @@ sleep 3
 
 # Update and upgrade non-interactively
 export DEBIAN_FRONTEND=noninteractive
-apt-get update && apt-get -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove
+apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove
 
 # Install required packages
 apt -y install whiptail curl git wget sudo
