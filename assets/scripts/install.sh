@@ -6,6 +6,22 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+check_internet_connection() {
+    while true; do
+        # Ping Google's public DNS for a quick check.
+        if ping -c 1 hushline.app &>/dev/null; then
+            echo "Internet connection detected!"
+            break
+        else
+            echo "Waiting for an internet connection..."
+            # Wait for 5 seconds before checking again
+            sleep 5
+        fi
+    done
+}
+
+check_internet_connection
+
 # Update and upgrade non-interactively
 export DEBIAN_FRONTEND=noninteractive
 apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove
