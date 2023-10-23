@@ -1,6 +1,8 @@
 # 🤫 Hush Line Personal Server
 
-[Hush Line](https://hushline.app) is a free and open-source, self-hosted anonymous tip line that makes it easy for organizations or individuals to install and use. It's intended for journalists and newsrooms to offer a public tip line; by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
+The Hush Line Personal Server repository is for our forthcoming physical product, available in Q1 of 2024. 
+
+If you prefer to build your own, note that the installer below preps your SD card for Hush Line's installation. Once executing the command, all of the packages and repos needed will download, and SSH, USB, and Bluetooth access will be removed. Give it a few minutes and a QR code should appear on your e-paper display. Scan that or go to hushline.local/setup to configure your device.
 
 ## Easy Install:
 
