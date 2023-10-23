@@ -52,12 +52,26 @@ reset
 whiptail --title "🤫 Hush Line Installation" --msgbox "Hush Line provides a simple way to receive secure messages from sources, colleagues, clients, or patients.\n\nAfter installation, you'll have a private tip line hosted on your own server, secured with PGP, HTTPS, and available on a .onion address so anyone can message you, even from locations where the internet is censored.\n\nIf deploying to a public website, ensure your DNS settings point to this server." 16 64
 
 OPTION=$(whiptail --title "Installation Type" --menu "How would you like to install Hush Line?" 15 60 4 \
-    "1" "Tor-only" \
-    "2" "Tor + Public Domain" 3>&1 1>&2 2>&3)
+    "1" "🧅 Tor-only" \
+    "2" "🧅 Tor + 🌏 Public Domain" 3>&1 1>&2 2>&3)
 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    echo "Your chosen option:" $OPTION
+    # Determine the description of the chosen option
+    case $OPTION in
+        1)
+            DESCRIPTION="🧅 Tor-only"
+            ;;
+        2)
+            DESCRIPTION="🧅 Tor + 🌏 Public Domain"
+            ;;
+        *)
+            DESCRIPTION="Unknown"
+            ;;
+    esac
+
+    echo "You chose:" $DESCRIPTION
+    sleep 3
     
     # Change to the user's home directory before accessing install-tor-only.sh
     cd $HOME
