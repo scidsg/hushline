@@ -67,6 +67,10 @@ else
     exit 0
 fi
 
+# Remove the custom bash functions and calls from /etc/bash.bashrc
+sed -i '/display_status_indicator()/,/}/d' /etc/bash.bashrc
+sed -i '/display_status_indicator/d' /etc/bash.bashrc
+
 # Ask user if they want to reboot the system
 if (whiptail --title "Reboot System" --yesno "Do you want to reboot your system now?" 10 60); then
     echo "Rebooting system..."
