@@ -3,7 +3,7 @@ Description=Hush Line Home Server Installation Helper
 After=multi-user.target
 
 [Service]
-ExecStart=/root/hushline/assets/scripts/install.sh
+ExecStart=/home/hush/hushline/assets/scripts/install.sh
 Type=oneshot
 RemainAfterExit=yes
 

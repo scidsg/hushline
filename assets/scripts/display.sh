@@ -12,7 +12,7 @@ apt-get -y dist-upgrade
 apt-get install -y python3-pip
 
 # Install Waveshare e-Paper library
-pip3 install $HOME/hushline/e-Paper/RaspberryPi_JetsonNano/python/
+pip3 install /home/hush/hushline/e-Paper/RaspberryPi_JetsonNano/python/
 pip3 install qrcode[pil]
 pip3 install requests python-gnupg
 
@@ -21,19 +21,19 @@ pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
 # Create a new script to display status on the e-ink display
-mv $HOME/hushline/assets/python/display_status.py $HOME/hushline
-mv $HOME/hushline/assets/python/clear_display.py $HOME/hushline
+mv /home/hush/hushline/assets/python/display_status.py /home/hush/hushline
+mv /home/hush/hushline/assets/python/clear_display.py /home/hush/hushline
 
 # Clear display before shutdown
-mv $HOME/hushline/assets/service/clear-display.service /etc/systemd/system
-mv $HOME/hushline/assets/service/display-status.service /etc/systemd/system
+mv /home/hush/hushline/assets/service/clear-display.service /etc/systemd/system
+mv /home/hush/hushline/assets/service/display-status.service /etc/systemd/system
 systemctl daemon-reload
 systemctl enable clear-display.service
 systemctl enable display-status.service
 systemctl start display-status.service
 
 # Download splash screen image
-cd $HOME/hushline
+cd /home/hush/hushline
 wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
 
 echo "✅ E-ink display configuration complete. Rebooting Hush Line..."

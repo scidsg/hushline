@@ -14,7 +14,7 @@ cat <<"EOF"
  |  __  | | | / __| '_ \  | |    | | '_ \ / _ \
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
- __                            __                
+  __                            __                
 |__)  _  _  _  _   _   _  |   (_   _  _     _  _ 
 |    (- |  _) (_) | ) (_| |   __) (- |  \/ (- |  
                                                  
@@ -31,18 +31,17 @@ raspi-config nonint do_spi 0
 # Update system
 apt update && apt -y dist-upgrade && apt -y autoremove
 
-cd $HOME
 git clone https://github.com/scidsg/hushline.git
 cd hushline
 git switch personal-server
 chmod +x assets/scripts/install.sh
 
 # Move script to display status on the e-ink display to proper location
-cp $HOME/hushline/assets/service/hushline-installer.service /etc/systemd/system
+cp /home/hush/hushline/assets/service/hushline-installer.service /etc/systemd/system
 
 systemctl enable hushline-installer.service
 
-apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
+apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq ufw
 
 # Install Waveshare e-Paper library
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
@@ -62,8 +61,8 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 
 echo "Disabling SSH access..."
-# ufw deny proto tcp from any to any port 22
-ufw allow ssh
+ufw deny proto tcp from any to any port 22
+# ufw allow ssh
 
 # Enable UFW non-interactively
 echo "y" | ufw enable
