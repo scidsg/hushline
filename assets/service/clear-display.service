@@ -5,7 +5,7 @@ Before=shutdown.target reboot.target halt.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 /home/hush/hushline/clear_display.py
+ExecStart=/usr/bin/python3 /root/hushline/clear_display.py
 TimeoutStartSec=0
 
 [Install]

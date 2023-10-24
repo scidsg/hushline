@@ -31,13 +31,14 @@ raspi-config nonint do_spi 0
 # Update system
 apt update && apt -y dist-upgrade && apt -y autoremove
 
+cd $HOME
 git clone https://github.com/scidsg/hushline.git
 cd hushline
 git switch personal-server
 chmod +x assets/scripts/install.sh
 
 # Move script to display status on the e-ink display to proper location
-cp /home/hush/hushline/assets/service/hushline-installer.service /etc/systemd/system
+cp $HOME/hushline/assets/service/hushline-installer.service /etc/systemd/system
 
 systemctl enable hushline-installer.service
 

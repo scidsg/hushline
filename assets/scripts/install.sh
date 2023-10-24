@@ -76,7 +76,7 @@ wget https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.
 sleep 10
 chmod +x mkcert-v1.4.4-linux-arm64
 mv mkcert-v1.4.4-linux-arm64 /usr/local/bin/mkcert
-export CAROOT="/home/hush/.local/share/mkcert"
+export CAROOT="$HOME/.local/share/mkcert"
 mkdir -p "$CAROOT"  # Ensure the directory exists
 mkcert -install
 
@@ -89,7 +89,7 @@ mv hushline.local.pem /etc/nginx/
 mv hushline.local-key.pem /etc/nginx/
 echo "Certificate and key for hushline.local have been created and moved to /etc/nginx/."
 
-cd /home/hush/hushline
+cd $HOME/hushline
 python3 -m venv venv
 source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
@@ -110,10 +110,10 @@ pip3 install RPi.GPIO spidev
 apt-get -y autoremove
 
 # Create a new script to capture information
-cp /home/hush/hushline/assets/python/web_setup.py /home/hush/hushline
+cp $HOME/hushline/assets/python/web_setup.py $HOME/hushline
 
 # Configure Nginx
-cp /home/hush/hushline/assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
+cp $HOME/hushline/assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
 
 ln -sf /etc/nginx/sites-available/hushline-setup.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
@@ -126,7 +126,7 @@ ln -sf /etc/nginx/sites-available/hushline-setup.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
 # Move script to display status on the e-ink display
-cp /home/hush/hushline/assets/python/qr_setup_link.py /home/hush/hushline
+cp $HOME/hushline/assets/python/qr_setup_link.py $HOME/hushline
 
 nohup ./venv/bin/python3 qr_setup_link.py --host=0.0.0.0 &
 
@@ -152,7 +152,7 @@ NOTIFY_SMTP_PORT=$(jq -r '.smtp_port' /tmp/setup_config.json)
 
 # Kill the Flask setup process and delete the install script
 pkill -f web_setup.py
-rm /home/hush/hushline/web_setup.py
+rm $HOME/hushline/web_setup.py
 rm /etc/nginx/sites-available/hushline-setup.nginx
 rm /etc/nginx/sites-enabled/hushline-setup.nginx
 
@@ -191,7 +191,7 @@ if ! netstat -tuln | grep -q '127.0.0.1:5000'; then
 fi
 
 # Create Tor configuration file
-mv /home/hush/hushline/assets/config/torrc /etc/tor
+mv $HOME/hushline/assets/config/torrc /etc/tor
 
 # Restart Tor service
 systemctl restart tor.service
@@ -201,8 +201,8 @@ sleep 10
 ONION_ADDRESS=$(cat /var/lib/tor/hidden_service/hostname)
 
 # Configure Nginx
-cp /home/hush/hushline/assets/nginx/hushline.nginx /etc/nginx/sites-available
-cp /home/hush/hushline/assets/nginx/nginx.conf /etc/nginx
+cp $HOME/hushline/assets/nginx/hushline.nginx /etc/nginx/sites-available
+cp $HOME/hushline/assets/nginx/nginx.conf /etc/nginx
 
 ln -sf /etc/nginx/sites-available/hushline.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
@@ -224,7 +224,7 @@ display_status_indicator() {
 }
 
 # Create Info Page
-cat >/home/hush/hushline/templates/info.html <<EOL
+cat >$HOME/hushline/templates/info.html <<EOL
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -274,8 +274,8 @@ cat >/home/hush/hushline/templates/info.html <<EOL
 EOL
 
 # Configure Unattended Upgrades
-cp /home/hush/hushline/assets/config/50unattended-upgrades /etc/apt/apt.conf.d
-cp /home/hush/hushline/assets/config/20auto-upgrades /etc/apt/apt.conf.d
+cp $HOME/hushline/assets/config/50unattended-upgrades /etc/apt/apt.conf.d
+cp $HOME/hushline/assets/config/20auto-upgrades /etc/apt/apt.conf.d
 
 systemctl restart unattended-upgrades
 
@@ -289,11 +289,11 @@ systemctl start fail2ban
 systemctl enable fail2ban
 cp /etc/fail2ban/jail.{conf,local}
 
-cp /home/hush/hushline/assets/config/jail.local /etc/fail2ban
+cp $HOME/hushline/assets/config/jail.local /etc/fail2ban
 
 systemctl restart fail2ban
 
-HUSHLINE_PATH="/home/hush/hushline"
+HUSHLINE_PATH="$HOME/hushline"
 
 echo "
 ✅ Installation complete!
@@ -317,7 +317,7 @@ source /etc/bash.bashrc
 
 systemctl restart hushline
 
-cp /home/hush/hushline/assets/python/send_email.py /home/hush/hushline
+cp $HOME/hushline/assets/python/send_email.py $HOME/hushline
 nohup ./venv/bin/python3 send_email.py "$NOTIFY_SMTP_SERVER" "$NOTIFY_SMTP_PORT" "$EMAIL" "$NOTIFY_PASSWORD" "$HUSHLINE_PATH" "$ONION_ADDRESS"
 
 deactivate
@@ -325,6 +325,6 @@ deactivate
 # Disable the trap before exiting
 trap - ERR
 
-cd /home/hush/hushline/assets/scripts
+cd $HOME/hushline/assets/scripts
 chmod +x display.sh
 ./display.sh
