@@ -3,6 +3,8 @@ import json
 import os
 import smtplib
 import segno
+import requests
+import socket
 
 app = Flask(__name__)
 
