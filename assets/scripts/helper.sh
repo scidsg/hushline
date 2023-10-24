@@ -14,10 +14,12 @@ cat <<"EOF"
  |  __  | | | / __| '_ \  | |    | | '_ \ / _ \
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
+  __                            __                
+|__)  _  _  _  _   _   _  |   (_   _  _     _  _ 
+|    (- |  _) (_) | ) (_| |   __) (- |  \/ (- |  
+                                                 
                                                
-🤫 A self-hosted, anonymous tip line.
-
-A free tool by Science & Design - https://scidsg.org
+🤫 A self-hosted, anonymous tip line. Learn more at hushline.app
 EOF
 sleep 3
 

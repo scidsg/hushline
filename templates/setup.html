@@ -24,6 +24,10 @@
         </div>
     </header>
     <form class="setup-form" action="/setup" method="post">
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        
         <p>For a detailed installation walkthrough see our <a href="https://scidsg.github.io/hushline-docs/book/intro.html" target="_blank" rel="noopener noreferrer">documentation</a>.</p>
 
         <label for="email">SMTP Email</label>
