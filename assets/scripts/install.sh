@@ -50,7 +50,7 @@ kill_process_on_port 5000
 kill_process_on_port 5001
 
 # Clone the repository in the user's home directory
-cd $HOME
+cd /home/hush
 if [[ ! -d hushline ]]; then
     # If the hushline directory does not exist, clone the repository
     git clone https://github.com/scidsg/hushline.git
