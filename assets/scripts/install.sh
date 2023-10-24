@@ -14,7 +14,7 @@ check_internet_connection() {
             echo "👍 Internet connection detected!"
             break
         else
-            echo "Waiting for an internet connection..."
+            echo "⏲️ Waiting for an internet connection..."
             # Wait for 5 seconds before checking again
             sleep 5
         fi
