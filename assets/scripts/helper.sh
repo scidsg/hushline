@@ -31,6 +31,7 @@ raspi-config nonint do_spi 0
 # Update system
 apt update && apt -y dist-upgrade && apt -y autoremove
 
+cd $HOME
 git clone https://github.com/scidsg/hushline.git
 cd hushline
 git switch personal-server
