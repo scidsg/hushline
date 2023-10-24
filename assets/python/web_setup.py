@@ -5,22 +5,8 @@ import smtplib
 import segno
 import requests
 import socket
-import gnupg
 
 app = Flask(__name__)
-
-# Create a GPG instance
-gpg = gnupg.GPG()
-
-def test_pgp_public_key(pgp_public_key):
-    """Function to test the validity of a PGP public key."""
-    try:
-        import_result = gpg.import_keys(pgp_public_key)
-        # Check if any key was successfully imported
-        return import_result.count > 0
-    except Exception as e:
-        print(f"Error importing PGP key: {e}")
-        return False
 
 # Flag to indicate whether setup is complete
 setup_complete = os.path.exists('/tmp/setup_config.json')
@@ -50,8 +36,6 @@ def setup():
 
         if not test_smtp_credentials(email, password, smtp_server, smtp_port):
             error_msg = "⛔️ SMTP credentials are invalid. Please check your SMTP server address, port, email, and password, and try again."
-        elif not test_pgp_public_key(pgp_public_key):
-            error_msg = "⛔️ Provided PGP public key is invalid or malformed. Please check and try again."
         else:
             # Save the configuration
             with open('/tmp/setup_config.json', 'w') as f:
