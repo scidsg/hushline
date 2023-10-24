@@ -50,7 +50,7 @@ def setup():
             setup_complete = True
 
             # Save the provided PGP key to a file
-            with open('/home/hush/hushline/public_key.asc', 'w') as keyfile:
+            with open('/root/hushline/public_key.asc', 'w') as keyfile:
                 keyfile.write(pgp_public_key)
 
             return redirect(url_for('index'))

@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/usr/bin/python3 /home/hush/hushline/display_status.py
+ExecStart=/usr/bin/python3 /root/hushline/display_status.py
 Restart=always
 
 [Install]

@@ -197,10 +197,10 @@ def main():
     print("EPD initialized")
 
     # Display splash screen
-    splash_image_path = "/home/hush/hushline/splash.png"
+    splash_image_path = "/root/hushline/splash.png"
     display_splash_screen(epd, splash_image_path, 3)
 
-    pgp_owner_info_url = "/home/hush/hushline/public_key.asc"
+    pgp_owner_info_url = "/root/hushline/public_key.asc"
 
     try:
         while True:
