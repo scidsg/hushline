@@ -56,8 +56,9 @@ html {
   background-color: white;
   color: #A03131 !important;
   border-radius: .25rem;
-  border: 1px solid rgba(0,0,0,0.1);
+  outline: 1px solid rgba(0,0,0,0.1);
   box-shadow: 0px 10px 25px -10px #4F167B2B;
+  border-bottom: none !important;
 }
 
 body {
