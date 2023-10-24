@@ -30,7 +30,6 @@ apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y
 # Install required packages
 apt -y install sudo wget curl git python3 python3-venv python3-pip nginx tor whiptail libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq fail2ban ufw
 
-
 # Function to kill process on a given port
 kill_process_on_port() {
     local port="$1"
