@@ -41,8 +41,7 @@ sleep 3
 
 systemctl disable hushline-installer.service
 echo "✅ Web installer disabled..."
-sleep 3
 
-echo "Rebooting in 10 seconds. Press CTRL + C to cancel."
-sleep 10
+echo "Rebooting in 3 seconds. Press CTRL + C to cancel."
+sleep 3
 reboot
