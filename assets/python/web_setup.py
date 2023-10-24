@@ -33,7 +33,7 @@ def setup():
         pgp_public_key = request.form.get('pgp_public_key')
 
         if not test_smtp_credentials(email, password, smtp_server, smtp_port):
-            error_msg = "SMTP credentials are invalid. Please check your inputs."
+            error_msg = "SMTP credentials are invalid. Please check your SMTP server address, port, email, and password, and try again."
         else:
             # Save the configuration
             with open('/tmp/setup_config.json', 'w') as f:
@@ -53,7 +53,7 @@ def setup():
 
             return redirect(url_for('index'))
 
-    return render_template('setup.html', error=Error testing your SMTP credentials. Please enter them again.)
+    return render_template('setup.html', error=error_msg)
 
 @app.route("/")
 def index():
