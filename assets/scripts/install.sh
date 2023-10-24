@@ -63,7 +63,7 @@ else
     git clean -fd .
     git config pull.rebase false
     git pull
-    cd $HOME # return to HOME for next steps
+    cd /home/hush # return to HOME for next steps
 fi
 
 # "reset" the terminal window before running first whiptail prompt
