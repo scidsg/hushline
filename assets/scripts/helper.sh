@@ -41,7 +41,7 @@ cp /home/hush/hushline/assets/service/hushline-installer.service /etc/systemd/sy
 
 systemctl enable hushline-installer.service
 
-apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq ufw
+apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
 
 # Install Waveshare e-Paper library
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
