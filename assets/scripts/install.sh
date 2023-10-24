@@ -11,7 +11,7 @@ check_internet_connection() {
     while true; do
         # Ping Google's public DNS for a quick check.
         if ping -c 1 hushline.app &>/dev/null; then
-            echo "Internet connection detected!"
+            echo "👍 Internet connection detected!"
             break
         else
             echo "Waiting for an internet connection..."
