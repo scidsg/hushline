@@ -52,7 +52,7 @@ html {
 }
 
 .error {
-	padding: 1rem;
+	padding: 1rem !important;
   background-color: white;
   color: #A03131;
   border-radius: .25rem;

@@ -33,7 +33,7 @@ def setup():
         pgp_public_key = request.form.get('pgp_public_key')
 
         if not test_smtp_credentials(email, password, smtp_server, smtp_port):
-            error_msg = "SMTP credentials are invalid. Please check your SMTP server address, port, email, and password, and try again."
+            error_msg = "⛔️ SMTP credentials are invalid. Please check your SMTP server address, port, email, and password, and try again."
         else:
             # Save the configuration
             with open('/tmp/setup_config.json', 'w') as f:
