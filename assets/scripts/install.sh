@@ -106,13 +106,13 @@ pip3 install requests python-gnupg
 
 # Install other Python packages
 pip3 install RPi.GPIO spidev
-apt-get -y autoremove
+apt -y autoremove
 
 # Create a new script to capture information
-cp $HOME/hushline/assets/python/web_setup.py $HOME/hushline
+cp assets/python/web_setup.py .
 
 # Configure Nginx
-cp $HOME/hushline/assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
+cp assets/nginx/hushline-setup.nginx /etc/nginx/sites-available
 
 ln -sf /etc/nginx/sites-available/hushline-setup.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
@@ -125,7 +125,7 @@ ln -sf /etc/nginx/sites-available/hushline-setup.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx || error_exit
 
 # Move script to display status on the e-ink display
-cp $HOME/hushline/assets/python/qr_setup_link.py $HOME/hushline
+cp assets/python/qr_setup_link.py .
 
 nohup ./venv/bin/python3 qr_setup_link.py --host=0.0.0.0 &
 
