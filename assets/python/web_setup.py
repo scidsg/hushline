@@ -53,7 +53,7 @@ def setup():
 
             return redirect(url_for('index'))
 
-    return render_template('setup.html', error=error_msg)
+    return render_template('setup.html', error=Error testing your SMTP credentials. Please enter them again.)
 
 @app.route("/")
 def index():
