@@ -4,10 +4,16 @@ The Hush Line Personal Server repository is for our forthcoming physical product
 
 If you prefer to build your own, note that the installer below preps your SD card for Hush Line's installation. Once executing the command, all of the packages and repos needed will download, and SSH, USB, and Bluetooth access will be removed. Give it a few minutes and a QR code should appear on your e-paper display. Scan that or go to hushline.local/setup to configure your device.
 
-## Easy Install:
+## Step 1: Ready the cannons
+
+Flash a microSD card with Raspberry Pi OS Legacy 64-bit. In the advanced settings of the Raspberry Pi Imager, change the hostname to `hushline` and the user from `pi` to `hush`.
+
+## Step 2: Fire
+
+Log in to the device and run:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | bash
+curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | sudo bash
 ```
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
