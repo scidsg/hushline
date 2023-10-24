@@ -40,6 +40,8 @@ echo "✅ E-ink display configuration complete. Rebooting Hush Line..."
 sleep 3
 
 systemctl disable hushline-installer.service
+echo "✅ Web installer disabled..."
 sleep 3
 
+echo "Rebooting..."
 reboot
