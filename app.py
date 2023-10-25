@@ -61,7 +61,6 @@ def send_message():
         f.write(encrypted_message + "\n\n")
     send_email_notification(encrypted_message)
     
-    # You might want to redirect to a "Thank you" page or show a success message here
     return render_template("message-sent.html")
 
 def send_email_notification(message):
