@@ -26,19 +26,19 @@
             </nav>
         </div>
     </header>
-    <div id="pgp-owner-info" class="card mt-3">
+    <div id="pgp-owner-info" class="card mt-3" {% if not pgp_info_available %} style="display:none;" {% endif %}>
         <div class="card-header">
             <h3 class="card-title">To:</h3>
         </div>
         <div class="card-body">
-            <p id="pgp-owner"></p>
+            <p id="pgp-owner">{{ owner_info }}</p>
             <div class="pgp-meta">
-                <p id="pgp-key-id"></p>
-                <p id="pgp-expires"></p>
+                <p id="pgp-key-id">{{ key_id }}</p>
+                <p id="pgp-expires">{{ expires }}</p>
             </div>
         </div>
     </div>
-    <form id="message-form" action="/save_message" method="POST">
+    <form id="message-form" action="/send_message" method="POST">
         <label for="message-textarea">Your Message</label>
         <textarea id="message-textarea" name="message" rows="10" cols="60" required aria-describedby="message-instruction" placeholder="Please leave a contact method if you'd like a response..."></textarea>
         <p id="message-instruction">🔒 Your message will be encrypted and only readable by the owner of the address above. <a href="/info" target="_blank" aria-label="Learn more about this tip line" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
@@ -47,7 +47,5 @@
           <span class="spinner hidden"></span>
         </div>
     </form>
-    <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
