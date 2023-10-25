@@ -79,3 +79,8 @@ echo "Disabling USB access..."
 echo "dtoverlay=disable-usb" | tee -a /boot/config.txt
 echo "🔒 USB access disabled."
 sleep 3
+
+# Shutdown the system
+check "Shutting down in 3 seconds..."
+sleep 3
+shutdown -h now
