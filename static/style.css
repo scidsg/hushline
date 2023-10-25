@@ -341,7 +341,8 @@ button:focus {
 	border: 1px solid rgba(0,0,0,0.1);
 	text-decoration: none;
 	height: fit-content;
-	font-family: 'Atkinson Bold', sans-serif;
+	font-family: 'Atkinson Hyperlegible', sans-serif;
+	font-weight: bold;
   letter-spacing: .05rem;
   color: #7D25C1 !important;
 }
