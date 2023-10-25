@@ -80,15 +80,5 @@ def send_email_notification(message):
     except Exception as e:
         log.error(f"Error sending email notification: {e}")
 
-@app.route("/pgp_owner_info")
-def pgp_owner_info():
-    owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
-    key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
-    if PUBLIC_KEY.expires_at is not None:
-        expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
-    else:
-        expires = f"Exp: Never"
-    return jsonify({"owner_info": owner, "key_id": key_id, "expires": expires})
-
 if __name__ == "__main__":
     app.run()
