@@ -53,8 +53,8 @@ def pgp_owner_info_direct():
 def info():
     return render_template("info.html")
 
-@app.route("/save_message", methods=["POST"])
-def save_message():
+@app.route("/send_message", methods=["POST"])
+def send_message():
     message = request.form["message"]
     encrypted_message = encrypt_message(message)
     with open("messages.txt", "a") as f:
@@ -62,7 +62,7 @@ def save_message():
     send_email_notification(encrypted_message)
     
     # You might want to redirect to a "Thank you" page or show a success message here
-    return redirect(url_for("index"))
+    return render_template("message-sent.html")
 
 def send_email_notification(message):
     msg = MIMEMultipart()
