@@ -37,7 +37,17 @@ def encrypt_message(message):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    owner, key_id, expires = pgp_owner_info_direct()
+    return render_template("index.html", owner_info=owner, key_id=key_id, expires=expires, pgp_info_available=bool(owner))
+
+def pgp_owner_info_direct():
+    owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
+    key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
+    if PUBLIC_KEY.expires_at is not None:
+        expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
+    else:
+        expires = f"Exp: Never"
+    return owner, key_id, expires
 
 @app.route("/info")
 def info():
@@ -50,7 +60,9 @@ def save_message():
     with open("messages.txt", "a") as f:
         f.write(encrypted_message + "\n\n")
     send_email_notification(encrypted_message)
-    return jsonify({"success": True})
+    
+    # You might want to redirect to a "Thank you" page or show a success message here
+    return redirect(url_for("index"))
 
 def send_email_notification(message):
     msg = MIMEMultipart()

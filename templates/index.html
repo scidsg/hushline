@@ -26,15 +26,15 @@
             </nav>
         </div>
     </header>
-    <div id="pgp-owner-info" class="card mt-3">
+    <div id="pgp-owner-info" class="card mt-3" {% if not pgp_info_available %} style="display:none;" {% endif %}>
         <div class="card-header">
             <h3 class="card-title">To:</h3>
         </div>
         <div class="card-body">
-            <p id="pgp-owner"></p>
+            <p id="pgp-owner">{{ owner_info }}</p>
             <div class="pgp-meta">
-                <p id="pgp-key-id"></p>
-                <p id="pgp-expires"></p>
+                <p id="pgp-key-id">{{ key_id }}</p>
+                <p id="pgp-expires">{{ expires }}</p>
             </div>
         </div>
     </div>
@@ -47,7 +47,5 @@
           <span class="spinner hidden"></span>
         </div>
     </form>
-    <script src="{{ url_for('static', filename='jquery-min.js') }}"></script>
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
