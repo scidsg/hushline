@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 import os
 import pgpy
 import smtplib
@@ -41,7 +41,7 @@ def index():
     return render_template("index.html", owner_info=owner, key_id=key_id, expires=expires, pgp_info_available=bool(owner))
 
 def pgp_owner_info_direct():
-    owner = f"{PUBLIC_KEY.userids[0].name}\n{PUBLIC_KEY.userids[0].email}"
+    owner = f"{PUBLIC_KEY.userids[0].name} <{PUBLIC_KEY.userids[0].email}>"
     key_id = f"Key ID: {str(PUBLIC_KEY.fingerprint)[-8:]}"
     if PUBLIC_KEY.expires_at is not None:
         expires = f"Exp: {PUBLIC_KEY.expires_at.strftime('%Y-%m-%d')}"
