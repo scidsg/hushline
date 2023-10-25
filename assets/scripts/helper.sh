@@ -81,6 +81,6 @@ echo "🔒 USB access disabled."
 sleep 3
 
 # Shutdown the system
-check "Shutting down in 3 seconds..."
+echo "Shutting down in 3 seconds..."
 sleep 3
 shutdown -h now
