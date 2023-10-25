@@ -7,9 +7,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Install required packages for e-ink display
-apt update
-apt-get -y dist-upgrade
-apt-get install -y python3-pip
+apt update && apt -y dist-upgrade && apt install -y python3-pip
 
 # Install Waveshare e-Paper library
 pip3 install /home/hush/hushline/e-Paper/RaspberryPi_JetsonNano/python/
@@ -18,7 +16,7 @@ pip3 install requests python-gnupg
 
 # Install other Python packages
 pip3 install RPi.GPIO spidev
-apt-get -y autoremove
+apt -y autoremove
 
 # Create a new script to display status on the e-ink display
 mv /home/hush/hushline/assets/python/display_status.py /home/hush/hushline
