@@ -30,6 +30,12 @@ We offer a solution for those who want to help, who might have reportable or act
 
 How much better, safer, and more informed could our schools, workplaces, and society be with a safe way to share information that places the privacy of  communities first?
 
-## References
+## QA
 
-1. https://www.sauteed-onions.org/
+| Repo           | Install Type | OS/Source                        | Installed | Install Gist                           | Display Working | Display Version | Confirmation Email | Home | Info Page | Message Sent | Message Received | Message Decrypted | Close Button | Host          | Auditor | Date        |
+|----------------|--------------|----------------------------------|-----------|---------------------------------------|-----------------|-----------------|--------------------|------|-----------|--------------|------------------|-------------------|--------------|---------------|---------|-------------|
+| main           | Tor-only     | Debian 12 x64                    | ✅         | [link](https://gist.github.com/<id>)  | NA              | NA              | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Digital Ocean | Glenn   | Oct-25-2023 |
+| main           | Tor-only     | Raspbery Pi OS (Legacy, 64-bit)  |           | [link](https://gist.github.com/<id>)  | NA              | NA              | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 |
+| main           | Tor + Public | Debian 12 x64                    | ✅         | [link](https://gist.github.com/<id>)  | NA              | NA              | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 |
+| personal-server| Tor-only     | Raspbery Pi OS (Legacy, 64-bit)  | ✅         | [link](https://gist.github.com/<id>)  | ✅              | 2.2             | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 |
+| alpha-ps-0.1   | Tor-only     | alpha-ps-0.1.img                 | ✅         |                                       | ✅              | 2.2             | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 |
