@@ -19,7 +19,14 @@ Flash a microSD card with Raspberry Pi OS Legacy 64-bit. In the advanced setting
 Log in to the device and run:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | sudo bash
+sudo su
+```
+```bash
+apt update && apt -y dist-upgrade && apt -y autoremove
+```
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | bash
 ```
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
