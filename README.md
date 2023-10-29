@@ -31,7 +31,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://personal-server.hushline.app | bas
 
 Still need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/book/intro.html) for more information.
 
-![cover](https://github.com/scidsg/hushline/assets/28545431/31180813-f142-4f04-be23-4ffb04fc282c)
+![0-cover](https://github.com/scidsg/hushline/assets/28545431/2d4c40b8-acb6-460b-b01a-fc2dd84550c0)
 
 ## Why Hush Line?
 
