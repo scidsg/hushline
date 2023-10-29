@@ -38,7 +38,13 @@ def encrypt_message(message):
 @app.route("/")
 def index():
     owner, key_id, expires = pgp_owner_info_direct()
-    return render_template("index.html", owner_info=owner, key_id=key_id, expires=expires, pgp_info_available=bool(owner))
+    return render_template(
+        "index.html",
+        owner_info=owner,
+        key_id=key_id,
+        expires=expires,
+        pgp_info_available=bool(owner),
+    )
 
 def pgp_owner_info_direct():
     owner = f"{PUBLIC_KEY.userids[0].name} <{PUBLIC_KEY.userids[0].email}>"
