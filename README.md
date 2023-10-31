@@ -45,6 +45,8 @@ How much better, safer, and more informed could our schools, workplaces, and soc
 | Localization  |             |                 |
 | Documentation | Glenn, Sam  | @schlink               |
 
+_Italics indicate a temporarily filled role._
+
 
 ## QA
 
