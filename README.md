@@ -34,6 +34,8 @@ How much better, safer, and more informed could our schools, workplaces, and soc
 
 ## Team
 
+Are we missing any roles? Edit this document!
+
 | Role          | Person      | Keybase Contact    |
 |---------------|-------------|--------------------|
 | Lead          | Glenn       | @glennsorrentino   |
@@ -43,7 +45,7 @@ How much better, safer, and more informed could our schools, workplaces, and soc
 | Design        | Glenn       | @glennsorrentino   |
 | Social        | _Glenn_       | @glennsorrentino   |
 | Localization  |             |                 |
-| Documentation | Glenn, Sam  | @schlink               |
+| Documentation | Glenn<br>Sam  | @glennsorrentino<br>@schlink               |
 
 _Italics indicate a temporarily filled role._
 
