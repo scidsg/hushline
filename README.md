@@ -28,7 +28,7 @@ Are we missing any roles? Edit this document!
 | Design        | Glenn         | @glennsorrentino   |
 | Social        | _Glenn_       | @glennsorrentino   |
 | Localization  |               |                    |
-| Documentation | Glenn<br>Sam  | @glennsorrentino<br>@schlink               |
+| Documentation | _Glenn_<br>Sam  | @glennsorrentino<br>@schlink               |
 
 _Italics indicate a temporarily filled role._
 
