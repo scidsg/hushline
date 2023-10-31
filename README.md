@@ -32,6 +32,20 @@ We offer a solution for those who want to help, who might have reportable or act
 
 How much better, safer, and more informed could our schools, workplaces, and society be with a safe way to share information that places the privacy of  communities first?
 
+## Team
+
+| Role          | Person      | Keybase Contact    |
+|---------------|-------------|--------------------|
+| Lead          | Glenn       | @glennsorrentino   |
+| Lead Engineer | _Glenn_       | @glennsorrentino   |
+| Engineer      | Sam         | @schlink               |
+| Research      | Abbey       | @bodicea           |
+| Design        | Glenn       | @glennsorrentino   |
+| Social        | _Glenn_       | @glennsorrentino   |
+| Localization  |             |                 |
+| Documentation | Glenn, Sam  | @schlink               |
+
+
 ## QA
 
 | Repo           | Install Type | OS/Source                        | Installed | Install Gist                           | Display Working | Display Version | Confirmation Email | Home | Info Page | Message Sent | Message Received | Message Decrypted | Close Button | Host          | Auditor | Date        |
