@@ -30,7 +30,7 @@ Built with popular and ubiquitous hardware and software in mind, Hush Line works
 
 We offer a solution for those who want to help, who might have reportable or actionable information, but don't want to face retaliation or take on the risks of getting involved. In fact, over 70% of people have witnessed or experienced workplace harassment. Only 15% of those people ever make a formal written complaint. About 1% ever has something done about it. That's a big oversight for employers, which could become a significant liability left unattended. And the reason people don't report? They're afraid of retaliation.
 
-How much better, safer, and more informed could our schools, workplaces, and society be with a safe way to share information that places the privacy of  communities first?
+How much better, safer, and more informed could our schools, workplaces, and society be with a safe way to share information that places the privacy of communities first?
 
 ## Team
 
