@@ -36,15 +36,15 @@ How much better, safer, and more informed could our schools, workplaces, and soc
 
 Are we missing any roles? Edit this document!
 
-| Role          | Person      | Keybase Contact    |
-|---------------|-------------|--------------------|
-| Lead          | Glenn       | @glennsorrentino   |
+| Role          | Person        | Keybase Contact    |
+|---------------|---------------|--------------------|
+| Lead          | Glenn         | @glennsorrentino   |
 | Lead Engineer | _Glenn_       | @glennsorrentino   |
-| Engineer      | Sam         | @schlink               |
-| Research      | Abbey       | @bodicea           |
-| Design        | Glenn       | @glennsorrentino   |
+| Engineering   | Sam           | @schlink           |
+| Research      | Abbey         | @bodicea           |
+| Design        | Glenn         | @glennsorrentino   |
 | Social        | _Glenn_       | @glennsorrentino   |
-| Localization  |             |                 |
+| Localization  |               |                    |
 | Documentation | Glenn<br>Sam  | @glennsorrentino<br>@schlink               |
 
 _Italics indicate a temporarily filled role._
