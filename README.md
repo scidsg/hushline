@@ -32,7 +32,6 @@ Are we missing any roles? Edit this document!
 
 _Italics indicate a temporarily filled role._
 
-
 ## QA
 
 | Repo           | Install Type | OS/Source                        | Installed | Install Gist                           | Display Working | Display Version | Confirmation Email | Home | Info Page | Message Sent | Message Received | Message Decrypted | Close Button | Host          | Auditor | Date        |
