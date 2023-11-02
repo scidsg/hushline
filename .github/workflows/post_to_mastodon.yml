@@ -1,0 +1,17 @@
+name: Post to Mastodon on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  post_to_mastodon:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Mastodon
+        run: |
+          curl -X POST -H "Authorization: Bearer ${{ secrets.MASTODON_ACCESS_TOKEN }}" \
+          -F "status=Pull request #${{ github.event.pull_request.number }} merged: ${{ github.event.pull_request.title }}" \
+          https://fosstodon.org/api/v1/statuses
