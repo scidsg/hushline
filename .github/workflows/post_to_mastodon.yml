@@ -15,10 +15,11 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_USER: ${{ github.event.pull_request.user.login }}
+          REPO_NAME: ${{ github.repository }}
           MASTODON_INSTANCE_URL: 'https://fosstodon.org'
         run: |
           PR_COMMENT=$(echo "$PR_BODY" | head -c 100) # Truncating to 100 characters, adjust as needed
-          STATUS="Pull request #$PR_NUMBER by @$PR_USER merged: $PR_TITLE - $PR_COMMENT"
+          STATUS="Pull request #$PR_NUMBER by @$PR_USER in $REPO_NAME merged: $PR_TITLE - $PR_COMMENT"
           curl -X POST -H "Authorization: Bearer ${{ secrets.MASTODON_ACCESS_TOKEN }}" \
                -F "status=$STATUS" \
                $MASTODON_INSTANCE_URL/api/v1/statuses
