@@ -4,7 +4,6 @@
 
 [More project information...](https://github.com/scidsg/project-info/tree/main/hush-line)
 
-
 ## Easy Install
 
 ```bash
