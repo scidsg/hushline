@@ -2,8 +2,7 @@ name: Post to Mastodon on PR Merge
 
 on:
   pull_request:
-    types:
-      - closed
+    types: [closed]
 
 jobs:
   post_to_mastodon:
@@ -11,7 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post to Mastodon
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          MASTODON_INSTANCE_URL: 'https://fosstodon.org'
         run: |
+          PR_COMMENT=$(echo "$PR_BODY" | head -c 100) # Truncating to 100 characters, adjust as needed
+          STATUS="Pull request #$PR_NUMBER by @$PR_USER merged: $PR_TITLE - $PR_COMMENT"
           curl -X POST -H "Authorization: Bearer ${{ secrets.MASTODON_ACCESS_TOKEN }}" \
-          -F "status=Pull request #${{ github.event.pull_request.number }} merged: ${{ github.event.pull_request.title }}" \
-          https://fosstodon.org/api/v1/statuses
+               -F "status=$STATUS" \
+               $MASTODON_INSTANCE_URL/api/v1/statuses
