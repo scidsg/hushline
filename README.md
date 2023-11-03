@@ -15,23 +15,6 @@ Need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/
 
 ![0-cover](https://github.com/scidsg/hushline/assets/28545431/771b1e4d-2404-4d58-b395-7f4a4cfb6913)
 
-## Team
-
-Are we missing any roles? Edit this document!
-
-| Role          | Person        | Keybase Contact    |
-|---------------|---------------|--------------------|
-| Lead          | Glenn         | @glennsorrentino   |
-| Lead Engineer | _Glenn_       | _@glennsorrentino_   |
-| Engineering   | Sam           | @schlink           |
-| Research      | Abbey         | @bodicea           |
-| Design        | Glenn         | @glennsorrentino   |
-| Social        | _Glenn_       | _@glennsorrentino_   |
-| Localization  |               |                    |
-| Documentation | _Glenn_<br>Sam  | _@glennsorrentino_<br>@schlink               |
-
-_Italics indicate a temporarily filled role._
-
 ## QA
 
 | Repo           | Install Type | OS/Source                        | Installed | Install Gist                           | Display Working | Display Version | Confirmation Email | Home | Info Page | Message Sent | Message Received | Message Decrypted | Close Button | Host          | Auditor | Date        | Commit Hash
