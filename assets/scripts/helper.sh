@@ -17,8 +17,7 @@ cat <<"EOF"
  __                            __                
 |__)  _  _  _  _   _   _  |   (_   _  _     _  _ 
 |    (- |  _) (_) | ) (_| |   __) (- |  \/ (- |  
-                                                 
-                                               
+                                                                                                
 🤫 A self-hosted, anonymous tip line. Learn more at hushline.app
 EOF
 sleep 3
@@ -62,13 +61,10 @@ ufw allow 443/tcp
 
 echo "Disabling SSH access..."
 ufw deny proto tcp from any to any port 22
-# ufw allow ssh
 echo "🔒 SSH disabled..."
-
 
 # Enable UFW non-interactively
 echo "y" | ufw enable
-
 echo "🔒 Firewall enabled."
 
 # Block Bluetooth
