@@ -60,7 +60,7 @@ ufw default allow outgoing
 ufw allow 80/tcp
 ufw allow 443/tcp
 
-ufw deny proto tcp from any to any port 22
+# ufw deny proto tcp from any to any port 22
 echo "🔒 SSH disabled..."
 
 # Enable UFW non-interactively
@@ -80,6 +80,6 @@ echo "🔒 USB access disabled."
 sleep 3
 
 # Shutdown the system
-echo "Shutting down in 3 seconds..."
-sleep 3
-shutdown -h now
+# echo "Shutting down in 3 seconds..."
+# sleep 3
+# shutdown -h now
