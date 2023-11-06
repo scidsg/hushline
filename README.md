@@ -1,4 +1,4 @@
-# 🤫 Hush Line Personal Server
+# 🤫 Hush Line Personal Server - 0.2a
 
 The Hush Line Personal Server repository is for our forthcoming physical product, available in Q1 of 2024. 
 
