@@ -59,7 +59,7 @@ ufw default allow outgoing
 ufw allow 80/tcp
 ufw allow 443/tcp
 
-echo "Disabling SSH access..."
+# Disable SSH
 ufw deny proto tcp from any to any port 22
 echo "🔒 SSH disabled..."
 
