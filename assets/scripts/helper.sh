@@ -33,7 +33,7 @@ apt update && apt -y dist-upgrade && apt -y autoremove
 
 git clone https://github.com/scidsg/hushline.git
 cd hushline
-git switch personal-server
+git switch ps-0.2a
 chmod +x assets/scripts/install.sh
 
 # Move script to display status on the e-ink display to proper location
