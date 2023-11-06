@@ -60,8 +60,9 @@ ufw default allow outgoing
 ufw allow 80/tcp
 ufw allow 443/tcp
 
-# ufw deny proto tcp from any to any port 22
-echo "🔒 SSH disabled..."
+echo "Disabling SSH access..."
+ufw deny proto tcp from any to any port 22
+# ufw allow ssh
 
 # Enable UFW non-interactively
 echo "y" | ufw enable
