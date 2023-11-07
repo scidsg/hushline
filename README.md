@@ -12,7 +12,7 @@ Flash a microSD card with Raspberry Pi OS Legacy 64-bit. In the advanced setting
 - Enable SSH
 - Change the user from `pi` to `hush`
 - Set a strong password
-- Do not configure wifi
+- Configure wifi settings
 
 ## Step 2: Fire
 
