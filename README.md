@@ -4,7 +4,7 @@ The Hush Line Personal Server repository is for our forthcoming physical product
 
 If you prefer to build your own, note that the installer below preps your SD card for Hush Line's installation. Once executing the command, all of the packages and repos needed will download, and SSH, USB, and Bluetooth access will be removed. Give it a few minutes and a QR code should appear on your e-paper display. Scan that or go to hushline.local/setup to configure your device.
 
-![demo](https://github.com/scidsg/hushline/assets/28545431/48ab6c52-0a5f-439f-b30d-acdb2cf32d00)
+
 
 ## Step 1: Ready the cannons
 
