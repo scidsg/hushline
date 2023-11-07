@@ -6,10 +6,6 @@ If you prefer to build your own, note that the installer below preps your SD car
 
 ![demo](https://github.com/scidsg/hushline/assets/28545431/facaeba4-6672-4d6f-9115-04baa77814ac)
 
-
-https://github.com/scidsg/hushline/assets/28545431/5796840e-a668-4789-84dc-c8a7eb658587
-
-
 ## Step 1: Ready the cannons
 
 Flash a microSD card with Raspberry Pi OS Legacy 64-bit. In the advanced settings of the Raspberry Pi Imager:
