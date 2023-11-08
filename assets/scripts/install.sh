@@ -33,9 +33,6 @@ cd $HOME
 if [[ ! -d hushline ]]; then
     # If the hushline directory does not exist, clone the repository
     git clone https://github.com/scidsg/hushline.git
-    cd hushline
-    git switch pgp-validation
-    cd ..
 else
     # If the hushline directory exists, clean the working directory and pull the latest changes
     echo "The directory 'hushline' already exists, updating repository..."
