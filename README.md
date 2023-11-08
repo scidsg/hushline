@@ -24,8 +24,3 @@ Need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/
 | personal-server| Tor-only     | Raspberry Pi OS (Legacy, 64-bit) | ✅         | [link](https://gist.github.com/glenn-sorrentino/3de2a2ea11b0228f4892907514b0ac4c)  | ✅              | 2.2             | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 | [984ad9c](https://github.com/scidsg/hushline/tree/984ad9c86b547ccd2af3dac124f9294f4d1e1c4b)
 | ps-0.2a   | Tor-only     | Raspberry Pi OS (Legacy, 64-bit)      | ✅         |  [link](https://gist.github.com/glenn-sorrentino/dfe7650d23d4666507ea4e778d1da0e8)        | ✅              | 2.2             | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Nov-6-2023 | [e2e826c](https://github.com/scidsg/hushline/tree/e2e826c71de73f785f4530982e222cbbbc800dd4)
 | alpha-ps-0.1   | Tor-only     | alpha-ps-0.1.img                 | ✅         |  NA                                     | ✅              | 2.2             | ✅                  | ✅    | ✅         | ✅            | ✅                | ✅                 | ✅            | Pi 4 4GB      | Glenn   | Oct-25-2023 | [984ad9c](https://github.com/scidsg/hushline/tree/984ad9c86b547ccd2af3dac124f9294f4d1e1c4b)
-
-
-
-
-https://gist.github.com/glenn-sorrentino/dfe7650d23d4666507ea4e778d1da0e8
