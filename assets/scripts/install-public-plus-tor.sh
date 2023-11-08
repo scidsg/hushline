@@ -281,7 +281,7 @@ cat >$HOME/hushline/templates/info.html <<EOL
     <header>
         <div class="wrapper">
             <h1><a href="/">🤫 Hush Line</a></h1>
-            <a href="https://en.wikipedia.org/wiki/Special:Random" class="btn" rel="noopener noreferrer">Close App</a>
+            <a href="https://www.wikipedia.org" class="btn" rel="noopener noreferrer">Close App</a>
         </div>
     </header>
     <section>
