@@ -10,7 +10,7 @@ fi
 apt update && apt -y dist-upgrade && apt -y autoremove
 
 # Install required packages
-apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw
+apt-get -y install git python3 python3-venv python3-pip nginx tor libnginx-mod-http-geoip geoip-database unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw gnupg
 
 # Function to display error message and exit
 error_exit() {
@@ -79,11 +79,39 @@ echo "
 
 👇 Please paste your public PGP key and press Enter."
 
-PGP_PUBLIC_KEY=""
-while IFS= read -r LINE < /dev/tty; do
-    PGP_PUBLIC_KEY+="$LINE"$'\n'
-    [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
+# Loop until a valid PGP public key is provided
+while true; do
+    PGP_PUBLIC_KEY=""
+    while IFS= read -r LINE < /dev/tty; do
+        PGP_PUBLIC_KEY+="$LINE"$'\n'
+        [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
+    done
+
+    # Save the provided PGP key to a temporary file
+    TEMP_PGP_KEY_FILE=$(mktemp)
+    echo "$PGP_PUBLIC_KEY" > "$TEMP_PGP_KEY_FILE"
+
+    # Validate the PGP public key
+    if gpg --import "$TEMP_PGP_KEY_FILE" &>/dev/null; then
+        PGP_KEY_ID=$(gpg --list-keys --with-colons | grep pub | head -n 1 | cut -d':' -f5)
+        if [[ -n "$PGP_KEY_ID" ]]; then
+            echo "Valid PGP public key provided."
+            break  # Exit the loop if a valid key is provided
+        else
+            echo "No valid PGP public key ID found. Please provide a valid PGP public key."
+        fi
+    else
+        echo "⛔️ Invalid PGP public key. Please provide a valid PGP public key."
+    fi
+
+    # Remove the temporary PGP key file after validation attempt
+    rm "$TEMP_PGP_KEY_FILE"
+    # Prompt to try again
+    echo "Please try again."
 done
+
+# Remove the temporary PGP key file after successful validation
+rm "$TEMP_PGP_KEY_FILE"
 
 echo "
 👍 Public PGP key received.
