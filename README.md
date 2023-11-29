@@ -16,7 +16,7 @@ Need help? Check out our [documentation](https://scidsg.github.io/hushline-docs/
 
 ## Contribution Guidelines
 
-🙌 We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you follow these guidelines:
+❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you follow these guidelines:
 
 ### Code of Conduct
 
