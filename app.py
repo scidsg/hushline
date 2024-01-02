@@ -5,7 +5,9 @@ import pgpy
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from werkzeug.security import check_password_hash, generate_password_hash
 import logging
+from models import db, User
 
 # setup a logger
 log = logging.getLogger(__name__)
@@ -38,6 +40,72 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password, password):
+            # User authenticated, redirect to settings or dashboard
+            return redirect(url_for('settings'))
+        else:
+            # User not authenticated, show error
+            return "Invalid email or password", 401
+
+    return render_template('login.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password, password):
+            # User authenticated, redirect to settings or dashboard
+            return redirect(url_for('settings'))
+        else:
+            # User not authenticated, show error
+            return "Invalid email or password", 401
+
+    return render_template('login.html')
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        # Assuming you have a current_user context
+        current_user.pgp_key = request.form['pgp_key']
+        current_user.delivery_email = request.form['email']
+        db.session.commit()
+        return redirect(url_for('settings'))
+
+    return render_template('settings.html', current_user=current_user)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        
+        # Check if user already exists
+        user = User.query.filter_by(email=email).first()
+        if user:
+            flash('Email already exists.')
+            return redirect(url_for('register'))
+
+        # Create new user with hashed password
+        hashed_password = generate_password_hash(password)
+        new_user = User(email=email, password=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Redirect to login page or dashboard after registration
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
 
 @app.route('/add_user', methods=['POST'])
 def add_user():

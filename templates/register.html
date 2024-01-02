@@ -1,0 +1,20 @@
+<!-- templates/register.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <!-- Add your CSS links here -->
+</head>
+<body>
+    <h2>Register</h2>
+    <form action="{{ url_for('register') }}" method="post">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        
+        <input type="submit" value="Register">
+    </form>
+</body>
+</html>

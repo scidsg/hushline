@@ -1,0 +1,18 @@
+<!-- templates/settings.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings</title>
+    <!-- Add your CSS links here -->
+</head>
+<body>
+    <h2>Settings</h2>
+    <form action="{{ url_for('settings') }}" method="post">
+        <label for="pgp_key">PGP Key:</label>
+        <textarea id="pgp_key" name="pgp_key">{{ current_user.pgp_key }}</textarea>
+        <label for="email">Delivery Email:</label>
+        <input type="email" id="email" name="email" value="{{ current_user.delivery_email }}">
+        <input type="submit" value="Update">
+    </form>
+</body>
+</html>

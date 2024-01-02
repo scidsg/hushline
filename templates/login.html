@@ -1,0 +1,18 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <!-- Add your CSS links here -->
+</head>
+<body>
+    <h2>Login</h2>
+    <form action="{{ url_for('login') }}" method="post">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password">
+        <input type="submit" value="Login">
+    </form>
+</body>
+</html>

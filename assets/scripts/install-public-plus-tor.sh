@@ -74,13 +74,11 @@ fi
 USER_EXISTS=$(sudo -u postgres psql -c "\du" | cut -d \| -f 1 | grep -w hushlineuser)
 if [ -z "$USER_EXISTS" ]; then
     sudo -u postgres psql -c "CREATE USER hushlineuser WITH PASSWORD '$DB_PASS';"
+    sudo -u postgres psql -c "ALTER ROLE hushlineuser SET client_encoding TO 'utf8';"
+    sudo -u postgres psql -c "ALTER ROLE hushlineuser SET default_transaction_isolation TO 'read committed';"
+    sudo -u postgres psql -c "ALTER ROLE hushlineuser SET timezone TO 'UTC';"
 fi
 
-sudo -u postgres psql -c "CREATE DATABASE hushlinedb;"
-sudo -u postgres psql -c "CREATE USER hushlineuser WITH PASSWORD '$DB_PASS';"
-sudo -u postgres psql -c "ALTER ROLE hushlineuser SET client_encoding TO 'utf8';"
-sudo -u postgres psql -c "ALTER ROLE hushlineuser SET default_transaction_isolation TO 'read committed';"
-sudo -u postgres psql -c "ALTER ROLE hushlineuser SET timezone TO 'UTC';"
 sudo -u postgres psql -c "GRANT CONNECT ON DATABASE hushlinedb TO hushlineuser;"
 sudo -u postgres psql -c "GRANT USAGE ON SCHEMA public TO hushlineuser;"
 sudo -u postgres psql -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hushlineuser;"
@@ -373,50 +371,6 @@ else
     HUSHLINE_PATH="/root/hushline" # Adjusted to /root/hushline for the root user on VPS
 fi
 
-send_email() {
-    python3 << END
-import smtplib
-import os
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import pgpy
-import warnings
-from cryptography.utils import CryptographyDeprecationWarning
-
-warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
-
-def send_notification_email(smtp_server, smtp_port, email, password):
-    subject = "🎉 Hush Line Installation Complete"
-    message = "Hush Line has been successfully installed!\n\nYour Hush Line addresses are:\nhttps://$DOMAIN\nhttp://$ONION_ADDRESS\n\nTo send a message, enter your onion address into Tor Browser, or the non-onion address into a browser like Firefox, Chrome, or Safari. To find information about your Hush Line, including tips for when to use it, visit: http://$ONION_ADDRESS/info or https://$DOMAIN/info. If you still need to download Tor Browser, get it from https://torproject.org/download.\n\nHush Line is a free and open-source tool by Science & Design, Inc. Learn more about us at https://scidsg.org.\n\nIf you've found this resource useful, please consider making a donation at https://opencollective.com/scidsg."
-
-    # Load the public key from its path
-    key_path = os.path.expanduser('$HUSHLINE_PATH/public_key.asc')  # Use os to expand the path
-    with open(key_path, 'r') as key_file:
-        key_data = key_file.read()
-        PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)
-
-    # Encrypt the message
-    encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
-
-    # Construct the email
-    msg = MIMEMultipart()
-    msg['From'] = email
-    msg['To'] = email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(encrypted_message, 'plain'))
-
-    try:
-        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
-        server.login(email, password)
-        server.sendmail(email, [email], msg.as_string())
-        server.quit()
-    except Exception as e:
-        print(f"Failed to send email: {e}")
-
-send_notification_email("$NOTIFY_SMTP_SERVER", $NOTIFY_SMTP_PORT, "$EMAIL", "$NOTIFY_PASSWORD")
-END
-}
-
 echo "
 ✅ Installation complete!
                                                
@@ -440,8 +394,6 @@ source /etc/bash.bashrc
 systemctl restart hushline
 
 rm -r $HOME/hushline/assets
-
-send_email
 
 # Disable the trap before exiting
 trap - ERR
