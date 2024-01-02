@@ -6,11 +6,50 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
-#Update and upgrade
-apt update && apt -y dist-upgrade && apt -y autoremove
+# Welcome message and ASCII art
+cat <<"EOF"
+  _    _           _       _      _            
+ | |  | |         | |     | |    (_)           
+ | |__| |_   _ ___| |__   | |     _ _ __   ___ 
+ |  __  | | | / __| '_ \  | |    | | '_ \ / _ \
+ | |  | | |_| \__ \ | | | | |____| | | | |  __/
+ |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
+                                               
+🤫 A self-hosted, anonymous tip line.
+
+A free tool by Science & Design - https://scidsg.org
+EOF
+sleep 3
+
+# Update and upgrade non-interactively
+export DEBIAN_FRONTEND=noninteractive
+apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove
 
 # Install required packages
-apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw gnupg
+apt -y install whiptail curl git wget sudo
+
+# Clone the repository in the user's home directory
+cd $HOME
+if [[ ! -d hushline ]]; then
+    # If the hushline directory does not exist, clone the repository
+    git clone https://github.com/scidsg/hushline.git
+    cd hushline
+    git switch hosted
+else
+    # If the hushline directory exists, clean the working directory and pull the latest changes
+    echo "The directory 'hushline' already exists, updating repository..."
+    cd hushline
+    git switch hosted
+    git restore --source=HEAD --staged --worktree -- .
+    git reset HEAD -- .
+    git clean -fd .
+    git config pull.rebase false
+    git pull
+    cd $HOME # return to HOME for next steps
+fi
+
+# Install required packages
+apt-get -y install git python3 python3-venv python3-pip certbot python3-certbot-nginx nginx tor unattended-upgrades gunicorn libssl-dev net-tools fail2ban ufw gnupg postgresql postgresql-contrib
 
 # Function to display error message and exit
 error_exit() {
@@ -23,6 +62,31 @@ trap error_exit ERR
 
 # Prompt user for domain name
 DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 3>&1 1>&2 2>&3)
+DB_PASS=$(whiptail --inputbox "Enter your DB password:" 8 60 3>&1 1>&2 2>&3)
+
+# PostgreSQL configuration
+cd /tmp # Change to a directory accessible by all users
+DB_EXISTS=$(sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -w hushlinedb)
+if [ -z "$DB_EXISTS" ]; then
+    sudo -u postgres psql -c "CREATE DATABASE hushlinedb;"
+fi
+
+USER_EXISTS=$(sudo -u postgres psql -c "\du" | cut -d \| -f 1 | grep -w hushlineuser)
+if [ -z "$USER_EXISTS" ]; then
+    sudo -u postgres psql -c "CREATE USER hushlineuser WITH PASSWORD '$DB_PASS';"
+fi
+
+sudo -u postgres psql -c "CREATE DATABASE hushlinedb;"
+sudo -u postgres psql -c "CREATE USER hushlineuser WITH PASSWORD '$DB_PASS';"
+sudo -u postgres psql -c "ALTER ROLE hushlineuser SET client_encoding TO 'utf8';"
+sudo -u postgres psql -c "ALTER ROLE hushlineuser SET default_transaction_isolation TO 'read committed';"
+sudo -u postgres psql -c "ALTER ROLE hushlineuser SET timezone TO 'UTC';"
+sudo -u postgres psql -c "GRANT CONNECT ON DATABASE hushlinedb TO hushlineuser;"
+sudo -u postgres psql -c "GRANT USAGE ON SCHEMA public TO hushlineuser;"
+sudo -u postgres psql -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hushlineuser;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO hushlineuser;"
+
+cd - # Return to the previous directory
 
 # Enter and test SMTP credentials
 test_smtp_credentials() {
@@ -64,61 +128,15 @@ done  # End of the loop
 mkdir -p /etc/hushline
 chmod 700 /etc/hushline
 
-# Create an environment file with restricted permissions
-cat << EOL > /etc/hushline/environment
+# Update the environment file
+cat << EOL >> /etc/hushline/environment
 EMAIL=$EMAIL
 NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER
 NOTIFY_PASSWORD=$NOTIFY_PASSWORD
 NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT
+DATABASE_URL='postgresql://hushlineuser:$DB_PASS@localhost/hushlinedb'
 EOL
 chmod 600 /etc/hushline/environment
-
-# Instruct the user
-echo "
-  ___  ___ ___   ___ _   _ ___ _    ___ ___   _  _______   __
- | _ \/ __| _ \ | _ \ | | | _ ) |  |_ _/ __| | |/ / __\ \ / /
- |  _/ (_ |  _/ |  _/ |_| | _ \ |__ | | (__  | ' <| _| \ V / 
- |_|  \___|_|   |_|  \___/|___/____|___\___| |_|\_\___| |_|  
-
-👇 Please paste your public PGP key and press Enter."
-
-# Loop until a valid PGP public key is provided
-while true; do
-    PGP_PUBLIC_KEY=""
-    while IFS= read -r LINE < /dev/tty; do
-        PGP_PUBLIC_KEY+="$LINE"$'\n'
-        [[ $LINE == "-----END PGP PUBLIC KEY BLOCK-----" ]] && break
-    done
-
-    # Save the provided PGP key to a temporary file
-    TEMP_PGP_KEY_FILE=$(mktemp)
-    echo "$PGP_PUBLIC_KEY" > "$TEMP_PGP_KEY_FILE"
-
-    # Validate the PGP public key
-    if gpg --import "$TEMP_PGP_KEY_FILE" &>/dev/null; then
-        PGP_KEY_ID=$(gpg --list-keys --with-colons | grep pub | head -n 1 | cut -d':' -f5)
-        if [[ -n "$PGP_KEY_ID" ]]; then
-            echo "Valid PGP public key provided."
-            break  # Exit the loop if a valid key is provided
-        else
-            echo "No valid PGP public key ID found. Please provide a valid PGP public key."
-        fi
-    else
-        echo "⛔️ Invalid PGP public key. Please provide a valid PGP public key."
-    fi
-
-    # Remove the temporary PGP key file after validation attempt
-    rm "$TEMP_PGP_KEY_FILE"
-    # Prompt to try again
-    echo "Please try again."
-done
-
-# Remove the temporary PGP key file after successful validation
-rm "$TEMP_PGP_KEY_FILE"
-
-echo "
-👍 Public PGP key received.
-Continuing with installation process..."
 
 # Check for valid domain name format
 until [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*\.[a-zA-Z]{2,}$ ]]; do
@@ -134,17 +152,15 @@ export NOTIFY_SMTP_PORT
 echo "Domain: ${DOMAIN}"
 
 # Create a virtual environment and install dependencies
-cd hushline
+cd $HOME/hushline
 python3 -m venv venv
 source venv/bin/activate
 pip3 install setuptools-rust
 pip3 install flask
 pip3 install pgpy
 pip3 install gunicorn
+pip3 install psycopg2-binary
 pip3 install -r requirements.txt
-
-# Save the provided PGP key to a file
-echo "$PGP_PUBLIC_KEY" > $PWD/public_key.asc
 
 # Create a systemd service
 cat >/etc/systemd/system/hushline.service <<EOL
@@ -154,7 +170,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$HOME/hushline
-EnvironmentFile=-/etc/hushline/environment
+EnvironmentFile=/etc/hushline/environment
 ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
 Restart=always
 [Install]
