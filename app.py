@@ -7,7 +7,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from werkzeug.security import check_password_hash, generate_password_hash
 import logging
-from models import db, User
 
 # setup a logger
 log = logging.getLogger(__name__)
@@ -40,22 +39,6 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        user = User.query.filter_by(email=email).first()
-
-        if user and check_password_hash(user.password, password):
-            # User authenticated, redirect to settings or dashboard
-            return redirect(url_for('settings'))
-        else:
-            # User not authenticated, show error
-            return "Invalid email or password", 401
-
-    return render_template('login.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -158,16 +141,6 @@ def pgp_owner_info_direct():
 @app.route("/info")
 def info():
     return render_template("info.html")
-
-@app.route("/send_message", methods=["POST"])
-def send_message():
-    message = request.form["message"]
-    encrypted_message = encrypt_message(message)
-    with open("messages.txt", "a") as f:
-        f.write(encrypted_message + "\n\n")
-    send_email_notification(encrypted_message)
-    
-    return render_template("message-sent.html")
 
 def send_email_notification(message):
     msg = MIMEMultipart()
