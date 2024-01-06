@@ -16,8 +16,9 @@ error_exit() {
 trap error_exit ERR
 
 # Update packages and install whiptail
-sudo apt update
-sudo apt install whiptail -y
+export DEBIAN_FRONTEND=noninteractive
+apt update && apt -y dist-upgrade 
+apt install whiptail -y
 
 # Collect variables using whiptail
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Setup" 3>&1 1>&2 2>&3)
@@ -47,18 +48,18 @@ export GIT
 echo "Domain: $DOMAIN"
 
 # Create Tor configuration file
-sudo tee /etc/tor/torrc << EOL
+tee /etc/tor/torrc << EOL
 RunAsDaemon 1
 HiddenServiceDir /var/lib/tor/$DOMAIN/
 HiddenServicePort 80 unix:/var/www/html/$DOMAIN/hushline-hosted.sock
 EOL
 
 # Restart Tor service
-sudo systemctl restart tor.service
+systemctl restart tor.service
 sleep 10
 
 # Get the Onion address
-ONION_ADDRESS=$(sudo cat /var/lib/tor/$DOMAIN/hostname)
+ONION_ADDRESS=$(cat /var/lib/tor/$DOMAIN/hostname)
 SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
@@ -171,8 +172,8 @@ http {
 }
 EOL
 
-sudo ln -sf /etc/nginx/sites-available/$DOMAIN.nginx /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+ln -sf /etc/nginx/sites-available/$DOMAIN.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
@@ -225,30 +226,30 @@ echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
 
 # Start MariaDB
-sudo systemctl start mariadb
+systemctl start mariadb
 
 # Secure MariaDB Installation
-sudo mysql_secure_installation
+mysql_secure_installation
 
 # Create an override file for MariaDB to restart on failure
 echo "Creating MariaDB service override..."
-sudo mkdir -p /etc/systemd/system/mariadb.service.d
-echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | sudo tee /etc/systemd/system/mariadb.service.d/override.conf
+mkdir -p /etc/systemd/system/mariadb.service.d
+echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
 
 # Reload the systemd daemon and restart MariaDB to apply changes
-sudo systemctl daemon-reload
-sudo systemctl restart mariadb
+systemctl daemon-reload
+systemctl restart mariadb
 
 # Check if the database exists, create if not
-if ! sudo mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
-    sudo mysql -e "CREATE DATABASE $DB_NAME;"
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
+    mysql -e "CREATE DATABASE $DB_NAME;"
 fi
 
 # Check if the user exists and create it if it doesn't
-if ! sudo mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' AND host = 'localhost')" | grep -q 1; then
-    sudo mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
-    sudo mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
-    sudo mysql -e "FLUSH PRIVILEGES;"
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' AND host = 'localhost')" | grep -q 1; then
+    mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+    mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+    mysql -e "FLUSH PRIVILEGES;"
 fi
 
 # Verify Database Connection and Initialize DB
@@ -265,7 +266,7 @@ WORKING_DIR=$(pwd)
 
 # Create a systemd service file for the Flask app
 SERVICE_FILE=/etc/systemd/system/hushline-hosted.service
-cat <<EOF | sudo tee $SERVICE_FILE
+cat <<EOF | tee $SERVICE_FILE
 [Unit]
 Description=Gunicorn instance to serve the Hushline Flask app
 After=network.target
@@ -282,20 +283,20 @@ EOF
 
 # Create an override file for the Hushline service to restart on failure
 echo "Creating Hushline service override..."
-sudo mkdir -p /etc/systemd/system/hushline-hosted.service.d
-echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | sudo tee /etc/systemd/system/hushline-hosted.service.d/override.conf
+mkdir -p /etc/systemd/system/hushline-hosted.service.d
+echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/hushline-hosted.service.d/override.conf
 
 # Start and enable the Flask app service
-sudo systemctl daemon-reload
-sudo systemctl start hushline-hosted
-sudo systemctl enable hushline-hosted
-sudo systemctl restart hushline-hosted
+systemctl daemon-reload
+systemctl start hushline-hosted
+systemctl enable hushline-hosted
+systemctl restart hushline-hosted
 
 # Restart Nginx to apply changes
-sudo systemctl restart nginx
+systemctl restart nginx
 
 # Start and enable Nginx
-sudo systemctl enable nginx
+systemctl enable nginx
 
 # Enable the "security" and "updates" repositories
 echo "Configuring unattended-upgrades..."
@@ -342,8 +343,11 @@ echo "✅ UFW configuration complete."
 
 
 # Update Tor permissions
-sudo chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock
+chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock
 service tor restart
+
+# Remove unused packages
+apt -y autoremove
 
 # Generate Codes
 chmod +x generate_codes.sh
