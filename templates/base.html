@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="theme-color" content="#7D25C1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - Hushline</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <!-- Navigation bar, logo, etc. -->
+        <h1>🤫 Hush Line</h1>
+        {% if 'user_id' in session and 'username' in session %}
+            <nav>
+                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                <ul>
+                    <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
+                    <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
+                    <li><a href="{{ url_for('settings') }}">@{{ session['username'] }}</a></li>
+                </ul>
+                <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
+            </nav>
+            {% else %}
+            <nav>
+                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                <ul>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
+                </ul>
+                <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
+            </nav>
+            {% endif %}
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+        <div class="container">
+            {% block content %}
+            <!-- This block will be filled with page-specific content -->
+            {% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <!-- Common footer content -->
+    </footer>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

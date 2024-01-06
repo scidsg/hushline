@@ -1,18 +1,101 @@
-<!-- templates/settings.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Settings</title>
-    <!-- Add your CSS links here -->
-</head>
-<body>
-    <h2>Settings</h2>
-    <form action="{{ url_for('settings') }}" method="post">
-        <label for="pgp_key">PGP Key:</label>
-        <textarea id="pgp_key" name="pgp_key">{{ current_user.pgp_key }}</textarea>
-        <label for="email">Delivery Email:</label>
-        <input type="email" id="email" name="email" value="{{ current_user.delivery_email }}">
-        <input type="submit" value="Update">
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+    <h1>Account Settings</h1>
+    <div class="formBody">
+
+        <!-- Two-Factor Authentication Section -->
+        <h2>Two-Factor Authentication</h2>
+        {% if user.totp_secret %}
+            <!-- If 2FA is enabled, show the Disable 2FA button -->
+            <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
+                <button type="submit">Disable 2FA</button>
+            </form>
+        {% else %}
+            <!-- If 2FA is disabled, show the Enable 2FA button -->
+            <form method="POST" action="{{ url_for('toggle_2fa') }}">
+                <button type="submit">Enable 2FA</button>
+            </form>
+        {% endif %}
+
+        <!-- Change Password Section -->
+        <h2>Change Password</h2>
+        <form method="POST" action="{{ url_for('change_password') }}">
+            {{ change_password_form.hidden_tag() }}
+            <label for="old_password">{{ change_password_form.old_password.label }}</label>
+            {{ change_password_form.old_password(id='old_password') }}
+            {% if change_password_form.old_password.errors %}
+                {% for error in change_password_form.old_password.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <label for="new_password">{{ change_password_form.new_password.label }}</label>
+            {{ change_password_form.new_password(id='new_password') }}
+            {% if change_password_form.new_password.errors %}
+                {% for error in change_password_form.new_password.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit">Change Password</button>
+        </form>
+
+        <!-- Change Username Section -->
+        <h2>Change Username</h2>
+        <p class="meta">Current Username: {{ session['username'] }}</p>
+        <form method="POST" action="{{ url_for('change_username') }}">
+            {{ change_username_form.hidden_tag() }}
+            <label for="new_username">{{ change_username_form.new_username.label }}</label>
+            {{ change_username_form.new_username(id='new_username') }}
+            {% if change_username_form.new_username.errors %}
+                {% for error in change_username_form.new_username.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit">Change Username</button>
+        </form>
+
+        <!-- SMTP Settings Section -->
+        <h2>Email Delivery Settings</h2>
+        <form method="POST" action="{{ url_for('update_smtp_settings') }}">
+            {{ smtp_settings_form.hidden_tag() }}
+            
+            {{ smtp_settings_form.email.label }}
+            {{ smtp_settings_form.email }}
+
+            {{ smtp_settings_form.smtp_server.label }}
+            {{ smtp_settings_form.smtp_server }}
+
+            {{ smtp_settings_form.smtp_port.label }}
+            {{ smtp_settings_form.smtp_port }}
+
+            {{ smtp_settings_form.smtp_username.label }}
+            {{ smtp_settings_form.smtp_username }}
+
+            {{ smtp_settings_form.smtp_password.label }}
+            {{ smtp_settings_form.smtp_password }}
+
+            <button type="submit">Update Settings</button>
+        </form>
+
+        <!-- PGP Key Section -->
+        <h2>Public PGP Key</h2>
+        <form method="POST" action="{{ url_for('update_pgp_key') }}">
+            {{ pgp_key_form.hidden_tag() }}
+            <label for="pgp_key">{{ pgp_key_form.pgp_key.label }}</label>
+            {{ pgp_key_form.pgp_key(id='pgp_key') }}
+            {% if pgp_key_form.pgp_key.errors %}
+                {% for error in pgp_key_form.pgp_key.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit">Update PGP Key</button>
+        </form>
+
+        <a class="logoutLink" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+{% endblock %}

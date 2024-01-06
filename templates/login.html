@@ -1,18 +1,19 @@
-<!-- templates/login.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-    <!-- Add your CSS links here -->
-</head>
-<body>
-    <h2>Login</h2>
-    <form action="{{ url_for('login') }}" method="post">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email">
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password">
-        <input type="submit" value="Login">
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+    <h1>Login</h1>
+    <form method="POST" action="/login">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label(for="username") }}
+            {{ form.username(id="username", required=True) }}
+        </div>
+        <div>
+            {{ form.password.label(for="password") }}
+            {{ form.password(id="password", required=True) }}
+        </div>
+        <button type="submit">Login</button>
     </form>
-</body>
-</html>
+    <p>Don't have an account? <a href="/register">Register here</a></p>
+{% endblock %}

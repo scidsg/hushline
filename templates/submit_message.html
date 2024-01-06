@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Send a Message{% endblock %}
+
+{% block content %}
+    <h1 class="submit">Submit a message to {{ username }}</h1>
+    {% if 'user_id' in session and 'username' in session %}
+        <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles, your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is critical!</p>
+    {% endif %}
+    {% if user.pgp_key %}
+        <p>🔐 Your message will be encrypted and only readable by {{ username }}.</p>
+    {% else %}
+        <p>⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ username }} to add a public PGP key.</p>
+    {% endif %}
+    <form method="POST" action="/submit_message/{{ username }}">
+        {{ form.hidden_tag() }}
+        <label for="content">Message</label>
+        {{ form.content(size=32) }}
+        <button type="submit">Send Message</button>
+    </form>
+{% endblock %}

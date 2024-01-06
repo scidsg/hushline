@@ -1,20 +1,32 @@
-<!-- templates/register.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register</title>
-    <!-- Add your CSS links here -->
-</head>
-<body>
-    <h2>Register</h2>
-    <form action="{{ url_for('register') }}" method="post">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
-        
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        
-        <input type="submit" value="Register">
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+    <h1>Register</h1>
+    <form method="POST" action="/register">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label(for="username") }}
+            {{ form.username(id="username") }}
+            {% if form.username.errors %}
+                <div class="error">{{ form.username.errors[0] }}</div>
+            {% endif %}
+        </div>
+        <div>
+            {{ form.password.label(for="password") }}
+            {{ form.password(id="password") }}
+            {% if form.password.errors %}
+                <div class="error">{{ form.password.errors[0] }}</div>
+            {% endif %}
+        </div>
+        <div>
+            {{ form.invite_code.label(for="invite_code") }}
+            {{ form.invite_code(id="invite_code") }}
+            {% if form.invite_code.errors %}
+                <div class="error">{{ form.invite_code.errors[0] }}</div>
+            {% endif %}
+        </div>
+        <button type="submit">Register</button>
     </form>
-</body>
-</html>
+    <p>Already have an account? <a href="/login">Login here</a></p>
+{% endblock %}

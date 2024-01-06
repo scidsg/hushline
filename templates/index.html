@@ -1,48 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="author" content="Science & Design, Inc.">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A reasonably private and secure personal tip line.">
-    <meta name="theme-color" content="#7D25C1">
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
 
-    <title>Submit a Hush Line message</title>
-
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}" sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}" sizes="16x16">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-192x192.png') }}" sizes="192x192">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon/android-chrome-512x512.png') }}" sizes="512x512">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header>
-        <div class="wrapper">
-            <h1>🤫 Hush Line</h1>
-             <nav>
-                <li><a href="https://www.wikipedia.org" class="btn" aria-label="Close this app in case of emergency" rel="noopener noreferrer">Close App</a></li>
-            </nav>
-        </div>
-    </header>
-    <div id="pgp-owner-info" class="card mt-3" {% if not pgp_info_available %} style="display:none;" {% endif %}>
-        <div class="card-header">
-            <h3 class="card-title">To:</h3>
-        </div>
-        <div class="card-body">
-            <p id="pgp-owner">{{ owner_info }}</p>
-            <div class="pgp-meta">
-                <p id="pgp-key-id">{{ key_id }}</p>
-                <p id="pgp-expires">{{ expires }}</p>
-            </div>
-        </div>
-    </div>
-    <form id="message-form" action="/send_message" method="POST">
-        <label for="message-textarea">Your Message</label>
-        <textarea id="message-textarea" name="message" rows="10" cols="60" required aria-describedby="message-instruction" placeholder="Please leave a contact method if you'd like a response..."></textarea>
-        <p id="message-instruction">🔒 Your message will be encrypted and only readable by the owner of the address above. <a href="/info" target="_blank" aria-label="Learn more about this tip line" rel="noopener noreferrer">Learn&nbsp;more</a>.</p>
-        <button type="submit" id="submit-button">Submit</button>
-    </form>
-</body>
-</html>
+{% block content %}
+    <h1>Welcome to the Message Board</h1>
+{% endblock %}
