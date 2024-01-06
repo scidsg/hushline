@@ -117,7 +117,7 @@ p.instr {
 
 }
 
-p.message {
+.message {
 	border: 1px solid rgba(0,0,0,0.1);
 	padding: 1.5rem;
 	border-radius: .25rem;
@@ -126,8 +126,24 @@ p.message {
 	background-color: white;
 }
 
-p.message:last-of-type {
+.message p {
+	margin: .25rem 0;
+}
+
+.message:last-of-type {
 	margin-bottom: 0;
+}
+
+.message form {
+	margin-bottom: 0;
+	margin-top: 1rem;
+}
+
+.message button {
+	font-size: .825rem;
+	padding: .5rem 1rem;
+	min-height: initial;
+	min-width: initial;
 }
 
 .mono {
@@ -303,6 +319,12 @@ header .btn {
 	border-radius: 50vw;
 	font-family: 'Atkinson Bold', sans-serif;
 }
+
+.btn-danger {
+	color: darkred;
+	border-color: darkred;
+}
+
 
 .mobileNav {
 	background-image: url('icon-menu.png');

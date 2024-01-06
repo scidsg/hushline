@@ -1,10 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Settings{% endblock %}
+{% block title %}Inbox{% endblock %}
 
 {% block content %}
     <h1>Inbox for {{ session['username'] }}</h1>
     {% for message in messages %}
-        <p class="message">{{ message.content }}</p>
+        <div class="message">
+            <p>{{ message.content }}</p>
+            <!-- Delete button/form for each message -->
+            <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
     {% else %}
         <p class="message">No messages yet.</p>
     {% endfor %}

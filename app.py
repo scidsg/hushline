@@ -872,6 +872,28 @@ def update_smtp_settings():
     )
 
 
+@app.route("/delete_message/<int:message_id>", methods=["POST"])
+def delete_message(message_id):
+    if "user_id" not in session:
+        flash("Please log in to continue.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        flash("User not found. Please log in again.")
+        return redirect(url_for("login"))
+
+    message = Message.query.get(message_id)
+    if message and message.user_id == user.id:
+        db.session.delete(message)
+        db.session.commit()
+        flash("Message deleted successfully.")
+    else:
+        flash("Message not found or unauthorized access.")
+
+    return redirect(url_for("inbox", username=user.username))
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
