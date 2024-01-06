@@ -93,6 +93,8 @@ class User(db.Model):
     _smtp_username = db.Column("smtp_username", db.String(255))
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
+    is_admin = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False)
 
     @property
     def password_hash(self):
