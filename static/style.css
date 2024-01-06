@@ -87,6 +87,11 @@ p.badge {
 	font-family: 'Atkinson Bold', sans-serif;
 }
 
+p.badge + p.instr {
+	margin-top: .5rem;
+	margin-bottom: .5rem;
+}
+
 .flash-messages {
 	position: fixed;
 	top: 1rem;
