@@ -5,6 +5,21 @@
     <h1>Account Settings</h1>
     <div class="formBody">
 
+        <!-- Display Name Section -->
+        <h2>Display Name</h2>
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ display_name_form.hidden_tag() }}
+            <label for="display_name">{{ display_name_form.display_name.label }}</label>
+            {{ display_name_form.display_name(id='display_name') }}
+            {% if display_name_form.display_name.errors %}
+                {% for error in display_name_form.display_name.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="update_display_name">Update Display Name</button>
+
+        </form>
+
         <!-- Two-Factor Authentication Section -->
         <h2>Two-Factor Authentication</h2>
         {% if user.totp_secret %}

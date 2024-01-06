@@ -2,7 +2,7 @@
 {% block title %}Send a Message{% endblock %}
 
 {% block content %}
-    <h1 class="submit">Submit a message to {{ username }}</h1>
+    <h1 class="submit">Submit a message to {{ user.display_name or user.username }}</h1>
     {% if 'user_id' in session and 'username' in session %}
         <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles, your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is critical!</p>
     {% endif %}
