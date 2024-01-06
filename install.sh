@@ -341,17 +341,18 @@ echo "y" | ufw enable
 
 echo "✅ UFW configuration complete."
 
-
-# Update Tor permissions
-chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock
-service tor restart
-
 # Remove unused packages
 apt -y autoremove
 
 # Generate Codes
 chmod +x generate_codes.sh
 ./generate_codes.sh
+
+# Update Tor permissions
+sleep 5
+chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock
+service tor restart
+
 
 echo "
 ✅ Hush Line installation complete! Access your site at these addresses:
