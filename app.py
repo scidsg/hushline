@@ -495,8 +495,10 @@ def inbox(username):
     if user.totp_secret and not session.get("2fa_verified", False):
         return redirect(url_for("verify_2fa_login"))
 
-    # Fetch messages for the user
-    messages = Message.query.filter_by(user_id=user.id).all()
+    # Fetch messages for the user, ordered by ID in descending order
+    messages = (
+        Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
+    )
     return render_template("inbox.html", messages=messages, user=user)
 
 
