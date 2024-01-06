@@ -38,6 +38,8 @@ fernet = Fernet(encryption_key)
 
 
 def encrypt_field(data):
+    if data is None:
+        return None
     return fernet.encrypt(data.encode()).decode()
 
 
@@ -148,7 +150,10 @@ class User(db.Model):
 
     @pgp_key.setter
     def pgp_key(self, value):
-        self._pgp_key = encrypt_field(value)
+        if value is None:
+            self._pgp_key = None
+        else:
+            self._pgp_key = encrypt_field(value)
 
 
 class Message(db.Model):
@@ -251,9 +256,7 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class PGPKeyForm(FlaskForm):
-    pgp_key = TextAreaField(
-        "PGP Key", validators=[DataRequired(), Length(min=50)]
-    )  # Adjust minimum length as necessary
+    pgp_key = TextAreaField("PGP Key", validators=[Length(max=5000)])
 
 
 # Error Handler
@@ -788,12 +791,20 @@ def update_pgp_key():
     form = PGPKeyForm()
     if form.validate_on_submit():
         pgp_key = form.pgp_key.data
-        if is_valid_pgp_key(pgp_key):
+
+        if pgp_key.strip() == "":
+            # If the field is empty, remove the PGP key
+            user.pgp_key = None
+        elif is_valid_pgp_key(pgp_key):
+            # If the field is not empty and the key is valid, update the PGP key
             user.pgp_key = pgp_key
-            db.session.commit()
-            flash("👍 PGP key updated successfully.")
         else:
+            # If the PGP key is invalid
             flash("⛔️ Invalid PGP key format or import failed.")
+            return redirect(url_for("settings"))
+
+        db.session.commit()
+        flash("👍 PGP key updated successfully.")
         return redirect(url_for("settings"))
     return render_template("settings.html", form=form)
 
