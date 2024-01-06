@@ -84,6 +84,7 @@ app.logger.setLevel(logging.DEBUG)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    display_name = db.Column(db.String(80))
     _password_hash = db.Column("password_hash", db.String(255))
     _totp_secret = db.Column("totp_secret", db.String(255))
     _email = db.Column("email", db.String(255))
@@ -92,6 +93,8 @@ class User(db.Model):
     _smtp_username = db.Column("smtp_username", db.String(255))
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
+    is_admin = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False)
 
     @property
     def password_hash(self):
@@ -205,12 +208,6 @@ class TwoFactorForm(FlaskForm):
     )
 
 
-class TwoFactorForm(FlaskForm):
-    verification_code = StringField(
-        "2FA Code", validators=[DataRequired(), Length(min=6, max=6)]
-    )
-
-
 class RegistrationForm(FlaskForm):
     username = StringField(
         "Username", validators=[DataRequired(), Length(min=4, max=25)]
@@ -220,12 +217,6 @@ class RegistrationForm(FlaskForm):
     )
     invite_code = StringField(
         "Invite Code", validators=[DataRequired(), Length(min=6, max=25)]
-    )
-
-
-class TwoFactorForm(FlaskForm):
-    verification_code = StringField(
-        "Verification Code", validators=[DataRequired(), Length(min=6, max=6)]
     )
 
 
@@ -250,16 +241,12 @@ class SMTPSettingsForm(FlaskForm):
     smtp_password = PasswordField("SMTP Password", validators=[DataRequired()])
 
 
-class SMTPSettingsForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    smtp_server = StringField("SMTP Server", validators=[DataRequired()])
-    smtp_port = IntegerField("SMTP Port", validators=[DataRequired()])
-    smtp_username = StringField("SMTP Username", validators=[DataRequired()])
-    smtp_password = PasswordField("SMTP Password", validators=[DataRequired()])
-
-
 class PGPKeyForm(FlaskForm):
     pgp_key = TextAreaField("PGP Key", validators=[Length(max=5000)])
+
+
+class DisplayNameForm(FlaskForm):
+    display_name = StringField("Display Name", validators=[Length(max=100)])
 
 
 # Error Handler
@@ -519,70 +506,81 @@ def settings():
         flash("⛔️ User not found.")
         return redirect(url_for("login"))
 
-    # Check if 2FA is verified for users with 2FA enabled
-    if user.totp_secret and not session.get("2fa_verified", False):
-        return redirect(url_for("verify_2fa_login"))
-
-    # Forms for various settings
+    # Initialize forms
     change_password_form = ChangePasswordForm()
     change_username_form = ChangeUsernameForm()
     smtp_settings_form = SMTPSettingsForm()
     pgp_key_form = PGPKeyForm()
+    display_name_form = DisplayNameForm()
 
-    # Handle SMTP Settings Form Submission
-    if smtp_settings_form.validate_on_submit():
-        user.email = smtp_settings_form.email.data
-        user.smtp_server = smtp_settings_form.smtp_server.data
-        user.smtp_port = (
-            smtp_settings_form.smtp_port.data
-        )  # Directly assign the integer value
-        user.smtp_username = smtp_settings_form.smtp_username.data
-        user.smtp_password = smtp_settings_form.smtp_password.data
-        db.session.commit()
-        flash("👍 SMTP settings updated successfully.")
-        return redirect(url_for("settings"))
-
-    # Handle PGP Key Form Submission
-    if pgp_key_form.validate_on_submit():
-        user.pgp_key = pgp_key_form.pgp_key.data
-        db.session.commit()
-        flash("👍 PGP key updated successfully.")
-        return redirect(url_for("settings"))
-
-    # Handle Change Password Form Submission
-    if change_password_form.validate_on_submit():
-        if bcrypt.check_password_hash(
-            user.password_hash, change_password_form.old_password.data
+    # Handle form submissions
+    if request.method == "POST":
+        # Handle Display Name Form Submission
+        if (
+            "update_display_name" in request.form
+            and display_name_form.validate_on_submit()
         ):
-            user.password_hash = bcrypt.generate_password_hash(
-                change_password_form.new_password.data
-            ).decode("utf-8")
+            if display_name_form.display_name.data.strip():
+                user.display_name = display_name_form.display_name.data.strip()
+            else:
+                user.display_name = None
             db.session.commit()
-            flash("👍 Password changed successfully.")
-        else:
-            flash("⛔️ Incorrect old password.")
-        return redirect(url_for("settings"))
+            flash("👍 Display name updated successfully.")
+            return redirect(url_for("settings"))
 
-    # Handle Change Username Form Submission
-    if change_username_form.validate_on_submit():
-        existing_user = User.query.filter_by(
-            username=change_username_form.new_username.data
-        ).first()
-        if existing_user:
-            flash("💔 This username is already taken.")
-        else:
-            user.username = change_username_form.new_username.data
+        # Handle SMTP Settings Form Submission
+        elif smtp_settings_form.validate_on_submit():
+            user.email = smtp_settings_form.email.data
+            user.smtp_server = smtp_settings_form.smtp_server.data
+            user.smtp_port = smtp_settings_form.smtp_port.data
+            user.smtp_username = smtp_settings_form.smtp_username.data
+            user.smtp_password = smtp_settings_form.smtp_password.data
             db.session.commit()
-            session["username"] = user.username  # Update username in session
-            flash("👍 Username changed successfully.")
-        return redirect(url_for("settings"))
+            flash("👍 SMTP settings updated successfully.")
+            return redirect(url_for("settings"))
 
-    # Prepopulate SMTP settings form fields and others
+        # Handle PGP Key Form Submission
+        elif pgp_key_form.validate_on_submit():
+            user.pgp_key = pgp_key_form.pgp_key.data
+            db.session.commit()
+            flash("👍 PGP key updated successfully.")
+            return redirect(url_for("settings"))
+
+        # Handle Change Password Form Submission
+        elif change_password_form.validate_on_submit():
+            if bcrypt.check_password_hash(
+                user.password_hash, change_password_form.old_password.data
+            ):
+                user.password_hash = bcrypt.generate_password_hash(
+                    change_password_form.new_password.data
+                ).decode("utf-8")
+                db.session.commit()
+                flash("👍 Password changed successfully.")
+            else:
+                flash("⛔️ Incorrect old password.")
+            return redirect(url_for("settings"))
+
+        # Handle Change Username Form Submission
+        elif change_username_form.validate_on_submit():
+            existing_user = User.query.filter_by(
+                username=change_username_form.new_username.data
+            ).first()
+            if existing_user:
+                flash("💔 This username is already taken.")
+            else:
+                user.username = change_username_form.new_username.data
+                db.session.commit()
+                session["username"] = user.username
+                flash("👍 Username changed successfully.")
+            return redirect(url_for("settings"))
+
+    # Prepopulate form fields
     smtp_settings_form.email.data = user.email
     smtp_settings_form.smtp_server.data = user.smtp_server
     smtp_settings_form.smtp_port.data = user.smtp_port
     smtp_settings_form.smtp_username.data = user.smtp_username
     pgp_key_form.pgp_key.data = user.pgp_key
+    display_name_form.display_name.data = user.display_name or user.username
 
     return render_template(
         "settings.html",
@@ -591,15 +589,7 @@ def settings():
         change_password_form=change_password_form,
         change_username_form=change_username_form,
         pgp_key_form=pgp_key_form,
-    )
-
-    return render_template(
-        "settings.html",
-        user=user,
-        smtp_settings_form=smtp_settings_form,
-        change_password_form=change_password_form,
-        change_username_form=change_username_form,
-        pgp_key_form=pgp_key_form,
+        display_name_form=display_name_form,
     )
 
 
