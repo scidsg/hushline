@@ -3,15 +3,17 @@
 
 {% block content %}
     <h1>Inbox for {{ session['username'] }}</h1>
-    {% for message in messages %}
-        <div class="message">
-            <p>{{ message.content }}</p>
-            <!-- Delete button/form for each message -->
-            <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
-                <button type="submit" class="btn btn-danger">Delete</button>
-            </form>
-        </div>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}">
+                <p>{{ message.content }}</p>
+                <!-- Delete button/form for each message -->
+                <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        {% endfor %}
     {% else %}
         <p class="message">No messages yet.</p>
-    {% endfor %}
+    {% endif %}
 {% endblock %}

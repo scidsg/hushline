@@ -164,6 +164,9 @@ class Message(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
 
+    # Temporary attribute for template rendering
+    is_encrypted = False
+
     @property
     def content(self):
         """Decrypt and return the message content."""

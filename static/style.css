@@ -356,6 +356,12 @@ a.logoutLink {
 	display: flex;
 }
 
+.message.encrypted p {
+	font-family: 'IBM Plex Mono', monospace;
+	font-size: .8125rem;
+	white-space:  break-spaces
+}
+
 @media only screen and (max-width: 640px) {
 	body {
 		padding-top: 5.5rem;
