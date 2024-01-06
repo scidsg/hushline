@@ -6,13 +6,13 @@
     {% if user.is_verified %}
         <p class="badge">⭐️ Verified Account</p>
     {% endif %}
-    {% if 'user_id' in session and 'username' in session %}
+    {% if current_user_id == user.id %}
         <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles, your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is critical!</p>
     {% endif %}
     {% if user.pgp_key %}
-        <p>🔐 Your message will be encrypted and only readable by {{ username }}.</p>
+        <p>🔐 Your message will be encrypted and only readable by {{ user.display_name or user.username }}.</p>
     {% else %}
-        <p>⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ username }} to add a public PGP key.</p>
+        <p>⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ user.display_name or user.username }} to add a public PGP key.</p>
     {% endif %}
     <form method="POST" action="/submit_message/{{ username }}">
         {{ form.hidden_tag() }}

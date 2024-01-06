@@ -688,6 +688,11 @@ def submit_message(username):
         flash("User not found")
         return redirect(url_for("index"))
 
+    # Debug: Print user IDs
+    current_user_id = session.get("user_id")
+    print("Current User ID:", current_user_id)
+    print("Tip Line Owner User ID:", user.id)
+
     if form.validate_on_submit():
         content = form.content.data  # Sanitized input
         email_content = content  # Default to original content
@@ -728,8 +733,13 @@ def submit_message(username):
 
         return redirect(url_for("submit_message", username=username))
 
+    current_user_id = session.get("user_id")
     return render_template(
-        "submit_message.html", form=form, username=username, user=user
+        "submit_message.html",
+        form=form,
+        username=username,
+        user=user,
+        current_user_id=current_user_id,
     )
 
 
