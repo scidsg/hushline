@@ -253,7 +253,7 @@ def require_2fa(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user_id" not in session or not session.get("2fa_verified", False):
-            flash("Please complete 2FA verification.")
+            flash("👉 Please complete 2FA verification.")
             return redirect(url_for("verify_2fa_login"))
         return f(*args, **kwargs)
 
@@ -277,7 +277,7 @@ def index():
             return redirect(url_for("inbox", username=user.username))
         else:
             # Handle case where user ID in session does not exist in the database
-            flash("User not found. Please log in again.")
+            flash("🫥 User not found. Please log in again.")
             session.pop("user_id", None)  # Clear the invalid user_id from session
             return redirect(url_for("login"))
     else:
@@ -465,7 +465,7 @@ def verify_2fa_login():
 
     user = User.query.get(session["user_id"])
     if not user:
-        flash("⛔️ User not found. Please login again.")
+        flash("🫥 User not found. Please login again.")
         session.clear()  # Clearing the session for security
         return redirect(url_for("login"))
 
@@ -493,13 +493,13 @@ def inbox(username):
 
     user = User.query.get(session["user_id"])
     if not user:
-        flash("User not found. Please log in again.")
+        flash("🫥 User not found. Please log in again.")
         session.pop("user_id", None)
         return redirect(url_for("login"))
 
     # Check if the session username matches the requested inbox
     if session.get("username") != username:
-        flash("Unauthorized access.")
+        flash("⛔️ Unauthorized access.")
         return redirect(url_for("login"))
 
     # Check if 2FA is verified for users with 2FA enabled
@@ -522,7 +522,7 @@ def settings():
 
     user = User.query.get(session["user_id"])
     if not user:
-        flash("⛔️ User not found.")
+        flash("🫥 User not found.")
         return redirect(url_for("login"))
 
     # Initialize forms
@@ -704,7 +704,7 @@ def submit_message(username):
     user = User.query.filter_by(username=username).first()
 
     if not user:
-        flash("User not found")
+        flash("🫥 User not found")
         return redirect(url_for("index"))
 
     # Debug: Print user IDs
