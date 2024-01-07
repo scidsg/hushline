@@ -216,6 +216,10 @@ form {
 	margin-bottom: 2rem;
 }
 
+form:only-of-type {
+	margin-bottom: 0;
+}
+
 header {
 	position: fixed;
 	left: 0;
