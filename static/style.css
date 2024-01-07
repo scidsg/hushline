@@ -72,6 +72,10 @@ h2 + p.badge + p.instr {
 	margin-top: .5rem;
 }
 
+p.instr + p {
+	margin-bottom: 1.5rem;
+}
+
 a {
 	color: #7D25C1;
 }
@@ -117,6 +121,7 @@ img.empty {
 	align-items: center;
 	flex-grow: 1;
 	justify-content: center;
+	height: calc(100vh - 200px);
 }
 
 .emptyState img {
