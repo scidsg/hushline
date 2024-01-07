@@ -2,7 +2,7 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
-    <h1>Inbox for {{ session['username'] }}</h1>
+    <h1>Inbox for {{ user.display_name or user.username }}</h1>
     {% if messages %}
         {% for message in messages %}
             <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}">
