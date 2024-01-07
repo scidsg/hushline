@@ -14,7 +14,10 @@
             </div>
         {% endfor %}
     {% else %}
-        <img src="{{ url_for('static', filename='empty.png') }}">
-        <p>No messages yet.</p>
+        <div class="emptyState">
+            <img class="empty" src="{{ url_for('static', filename='empty.png') }}">
+            <h1>Nothing to see here...</h1>
+            <p>No messages yet.</p>
+        </div>
     {% endif %}
 {% endblock %}

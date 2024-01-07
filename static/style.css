@@ -99,6 +99,32 @@ p.badge {
 	font-family: 'Atkinson Bold', sans-serif;
 }
 
+.container h1 {
+	margin-bottom: 1.5rem;
+}
+
+h1.submit {
+	margin-bottom: .75rem;
+}
+
+img.empty {
+	max-width: 240px;
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.emptyState img {
+	margin: 1.5rem 0;
+}
+
+.emptyState h1 {
+	margin-bottom: 0;
+}
+
 .flash-messages {
 	position: fixed;
 	top: 1rem;
@@ -246,14 +272,6 @@ header nav a:hover {
 	background-color: white;
 	border-radius: .5rem;
 	box-shadow: 0px 4px 12px -4px rgba(0,0,0,0.15);
-}
-
-.container h1 {
-	margin-bottom: 1.5rem;
-}
-
-h1.submit {
-	margin-bottom: .75rem;
 }
 
 header nav .mobileNav {
