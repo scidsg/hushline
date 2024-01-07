@@ -2,8 +2,8 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
-    <h1>Inbox for {{ user.display_name or user.username }}</h1>
     {% if messages %}
+    <h1>Inbox for {{ user.display_name or user.username }}</h1>
         {% for message in messages %}
             <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}">
                 <p>{{ message.content }}</p>
@@ -14,6 +14,7 @@
             </div>
         {% endfor %}
     {% else %}
-        <p class="message">No messages yet.</p>
+        <img src="{{ url_for('static', filename='empty.png') }}">
+        <p>No messages yet.</p>
     {% endif %}
 {% endblock %}
