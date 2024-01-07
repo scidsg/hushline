@@ -1,5 +1,5 @@
 import sys
-from your_app_module import db, User  # Replace 'your_app_module' with the actual name
+from app import app, db, User  # Import Flask app alongside db and User
 
 
 def toggle_verification(username):
@@ -7,7 +7,7 @@ def toggle_verification(username):
     if user:
         user.is_verified = not user.is_verified
         db.session.commit()
-        print(f"User {username} verification status toggled.")
+        print(f"User {username} verification status toggled to {user.is_verified}.")
     else:
         print("User not found.")
 
@@ -18,4 +18,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     username = sys.argv[1]
-    toggle_verification(username)
+
+    # Create an application context
+    with app.app_context():
+        toggle_verification(username)
