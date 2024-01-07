@@ -1,3 +1,5 @@
+# python verify.py username
+
 import sys
 from app import app, db, User
 
