@@ -1,26 +1,42 @@
-from flask import Flask, request, render_template, redirect, url_for, session, flash
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import IntegrityError  # Import IntegrityError
-from dotenv import load_dotenv
-from flask_bcrypt import Bcrypt
-from datetime import datetime
-import logging
-from logging.handlers import RotatingFileHandler
+# Standard Library Imports
 import os
-import pyotp
-import qrcode
 import io
 import base64
+import logging
+from logging.handlers import RotatingFileHandler
+from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from werkzeug.security import generate_password_hash, check_password_hash
-import gnupg
+
+# Flask Framework and Extensions
+from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Form Handling and Validation
 from wtforms import TextAreaField, StringField, PasswordField, IntegerField
 from wtforms.validators import DataRequired, Length, Email
+
+# Cryptography and Security
+import pyotp
+import gnupg
 from cryptography.fernet import Fernet
+
+# Database and Error Handling
+from sqlalchemy.exc import IntegrityError  # Import IntegrityError
+
+# Environment Variables
+from dotenv import load_dotenv
+
+# QR Code Generation
+import qrcode
+
+# Utility Decorators
 from functools import wraps
+
 
 # Load environment variables
 load_dotenv()
