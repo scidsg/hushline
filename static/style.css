@@ -115,6 +115,8 @@ img.empty {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	flex-grow: 1;
+	justify-content: center;
 }
 
 .emptyState img {
@@ -263,6 +265,7 @@ header nav a:hover {
 .container {
 	max-width: 960px;
 	min-width: 480px;
+	min-height: calc(100vh - 110px);
 	width: 100%;
 	display: flex;
 	flex-direction: column;
