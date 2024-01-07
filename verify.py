@@ -1,5 +1,5 @@
 import sys
-from app import app, db, User  # Import Flask app alongside db and User
+from app import app, db, User
 
 
 def toggle_verification(username):
