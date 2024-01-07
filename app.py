@@ -252,8 +252,13 @@ class DisplayNameForm(FlaskForm):
 def require_2fa(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session or not session.get("2fa_verified", False):
-            flash("👉 Please complete 2FA verification.")
+        if "user_id" not in session or not session.get("is_authenticated", False):
+            flash("👉 Please complete authentication.")
+            return redirect(url_for("login"))
+        if session.get("2fa_required", False) and not session.get(
+            "2fa_verified", False
+        ):
+            flash("👉 2FA verification required.")
             return redirect(url_for("verify_2fa_login"))
         return f(*args, **kwargs)
 
@@ -440,16 +445,14 @@ def login():
         if user and bcrypt.check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             session["username"] = user.username
-            # Set session variable for 2FA status
+            session["is_authenticated"] = True  # User is authenticated
             session["2fa_required"] = user.totp_secret is not None
             session["2fa_verified"] = False
 
             if user.totp_secret:
-                # Redirect to 2FA verification page if 2FA is enabled
                 return redirect(url_for("verify_2fa_login"))
             else:
-                # Direct login if 2FA not enabled
-                session["2fa_verified"] = True
+                session["2fa_verified"] = True  # Direct login if 2FA not enabled
                 return redirect(url_for("inbox", username=username))
         else:
             flash("Invalid username or password")
