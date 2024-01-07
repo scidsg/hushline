@@ -349,9 +349,17 @@ chmod +x generate_codes.sh
 ./generate_codes.sh
 
 # Update Tor permissions
-sleep 5
-chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock
-service tor restart
+# Create a systemd override directory for the Tor service
+mkdir -p /etc/systemd/system/tor@default.service.d
+
+# Create an override file with an ExecStartPost command
+cat <<EOT > /etc/systemd/system/tor@default.service.d/override.conf
+[Service]
+ExecStartPost=/bin/sh -c 'while [ ! -S /var/www/html/$DOMAIN/hushline-hosted.sock ]; do sleep 1; done; chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock'
+EOT
+
+# Reload the systemd daemon to apply the override
+systemctl daemon-reload
 
 
 echo "
