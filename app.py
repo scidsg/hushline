@@ -20,6 +20,7 @@ from flask_wtf import FlaskForm
 from wtforms import TextAreaField, StringField, PasswordField, IntegerField
 from wtforms.validators import DataRequired, Length, Email
 from cryptography.fernet import Fernet
+from functools import wraps
 
 # Load environment variables
 load_dotenv()
@@ -93,7 +94,6 @@ class User(db.Model):
     _smtp_username = db.Column("smtp_username", db.String(255))
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
-    is_admin = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
 
     @property
@@ -247,6 +247,17 @@ class PGPKeyForm(FlaskForm):
 
 class DisplayNameForm(FlaskForm):
     display_name = StringField("Display Name", validators=[Length(max=100)])
+
+
+def require_2fa(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session or not session.get("2fa_verified", False):
+            flash("Please complete 2FA verification.")
+            return redirect(url_for("verify_2fa_login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 # Error Handler
@@ -429,12 +440,16 @@ def login():
         if user and bcrypt.check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             session["username"] = user.username
-            session["2fa_verified"] = False  # Set 2FA verification flag to False
+            # Set session variable for 2FA status
+            session["2fa_required"] = user.totp_secret is not None
+            session["2fa_verified"] = False
 
             if user.totp_secret:
+                # Redirect to 2FA verification page if 2FA is enabled
                 return redirect(url_for("verify_2fa_login"))
             else:
-                session["2fa_verified"] = True  # Direct login if 2FA not enabled
+                # Direct login if 2FA not enabled
+                session["2fa_verified"] = True
                 return redirect(url_for("inbox", username=username))
         else:
             flash("Invalid username or password")
@@ -444,12 +459,14 @@ def login():
 
 @app.route("/verify-2fa-login", methods=["GET", "POST"])
 def verify_2fa_login():
-    if "user_id" not in session:
+    # Redirect to login if user is not authenticated
+    if "user_id" not in session or not session.get("2fa_required", False):
         return redirect(url_for("login"))
 
     user = User.query.get(session["user_id"])
     if not user:
         flash("⛔️ User not found. Please login again.")
+        session.clear()  # Clearing the session for security
         return redirect(url_for("login"))
 
     form = TwoFactorForm()
@@ -467,6 +484,7 @@ def verify_2fa_login():
 
 
 @app.route("/inbox/<username>")
+@require_2fa
 def inbox(username):
     # Redirect to login if not logged in
     if "user_id" not in session:
@@ -496,6 +514,7 @@ def inbox(username):
 
 
 @app.route("/settings", methods=["GET", "POST"])
+@require_2fa
 def settings():
     # Redirect to login if not logged in
     if "user_id" not in session:
