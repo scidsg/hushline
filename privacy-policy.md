@@ -50,6 +50,12 @@ The information we collect is used for the following purposes:
 - **Server Security:** We use fail2ban to protect against brute-force attacks and UFW (Uncomplicated Firewall) for managing network traffic.
 - **Data Retention:** We retain your information as long as your account is active or as needed to provide you services. You may request the deletion of your data, subject to legal and operational considerations.
 
+## Password Policy
+
+- **Complexity Requirements:** Passwords must include uppercase and lowercase letters, digits, and a special character.
+- **Length Requirements:** Passwords must be between 18 and 128 characters long.
+- **Encryption:** Passwords are encrypted using `bcrypt` and securely stored.
+
 ## Additional Security Measures
 
 - **Unattended Upgrades:** Our servers are configured with `unattended-upgrades` for important security patches.
