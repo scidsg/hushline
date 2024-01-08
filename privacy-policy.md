@@ -52,7 +52,7 @@ The information we collect is used for the following purposes:
 
 ## Additional Security Measures
 
-- **Unattended Upgrades:** Our servers are configured with `unattended upgrades` for important security patches.
+- **Unattended Upgrades:** Our servers are configured with `unattended-upgrades` for important security patches.
 - **Secure Server Configuration:** We use Nginx with privacy-preserving logging and HTTPS to ensure secure communication.
 - **Tor Network Support:** The app supports access via the Tor network, providing additional anonymity options for users.
 - **Fail2Ban and UFW:** We use `fail2ban` to monitor and mitigate unauthorized access attempts and `ufw` to manage network traffic, enhancing server security.
