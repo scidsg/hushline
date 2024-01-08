@@ -338,7 +338,7 @@ textarea#pgp_key {
 }
 
 input:focus,
-input[type="submit"],
+input[type="submit"]:focus,
 textarea:focus,
 button:focus {
 	outline: 4px double #7D25C1;
@@ -385,7 +385,8 @@ header .btn {
 	font-family: 'Atkinson Bold', sans-serif;
 }
 
-.btn-danger {
+.btn-danger,
+.formBody .btn-danger  {
 	color: darkred;
 	border-color: darkred;
 }

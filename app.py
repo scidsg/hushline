@@ -200,7 +200,11 @@ class Message(db.Model):
         "content", db.Text, nullable=False
     )  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    user = db.relationship("User", backref=db.backref("messages", lazy=True))
+
+    # Relationship with User model updated to include cascade deletion
+    user = db.relationship(
+        "User", backref=db.backref("messages", lazy=True, cascade="all, delete-orphan")
+    )
 
     # Temporary attribute for template rendering
     is_encrypted = False
@@ -994,6 +998,29 @@ def delete_message(message_id):
         flash("⛔️ Message not found or unauthorized access.")
 
     return redirect(url_for("inbox", username=user.username))
+
+
+@app.route("/delete-account", methods=["POST"])
+@require_2fa
+def delete_account():
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("🔑 Please log in to continue.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(user_id)
+    if user:
+        # Delete user and related records
+        db.session.delete(user)
+        db.session.commit()
+
+        # Clear session and log out
+        session.clear()
+        flash("👋 Your account has been deleted.")
+        return redirect(url_for("index"))
+    else:
+        flash("🫥 User not found. Please log in again.")
+        return redirect(url_for("login"))
 
 
 if __name__ == "__main__":
