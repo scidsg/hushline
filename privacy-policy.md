@@ -12,7 +12,6 @@ Information Collection
 ```
 >>> from app import db, User
 >>> 
->>> # Fetch the user (replace '1' with the desired user ID)
 >>> user = User.query.get(1)
 >>> 
 >>> # Access the raw encrypted fields
