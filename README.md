@@ -1,1 +1,1 @@
-![hush-cover](https://github.com/scidsg/hushline/assets/28545431/00a3e58c-c132-4988-801b-e59c1ef8f943)
+![hush-cover](https://github.com/scidsg/hushline/assets/28545431/2dc57400-579a-4efe-bab8-ae607f1eca42)
