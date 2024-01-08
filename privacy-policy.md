@@ -45,6 +45,8 @@ The information we collect is used for the following purposes:
 
 - **Data Encryption:** We use Fernet symmetric encryption to secure sensitive data such as password hashes and 2FA secrets. PGP keys are also encrypted for additional security.
 - **Database Security:** User data is stored in a MySQL database with restricted access to protect against unauthorized access.
+- **Form Handling and Validation:** We utilize Flask-WTF for secure form handling and validation, ensuring the integrity and confidentiality of user input.
+- **Cryptography and Security Measures:** Our app employs advanced cryptography techniques (such as `pyotp` and `gnupg`) and Fernet encryption to enhance data security.
 - **Data Retention:** We retain your information as long as your account is active or as needed to provide you services. You may request the deletion of your data, subject to legal and operational considerations.
 
 ## Data Sharing and Disclosure
