@@ -113,6 +113,13 @@
             <button type="submit">Update PGP Key</button>
         </form>
 
+        <form method="POST" action="{{ url_for('delete_account') }}">
+            <h2>Delete Account</h2>
+            <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+            <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
+        </form>
+
+
         <a class="logoutLink" href="{{ url_for('logout') }}">Logout</a>
     </div>
 {% endblock %}
