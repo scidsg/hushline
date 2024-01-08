@@ -71,8 +71,7 @@ We do not sell, rent, or lease our user data to third parties. However, we may s
 - **Service Providers:** We may employ third-party companies to facilitate our service, such as hosting providers.
 
 ## User Rights
-
-You have the right to access, correct, or delete your personal data. You can typically manage your data through your account settings or by contacting us directly.
+You have rights over your personal data, including access, correction, and deletion, managed via account settings or direct contact.
 
 ## Changes to Privacy Policy
 
