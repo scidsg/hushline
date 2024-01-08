@@ -34,28 +34,30 @@
             </form>
         {% endif %}
 
-        <!-- Change Password Section -->
+        <!-- Change Password Section in settings.html -->
         <h2>Change Password</h2>
         <form method="POST" action="{{ url_for('change_password') }}">
             {{ change_password_form.hidden_tag() }}
+
             <label for="old_password">{{ change_password_form.old_password.label }}</label>
             {{ change_password_form.old_password(id='old_password') }}
             {% if change_password_form.old_password.errors %}
                 {% for error in change_password_form.old_password.errors %}
-                    <span style="color: red;">{{ error }}</span>
+                    <span class="error">{{ error }}</span>
                 {% endfor %}
             {% endif %}
 
             <label for="new_password">{{ change_password_form.new_password.label }}</label>
-            {{ change_password_form.new_password(id='new_password') }}
+            {{ change_password_form.new_password(id="new_password") }}
             {% if change_password_form.new_password.errors %}
                 {% for error in change_password_form.new_password.errors %}
-                    <span style="color: red;">{{ error }}</span>
+                    <span class="error">{{ error }}</span>
                 {% endfor %}
             {% endif %}
 
             <button type="submit">Change Password</button>
         </form>
+
 
         <!-- Change Username Section -->
         <h2>Change Username</h2>
@@ -66,7 +68,7 @@
             {{ change_username_form.new_username(id='new_username') }}
             {% if change_username_form.new_username.errors %}
                 {% for error in change_username_form.new_username.errors %}
-                    <span style="color: red;">{{ error }}</span>
+                    <span class="error">{{ error }}</span>
                 {% endfor %}
             {% endif %}
 
@@ -104,7 +106,7 @@
             {{ pgp_key_form.pgp_key(id='pgp_key') }}
             {% if pgp_key_form.pgp_key.errors %}
                 {% for error in pgp_key_form.pgp_key.errors %}
-                    <span style="color: red;">{{ error }}</span>
+                    <span class="error">{{ error }}</span>
                 {% endfor %}
             {% endif %}
 

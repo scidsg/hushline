@@ -102,7 +102,7 @@ app.logger.setLevel(logging.DEBUG)
 class ComplexPassword(object):
     def __init__(self, message=None):
         if not message:
-            message = "Password must include uppercase, lowercase, digit, and special character including hyphen."
+            message = "Password must include uppercase, lowercase, digit, and a special character."
         self.message = message
 
     def __call__(self, form, field):
@@ -111,7 +111,7 @@ class ComplexPassword(object):
             re.search("[A-Z]", password)
             and re.search("[a-z]", password)
             and re.search("[0-9]", password)
-            and "-" in password
+            and re.search("[^A-Za-z0-9]", password)
         ):
             raise ValidationError(self.message)
 
@@ -251,7 +251,7 @@ class RegistrationForm(FlaskForm):
         "Password",
         validators=[
             DataRequired(),
-            Length(min=8, max=40),  # Adjust length requirements as needed
+            Length(min=18, max=128),
             ComplexPassword(),
         ],
     )
@@ -263,7 +263,12 @@ class RegistrationForm(FlaskForm):
 class ChangePasswordForm(FlaskForm):
     old_password = PasswordField("Old Password", validators=[DataRequired()])
     new_password = PasswordField(
-        "New Password", validators=[DataRequired(), Length(min=6)]
+        "New Password",
+        validators=[
+            DataRequired(),
+            Length(min=18, max=128),
+            ComplexPassword(),
+        ],
     )
 
 
@@ -609,7 +614,7 @@ def settings():
             return redirect(url_for("settings"))
 
         # Handle Change Password Form Submission
-        elif change_password_form.validate_on_submit():
+        if change_password_form.validate_on_submit():
             if bcrypt.check_password_hash(
                 user.password_hash, change_password_form.old_password.data
             ):
@@ -674,18 +679,37 @@ def change_password():
     if not user_id:
         return redirect(url_for("login"))
 
-    user = db.session.get(User, user_id)
-    old_password = request.form["old_password"]
-    new_password = request.form["new_password"]
+    # Retrieve the user using the user_id
+    user = User.query.get(user_id)
+    change_password_form = ChangePasswordForm(request.form)
+    change_username_form = ChangeUsernameForm()
+    smtp_settings_form = SMTPSettingsForm()
+    pgp_key_form = PGPKeyForm()
+    display_name_form = DisplayNameForm()
 
-    if bcrypt.check_password_hash(user.password_hash, old_password):
-        user.password_hash = bcrypt.generate_password_hash(new_password).decode("utf-8")
-        db.session.commit()
-        flash("👍 Password successfully changed.")
-    else:
-        flash("⛔️ Incorrect old password.")
+    if change_password_form.validate_on_submit():
+        old_password = change_password_form.old_password.data
+        new_password = change_password_form.new_password.data
 
-    return redirect(url_for("logout"))
+        if bcrypt.check_password_hash(user.password_hash, old_password):
+            user.password_hash = bcrypt.generate_password_hash(new_password).decode(
+                "utf-8"
+            )
+            db.session.commit()
+            flash("👍 Password successfully changed.")
+            return redirect(url_for("settings"))
+        else:
+            flash("⛔️ Incorrect old password.")
+
+    return render_template(
+        "settings.html",
+        change_password_form=change_password_form,
+        change_username_form=change_username_form,
+        smtp_settings_form=smtp_settings_form,
+        pgp_key_form=pgp_key_form,
+        display_name_form=display_name_form,
+        user=user,
+    )
 
 
 @app.route("/change-username", methods=["POST"])
