@@ -47,7 +47,15 @@ The information we collect is used for the following purposes:
 - **Database Security:** User data is stored in a MySQL database with restricted access to protect against unauthorized access.
 - **Form Handling and Validation:** We utilize Flask-WTF for secure form handling and validation, ensuring the integrity and confidentiality of user input.
 - **Cryptography and Security Measures:** Our app employs advanced cryptography techniques (such as `pyotp` and `gnupg`) and Fernet encryption to enhance data security.
+- **Server Security:** We use fail2ban to protect against brute-force attacks and UFW (Uncomplicated Firewall) for managing network traffic.
 - **Data Retention:** We retain your information as long as your account is active or as needed to provide you services. You may request the deletion of your data, subject to legal and operational considerations.
+
+## Additional Security Measures
+
+- **Unattended Upgrades:** Our servers are configured with `unattended upgrades` for important security patches.
+- **Secure Server Configuration:** We use Nginx with privacy-preserving logging and HTTPS to ensure secure communication.
+- **Tor Network Support:** The app supports access via the Tor network, providing additional anonymity options for users.
+- **Fail2Ban and UFW:** We use `fail2ban` to monitor and mitigate unauthorized access attempts and `ufw` to manage network traffic, enhancing server security.
 
 ## Data Sharing and Disclosure
 
