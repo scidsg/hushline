@@ -102,7 +102,7 @@ app.logger.setLevel(logging.DEBUG)
 class ComplexPassword(object):
     def __init__(self, message=None):
         if not message:
-            message = "Password must include uppercase, lowercase, digit, and a special character."
+            message = "⛔️ Password must include uppercase, lowercase, digit, and a special character."
         self.message = message
 
     def __call__(self, form, field):
