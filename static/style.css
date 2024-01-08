@@ -99,9 +99,10 @@ p.badge {
 	border-radius: .25rem;
 	width: fit-content;
 	font-size: .75rem;
-	padding: .25rem .5rem;
+	padding: .4125rem .5rem;
 	margin-top: 0;
 	font-family: 'Atkinson Bold', sans-serif;
+	line-height: 1;
 }
 
 .container h1 {
