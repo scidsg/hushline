@@ -333,7 +333,7 @@ input, textarea {
 
 textarea#pgp_key {
 	font-family: 'IBM Plex Mono', monospace;
- 	font-size: .875rem;
+ 	font-size: .8125rem;
  	padding: 1.5rem 1rem;
 }
 
