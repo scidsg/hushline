@@ -3,6 +3,7 @@ import os
 import io
 import base64
 import logging
+import re
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import smtplib
@@ -18,7 +19,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Form Handling and Validation
 from wtforms import TextAreaField, StringField, PasswordField, IntegerField
-from wtforms.validators import DataRequired, Length, Email
+from wtforms.validators import DataRequired, Length, Email, ValidationError
 
 # Cryptography and Security
 import pyotp
@@ -95,6 +96,24 @@ file_handler.setFormatter(
 # Add it to the Flask logger
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.DEBUG)
+
+
+# Passwrord Policy
+class ComplexPassword(object):
+    def __init__(self, message=None):
+        if not message:
+            message = "Password must include uppercase, lowercase, digit, and special character including hyphen."
+        self.message = message
+
+    def __call__(self, form, field):
+        password = field.data
+        if not (
+            re.search("[A-Z]", password)
+            and re.search("[a-z]", password)
+            and re.search("[0-9]", password)
+            and "-" in password
+        ):
+            raise ValidationError(self.message)
 
 
 # Database Models
@@ -229,7 +248,12 @@ class RegistrationForm(FlaskForm):
         "Username", validators=[DataRequired(), Length(min=4, max=25)]
     )
     password = PasswordField(
-        "Password", validators=[DataRequired(), Length(min=6, max=40)]
+        "Password",
+        validators=[
+            DataRequired(),
+            Length(min=8, max=40),  # Adjust length requirements as needed
+            ComplexPassword(),
+        ],
     )
     invite_code = StringField(
         "Invite Code", validators=[DataRequired(), Length(min=6, max=25)]
