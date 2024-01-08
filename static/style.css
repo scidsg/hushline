@@ -105,6 +105,14 @@ p.badge {
 	line-height: 1;
 }
 
+.error {
+	margin-top: -8px;
+	font-size: .875rem;
+	margin-bottom: 1rem;
+	color: darkred;
+	display: flex;
+}
+
 .container h1 {
 	margin-bottom: 1.5rem;
 }
