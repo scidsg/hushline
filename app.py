@@ -210,6 +210,15 @@ class User(db.Model):
         if self.is_verified:
             self.is_verified = False
 
+    # In the User model
+    def update_username(self, new_username):
+        """Update the user's username and remove verification status if the user is verified."""
+        app.logger.debug(f"Attempting to update username to {new_username}")
+        self.username = new_username
+        if self.is_verified:
+            self.is_verified = False
+            app.logger.debug(f"Username updated, Verification status set to False")
+
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -603,6 +612,7 @@ def settings():
 
     # Handle form submissions
     if request.method == "POST":
+        # Handle Display Name Form Submission
         if (
             "update_display_name" in request.form
             and display_name_form.validate_on_submit()
@@ -610,6 +620,28 @@ def settings():
             user.update_display_name(display_name_form.display_name.data.strip())
             db.session.commit()
             flash("👍 Display name updated successfully.")
+            app.logger.debug(
+                f"Display name updated to {user.display_name}, Verification status: {user.is_verified}"
+            )
+            return redirect(url_for("settings"))
+
+        # Handle Change Username Form Submission
+        elif (
+            "change_username" in request.form
+            and change_username_form.validate_on_submit()
+        ):
+            new_username = change_username_form.new_username.data
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                flash("💔 This username is already taken.")
+            else:
+                user.update_username(new_username)
+                db.session.commit()
+                session["username"] = new_username  # Update username in session
+                flash("👍 Username changed successfully.")
+                app.logger.debug(
+                    f"Username updated to {user.username}, Verification status: {user.is_verified}"
+                )
             return redirect(url_for("settings"))
 
         # Handle SMTP Settings Form Submission
@@ -631,7 +663,7 @@ def settings():
             return redirect(url_for("settings"))
 
         # Handle Change Password Form Submission
-        if change_password_form.validate_on_submit():
+        elif change_password_form.validate_on_submit():
             if bcrypt.check_password_hash(
                 user.password_hash, change_password_form.old_password.data
             ):
@@ -642,20 +674,6 @@ def settings():
                 flash("👍 Password changed successfully.")
             else:
                 flash("⛔️ Incorrect old password.")
-            return redirect(url_for("settings"))
-
-        # Handle Change Username Form Submission
-        elif change_username_form.validate_on_submit():
-            existing_user = User.query.filter_by(
-                username=change_username_form.new_username.data
-            ).first()
-            if existing_user:
-                flash("💔 This username is already taken.")
-            else:
-                user.username = change_username_form.new_username.data
-                db.session.commit()
-                session["username"] = user.username
-                flash("👍 Username changed successfully.")
             return redirect(url_for("settings"))
 
     # Prepopulate form fields

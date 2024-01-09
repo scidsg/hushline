@@ -64,8 +64,11 @@
 
         <!-- Change Username Section -->
         <h2>Change Username</h2>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your username will result in losing your verification status.</p>
+        {% endif %}
         <p class="meta">Current Username: {{ session['username'] }}</p>
-        <form method="POST" action="{{ url_for('change_username') }}">
+        <form method="POST" action="{{ url_for('settings') }}">
             {{ change_username_form.hidden_tag() }}
             <label for="new_username">{{ change_username_form.new_username.label }}</label>
             {{ change_username_form.new_username(id='new_username') }}
@@ -75,8 +78,9 @@
                 {% endfor %}
             {% endif %}
 
-            <button type="submit">Change Username</button>
+            <button type="submit" name="change_username">Change Username</button>
         </form>
+
 
         <!-- SMTP Settings Section -->
         <h2>Email Delivery Settings</h2>
