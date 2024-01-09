@@ -109,7 +109,7 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.DEBUG)
 
 
-# Passwrord Policy
+# Password Policy
 class ComplexPassword(object):
     def __init__(self, message=None):
         if not message:
@@ -413,7 +413,7 @@ def enable_2fa():
     session["temp_totp_secret"] = temp_totp_secret
     session["is_setting_up_2fa"] = True
     totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-        name=user.username, issuer_name="YourAppName"
+        name=user.username, issuer_name="HushLine"
     )
     img = qrcode.make(totp_uri)
     buffered = io.BytesIO()
