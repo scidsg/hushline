@@ -204,6 +204,12 @@ class User(db.Model):
         else:
             self._pgp_key = encrypt_field(value)
 
+    def update_display_name(self, new_display_name):
+        """Update the user's display name and remove verification status if the user is verified."""
+        self.display_name = new_display_name
+        if self.is_verified:
+            self.is_verified = False
+
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -597,15 +603,11 @@ def settings():
 
     # Handle form submissions
     if request.method == "POST":
-        # Handle Display Name Form Submission
         if (
             "update_display_name" in request.form
             and display_name_form.validate_on_submit()
         ):
-            if display_name_form.display_name.data.strip():
-                user.display_name = display_name_form.display_name.data.strip()
-            else:
-                user.display_name = None
+            user.update_display_name(display_name_form.display_name.data.strip())
             db.session.commit()
             flash("👍 Display name updated successfully.")
             return redirect(url_for("settings"))
