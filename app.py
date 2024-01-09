@@ -74,6 +74,17 @@ app.config[
 ] = f"mysql+pymysql://{db_user}:{db_pass}@localhost/{db_name}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Session configuration for secure cookies
+app.config["SESSION_COOKIE_NAME"] = "__Host-session"
+app.config["SESSION_COOKIE_SECURE"] = True  # Only send cookies over HTTPS
+app.config[
+    "SESSION_COOKIE_HTTPONLY"
+] = True  # Prevent JavaScript access to session cookie
+app.config[
+    "SESSION_COOKIE_SAMESITE"
+] = "Lax"  # Control cookie sending with cross-site requests
+
+
 # Initialize GPG with expanded home directory
 gpg_home = os.path.expanduser("~/.gnupg")
 gpg = gnupg.GPG(gnupghome=gpg_home)
