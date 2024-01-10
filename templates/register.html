@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+    <h1>Register</h1>
+    <form method="POST" action="/register">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label(for="username") }}
+            {{ form.username(id="username") }}
+            {% if form.username.errors %}
+                <span class="error">{{ form.username.errors[0] }}</span>
+            {% endif %}
+        </div>
+        <div>
+            {{ form.password.label(for="password") }}
+            {{ form.password(id="password") }}
+            {% if form.password.errors %}
+                {% for error in form.password.errors %}
+                    <span class="error">{{ error }}</li>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div>
+            {{ form.invite_code.label(for="invite_code") }}
+            {{ form.invite_code(id="invite_code") }}
+            {% if form.invite_code.errors %}
+                <span class="error">{{ form.invite_code.errors[0] }}</span>
+            {% endif %}
+        </div>
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="/login">Login here</a></p>
+{% endblock %}

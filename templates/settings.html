@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+    <h1>Account Settings</h1>
+    <div class="formBody">
+
+        <!-- Display Name Section -->
+        <h2>Update Display Name</h2>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your display name will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ display_name_form.hidden_tag() }}
+            <label for="display_name">{{ display_name_form.display_name.label }}</label>
+            {{ display_name_form.display_name(id='display_name') }}
+            {% if display_name_form.display_name.errors %}
+                {% for error in display_name_form.display_name.errors %}
+                    <span style="color: red;">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="update_display_name">Update Display Name</button>
+
+        </form>
+
+        <!-- Two-Factor Authentication Section -->
+        <h2>Two-Factor Authentication</h2>
+        {% if user.totp_secret %}
+            <!-- If 2FA is enabled, show the Disable 2FA button -->
+            <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
+                <button type="submit">Disable 2FA</button>
+            </form>
+        {% else %}
+            <!-- If 2FA is disabled, show the Enable 2FA button -->
+            <form method="POST" action="{{ url_for('toggle_2fa') }}">
+                <button type="submit">Enable 2FA</button>
+            </form>
+        {% endif %}
+
+        <!-- Change Password Section in settings.html -->
+        <h2>Change Password</h2>
+        <form method="POST" action="{{ url_for('change_password') }}">
+            {{ change_password_form.hidden_tag() }}
+
+            <label for="old_password">{{ change_password_form.old_password.label }}</label>
+            {{ change_password_form.old_password(id='old_password') }}
+            {% if change_password_form.old_password.errors %}
+                {% for error in change_password_form.old_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <label for="new_password">{{ change_password_form.new_password.label }}</label>
+            {{ change_password_form.new_password(id="new_password") }}
+            {% if change_password_form.new_password.errors %}
+                {% for error in change_password_form.new_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit">Change Password</button>
+        </form>
+
+
+        <!-- Change Username Section -->
+        <h2>Change Username</h2>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your username will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ change_username_form.hidden_tag() }}
+            <label for="new_username">Username</label>
+            {{ change_username_form.new_username(id='new_username', value=session['username']) }}
+            {% if change_username_form.new_username.errors %}
+                {% for error in change_username_form.new_username.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit" name="change_username">Change Username</button>
+        </form>
+
+
+        <!-- SMTP Settings Section -->
+        <h2>Email Delivery Settings</h2>
+        <form method="POST" action="{{ url_for('update_smtp_settings') }}">
+            {{ smtp_settings_form.hidden_tag() }}
+            
+            {{ smtp_settings_form.email.label }}
+            {{ smtp_settings_form.email }}
+
+            {{ smtp_settings_form.smtp_server.label }}
+            {{ smtp_settings_form.smtp_server }}
+
+            {{ smtp_settings_form.smtp_port.label }}
+            {{ smtp_settings_form.smtp_port }}
+
+            {{ smtp_settings_form.smtp_username.label }}
+            {{ smtp_settings_form.smtp_username }}
+
+            {{ smtp_settings_form.smtp_password.label }}
+            {{ smtp_settings_form.smtp_password }}
+
+            <button type="submit">Update Settings</button>
+        </form>
+
+        <!-- PGP Key Section -->
+        <h2>Public PGP Key</h2>
+        <form method="POST" action="{{ url_for('update_pgp_key') }}">
+            {{ pgp_key_form.hidden_tag() }}
+            <label for="pgp_key">{{ pgp_key_form.pgp_key.label }}</label>
+            {{ pgp_key_form.pgp_key(id='pgp_key') }}
+            {% if pgp_key_form.pgp_key.errors %}
+                {% for error in pgp_key_form.pgp_key.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+
+            <button type="submit">Update PGP Key</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('delete_account') }}">
+            <h2>Delete Account</h2>
+            <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+            <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
+        </form>
+
+
+        <a class="logoutLink" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+{% endblock %}
