@@ -141,6 +141,7 @@ class User(db.Model):
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     @property
     def password_hash(self):
@@ -523,6 +524,7 @@ def login():
             session["is_authenticated"] = True  # User is authenticated
             session["2fa_required"] = user.totp_secret is not None
             session["2fa_verified"] = False
+            session["is_admin"] = user.is_admin
 
             if user.totp_secret:
                 return redirect(url_for("verify_2fa_login"))
@@ -533,6 +535,23 @@ def login():
             flash("Invalid username or password")
 
     return render_template("login.html", form=form)
+
+
+@app.route("/admin")
+@require_2fa
+def admin():
+    if "user_id" not in session or not session.get("is_admin", False):
+        flash("⛔️ Unauthorized access.")
+        return redirect(url_for("index"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        flash("🫥 User not found.")
+        return redirect(url_for("login"))
+
+    user_count = User.query.count()  # Get the count of users
+
+    return render_template("admin.html", user=user, user_count=user_count)
 
 
 @app.route("/verify-2fa-login", methods=["GET", "POST"])

@@ -15,6 +15,9 @@
             <nav>
                 <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
                 <ul>
+                    {% if 'is_admin' in session and session['is_admin'] %}
+                        <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                    {% endif %}
                     <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
                     <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                     <li><a href="{{ url_for('settings') }}">@{{ session['username'] }}</a></li>
