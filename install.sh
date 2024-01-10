@@ -6,6 +6,22 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+# Welcome message and ASCII art
+cat <<"EOF"
+ _   _           _       _     _            
+| | | |_   _ ___| |__   | |   (_)_ __   ___ 
+| |_| | | | / __| '_ \  | |   | | '_ \ / _ \
+|  _  | |_| \__ \ | | | | |___| | | | |  __/
+|_| |_|\__,_|___/_| |_| |_____|_|_| |_|\___|
+
+🤫 Hush Line is the first anonymous-tip-line-as-a-service for organizations and individuals.
+https://hushline.app
+
+A free tool by Science & Design - https://scidsg.org
+
+EOF
+sleep 3
+
 # Function to display error message and exit
 error_exit() {
     echo "An error occurred during installation. Please check the output above for more details."
