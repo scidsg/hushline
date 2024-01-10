@@ -203,7 +203,6 @@ echo "✅ Automatic HTTPS certificates configured."
 ####################################
 
 cd $DOMAIN
-git switch hosted
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
