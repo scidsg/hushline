@@ -14,7 +14,7 @@ cat <<"EOF"
 |  _  | |_| \__ \ | | | | |___| | | | |  __/
 |_| |_|\__,_|___/_| |_| |_____|_|_| |_|\___|
 
-🤫 Hush Line is the first anonymous-tip-line-as-a-service for organizations and individuals.
+🤫 Hush Line is the first free and open-source anonymous-tip-line-as-a-service for organizations and individuals.
 https://hushline.app
 
 A free tool by Science & Design - https://scidsg.org
