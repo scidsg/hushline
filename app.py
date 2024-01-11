@@ -976,13 +976,21 @@ def encrypt_message(message, recipient_email):
     gpg = gnupg.GPG(gnupghome=gpg_home, options=["--trust-model", "always"])
     app.logger.info(f"Encrypting message for recipient: {recipient_email}")
 
-    encrypted_data = gpg.encrypt(message, recipients=recipient_email, always_trust=True)
+    try:
+        # Ensure the message is encoded in UTF-8
+        message_utf8 = message.encode("utf-8")
+        encrypted_data = gpg.encrypt(
+            message_utf8, recipients=recipient_email, always_trust=True
+        )
 
-    if not encrypted_data.ok:
-        app.logger.error(f"Encryption failed: {encrypted_data.status}")
+        if not encrypted_data.ok:
+            app.logger.error(f"Encryption failed: {encrypted_data.status}")
+            return None
+
+        return str(encrypted_data)
+    except UnicodeEncodeError as e:
+        app.logger.error(f"Unicode encoding error during encryption: {e}")
         return None
-
-    return str(encrypted_data)
 
 
 def list_keys():
