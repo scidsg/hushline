@@ -195,6 +195,7 @@ img.empty {
     max-width: 90vw;
     opacity: 0;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
+    z-index: 99;
 }
 
 @keyframes fadeInDown {
