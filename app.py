@@ -977,10 +977,11 @@ def encrypt_message(message, recipient_email):
     app.logger.info(f"Encrypting message for recipient: {recipient_email}")
 
     try:
-        # Ensure the message is encoded in UTF-8
-        message_utf8 = message.encode("utf-8")
+        # Ensure the message is a byte string encoded in UTF-8
+        if isinstance(message, str):
+            message = message.encode("utf-8")
         encrypted_data = gpg.encrypt(
-            message_utf8, recipients=recipient_email, always_trust=True
+            message, recipients=recipient_email, always_trust=True
         )
 
         if not encrypted_data.ok:
@@ -988,8 +989,8 @@ def encrypt_message(message, recipient_email):
             return None
 
         return str(encrypted_data)
-    except UnicodeEncodeError as e:
-        app.logger.error(f"Unicode encoding error during encryption: {e}")
+    except Exception as e:
+        app.logger.error(f"Error during encryption: {e}")
         return None
 
 
