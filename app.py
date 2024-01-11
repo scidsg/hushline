@@ -15,6 +15,7 @@ from flask import Flask, request, render_template, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Form Handling and Validation
@@ -92,6 +93,7 @@ gpg = gnupg.GPG(gnupghome=gpg_home)
 # Initialize extensions
 bcrypt = Bcrypt(app)
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # Setup file handler
 file_handler = RotatingFileHandler(
@@ -141,6 +143,7 @@ class User(db.Model):
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     @property
     def password_hash(self):
@@ -523,6 +526,7 @@ def login():
             session["is_authenticated"] = True  # User is authenticated
             session["2fa_required"] = user.totp_secret is not None
             session["2fa_verified"] = False
+            session["is_admin"] = user.is_admin
 
             if user.totp_secret:
                 return redirect(url_for("verify_2fa_login"))
@@ -533,6 +537,41 @@ def login():
             flash("Invalid username or password")
 
     return render_template("login.html", form=form)
+
+
+@app.route("/admin")
+@require_2fa
+def admin():
+    if "user_id" not in session or not session.get("is_admin", False):
+        flash("⛔️ Unauthorized access.")
+        return redirect(url_for("index"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        flash("🫥 User not found.")
+        return redirect(url_for("login"))
+
+    user_count = User.query.count()  # Total number of users
+    two_fa_count = User.query.filter(
+        User._totp_secret != None
+    ).count()  # Users with 2FA
+    pgp_key_count = (
+        User.query.filter(User._pgp_key != None).filter(User._pgp_key != "").count()
+    )  # Users with PGP key
+
+    # Calculate percentages
+    two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
+    pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
+
+    return render_template(
+        "admin.html",
+        user=user,
+        user_count=user_count,
+        two_fa_count=two_fa_count,
+        pgp_key_count=pgp_key_count,
+        two_fa_percentage=two_fa_percentage,
+        pgp_key_percentage=pgp_key_percentage,
+    )
 
 
 @app.route("/verify-2fa-login", methods=["GET", "POST"])

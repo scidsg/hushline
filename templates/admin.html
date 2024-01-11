@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h2 id="admin">Admin Dashboard</h2>
+
+<div class="metric">
+	<p>👉 Total number of users</p>
+	<p>{{ user_count }}</p>
+</div>
+
+<div class="metric">
+	<p>🔒 Number of users with 2FA enabled</p>
+	<p>{{ two_fa_count }}</p>
+	<p>{{ two_fa_percentage | round(2) }}%</p>
+</div>
+
+<div class="metric">
+	<p>🔑 Number of users with PGP keys</p>
+	<p>{{ pgp_key_count }}</p>
+	<p>{{ pgp_key_percentage | round(2) }}%</p>
+	{% endblock %}
+</div>
