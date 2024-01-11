@@ -2,11 +2,11 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-    <h1>Account Settings</h1>
+    <h2>Account Settings</h2>
     <div class="formBody">
 
         <!-- Display Name Section -->
-        <h2>Update Display Name</h2>
+        <h3>Update Display Name</h3>
         {% if user.is_verified %}
             <p>⚠️ Changing your display name will result in losing your verification status.</p>
         {% endif %}
@@ -24,7 +24,7 @@
         </form>
 
         <!-- Two-Factor Authentication Section -->
-        <h2>Two-Factor Authentication</h2>
+        <h3>Two-Factor Authentication</h3>
         {% if user.totp_secret %}
             <!-- If 2FA is enabled, show the Disable 2FA button -->
             <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
@@ -38,7 +38,7 @@
         {% endif %}
 
         <!-- Change Password Section in settings.html -->
-        <h2>Change Password</h2>
+        <h3>Change Password</h3>
         <form method="POST" action="{{ url_for('change_password') }}">
             {{ change_password_form.hidden_tag() }}
 
@@ -63,7 +63,7 @@
 
 
         <!-- Change Username Section -->
-        <h2>Change Username</h2>
+        <h3>Change Username</h3>
         {% if user.is_verified %}
             <p>⚠️ Changing your username will result in losing your verification status.</p>
         {% endif %}
@@ -82,7 +82,7 @@
 
 
         <!-- SMTP Settings Section -->
-        <h2>Email Delivery Settings</h2>
+        <h3>Email Delivery Settings</h3>
         <form method="POST" action="{{ url_for('update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
             
@@ -105,7 +105,7 @@
         </form>
 
         <!-- PGP Key Section -->
-        <h2>Public PGP Key</h2>
+        <h3>Public PGP Key</h3>
         <form method="POST" action="{{ url_for('update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
             <label for="pgp_key">{{ pgp_key_form.pgp_key.label }}</label>
@@ -120,7 +120,7 @@
         </form>
 
         <form method="POST" action="{{ url_for('delete_account') }}">
-            <h2>Delete Account</h2>
+            <h3>Delete Account</h3>
             <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>

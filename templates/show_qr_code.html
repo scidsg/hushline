@@ -2,7 +2,7 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-    <h1>Scan this QR Code with your 2FA app and enter the code</h1>
+    <h2>Scan this QR Code with your 2FA app and enter the code</h2>
     <img class="qr" src="{{ qr_code_img }}" alt="QR Code">
     <p class="mono">Your pairing code: {{ user_secret }}</p>
     <form method="POST" action="{{ url_for('verify_2fa_setup') }}">

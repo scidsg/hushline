@@ -2,7 +2,7 @@
 {% block title %}Enter 2FA Code{% endblock %}
 
 {% block content %}
-    <h1>Enter your 2FA Code</h1>
+    <h2>Enter your 2FA Code</h2>
     <form method="POST" action="{{ url_for('verify_2fa_login') }}">
         {{ form.hidden_tag() }}
         <div>

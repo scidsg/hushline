@@ -1,4 +1,4 @@
-# python toggle_admin.py username
+# python admin.py username
 
 import sys
 from app import app, db, User

@@ -45,7 +45,7 @@ h1 {
 
 h2 {
 	margin-bottom: .75rem;
-	font-size: 1.325rem;
+	font-size: 1.75rem;
 }
 
 h1 + p:not(.instr):not(.message):not(.badge),
@@ -73,6 +73,10 @@ h2 + p.badge + p.instr {
 	margin-top: .5rem;
 }
 
+h2#admin {
+	
+}
+
 p.instr + p {
 	margin-bottom: 1.5rem;
 }
@@ -85,11 +89,22 @@ p {
 	word-break: break-word;
 }
 
+p.info {
+	margin-bottom: 1.5rem;
+	margin-top: .25rem;
+}
+
 p.instr {
 	font-style: italic;
 	font-size: .825rem;
 	color: #595959;
-	margin-top: .25rem;
+	margin-bottom: 1rem;
+	margin-top: 0;
+}
+
+.badgeContainer {
+	display: flex;
+	gap: .25rem;
 }
 
 p.badge {
@@ -103,6 +118,30 @@ p.badge {
 	margin-top: 0;
 	font-family: 'Atkinson Bold', sans-serif;
 	line-height: 1;
+	margin-bottom: 1.5rem;
+}
+
+.metric:not(:last-of-type) {
+	margin-bottom: 1rem;
+}
+
+.metric p {
+	margin: .5rem 0;
+}
+
+.metric p:nth-child(1n) {
+	font-size: .875rem;
+	color: #595959;
+}
+
+.metric p:nth-child(2n) {
+	font-size: 2rem;
+	color: #333;
+	margin-bottom: 0;
+}
+
+.metric p:nth-child(3n) {
+	margin-top: .25rem;
 }
 
 .error {
