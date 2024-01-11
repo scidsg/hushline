@@ -474,7 +474,7 @@ footer {
 	bottom: 0;
 	left: 0;
 	font-size: .8125rem;
-	padding: .625rem .75rem;
+	padding: .625rem 1rem;
 	background-color: #fbf3ff;
 	border-radius: 0 .25rem 0 0;
 }
