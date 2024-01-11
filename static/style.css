@@ -287,6 +287,7 @@ header {
 	padding: .75rem 1.25rem;
 	box-sizing: border-box;
 	border-radius: .25rem;
+	z-index: 9;
 }
 
 header h1 {
