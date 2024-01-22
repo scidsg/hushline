@@ -261,8 +261,10 @@ class InviteCode(db.Model):
 
 class MessageForm(FlaskForm):
     content = TextAreaField(
-        "Message", validators=[DataRequired(), Length(max=2000)]
-    )  # Adjust max length as needed
+        "Message",
+        validators=[DataRequired(), Length(max=2000)],
+        render_kw={"placeholder": "Include a contact method if you want a response..."},
+    )
 
 
 class LoginForm(FlaskForm):
