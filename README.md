@@ -2,8 +2,8 @@
 
 [Hush Line](https://hushline.app) Personal Server is the physical product for our free and open-source, anonymous tip line for organizations or individuals. It's for those who need uncompromising anonymity for their sources and complete control of their infrastructure. It comes ready to set up through a no-code, no-terminal, full-guided process. 
 
-![IMG_7421](https://github.com/scidsg/hushline/assets/28545431/6fb3626a-a485-4156-8a5d-f894e46f3f4a)
 ![IMG_7418](https://github.com/scidsg/hushline/assets/28545431/7f5470ca-a4f8-445a-87be-ea3de6cf26ff)
+![IMG_7421](https://github.com/scidsg/hushline/assets/28545431/6fb3626a-a485-4156-8a5d-f894e46f3f4a)
 ![IMG_7359](https://github.com/scidsg/hushline/assets/28545431/5404f7eb-6782-47ef-9dd0-ce88b142fe72)
 
 ## Host it Yourself
