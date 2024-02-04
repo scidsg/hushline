@@ -40,7 +40,8 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Setup" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Setup" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Setup" 3>&1 1>&2 2>&3)
-API_KEY=$(whiptail --inputbox "Enter your Stripe API Key" 8 39 --title "Stripe API Key" 3>&1 1>&2 2>&3)
+API_KEY=$(whiptail --passwordbox "Enter your Stripe API Key" 8 39 --title "Stripe API Key" 3>&1 1>&2 2>&3)
+API_PUB_KEY=$(whiptail --inputbox "Enter your Stripe API Public Key" 8 39 --title "Stripe API Public Key" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
@@ -220,6 +221,7 @@ echo "✅ Automatic HTTPS certificates configured."
 ####################################
 
 cd $DOMAIN
+git switch paywall
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
@@ -241,6 +243,7 @@ echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "API_KEY=$API_KEY" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
+check "API_PUB_KEY=$API_PUB_KEY" >> /static/script.js
 
 # Start MariaDB
 systemctl start mariadb
