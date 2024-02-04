@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Stripe with your Stripe publishable key
+    var stripe = Stripe('pk_live_51LjpHPEC34n15PioFau4PwFjhwuoYkYY9d5qCh3V36CA6BZqRGhHIaZitXa2eXvyLTDaNRoOSAYmKdNQhaagsgI700zHE13Gk8');
+
     // Handle mobile navigation toggle
     const mobileNavButton = document.querySelector('.mobileNav');
     const navMenu = document.querySelector('header nav ul');

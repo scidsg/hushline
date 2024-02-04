@@ -5,6 +5,14 @@
     <h2>Account Settings</h2>
     <div class="formBody">
 
+        {% if user.has_paid %}
+        <form method="POST" action="/add-secondary-username">
+            <input type="text" name="username" required placeholder="New Username">
+            <button type="submit">Add Username</button>
+        </form>
+        {% endif %}
+
+
         <!-- Display Name Section -->
         <h3>Update Display Name</h3>
         {% if user.is_verified %}

@@ -40,6 +40,7 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Setup" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Setup" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Setup" 3>&1 1>&2 2>&3)
+API_KEY=$(whiptail --inputbox "Enter your Stripe API Key" 8 39 --title "Stripe API Key" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
@@ -207,7 +208,7 @@ WIDTH=$(tput cols)
 whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
 # Request the certificates
 echo "⏲️  Waiting 5 minutes for DNS to update..."
-sleep 300
+#sleep 300
 certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 echo "Configuring automatic renewing certificates..."
@@ -238,6 +239,7 @@ echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" > .env
 echo "DB_NAME=$DB_NAME" >> .env  
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
+echo "API_KEY=$API_KEY" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
 
 # Start MariaDB
