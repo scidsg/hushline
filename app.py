@@ -133,6 +133,7 @@ class ComplexPassword(object):
 
 # Database Models
 class User(db.Model):
+    __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80))
@@ -140,14 +141,17 @@ class User(db.Model):
     _totp_secret = db.Column("totp_secret", db.String(255))
     _email = db.Column("email", db.String(255))
     _smtp_server = db.Column("smtp_server", db.String(255))
-    smtp_port = db.Column("smtp_port", db.Integer)
+    smtp_port = db.Column(db.Integer)
     _smtp_username = db.Column("smtp_username", db.String(255))
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     has_paid = db.Column(db.Boolean, default=False)
-    secondary_users = db.relationship("SecondaryUser", backref="user", lazy=True)
+    # Corrected the relationship and backref here
+    secondary_users = db.relationship(
+        "SecondaryUser", backref=db.backref("primary_user", lazy=True)
+    )
 
     @property
     def password_hash(self):
@@ -228,10 +232,11 @@ class User(db.Model):
 
 
 class SecondaryUser(db.Model):
+    __tablename__ = "secondary_user"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    # This foreign key points to the 'user' table's 'id' field
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    user = db.relationship("User", backref=db.backref("secondary_users", lazy=True))
 
 
 class Message(db.Model):

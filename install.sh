@@ -243,7 +243,7 @@ echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "API_KEY=$API_KEY" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
-check "API_PUB_KEY=$API_PUB_KEY" >> /static/script.js
+echo "API_PUB_KEY=$API_PUB_KEY" >> /var/www/html/$DOMAIN/static/script.js
 
 # Start MariaDB
 systemctl start mariadb
