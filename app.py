@@ -637,40 +637,39 @@ def inbox(username):
         flash("Please log in to access your inbox.")
         return redirect(url_for("login"))
 
-    primary_user = User.query.filter_by(primary_username=username).first()
-    secondary_user = (
-        None
-        if primary_user
-        else SecondaryUser.query.filter_by(username=username).first()
-    )
+    # Initialize variables
+    primary_user = None
+    secondary_user = None
+    messages = []
 
-    if not primary_user and not secondary_user:
-        flash("🫥 User not found. Please log in again.")
+    # Try to find a primary user with the given username
+    user = User.query.filter_by(primary_username=username).first()
+    if user:
+        primary_user = user
+        messages = (
+            Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
+        )
+    else:
+        # If not found, try to find a secondary user and its related messages
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            messages = (
+                Message.query.filter_by(secondary_user_id=secondary_user.id)
+                .order_by(Message.id.desc())
+                .all()
+            )
+            # We use the primary user related to the secondary user for some operations
+            user = secondary_user.primary_user
+
+    if not user:
+        flash("User not found. Please log in again.")
         return redirect(url_for("login"))
-
-    # Determine the appropriate user object and messages to fetch
-    if primary_user:
-        messages = (
-            Message.query.filter_by(user_id=primary_user.id)
-            .order_by(Message.id.desc())
-            .all()
-        )
-        display_user = primary_user  # The user object to pass to the template
-    elif secondary_user:
-        messages = (
-            Message.query.filter_by(secondary_user_id=secondary_user.id)
-            .order_by(Message.id.desc())
-            .all()
-        )
-        display_user = (
-            secondary_user.primary_user
-        )  # Pass primary user but indicate secondary context
 
     return render_template(
         "inbox.html",
+        user=user,
+        secondary_user=secondary_user,
         messages=messages,
-        user=display_user,
-        username=username,
         is_secondary=bool(secondary_user),
     )
 
