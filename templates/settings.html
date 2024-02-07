@@ -5,13 +5,23 @@
     <h2>Account Settings</h2>
     <div class="formBody">
 
-        {% if user.has_paid %}
+        <h3>Add Username</h3>
+        <!-- Removed the if condition for user.has_paid to always display the form -->
         <form method="POST" action="/add-secondary-username">
             <input type="text" name="username" required placeholder="New Username">
             <button type="submit">Add Username</button>
         </form>
-        {% endif %}
 
+        <h4>Secondary Usernames</h4>
+        {% if secondary_usernames %}
+            <ul>
+            {% for secondary_user in secondary_usernames %}
+                <li>{{ secondary_user.username }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>You have no secondary usernames.</p>
+        {% endif %}
 
         <!-- Display Name Section -->
         <h3>Update Display Name</h3>
