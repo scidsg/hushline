@@ -2,7 +2,7 @@
 {% block title %}Send a Message{% endblock %}
 
 {% block content %}
-    <h2 class="submit">Submit a message to {{ user.display_name or user.username }}</h2>
+    <h2 class="submit">Submit a message to {{ user.display_name or user.primary_username }}</h2>
     <div class="badgeContainer">
         {% if user.is_verified %}
             <p class="badge">⭐️ Verified Account</p>
@@ -20,9 +20,9 @@
         {% endif %}
     {% else %}
         {% if user.pgp_key %}
-            <p class="info">🔐 Your message will be encrypted and only readable by {{ user.display_name or user.username }}.</p>
+            <p class="info">🔐 Your message will be encrypted and only readable by {{ user.display_name or user.primary_username }}.</p>
         {% else %}
-            <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ user.display_name or user.username }} to add a public PGP key.</p>
+            <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ user.display_name or user.primary_username }} to add a public PGP key.</p>
         {% endif %}
     {% endif %}
     <form method="POST" action="/submit_message/{{ username }}">

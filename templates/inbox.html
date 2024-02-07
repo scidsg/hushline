@@ -3,7 +3,7 @@
 
 {% block content %}
     {% if messages %}
-    <h2>Inbox for {{ user.display_name or user.username }}</h2>
+    <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
         {% for message in messages %}
             <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content | safe }}">
                 <p class="decrypted-content">{{ message.content }}</p>

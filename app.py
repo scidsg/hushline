@@ -695,7 +695,7 @@ def settings():
             and change_username_form.validate_on_submit()
         ):
             new_username = change_username_form.new_username.data
-            existing_user = User.query.filter_by(username=new_username).first()
+            existing_user = User.query.filter_by(primary_username=new_username).first()
             if existing_user:
                 flash("💔 This username is already taken.")
             else:
