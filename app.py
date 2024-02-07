@@ -402,14 +402,14 @@ def register():
             flash("⛔️ Invalid or expired invite code.", "error")
             return redirect(url_for("register"))
 
-        # Check for existing username
-        if User.query.filter_by(username=username).first():
+        # Check for existing primary_username instead of username
+        if User.query.filter_by(primary_username=username).first():
             flash("💔 Username already taken.", "error")
             return redirect(url_for("register"))
 
         # Hash the password and create the user
         password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-        new_user = User(username=username, password_hash=password_hash)
+        new_user = User(primary_username=username, password_hash=password_hash)
 
         # Add user and mark invite code as used
         db.session.add(new_user)
@@ -533,14 +533,19 @@ def verify_2fa_setup():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
+        username = form.username.data  # This is input from the form
         password = form.password.data
 
-        user = User.query.filter_by(username=username).first()
+        # Corrected to use primary_username for filter_by
+        user = User.query.filter_by(primary_username=username).first()
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
-            session["username"] = user.username
+            session[
+                "username"
+            ] = (
+                user.primary_username
+            )  # Use primary_username here if you need to store username in session
             session["is_authenticated"] = True  # User is authenticated
             session["2fa_required"] = user.totp_secret is not None
             session["2fa_verified"] = False
@@ -550,7 +555,9 @@ def login():
                 return redirect(url_for("verify_2fa_login"))
             else:
                 session["2fa_verified"] = True  # Direct login if 2FA not enabled
-                return redirect(url_for("inbox", username=username))
+                return redirect(
+                    url_for("inbox", username=user.primary_username)
+                )  # Use primary_username
         else:
             flash("Invalid username or password")
 
@@ -739,7 +746,7 @@ def settings():
     smtp_settings_form.smtp_port.data = user.smtp_port
     smtp_settings_form.smtp_username.data = user.smtp_username
     pgp_key_form.pgp_key.data = user.pgp_key
-    display_name_form.display_name.data = user.display_name or user.username
+    display_name_form.display_name.data = user.display_name or user.primary_username
 
     return render_template(
         "settings.html",
@@ -810,14 +817,14 @@ def change_username():
     if not user_id:
         return redirect(url_for("login"))
 
-    user = db.session.get(User, user_id)
+    user = User.query.get(user_id)
     new_username = request.form["new_username"]
-    existing_user = User.query.filter_by(username=new_username).first()
+    existing_user = User.query.filter_by(primary_username=new_username).first()
 
     if not existing_user:
-        user.username = new_username
+        user.primary_username = new_username
         db.session.commit()
-        session["username"] = new_username  # Update username in session
+        session["primary_username"] = new_username  # Update primary_username in session
         flash("👍 Username successfully changed.")
     else:
         flash("💔 This username is already taken.")
