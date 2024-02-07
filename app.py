@@ -375,7 +375,7 @@ def index():
     if "user_id" in session:
         user = User.query.get(session["user_id"])
         if user:
-            return redirect(url_for("inbox", username=user.username))
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             # Handle case where user ID in session does not exist in the database
             flash("🫥 User not found. Please log in again.")
@@ -449,7 +449,7 @@ def enable_2fa():
     session["temp_totp_secret"] = temp_totp_secret
     session["is_setting_up_2fa"] = True
     totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-        name=user.username, issuer_name="HushLine"
+        name=user.primary_username, issuer_name="HushLine"
     )
     img = qrcode.make(totp_uri)
     buffered = io.BytesIO()
@@ -494,7 +494,7 @@ def show_qr_code():
     form = TwoFactorForm()
 
     totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
-        name=user.username, issuer_name="Hush Line"
+        name=user.primary_username, issuer_name="Hush Line"
     )
     img = qrcode.make(totp_uri)
 
@@ -618,7 +618,7 @@ def verify_2fa_login():
         totp = pyotp.TOTP(user.totp_secret)
         if totp.verify(verification_code):
             session["2fa_verified"] = True  # Set 2FA verification flag
-            return redirect(url_for("inbox", username=user.username))
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             flash("⛔️ Invalid 2FA code. Please try again.")
 
@@ -704,7 +704,7 @@ def settings():
                 session["username"] = new_username  # Update username in session
                 flash("👍 Username changed successfully.")
                 app.logger.debug(
-                    f"Username updated to {user.username}, Verification status: {user.is_verified}"
+                    f"Username updated to {user.primary_username}, Verification status: {user.is_verified}"
                 )
             return redirect(url_for("settings"))
 
@@ -1101,7 +1101,7 @@ def delete_message(message_id):
     else:
         flash("⛔️ Message not found or unauthorized access.")
 
-    return redirect(url_for("inbox", username=user.username))
+    return redirect(url_for("inbox", username=user.primary_username))
 
 
 @app.route("/delete-account", methods=["POST"])
