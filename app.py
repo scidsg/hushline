@@ -12,7 +12,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # Flask Framework and Extensions
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import (
+    Flask,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    session,
+    flash,
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
@@ -1193,68 +1201,6 @@ def delete_account():
         return redirect(url_for("login"))
 
 
-@app.route("/create-checkout-session", methods=["POST"])
-def create_checkout_session():
-    user_id = session.get("user_id")  # Assuming you store user_id in session upon login
-    if not user_id:
-        return "Please login to access this feature", 403
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {
-                            "name": "Premium Account Feature",
-                        },
-                        "unit_amount": 100,  # Price in cents
-                    },
-                    "quantity": 1,
-                }
-            ],
-            mode="payment",
-            success_url=url_for("payment_success", _external=True)
-            + "?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=url_for("settings", _external=True),
-            client_reference_id=user_id,  # Pass user_id here
-        )
-        return redirect(checkout_session.url, code=303)
-    except Exception as e:
-        return str(e)
-
-
-@app.route("/payment-success")
-def payment_success():
-    session_id = request.args.get("session_id")
-    session = stripe.checkout.Session.retrieve(session_id)
-    # Here, you could verify the payment further and then enable the feature
-    # For example, mark the user as having paid
-    user_id = session.get(
-        "client_reference_id"
-    )  # Assuming you passed this when creating the session
-    user = User.query.get(user_id)
-    if user:
-        user.has_paid = True
-        db.session.commit()
-    return redirect(url_for("settings"))
-
-
-@app.route("/payment-cancel")
-def payment_cancel():
-    # Handle payment cancellation
-    return "Payment was cancelled."
-
-
-@app.route("/special-feature")
-@require_2fa  # Assuming you're keeping your 2FA requirement
-def special_feature():
-    if not is_feature_unlocked(session["user_id"]):
-        return redirect(url_for("create_checkout_session"))
-    # Feature logic here
-    return "Welcome to the special feature!"
-
-
 @app.route("/add-secondary-username", methods=["POST"])
 @require_2fa  # Assuming you're using 2FA requirement
 def add_secondary_username():
@@ -1267,6 +1213,14 @@ def add_secondary_username():
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("logout"))
+
+    # Check if the user has paid for the premium feature
+    if not user.has_paid:
+        flash(
+            "This feature requires a premium account. Please upgrade to access.",
+            "warning",
+        )
+        return redirect(url_for("create_checkout_session"))
 
     username = request.form.get("username").strip()
     if not username:

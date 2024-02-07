@@ -1,7 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Stripe with your Stripe publishable key
-    var stripe = Stripe('API_PUB_KEY');
-
     // Handle mobile navigation toggle
     const mobileNavButton = document.querySelector('.mobileNav');
     const navMenu = document.querySelector('header nav ul');
