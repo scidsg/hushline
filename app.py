@@ -55,7 +55,6 @@ load_dotenv()
 db_user = os.getenv("DB_USER")
 db_pass = os.getenv("DB_PASS")
 db_name = os.getenv("DB_NAME")
-stripe.api_key = os.getenv("STRIPE_API_KEY")
 secret_key = os.getenv("SECRET_KEY")
 
 # Load encryption key
