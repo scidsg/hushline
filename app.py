@@ -658,14 +658,17 @@ def inbox(username):
 @app.route("/settings", methods=["GET", "POST"])
 @require_2fa
 def settings():
-    # Redirect to login if not logged in
-    if "user_id" not in session:
+    user_id = session.get("user_id")
+    if not user_id:
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
+    user = User.query.get(user_id)
     if not user:
         flash("🫥 User not found.")
         return redirect(url_for("login"))
+
+    # Fetch all secondary usernames for the current user
+    secondary_usernames = SecondaryUser.query.filter_by(user_id=user.id).all()
 
     # Initialize forms
     change_password_form = ChangePasswordForm()
@@ -751,6 +754,7 @@ def settings():
     return render_template(
         "settings.html",
         user=user,
+        secondary_usernames=secondary_usernames,
         smtp_settings_form=smtp_settings_form,
         change_password_form=change_password_form,
         change_username_form=change_username_form,
@@ -812,23 +816,39 @@ def change_password():
 
 
 @app.route("/change-username", methods=["POST"])
+@require_2fa
 def change_username():
     user_id = session.get("user_id")
     if not user_id:
+        flash("Please log in to continue.", "info")
         return redirect(url_for("login"))
 
+    # Retrieve the form data for the new username
+    new_username = request.form.get("new_username")
+    if not new_username:
+        flash("No new username provided.", "error")
+        return redirect(url_for("settings"))
+
+    # Retrieve the current user
     user = User.query.get(user_id)
-    new_username = request.form["new_username"]
+    if user.primary_username == new_username:
+        flash("New username is the same as the current username.", "info")
+        return redirect(url_for("settings"))
+
+    # Check if the new username is already taken
     existing_user = User.query.filter_by(primary_username=new_username).first()
+    if existing_user:
+        flash("This username is already taken.", "error")
+        return redirect(url_for("settings"))
 
-    if not existing_user:
-        user.primary_username = new_username
-        db.session.commit()
-        session["primary_username"] = new_username  # Update primary_username in session
-        flash("👍 Username successfully changed.")
-    else:
-        flash("💔 This username is already taken.")
+    # At this point, the new username is available, so update the user's username
+    user.primary_username = new_username
+    db.session.commit()
+    session[
+        "primary_username"
+    ] = new_username  # Update the session with the new username
 
+    flash("Username successfully changed.", "success")
     return redirect(url_for("settings"))
 
 
@@ -1192,17 +1212,32 @@ def special_feature():
 @app.route("/add-secondary-username", methods=["POST"])
 @require_2fa  # Assuming you're using 2FA requirement
 def add_secondary_username():
-    if not user.has_paid:
-        flash("This feature requires a premium account.")
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("login"))
+
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("logout"))
+
+    username = request.form.get("username").strip()
+    if not username:
+        flash("Username is required.", "error")
         return redirect(url_for("settings"))
 
-    username = request.form.get("username")
-    # Validate and add the secondary username
-    # Ensure it's unique and complies with your requirements
-    new_secondary_user = SecondaryUser(username=username, user_id=current_user.id)
+    # Check if the secondary username is already taken
+    existing_user = SecondaryUser.query.filter_by(username=username).first()
+    if existing_user:
+        flash("This username is already taken.", "error")
+        return redirect(url_for("settings"))
+
+    # Add the new secondary username
+    new_secondary_user = SecondaryUser(username=username, user_id=user.id)
     db.session.add(new_secondary_user)
     db.session.commit()
-    flash("Username added successfully.")
+    flash("Username added successfully.", "success")
     return redirect(url_for("settings"))
 
 
