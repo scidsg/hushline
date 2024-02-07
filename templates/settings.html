@@ -14,20 +14,22 @@
                     <button type="submit">Add Username</button>
                 </form>
 
-                <h4>Secondary Usernames</h4>
-                {% if secondary_usernames %}
-                    <ol>
-                    {% for secondary_user in secondary_usernames %}
-                        <li>{{ secondary_user.display_name or secondary_user.username }}<br>
-                            <a class="small" href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a>
-                            <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> 
-                            <a class="small" href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
-                        </li>
-                    {% endfor %}
-                    </ol>
-                {% else %}
-                    <p>You have no secondary usernames.</p>
-                {% endif %}
+                <div class="username-list">
+                    <h4>🥸 Secondary Usernames</h4>
+                    {% if secondary_usernames %}
+                        <ol>
+                        {% for secondary_user in secondary_usernames %}
+                            <li>{{ secondary_user.display_name or secondary_user.username }}<br>
+                                <a class="small" href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a>
+                                <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> 
+                                <a class="small" href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
+                            </li>
+                        {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p>You have no secondary usernames.</p>
+                    {% endif %}
+                </div>
             {% else %}
                 <p>This feature requires a paid account.</p>
             {% endif %}
