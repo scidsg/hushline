@@ -17,9 +17,10 @@
                 <ul>
                 {% for secondary_user in secondary_usernames %}
                     <li>
-                        <a href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">
-                            {{ secondary_user.display_name or secondary_user.username }}
-                        </a>
+                        {{ secondary_user.display_name or secondary_user.username }} - 
+                        <a href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a> | 
+                        <a href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> | 
+                        <a href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
                     </li>
                 {% endfor %}
                 </ul>
