@@ -37,9 +37,10 @@ apt update && apt -y dist-upgrade
 apt install whiptail -y
 
 # Collect variables using whiptail
-DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Setup" 3>&1 1>&2 2>&3)
-DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Setup" 3>&1 1>&2 2>&3)
-DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Setup" 3>&1 1>&2 2>&3)
+DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
+DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
+DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
+STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
@@ -98,7 +99,7 @@ server {
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
         add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none';";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com;";
         add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
@@ -111,7 +112,7 @@ server {
                 
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none';";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com;";
         add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
@@ -239,6 +240,7 @@ echo "DB_NAME=$DB_NAME" >> .env
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
+echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 
 # Start MariaDB
 systemctl start mariadb

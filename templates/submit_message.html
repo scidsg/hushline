@@ -2,7 +2,7 @@
 {% block title %}Send a Message{% endblock %}
 
 {% block content %}
-    <h2 class="submit">Submit a message to {{ user.display_name or user.primary_username }}</h2>
+    <h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
     <div class="badgeContainer">
         {% if user.is_verified %}
             <p class="badge">⭐️ Verified Account</p>
@@ -11,18 +11,18 @@
             <p class="badge">⚙️ Admin</p>
         {% endif %}
     </div>
-    {% if current_user_id == user.id %}
+    {% if current_user_id == user.id or (secondary_user and current_user_id == secondary_user.primary_user_id) %}
         <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles, your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is critical!</p>
         {% if user.pgp_key %}
             <p class="info">🔐 Your message will be encrypted and only readable by you.</p>
-        {% elif not user.pgp_key %}
+        {% else %}
             <p class="info">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information, please add a public PGP key.</p>
         {% endif %}
     {% else %}
         {% if user.pgp_key %}
-            <p class="info">🔐 Your message will be encrypted and only readable by {{ user.display_name or user.primary_username }}.</p>
+            <p class="info">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
         {% else %}
-            <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ user.display_name or user.primary_username }} to add a public PGP key.</p>
+            <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username }} to add a public PGP key.</p>
         {% endif %}
     {% endif %}
     <form method="POST" action="/submit_message/{{ username }}">
