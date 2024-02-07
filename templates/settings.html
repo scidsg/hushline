@@ -16,7 +16,11 @@
         {% if secondary_usernames %}
             <ul>
             {% for secondary_user in secondary_usernames %}
-                <li>{{ secondary_user.username }}</li>
+                <li>
+                    <a href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">
+                        {{ secondary_user.display_name or secondary_user.username }}
+                    </a>
+                </li>
             {% endfor %}
             </ul>
         {% else %}

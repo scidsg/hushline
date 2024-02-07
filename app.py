@@ -237,6 +237,7 @@ class SecondaryUser(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     # This foreign key points to the 'user' table's 'id' field
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    display_name = db.Column(db.String(80), nullable=True)
 
 
 class Message(db.Model):
@@ -907,19 +908,31 @@ def get_email_from_pgp_key(pgp_key):
 def submit_message(username):
     form = MessageForm()
 
-    # Determine whether the message is for a primary or secondary user
-    primary_user = User.query.filter_by(primary_username=username).first()
-    secondary_user = SecondaryUser.query.filter_by(username=username).first()
-
-    # Define user variable for determining where the email should be sent
-    user = (
-        primary_user
-        if primary_user
-        else (secondary_user.primary_user if secondary_user else None)
+    # Initialize variables
+    user = None
+    display_name_or_username = (
+        ""  # This will hold either the display name or the username
     )
 
+    # Try to find a primary user with the given username
+    primary_user = User.query.filter_by(primary_username=username).first()
+    if primary_user:
+        user = primary_user
+        display_name_or_username = (
+            primary_user.display_name or primary_user.primary_username
+        )
+    else:
+        # If not found, try to find a secondary user and get its primary user
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            user = secondary_user.primary_user
+            # Use secondary user's display name if available, otherwise use the username
+            display_name_or_username = (
+                secondary_user.display_name or secondary_user.username
+            )
+
     if not user:
-        flash("🫥 User not found")
+        flash("User not found")
         return redirect(url_for("index"))
 
     if form.validate_on_submit():
@@ -975,8 +988,9 @@ def submit_message(username):
     return render_template(
         "submit_message.html",
         form=form,
-        username=username,
         user=user,
+        username=username,
+        display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
     )
 
@@ -1272,6 +1286,26 @@ def add_secondary_username():
     db.session.commit()
     flash("Username added successfully.", "success")
     return redirect(url_for("settings"))
+
+
+@app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
+@require_2fa
+def secondary_user_settings(secondary_username):
+    secondary_user = SecondaryUser.query.filter_by(
+        username=secondary_username
+    ).first_or_404()
+    if request.method == "POST":
+        # Update the secondary user's display name or other settings
+        secondary_user.display_name = request.form.get("display_name", "").strip()
+        db.session.commit()
+        flash("Settings updated successfully.")
+        return redirect(
+            url_for("secondary_user_settings", secondary_username=secondary_username)
+        )
+
+    return render_template(
+        "secondary_user_settings.html", secondary_user=secondary_user
+    )
 
 
 if __name__ == "__main__":
