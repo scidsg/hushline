@@ -61,6 +61,15 @@ h2 + p + p  {
 	margin-bottom: 1.5rem;
 }
 
+h3 {
+	font-size: 1.25rem;
+/* 	margin-bottom: 1rem; */
+}
+
+h4 {
+	font-size: 1.125rem;
+}
+
 h1 + p.badge + p,
 h2 + p.badge + p  {
 	margin-top: 1rem;
@@ -485,6 +494,47 @@ footer a {
 
 footer a:hover {
 	text-decoration: underline;
+}
+
+li a.small {
+	font-size: .875rem;
+	margin-right: .325rem;
+}
+
+.formBody ol {
+	padding-left: 1rem;
+	margin: 0;
+}
+.formBody li::marker {
+	font-size: .9125rem;
+	font-family: 'Atkinson Bold', sans-serif;
+}
+
+.formBody ol li {
+	margin-bottom: .75rem;
+}
+
+.form-list {
+	margin-bottom: 2rem;
+}
+
+.form-list form {
+	margin-bottom: 1.25rem;
+}
+
+.form-list h4 {
+	margin-bottom: .75rem;
+}
+
+.username-list {
+	background-color: #FEFAF4;
+	border: 1px solid rgba(68, 51, 11, 0.13);
+	border-radius: .25rem;
+	padding: 1.25rem 1rem;
+}
+
+.username-list li:last-of-type {
+	margin-bottom: 0;
 }
 
 @media only screen and (max-width: 640px) {

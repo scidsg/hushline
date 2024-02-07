@@ -2,13 +2,19 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
+    {% if is_secondary %}
+        <h2>Inbox for {{ secondary_user.display_name or secondary_user.username }}</h2>
+        <p class="badge">✌️ Secondary Username</p>
+    {% else %}
+        <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
+        <p class="badge">☝️ Primary Username</p>
+    {% endif %}
+
     {% if messages %}
-    <h2>Inbox for {{ user.display_name or user.username }}</h2>
         {% for message in messages %}
             <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content | safe }}">
                 <p class="decrypted-content">{{ message.content }}</p>
                 <div class="mailvelope-decryption-container"></div>
-                <!-- Delete button/form for each message -->
                 <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
@@ -16,7 +22,7 @@
         {% endfor %}
     {% else %}
         <div class="emptyState">
-            <img class="empty" src="{{ url_for('static', filename='empty.png') }}">
+            <img class="empty" src="{{ url_for('static', filename='empty.png') }}" alt="Empty Inbox">
             <h1>Nothing to see here...</h1>
             <p>No messages yet.</p>
         </div>

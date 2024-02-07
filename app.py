@@ -11,7 +11,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # Flask Framework and Extensions
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import (
+    Flask,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    session,
+    flash,
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
@@ -131,19 +139,25 @@ class ComplexPassword(object):
 
 # Database Models
 class User(db.Model):
+    __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    primary_username = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80))
     _password_hash = db.Column("password_hash", db.String(255))
     _totp_secret = db.Column("totp_secret", db.String(255))
     _email = db.Column("email", db.String(255))
     _smtp_server = db.Column("smtp_server", db.String(255))
-    smtp_port = db.Column("smtp_port", db.Integer)
+    smtp_port = db.Column(db.Integer)
     _smtp_username = db.Column("smtp_username", db.String(255))
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
+    has_paid = db.Column(db.Boolean, default=False)
+    # Corrected the relationship and backref here
+    secondary_users = db.relationship(
+        "SecondaryUser", backref=db.backref("primary_user", lazy=True)
+    )
 
     @property
     def password_hash(self):
@@ -223,6 +237,15 @@ class User(db.Model):
             app.logger.debug(f"Username updated, Verification status set to False")
 
 
+class SecondaryUser(db.Model):
+    __tablename__ = "secondary_user"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    # This foreign key points to the 'user' table's 'id' field
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    display_name = db.Column(db.String(80), nullable=True)
+
+
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column(
@@ -230,13 +253,16 @@ class Message(db.Model):
     )  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    # Relationship with User model updated to include cascade deletion
-    user = db.relationship(
-        "User", backref=db.backref("messages", lazy=True, cascade="all, delete-orphan")
+    # Add a foreign key to reference secondary usernames
+    secondary_user_id = db.Column(
+        db.Integer, db.ForeignKey("secondary_user.id"), nullable=True
     )
 
-    # Temporary attribute for template rendering
-    is_encrypted = False
+    # Relationship with User model
+    user = db.relationship("User", backref=db.backref("messages", lazy=True))
+
+    # New relationship to link a message to a specific secondary username (if applicable)
+    secondary_user = db.relationship("SecondaryUser", backref="messages")
 
     @property
     def content(self):
@@ -359,7 +385,7 @@ def index():
     if "user_id" in session:
         user = User.query.get(session["user_id"])
         if user:
-            return redirect(url_for("inbox", username=user.username))
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             # Handle case where user ID in session does not exist in the database
             flash("🫥 User not found. Please log in again.")
@@ -386,14 +412,14 @@ def register():
             flash("⛔️ Invalid or expired invite code.", "error")
             return redirect(url_for("register"))
 
-        # Check for existing username
-        if User.query.filter_by(username=username).first():
+        # Check for existing primary_username instead of username
+        if User.query.filter_by(primary_username=username).first():
             flash("💔 Username already taken.", "error")
             return redirect(url_for("register"))
 
         # Hash the password and create the user
         password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-        new_user = User(username=username, password_hash=password_hash)
+        new_user = User(primary_username=username, password_hash=password_hash)
 
         # Add user and mark invite code as used
         db.session.add(new_user)
@@ -433,7 +459,7 @@ def enable_2fa():
     session["temp_totp_secret"] = temp_totp_secret
     session["is_setting_up_2fa"] = True
     totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-        name=user.username, issuer_name="HushLine"
+        name=user.primary_username, issuer_name="HushLine"
     )
     img = qrcode.make(totp_uri)
     buffered = io.BytesIO()
@@ -478,7 +504,7 @@ def show_qr_code():
     form = TwoFactorForm()
 
     totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
-        name=user.username, issuer_name="Hush Line"
+        name=user.primary_username, issuer_name="Hush Line"
     )
     img = qrcode.make(totp_uri)
 
@@ -517,14 +543,19 @@ def verify_2fa_setup():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
+        username = form.username.data  # This is input from the form
         password = form.password.data
 
-        user = User.query.filter_by(username=username).first()
+        # Corrected to use primary_username for filter_by
+        user = User.query.filter_by(primary_username=username).first()
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
-            session["username"] = user.username
+            session[
+                "username"
+            ] = (
+                user.primary_username
+            )  # Use primary_username here if you need to store username in session
             session["is_authenticated"] = True  # User is authenticated
             session["2fa_required"] = user.totp_secret is not None
             session["2fa_verified"] = False
@@ -534,7 +565,9 @@ def login():
                 return redirect(url_for("verify_2fa_login"))
             else:
                 session["2fa_verified"] = True  # Direct login if 2FA not enabled
-                return redirect(url_for("inbox", username=username))
+                return redirect(
+                    url_for("inbox", username=user.primary_username)
+                )  # Use primary_username
         else:
             flash("Invalid username or password")
 
@@ -595,7 +628,7 @@ def verify_2fa_login():
         totp = pyotp.TOTP(user.totp_secret)
         if totp.verify(verification_code):
             session["2fa_verified"] = True  # Set 2FA verification flag
-            return redirect(url_for("inbox", username=user.username))
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             flash("⛔️ Invalid 2FA code. Please try again.")
 
@@ -605,44 +638,62 @@ def verify_2fa_login():
 @app.route("/inbox/<username>")
 @require_2fa
 def inbox(username):
-    # Redirect to login if not logged in
+    # Redirect if not logged in
     if "user_id" not in session:
         flash("Please log in to access your inbox.")
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
+    # Initialize variables
+    primary_user = None
+    secondary_user = None
+    messages = []
+
+    # Try to find a primary user with the given username
+    user = User.query.filter_by(primary_username=username).first()
+    if user:
+        primary_user = user
+        messages = (
+            Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
+        )
+    else:
+        # If not found, try to find a secondary user and its related messages
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            messages = (
+                Message.query.filter_by(secondary_user_id=secondary_user.id)
+                .order_by(Message.id.desc())
+                .all()
+            )
+            # We use the primary user related to the secondary user for some operations
+            user = secondary_user.primary_user
+
     if not user:
-        flash("🫥 User not found. Please log in again.")
-        session.pop("user_id", None)
+        flash("User not found. Please log in again.")
         return redirect(url_for("login"))
 
-    # Check if the session username matches the requested inbox
-    if session.get("username") != username:
-        flash("⛔️ Unauthorized access.")
-        return redirect(url_for("login"))
-
-    # Check if 2FA is verified for users with 2FA enabled
-    if user.totp_secret and not session.get("2fa_verified", False):
-        return redirect(url_for("verify_2fa_login"))
-
-    # Fetch messages for the user, ordered by ID in descending order
-    messages = (
-        Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
+    return render_template(
+        "inbox.html",
+        user=user,
+        secondary_user=secondary_user,
+        messages=messages,
+        is_secondary=bool(secondary_user),
     )
-    return render_template("inbox.html", messages=messages, user=user)
 
 
 @app.route("/settings", methods=["GET", "POST"])
 @require_2fa
 def settings():
-    # Redirect to login if not logged in
-    if "user_id" not in session:
+    user_id = session.get("user_id")
+    if not user_id:
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
+    user = User.query.get(user_id)
     if not user:
         flash("🫥 User not found.")
         return redirect(url_for("login"))
+
+    # Fetch all secondary usernames for the current user
+    secondary_usernames = SecondaryUser.query.filter_by(user_id=user.id).all()
 
     # Initialize forms
     change_password_form = ChangePasswordForm()
@@ -672,7 +723,7 @@ def settings():
             and change_username_form.validate_on_submit()
         ):
             new_username = change_username_form.new_username.data
-            existing_user = User.query.filter_by(username=new_username).first()
+            existing_user = User.query.filter_by(primary_username=new_username).first()
             if existing_user:
                 flash("💔 This username is already taken.")
             else:
@@ -681,7 +732,7 @@ def settings():
                 session["username"] = new_username  # Update username in session
                 flash("👍 Username changed successfully.")
                 app.logger.debug(
-                    f"Username updated to {user.username}, Verification status: {user.is_verified}"
+                    f"Username updated to {user.primary_username}, Verification status: {user.is_verified}"
                 )
             return redirect(url_for("settings"))
 
@@ -723,11 +774,12 @@ def settings():
     smtp_settings_form.smtp_port.data = user.smtp_port
     smtp_settings_form.smtp_username.data = user.smtp_username
     pgp_key_form.pgp_key.data = user.pgp_key
-    display_name_form.display_name.data = user.display_name or user.username
+    display_name_form.display_name.data = user.display_name or user.primary_username
 
     return render_template(
         "settings.html",
         user=user,
+        secondary_usernames=secondary_usernames,
         smtp_settings_form=smtp_settings_form,
         change_password_form=change_password_form,
         change_username_form=change_username_form,
@@ -789,23 +841,39 @@ def change_password():
 
 
 @app.route("/change-username", methods=["POST"])
+@require_2fa
 def change_username():
     user_id = session.get("user_id")
     if not user_id:
+        flash("Please log in to continue.", "info")
         return redirect(url_for("login"))
 
-    user = db.session.get(User, user_id)
-    new_username = request.form["new_username"]
-    existing_user = User.query.filter_by(username=new_username).first()
+    # Retrieve the form data for the new username
+    new_username = request.form.get("new_username")
+    if not new_username:
+        flash("No new username provided.", "error")
+        return redirect(url_for("settings"))
 
-    if not existing_user:
-        user.username = new_username
-        db.session.commit()
-        session["username"] = new_username  # Update username in session
-        flash("👍 Username successfully changed.")
-    else:
-        flash("💔 This username is already taken.")
+    # Retrieve the current user
+    user = User.query.get(user_id)
+    if user.primary_username == new_username:
+        flash("New username is the same as the current username.", "info")
+        return redirect(url_for("settings"))
 
+    # Check if the new username is already taken
+    existing_user = User.query.filter_by(primary_username=new_username).first()
+    if existing_user:
+        flash("This username is already taken.", "error")
+        return redirect(url_for("settings"))
+
+    # At this point, the new username is available, so update the user's username
+    user.primary_username = new_username
+    db.session.commit()
+    session[
+        "primary_username"
+    ] = new_username  # Update the session with the new username
+
+    flash("Username successfully changed.", "success")
     return redirect(url_for("settings"))
 
 
@@ -844,64 +912,91 @@ def get_email_from_pgp_key(pgp_key):
 @app.route("/submit_message/<username>", methods=["GET", "POST"])
 def submit_message(username):
     form = MessageForm()
-    user = User.query.filter_by(username=username).first()
+
+    # Initialize variables
+    user = None
+    display_name_or_username = (
+        ""  # This will hold either the display name or the username
+    )
+
+    # Try to find a primary user with the given username
+    primary_user = User.query.filter_by(primary_username=username).first()
+    if primary_user:
+        user = primary_user
+        display_name_or_username = (
+            primary_user.display_name or primary_user.primary_username
+        )
+    else:
+        # If not found, try to find a secondary user and get its primary user
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            user = secondary_user.primary_user
+            # Use secondary user's display name if available, otherwise use the username
+            display_name_or_username = (
+                secondary_user.display_name or secondary_user.username
+            )
 
     if not user:
-        flash("🫥 User not found")
+        flash("User not found")
         return redirect(url_for("index"))
 
-    # Debug: Print user IDs
-    current_user_id = session.get("user_id")
-    print("Current User ID:", current_user_id)
-    print("Tip Line Owner User ID:", user.id)
-
     if form.validate_on_submit():
-        content = form.content.data  # Sanitized input
-        email_content = content  # Default to original content
-        email_sent = False  # Flag to track email sending status
+        content = form.content.data
+        email_content = content  # Default content for email
+        email_sent = False  # Flag for tracking email status
 
+        # Encrypt message if user has a PGP key
         if user.pgp_key:
             pgp_email = get_email_from_pgp_key(user.pgp_key)
             if pgp_email:
                 encrypted_content = encrypt_message(content, pgp_email)
                 if encrypted_content:
-                    message = Message(content=encrypted_content, user_id=user.id)
-                    email_content = encrypted_content  # Use encrypted content for email
+                    email_content = (
+                        encrypted_content  # Use encrypted content for the email
+                    )
                 else:
                     flash("⛔️ Failed to encrypt message with PGP key.")
                     return redirect(url_for("submit_message", username=username))
             else:
                 flash("⛔️ Unable to extract email from PGP key.")
                 return redirect(url_for("submit_message", username=username))
-        else:
-            message = Message(content=content, user_id=user.id)
 
-        db.session.add(message)
+        # Create and save the message
+        if primary_user:
+            new_message = Message(content=email_content, user_id=user.id)
+        elif secondary_user:
+            new_message = Message(
+                content=email_content,
+                user_id=user.id,
+                secondary_user_id=secondary_user.id,
+            )
+        db.session.add(new_message)
         db.session.commit()
 
-        if (
-            user.email
-            and user.smtp_server
-            and user.smtp_port
-            and user.smtp_username
-            and user.smtp_password
+        # Send email notification if SMTP settings are configured
+        if all(
+            [
+                user.email,
+                user.smtp_server,
+                user.smtp_port,
+                user.smtp_username,
+                user.smtp_password,
+            ]
         ):
             email_sent = send_email(user.email, "New Message", email_content, user)
 
-        if email_sent:
-            flash("📥 Message submitted and emailed")
-        else:
-            flash("📥 Message submitted")
-
+        flash(
+            "📥 Message submitted and emailed" if email_sent else "📥 Message submitted"
+        )
         return redirect(url_for("submit_message", username=username))
 
-    current_user_id = session.get("user_id")
     return render_template(
         "submit_message.html",
         form=form,
-        username=username,
         user=user,
-        current_user_id=current_user_id,
+        username=username,
+        display_name_or_username=display_name_or_username,
+        current_user_id=session.get("user_id"),
     )
 
 
@@ -1078,7 +1173,7 @@ def delete_message(message_id):
     else:
         flash("⛔️ Message not found or unauthorized access.")
 
-    return redirect(url_for("inbox", username=user.username))
+    return redirect(url_for("inbox", username=user.primary_username))
 
 
 @app.route("/delete-account", methods=["POST"])
@@ -1102,6 +1197,66 @@ def delete_account():
     else:
         flash("🫥 User not found. Please log in again.")
         return redirect(url_for("login"))
+
+
+@app.route("/add-secondary-username", methods=["POST"])
+@require_2fa  # Assuming you're using 2FA requirement
+def add_secondary_username():
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("login"))
+
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("logout"))
+
+    # Check if the user has paid for the premium feature
+    if not user.has_paid:
+        flash(
+            "This feature requires a premium account. Please upgrade to access.",
+            "warning",
+        )
+        return redirect(url_for("create_checkout_session"))
+
+    username = request.form.get("username").strip()
+    if not username:
+        flash("Username is required.", "error")
+        return redirect(url_for("settings"))
+
+    # Check if the secondary username is already taken
+    existing_user = SecondaryUser.query.filter_by(username=username).first()
+    if existing_user:
+        flash("This username is already taken.", "error")
+        return redirect(url_for("settings"))
+
+    # Add the new secondary username
+    new_secondary_user = SecondaryUser(username=username, user_id=user.id)
+    db.session.add(new_secondary_user)
+    db.session.commit()
+    flash("Username added successfully.", "success")
+    return redirect(url_for("settings"))
+
+
+@app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
+@require_2fa
+def secondary_user_settings(secondary_username):
+    secondary_user = SecondaryUser.query.filter_by(
+        username=secondary_username
+    ).first_or_404()
+    if request.method == "POST":
+        # Update the secondary user's display name or other settings
+        secondary_user.display_name = request.form.get("display_name", "").strip()
+        db.session.commit()
+        flash("Settings updated successfully.")
+        return redirect(
+            url_for("secondary_user_settings", secondary_username=secondary_username)
+        )
+
+    return render_template(
+        "secondary_user_settings.html", secondary_user=secondary_user
+    )
 
 
 if __name__ == "__main__":
