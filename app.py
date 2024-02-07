@@ -246,13 +246,16 @@ class Message(db.Model):
     )  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    # Relationship with User model updated to include cascade deletion
-    user = db.relationship(
-        "User", backref=db.backref("messages", lazy=True, cascade="all, delete-orphan")
+    # Add a foreign key to reference secondary usernames
+    secondary_user_id = db.Column(
+        db.Integer, db.ForeignKey("secondary_user.id"), nullable=True
     )
 
-    # Temporary attribute for template rendering
-    is_encrypted = False
+    # Relationship with User model
+    user = db.relationship("User", backref=db.backref("messages", lazy=True))
+
+    # New relationship to link a message to a specific secondary username (if applicable)
+    secondary_user = db.relationship("SecondaryUser", backref="messages")
 
     @property
     def content(self):
@@ -628,31 +631,47 @@ def verify_2fa_login():
 @app.route("/inbox/<username>")
 @require_2fa
 def inbox(username):
-    # Redirect to login if not logged in
+    # Redirect if not logged in
     if "user_id" not in session:
         flash("Please log in to access your inbox.")
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
-    if not user:
-        flash("🫥 User not found. Please log in again.")
-        session.pop("user_id", None)
-        return redirect(url_for("login"))
-
-    # Check if the session username matches the requested inbox
-    if session.get("username") != username:
-        flash("⛔️ Unauthorized access.")
-        return redirect(url_for("login"))
-
-    # Check if 2FA is verified for users with 2FA enabled
-    if user.totp_secret and not session.get("2fa_verified", False):
-        return redirect(url_for("verify_2fa_login"))
-
-    # Fetch messages for the user, ordered by ID in descending order
-    messages = (
-        Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
+    primary_user = User.query.filter_by(primary_username=username).first()
+    secondary_user = (
+        None
+        if primary_user
+        else SecondaryUser.query.filter_by(username=username).first()
     )
-    return render_template("inbox.html", messages=messages, user=user)
+
+    if not primary_user and not secondary_user:
+        flash("🫥 User not found. Please log in again.")
+        return redirect(url_for("login"))
+
+    # Determine the appropriate user object and messages to fetch
+    if primary_user:
+        messages = (
+            Message.query.filter_by(user_id=primary_user.id)
+            .order_by(Message.id.desc())
+            .all()
+        )
+        display_user = primary_user  # The user object to pass to the template
+    elif secondary_user:
+        messages = (
+            Message.query.filter_by(secondary_user_id=secondary_user.id)
+            .order_by(Message.id.desc())
+            .all()
+        )
+        display_user = (
+            secondary_user.primary_user
+        )  # Pass primary user but indicate secondary context
+
+    return render_template(
+        "inbox.html",
+        messages=messages,
+        user=display_user,
+        username=username,
+        is_secondary=bool(secondary_user),
+    )
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -887,64 +906,78 @@ def get_email_from_pgp_key(pgp_key):
 @app.route("/submit_message/<username>", methods=["GET", "POST"])
 def submit_message(username):
     form = MessageForm()
-    user = User.query.filter_by(username=username).first()
+
+    # Determine whether the message is for a primary or secondary user
+    primary_user = User.query.filter_by(primary_username=username).first()
+    secondary_user = SecondaryUser.query.filter_by(username=username).first()
+
+    # Define user variable for determining where the email should be sent
+    user = (
+        primary_user
+        if primary_user
+        else (secondary_user.primary_user if secondary_user else None)
+    )
 
     if not user:
         flash("🫥 User not found")
         return redirect(url_for("index"))
 
-    # Debug: Print user IDs
-    current_user_id = session.get("user_id")
-    print("Current User ID:", current_user_id)
-    print("Tip Line Owner User ID:", user.id)
-
     if form.validate_on_submit():
-        content = form.content.data  # Sanitized input
-        email_content = content  # Default to original content
-        email_sent = False  # Flag to track email sending status
+        content = form.content.data
+        email_content = content  # Default content for email
+        email_sent = False  # Flag for tracking email status
 
+        # Encrypt message if user has a PGP key
         if user.pgp_key:
             pgp_email = get_email_from_pgp_key(user.pgp_key)
             if pgp_email:
                 encrypted_content = encrypt_message(content, pgp_email)
                 if encrypted_content:
-                    message = Message(content=encrypted_content, user_id=user.id)
-                    email_content = encrypted_content  # Use encrypted content for email
+                    email_content = (
+                        encrypted_content  # Use encrypted content for the email
+                    )
                 else:
                     flash("⛔️ Failed to encrypt message with PGP key.")
                     return redirect(url_for("submit_message", username=username))
             else:
                 flash("⛔️ Unable to extract email from PGP key.")
                 return redirect(url_for("submit_message", username=username))
-        else:
-            message = Message(content=content, user_id=user.id)
 
-        db.session.add(message)
+        # Create and save the message
+        if primary_user:
+            new_message = Message(content=email_content, user_id=user.id)
+        elif secondary_user:
+            new_message = Message(
+                content=email_content,
+                user_id=user.id,
+                secondary_user_id=secondary_user.id,
+            )
+        db.session.add(new_message)
         db.session.commit()
 
-        if (
-            user.email
-            and user.smtp_server
-            and user.smtp_port
-            and user.smtp_username
-            and user.smtp_password
+        # Send email notification if SMTP settings are configured
+        if all(
+            [
+                user.email,
+                user.smtp_server,
+                user.smtp_port,
+                user.smtp_username,
+                user.smtp_password,
+            ]
         ):
             email_sent = send_email(user.email, "New Message", email_content, user)
 
-        if email_sent:
-            flash("📥 Message submitted and emailed")
-        else:
-            flash("📥 Message submitted")
-
+        flash(
+            "📥 Message submitted and emailed" if email_sent else "📥 Message submitted"
+        )
         return redirect(url_for("submit_message", username=username))
 
-    current_user_id = session.get("user_id")
     return render_template(
         "submit_message.html",
         form=form,
         username=username,
         user=user,
-        current_user_id=current_user_id,
+        current_user_id=session.get("user_id"),
     )
 
 
