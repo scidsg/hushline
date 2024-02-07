@@ -4,7 +4,6 @@ import io
 import base64
 import logging
 import re
-import stripe
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import smtplib
@@ -58,7 +57,6 @@ db_user = os.getenv("DB_USER")
 db_pass = os.getenv("DB_PASS")
 db_name = os.getenv("DB_NAME")
 secret_key = os.getenv("SECRET_KEY")
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Load encryption key
 encryption_key = os.getenv("ENCRYPTION_KEY")
@@ -1287,51 +1285,6 @@ def secondary_user_settings(secondary_username):
     return render_template(
         "secondary_user_settings.html", secondary_user=secondary_user
     )
-
-
-@app.route("/create-checkout-session", methods=["POST"])
-def create_checkout_session():
-    app.logger.debug("Create checkout session route hit")
-    app.logger.debug("Request headers: %s", request.headers)
-    app.logger.debug("Request body: %s", request.get_json(silent=True))
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {
-                            "name": "Premium Feature",
-                        },
-                        "unit_amount": 100,  # Price in cents, e.g., $1.00
-                    },
-                    "quantity": 1,
-                }
-            ],
-            mode="payment",
-            success_url=url_for("payment_success", _external=True)
-            + "?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=url_for("payment_cancel", _external=True),
-        )
-        return jsonify({"id": checkout_session.id})
-    except Exception as e:
-        app.logger.error(f"Failed to create checkout session: {e}")
-        return jsonify(error=str(e)), 403
-
-
-@app.route("/payment-success")
-def payment_success():
-    # Retrieve the session ID from the query string
-    session_id = request.args.get("session_id")
-    # Optional: Perform operations after a successful payment, like updating the user's status
-    return render_template("payment_success.html")
-
-
-@app.route("/payment-cancel")
-def payment_cancel():
-    # Handle the cancellation, maybe redirect back to the payment option page or show a message
-    return render_template("payment_cancel.html")
 
 
 if __name__ == "__main__":

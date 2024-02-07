@@ -1,7 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Stripe with your Stripe publishable key
-    var stripe = Stripe('pk_test_51OhDeALcBPqjxU07I70UA6JYGDPUmkxEwZW0lvGyNXGlJ4QPfWIBFZJau7XOb3QDzDWrVutBVkz9SNrSjq2vRawm00TwfyFuma'); // Replace with your actual publishable key
-
     // Handle mobile navigation toggle
     const mobileNavButton = document.querySelector('.mobileNav');
     const navMenu = document.querySelector('header nav ul');
@@ -18,28 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirmed) {
                 event.preventDefault();
             }
-        });
-    }
-
-    // Handle the "Buy Premium Feature" button click
-    const checkoutButton = document.getElementById('checkout-button'); // Ensure your button has this ID
-    if (checkoutButton) {
-        checkoutButton.addEventListener('click', function(event) {
-            event.preventDefault();
-            fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => {
-                if (response.ok) return response.json();
-                throw new Error('Network response was not ok.');
-            })
-            .then(data => {
-                window.location.href = data.checkout_url; // Assuming the JSON response has a checkout_url property
-            })
-            .catch(error => console.error('Error:', error));
         });
     }
 
