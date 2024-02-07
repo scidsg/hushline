@@ -4,7 +4,6 @@ import io
 import base64
 import logging
 import re
-import stripe
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import smtplib
