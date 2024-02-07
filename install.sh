@@ -238,9 +238,7 @@ echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" > .env
 echo "DB_NAME=$DB_NAME" >> .env  
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
-echo "API_KEY=$API_KEY" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
-echo "API_PUB_KEY=$API_PUB_KEY" >> /var/www/html/$DOMAIN/static/script.js
 
 # Start MariaDB
 systemctl start mariadb
