@@ -526,6 +526,17 @@ li a.small {
 	margin-bottom: .75rem;
 }
 
+.username-list {
+	background-color: #FEFAF4;
+	border: 1px solid rgba(68, 51, 11, 0.13);
+	border-radius: .25rem;
+	padding: 1.25rem 1rem;
+}
+
+.username-list li:last-of-type {
+	margin-bottom: 0;
+}
+
 @media only screen and (max-width: 640px) {
 	body {
 		padding-top: 5.5rem;
