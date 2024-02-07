@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle account deletion confirmation
     const deleteButton = document.getElementById('deleteAccountButton');
-
     if (deleteButton) {
         deleteButton.addEventListener('click', function(event) {
             const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Mailvelope decryption logic
     const encryptedMessages = document.querySelectorAll('.message.encrypted');
-
     encryptedMessages.forEach(messageElement => {
         const encryptedContent = messageElement.dataset.encryptedContent;
         const decryptionContainer = messageElement.querySelector('.mailvelope-decryption-container');

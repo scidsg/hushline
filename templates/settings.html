@@ -15,7 +15,7 @@
                 </form>
 
                 <div class="username-list">
-                    <h4>🥸 Secondary Usernames</h4>
+                    <h4>Additional Usernames</h4>
                     {% if secondary_usernames %}
                         <ol>
                         {% for secondary_user in secondary_usernames %}
@@ -31,7 +31,7 @@
                     {% endif %}
                 </div>
             {% else %}
-                <p>This feature requires a paid account.</p>
+                <p>This feature requires a paid account. <button id="checkout-button">Upgrade Now</button></p>
             {% endif %}
         </div>
 

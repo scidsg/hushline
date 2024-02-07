@@ -13,6 +13,7 @@ from email.mime.multipart import MIMEMultipart
 # Flask Framework and Extensions
 from flask import (
     Flask,
+    jsonify,
     request,
     render_template,
     redirect,
@@ -913,25 +914,26 @@ def get_email_from_pgp_key(pgp_key):
 def submit_message(username):
     form = MessageForm()
 
-    # Initialize variables
-    user = None
-    display_name_or_username = (
-        ""  # This will hold either the display name or the username
-    )
+    # Initialize variables to distinguish between primary and secondary users
+    user = None  # This will always represent the target user (primary or related primary of a secondary)
+    secondary_user = None  # This will be non-None if a secondary username is involved
+    display_name_or_username = ""  # To be dynamically set based on user type
 
-    # Try to find a primary user with the given username
+    # Attempt to find a primary user first
     primary_user = User.query.filter_by(primary_username=username).first()
+
     if primary_user:
         user = primary_user
         display_name_or_username = (
             primary_user.display_name or primary_user.primary_username
         )
     else:
-        # If not found, try to find a secondary user and get its primary user
+        # If not a primary user, attempt to find a secondary user
         secondary_user = SecondaryUser.query.filter_by(username=username).first()
         if secondary_user:
-            user = secondary_user.primary_user
-            # Use secondary user's display name if available, otherwise use the username
+            user = (
+                secondary_user.primary_user
+            )  # Associate to the primary user of the secondary
             display_name_or_username = (
                 secondary_user.display_name or secondary_user.username
             )
@@ -942,26 +944,24 @@ def submit_message(username):
 
     if form.validate_on_submit():
         content = form.content.data
-        email_content = content  # Default content for email
-        email_sent = False  # Flag for tracking email status
+        email_content = content  # Assume non-encrypted content initially
+        email_sent = False  # To track if email was sent
 
-        # Encrypt message if user has a PGP key
+        # Encrypt message if the target user has a PGP key
         if user.pgp_key:
             pgp_email = get_email_from_pgp_key(user.pgp_key)
             if pgp_email:
                 encrypted_content = encrypt_message(content, pgp_email)
                 if encrypted_content:
-                    email_content = (
-                        encrypted_content  # Use encrypted content for the email
-                    )
+                    email_content = encrypted_content  # Use encrypted content for email
                 else:
-                    flash("⛔️ Failed to encrypt message with PGP key.")
+                    flash("Failed to encrypt message with PGP key.")
                     return redirect(url_for("submit_message", username=username))
             else:
-                flash("⛔️ Unable to extract email from PGP key.")
+                flash("Unable to extract email from PGP key.")
                 return redirect(url_for("submit_message", username=username))
 
-        # Create and save the message
+        # Determine whether to attribute message to a primary or secondary user
         if primary_user:
             new_message = Message(content=email_content, user_id=user.id)
         elif secondary_user:
@@ -985,15 +985,14 @@ def submit_message(username):
         ):
             email_sent = send_email(user.email, "New Message", email_content, user)
 
-        flash(
-            "📥 Message submitted and emailed" if email_sent else "📥 Message submitted"
-        )
+        flash("Message submitted" + (" and emailed" if email_sent else ""))
         return redirect(url_for("submit_message", username=username))
 
     return render_template(
         "submit_message.html",
         form=form,
         user=user,
+        secondary_user=secondary_user,  # Pass secondary user if applicable
         username=username,
         display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
@@ -1239,6 +1238,35 @@ def add_secondary_username():
     return redirect(url_for("settings"))
 
 
+@app.route("/settings/secondary/<secondary_username>/update", methods=["POST"])
+@require_2fa
+def update_secondary_username(secondary_username):
+    # Ensure the user is logged in
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("login"))
+
+    # Find the secondary user in the database
+    secondary_user = SecondaryUser.query.filter_by(
+        username=secondary_username, user_id=user_id
+    ).first_or_404()
+
+    # Update the secondary user's display name from the form data
+    new_display_name = request.form.get("display_name").strip()
+    if new_display_name:
+        secondary_user.display_name = new_display_name
+        db.session.commit()
+        flash("Display name updated successfully.", "success")
+    else:
+        flash("Display name cannot be empty.", "error")
+
+    # Redirect back to the settings page for the secondary user
+    return redirect(
+        url_for("secondary_user_settings", secondary_username=secondary_username)
+    )
+
+
 @app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
 @require_2fa
 def secondary_user_settings(secondary_username):
@@ -1249,7 +1277,7 @@ def secondary_user_settings(secondary_username):
         # Update the secondary user's display name or other settings
         secondary_user.display_name = request.form.get("display_name", "").strip()
         db.session.commit()
-        flash("Settings updated successfully.")
+        flash("👍 Settings updated successfully.")
         return redirect(
             url_for("secondary_user_settings", secondary_username=secondary_username)
         )
