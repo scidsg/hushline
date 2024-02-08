@@ -219,6 +219,26 @@ echo "✅ Automatic HTTPS certificates configured."
 ####################################
 
 cd $DOMAIN
+git switch pro
+
+# Temporarily disable the error trap
+trap - ERR
+
+# Ask the user if paid features should be enabled by default
+PAID_FEATURES_ENABLED=$(whiptail --title "Enable Paid Features" --yesno "Do you want to enable paid features by default for all users?" 8 78 3>&1 1>&2 2>&3)
+
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    # User selected Yes, enable paid features by default
+    echo "Enabling paid features by default..."
+    sed -i 's/has_paid = db.Column(db.Boolean, default=False)/has_paid = db.Column(db.Boolean, default=True)/' /var/www/html/$DOMAIN/app.py
+else
+    # User selected No, keep the default setting
+    echo "Keeping paid features disabled by default..."
+fi
+
+# Re-enable the error trap
+trap error_exit ERR
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
@@ -273,7 +293,7 @@ if ! python init_db.py; then
     echo "Database initialization failed. Please check your settings."
     exit 1
 else
-    echo "Database initialized successfully."
+    echo "✅ Database initialized successfully."
 fi
 
 # Define the working directory

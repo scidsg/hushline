@@ -6,8 +6,8 @@
     <div class="formBody">
 
         <div class="form-list">
+            <h3>Add Username</h3>
             {% if user.has_paid %}
-                <h3>Add Username</h3>
                 <form method="POST" action="/add-secondary-username">
                     <label for="username">New Username</label>
                     <input id="username" type="text" name="username" required>
@@ -31,7 +31,7 @@
                     {% endif %}
                 </div>
             {% else %}
-                <p>This feature requires a paid account. <button id="checkout-button">Upgrade Now</button></p>
+                <p>This feature requires a paid account.</p>
             {% endif %}
         </div>
 

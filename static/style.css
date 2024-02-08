@@ -501,6 +501,10 @@ li a.small {
 	margin-right: .325rem;
 }
 
+.formBody {
+	padding: 1rem 0;
+}
+
 .formBody ol {
 	padding-left: 1.25rem;
 	margin: 0;
