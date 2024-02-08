@@ -537,6 +537,10 @@ li a.small {
 	padding: 1.25rem 1rem;
 }
 
+.username-list p {
+	margin-bottom: 0;
+}
+
 .username-list li:last-of-type {
 	margin-bottom: 0;
 }
