@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Stripe with your Stripe publishable key
+    // var stripe = Stripe('pk_live_51OhDeALcBPqjxU07qsU5iItym6nEJFMYMre1etoqGZ99CqUZYJAiSYSMnexReokI8T0mcBuYZK59Lg7V8cVsrwkR00EtUil3mg');
+    var stripe = Stripe('pk_test_51OhDeALcBPqjxU07I70UA6JYGDPUmkxEwZW0lvGyNXGlJ4QPfWIBFZJau7XOb3QDzDWrVutBVkz9SNrSjq2vRawm00TwfyFuma');
+    
     // Handle mobile navigation toggle
     const mobileNavButton = document.querySelector('.mobileNav');
     const navMenu = document.querySelector('header nav ul');
@@ -15,6 +19,29 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirmed) {
                 event.preventDefault();
             }
+        });
+    }
+
+    // Handle the "Buy Premium Feature" button click
+    const checkoutButton = document.getElementById('checkout-button'); // Ensure your button has this ID
+    if (checkoutButton) {
+        checkoutButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            fetch('/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error('Network response was not ok.');
+            })
+            .then(data => {
+                // Use Stripe's redirectToCheckout with the session ID
+                stripe.redirectToCheckout({ sessionId: data.id });
+            })
+            .catch(error => console.error('Error:', error));
         });
     }
 
