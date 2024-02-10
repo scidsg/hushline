@@ -40,7 +40,7 @@
                     </div>
                 {% else %}
                     <div class="promo">
-                        <h3>One account, many tip lines.</h3>
+                        <h3>One Account, Many Tip Lines.</h3>
                         <img class="upgrade" src="{{ url_for('static', filename='upgrade.png') }}" alt="Upgrade Now"><br>
                         <p>Get up to 5 additional usernames so you can manage multiple initiatives all in one place.</p>
                         <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
@@ -55,15 +55,14 @@
             {% endif %}
             <form method="POST" action="{{ url_for('settings') }}">
                 {{ display_name_form.hidden_tag() }}
-                <label for="display_name">{{ display_name_form.display_name.label }}</label>
+                <label for="display_name">Display Name</label>
                 {{ display_name_form.display_name(id='display_name') }}
                 {% if display_name_form.display_name.errors %}
                     {% for error in display_name_form.display_name.errors %}
-                        <span style="color: red;">{{ error }}</span>
+                        <span class="error">{{ error }}</span>
                     {% endfor %}
                 {% endif %}
                 <button type="submit" name="update_display_name">Update Display Name</button>
-
             </form>
         </div>
 
@@ -86,8 +85,7 @@
             <h3>Change Password</h3>
             <form method="POST" action="{{ url_for('change_password') }}">
                 {{ change_password_form.hidden_tag() }}
-
-                <label for="old_password">{{ change_password_form.old_password.label }}</label>
+                <label for="old_password">Old Password</label>
                 {{ change_password_form.old_password(id='old_password') }}
                 {% if change_password_form.old_password.errors %}
                     {% for error in change_password_form.old_password.errors %}
@@ -95,7 +93,7 @@
                     {% endfor %}
                 {% endif %}
 
-                <label for="new_password">{{ change_password_form.new_password.label }}</label>
+                <label for="new_password">New Password</label>
                 {{ change_password_form.new_password(id="new_password") }}
                 {% if change_password_form.new_password.errors %}
                     {% for error in change_password_form.new_password.errors %}
@@ -154,7 +152,7 @@
             <h3>Public PGP Key</h3>
             <form method="POST" action="{{ url_for('update_pgp_key') }}">
                 {{ pgp_key_form.hidden_tag() }}
-                <label for="pgp_key">{{ pgp_key_form.pgp_key.label }}</label>
+                <label for="pgp_key">Public PGP Key</label>
                 {{ pgp_key_form.pgp_key(id='pgp_key') }}
                 {% if pgp_key_form.pgp_key.errors %}
                     {% for error in pgp_key_form.pgp_key.errors %}
