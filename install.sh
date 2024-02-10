@@ -40,6 +40,8 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
+STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
+STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
@@ -219,7 +221,6 @@ echo "✅ Automatic HTTPS certificates configured."
 ####################################
 
 cd $DOMAIN
-git switch pro
 
 # Temporarily disable the error trap
 trap - ERR
@@ -259,6 +260,8 @@ echo "DB_NAME=$DB_NAME" >> .env
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
+echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
+echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
 # Start MariaDB
 systemctl start mariadb
