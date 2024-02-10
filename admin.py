@@ -1,26 +1,35 @@
-# python admin.py username
-
 import sys
-from app import app, db, User
+from app import app, db, User, SecondaryUser
 
 
 def toggle_admin(username):
+    # First, try to find a primary user
     user = User.query.filter_by(username=username).first()
-    if user:
-        user.is_admin = not user.is_admin
-        db.session.commit()
-        print(f"User {username} admin status toggled to {user.is_admin}.")
-    else:
-        print("User not found.")
+
+    # If not found, try to find a secondary user
+    if not user:
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            # Assuming the SecondaryUser model has a reference to determine if it's admin or not.
+            # If not, you might need to adjust this logic depending on your application's requirements.
+            user = secondary_user.primary_user
+        else:
+            print("User not found.")
+            return
+
+    # Toggle admin status
+    user.is_admin = not user.is_admin
+    db.session.commit()
+
+    print(f"User {username} admin status toggled to {user.is_admin}.")
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python toggle_admin.py <username>")
+        print("Usage: python admin.py <username>")
         sys.exit(1)
 
     username = sys.argv[1]
 
-    # Create an application context
     with app.app_context():
         toggle_admin(username)
