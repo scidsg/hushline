@@ -541,6 +541,10 @@ li a.small {
 	margin-bottom: 0;
 }
 
+.username-list p {
+	margin: 0;
+}
+
 img.upgrade {
 	max-width: 164px;
 }
