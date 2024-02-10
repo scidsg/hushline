@@ -4,6 +4,7 @@ import io
 import base64
 import logging
 import re
+import stripe
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 import smtplib
@@ -57,6 +58,8 @@ db_user = os.getenv("DB_USER")
 db_pass = os.getenv("DB_PASS")
 db_name = os.getenv("DB_NAME")
 secret_key = os.getenv("SECRET_KEY")
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe_webhook_secret = os.getenv("STRIPE_WH_SECRET")
 
 # Load encryption key
 encryption_key = os.getenv("ENCRYPTION_KEY")
@@ -1285,6 +1288,113 @@ def secondary_user_settings(secondary_username):
     return render_template(
         "secondary_user_settings.html", secondary_user=secondary_user
     )
+
+
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    app.logger.debug(f"Received {request.method} request")
+    app.logger.debug("Create checkout session route hit")
+    app.logger.debug("Request headers: %s", request.headers)
+    app.logger.debug("Request body: %s", request.get_json(silent=True))
+
+    try:
+        # Store the origin page in the session
+        origin_page = request.referrer or url_for("index")
+        session["origin_page"] = origin_page
+
+        # Replace this with the price ID for your subscription
+        price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
+        # price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO" # Test Price ID
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[
+                {
+                    "price": price_id,  # Use the price ID from your Stripe dashboard
+                    "quantity": 1,
+                }
+            ],
+            mode="subscription",
+            success_url=url_for("payment_success", _external=True)
+            + f"?origin={origin_page}",
+            cancel_url=url_for("payment_cancel", _external=True)
+            + f"?origin={origin_page}",
+        )
+        return jsonify({"id": checkout_session.id})
+    except Exception as e:
+        app.logger.error(f"Failed to create checkout session: {e}")
+        return jsonify(error=str(e)), 403
+
+
+@app.route("/payment-success")
+def payment_success():
+    # Retrieve the origin page from the query string
+    origin_page = request.args.get("origin", url_for("index"))
+
+    if "user_id" in session:
+        user_id = session["user_id"]
+        user = User.query.get(user_id)
+        if user:
+            user.has_paid = True
+            db.session.commit()
+            flash(
+                "🎉 Payment successful! Your account has been upgraded.",
+                "success",
+            )
+        else:
+            flash("🫥 User not found.", "error")
+    else:
+        flash("⛔️ You are not logged in.", "warning")
+
+    return redirect(origin_page)
+
+
+@app.route("/payment-cancel")
+def payment_cancel():
+    # Retrieve the origin page from the query string
+    origin_page = request.args.get("origin", url_for("index"))
+    flash("👍 Payment was cancelled.", "warning")
+    return redirect(origin_page)
+
+
+@app.route("/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get("Stripe-Signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, stripe_webhook_secret
+        )
+
+        # Handle the event
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            customer_email = session.get("customer_email")
+            # Mark the user as paid in your database
+
+        elif event["type"] == "customer.subscription.deleted":
+            subscription = event["data"]["object"]
+            customer_id = subscription.get("customer")
+            # Downgrade user account based on customer ID
+
+        elif event["type"] == "invoice.payment_failed":
+            invoice = event["data"]["object"]
+            customer_id = invoice.get("customer")
+            # Downgrade user account or notify the user for payment update based on customer ID
+
+        # Other event types can be handled here
+
+        return jsonify({"status": "success"})
+    except ValueError as e:
+        # Invalid payload
+        return jsonify({"error": "Invalid payload"}), 400
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        return jsonify({"error": "Invalid signature"}), 400
+    except Exception as e:
+        # Handle other exceptions
+        return jsonify({"error": str(e)}), 400
 
 
 if __name__ == "__main__":
