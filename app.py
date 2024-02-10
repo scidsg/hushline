@@ -158,6 +158,7 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     has_paid = db.Column(db.Boolean, default=False)
+    stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     # Corrected the relationship and backref here
     secondary_users = db.relationship(
         "SecondaryUser", backref=db.backref("primary_user", lazy=True)
@@ -1304,38 +1305,44 @@ def secondary_user_settings(secondary_username):
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    app.logger.debug(f"Received {request.method} request")
-    app.logger.debug("Create checkout session route hit")
-    app.logger.debug("Request headers: %s", request.headers)
-    app.logger.debug("Request body: %s", request.get_json(silent=True))
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "User not authenticated"}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
     try:
+        # Create or update Stripe Customer and store the Stripe Customer ID
+        if not user.stripe_customer_id:
+            customer = stripe.Customer.create(email=user.email)
+            user.stripe_customer_id = customer.id
+            db.session.commit()
+        else:
+            customer = stripe.Customer.retrieve(user.stripe_customer_id)
+
         # Store the origin page in the session
         origin_page = request.referrer or url_for("index")
         session["origin_page"] = origin_page
 
-        # Replace this with the price ID for your subscription
+        price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO"  # Test
         # price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
-        price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO"  # Test Price ID
 
         checkout_session = stripe.checkout.Session.create(
+            customer=user.stripe_customer_id,
             payment_method_types=["card"],
-            line_items=[
-                {
-                    "price": price_id,  # Use the price ID from your Stripe dashboard
-                    "quantity": 1,
-                }
-            ],
+            line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
             success_url=url_for("payment_success", _external=True)
-            + f"?origin={origin_page}",
+            + f"?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=url_for("payment_cancel", _external=True)
-            + f"?origin={origin_page}",
+            + f"?session_id={{CHECKOUT_SESSION_ID}}",
         )
         return jsonify({"id": checkout_session.id})
     except Exception as e:
-        app.logger.error(f"Failed to create checkout session: {e}")
-        return jsonify(error=str(e)), 403
+        current_app.logger.error(f"Failed to create checkout session: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/payment-success")
@@ -1379,23 +1386,30 @@ def stripe_webhook():
             payload, sig_header, stripe_webhook_secret
         )
 
-        # Handle the event
+        # Handle the checkout.session.completed event
         if event["type"] == "checkout.session.completed":
             session = event["data"]["object"]
-            customer_email = session.get("customer_email")
-            # Mark the user as paid in your database
+            # Find user by session's customer ID and update has_paid
+            user = find_user_by_stripe_customer_id(session["customer"])
+            if user:
+                user.has_paid = True
+                db.session.commit()
 
+        # Handle the customer.subscription.deleted event
         elif event["type"] == "customer.subscription.deleted":
             subscription = event["data"]["object"]
-            customer_id = subscription.get("customer")
-            # Downgrade user account based on customer ID
+            user = find_user_by_stripe_customer_id(subscription["customer"])
+            if user:
+                user.has_paid = False
+                db.session.commit()
 
+        # Handle the invoice.payment_failed event
         elif event["type"] == "invoice.payment_failed":
             invoice = event["data"]["object"]
-            customer_id = invoice.get("customer")
-            # Downgrade user account or notify the user for payment update based on customer ID
-
-        # Other event types can be handled here
+            user = find_user_by_stripe_customer_id(invoice["customer"])
+            if user:
+                user.has_paid = False
+                db.session.commit()
 
         return jsonify({"status": "success"})
     except ValueError as e:
@@ -1405,8 +1419,12 @@ def stripe_webhook():
         # Invalid signature
         return jsonify({"error": "Invalid signature"}), 400
     except Exception as e:
-        # Handle other exceptions
+        # Other exceptions
         return jsonify({"error": str(e)}), 400
+
+
+def find_user_by_stripe_customer_id(customer_id):
+    return User.query.filter_by(stripe_customer_id=customer_id).first()
 
 
 if __name__ == "__main__":
