@@ -581,8 +581,15 @@ img.upgrade {
     list-style-type: none;
     margin: 0 0 1.75rem 0;
     padding: 0;
-    overflow: scroll;
-	display: flex;
+    overflow-x: auto;
+	  display: flex;
+    overflow-y: hidden;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.tab-list::-webkit-scrollbar {
+	display: none; 
 }
 
 /* Tab button styling */
