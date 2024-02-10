@@ -6,8 +6,9 @@
     <div class="formBody">
 
         <div class="form-list">
-            <h3>Add Username</h3>
             {% if user.has_paid %}
+                <h3>Add Username</h3>
+                <p class="badge">⭐️ Pro Feature</p>
                 <form method="POST" action="/add-secondary-username">
                     <label for="username">New Username</label>
                     <input id="username" type="text" name="username" required>
@@ -31,7 +32,12 @@
                     {% endif %}
                 </div>
             {% else %}
-                <p>This feature requires a paid account.</p>
+                <div class="promo">
+                    <h3>One account, many tip lines.</h3>
+                    <img class="upgrade" src="{{ url_for('static', filename='upgrade.png') }}" alt="Upgrade Now"><br>
+                    <p>Get up to 5 additional usernames so you can manage multiple initiatives all in one place.</p>
+                    <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
+                </div>
             {% endif %}
         </div>
 
