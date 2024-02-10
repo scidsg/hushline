@@ -37,9 +37,9 @@ apt update && apt -y dist-upgrade
 apt install whiptail -y
 
 # Collect variables using whiptail
-DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Setup" 3>&1 1>&2 2>&3)
-DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Setup" 3>&1 1>&2 2>&3)
-DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Setup" 3>&1 1>&2 2>&3)
+DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
+DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
+DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
@@ -219,6 +219,26 @@ echo "✅ Automatic HTTPS certificates configured."
 ####################################
 
 cd $DOMAIN
+git switch pro
+
+# Temporarily disable the error trap
+trap - ERR
+
+# Ask the user if paid features should be enabled by default
+PAID_FEATURES_ENABLED=$(whiptail --title "Enable Paid Features" --yesno "Do you want to enable paid features by default for all users?" 8 78 3>&1 1>&2 2>&3)
+
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    # User selected Yes, enable paid features by default
+    echo "Enabling paid features by default..."
+    sed -i 's/has_paid = db.Column(db.Boolean, default=False)/has_paid = db.Column(db.Boolean, default=True)/' /var/www/html/$DOMAIN/app.py
+else
+    # User selected No, keep the default setting
+    echo "Keeping paid features disabled by default..."
+fi
+
+# Re-enable the error trap
+trap error_exit ERR
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
@@ -273,7 +293,7 @@ if ! python init_db.py; then
     echo "Database initialization failed. Please check your settings."
     exit 1
 else
-    echo "Database initialized successfully."
+    echo "✅ Database initialized successfully."
 fi
 
 # Define the working directory
