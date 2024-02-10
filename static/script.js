@@ -67,4 +67,33 @@ document.addEventListener('DOMContentLoaded', function() {
             // Inform user or provide instructions for installing Mailvelope
         }
     });
+
+    // Tab functionality
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    function removeActiveClasses() {
+        tabs.forEach(tab => {
+            tab.classList.remove('active');
+        });
+        tabContents.forEach(content => {
+            content.classList.remove('active');
+        });
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            removeActiveClasses();
+            this.classList.add('active');
+            const activeTabContent = document.getElementById(this.getAttribute('data-tab'));
+            if (activeTabContent) {
+                activeTabContent.classList.add('active');
+            }
+        });
+    });
+
+    // Automatically open the first tab
+    if (tabs.length > 0) {
+        tabs[0].click();
+    }
 });

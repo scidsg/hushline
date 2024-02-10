@@ -552,9 +552,17 @@ img.upgrade {
 .promo {
 	text-align: center;
 	border: 1px solid rgba(0,0,0,0.15);
-	padding: 1.5rem;
+	padding: 2rem;
 	border-radius: .5rem;
 	box-shadow: 0px 9px 18px -9px rgba(0,0,0,0.1);
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+}
+
+.promo p {
+	font-size: .95rem;
+	max-width: 80%;
 }
 
 .promo h3 {
@@ -564,6 +572,47 @@ img.upgrade {
 .formBody .promo .primaryBtn {
 	background-color: #7D25C1;
 	color: white;
+}
+
+/* Tab list styling */
+.tab-list {
+    list-style-type: none;
+    margin: 0 0 1.75rem 0;
+    padding: 0;
+    overflow: scroll;
+	display: flex;
+}
+
+/* Tab button styling */
+.tab {
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: .75rem .625rem;
+    font-size: .925rem;
+	white-space:  nowrap;
+}
+
+/* Change background color of tabs on hover */
+.tab:hover {
+    background-color: #fbf3ff;
+}
+
+/* Create an active/current tablink class */
+.tab.active {
+    border-bottom: 3px solid #7D25C1;
+	font-family: 'Atkinson Bold', sans-serif;
+}
+
+/* Style the tab content (and hide it by default) */
+.tab-content {
+    display: none;
+    border-top: none;
+}
+
+/* Style the active content */
+.tab-content.active {
+    display: block;
 }
 
 @media only screen and (max-width: 640px) {
