@@ -917,10 +917,9 @@ def get_email_from_pgp_key(pgp_key):
 def submit_message(username):
     form = MessageForm()
 
-    # Initialize variables to distinguish between primary and secondary users
-    user = None  # This will always represent the target user (primary or related primary of a secondary)
-    secondary_user = None  # This will be non-None if a secondary username is involved
-    display_name_or_username = ""  # To be dynamically set based on user type
+    user = None
+    secondary_user = None
+    display_name_or_username = ""
 
     # Attempt to find a primary user first
     primary_user = User.query.filter_by(primary_username=username).first()
@@ -941,8 +940,16 @@ def submit_message(username):
                 secondary_user.display_name or secondary_user.username
             )
 
+            # Redirect if the secondary username is used and the primary user hasn't paid
+            if not user.has_paid:
+                flash(
+                    "This feature requires a premium account. Please upgrade to access.",
+                    "warning",
+                )
+                return redirect(url_for("settings"))
+
     if not user:
-        flash("User not found")
+        flash("User not found.")
         return redirect(url_for("index"))
 
     if form.validate_on_submit():
@@ -1202,7 +1209,7 @@ def delete_account():
 
 
 @app.route("/add-secondary-username", methods=["POST"])
-@require_2fa  # Assuming you're using 2FA requirement
+@require_2fa
 def add_secondary_username():
     user_id = session.get("user_id")
     if not user_id:
@@ -1222,6 +1229,11 @@ def add_secondary_username():
         )
         return redirect(url_for("create_checkout_session"))
 
+    # Check if the user already has the maximum number of secondary usernames
+    if len(user.secondary_users) >= 5:
+        flash("You have reached the maximum number of secondary usernames.", "error")
+        return redirect(url_for("settings"))
+
     username = request.form.get("username").strip()
     if not username:
         flash("Username is required.", "error")
@@ -1234,7 +1246,9 @@ def add_secondary_username():
         return redirect(url_for("settings"))
 
     # Add the new secondary username
-    new_secondary_user = SecondaryUser(username=username, user_id=user.id)
+    new_secondary_user = SecondaryUser(
+        username=username, primary_user_id=user.id
+    )  # Adjusted based on relationship setup
     db.session.add(new_secondary_user)
     db.session.commit()
     flash("Username added successfully.", "success")
@@ -1303,8 +1317,8 @@ def create_checkout_session():
         session["origin_page"] = origin_page
 
         # Replace this with the price ID for your subscription
-        price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
-        # price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO" # Test Price ID
+        # price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
+        price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO"  # Test Price ID
 
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
