@@ -1246,9 +1246,7 @@ def add_secondary_username():
         return redirect(url_for("settings"))
 
     # Add the new secondary username
-    new_secondary_user = SecondaryUser(
-        username=username, primary_user_id=user.id
-    )  # Adjusted based on relationship setup
+    new_secondary_user = SecondaryUser(username=username, user_id=user.id)
     db.session.add(new_secondary_user)
     db.session.commit()
     flash("Username added successfully.", "success")
