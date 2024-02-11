@@ -298,6 +298,7 @@ header {
 	box-sizing: border-box;
 	border-radius: .25rem;
 	z-index: 9;
+	min-height: 65px;
 }
 
 header h1 {

@@ -945,13 +945,13 @@ def submit_message(username):
             # Redirect if the secondary username is used and the primary user hasn't paid
             if not user.has_paid:
                 flash(
-                    "This feature requires a premium account. Please upgrade to access.",
+                    "⚠️ This feature requires a premium account. Please upgrade to access.",
                     "warning",
                 )
                 return redirect(url_for("settings"))
 
     if not user:
-        flash("User not found.")
+        flash("🫥 User not found.")
         return redirect(url_for("index"))
 
     if form.validate_on_submit():
@@ -967,10 +967,10 @@ def submit_message(username):
                 if encrypted_content:
                     email_content = encrypted_content  # Use encrypted content for email
                 else:
-                    flash("Failed to encrypt message with PGP key.")
+                    flash("⛔️ Failed to encrypt message with PGP key.")
                     return redirect(url_for("submit_message", username=username))
             else:
-                flash("Unable to extract email from PGP key.")
+                flash("⛔️ Unable to extract email from PGP key.")
                 return redirect(url_for("submit_message", username=username))
 
         # Determine whether to attribute message to a primary or secondary user
@@ -997,7 +997,7 @@ def submit_message(username):
         ):
             email_sent = send_email(user.email, "New Message", email_content, user)
 
-        flash("Message submitted" + (" and emailed" if email_sent else ""))
+        flash("👍 Message submitted" + (" and emailed" if email_sent else ""))
         return redirect(url_for("submit_message", username=username))
 
     return render_template(

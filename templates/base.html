@@ -22,7 +22,9 @@
                     <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                     <li><a href="{{ url_for('settings') }}">@{{ session['username'] }}</a></li>
                 </ul>
-                <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
+                {% if not user.has_paid and not user.stripe_subscription_id %}
+                    <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
+                {% endif %}
             </nav>
             {% else %}
             <nav>
