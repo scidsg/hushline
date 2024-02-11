@@ -159,6 +159,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     has_paid = db.Column(db.Boolean, default=False)
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), unique=True, nullable=True)
     # Corrected the relationship and backref here
     secondary_users = db.relationship(
         "SecondaryUser", backref=db.backref("primary_user", lazy=True)
@@ -1214,43 +1215,43 @@ def delete_account():
 def add_secondary_username():
     user_id = session.get("user_id")
     if not user_id:
-        flash("Please log in to continue.", "warning")
+        flash("👉 Please log in to continue.", "warning")
         return redirect(url_for("login"))
 
     user = User.query.get(user_id)
     if not user:
-        flash("User not found.", "error")
+        flash("🫥 User not found.", "error")
         return redirect(url_for("logout"))
 
     # Check if the user has paid for the premium feature
     if not user.has_paid:
         flash(
-            "This feature requires a premium account. Please upgrade to access.",
+            "⚠️ This feature requires a paid account.",
             "warning",
         )
         return redirect(url_for("create_checkout_session"))
 
     # Check if the user already has the maximum number of secondary usernames
     if len(user.secondary_users) >= 5:
-        flash("You have reached the maximum number of secondary usernames.", "error")
+        flash("⚠️ You have reached the maximum number of secondary usernames.", "error")
         return redirect(url_for("settings"))
 
     username = request.form.get("username").strip()
     if not username:
-        flash("Username is required.", "error")
+        flash("⛔️ Username is required.", "error")
         return redirect(url_for("settings"))
 
     # Check if the secondary username is already taken
     existing_user = SecondaryUser.query.filter_by(username=username).first()
     if existing_user:
-        flash("This username is already taken.", "error")
+        flash("⚠️ This username is already taken.", "error")
         return redirect(url_for("settings"))
 
     # Add the new secondary username
     new_secondary_user = SecondaryUser(username=username, user_id=user.id)
     db.session.add(new_secondary_user)
     db.session.commit()
-    flash("Username added successfully.", "success")
+    flash("👍 Username added successfully.", "success")
     return redirect(url_for("settings"))
 
 
@@ -1260,7 +1261,7 @@ def update_secondary_username(secondary_username):
     # Ensure the user is logged in
     user_id = session.get("user_id")
     if not user_id:
-        flash("Please log in to continue.", "warning")
+        flash("👉 Please log in to continue.", "warning")
         return redirect(url_for("login"))
 
     # Find the secondary user in the database
@@ -1349,13 +1350,24 @@ def create_checkout_session():
 def payment_success():
     # Retrieve the origin page from the query string
     origin_page = request.args.get("origin", url_for("index"))
+    # Retrieve the session ID from the query string (or through another method provided by Stripe)
+    session_id = request.args.get("session_id")
 
     if "user_id" in session:
         user_id = session["user_id"]
         user = User.query.get(user_id)
         if user:
+            # Retrieve the checkout session to get the subscription ID
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+            subscription_id = (
+                checkout_session.subscription
+            )  # This is where you get the subscription ID
+
+            # Now set the has_paid field and the subscription ID
             user.has_paid = True
+            user.stripe_subscription_id = subscription_id  # Save the subscription ID
             db.session.commit()
+
             flash(
                 "🎉 Payment successful! Your account has been upgraded.",
                 "success",
@@ -1425,6 +1437,42 @@ def stripe_webhook():
 
 def find_user_by_stripe_customer_id(customer_id):
     return User.query.filter_by(stripe_customer_id=customer_id).first()
+
+
+@app.route("/cancel-subscription", methods=["POST"])
+@require_2fa  # Assuming you're using 2FA requirement
+def cancel_subscription():
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("login"))
+
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("logout"))
+
+    try:
+        # Assuming you have a field on the User model for the Stripe subscription ID
+        subscription_id = user.stripe_subscription_id
+        if not subscription_id:
+            flash("No subscription found.", "error")
+            return redirect(url_for("settings"))
+
+        # Cancel the subscription using the Stripe API
+        stripe.Subscription.delete(subscription_id)
+
+        # Update user's subscription status in the database
+        user.has_paid = False
+        user.stripe_subscription_id = None  # Clear the subscription ID
+        db.session.commit()
+
+        flash("Your subscription has been canceled.", "success")
+    except Exception as e:
+        app.logger.error(f"Failed to cancel subscription: {e}")
+        flash("An error occurred while canceling your subscription.", "error")
+
+    return redirect(url_for("settings"))
 
 
 if __name__ == "__main__":

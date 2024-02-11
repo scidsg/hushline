@@ -165,9 +165,19 @@
         </div>
 
         <div id="advanced" class="tab-content">
+            <!-- Subscription Cancellation Section -->
+            {% if user.has_paid %}
+                <h3>Cancel Subscription</h3>
+                <p>If you cancel your subscription, you will lose access to pro features at the end of your billing cycle.</p>
+                <form method="POST" action="{{ url_for('cancel_subscription') }}">
+                    <button type="submit">Cancel Subscription</button>
+                </form>
+            {% endif %}
+
+            <!-- Account Deletion Section -->
+            <h3>Delete Account</h3>
+            <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
             <form method="POST" action="{{ url_for('delete_account') }}">
-                <h3>Delete Account</h3>
-                <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
                 <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
             </form>
         </div>
