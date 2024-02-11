@@ -166,11 +166,11 @@
 
         <div id="advanced" class="tab-content">
             <!-- Subscription Cancellation Section -->
-            {% if user.has_paid %}
+            {% if user.stripe_subscription_id %}
                 <h3>Cancel Subscription</h3>
                 <p>If you cancel your subscription, you will lose access to pro features at the end of your billing cycle.</p>
-                <form method="POST" action="{{ url_for('cancel_subscription') }}">
-                    <button type="submit">Cancel Subscription</button>
+                <form id="cancelSubscriptionForm" method="POST" action="{{ url_for('cancel_subscription') }}">
+                    <button type="submit" class="btn-danger">Cancel Subscription</button>
                 </form>
             {% endif %}
 

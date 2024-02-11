@@ -586,6 +586,7 @@ img.upgrade {
     overflow-y: hidden;
     -ms-overflow-style: none;
     scrollbar-width: none;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
 .tab-list::-webkit-scrollbar {

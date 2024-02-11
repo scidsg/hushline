@@ -11,6 +11,17 @@ document.addEventListener('DOMContentLoaded', function() {
         navMenu.classList.toggle('show');
     });
 
+    // Handle subscription cancellation confirmation
+    const cancelSubscriptionForm = document.getElementById('cancelSubscriptionForm');
+    if (cancelSubscriptionForm) {
+        cancelSubscriptionForm.addEventListener('submit', function(event) {
+            const confirmed = confirm('Are you sure you want to cancel your subscription?');
+            if (!confirmed) {
+                event.preventDefault();
+            }
+        });
+    }
+
     // Handle account deletion confirmation
     const deleteButton = document.getElementById('deleteAccountButton');
     if (deleteButton) {
