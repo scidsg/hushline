@@ -33,6 +33,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+
+    // Handle message deletion confirmation
+    const deleteMessageButton = document.getElementById('deleteMessageButton');
+    if (deleteMessageButton) {
+        deleteMessageButton.addEventListener('click', function(event) {
+            const confirmed = confirm('Are you sure you want to delete this message? This cannot be undone.');
+            if (!confirmed) {
+                event.preventDefault();
+            }
+        });
+    }
+
     // Handle the "Buy Premium Feature" button click
     const checkoutButton = document.getElementById('checkout-button'); // Ensure your button has this ID
     if (checkoutButton) {

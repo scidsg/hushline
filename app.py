@@ -661,6 +661,14 @@ def inbox(username):
         messages = (
             Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
         )
+        # Fetch all secondary users related to this primary user for labeling purposes
+        secondary_users = {
+            su.id: {
+                "username": su.username,
+                "display_name": su.display_name or su.username,
+            }
+            for su in user.secondary_users
+        }
     else:
         # If not found, try to find a secondary user and its related messages
         secondary_user = SecondaryUser.query.filter_by(username=username).first()
@@ -670,19 +678,24 @@ def inbox(username):
                 .order_by(Message.id.desc())
                 .all()
             )
-            # We use the primary user related to the secondary user for some operations
-            user = secondary_user.primary_user
+            user = (
+                secondary_user.primary_user
+            )  # Use the primary user related to the secondary user for some operations
+            # Since we are viewing a secondary user's inbox, we only need their information for labeling
+            secondary_users = {secondary_user.id: secondary_user.username}
 
     if not user:
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
 
+    # Pass the necessary data to the template, including the secondary_users dictionary for labeling
     return render_template(
         "inbox.html",
         user=user,
         secondary_user=secondary_user,
         messages=messages,
         is_secondary=bool(secondary_user),
+        secondary_users=secondary_users,  # Pass this dictionary to the template
     )
 
 
@@ -1287,20 +1300,32 @@ def update_secondary_username(secondary_username):
 @app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
 @require_2fa
 def secondary_user_settings(secondary_username):
+    # Ensure the user is logged in
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("👉 Please log in to continue.", "warning")
+        return redirect(url_for("login"))
+
+    # Retrieve the primary user
+    user = User.query.get(user_id)
+
+    # Find the secondary user in the database
     secondary_user = SecondaryUser.query.filter_by(
-        username=secondary_username
+        username=secondary_username, user_id=user_id
     ).first_or_404()
+
     if request.method == "POST":
         # Update the secondary user's display name or other settings
-        secondary_user.display_name = request.form.get("display_name", "").strip()
-        db.session.commit()
-        flash("👍 Settings updated successfully.")
-        return redirect(
-            url_for("secondary_user_settings", secondary_username=secondary_username)
-        )
+        new_display_name = request.form.get("display_name", "").strip()
+        if new_display_name:
+            secondary_user.display_name = new_display_name
+            db.session.commit()
+            flash("👍 Settings updated successfully.")
+        else:
+            flash("Display name cannot be empty.", "error")
 
     return render_template(
-        "secondary_user_settings.html", secondary_user=secondary_user
+        "secondary_user_settings.html", user=user, secondary_user=secondary_user
     )
 
 
