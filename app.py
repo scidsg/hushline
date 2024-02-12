@@ -1375,9 +1375,12 @@ def create_checkout_session():
             + f"?session_id={{CHECKOUT_SESSION_ID}}",
         )
         return jsonify({"id": checkout_session.id})
-    except Exception as e:
-        current_app.logger.error(f"Failed to create checkout session: {e}")
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.error("Failed to create checkout session", exc_info=True)
+        return (
+            jsonify({"error": "An error occurred while processing your request"}),
+            500,
+        )
 
 
 @app.route("/payment-success")
