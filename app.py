@@ -1477,15 +1477,18 @@ def stripe_webhook():
                 db.session.commit()
 
         return jsonify({"status": "success"})
-    except ValueError as e:
+    except ValueError:
         # Invalid payload
+        app.logger.error("Invalid payload received from Stripe webhook.", exc_info=True)
         return jsonify({"error": "Invalid payload"}), 400
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
         # Invalid signature
+        app.logger.error("Invalid signature for Stripe webhook.", exc_info=True)
         return jsonify({"error": "Invalid signature"}), 400
     except Exception as e:
         # Other exceptions
-        return jsonify({"error": str(e)}), 400
+        app.logger.error("Error processing Stripe webhook.", exc_info=True)
+        return jsonify({"error": "An error occurred"}), 400
 
 
 def find_user_by_stripe_customer_id(customer_id):
