@@ -10,6 +10,7 @@ from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from urllib.parse import urlparse, urljoin
 
 # Flask Framework and Extensions
 from flask import (
@@ -26,7 +27,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from flask_migrate import Migrate
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash, safe_join
 
 # Form Handling and Validation
 from wtforms import TextAreaField, StringField, PasswordField, IntegerField
@@ -1401,24 +1402,43 @@ def payment_success():
             user.stripe_subscription_id = subscription_id  # Save the subscription ID
             db.session.commit()
 
-            flash(
-                "🎉 Payment successful! Your account has been upgraded.",
-                "success",
-            )
+            flash("🎉 Payment successful! Your account has been upgraded.", "success")
         else:
             flash("🫥 User not found.", "error")
     else:
         flash("⛔️ You are not logged in.", "warning")
 
-    return redirect(origin_page)
+    # Ensure the URL is safe to redirect to
+    if is_safe_url(origin_page):
+        return redirect(origin_page)
+    else:
+        flash("Warning: Unsafe redirect attempt detected.", "warning")
+        return redirect(url_for("index"))
 
 
 @app.route("/payment-cancel")
 def payment_cancel():
     # Retrieve the origin page from the query string
     origin_page = request.args.get("origin", url_for("index"))
-    flash("👍 Payment was cancelled.", "warning")
-    return redirect(origin_page)
+
+    # Ensure the URL is safe to redirect to
+    if is_safe_url(origin_page):
+        flash("👍 Payment was cancelled.", "warning")
+        return redirect(origin_page)
+    else:
+        flash("Warning: Unsafe redirect attempt detected.", "warning")
+        return redirect(url_for("index"))
+
+
+def is_safe_url(target):
+    host_url = urlparse(request.host_url)
+    target_url = urlparse(urljoin(request.host_url, target))
+    # Check if the target URL's scheme and netloc match the host URL's
+    return (
+        target_url.scheme in ("http", "https")
+        and host_url.netloc == target_url.netloc
+        and target_url.path.startswith("/")
+    )
 
 
 @app.route("/stripe-webhook", methods=["POST"])
