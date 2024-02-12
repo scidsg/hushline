@@ -661,52 +661,43 @@ def inbox(username):
         return redirect(url_for("login"))
 
     # Initialize variables
-    primary_user = None
-    secondary_user = None
-    messages = []
-
-    # Try to find a primary user with the given username
     user = User.query.filter_by(primary_username=username).first()
+    secondary_users_dict = {}
+
     if user:
-        primary_user = user
+        # User is a primary user, so fetch all messages for the primary user
         messages = (
             Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
         )
-        # Fetch all secondary users related to this primary user for labeling purposes
-        secondary_users = {
-            su.id: {
-                "username": su.username,
-                "display_name": su.display_name or su.username,
-            }
-            for su in user.secondary_users
-        }
+
+        # Create a dictionary of secondary users for labeling purposes
+        secondary_users_dict = {su.id: su for su in user.secondary_users}
+
+        # Set the flag for secondary user to false since we are in the primary user's inbox
+        is_secondary = False
+
     else:
         # If not found, try to find a secondary user and its related messages
-        secondary_user = SecondaryUser.query.filter_by(username=username).first()
-        if secondary_user:
-            messages = (
-                Message.query.filter_by(secondary_user_id=secondary_user.id)
-                .order_by(Message.id.desc())
-                .all()
-            )
-            user = (
-                secondary_user.primary_user
-            )  # Use the primary user related to the secondary user for some operations
-            # Since we are viewing a secondary user's inbox, we only need their information for labeling
-            secondary_users = {secondary_user.id: secondary_user.username}
+        secondary_user = SecondaryUser.query.filter_by(username=username).first_or_404()
+        messages = (
+            Message.query.filter_by(secondary_user_id=secondary_user.id)
+            .order_by(Message.id.desc())
+            .all()
+        )
 
-    if not user:
-        flash("User not found. Please log in again.")
-        return redirect(url_for("login"))
+        # Since we are viewing a secondary user's inbox, set the flag to true
+        is_secondary = True
 
-    # Pass the necessary data to the template, including the secondary_users dictionary for labeling
+        # The primary user should still be accessible for operations like sending messages
+        user = secondary_user.primary_user
+
     return render_template(
         "inbox.html",
         user=user,
-        secondary_user=secondary_user,
+        secondary_user=secondary_user if is_secondary else None,
         messages=messages,
-        is_secondary=bool(secondary_user),
-        secondary_users=secondary_users,  # Pass this dictionary to the template
+        is_secondary=is_secondary,
+        secondary_users=secondary_users_dict,  # Pass this dictionary to the template
     )
 
 
