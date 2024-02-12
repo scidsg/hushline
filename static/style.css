@@ -657,6 +657,8 @@ img.upgrade {
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: .25rem;
     padding: 1rem;
+    margin-bottom: .75rem;
+    box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
 .user .tableActions {
