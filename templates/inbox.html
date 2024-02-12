@@ -19,7 +19,7 @@
                         {% set sender_info = secondary_users[message.secondary_user_id] %}
                         <p class="message-label">📥 {{ sender_info.display_name or sender_info.username }}</p>
                     {% elif secondary_users|length > 0 %}
-                        <p class="message-label">📥 {{ user.display_name or user.primary_username }} (Primary)</p>
+                        <p class="message-label">📥 {{ user.display_name or user.primary_username }}</p>
                     {% endif %}
                 {% endif %}
                 <p class="decrypted-content">{{ message.content }}</p>
