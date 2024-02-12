@@ -237,11 +237,29 @@ class User(db.Model):
     # In the User model
     def update_username(self, new_username):
         """Update the user's username and remove verification status if the user is verified."""
-        app.logger.debug(f"Attempting to update username to {new_username}")
-        self.username = new_username
-        if self.is_verified:
-            self.is_verified = False
-            app.logger.debug(f"Username updated, Verification status set to False")
+        try:
+            # Log the attempt to update the username
+            app.logger.debug(
+                f"Attempting to update username from {self.primary_username} to {new_username}"
+            )
+
+            # Update the username
+            self.primary_username = new_username
+            if self.is_verified:
+                self.is_verified = False
+                # Log the change in verification status due to username update
+                app.logger.debug(
+                    f"Verification status set to False due to username update"
+                )
+
+            # Commit the change to the database
+            db.session.commit()
+
+            # Log the successful update
+            app.logger.debug(f"Username successfully updated to {new_username}")
+        except Exception as e:
+            # Log any exceptions that occur during the update
+            app.logger.error(f"Error updating username: {e}", exc_info=True)
 
 
 class SecondaryUser(db.Model):
@@ -876,32 +894,47 @@ def change_username():
         flash("Please log in to continue.", "info")
         return redirect(url_for("login"))
 
-    # Retrieve the form data for the new username
-    new_username = request.form.get("new_username")
+    new_username = request.form.get("new_username").strip()
     if not new_username:
         flash("No new username provided.", "error")
         return redirect(url_for("settings"))
 
-    # Retrieve the current user
     user = User.query.get(user_id)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("login"))
+
     if user.primary_username == new_username:
         flash("New username is the same as the current username.", "info")
         return redirect(url_for("settings"))
 
-    # Check if the new username is already taken
     existing_user = User.query.filter_by(primary_username=new_username).first()
     if existing_user:
         flash("This username is already taken.", "error")
         return redirect(url_for("settings"))
 
-    # At this point, the new username is available, so update the user's username
-    user.primary_username = new_username
-    db.session.commit()
-    session[
-        "primary_username"
-    ] = new_username  # Update the session with the new username
+    # Log before updating
+    app.logger.debug(
+        f"Updating username for user ID {user_id}: {user.primary_username} to {new_username}"
+    )
 
-    flash("Username successfully changed.", "success")
+    # Directly update the user's primary username
+    user.primary_username = new_username
+    try:
+        db.session.commit()
+        # Important: Update the session with the new username
+        session[
+            "username"
+        ] = new_username  # Ensure this key matches how you reference the username in your session
+        flash("Username successfully changed.", "success")
+        app.logger.debug(
+            f"Username successfully updated for user ID {user_id} to {new_username}"
+        )
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating username for user ID {user_id}: {e}")
+        flash("An error occurred while updating the username.", "error")
+
     return redirect(url_for("settings"))
 
 
