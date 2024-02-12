@@ -1423,8 +1423,6 @@ def payment_success():
 def payment_cancel():
     # Retrieve the origin page from the query string
     origin_page = request.args.get("origin", url_for("index"))
-
-    # Ensure the URL is safe to redirect to
     if is_safe_url(origin_page):
         flash("👍 Payment was cancelled.", "warning")
         return redirect(origin_page)
@@ -1434,14 +1432,9 @@ def payment_cancel():
 
 
 def is_safe_url(target):
-    host_url = urlparse(request.host_url)
-    target_url = urlparse(urljoin(request.host_url, target))
-    # Check if the target URL's scheme and netloc match the host URL's
-    return (
-        target_url.scheme in ("http", "https")
-        and host_url.netloc == target_url.netloc
-        and target_url.path.startswith("/")
-    )
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
 
 
 @app.route("/stripe-webhook", methods=["POST"])
