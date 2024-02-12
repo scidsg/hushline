@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tab.classList.remove('active');
         });
         tabContents.forEach(content => {
-            content.classList.remove('active');
+            content.style.display = 'none'; // Hide all tab content initially
         });
     }
 
@@ -110,13 +110,12 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             const activeTabContent = document.getElementById(this.getAttribute('data-tab'));
             if (activeTabContent) {
-                activeTabContent.classList.add('active');
+                activeTabContent.style.display = 'block'; // Show the active tab content
             }
         });
     });
 
-    // Automatically open the first tab
     if (tabs.length > 0) {
-        tabs[0].click();
+        tabs[0].click(); // Open the first tab automatically
     }
 });

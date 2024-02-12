@@ -67,7 +67,7 @@ h2+p+p {
 
 h3 {
     font-size: 1.25rem;
-    /* 	margin-bottom: 1rem; */
+    /*  margin-bottom: 1rem; */
 }
 
 h4 {
@@ -644,6 +644,43 @@ img.upgrade {
 .tab-content.active {
     display: block;
 }
+
+.admin-only {
+    display: none; /* Hide admin elements by default */
+}
+
+.is-admin .admin-only {
+    display: block; /* Show admin elements when inside an .is-admin container */
+}
+
+.user {
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: .25rem;
+    padding: 1rem;
+}
+
+.user .tableActions {
+    display: flex;
+    gap: .5rem;
+}
+
+.user p {
+    font-size: .75rem;
+    font-family: 'IBM Plex Mono', monospace;
+    margin: .25rem 0;
+}
+
+.user form {
+    margin-bottom: 0;
+}
+
+.user form button {
+    font-size: .825rem;
+    min-height: 0;
+    min-width: 0;
+    padding: .25rem .75rem;
+}
+
 
 @media only screen and (max-width: 640px) {
     body {

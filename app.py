@@ -377,6 +377,14 @@ def require_2fa(f):
     return decorated_function
 
 
+@app.context_processor
+def inject_user():
+    if "user_id" in session:
+        user = User.query.get(session["user_id"])
+        return {"user": user}
+    return {}
+
+
 # Error Handler
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -474,12 +482,13 @@ def enable_2fa():
         "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
     )
 
-    # Pass the text-based pairing code to the template
+    # Pass the text-based pairing code and the user to the template
     return render_template(
         "enable_2fa.html",
         form=form,
         qr_code_img=qr_code_img,
         text_code=temp_totp_secret,
+        user=user,
     )
 
 
@@ -552,28 +561,30 @@ def login():
         username = form.username.data  # This is input from the form
         password = form.password.data
 
-        # Corrected to use primary_username for filter_by
+        # Use primary_username for filter_by
         user = User.query.filter_by(primary_username=username).first()
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             session[
                 "username"
-            ] = (
-                user.primary_username
-            )  # Use primary_username here if you need to store username in session
-            session["is_authenticated"] = True  # User is authenticated
-            session["2fa_required"] = user.totp_secret is not None
-            session["2fa_verified"] = False
-            session["is_admin"] = user.is_admin
+            ] = user.primary_username  # Store primary_username in session
+            session["is_authenticated"] = True  # Mark user as authenticated
+            session["2fa_required"] = (
+                user.totp_secret is not None
+            )  # Check if 2FA is required
+            session["2fa_verified"] = False  # Initially mark 2FA as not verified
+            session["is_admin"] = user.is_admin  # Store admin status in session
 
             if user.totp_secret:
+                # If 2FA is enabled, redirect to the 2FA verification page
                 return redirect(url_for("verify_2fa_login"))
             else:
-                session["2fa_verified"] = True  # Direct login if 2FA not enabled
-                return redirect(
-                    url_for("inbox", username=user.primary_username)
-                )  # Use primary_username
+                # If 2FA is not enabled, directly log the user in
+                session[
+                    "2fa_verified"
+                ] = True  # Mark 2FA as verified since it's not required
+                return redirect(url_for("inbox", username=user.primary_username))
         else:
             flash("Invalid username or password")
 
@@ -711,6 +722,11 @@ def settings():
         flash("🫥 User not found.")
         return redirect(url_for("login"))
 
+    all_users = []
+    if user.is_admin:
+        # Fetch all users for admin
+        all_users = User.query.all()
+
     # Fetch all secondary usernames for the current user
     secondary_usernames = SecondaryUser.query.filter_by(user_id=user.id).all()
 
@@ -799,6 +815,7 @@ def settings():
         "settings.html",
         user=user,
         secondary_usernames=secondary_usernames,
+        all_users=all_users,
         smtp_settings_form=smtp_settings_form,
         change_password_form=change_password_form,
         change_username_form=change_username_form,
@@ -1497,6 +1514,48 @@ def cancel_subscription():
         app.logger.error(f"Failed to cancel subscription: {e}")
         flash("An error occurred while canceling your subscription.", "error")
 
+    return redirect(url_for("settings"))
+
+
+@app.route("/admin/toggle_verified/<int:user_id>", methods=["POST"])
+@require_2fa
+def toggle_verified(user_id):
+    if not session.get("is_admin", False):
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("settings"))
+
+    user = User.query.get_or_404(user_id)
+    user.is_verified = not user.is_verified
+    db.session.commit()
+    flash("User verification status toggled.", "success")
+    return redirect(url_for("settings"))
+
+
+@app.route("/admin/toggle_paid/<int:user_id>", methods=["POST"])
+@require_2fa
+def toggle_paid(user_id):
+    if not session.get("is_admin", False):
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("settings"))
+
+    user = User.query.get_or_404(user_id)
+    user.has_paid = not user.has_paid
+    db.session.commit()
+    flash("User payment status toggled.", "success")
+    return redirect(url_for("settings"))
+
+
+@app.route("/admin/toggle_admin/<int:user_id>", methods=["POST"])
+@require_2fa
+def toggle_admin(user_id):
+    if not session.get("is_admin", False):
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("settings"))
+
+    user = User.query.get_or_404(user_id)
+    user.is_admin = not user.is_admin
+    db.session.commit()
+    flash("User admin status toggled.", "success")
     return redirect(url_for("settings"))
 
 

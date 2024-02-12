@@ -3,12 +3,15 @@
 
 {% block content %}
 <h2>Account Settings</h2>
-<div class="settings-tabs">
+<div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list">
         <li class="tab active" data-tab="profile">Profile</li>
         <li class="tab" data-tab="auth">Authentication</li>
         <li class="tab" data-tab="email">Email &amp; PGP</li>
         <li class="tab" data-tab="advanced">Advanced</li>
+        {% if user.is_admin %}
+            <li class="tab admin-only" data-tab="admin">Admin</li>
+        {% endif %}
     </ul>
     <div class="formBody">
         <div id="profile" class="tab-content active">
@@ -180,6 +183,34 @@
             <form method="POST" action="{{ url_for('delete_account') }}">
                 <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
             </form>
+        </div>
+
+        <!-- Admin Tab Content -->
+        <div id="admin" class="tab-content admin-only">
+            <h3>All Users</h3>
+            {% if all_users %}
+                {% for user in all_users %}
+                    <div class="user">
+                        <h4>{{ user.primary_username }}</h4>
+                        <p>Display Name: {{ user.display_name or 'No display name' }}</p>
+                        <p>Verified: {{ "✅ Yes" if user.is_verified else "👎 No" }}</p>
+                        <p>Paying User: {{ "✅ Yes" if user.has_paid else "👎 No" }}</p>
+                        <p>Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}</p>
+                        <div class="tableActions">
+                            <form action="/admin/toggle_verified/{{ user.id }}" method="POST">
+                                <button type="submit">Toggle Verified</button>
+                            </form>
+                            <form action="/admin/toggle_paid/{{ user.id }}" method="POST">
+                                <button type="submit">Toggle Paid</button>
+                            </form>
+                            <form action="/admin/toggle_admin/{{ user.id }}" method="POST">
+                                <button type="submit">Toggle Admin</button>
+                            </form>
+                        </div>
+                {% endfor %}
+            {% else %}
+                <p>No users found.</p>
+            {% endif %}
         </div>
     </div>
 </div>
