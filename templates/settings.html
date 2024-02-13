@@ -124,7 +124,6 @@
 
                 <button type="submit" name="change_username">Change Username</button>
             </form>
-            <a class="logoutLink" href="{{ url_for('logout') }}">Logout</a>
         </div>
 
         <div id="email" class="tab-content">
@@ -188,23 +187,6 @@
         <!-- Admin Tab Content -->
         <div id="admin" class="tab-content admin-only">
             <h3>All Users</h3>
-            <div class="metric">
-                <p>👉 Total number of users</p>
-                <p>{{ user_count }}</p>
-            </div>
-
-            <div class="metric">
-                <p>🔒 Number of users with 2FA enabled</p>
-                <p>{{ two_fa_count }}</p>
-                <p>{{ two_fa_percentage | round(2) }}%</p>
-            </div>
-
-            <div class="metric">
-                <p>🔑 Number of users with PGP keys</p>
-                <p>{{ pgp_key_count }}</p>
-                <p>{{ pgp_key_percentage | round(2) }}%</p>
-                {% endblock %}
-            </div>
             {% if all_users %}
                 {% for user in all_users %}
                     <div class="user">
