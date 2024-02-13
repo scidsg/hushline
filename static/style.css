@@ -796,6 +796,12 @@ img.upgrade {
     box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
+.highlight {
+    background-color: #c6ffff;
+    padding: .125rem .25rem;
+    border-radius: .25rem;
+}
+
 @media only screen and (max-width: 640px) {
     body {
         padding-top: 5.5rem;
