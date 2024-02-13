@@ -21,7 +21,7 @@
                     <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
                     <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                     <li class="dropdown">
-                        <a href="#" class="dropbtn">@{{ session['username'] }} <img src="dropdown.png" alt="Dropdown" class="dropdown-icon"></a>
+                        <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='dropdown.png') }}" alt="Dropdown"></a>
                         <div class="dropdown-content">
                             <a href="{{ url_for('settings') }}">Settings</a>
                             <a href="{{ url_for('logout') }}">Logout</a>
