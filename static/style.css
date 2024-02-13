@@ -144,7 +144,7 @@ p.badge {
 .metric p:nth-child(2n) {
     font-size: 2rem;
     color: #333;
-    margin: .5rem 0 .325rem 0;
+    margin: .5rem 0 .125rem 0;
 }
 
 .metric p:nth-child(3n) {
