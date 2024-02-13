@@ -702,7 +702,7 @@ img.upgrade {
   z-index: 1;
   border-radius: .25rem;
   top:  3.5rem;
-  border: 1px solid rgba(0,0,0,0.1);
+  outline: 1px solid rgba(0,0,0,0.1);
   opacity: 0;
 }
 
@@ -853,7 +853,7 @@ img.upgrade {
         opacity: 1;
         position: relative;
         top: 0;
-        border: 0;
+        outline: 0;
         box-shadow: none;
     }
     
