@@ -683,6 +683,99 @@ img.upgrade {
     padding: .25rem .75rem;
 }
 
+/* Dropdown Button */
+.dropbtn {
+  cursor: pointer;
+}
+
+ .dropdown a {
+    font-size: .875rem;
+    margin-left: 1.5rem;
+}
+
+ .dropdown ul a {
+    margin-left: 0;
+}
+
+/* Dropdown content (hidden by default) */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  width: fit-content;
+  box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.2);
+  z-index: 1;
+  border-radius: .25rem;
+  top:  3.5rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  opacity: 0;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {background-color: #dfffff;}
+
+/* Style the dropdown button */
+.dropbtn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* Style the dropdown icon */
+.dropdown-icon {
+  width: .5rem;
+  margin-left: .5rem;
+  transition: transform 0.3s ease;
+}
+
+/* Fade-in and slide-down animation */
+@keyframes fadeInSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade-out and slide-up animation */
+@keyframes fadeOutSlideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-.5rem);
+  }
+}
+
+/* Apply the animation to the dropdown content when it's shown */
+.dropdown-content.show {
+  display: block;
+  animation: fadeInSlideDown 0.3s ease forwards;
+}
+
+.rotate-icon {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease; /* Smooth rotation transition */
+}
 
 @media only screen and (max-width: 640px) {
     body {
@@ -714,8 +807,7 @@ img.upgrade {
         display: flex;
         flex-direction: column;
         position: absolute;
-        top: 3rem;
-        right: 4rem;
+        top: 3.5rem;
         background-color: white;
         width: fit-content;
         box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
@@ -725,5 +817,30 @@ img.upgrade {
         border-radius: .25rem;
         outline: 1px solid rgba(0, 0, 0, 0.1);
         min-width: 140px;
+    }
+
+    /* Apply the animation to the dropdown content when it's shown */
+    .dropdown-content {
+      display: flex;
+    }
+
+    .dropdown a {
+        font-size: .875rem;
+        margin-left: .5rem;
+    }
+
+    .dropdown ul a {
+        margin-left: 0;
+    }
+
+    .dropdown-content ul {
+        display: flex; /* Initially hide the nested UL */
+        flex-direction: column;
+        gap: 0;
+        padding-left: 0; /* Remove default padding */
+    }
+
+    .dropdown-content.show ul {
+        display: flex; /* Show the nested UL when the dropdown is active */
     }
 }

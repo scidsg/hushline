@@ -33,6 +33,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Simplified Dropdown toggle logic
+    const dropdown = document.querySelector('.dropdown');
+    const dropdownContent = document.querySelector('.dropdown-content');
+    const dropdownIcon = document.querySelector('.dropdown-icon'); // Ensure you get the icon
+
+    dropdown.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent default link behavior
+
+        // Toggle the rotation class for the icon immediately on click
+        dropdownIcon.classList.toggle('rotate-icon');
+
+        // Check if the dropdown is currently shown
+        if (dropdownContent.classList.contains('show')) {
+            // Start the fade-out animation
+            dropdownContent.style.animation = 'fadeOutSlideUp 0.3s ease forwards';
+
+            // Wait for the animation to finish before hiding the content
+            setTimeout(() => {
+                dropdownContent.classList.remove('show');
+                dropdownContent.style.animation = ''; // Reset animation to avoid affecting the next toggle
+            }, 300); // This duration should match the animation duration
+        } else {
+            // Show the dropdown content with a fade-in animation
+            dropdownContent.classList.add('show');
+            dropdownContent.style.animation = 'fadeInSlideDown 0.3s ease forwards';
+        }
+    });
+
+    // Handle clicks outside the dropdown to close it
+    window.addEventListener('click', function(event) {
+        if (!dropdown.contains(event.target)) {
+            dropdownContent.classList.remove('show');
+            const dropdownIcon = document.querySelector('.dropdown-icon');
+            dropdownIcon.classList.remove('rotate-icon'); // Reset the icon rotation
+            // Optionally reset animation here as well
+        }
+    });
+
 
     // Handle message deletion confirmation
     const deleteMessageButton = document.getElementById('deleteMessageButton');
