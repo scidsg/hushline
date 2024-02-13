@@ -692,10 +692,13 @@ img.upgrade {
 .dropdown-content {
   display: none;
   position: absolute;
-  background-color: #f9f9f9;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  background-color: white;
+  width: fit-content;
+  box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.2);
   z-index: 1;
+  border-radius: .25rem;
+  top:  3.5rem;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 /* Links inside the dropdown */
@@ -707,8 +710,24 @@ img.upgrade {
 }
 
 /* Change color of dropdown links on hover */
-.dropdown-content a:hover {background-color: #f1f1f1}
+.dropdown-content a:hover {background-color: #dfffff;}
 
+/* Style the dropdown button */
+.dropbtn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* Style the dropdown icon */
+.dropdown-icon {
+  width: .5rem;
+  margin-left: .5rem;
+}
+
+.dropdown-content.show {
+    display: initial;
+}
 
 @media only screen and (max-width: 640px) {
     body {
