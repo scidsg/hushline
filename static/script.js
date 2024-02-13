@@ -33,6 +33,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Simplified Dropdown toggle logic
+    const dropdownToggle = document.querySelector('.dropdown .dropbtn');
+    const dropdownContent = document.querySelector('.dropdown-content');
+    const dropdownIcon = document.querySelector('.dropdown-icon');
+
+    // Function to handle opening the dropdown
+    function openDropdown() {
+        dropdownContent.classList.add('show');
+        dropdownContent.style.animation = 'fadeInSlideDown 0.3s ease forwards';
+        dropdownIcon.classList.add('rotate-icon');
+    }
+
+    // Function to handle closing the dropdown
+    function closeDropdown() {
+        dropdownContent.style.animation = 'fadeOutSlideUp 0.3s ease forwards';
+        dropdownIcon.classList.remove('rotate-icon');
+        dropdownContent.addEventListener('animationend', function() {
+            dropdownContent.classList.remove('show');
+            // Remove the animation style to ensure it can be applied again if the dropdown is reopened.
+            dropdownContent.style.animation = '';
+        }, { once: true }); // Use the {once: true} option to ensure the listener is removed after it executes
+    }
+
+    dropdownToggle.addEventListener('click', function(event) {
+        event.preventDefault();
+        if (dropdownContent.classList.contains('show')) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    });
+
+    // Handle closing the dropdown when clicking outside
+    window.addEventListener('click', function(event) {
+        if (!dropdownToggle.contains(event.target) && dropdownContent.classList.contains('show')) {
+            closeDropdown();
+        }
+    });
+
 
     // Handle message deletion confirmation
     const deleteMessageButton = document.getElementById('deleteMessageButton');
