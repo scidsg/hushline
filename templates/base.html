@@ -13,26 +13,23 @@
         <h1>🤫 Hush Line</h1>
         {% if 'user_id' in session and 'username' in session %}
             <nav>
-                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
-                <ul>
-                    {% if 'is_admin' in session and session['is_admin'] %}
-                        <li><a href="{{ url_for('admin') }}">Admin</a></li>
-                    {% endif %}
-                    <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
-                    <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
-                </ul>
-                <div class="dropdown">
-                    <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='dropdown.png') }}" alt="Dropdown"></a>
-                    <div class="dropdown-content">
-                        <ul>
-                            <li><a href="{{ url_for('settings') }}">Settings</a></li>
-                            <li><a href="{{ url_for('logout') }}">Logout</a></li>
-                        </ul>
-                    </div>
-                </div>
-                {% if not user.has_paid and not user.stripe_subscription_id %}
+                <div class="navGroup">
+                    <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                    <ul>
+                        <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
+                        <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='dropdown.png') }}" alt="Dropdown"></a>
+                            <div class="dropdown-content">
+                                <ul>
+                                    <li><a href="{{ url_for('settings') }}">Settings</a></li>
+                                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
                     <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
-                {% endif %}
+                </div>
             </nav>
             {% else %}
             <nav>

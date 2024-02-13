@@ -40,8 +40,8 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
-STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
-STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
+STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 "sk_test_51OhDeALcBPqjxU07nk5zZ0eWvTRDgBc0u9bLjmRhXmzTczwPHq28yBwF3I9NugqnT4N5QZFr1Keb906DzEOFHXHY00ugAXDHrA" --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
+STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 "whsec_P6vhROVzEHMc5Os7nb9LXJDCLwXVrrmD" --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y

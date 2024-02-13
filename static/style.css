@@ -132,12 +132,8 @@ p.badge {
     margin-bottom: 1.5rem;
 }
 
-.metric:not(:last-of-type) {
-    margin-bottom: 1rem;
-}
-
 .metric p {
-    margin: .5rem 0;
+    margin: 0;
 }
 
 .metric p:nth-child(1n) {
@@ -148,7 +144,7 @@ p.badge {
 .metric p:nth-child(2n) {
     font-size: 2rem;
     color: #333;
-    margin-bottom: 0;
+    margin: .5rem 0 .325rem 0;
 }
 
 .metric p:nth-child(3n) {
@@ -690,7 +686,6 @@ img.upgrade {
 
  .dropdown a {
     font-size: .875rem;
-    margin-left: 1.5rem;
 }
 
  .dropdown ul a {
@@ -777,6 +772,30 @@ img.upgrade {
   transition: transform 0.3s ease; /* Smooth rotation transition */
 }
 
+.navGroup {
+    display: flex;
+    align-items: center;
+}
+
+.admin-highlights {
+    display: flex;
+    gap: 1.125rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-highlights .metric {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0px;
+    align-items: center;
+    border: 1px solid rgba(0,0,0,0.1);
+    justify-content: center;
+    padding: 1rem;
+    border-radius: .25rem;
+    text-align: center;
+    box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
+}
+
 @media only screen and (max-width: 640px) {
     body {
         padding-top: 5.5rem;
@@ -819,28 +838,38 @@ img.upgrade {
         min-width: 140px;
     }
 
-    /* Apply the animation to the dropdown content when it's shown */
-    .dropdown-content {
-      display: flex;
+    header nav .dropbtn {
+        display: none;
     }
-
-    .dropdown a {
-        font-size: .875rem;
-        margin-left: .5rem;
+    
+    header nav .dropdown-content {
+        display: flex;
+        opacity: 1;
+        position: relative;
+        top: 0;
+        border: 0;
+        box-shadow: none;
     }
-
-    .dropdown ul a {
-        margin-left: 0;
-    }
-
+    
     .dropdown-content ul {
-        display: flex; /* Initially hide the nested UL */
-        flex-direction: column;
-        gap: 0;
-        padding-left: 0; /* Remove default padding */
+        display: flex;
+        gap: 1.5rem;
+    }
+    
+    .dropdown-content a:hover {
+        background-color: white;
+    }
+    
+    header nav .dropdown-content a {
+        padding: 0;
+    }
+        
+    header nav .dropdown {
+        height: fit-content;
     }
 
-    .dropdown-content.show ul {
-        display: flex; /* Show the nested UL when the dropdown is active */
+    .admin-highlights {
+        gap: .5rem;
     }
+
 }

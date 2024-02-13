@@ -610,41 +610,6 @@ def login():
     return render_template("login.html", form=form)
 
 
-@app.route("/admin")
-@require_2fa
-def admin():
-    if "user_id" not in session or not session.get("is_admin", False):
-        flash("⛔️ Unauthorized access.")
-        return redirect(url_for("index"))
-
-    user = User.query.get(session["user_id"])
-    if not user:
-        flash("🫥 User not found.")
-        return redirect(url_for("login"))
-
-    user_count = User.query.count()  # Total number of users
-    two_fa_count = User.query.filter(
-        User._totp_secret != None
-    ).count()  # Users with 2FA
-    pgp_key_count = (
-        User.query.filter(User._pgp_key != None).filter(User._pgp_key != "").count()
-    )  # Users with PGP key
-
-    # Calculate percentages
-    two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-    pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-
-    return render_template(
-        "admin.html",
-        user=user,
-        user_count=user_count,
-        two_fa_count=two_fa_count,
-        pgp_key_count=pgp_key_count,
-        two_fa_percentage=two_fa_percentage,
-        pgp_key_percentage=pgp_key_percentage,
-    )
-
-
 @app.route("/verify-2fa-login", methods=["GET", "POST"])
 def verify_2fa_login():
     # Redirect to login if user is not authenticated
@@ -732,11 +697,6 @@ def settings():
         flash("🫥 User not found.")
         return redirect(url_for("login"))
 
-    all_users = []
-    if user.is_admin:
-        # Fetch all users for admin
-        all_users = User.query.all()
-
     # Fetch all secondary usernames for the current user
     secondary_usernames = SecondaryUser.query.filter_by(user_id=user.id).all()
 
@@ -746,6 +706,23 @@ def settings():
     smtp_settings_form = SMTPSettingsForm()
     pgp_key_form = PGPKeyForm()
     display_name_form = DisplayNameForm()
+
+    # Additional admin-specific data initialization
+    user_count = (
+        two_fa_count
+    ) = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+    all_users = []
+
+    # Check if user is admin and add admin-specific data
+    if user.is_admin:
+        user_count = User.query.count()
+        two_fa_count = User.query.filter(User._totp_secret != None).count()
+        pgp_key_count = (
+            User.query.filter(User._pgp_key != None).filter(User._pgp_key != "").count()
+        )
+        two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
+        pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
+        all_users = User.query.all()  # Fetch all users for admin
 
     # Handle form submissions
     if request.method == "POST":
@@ -813,6 +790,23 @@ def settings():
                 flash("⛔️ Incorrect old password.")
             return redirect(url_for("settings"))
 
+        # Check if user is admin and add admin-specific data
+        is_admin = user.is_admin
+        if is_admin:
+            user_count = User.query.count()
+            two_fa_count = User.query.filter(User._totp_secret != None).count()
+            pgp_key_count = (
+                User.query.filter(User._pgp_key != None)
+                .filter(User._pgp_key != "")
+                .count()
+            )
+            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
+            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
+        else:
+            user_count = (
+                two_fa_count
+            ) = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+
     # Prepopulate form fields
     smtp_settings_form.email.data = user.email
     smtp_settings_form.smtp_server.data = user.smtp_server
@@ -825,12 +819,19 @@ def settings():
         "settings.html",
         user=user,
         secondary_usernames=secondary_usernames,
-        all_users=all_users,
+        all_users=all_users,  # Pass to the template for admin view
         smtp_settings_form=smtp_settings_form,
         change_password_form=change_password_form,
         change_username_form=change_username_form,
         pgp_key_form=pgp_key_form,
         display_name_form=display_name_form,
+        # Admin-specific data passed to the template
+        is_admin=user.is_admin,
+        user_count=user_count,
+        two_fa_count=two_fa_count,
+        pgp_key_count=pgp_key_count,
+        two_fa_percentage=two_fa_percentage,
+        pgp_key_percentage=pgp_key_percentage,
     )
 
 
