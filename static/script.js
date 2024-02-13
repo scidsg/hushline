@@ -33,6 +33,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Dropdown toggle
+    const dropbtn = document.querySelector('.dropbtn');
+    const dropdownContent = document.querySelector('.dropdown-content');
+
+    dropbtn.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent navigating to '#'
+        dropdownContent.classList.toggle('show');
+    });
+
+    // Close the dropdown if the user clicks outside of it
+    window.onclick = function(event) {
+      if (!event.target.matches('.dropbtn')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++) {
+          var openDropdown = dropdowns[i];
+          if (openDropdown.classList.contains('show')) {
+            openDropdown.classList.remove('show');
+          }
+        }
+      }
+    };
+
 
     // Handle message deletion confirmation
     const deleteMessageButton = document.getElementById('deleteMessageButton');
