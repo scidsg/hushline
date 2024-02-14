@@ -979,26 +979,19 @@ def submit_message(username):
     secondary_user = None
     display_name_or_username = ""
 
-    # Attempt to find a primary user first
     primary_user = User.query.filter_by(primary_username=username).first()
-
     if primary_user:
         user = primary_user
         display_name_or_username = (
             primary_user.display_name or primary_user.primary_username
         )
     else:
-        # If not a primary user, attempt to find a secondary user
         secondary_user = SecondaryUser.query.filter_by(username=username).first()
         if secondary_user:
-            user = (
-                secondary_user.primary_user
-            )  # Associate to the primary user of the secondary
+            user = secondary_user.primary_user
             display_name_or_username = (
                 secondary_user.display_name or secondary_user.username
             )
-
-            # Redirect if the secondary username is used and the primary user hasn't paid
             if not user.has_paid:
                 flash(
                     "⚠️ This feature requires a premium account. Please upgrade to access.",
@@ -1012,36 +1005,29 @@ def submit_message(username):
 
     if form.validate_on_submit():
         content = form.content.data
-        email_content = content  # Assume non-encrypted content initially
-        email_sent = False  # To track if email was sent
+        email_content = content
 
-        # Encrypt message if the target user has a PGP key
         if user.pgp_key:
             pgp_email = get_email_from_pgp_key(user.pgp_key)
             if pgp_email:
                 encrypted_content = encrypt_message(content, pgp_email)
                 if encrypted_content:
-                    email_content = encrypted_content  # Use encrypted content for email
+                    email_content = encrypted_content
                 else:
-                    flash("⛔️ Failed to encrypt message with PGP key.")
+                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
-                flash("⛔️ Unable to extract email from PGP key.")
+                flash("⛔️ Unable to extract email from PGP key.", "error")
                 return redirect(url_for("submit_message", username=username))
 
-        # Determine whether to attribute message to a primary or secondary user
-        if primary_user:
-            new_message = Message(content=email_content, user_id=user.id)
-        elif secondary_user:
-            new_message = Message(
-                content=email_content,
-                user_id=user.id,
-                secondary_user_id=secondary_user.id,
-            )
+        new_message = Message(
+            content=email_content,
+            user_id=user.id,
+            secondary_user_id=secondary_user.id if secondary_user else None,
+        )
         db.session.add(new_message)
         db.session.commit()
 
-        # Send email notification if SMTP settings are configured
         if all(
             [
                 user.email,
@@ -1051,46 +1037,55 @@ def submit_message(username):
                 user.smtp_password,
             ]
         ):
-            email_sent = send_email(user.email, "New Message", email_content, user)
+            try:
+                sender_email = user.smtp_username
+                email_sent = send_email(
+                    user.email, "New Message", email_content, user, sender_email
+                )
+                if email_sent:
+                    flash("👍 Message submitted and email sent successfully.")
+                else:
+                    flash("👍 Message submitted, but failed to send email.", "warning")
+            except Exception as e:
+                flash(
+                    "👍 Message submitted, but an error occurred while sending email.",
+                    "warning",
+                )
+        else:
+            flash("👍 Message submitted successfully.")
 
-        flash("👍 Message submitted" + (" and emailed" if email_sent else ""))
         return redirect(url_for("submit_message", username=username))
 
     return render_template(
         "submit_message.html",
         form=form,
         user=user,
-        secondary_user=secondary_user,  # Pass secondary user if applicable
+        secondary_user=secondary_user if secondary_user else None,
         username=username,
         display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
     )
 
 
-def send_email(recipient, subject, body, user):
+def send_email(recipient, subject, body, user, sender_email):
     app.logger.debug(
         f"SMTP settings being used: Server: {user.smtp_server}, Port: {user.smtp_port}, Username: {user.smtp_username}"
     )
     msg = MIMEMultipart()
-    msg["From"] = user.email
+    msg["From"] = sender_email
     msg["To"] = recipient
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
     try:
-        app.logger.debug("Attempting to connect to SMTP server")
-        with smtplib.SMTP(user.smtp_server, user.smtp_port) as server:
-            app.logger.debug("Starting TLS")
+        with smtplib.SMTP(
+            user.smtp_server, user.smtp_port, timeout=10
+        ) as server:  # Added timeout
             server.starttls()
-
-            app.logger.debug("Attempting to log in to SMTP server")
             server.login(user.smtp_username, user.smtp_password)
-
-            app.logger.debug("Sending email")
-            text = msg.as_string()
-            server.sendmail(user.email, recipient, text)
-            app.logger.info("Email sent successfully.")
-            return True
+            server.sendmail(sender_email, recipient, msg.as_string())
+        app.logger.info("Email sent successfully.")
+        return True
     except Exception as e:
         app.logger.error(f"Error sending email: {e}", exc_info=True)
         return False
