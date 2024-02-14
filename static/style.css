@@ -733,7 +733,7 @@ img.upgrade {
 /* Style the dropdown icon */
 .dropdown-icon {
   width: .5rem;
-  margin-left: .5rem;
+  margin-left: .325rem;
   transition: transform 0.3s ease;
 }
 
