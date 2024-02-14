@@ -692,6 +692,10 @@ img.upgrade {
     margin-left: 0;
 }
 
+a.dropbtn:hover {
+    text-decoration: none;
+}
+
 /* Dropdown content (hidden by default) */
 .dropdown-content {
   display: none;

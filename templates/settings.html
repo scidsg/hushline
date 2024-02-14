@@ -16,7 +16,7 @@
     <div class="formBody">
         <div id="profile" class="tab-content active">
             <div class="form-list">
-                {% if user.has_paid %}
+                {% if user.has_paid or user.stripe_subscription_id %}
                     <h3>Add Username</h3>
                     <p class="badge">⭐️ Pro Feature</p>
                     <form method="POST" action="/add-secondary-username">
@@ -214,6 +214,7 @@
                         <p>Display Name: {{ user.display_name or 'No display name' }}</p>
                         <p>Verified: {{ "✅ Yes" if user.is_verified else "👎 No" }}</p>
                         <p>Paying User: {{ "✅ Yes" if user.has_paid else "👎 No" }}</p>
+                        <p>Subscribed User: {{ "✅ Yes" if user.stripe_subscription_id else "👎 No" }}</p>
                         <p>Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}</p>
                         <div class="tableActions">
                             <form action="/admin/toggle_verified/{{ user.id }}" method="POST">
