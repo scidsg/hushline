@@ -708,7 +708,7 @@ img.upgrade {
 
 /* Links inside the dropdown */
 .dropdown-content a {
-  color: black;
+  color: #333;
   padding: 12px 16px;
   text-decoration: none;
   display: block;
