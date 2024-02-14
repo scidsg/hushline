@@ -804,6 +804,7 @@ a.dropbtn:hover {
     background-color: #c6ffff;
     padding: .125rem .25rem;
     border-radius: .25rem;
+    font-family: 'Atkinson Bold', sans-serif;
 }
 
 @media only screen and (max-width: 640px) {
