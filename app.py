@@ -304,10 +304,9 @@ class InviteCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(255), unique=True, nullable=False)
     expiration_date = db.Column(db.DateTime, nullable=False)
-    used = db.Column(db.Boolean, default=False, nullable=False)
 
     def __repr__(self):
-        return "<InviteCode %r>" % self.code
+        return f"<InviteCode {self.code}>"
 
 
 class MessageForm(FlaskForm):
@@ -437,9 +436,7 @@ def register():
         invite_code_input = form.invite_code.data
 
         # Validate the invite code
-        invite_code = InviteCode.query.filter_by(
-            code=invite_code_input, used=False
-        ).first()
+        invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
         if not invite_code or invite_code.expiration_date < datetime.utcnow():
             flash("⛔️ Invalid or expired invite code.", "error")
             return redirect(url_for("register"))
@@ -453,9 +450,9 @@ def register():
         password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
         new_user = User(primary_username=username, password_hash=password_hash)
 
-        # Add user and mark invite code as used
+        # Add user to the database
         db.session.add(new_user)
-        invite_code.used = True
+        db.session.delete(invite_code)
         db.session.commit()
 
         flash("👍 Registration successful! Please log in.", "success")
