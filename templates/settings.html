@@ -131,9 +131,9 @@
             <h3>Email Delivery Settings</h3>
             <form method="POST" action="{{ url_for('update_smtp_settings') }}">
                 {{ smtp_settings_form.hidden_tag() }}
-                
-                {{ smtp_settings_form.email.label }}
-                {{ smtp_settings_form.email }}
+
+                {{ smtp_settings_form.smtp_username.label }}
+                {{ smtp_settings_form.smtp_username }}
 
                 {{ smtp_settings_form.smtp_server.label }}
                 {{ smtp_settings_form.smtp_server }}
@@ -141,8 +141,6 @@
                 {{ smtp_settings_form.smtp_port.label }}
                 {{ smtp_settings_form.smtp_port }}
 
-                {{ smtp_settings_form.smtp_username.label }}
-                {{ smtp_settings_form.smtp_username }}
 
                 {{ smtp_settings_form.smtp_password.label }}
                 {{ smtp_settings_form.smtp_password }}

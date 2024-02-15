@@ -365,7 +365,6 @@ class ChangeUsernameForm(FlaskForm):
 
 
 class SMTPSettingsForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
     smtp_server = StringField("SMTP Server", validators=[DataRequired()])
     smtp_port = IntegerField("SMTP Port", validators=[DataRequired()])
     smtp_username = StringField("SMTP Username", validators=[DataRequired()])
@@ -760,7 +759,7 @@ def settings():
 
         # Handle SMTP Settings Form Submission
         elif smtp_settings_form.validate_on_submit():
-            user.email = smtp_settings_form.email.data
+            user.email = smtp_settings_form.smtp_username.data
             user.smtp_server = smtp_settings_form.smtp_server.data
             user.smtp_port = smtp_settings_form.smtp_port.data
             user.smtp_username = smtp_settings_form.smtp_username.data
@@ -808,7 +807,6 @@ def settings():
             ) = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
 
     # Prepopulate form fields
-    smtp_settings_form.email.data = user.email
     smtp_settings_form.smtp_server.data = user.smtp_server
     smtp_settings_form.smtp_port.data = user.smtp_port
     smtp_settings_form.smtp_username.data = user.smtp_username
@@ -1073,7 +1071,7 @@ def send_email(recipient, subject, body, user, sender_email):
     )
     msg = MIMEMultipart()
     msg["From"] = sender_email
-    msg["To"] = recipient
+    msg["To"] = sender_email
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
@@ -1083,7 +1081,7 @@ def send_email(recipient, subject, body, user, sender_email):
         ) as server:  # Added timeout
             server.starttls()
             server.login(user.smtp_username, user.smtp_password)
-            server.sendmail(sender_email, recipient, msg.as_string())
+            server.sendmail(sender_email, sender_email, msg.as_string())
         app.logger.info("Email sent successfully.")
         return True
     except Exception as e:
@@ -1187,7 +1185,7 @@ def update_smtp_settings():
     # Handling SMTP settings form submission
     if smtp_settings_form.validate_on_submit():
         # Updating SMTP settings from form data
-        user.email = smtp_settings_form.email.data
+        user.email = smtp_settings_form.smtp_username.data
         user.smtp_server = smtp_settings_form.smtp_server.data
         user.smtp_port = smtp_settings_form.smtp_port.data
         user.smtp_username = smtp_settings_form.smtp_username.data

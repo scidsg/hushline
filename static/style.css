@@ -70,6 +70,10 @@ h3 {
     /*  margin-bottom: 1rem; */
 }
 
+.formBody h3 {
+    margin-bottom: 1rem;
+}
+
 h4 {
     font-size: 1.125rem;
 }
@@ -452,6 +456,10 @@ header .btn {
     border: 1px solid #7D25C1;
     border-radius: 50vw;
     font-family: 'Atkinson Bold', sans-serif;
+}
+
+.formBody h3 + form button {
+    margin-top: 0;
 }
 
 .btn-danger,
