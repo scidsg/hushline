@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Encrypt the message along with the note
             const encryptedMessage = await encryptMessage(publicKeyArmored, messageWithNote);
             if (encryptedMessage) {
-                console.log('Encryption successful, appending client-side encryption note.');
+                console.log('Encryption successful!');
                 messageField.value = encryptedMessage; // Set the encrypted message including the note as the value
                 encryptedFlag.value = 'true'; // Indicate client-side encryption
                 console.log('Form being submitted with client-side encrypted message.');
