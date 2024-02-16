@@ -100,7 +100,7 @@ server {
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
         add_header Onion-Location http://$ONION_ADDRESS\$request_uri;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com; child-src https://js.stripe.com; frame-src https://js.stripe.com;";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com; child-src https://js.stripe.com; frame-src https://js.stripe.com;";
         add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";
@@ -113,7 +113,7 @@ server {
                 
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com; child-src https://js.stripe.com; frame-src https://js.stripe.com;";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self' https://api.stripe.com; child-src https://js.stripe.com; frame-src https://js.stripe.com;";
         add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
         add_header Referrer-Policy "no-referrer";
         add_header X-XSS-Protection "1; mode=block";

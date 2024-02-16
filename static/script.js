@@ -157,4 +157,62 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tabs.length > 0) {
         tabs[0].click(); // Open the first tab automatically
     }
+
+    // Client-side encryption
+    const form = document.getElementById('messageForm');
+    const messageField = document.querySelector('textarea[name="content"]');
+    const encryptedFlag = document.getElementById('clientSideEncrypted');
+    const publicKeyArmored = document.getElementById('publicKey') ? document.getElementById('publicKey').value : '';
+
+    console.log('DOMContentLoaded: Client-side encryption script loaded.');
+
+    async function encryptMessage(publicKeyArmored, message) {
+        console.log('Attempting to encrypt message client-side.');
+
+        if (!publicKeyArmored) {
+            console.log('Public key not provided for encryption. Encryption cannot proceed.');
+            return false;
+        }
+
+        try {
+            console.log('Public key available, starting encryption process.');
+            const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
+            const messageText = await openpgp.createMessage({ text: message });
+            const encryptedMessage = await openpgp.encrypt({
+                message: messageText,
+                encryptionKeys: publicKey
+            });
+            console.log('Message encrypted client-side successfully.');
+            return encryptedMessage;
+        } catch (error) {
+            console.error('Error encrypting message:', error);
+            return false;
+        }
+    }
+
+    if (form) {
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent the form from submitting normally
+
+            console.log('Form submit event triggered.');
+
+            // Append the note to the message before encryption
+            const messageWithNote = messageField.value;
+
+            // Encrypt the message along with the note
+            const encryptedMessage = await encryptMessage(publicKeyArmored, messageWithNote);
+            if (encryptedMessage) {
+                console.log('Encryption successful!');
+                messageField.value = encryptedMessage; // Set the encrypted message including the note as the value
+                encryptedFlag.value = 'true'; // Indicate client-side encryption
+                console.log('Form being submitted with client-side encrypted message.');
+                form.submit(); // Submit the form programmatically
+            } else {
+                console.log('Encryption not successful, proceeding without client-side encryption.');
+                encryptedFlag.value = 'false'; // Proceed without client-side encryption
+                form.submit(); // Submit the form programmatically
+            }
+        });
+    }
+
 });
