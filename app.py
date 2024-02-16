@@ -1000,21 +1000,29 @@ def submit_message(username):
 
     if form.validate_on_submit():
         content = form.content.data
-        email_content = content
+        client_side_encrypted = (
+            request.form.get("client_side_encrypted", "false") == "true"
+        )
 
-        if user.pgp_key:
+        if not client_side_encrypted and user.pgp_key:
+            # Get the email address from the PGP key
             pgp_email = get_email_from_pgp_key(user.pgp_key)
             if pgp_email:
-                encrypted_content = encrypt_message(content, pgp_email)
-                if encrypted_content:
-                    email_content = encrypted_content
-                else:
+                # Append the note indicating server-side encryption
+                content_with_note = content
+                # Now call encrypt_message with the correct pgp_email
+                encrypted_content = encrypt_message(content_with_note, pgp_email)
+                email_content = encrypted_content if encrypted_content else content
+                if not encrypted_content:
                     flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
                 flash("⛔️ Unable to extract email from PGP key.", "error")
                 return redirect(url_for("submit_message", username=username))
+        else:
+            email_content = content if client_side_encrypted else content
 
+        # Your logic to save and possibly email the message...
         new_message = Message(
             content=email_content,
             user_id=user.id,
@@ -1034,13 +1042,16 @@ def submit_message(username):
         ):
             try:
                 sender_email = user.smtp_username
+                # Assume send_email is a utility function to send emails
                 email_sent = send_email(
                     user.email, "New Message", email_content, user, sender_email
                 )
-                if email_sent:
-                    flash("👍 Message submitted and email sent successfully.")
-                else:
-                    flash("👍 Message submitted, but failed to send email.", "warning")
+                flash_message = (
+                    "👍 Message submitted and email sent successfully."
+                    if email_sent
+                    else "👍 Message submitted, but failed to send email."
+                )
+                flash(flash_message)
             except Exception as e:
                 flash(
                     "👍 Message submitted, but an error occurred while sending email.",
@@ -1059,6 +1070,7 @@ def submit_message(username):
         username=username,
         display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
+        public_key=user.pgp_key,
     )
 
 
