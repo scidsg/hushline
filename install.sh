@@ -253,7 +253,6 @@ Encryption: https://$DOMAIN/public.asc
 Acknowledgments: https://$DOMAIN/security_acknowledgments
 Policy: https://github.com/scidsg/hushline/blob/main/privacy-policy.md
 Canonical: https://$DOMAIN/.well-known/security.txt
-# The digital signature for this file can be found in security.txt.asc
 EOL
 
 # Temporarily disable the error trap
