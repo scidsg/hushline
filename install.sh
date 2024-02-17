@@ -95,6 +95,11 @@ server {
             proxy_send_timeout 300s;
             proxy_read_timeout 300s;
         }
+
+        # Explicitly serve the security.txt file
+        location = /.well-known/security.txt {
+            alias /var/www/html/$DOMAIN/.well-known/security.txt;
+        }
                 
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
         add_header X-Frame-Options DENY;
@@ -217,10 +222,39 @@ echo "Configuring automatic renewing certificates..."
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 echo "✅ Automatic HTTPS certificates configured."
 
+# Enable IPv6 in Nginx configuration
+NGINX_CONF="/etc/nginx/sites-available/$DOMAIN.nginx"
+sed -i '/listen 80;/a \    listen [::]:80;' $NGINX_CONF
+sed -i '/listen 443 ssl;/a \    listen [::]:443 ssl;' $NGINX_CONF
+echo "✅ IPv6 configuration appended to Nginx configuration file."
+
+# Append OCSP Stapling configuration for SSL
+sed -i "/listen \[::\]:443 ssl;/a \    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/$DOMAIN/chain.pem;\n    resolver 9.9.9.9 1.1.1.1 valid=300s;\n    resolver_timeout 5s;\n    ssl_session_cache shared:SSL:10m;" $NGINX_CONF
+echo "✅ OCSP Stapling, SSL Session, and Resolver Timeout added."
+
+# Test the Nginx configuration and reload if successful
+nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test failed, please check the configuration."
+
 ####################################
 ####################################
 
 cd $DOMAIN
+
+# Download hello@scidsg.org key referenced in the security.txt file
+wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
+
+mkdir -p .well-known
+
+# Configure Nginx with privacy-preserving logging
+cat > /var/www/html/$DOMAIN/.well-known/security.txt << EOL
+Contact: mailto:security@scidsg.org
+Expires: 2026-01-01T00:00:00Z
+Encryption: https://$DOMAIN/public.asc
+Acknowledgments: https://$DOMAIN/security_acknowledgments
+Policy: https://github.com/scidsg/hushline/blob/main/privacy-policy.md
+Canonical: https://$DOMAIN/.well-known/security.txt
+# The digital signature for this file can be found in security.txt.asc
+EOL
 
 # Temporarily disable the error trap
 trap - ERR
