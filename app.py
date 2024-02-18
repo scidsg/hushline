@@ -990,7 +990,11 @@ def submit_message(username):
             display_name_or_username = (
                 secondary_user.display_name or secondary_user.username
             )
-            if not user.has_paid:
+            # Check if the subscription has expired
+            if not user.has_paid or (
+                user.paid_features_expiry
+                and user.paid_features_expiry < datetime.utcnow()
+            ):
                 flash(
                     "⚠️ This feature requires a premium account. Please upgrade to access.",
                     "warning",
