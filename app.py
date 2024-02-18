@@ -162,6 +162,7 @@ class User(db.Model):
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     stripe_subscription_id = db.Column(db.String(255), unique=True, nullable=True)
     paid_features_expiry = db.Column(db.DateTime, nullable=True)
+    is_subscription_active = db.Column(db.Boolean, default=True)
     # Corrected the relationship and backref here
     secondary_users = db.relationship(
         "SecondaryUser", backref=db.backref("primary_user", lazy=True)
@@ -813,6 +814,7 @@ def settings():
 
     return render_template(
         "settings.html",
+        now=datetime.utcnow(),
         user=user,
         secondary_usernames=secondary_usernames,
         all_users=all_users,  # Pass to the template for admin view
@@ -1547,25 +1549,26 @@ def cancel_subscription():
         return redirect(url_for("settings"))
 
     try:
-        # Retrieve the subscription to get the current period end
+        # Cancel the subscription on Stripe
+        stripe.Subscription.delete(user.stripe_subscription_id)
+
+        # Update the database to reflect the subscription's end date
         subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
-
-        # Mark the subscription as canceled in your system
-        user.is_subscription_active = False  # Assuming you've added this field
-
-        # Set the paid_features_expiry to keep access until the period ends
+        user.is_subscription_active = False
         user.paid_features_expiry = datetime.fromtimestamp(
             subscription.current_period_end
         )
-
         db.session.commit()
+
         flash(
-            "Your subscription has been canceled but you can enjoy the features until the end of the billing period.",
+            "Your subscription has been canceled. You will retain access to paid features until the end of your billing period.",
             "success",
         )
     except Exception as e:
         app.logger.error(f"Failed to cancel subscription: {e}")
-        flash("An error occurred while canceling your subscription.", "error")
+        flash(
+            "An error occurred while attempting to cancel your subscription.", "error"
+        )
 
     return redirect(url_for("settings"))
 
