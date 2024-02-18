@@ -96,7 +96,6 @@ server {
             proxy_read_timeout 300s;
         }
 
-        # Explicitly serve the security.txt file
         location = /.well-known/security.txt {
             alias /var/www/html/$DOMAIN/.well-known/security.txt;
         }
