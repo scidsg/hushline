@@ -1424,33 +1424,39 @@ def create_checkout_session():
 
 @app.route("/payment-success")
 def payment_success():
-    # Retrieve the origin page from the query string
-    origin_page = request.args.get("origin", url_for("index"))
-    # Retrieve the session ID from the query string (or through another method provided by Stripe)
     session_id = request.args.get("session_id")
 
     if "user_id" in session:
         user_id = session["user_id"]
         user = User.query.get(user_id)
         if user:
-            # Retrieve the checkout session to get the subscription ID
-            checkout_session = stripe.checkout.Session.retrieve(session_id)
-            subscription_id = (
-                checkout_session.subscription
-            )  # This is where you get the subscription ID
+            try:
+                checkout_session = stripe.checkout.Session.retrieve(session_id)
+                subscription = stripe.Subscription.retrieve(
+                    checkout_session.subscription
+                )
 
-            # Now set the has_paid field and the subscription ID
-            user.has_paid = True
-            user.stripe_subscription_id = subscription_id  # Save the subscription ID
-            db.session.commit()
+                # Update user's subscription details
+                user.has_paid = True
+                user.stripe_subscription_id = subscription.id
+                user.paid_features_expiry = datetime.fromtimestamp(
+                    subscription.current_period_end
+                )
 
-            flash("🎉 Payment successful! Your account has been upgraded.", "success")
+                user.is_subscription_active = True
+                db.session.commit()
+                flash(
+                    "🎉 Payment successful! Your account has been upgraded.", "success"
+                )
+            except Exception as e:
+                app.logger.error(f"Failed to retrieve subscription details: {e}")
+                flash("An error occurred while processing your payment.", "error")
         else:
             flash("🫥 User not found.", "error")
     else:
         flash("⛔️ You are not logged in.", "warning")
 
-    # Ensure the URL is safe to redirect to
+    origin_page = request.args.get("origin", url_for("index"))
     if is_safe_url(origin_page):
         return redirect(origin_page)
     else:
@@ -1506,6 +1512,7 @@ def stripe_webhook():
                 user.paid_features_expiry = datetime.utcfromtimestamp(
                     subscription["current_period_end"]
                 )
+                user.is_subscription_active = False
                 db.session.commit()
 
         # Handle the invoice.payment_failed event
