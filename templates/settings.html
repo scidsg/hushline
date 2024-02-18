@@ -16,7 +16,7 @@
     <div class="formBody">
         <div id="profile" class="tab-content active">
             <div class="form-list">
-                {% if user.has_paid or user.stripe_subscription_id %}
+                {% if user.has_paid and user.paid_features_expiry > now %}
                     <h3>Add Username</h3>
                     <p class="badge">⭐️ Pro Feature</p>
                     <form method="POST" action="/add-secondary-username">
@@ -166,7 +166,7 @@
 
         <div id="advanced" class="tab-content">
             <!-- Subscription Cancellation Section -->
-            {% if user.stripe_subscription_id %}
+            {% if user.is_subscription_active %}
                 <h3>Cancel Subscription</h3>
                 <p>If you cancel your subscription, you will lose access to pro features at the end of your billing cycle.</p>
                 <form id="cancelSubscriptionForm" method="POST" action="{{ url_for('cancel_subscription') }}">
