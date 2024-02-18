@@ -1547,12 +1547,16 @@ def cancel_subscription():
         return redirect(url_for("settings"))
 
     try:
+        # Retrieve the subscription to get the current period end
         subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
+
+        # Mark the subscription as canceled in your system
+        user.is_subscription_active = False  # Assuming you've added this field
+
+        # Set the paid_features_expiry to keep access until the period ends
         user.paid_features_expiry = datetime.fromtimestamp(
             subscription.current_period_end
         )
-        # Don't set has_paid to False immediately
-        # user.has_paid = False is now controlled by the expiry date
 
         db.session.commit()
         flash(
