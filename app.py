@@ -161,6 +161,7 @@ class User(db.Model):
     has_paid = db.Column(db.Boolean, default=False)
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     stripe_subscription_id = db.Column(db.String(255), unique=True, nullable=True)
+    paid_features_expiry = db.Column(db.DateTime, nullable=True)
     # Corrected the relationship and backref here
     secondary_users = db.relationship(
         "SecondaryUser", backref=db.backref("primary_user", lazy=True)
@@ -1489,7 +1490,6 @@ def stripe_webhook():
         # Handle the checkout.session.completed event
         if event["type"] == "checkout.session.completed":
             session = event["data"]["object"]
-            # Find user by session's customer ID and update has_paid
             user = find_user_by_stripe_customer_id(session["customer"])
             if user:
                 user.has_paid = True
@@ -1500,7 +1500,10 @@ def stripe_webhook():
             subscription = event["data"]["object"]
             user = find_user_by_stripe_customer_id(subscription["customer"])
             if user:
-                user.has_paid = False
+                # Use the subscription's current period end for paid_features_expiry
+                user.paid_features_expiry = datetime.utcfromtimestamp(
+                    subscription["current_period_end"]
+                )
                 db.session.commit()
 
         # Handle the invoice.payment_failed event
@@ -1531,7 +1534,7 @@ def find_user_by_stripe_customer_id(customer_id):
 
 
 @app.route("/cancel-subscription", methods=["POST"])
-@require_2fa  # Assuming you're using 2FA requirement
+@require_2fa
 def cancel_subscription():
     user_id = session.get("user_id")
     if not user_id:
@@ -1539,31 +1542,39 @@ def cancel_subscription():
         return redirect(url_for("login"))
 
     user = User.query.get(user_id)
-    if not user:
-        flash("User not found.", "error")
-        return redirect(url_for("logout"))
+    if not user or not user.stripe_subscription_id:
+        flash("Subscription not found.", "error")
+        return redirect(url_for("settings"))
 
     try:
-        # Assuming you have a field on the User model for the Stripe subscription ID
-        subscription_id = user.stripe_subscription_id
-        if not subscription_id:
-            flash("No subscription found.", "error")
-            return redirect(url_for("settings"))
+        subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
+        user.paid_features_expiry = datetime.fromtimestamp(
+            subscription.current_period_end
+        )
+        # Don't set has_paid to False immediately
+        # user.has_paid = False is now controlled by the expiry date
 
-        # Cancel the subscription using the Stripe API
-        stripe.Subscription.delete(subscription_id)
-
-        # Update user's subscription status in the database
-        user.has_paid = False
-        user.stripe_subscription_id = None  # Clear the subscription ID
         db.session.commit()
-
-        flash("Your subscription has been canceled.", "success")
+        flash(
+            "Your subscription has been canceled but you can enjoy the features until the end of the billing period.",
+            "success",
+        )
     except Exception as e:
         app.logger.error(f"Failed to cancel subscription: {e}")
         flash("An error occurred while canceling your subscription.", "error")
 
     return redirect(url_for("settings"))
+
+
+def has_paid_features(user_id):
+    user = User.query.get(user_id)
+    if (
+        user
+        and user.paid_features_expiry
+        and user.paid_features_expiry > datetime.utcnow()
+    ):
+        return True
+    return False
 
 
 @app.route("/admin/toggle_verified/<int:user_id>", methods=["POST"])
