@@ -6,7 +6,7 @@ import logging
 import re
 import stripe
 from logging.handlers import RotatingFileHandler
-from datetime import datetime
+from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -97,7 +97,7 @@ app.config[
 app.config[
     "SESSION_COOKIE_SAMESITE"
 ] = "Lax"  # Control cookie sending with cross-site requests
-
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
 # Initialize GPG with expanded home directory
 gpg_home = os.path.expanduser("~/.gnupg")
@@ -582,6 +582,9 @@ def login():
         user = User.query.filter_by(primary_username=username).first()
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
+            session.permanent = (
+                True  # Make the session permanent so it uses the configured lifetime
+            )
             session["user_id"] = user.id
             session[
                 "username"
@@ -852,7 +855,6 @@ def change_password():
     if not user_id:
         return redirect(url_for("login"))
 
-    # Retrieve the user using the user_id
     user = User.query.get(user_id)
     change_password_form = ChangePasswordForm(request.form)
     change_username_form = ChangeUsernameForm()
@@ -869,11 +871,18 @@ def change_password():
                 "utf-8"
             )
             db.session.commit()
-            flash("👍 Password successfully changed.")
-            return redirect(url_for("settings"))
+            session.clear()  # Clears the session, logging the user out
+            flash(
+                "👍 Password successfully changed. Please log in with your new password.",
+                "success",
+            )
+            return redirect(
+                url_for("login")
+            )  # Redirect to the login page for re-authentication
         else:
             flash("⛔️ Incorrect old password.")
 
+    # If not changing the password or if validation fails, render the settings page with all forms
     return render_template(
         "settings.html",
         change_password_form=change_password_form,
@@ -939,8 +948,17 @@ def change_username():
 
 @app.route("/logout")
 def logout():
+    # Explicitly remove specific session keys related to user authentication
     session.pop("user_id", None)
-    session.pop("2fa_verified", None)  # Clear 2FA verification flag
+    session.pop("2fa_verified", None)
+
+    # Clear the entire session to ensure no leftover data
+    session.clear()
+
+    # Flash a confirmation message for the user
+    flash("👋 You have been logged out successfully.", "info")
+
+    # Redirect to the login page or home page after logout
     return redirect(url_for("index"))
 
 
