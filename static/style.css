@@ -515,6 +515,10 @@ footer {
     border-radius: 0 .25rem 0 0;
 }
 
+footer p {
+    margin: 0;
+}
+
 footer a {
     text-decoration: none;
 }
