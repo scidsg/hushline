@@ -250,7 +250,7 @@ Contact: mailto:security@scidsg.org
 Expires: 2026-01-01T00:00:00Z
 Encryption: https://$DOMAIN/public.asc
 Acknowledgments: https://$DOMAIN/security_acknowledgments
-Policy: https://github.com/scidsg/hushline/blob/main/privacy-policy.md
+Policy: https://github.com/scidsg/hushline/blob/main/security-policy.md
 Canonical: https://$DOMAIN/.well-known/security.txt
 EOL
 
