@@ -64,12 +64,12 @@ The Permissions-Policy header allows a site to control which features and APIs c
 ## Referrer-Policy
 
 - `Referrer-Policy: no-referrer`
-- Ensures that no referrer information is passed along with requests made from Hush Line, enhancing user privacy.
+  - Ensures that no referrer information is passed along with requests made from Hush Line, enhancing user privacy.
 
 ## X-XSS-Protection
 
 - `X-XSS-Protection: 1; mode=block`
-- Activates the browser's XSS filtering capabilities to prevent cross-site scripting attacks.
+  - Activates the browser's XSS filtering capabilities to prevent cross-site scripting attacks.
 
 By implementing these security headers, Hush Line aims to provide a secure platform for our users, safeguarding their information against a wide array of potential threats. We continuously evaluate and update our security practices to adapt to the evolving digital landscape.
 
@@ -123,10 +123,9 @@ By implementing these security headers, Hush Line aims to provide a secure platf
 
 ## Reporting Security Vulnerabilities
 
-We encourage responsible disclosure of any security vulnerabilities. Please report any security concerns to us via:
+We encourage responsible disclosure of any security vulnerabilities. Please report any security concerns to us via Hush Line:
 
-- Email: security@scidsg.org
-- PGP Key: [PGP Public Key URL](https://hushline.app/public.asc)
+- https://beta.hushline.app/submit_message/scidsg-security
 
 Our security team will investigate all reported issues and take appropriate actions to mitigate any vulnerabilities.
 
