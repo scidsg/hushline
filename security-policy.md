@@ -24,22 +24,22 @@ Hush Line implements a series of HTTP security headers to protect our users and 
 ### Strict-Transport-Security
 
 - `Strict-Transport-Security: max-age=63072000; includeSubdomains`
-- Ensures that browsers only connect to Hush Line over HTTPS, preventing man-in-the-middle attacks. The `max-age` directive specifies that the policy is remembered for two years.
+  - Ensures that browsers only connect to Hush Line over HTTPS, preventing man-in-the-middle attacks. The `max-age` directive specifies that the policy is remembered for two years.
 
 ### X-Frame-Options
 
 - `X-Frame-Options: DENY`
-- Prevents the website from being framed by other sites, mitigating clickjacking attacks.
+  - Prevents the website from being framed by other sites, mitigating clickjacking attacks.
 
 ### X-Content-Type-Options
 
 - `X-Content-Type-Options: nosniff`
-- Stops browsers from trying to MIME-sniff the content type, which can prevent certain types of attacks like drive-by downloads.
+  - Stops browsers from trying to MIME-sniff the content type, which can prevent certain types of attacks like drive-by downloads.
 
 ### Onion-Location
 
 - `Onion-Location: http://$ONION_ADDRESS\$request_uri`
-- Provides an Onion-Location header which helps users on the Tor network to be aware of the site's onion service counterpart, enhancing privacy and security.
+  - Provides an Onion-Location header which helps users on the Tor network to be aware of the site's onion service counterpart, enhancing privacy and security.
 
 ## Content-Security-Policy (CSP)
 
