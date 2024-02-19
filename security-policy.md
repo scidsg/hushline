@@ -12,7 +12,7 @@ At Hush Line, developed by Science & Design, Inc., we prioritize the security of
 
 ## End-to-End Encrypted Messages (E2EE) with OpenPGP.js
 
-- Messages are encrypted from the sender's device to the recipient's device, preventing any unauthorized access in transit.
+- PGP-enabled messages are encrypted from the sender's device to the recipient's device, preventing any unauthorized access in transit.
 
 ## Tor Onion Service
 
