@@ -1,6 +1,6 @@
 # Terms of Service for Hush Line
 
-**Last Updated: [Insert Date]**
+**Last Updated: Feb. 18, 2024**
 
 Welcome to Hush Line! Hush Line is a service provided by Science & Design, Inc. ("we", "our", or "us"), a 501(c)(3) organization. Our website is located at [hushline.app](https://hushline.app), and our organization's website is [scidsg.org](https://scidsg.org). By using our services, you agree to the following terms and conditions (the "Terms of Service"). If you do not agree to these terms, please do not use our services.
 
