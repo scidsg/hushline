@@ -3,6 +3,7 @@
 
 {% block content %}
     <h2>Enter your 2FA Code</h2>
+    <p>🔑 Enter the six-digit code from your authenticator app.</p>
     <form method="POST" action="{{ url_for('verify_2fa_login') }}">
         {{ form.hidden_tag() }}
         <div>
