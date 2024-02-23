@@ -425,11 +425,10 @@ mkdir -p /etc/systemd/system/tor@default.service.d
 # Create an override file with an ExecStartPost command and restart on failure for the Tor service
 cat <<EOT > /etc/systemd/system/tor@default.service.d/override.conf
 [Service]
-ExecStartPost=/bin/sh -c 'while [ ! -S /var/www/html/$DOMAIN/hushline-hosted.sock ]; do sleep 1; done; chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock'
 Restart=on-failure
 RestartSec=5s
+ExecStartPost=/bin/sh -c 'until [ -S /var/www/html/$DOMAIN/hushline-hosted.sock ]; do sleep 1; done; chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock'
 EOT
-
 
 # Reload the systemd daemon to apply the override
 systemctl daemon-reload
