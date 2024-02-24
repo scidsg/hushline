@@ -310,6 +310,26 @@ echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system
 systemctl daemon-reload
 systemctl restart mariadb
 
+sudo mkdir -p /etc/mariadb/ssl
+
+sudo cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /etc/mariadb/ssl/
+sudo cp /etc/letsencrypt/live/$DOMAIN/privkey.pem /etc/mariadb/ssl/
+
+sudo chown mysql:mysql /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
+sudo chmod 400 /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
+
+# MariaDB configuration file path
+MY_CNF="/etc/mysql/my.cnf"
+
+# Append SSL configuration to the MariaDB configuration file
+echo "ssl_cert=/etc/mariadb/ssl/fullchain.pem" | sudo tee -a $MY_CNF > /dev/null
+echo "ssl_key=/etc/mariadb/ssl/privkey.pem" | sudo tee -a $MY_CNF > /dev/null
+
+# Restart MariaDB to apply the new configuration
+sudo systemctl restart mariadb
+
+echo "✅ SSL configuration has been added to MariaDB."
+
 # Check if the database exists, create if not
 if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
     mysql -e "CREATE DATABASE $DB_NAME;"
