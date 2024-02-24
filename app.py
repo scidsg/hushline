@@ -40,6 +40,7 @@ from cryptography.fernet import Fernet
 
 # Database and Error Handling
 from sqlalchemy.exc import IntegrityError  # Import IntegrityError
+from sqlalchemy.engine import create_engine
 
 # Environment Variables
 from dotenv import load_dotenv
@@ -83,9 +84,20 @@ def decrypt_field(data):
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_key
-app.config[
-    "SQLALCHEMY_DATABASE_URI"
-] = f"mysql+pymysql://{db_user}:{db_pass}@localhost/{db_name}"
+
+ssl_cert = "/etc/mariadb/ssl/fullchain.pem"
+ssl_key = "/etc/mariadb/ssl/privkey.pem"
+
+# Ensure SSL files exist
+if not all(os.path.exists(path) for path in [ssl_cert, ssl_key]):
+    raise FileNotFoundError("SSL certificate or key file is missing.")
+
+# SQLAlchemy database URI with SSL configuration
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    f"mysql+pymysql://{db_user}:{db_pass}@localhost/{db_name}"
+    "?ssl_cert={ssl_cert}&ssl_key={ssl_key}".format(ssl_cert=ssl_cert, ssl_key=ssl_key)
+)
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Session configuration for secure cookies
