@@ -1,0 +1,25 @@
+# Acknowledgments 
+
+- 2024 Security Audit by [Subgraph](https://subgraph.com/index.en.html)
+- Abbey Ripstra, Research
+- Alex Rojas, Industrial Design
+- Dr. Ashley Di Battista, Research
+- Chirayu Desai, Privacy Engineering
+- David McKinney, Security Auditor
+- David Mirza Ahmad, Security Auditor
+- Elijah Waxwing, Subject Matter Expert, Security
+- Ese Udom, Android Engineering
+- Em, Privacy Engineering
+- Dr. Florian Idelberger, Engineering
+- Glenn Sorrentino, Design, Engineering
+- Grant Birkinbine, Engineering
+- Dr. Martin Shelton, Subject Matter Expert, Journalism
+- Micah Lee, Engineering
+- Ritik Shah, DevSecOps
+- Sam Schlinkert, Documentation, Engineering
+- Saptak Sengupta, Accessibility, Engineering
+- Scott Jenson, Content Design
+- Simon Wörpel, Engineering
+- Sooraj Sathyanarayanan, DevSecOps
+- Stef Daehler, Subject Matter Expert, Education
+- Ura Creative, Production Design, Packaging
