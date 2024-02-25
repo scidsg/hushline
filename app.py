@@ -174,7 +174,7 @@ class User(db.Model):
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     stripe_subscription_id = db.Column(db.String(255), unique=True, nullable=True)
     paid_features_expiry = db.Column(db.DateTime, nullable=True)
-    is_subscription_active = db.Column(db.Boolean, default=True)
+    is_subscription_active = db.Column(db.Boolean, default=False)
     # Corrected the relationship and backref here
     secondary_users = db.relationship(
         "SecondaryUser", backref=db.backref("primary_user", lazy=True)
