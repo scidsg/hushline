@@ -45,6 +45,8 @@ STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret"
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
+curl -sSl https://install.python-poetry.org | python3 -
+cd hushline
 
 ############################
 # Server, Nginx, HTTPS setup
@@ -247,9 +249,9 @@ mkdir -p .well-known
 # Configure Nginx with privacy-preserving logging
 cat > /var/www/html/$DOMAIN/.well-known/security.txt << EOL
 Contact: mailto:security@scidsg.org
-Expires: 2025-01-01T00:00:00Z
+Expires: 2026-01-01T00:00:00Z
 Encryption: https://$DOMAIN/public.asc
-Acknowledgments: https://github.com/scidsg/hushline/blob/main/ACKNOWLEDGMENTS.md
+Acknowledgments: https://$DOMAIN/security_acknowledgments
 Policy: https://github.com/scidsg/hushline/blob/main/SECURITY.md
 Canonical: https://$DOMAIN/.well-known/security.txt
 EOL
@@ -276,12 +278,11 @@ trap error_exit ERR
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
-# Create and activate Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install Flask and other dependencies
-pip3 install -r requirements.txt
+# Changing directories, Creating Shell and Install dependencies using poetry
+cd ..
+poertry shell
+poertry install --file Poetry.toml
+cd hushline
 
 SECRET_KEY=$(python3 -c 'import os; print(os.urandom(64).hex())')
 ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
