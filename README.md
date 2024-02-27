@@ -6,13 +6,6 @@
 
 ![Frame 152](https://github.com/scidsg/hushline/assets/28545431/5c9b1c09-dcff-46da-9ea6-630d9b525855)
 
-## Host it Yourself
-
-### Easy Install
-```bash
-export DEBIAN_FRONTEND=noninteractive && apt update && apt -y dist-upgrade && apt -y autoremove && apt install -y git && git clone https://github.com/scidsg/hushline && cd hushline && chmod +x install.sh && ./install.sh
-```
-
 ## Contribution Guidelines
 
 ❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you follow these guidelines:
