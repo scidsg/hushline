@@ -6,3 +6,4 @@ Pillow
 gpiozero
 qrcode[pil]
 requests
+Flask-Limiter
