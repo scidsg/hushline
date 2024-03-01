@@ -3,3 +3,6 @@ Flask-Cors==3.0.10
 python-gnupg==0.5.0
 PGPy==0.6.0
 Pillow
+gpiozero
+qrcode[pil]
+requests
