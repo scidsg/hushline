@@ -28,7 +28,7 @@ whiptail --title "Hush Line Home Server" --msgbox "The Hush Line Home Server is 
 raspi-config nonint do_spi 0
 
 # Update system
-apt update && apt -y dist-upgrade && apt -y autoremove
+apt update && apt -y dist-upgrade && apt -y autoremove && apt install -y git
 
 git clone https://github.com/scidsg/hushline.git
 cd hushline
