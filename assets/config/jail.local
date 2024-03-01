@@ -1,39 +1,50 @@
 [DEFAULT]
+# Ban IP for 10 minutes initially; consider increasing for repeat offenders
 bantime  = 10m
+# Look for 5 failed attempts within 10 minutes
 findtime = 10m
-maxretry = 5
+# Email configuration for alerts (customize as needed)
+destemail = your-email@example.com
+sender = fail2ban@example.com
+action = %(action_mwl)s
 
 [sshd]
 enabled = true
+maxretry = 3
+# Increase bantime for repeated offenses
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 1h
 
-# 404 Errors
 [nginx-http-auth]
-enabled  = true
-filter   = nginx-http-auth
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
+enabled = true
+filter = nginx-http-auth
+port = http,https
+logpath = /var/log/nginx/error.log
+maxretry = 3
+findtime = 5m
 
-# Rate Limiting
 [nginx-limit-req]
-enabled  = true
-filter   = nginx-limit-req
-port     = http,https
-logpath  = /var/log/nginx/error.log
-maxretry = 5
+enabled = true
+filter = nginx-limit-req
+port = http,https
+logpath = /var/log/nginx/error.log
+maxretry = 3
+findtime = 5m
 
-# 403 Errors
 [nginx-botsearch]
-enabled  = true
-filter   = nginx-botsearch
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 10
+enabled = true
+filter = nginx-botsearch
+port = http,https
+logpath = /var/log/nginx/access.log
+maxretry = 5
+# Consider reducing maxretry for more aggressive blocking
 
-# Bad Bots and Crawlers
 [nginx-badbots]
-enabled  = true
-filter   = nginx-badbots
-port     = http,https
-logpath  = /var/log/nginx/access.log
-maxretry = 2
+enabled = true
+filter = nginx-badbots
+port = http,https
+logpath = /var/log/nginx/access.log
+maxretry = 1
+# Set a very low maxretry for known bad bots
+
