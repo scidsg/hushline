@@ -15,7 +15,7 @@ If you prefer to build your own, note that the installer below preps your SD car
 
 ## Step 1: Ready the cannons
 
-Flash a microSD card with Raspberry Pi OS Legacy 64-bit. In the advanced settings of the Raspberry Pi Imager:
+Flash a microSD card with Raspberry Pi OS-Lite Legacy 64-bit. In the advanced settings of the Raspberry Pi Imager:
 
 - Change the hostname to `hushline`
 - Enable SSH
