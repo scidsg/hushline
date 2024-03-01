@@ -95,6 +95,11 @@ source venv/bin/activate
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
 pip3 install -r requirements.txt
 
+# Generate a strong secret key and store it securely
+FLASK_SECRET_KEY=$(python3 -c 'import os; print(os.urandom(24).hex())')
+echo "FLASK_SECRET_KEY=${FLASK_SECRET_KEY}" > /home/hush/hushline/.env
+chmod 600 /home/hush/hushline/.env
+
 # Install Waveshare e-Paper library
 if [ ! -d "e-Paper" ]; then
     git clone https://github.com/waveshare/e-Paper.git
@@ -156,7 +161,7 @@ rm /home/hush/hushline/web_setup.py
 rm /etc/nginx/sites-available/hushline-setup.nginx
 rm /etc/nginx/sites-enabled/hushline-setup.nginx
 
-# Create a systemd service
+# Configure the systemd service for Flask app
 cat >/etc/systemd/system/hushline.service <<EOL
 [Unit]
 Description=Hush Line Web App
@@ -164,12 +169,13 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=$PWD
+EnvironmentFile=/home/hush/hushline/.env
 Environment="DOMAIN=localhost"
 Environment="EMAIL=$EMAIL"
 Environment="NOTIFY_PASSWORD=$NOTIFY_PASSWORD"
 Environment="NOTIFY_SMTP_SERVER=$NOTIFY_SMTP_SERVER"
 Environment="NOTIFY_SMTP_PORT=$NOTIFY_SMTP_PORT"
-ExecStart=$PWD/venv/bin/gunicorn --bind 127.0.0.1:5000 app:app
+ExecStart=/home/hush/hushline/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 app:app
 Restart=always
 [Install]
 WantedBy=multi-user.target

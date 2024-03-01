@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 import pgpy
 import smtplib
@@ -16,6 +18,16 @@ log.info("Starting Hush Line")
 
 app = Flask(__name__)
 
+# Securely load the secret key from an environment variable or generate a random one
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
+
+# Initialize Limiter
+limiter = Limiter(
+    app,
+    key_func=lambda: session.get("user_token", get_remote_address()),
+    default_limits=["200 per day", "50 per hour"],
+)
+
 sender_email = os.environ.get("EMAIL", None)
 sender_password = os.environ.get("NOTIFY_PASSWORD", None)
 smtp_server = os.environ.get("NOTIFY_SMTP_SERVER", None)
@@ -31,14 +43,29 @@ with open("public_key.asc", "r") as key_file:
     key_data = key_file.read()
     PUBLIC_KEY, _ = pgpy.PGPKey.from_blob(key_data)  # Extract the key from the tuple
 
+
 def encrypt_message(message):
     encrypted_message = str(PUBLIC_KEY.encrypt(pgpy.PGPMessage.new(message)))
     return encrypted_message
 
+
+@app.before_request
+def ensure_user_token():
+    if "user_token" not in session:
+        session["user_token"] = generate_unique_token()
+
+
 @app.route("/")
 def index():
     owner, key_id, expires = pgp_owner_info_direct()
-    return render_template("index.html", owner_info=owner, key_id=key_id, expires=expires, pgp_info_available=bool(owner))
+    return render_template(
+        "index.html",
+        owner_info=owner,
+        key_id=key_id,
+        expires=expires,
+        pgp_info_available=bool(owner),
+    )
+
 
 def pgp_owner_info_direct():
     owner = f"{PUBLIC_KEY.userids[0].name} <{PUBLIC_KEY.userids[0].email}>"
@@ -49,19 +76,28 @@ def pgp_owner_info_direct():
         expires = f"Exp: Never"
     return owner, key_id, expires
 
+
 @app.route("/info")
+@limiter.limit("10 per minute")
 def info():
     return render_template("info.html")
 
+
+def generate_unique_token():
+    return os.urandom(16).hex()
+
+
 @app.route("/send_message", methods=["POST"])
+@limiter.limit("10 per minute")
 def send_message():
     message = request.form["message"]
     encrypted_message = encrypt_message(message)
     with open("messages.txt", "a") as f:
         f.write(encrypted_message + "\n\n")
     send_email_notification(encrypted_message)
-    
+
     return render_template("message-sent.html")
+
 
 def send_email_notification(message):
     msg = MIMEMultipart()
@@ -78,6 +114,7 @@ def send_email_notification(message):
             server.sendmail(sender_email, sender_email, msg.as_string())
     except Exception as e:
         log.error(f"Error sending email notification: {e}")
+
 
 if __name__ == "__main__":
     app.run()
