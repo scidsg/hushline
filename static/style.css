@@ -122,8 +122,10 @@ h1, p, a, label, input, ul, pre {
 h1 {
 	font-size: 1.25rem;
 	letter-spacing: .0125rem;
-	font-family: 'Playfair', serif;
+	font-family: 'Atkinson Bold', serif;
 	color: #1c1c1c !important;
+	font-weight: initial;
+
 }
 
 h1 a {
@@ -197,9 +199,14 @@ header nav li:last-of-type {
 form.setup-form {
   display: flex;
   flex-direction: column;
-  max-width: 480px;
+  max-width: 640px;
   width: 100%;
   margin: 0 auto;
+}
+
+form.setup-form textarea {
+	font-family: 'Mono', monospace;
+	font-size: .875rem;
 }
 
 form.setup-form button {
@@ -215,11 +222,11 @@ form.setup-form button {
   outline: 1px solid rgba(0,0,0,0.1);
   box-shadow: 0px 4px 12px -4px rgba(0,0,0,0.15);
   border: none;
-  font-size: 1rem;
+  font-size: .9125rem;
 }
 
 .setup-form label {
-	font-size: .925rem;
+	font-size: 1rem;
 	margin-bottom: .5rem;
 }
 
@@ -274,11 +281,12 @@ p {
 
 label {
   display: block;
-  font-size: .9125rem;
+  font-size: 1rem;
   align-self: start;
   margin-bottom: .5rem;
   margin-top: .125rem;
-  color: #525252;
+  color: #333;
+	font-family: 'Atkinson Bold', sans-serif;
 }
 
 #message-form {
