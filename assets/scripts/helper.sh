@@ -32,7 +32,7 @@ apt update && apt -y dist-upgrade && apt -y autoremove && apt install -y git
 
 git clone https://github.com/scidsg/hushline.git
 cd hushline
-git switch personal-server
+git switch app-validation
 chmod +x /home/hush/hushline/assets/scripts/install.sh
 
 # Move script to display status on the e-ink display to proper location
@@ -40,8 +40,7 @@ cp /home/hush/hushline/assets/service/hushline-installer.service /etc/systemd/sy
 
 systemctl daemon-reload
 systemctl enable hushline-installer.service
-
-apt-get -y install git python3 python3-venv python3-pip nginx tor unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
+apt-get -y install redis-server git python3 python3-venv python3-pip nginx tor unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
 
 # Install Waveshare e-Paper library
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests

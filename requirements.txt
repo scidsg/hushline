@@ -7,3 +7,4 @@ gpiozero
 qrcode[pil]
 requests
 Flask-Limiter
+redis
