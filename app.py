@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from redis import Redis
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import pgpy
 import smtplib
@@ -19,6 +20,8 @@ limiter = Limiter(
 
 def create_app():
     app = Flask(__name__)
+
+    app = ProxyFix(app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # Securely load the secret key from an environment variable or generate a random one
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
