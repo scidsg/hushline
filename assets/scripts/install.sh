@@ -56,7 +56,7 @@ if [[ ! -d hushline ]]; then
     git clone https://github.com/scidsg/hushline.git
 else
     # If the hushline directory exists, clean the working directory and pull the latest changes
-    echo "The directory 'hushline' already exists, updating repository..."
+    echo "👍 The directory 'hushline' already exists, updating repository..."
     cd hushline
     git restore --source=HEAD --staged --worktree -- .
     git reset HEAD -- .
@@ -256,12 +256,12 @@ cat >/home/hush/hushline/templates/info.html <<EOL
 <body class="info">
     <header>
         <div class="wrapper">
-            <h1><a href="/">🤫 Hush Line</a></h1>
+            <h1>Hush Line<br><span class="subhead">Personal Server</span></h1>
             <a href="https://en.wikipedia.org/wiki/Special:Random" class="btn" rel="noopener noreferrer">Close App</a>
         </div>
     </header>
     <section>
-        <div class="wrapper">
+        <div>
             <h2>👋<br>Welcome to Hush Line</h2>
             <p>Hush Line is an anonymous tip line. You should use it when you have information you think shows evidence of wrongdoing, including:</p>
             <ul>

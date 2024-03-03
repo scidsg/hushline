@@ -5,8 +5,6 @@
     <meta name="author" content="Science & Design, Inc.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="A reasonably private and secure personal tip line.">
-    <meta name="theme-color" content="#7D25C1">
-
     <title>Submit a Hush Line message</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
@@ -20,16 +18,13 @@
 <body>
     <header>
         <div class="wrapper">
-            <h1>🤫 Hush Line</h1>
+            <h1>Hush Line<br><span class="subhead">Personal Server</span></h1>
              <nav>
                 <li><a href="https://en.wikipedia.org/wiki/Special:Random" class="btn" aria-label="Close this app in case of emergency" rel="noopener noreferrer">Close App</a></li>
             </nav>
         </div>
     </header>
     <div id="pgp-owner-info" class="card mt-3" {% if not pgp_info_available %} style="display:none;" {% endif %}>
-        <div class="card-header">
-            <h3 class="card-title">To:</h3>
-        </div>
         <div class="card-body">
             <p id="pgp-owner">{{ owner_info }}</p>
             <div class="pgp-meta">
