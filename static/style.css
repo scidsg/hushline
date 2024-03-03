@@ -520,7 +520,7 @@ label {
 	max-width: 640px;
 	width: 100%;
 	padding: 1.25rem 0 2rem 0;
-	height: calc(100vh - 78.8px - 67px);
+	height: calc(100vh - 78.8px - 70px);
 }
 
 textarea {
