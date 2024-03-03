@@ -21,7 +21,7 @@ limiter = Limiter(
 def create_app():
     app = Flask(__name__)
 
-    app = ProxyFix(app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # Securely load the secret key from an environment variable or generate a random one
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
@@ -85,7 +85,7 @@ def create_app():
         return owner, key_id, expires
 
     @app.route("/info")
-    @limiter.limit("10 per minute")
+    @limiter.limit("5 per minute")
     def info():
         return render_template("info.html")
 
@@ -93,7 +93,7 @@ def create_app():
         return os.urandom(16).hex()
 
     @app.route("/send_message", methods=["POST"])
-    @limiter.limit("10 per minute")
+    @limiter.limit("5 per minute")
     def send_message():
         message = request.form["message"]
         encrypted_message = encrypt_message(message)
