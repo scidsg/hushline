@@ -681,12 +681,8 @@ footer p {
 }
 
 @media only screen and (max-width: 480px) {
-	textarea {
-		height: 48vh;
-	}
-
 	body {
-		padding: 5.75rem 1.25rem 0 1.25rem;
+		padding: 0 1.25rem 0 1.25rem;
 		justify-content: flex-start;
 	}
 
