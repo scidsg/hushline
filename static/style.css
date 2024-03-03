@@ -252,7 +252,7 @@ html {
 .wrapper {
 	max-width: 1280px;
 	width: 100%;
-	/*! padding: 0 1.5rem; */
+	padding: 0 1.5rem;
 }
 
 .error {
@@ -271,16 +271,21 @@ body {
 	margin: 0;
 	min-height: 100vh;
 	height: auto;
-	padding: 0 1.5rem 1rem 1.5rem;
-	overflow: hidden;
+	padding: 0 1.5rem 0 1.5rem;
 }
 
 body.info {
-	overflow: visible;
+	padding: 6.5rem 0 2.5rem 0;
 }
 
-body.info h2 {
-	margin-top: 6.5rem;
+body.info header {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	width: 100%;
+	padding-left: 1.5rem;
+	padding-right: 1.5rem;
 }
 
 body.info p {
@@ -332,15 +337,6 @@ header {
 	width: 100%;
 	display: flex;
 	justify-content: center;
-}
-
-body.info header {
-	position: fixed;
-	left: 0;
-	right: 0;
-	width: 100%;
-	padding-left: 1.5rem;
-	padding-right: 1.5rem;
 }
 
 header .wrapper {
@@ -609,6 +605,12 @@ footer p {
 #pgp-owner-info  p {
 	font-size: .8125rem !important;
 	text-align: left;
+}
+
+.card-body {
+	gap: .125rem;
+	display: flex;
+	flex-direction: column;
 }
 
 .card-header {
