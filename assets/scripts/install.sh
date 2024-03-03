@@ -56,7 +56,7 @@ if [[ ! -d hushline ]]; then
     git clone https://github.com/scidsg/hushline.git
 else
     # If the hushline directory exists, clean the working directory and pull the latest changes
-    echo "The directory 'hushline' already exists, updating repository..."
+    echo "👍 The directory 'hushline' already exists, updating repository..."
     cd hushline
     git restore --source=HEAD --staged --worktree -- .
     git reset HEAD -- .
