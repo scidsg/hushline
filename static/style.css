@@ -639,11 +639,6 @@ footer p {
 	flex-direction: column;
 }
 
-.card-header {
-	width: fit-content;
-	display: none;
-}
-
 .pgp-meta {
 	display: flex;
 	flex-direction: row;
