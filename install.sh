@@ -225,8 +225,8 @@ run_certbot
 
 # Check if the last command (Certbot) succeeded
 while [ $? -ne 0 ]; do
-    echo "Certbot failed, retrying in 5 seconds..."
-    sleep 5
+    echo "Certbot failed, retrying in 60 seconds..."
+    sleep 60
     run_certbot
 done
 echo "✅ Certbot succeeded."
