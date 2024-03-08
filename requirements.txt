@@ -35,6 +35,6 @@ stripe==8.1.0
 typing_extensions==4.9.0
 urllib3==2.2.0
 Werkzeug==3.0.1
-WTForms==3.1.2
+WTForms
 Flask-Limiter
 Flask-Limiter[redis]

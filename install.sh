@@ -44,7 +44,7 @@ STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 "sk_t
 STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
-sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
+sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban redis redis-server -y
 
 ############################
 # Server, Nginx, HTTPS setup
@@ -238,6 +238,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
+git switch limiter
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -294,6 +295,10 @@ echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
 echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
+
+# Start Redis
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
 
 # Start MariaDB
 systemctl start mariadb

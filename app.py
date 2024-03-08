@@ -27,8 +27,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from flask_migrate import Migrate
-from flask_limiter import Limiter
+from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
+from redis.exceptions import ConnectionError as RedisConnectionError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash, safe_join
 
@@ -94,6 +95,13 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="redis://localhost:6379",
 )
+
+
+# Handle Rate Limit Exceeded Error
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit_exceeded(e):
+    return render_template("rate_limit_exceeded.html"), 429
+
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
