@@ -24,7 +24,7 @@
                 </div>
 
                 <!-- Add Username Section -->
-                {% if user.has_paid and user.paid_features_expiry > now %}
+                {% if user.has_paid and (user.paid_features_expiry is none or user.paid_features_expiry > now) %}
                     <h3>Add Username</h3>
                     <p class="badge">⭐️ Pro Feature</p>
                     <form method="POST" action="/add-secondary-username">

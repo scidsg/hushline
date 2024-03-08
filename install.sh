@@ -253,6 +253,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
+git switch gate
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -475,9 +476,21 @@ echo "✅ UFW configuration complete."
 # Remove unused packages
 apt -y autoremove
 
-# Generate Codes
-chmod +x generate_codes.sh
-./generate_codes.sh
+####################
+# REGISTRATION CODES
+####################
+
+# Check if registration codes are required
+require_codes=$(grep REGISTRATION_CODES_REQUIRED .env | cut -d'=' -f2)
+
+if [ "$require_codes" = "True" ]; then
+    echo "Registration codes are required. Generating codes..."
+    chmod +x generate_codes.sh
+    ./generate_codes.sh
+else
+    echo "Registration codes are not required. Skipping code generation..."
+fi
+
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service
