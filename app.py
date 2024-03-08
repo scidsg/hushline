@@ -381,6 +381,10 @@ class RegistrationForm(FlaskForm):
     )
 
 
+# Load registration codes requirement setting from environment variable
+require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
+
+
 class ChangePasswordForm(FlaskForm):
     old_password = PasswordField("Old Password", validators=[DataRequired()])
     new_password = PasswordField(
@@ -473,11 +477,12 @@ def register():
         password = form.password.data
         invite_code_input = form.invite_code.data
 
-        # Validate the invite code
-        invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
-        if not invite_code or invite_code.expiration_date < datetime.utcnow():
-            flash("⛔️ Invalid or expired invite code.", "error")
-            return redirect(url_for("register"))
+        if require_invite_code:
+            # Validate the invite code
+            invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
+            if not invite_code or invite_code.expiration_date < datetime.utcnow():
+                flash("⛔️ Invalid or expired invite code.", "error")
+                return redirect(url_for("register"))
 
         # Check for existing primary_username instead of username
         if User.query.filter_by(primary_username=username).first():
@@ -490,13 +495,16 @@ def register():
 
         # Add user to the database
         db.session.add(new_user)
-        db.session.delete(invite_code)
+        if require_invite_code:
+            db.session.delete(invite_code)
         db.session.commit()
 
         flash("👍 Registration successful! Please log in.", "success")
         return redirect(url_for("login"))
 
-    return render_template("register.html", form=form)
+    return render_template(
+        "register.html", form=form, require_invite_code=require_invite_code
+    )
 
 
 @app.route("/enable-2fa", methods=["GET", "POST"])

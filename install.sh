@@ -288,6 +288,20 @@ fi
 # Re-enable the error trap
 trap error_exit ERR
 
+# Ask the user if registration should require codes
+REGISTRATION_CODES_REQUIRED=$(whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78 3>&1 1>&2 2>&3)
+
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    # User selected Yes, require registration codes
+    echo "Requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=True" >> .env
+else
+    # User selected No, do not require registration codes
+    echo "Not requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=False" >> .env
+fi
+
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
