@@ -325,9 +325,6 @@ echo "Creating MariaDB service override..."
 mkdir -p /etc/systemd/system/mariadb.service.d
 echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
 
-echo "local_infile = 0" >> /etc/mysql/mariadb.conf.d/50-server.conf
-mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
-
 # Reload the systemd daemon and restart MariaDB to apply changes
 systemctl daemon-reload
 systemctl restart mariadb
@@ -372,6 +369,17 @@ if ! python init_db.py; then
 else
     echo "✅ Database initialized successfully."
 fi
+
+systemctl restart mariadb
+cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
+
+# Attempt to revoke FILE privilege, handling potential errors gracefully
+if mysql -u root -p"$DB_PASS" -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"; then
+    echo "✅ FILE privilege successfully revoked from $DB_USER."
+else
+    echo "Warning: Failed to revoke FILE privilege from $DB_USER. This may be because the privilege was not granted."
+fi
+systemctl restart mariadb
 
 # Define the working directory
 WORKING_DIR=$(pwd)
