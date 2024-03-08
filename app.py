@@ -381,6 +381,10 @@ class RegistrationForm(FlaskForm):
     )
 
 
+# Load registration codes requirement setting from environment variable
+require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
+
+
 class ChangePasswordForm(FlaskForm):
     old_password = PasswordField("Old Password", validators=[DataRequired()])
     new_password = PasswordField(
@@ -467,19 +471,25 @@ def index():
 @limiter.limit("120 per minute")
 def register():
     form = RegistrationForm()
+    # Dynamically adjust form field based on invite code requirement
+    if not require_invite_code:
+        del form.invite_code  # Remove invite_code field if not required
 
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        invite_code_input = form.invite_code.data
 
-        # Validate the invite code
-        invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
-        if not invite_code or invite_code.expiration_date < datetime.utcnow():
-            flash("⛔️ Invalid or expired invite code.", "error")
-            return redirect(url_for("register"))
+        # Only process invite code if required
+        invite_code_input = form.invite_code.data if require_invite_code else None
 
-        # Check for existing primary_username instead of username
+        if require_invite_code:
+            # Validate the invite code
+            invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
+            if not invite_code or invite_code.expiration_date < datetime.utcnow():
+                flash("⛔️ Invalid or expired invite code.", "error")
+                return redirect(url_for("register"))
+
+        # Check for existing username (assuming primary_username is the field to check against)
         if User.query.filter_by(primary_username=username).first():
             flash("💔 Username already taken.", "error")
             return redirect(url_for("register"))
@@ -490,13 +500,15 @@ def register():
 
         # Add user to the database
         db.session.add(new_user)
-        db.session.delete(invite_code)
         db.session.commit()
 
         flash("👍 Registration successful! Please log in.", "success")
         return redirect(url_for("login"))
 
-    return render_template("register.html", form=form)
+    # Pass the flag to template to conditionally render invite code field
+    return render_template(
+        "register.html", form=form, require_invite_code=require_invite_code
+    )
 
 
 @app.route("/enable-2fa", methods=["GET", "POST"])

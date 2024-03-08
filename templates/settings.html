@@ -16,7 +16,6 @@
     <div class="formBody">
         <div id="profile" class="tab-content active">
             <div class="form-list">
-
                 <div class="text-only">
                     <!-- Single-Tenant Option Section -->
                     <h3>Large Organizations</h3>
@@ -24,38 +23,37 @@
                 </div>
 
                 <!-- Add Username Section -->
-                {% if user.has_paid and user.paid_features_expiry > now %}
-                    <h3>Add Username</h3>
-                    <p class="badge">⭐️ Pro Feature</p>
-                    <form method="POST" action="/add-secondary-username">
-                        <label for="username">New Username</label>
-                        <input id="username" type="text" name="username" required>
-                        <button type="submit">Add Username</button>
-                    </form>
+                {% if user.has_paid and (user.paid_features_expiry is none or user.paid_features_expiry > now) %}
+                <h3>Add Username</h3>
+                <p class="badge">⭐️ Pro Feature</p>
+                <form method="POST" action="/add-secondary-username">
+                    <label for="username">New Username</label>
+                    <input id="username" type="text" name="username" required>
+                    <button type="submit">Add Username</button>
+                </form>
 
-                    <div class="username-list">
-                        <h4>Additional Usernames</h4>
-                        {% if secondary_usernames %}
-                            <ol>
-                            {% for secondary_user in secondary_usernames %}
-                                <li>{{ secondary_user.display_name or secondary_user.username }}<br>
-                                    <a class="small" href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a>
-                                    <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> 
-                                    <a class="small" href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
-                                </li>
-                            {% endfor %}
-                            </ol>
-                        {% else %}
-                            <p>You have no secondary usernames.</p>
-                        {% endif %}
-                    </div>
-                {% else %}
-                <div class="text-only">
-                    <h3>Additional Usernames</h3>
-                    <p>⭐️ Get up to 5 additional usernames so you can manage multiple tip lines all in one place.</p>
-                    <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
+                <div class="username-list">
+                    <h4>Additional Usernames</h4>
+                    {% if secondary_usernames %}
+                        <ol>
+                        {% for secondary_user in secondary_usernames %}
+                            <li>{{ secondary_user.display_name or secondary_user.username }}<br>
+                                <a class="small" href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a>
+                                <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> 
+                                <a class="small" href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
+                            </li>
+                        {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p>You have no secondary usernames.</p>
                     {% endif %}
                 </div>
+            {% else %}
+            <div class="text-only">
+                <h3>Additional Usernames</h3>
+                <p>⭐️ Get up to 5 additional usernames so you can manage multiple tip lines all in one place.</p>
+                <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
+                {% endif %}
             </div>
 
             <!-- Display Name Section -->
@@ -136,6 +134,7 @@
         <div id="email" class="tab-content">
             <!-- SMTP Settings Section -->
             <h3>Email Delivery Settings</h3>
+            <p>You can configure email delivery for the messages you receive through Hush Line. Not sure what to do? <a href="https://scidsg.github.io/hushline-docs/book/prereqs/general.html#smtp-settings-and-app-passwords" rel="noopener noreferrer" target="_blank">Check out our documentation</a>.</p>
             <form method="POST" action="{{ url_for('update_smtp_settings') }}">
                 {{ smtp_settings_form.hidden_tag() }}
 

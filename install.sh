@@ -215,20 +215,24 @@ whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records 
 echo "⏲️  Waiting 30 seconds for DNS to update..."
 sleep 30
 
-# Function to run the Certbot command
+# Function to run the Certbot command and return its exit status
 run_certbot() {
     certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+    return $?
 }
 
 # Initial attempt
 run_certbot
+certbot_status=$?
 
 # Check if the last command (Certbot) succeeded
-while [ $? -ne 0 ]; do
+while [ $certbot_status -ne 0 ]; do
     echo "Certbot failed, retrying in 60 seconds..."
     sleep 60
     run_certbot
+    certbot_status=$?
 done
+
 echo "✅ Certbot succeeded."
 
 echo "Configuring automatic renewing certificates..."
@@ -253,6 +257,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
+git switch gate
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -309,6 +314,15 @@ echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
 echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
+
+# Ask the user if registration should require codes and directly update the .env file
+if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
+    echo "Requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=True" >> .env
+else
+    echo "Not requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=False" >> .env
+fi
 
 # Start Redis
 sudo systemctl enable redis-server
@@ -466,9 +480,21 @@ echo "✅ UFW configuration complete."
 # Remove unused packages
 apt -y autoremove
 
-# Generate Codes
-chmod +x generate_codes.sh
-./generate_codes.sh
+####################
+# REGISTRATION CODES
+####################
+
+# Check if registration codes are required
+require_codes=$(grep REGISTRATION_CODES_REQUIRED .env | cut -d'=' -f2)
+
+if [ "$require_codes" = "True" ]; then
+    echo "Registration codes are required. Generating codes..."
+    chmod +x generate_codes.sh
+    ./generate_codes.sh
+else
+    echo "Registration codes are not required. Skipping code generation..."
+fi
+
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service
