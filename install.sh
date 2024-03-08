@@ -44,7 +44,7 @@ STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 "sk_t
 STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
-sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban -y
+sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban redis redis-server -y
 
 ############################
 # Server, Nginx, HTTPS setup
@@ -295,6 +295,10 @@ echo "SECRET_KEY=$SECRET_KEY" >> .env
 echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
+# Start Redis
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+
 # Start MariaDB
 systemctl start mariadb
 
@@ -305,6 +309,9 @@ mysql_secure_installation
 echo "Creating MariaDB service override..."
 mkdir -p /etc/systemd/system/mariadb.service.d
 echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
+
+echo "local_infile = 0" >> /etc/mysql/mariadb.conf.d/50-server.conf
+mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
 
 # Reload the systemd daemon and restart MariaDB to apply changes
 systemctl daemon-reload

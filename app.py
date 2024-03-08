@@ -27,6 +27,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from flask_migrate import Migrate
+from flask_limiter import Limiter, RateLimitExceeded
+from flask_limiter.util import get_remote_address
+from redis.exceptions import ConnectionError as RedisConnectionError
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash, safe_join
 
 # Form Handling and Validation
@@ -83,6 +87,24 @@ def decrypt_field(data):
 
 
 app = Flask(__name__)
+
+# Init Flask Limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="redis://localhost:6379",
+)
+
+
+# Handle Rate Limit Exceeded Error
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit_exceeded(e):
+    return render_template("rate_limit_exceeded.html"), 429
+
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
 app.config["SECRET_KEY"] = secret_key
 
 ssl_cert = "/etc/mariadb/ssl/fullchain.pem"
@@ -426,6 +448,7 @@ def handle_exception(e):
 
 # Routes
 @app.route("/")
+@limiter.limit("120 per minute")
 def index():
     if "user_id" in session:
         user = User.query.get(session["user_id"])
@@ -441,6 +464,7 @@ def index():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def register():
     form = RegistrationForm()
 
@@ -476,6 +500,7 @@ def register():
 
 
 @app.route("/enable-2fa", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def enable_2fa():
     user_id = session.get("user_id")
     if not user_id:
@@ -522,6 +547,7 @@ def enable_2fa():
 
 
 @app.route("/disable-2fa", methods=["POST"])
+@limiter.limit("120 per minute")
 def disable_2fa():
     user_id = session.get("user_id")
     if not user_id:
@@ -540,6 +566,7 @@ def confirm_disable_2fa():
 
 
 @app.route("/show-qr-code")
+@limiter.limit("120 per minute")
 def show_qr_code():
     user = User.query.get(session["user_id"])
     if not user or not user.totp_secret:
@@ -567,6 +594,7 @@ def show_qr_code():
 
 
 @app.route("/verify-2fa-setup", methods=["POST"])
+@limiter.limit("120 per minute")
 def verify_2fa_setup():
     user = User.query.get(session["user_id"])
     if not user:
@@ -584,6 +612,7 @@ def verify_2fa_setup():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -624,6 +653,7 @@ def login():
 
 
 @app.route("/verify-2fa-login", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def verify_2fa_login():
     # Redirect to login if user is not authenticated
     if "user_id" not in session or not session.get("2fa_required", False):
@@ -650,6 +680,7 @@ def verify_2fa_login():
 
 
 @app.route("/inbox/<username>")
+@limiter.limit("120 per minute")
 @require_2fa
 def inbox(username):
     # Redirect if not logged in
@@ -699,6 +730,7 @@ def inbox(username):
 
 
 @app.route("/settings", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def settings():
     user_id = session.get("user_id")
@@ -849,6 +881,7 @@ def settings():
 
 
 @app.route("/toggle-2fa", methods=["POST"])
+@limiter.limit("120 per minute")
 def toggle_2fa():
     user_id = session.get("user_id")
     if not user_id:
@@ -862,6 +895,7 @@ def toggle_2fa():
 
 
 @app.route("/change-password", methods=["POST"])
+@limiter.limit("120 per minute")
 def change_password():
     user_id = session.get("user_id")
     if not user_id:
@@ -907,6 +941,7 @@ def change_password():
 
 
 @app.route("/change-username", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def change_username():
     user_id = session.get("user_id")
@@ -959,6 +994,7 @@ def change_username():
 
 
 @app.route("/logout")
+@limiter.limit("120 per minute")
 def logout():
     # Explicitly remove specific session keys related to user authentication
     session.pop("user_id", None)
@@ -1000,6 +1036,7 @@ def get_email_from_pgp_key(pgp_key):
 
 
 @app.route("/submit_message/<username>", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def submit_message(username):
     form = MessageForm()
 
@@ -1147,6 +1184,7 @@ def is_valid_pgp_key(key):
 
 
 @app.route("/update_pgp_key", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def update_pgp_key():
     user_id = session.get("user_id")
     if not user_id:
@@ -1212,6 +1250,7 @@ list_keys()
 
 
 @app.route("/update_smtp_settings", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 def update_smtp_settings():
     user_id = session.get("user_id")
     if not user_id:
@@ -1261,6 +1300,7 @@ def update_smtp_settings():
 
 
 @app.route("/delete_message/<int:message_id>", methods=["POST"])
+@limiter.limit("120 per minute")
 def delete_message(message_id):
     if "user_id" not in session:
         flash("🔑 Please log in to continue.")
@@ -1283,6 +1323,7 @@ def delete_message(message_id):
 
 
 @app.route("/delete-account", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def delete_account():
     user_id = session.get("user_id")
@@ -1306,6 +1347,7 @@ def delete_account():
 
 
 @app.route("/add-secondary-username", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def add_secondary_username():
     user_id = session.get("user_id")
@@ -1351,6 +1393,7 @@ def add_secondary_username():
 
 
 @app.route("/settings/secondary/<secondary_username>/update", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def update_secondary_username(secondary_username):
     # Ensure the user is logged in
@@ -1380,6 +1423,7 @@ def update_secondary_username(secondary_username):
 
 
 @app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def secondary_user_settings(secondary_username):
     # Ensure the user is logged in
@@ -1412,6 +1456,7 @@ def secondary_user_settings(secondary_username):
 
 
 @app.route("/create-checkout-session", methods=["POST"])
+@limiter.limit("120 per minute")
 def create_checkout_session():
     user_id = session.get("user_id")
     if not user_id:
@@ -1457,6 +1502,7 @@ def create_checkout_session():
 
 
 @app.route("/payment-success")
+@limiter.limit("120 per minute")
 def payment_success():
     session_id = request.args.get("session_id")
 
@@ -1509,6 +1555,7 @@ def is_safe_url(target):
 
 
 @app.route("/payment-cancel")
+@limiter.limit("120 per minute")
 def payment_cancel():
     origin_page = request.args.get("origin", url_for("index"))
     if is_safe_url(origin_page):
@@ -1577,6 +1624,7 @@ def find_user_by_stripe_customer_id(customer_id):
 
 
 @app.route("/cancel-subscription", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def cancel_subscription():
     user_id = session.get("user_id")
@@ -1626,6 +1674,7 @@ def has_paid_features(user_id):
 
 
 @app.route("/admin/toggle_verified/<int:user_id>", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def toggle_verified(user_id):
     if not session.get("is_admin", False):
@@ -1640,6 +1689,7 @@ def toggle_verified(user_id):
 
 
 @app.route("/admin/toggle_paid/<int:user_id>", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def toggle_paid(user_id):
     if not session.get("is_admin", False):
@@ -1654,6 +1704,7 @@ def toggle_paid(user_id):
 
 
 @app.route("/admin/toggle_admin/<int:user_id>", methods=["POST"])
+@limiter.limit("120 per minute")
 @require_2fa
 def toggle_admin(user_id):
     if not session.get("is_admin", False):
