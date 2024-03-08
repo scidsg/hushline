@@ -257,7 +257,6 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
-git switch gate
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
