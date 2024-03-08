@@ -16,8 +16,14 @@
     <div class="formBody">
         <div id="profile" class="tab-content active">
             <div class="form-list">
-                <h3>Large Organizations</h3>
-                <p>🏝️ Single-tenant plans are available. Please contact us for more information.</p>
+
+                <div class="text-only">
+                    <!-- Single-Tenant Option Section -->
+                    <h3>Large Organizations</h3>
+                    <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
+                </div>
+
+                <!-- Add Username Section -->
                 {% if user.has_paid and user.paid_features_expiry > now %}
                     <h3>Add Username</h3>
                     <p class="badge">⭐️ Pro Feature</p>
@@ -44,13 +50,12 @@
                         {% endif %}
                     </div>
                 {% else %}
-                    <div class="promo">
-                        <h3>One Account, Many Tip Lines.</h3>
-                        <img class="upgrade" src="{{ url_for('static', filename='upgrade.png') }}" alt="Upgrade Now"><br>
-                        <p>Get up to <span class="highlight">5 additional usernames</span> so you can manage multiple initiatives all in one place.</p>
-                        <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
-                    </div>
-                {% endif %}
+                <div class="text-only">
+                    <h3>Additional Usernames</h3>
+                    <p>⭐️ Get up to 5 additional usernames so you can manage multiple tip lines all in one place.</p>
+                    <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Display Name Section -->

@@ -826,6 +826,14 @@ a.dropbtn:hover {
     margin-bottom: 2rem;
 }
 
+.text-only {
+    margin-bottom: 2rem;
+}
+
+.text-only p {
+    margin-bottom: .5rem;
+}
+
 @media only screen and (max-width: 640px) {
     body {
         padding-top: 5.5rem;
