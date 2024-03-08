@@ -214,26 +214,7 @@ whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records 
 # Request the certificates
 echo "⏲️  Waiting 30 seconds for DNS to update..."
 sleep 30
-
-# Function to run the Certbot command and return its exit status
-run_certbot() {
-    certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
-    return $?
-}
-
-# Initial attempt
-run_certbot
-certbot_status=$?
-
-# Check if the last command (Certbot) succeeded
-while [ $certbot_status -ne 0 ]; do
-    echo "Certbot failed, retrying in 60 seconds..."
-    sleep 60
-    run_certbot
-    certbot_status=$?
-done
-
-echo "✅ Certbot succeeded."
+certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 echo "Configuring automatic renewing certificates..."
 # Set up cron job to renew SSL certificate
@@ -257,6 +238,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
+git switch limiter
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -314,15 +296,6 @@ echo "SECRET_KEY=$SECRET_KEY" >> .env
 echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
-# Ask the user if registration should require codes and directly update the .env file
-if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
-    echo "Requiring registration codes for new users..."
-    echo "REGISTRATION_CODES_REQUIRED=True" >> .env
-else
-    echo "Not requiring registration codes for new users..."
-    echo "REGISTRATION_CODES_REQUIRED=False" >> .env
-fi
-
 # Start Redis
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
@@ -337,6 +310,9 @@ mysql_secure_installation
 echo "Creating MariaDB service override..."
 mkdir -p /etc/systemd/system/mariadb.service.d
 echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
+
+echo "local_infile = 0" >> /etc/mysql/mariadb.conf.d/50-server.conf
+mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
 
 # Reload the systemd daemon and restart MariaDB to apply changes
 systemctl daemon-reload
@@ -382,19 +358,6 @@ if ! python init_db.py; then
 else
     echo "✅ Database initialized successfully."
 fi
-
-systemctl restart mariadb
-
-# Disable local-infile
-cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
-
-# Attempt to revoke FILE privilege, handling potential errors gracefully
-if mysql -u root -p"$DB_PASS" -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"; then
-    echo "✅ FILE privilege successfully revoked from $DB_USER."
-else
-    echo "Warning: Failed to revoke FILE privilege from $DB_USER. This may be because the privilege was not granted."
-fi
-systemctl restart mariadb
 
 # Define the working directory
 WORKING_DIR=$(pwd)
@@ -479,21 +442,9 @@ echo "✅ UFW configuration complete."
 # Remove unused packages
 apt -y autoremove
 
-####################
-# REGISTRATION CODES
-####################
-
-# Check if registration codes are required
-require_codes=$(grep REGISTRATION_CODES_REQUIRED .env | cut -d'=' -f2)
-
-if [ "$require_codes" = "True" ]; then
-    echo "Registration codes are required. Generating codes..."
-    chmod +x generate_codes.sh
-    ./generate_codes.sh
-else
-    echo "Registration codes are not required. Skipping code generation..."
-fi
-
+# Generate Codes
+chmod +x generate_codes.sh
+./generate_codes.sh
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service

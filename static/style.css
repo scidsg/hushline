@@ -458,26 +458,6 @@ header .btn {
     font-family: 'Atkinson Bold', sans-serif;
 }
 
-.formBody input[type="submit"]:hover,
-
-.formBody button:hover,
-
-.btn:hover {
-    text-decoration: none;
-    box-shadow: 0px 2px 0px 0px rgba(125,37,193,.33);
-    transition: 0s;
-}
-
-.btn-danger {
-    border-color: darkred;
-}
-
-
-.btn-danger:hover,
-.formBody .btn-danger:hover {
-    box-shadow: 0px 2px 0px 0px rgba(138,0,5,.33);
-}
-
 .formBody h3 + form button {
     margin-top: 0;
 }
@@ -508,13 +488,6 @@ header .btn {
 input[type="submit"]:hover,
 button:hover {
     cursor: pointer;
-    text-decoration: none;
-}
-
-input.btn:hover,
-button:hover {
-    cursor: pointer;
-    text-decoration: none;
 }
 
 textarea {
@@ -858,10 +831,6 @@ a.dropbtn:hover {
 }
 
 .text-only p {
-    margin-bottom: .5rem;
-}
-
-.form-list h3 {
     margin-bottom: .5rem;
 }
 
