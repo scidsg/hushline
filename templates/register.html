@@ -21,13 +21,15 @@
                 {% endfor %}
             {% endif %}
         </div>
+        {% if require_invite_code %}
         <div>
-            {{ form.invite_code.label(for="invite_code") }}
-            {{ form.invite_code(id="invite_code") }}
-            {% if form.invite_code.errors %}
-                <span class="error">{{ form.invite_code.errors[0] }}</span>
-            {% endif %}
+            {{ form.invite_code.label }}
+            {{ form.invite_code(size=32) }}
+            {% for error in form.invite_code.errors %}
+                <span>{{ error }}</span>
+            {% endfor %}
         </div>
+        {% endif %}
         <button type="submit">Register</button>
     </form>
     <p>Already have an account? <a href="/login">Login here</a></p>

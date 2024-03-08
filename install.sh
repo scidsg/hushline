@@ -296,6 +296,16 @@ echo "SECRET_KEY=$SECRET_KEY" >> .env
 echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
 echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
+# Ask the user if registration should require codes and directly update the .env file
+if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
+    echo "Requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=True" >> .env
+else
+    echo "Not requiring registration codes for new users..."
+    echo "REGISTRATION_CODES_REQUIRED=False" >> .env
+fi
+
+
 # Start Redis
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
@@ -310,9 +320,6 @@ mysql_secure_installation
 echo "Creating MariaDB service override..."
 mkdir -p /etc/systemd/system/mariadb.service.d
 echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
-
-echo "local_infile = 0" >> /etc/mysql/mariadb.conf.d/50-server.conf
-mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
 
 # Reload the systemd daemon and restart MariaDB to apply changes
 systemctl daemon-reload
@@ -358,6 +365,9 @@ if ! python init_db.py; then
 else
     echo "✅ Database initialized successfully."
 fi
+
+cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
+mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
 
 # Define the working directory
 WORKING_DIR=$(pwd)
