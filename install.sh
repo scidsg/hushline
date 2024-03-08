@@ -371,6 +371,8 @@ else
 fi
 
 systemctl restart mariadb
+
+# Disable local-infile
 cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
 
 # Attempt to revoke FILE privilege, handling potential errors gracefully
