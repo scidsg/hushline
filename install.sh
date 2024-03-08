@@ -311,6 +311,9 @@ echo "Creating MariaDB service override..."
 mkdir -p /etc/systemd/system/mariadb.service.d
 echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
 
+echo "local_infile = 0" >> /etc/mysql/mariadb.conf.d/50-server.conf
+mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+
 # Reload the systemd daemon and restart MariaDB to apply changes
 systemctl daemon-reload
 systemctl restart mariadb
