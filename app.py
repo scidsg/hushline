@@ -471,11 +471,16 @@ def index():
 @limiter.limit("120 per minute")
 def register():
     form = RegistrationForm()
+    # Dynamically adjust form field based on invite code requirement
+    if not require_invite_code:
+        del form.invite_code  # Remove invite_code field if not required
 
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        invite_code_input = form.invite_code.data
+
+        # Only process invite code if required
+        invite_code_input = form.invite_code.data if require_invite_code else None
 
         if require_invite_code:
             # Validate the invite code
@@ -484,7 +489,7 @@ def register():
                 flash("⛔️ Invalid or expired invite code.", "error")
                 return redirect(url_for("register"))
 
-        # Check for existing primary_username instead of username
+        # Check for existing username (assuming primary_username is the field to check against)
         if User.query.filter_by(primary_username=username).first():
             flash("💔 Username already taken.", "error")
             return redirect(url_for("register"))
@@ -495,13 +500,12 @@ def register():
 
         # Add user to the database
         db.session.add(new_user)
-        if require_invite_code:
-            db.session.delete(invite_code)
         db.session.commit()
 
         flash("👍 Registration successful! Please log in.", "success")
         return redirect(url_for("login"))
 
+    # Pass the flag to template to conditionally render invite code field
     return render_template(
         "register.html", form=form, require_invite_code=require_invite_code
     )
