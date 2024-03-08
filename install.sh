@@ -215,20 +215,24 @@ whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records 
 echo "⏲️  Waiting 30 seconds for DNS to update..."
 sleep 30
 
-# Function to run the Certbot command
+# Function to run the Certbot command and return its exit status
 run_certbot() {
     certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
+    return $?
 }
 
 # Initial attempt
 run_certbot
+certbot_status=$?
 
 # Check if the last command (Certbot) succeeded
-while [ $? -ne 0 ]; do
+while [ $certbot_status -ne 0 ]; do
     echo "Certbot failed, retrying in 60 seconds..."
     sleep 60
     run_certbot
+    certbot_status=$?
 done
+
 echo "✅ Certbot succeeded."
 
 echo "Configuring automatic renewing certificates..."

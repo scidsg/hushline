@@ -134,6 +134,7 @@
         <div id="email" class="tab-content">
             <!-- SMTP Settings Section -->
             <h3>Email Delivery Settings</h3>
+            <p>You can configure email delivery for the messages you receive through Hush Line. Not sure what to do? <a href="https://scidsg.github.io/hushline-docs/book/prereqs/general.html#smtp-settings-and-app-passwords" rel="noopener noreferrer" target="_blank">Check out our documentation</a>.</p>
             <form method="POST" action="{{ url_for('update_smtp_settings') }}">
                 {{ smtp_settings_form.hidden_tag() }}
 
