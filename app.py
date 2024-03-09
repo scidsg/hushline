@@ -709,16 +709,19 @@ def inbox():
         return redirect(url_for("login"))
 
     logged_in_user_id = session["user_id"]
-    # Use the logged-in user's ID to access the primary user's information directly
+
+    # Check for a 'username' query parameter and compare it with the logged-in user's username
+    requested_username = request.args.get("username")
+    logged_in_username = User.query.get(logged_in_user_id).primary_username
+
+    # If the requested username does not match the logged-in user's username, redirect to the correct inbox URL
+    if requested_username and requested_username != logged_in_username:
+        return redirect(
+            url_for("inbox")
+        )  # Removes any 'username' query parameter to avoid confusion
+
+    # Proceed with loading the inbox as before
     primary_user = User.query.get(logged_in_user_id)
-
-    # Initialize variables for secondary user and message query
-    secondary_user = None
-    messages = []
-    is_secondary = False
-    secondary_users_dict = {}
-
-    # Since we're directly accessing the logged-in user's inbox, we can simplify this to:
     messages = (
         Message.query.filter_by(user_id=primary_user.id)
         .order_by(Message.id.desc())
@@ -726,13 +729,12 @@ def inbox():
     )
     secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
 
-    # Render the inbox template with necessary data
     return render_template(
         "inbox.html",
         user=primary_user,
-        secondary_user=None,  # Adjusted for simplicity since we're focusing on the primary user
+        secondary_user=None,
         messages=messages,
-        is_secondary=is_secondary,
+        is_secondary=False,
         secondary_users=secondary_users_dict,
     )
 

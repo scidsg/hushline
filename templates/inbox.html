@@ -3,15 +3,7 @@
 
 {% block content %}
     {% if messages %}
-        {% if is_secondary %}
-            <h2>Inbox for {{ secondary_user.display_name or secondary_user.username }}</h2>
-            <p class="badge">✌️ Secondary Username</p>
-        {% else %}
-            <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
-            {% if secondary_users|length > 0 %}
-                <p class="badge">☝️ Primary Username</p>
-            {% endif %}
-        {% endif %}
+        <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
         {% for message in messages %}
             <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content | safe }}">
                 {% if not is_secondary %}
