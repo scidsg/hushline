@@ -698,6 +698,7 @@ def verify_2fa_login():
 
 
 @app.route("/inbox/<username>")
+@limiter.limit("120 per minute")
 @require_2fa
 def inbox(username):
     # Redirect if not logged in
@@ -712,6 +713,10 @@ def inbox(username):
     # Initialize variables for secondary user and message query
     secondary_user = None
     messages = []
+    is_secondary = False
+
+    # Ensure 'secondary_users_dict' is initialized for template context
+    secondary_users_dict = {}
 
     # Check if the requested username matches the logged-in primary user
     if primary_user and primary_user.id == logged_in_user_id:
@@ -720,6 +725,7 @@ def inbox(username):
             .order_by(Message.id.desc())
             .all()
         )
+        secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
     else:
         # Attempt to find a secondary user matching the requested username
         # and verify it belongs to the logged-in user
@@ -732,18 +738,27 @@ def inbox(username):
                 .order_by(Message.id.desc())
                 .all()
             )
+            is_secondary = True
         else:
             # If no matching primary or secondary user, deny access
             flash("You are not authorized to view this inbox.")
             return redirect(url_for("index"))
 
-    # Render the inbox template
+    # Determine the user object to pass to the template based on whether accessing primary or secondary inbox
+    user_for_template = (
+        User.query.get(logged_in_user_id)
+        if primary_user
+        else secondary_user.primary_user
+    )
+
+    # Render the inbox template with necessary data
     return render_template(
         "inbox.html",
-        user=primary_user if primary_user else secondary_user.primary_user,
+        user=user_for_template,
         secondary_user=secondary_user,
         messages=messages,
-        is_secondary=bool(secondary_user),
+        is_secondary=is_secondary,
+        secondary_users=secondary_users_dict,
     )
 
 
