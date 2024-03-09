@@ -418,6 +418,12 @@ class DisplayNameForm(FlaskForm):
     display_name = StringField("Display Name", validators=[Length(max=100)])
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    flash("⛓️‍💥 That page doesn't exist.", "warning")
+    return redirect(url_for("index"))
+
+
 def require_2fa(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
