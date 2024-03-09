@@ -917,7 +917,6 @@ def toggle_2fa():
 
 @app.route("/change-password", methods=["POST"])
 @limiter.limit("120 per minute")
-@require_2fa
 def change_password():
     user_id = session.get("user_id")
     if not user_id:
@@ -1207,7 +1206,6 @@ def is_valid_pgp_key(key):
 
 @app.route("/update_pgp_key", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
-@require_2fa
 def update_pgp_key():
     user_id = session.get("user_id")
     if not user_id:
@@ -1274,7 +1272,6 @@ list_keys()
 
 @app.route("/update_smtp_settings", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
-@require_2fa
 def update_smtp_settings():
     user_id = session.get("user_id")
     if not user_id:
