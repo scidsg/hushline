@@ -701,43 +701,46 @@ def inbox(username):
         return redirect(url_for("login"))
 
     # Initialize variables
-    user = User.query.filter_by(primary_username=username).first()
-    secondary_users_dict = {}
+    current_user = User.query.get(session["user_id"])
+    requested_user = User.query.filter_by(primary_username=username).first()
 
-    if user:
-        # User is a primary user, so fetch all messages for the primary user
+    # Verify that the requested inbox belongs to the logged-in user
+    if requested_user and (
+        requested_user.id == session["user_id"] or session.get("is_admin", False)
+    ):
+        secondary_users_dict = {su.id: su for su in requested_user.secondary_users}
         messages = (
-            Message.query.filter_by(user_id=user.id).order_by(Message.id.desc()).all()
-        )
-
-        # Create a dictionary of secondary users for labeling purposes
-        secondary_users_dict = {su.id: su for su in user.secondary_users}
-
-        # Set the flag for secondary user to false since we are in the primary user's inbox
-        is_secondary = False
-
-    else:
-        # If not found, try to find a secondary user and its related messages
-        secondary_user = SecondaryUser.query.filter_by(username=username).first_or_404()
-        messages = (
-            Message.query.filter_by(secondary_user_id=secondary_user.id)
+            Message.query.filter_by(user_id=requested_user.id)
             .order_by(Message.id.desc())
             .all()
         )
-
-        # Since we are viewing a secondary user's inbox, set the flag to true
-        is_secondary = True
-
-        # The primary user should still be accessible for operations like sending messages
-        user = secondary_user.primary_user
+        is_secondary = False
+    else:
+        # Check if the requested inbox is a secondary user of the logged-in user (and not accessing another primary user's inbox)
+        secondary_user = SecondaryUser.query.filter_by(
+            username=username, user_id=session["user_id"]
+        ).first()
+        if secondary_user:
+            messages = (
+                Message.query.filter_by(secondary_user_id=secondary_user.id)
+                .order_by(Message.id.desc())
+                .all()
+            )
+            is_secondary = True
+            secondary_users_dict = (
+                {}
+            )  # Secondary users don't have their own secondary users
+        else:
+            flash("You are not authorized to view this inbox.")
+            return redirect(url_for("index"))
 
     return render_template(
         "inbox.html",
-        user=user,
+        user=current_user,  # Pass the current logged-in user
         secondary_user=secondary_user if is_secondary else None,
         messages=messages,
         is_secondary=is_secondary,
-        secondary_users=secondary_users_dict,  # Pass this dictionary to the template
+        secondary_users=secondary_users_dict,
     )
 
 
@@ -1491,8 +1494,8 @@ def create_checkout_session():
         origin_page = request.referrer or url_for("index")
         session["origin_page"] = origin_page
 
-        price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO"  # Test
-        # price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
+        # price_id = "price_1OhiU5LcBPqjxU07a4eKQHrO"  # Test
+        price_id = "price_1OhhYFLcBPqjxU07u2wYbUcF"
 
         checkout_session = stripe.checkout.Session.create(
             customer=user.stripe_customer_id,

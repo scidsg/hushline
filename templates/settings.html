@@ -1,216 +1,191 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
-
 {% block content %}
 <h2>Settings</h2>
 <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list">
         <li class="tab active" data-tab="profile">Profile</li>
         <li class="tab" data-tab="auth">Authentication</li>
-        <li class="tab" data-tab="email">Email &amp; PGP</li>
+        <li class="tab" data-tab="email">Email & PGP</li>
         <li class="tab" data-tab="advanced">Advanced</li>
         {% if user.is_admin %}
             <li class="tab admin-only" data-tab="admin">Admin</li>
         {% endif %}
     </ul>
-    <div class="formBody">
-        <div id="profile" class="tab-content active">
-            <div class="form-list">
-
-                <div class="text-only">
-                    <!-- Single-Tenant Option Section -->
-                    <h3>Large Organizations</h3>
-                    <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
-                </div>
-
-                <!-- Add Username Section -->
-                {% if user.has_paid and user.paid_features_expiry > now %}
-                    <h3>Add Username</h3>
-                    <p class="badge">⭐️ Pro Feature</p>
-                    <form method="POST" action="/add-secondary-username">
-                        <label for="username">New Username</label>
-                        <input id="username" type="text" name="username" required>
-                        <button type="submit">Add Username</button>
-                    </form>
-
-                    <div class="username-list">
-                        <h4>Additional Usernames</h4>
-                        {% if secondary_usernames %}
-                            <ol>
+</div>
+<div class="formBody">
+    <div id="profile" class="tab-content active">
+        <div class="form-list">
+            <div class="text-only">
+                <h3>Large Organizations</h3>
+                <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
+            </div>
+            {% if user.has_paid and (user.paid_features_expiry is none or user.paid_features_expiry > now) %}
+                <h3>Add Username</h3>
+                <p class="badge">⭐️ Pro Feature</p>
+                <form method="POST" action="/add-secondary-username">
+                    <label for="username">New Username</label>
+                    <input id="username" type="text" name="username" required>
+                    <button type="submit">Add Username</button>
+                </form>
+                <div class="username-list">
+                    <h4>Additional Usernames</h4>
+                    {% if secondary_usernames %}
+                        <ol>
                             {% for secondary_user in secondary_usernames %}
                                 <li>{{ secondary_user.display_name or secondary_user.username }}<br>
                                     <a class="small" href="{{ url_for('secondary_user_settings', secondary_username=secondary_user.username) }}">Settings</a>
-                                    <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a> 
+                                    <a class="small" href="{{ url_for('inbox', username=secondary_user.username) }}">Inbox</a>
                                     <a class="small" href="{{ url_for('submit_message', username=secondary_user.username) }}">Submit Message</a>
                                 </li>
                             {% endfor %}
-                            </ol>
-                        {% else %}
-                            <p>You have no secondary usernames.</p>
-                        {% endif %}
-                    </div>
-                {% else %}
+                        </ol>
+                    {% else %}
+                        <p>You have no secondary usernames.</p>
+                    {% endif %}
+                </div>
+            {% else %}
                 <div class="text-only">
                     <h3>Additional Usernames</h3>
                     <p>⭐️ Get up to 5 additional usernames so you can manage multiple tip lines all in one place.</p>
                     <button class="primaryBtn" id="checkout-button">Upgrade Now</button>
-                    {% endif %}
                 </div>
-            </div>
-
-            <!-- Display Name Section -->
-            <h3>Update Display Name</h3>
-            {% if user.is_verified %}
-                <p>⚠️ Changing your display name will result in losing your verification status.</p>
             {% endif %}
-            <form method="POST" action="{{ url_for('settings') }}">
-                {{ display_name_form.hidden_tag() }}
+        </div>
+        <h3>Update Display Name</h3>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your display name will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ display_name_form.hidden_tag() }}
                 <label for="display_name">Display Name</label>
-                {{ display_name_form.display_name(id='display_name') }}
-                {% if display_name_form.display_name.errors %}
-                    {% for error in display_name_form.display_name.errors %}
-                        <span class="error">{{ error }}</span>
-                    {% endfor %}
-                {% endif %}
-                <button type="submit" name="update_display_name">Update Display Name</button>
-            </form>
-        </div>
-
-        <div id="auth" class="tab-content">
-            <!-- Two-Factor Authentication Section -->
-            <h3>Two-Factor Authentication</h3>
-            {% if user.totp_secret %}
-                <!-- If 2FA is enabled, show the Disable 2FA button -->
-                <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
-                    <button type="submit">Disable 2FA</button>
-                </form>
-            {% else %}
-                <!-- If 2FA is disabled, show the Enable 2FA button -->
-                <form method="POST" action="{{ url_for('toggle_2fa') }}">
-                    <button type="submit">Enable 2FA</button>
-                </form>
+            {{ display_name_form.display_name(id='display_name') }}
+            {% if display_name_form.display_name.errors %}
+                {% for error in display_name_form.display_name.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
             {% endif %}
+            <button type="submit" name="update_display_name">Update Display Name</button>
+        </form>
+    </div>
 
-            <!-- Change Password Section in settings.html -->
-            <h3>Change Password</h3>
-            <form method="POST" action="{{ url_for('change_password') }}">
-                {{ change_password_form.hidden_tag() }}
+    <div id="auth" class="tab-content">
+        <!-- Two-Factor Authentication Section -->
+        <h3>Two-Factor Authentication</h3>
+        {% if user.totp_secret %}
+            <!-- If 2FA is enabled, show the Disable 2FA button -->
+            <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
+                <button type="submit">Disable 2FA</button>
+            </form>
+        {% else %}
+        <!-- If 2FA is disabled, show the Enable 2FA button -->
+        <form method="POST" action="{{ url_for('toggle_2fa') }}">
+            <button type="submit">Enable 2FA</button>
+        </form>
+        {% endif %}
+        <!-- Change Password Section in settings.html -->
+        <h3>Change Password</h3>
+        <form method="POST" action="{{ url_for('change_password') }}">
+            {{ change_password_form.hidden_tag() }}
                 <label for="old_password">Old Password</label>
-                {{ change_password_form.old_password(id='old_password') }}
-                {% if change_password_form.old_password.errors %}
-                    {% for error in change_password_form.old_password.errors %}
-                        <span class="error">{{ error }}</span>
-                    {% endfor %}
-                {% endif %}
-
-                <label for="new_password">New Password</label>
-                {{ change_password_form.new_password(id="new_password") }}
-                {% if change_password_form.new_password.errors %}
-                    {% for error in change_password_form.new_password.errors %}
-                        <span class="error">{{ error }}</span>
-                    {% endfor %}
-                {% endif %}
-
-                <button type="submit">Change Password</button>
-            </form>
-
-            <!-- Change Username Section -->
-            <h3>Change Username</h3>
-            {% if user.is_verified %}
-                <p>⚠️ Changing your username will result in losing your verification status.</p>
+            {{ change_password_form.old_password(id='old_password') }}
+            {% if change_password_form.old_password.errors %}
+                {% for error in change_password_form.old_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
             {% endif %}
-            <form method="POST" action="{{ url_for('settings') }}">
-                {{ change_username_form.hidden_tag() }}
-                <label for="new_username">Username</label>
-                {{ change_username_form.new_username(id='new_username', value=session['username']) }}
-                {% if change_username_form.new_username.errors %}
-                    {% for error in change_username_form.new_username.errors %}
-                        <span class="error">{{ error }}</span>
-                    {% endfor %}
-                {% endif %}
-
-                <button type="submit" name="change_username">Change Username</button>
-            </form>
-        </div>
-
-        <div id="email" class="tab-content">
-            <!-- SMTP Settings Section -->
-            <h3>Email Delivery Settings</h3>
-            <form method="POST" action="{{ url_for('update_smtp_settings') }}">
-                {{ smtp_settings_form.hidden_tag() }}
-
-                {{ smtp_settings_form.smtp_username.label }}
-                {{ smtp_settings_form.smtp_username }}
-
-                {{ smtp_settings_form.smtp_server.label }}
-                {{ smtp_settings_form.smtp_server }}
-
-                {{ smtp_settings_form.smtp_port.label }}
-                {{ smtp_settings_form.smtp_port }}
-
-
-                {{ smtp_settings_form.smtp_password.label }}
-                {{ smtp_settings_form.smtp_password }}
-
-                <button type="submit">Update Settings</button>
-            </form>
-
-            <!-- PGP Key Section -->
-            <h3>Public PGP Key</h3>
-            <form method="POST" action="{{ url_for('update_pgp_key') }}">
-                {{ pgp_key_form.hidden_tag() }}
-                <label for="pgp_key">Public PGP Key</label>
-                {{ pgp_key_form.pgp_key(id='pgp_key') }}
-                {% if pgp_key_form.pgp_key.errors %}
-                    {% for error in pgp_key_form.pgp_key.errors %}
-                        <span class="error">{{ error }}</span>
-                    {% endfor %}
-                {% endif %}
-
-                <button type="submit">Update PGP Key</button>
-            </form>
-        </div>
-
-        <div id="advanced" class="tab-content">
-            <!-- Subscription Cancellation Section -->
-            {% if user.is_subscription_active %}
-                <h3>Cancel Subscription</h3>
-                <p>If you cancel your subscription, you will lose access to pro features at the end of your billing cycle.</p>
-                <form id="cancelSubscriptionForm" method="POST" action="{{ url_for('cancel_subscription') }}">
-                    <button type="submit" class="btn-danger">Cancel Subscription</button>
-                </form>
+            <label for="new_password">New Password</label>
+            {{ change_password_form.new_password(id="new_password") }}
+            {% if change_password_form.new_password.errors %}
+                {% for error in change_password_form.new_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
             {% endif %}
+            <button type="submit">Change Password</button>
+        </form>
+        <!-- Change Username Section -->
+        <h3>Change Username</h3>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your username will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ change_username_form.hidden_tag() }}
+            <label for="new_username">Username</label>
+            {{ change_username_form.new_username(id='new_username', value=session['username']) }}
+            {% if change_username_form.new_username.errors %}
+                {% for error in change_username_form.new_username.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="change_username">Change Username</button>
+        </form>
+    </div>
 
-            <!-- Account Deletion Section -->
-            <h3>Delete Account</h3>
-            <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
-            <form method="POST" action="{{ url_for('delete_account') }}">
-                <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
+    <div id="email" class="tab-content">
+        <!-- SMTP Settings Section -->
+        <h3>Email Delivery Settings</h3>
+        <form method="POST" action="{{ url_for('update_smtp_settings') }}">
+            {{ smtp_settings_form.hidden_tag() }}
+            {{ smtp_settings_form.smtp_username.label }}
+            {{ smtp_settings_form.smtp_username }}
+            {{ smtp_settings_form.smtp_server.label }}
+            {{ smtp_settings_form.smtp_server }}
+            {{ smtp_settings_form.smtp_port.label }}
+            {{ smtp_settings_form.smtp_port }}
+            {{ smtp_settings_form.smtp_password.label }}
+            {{ smtp_settings_form.smtp_password }}
+            <button type="submit">Update Settings</button>
+        </form>
+        <!-- PGP Key Section -->
+        <h3>Public PGP Key</h3>
+        <form method="POST" action="{{ url_for('update_pgp_key') }}">
+            {{ pgp_key_form.hidden_tag() }}
+            <label for="pgp_key">Public PGP Key</label>
+            {{ pgp_key_form.pgp_key(id='pgp_key') }}
+            {% if pgp_key_form.pgp_key.errors %}
+                {% for error in pgp_key_form.pgp_key.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit">Update PGP Key</button>
+        </form>
+    </div>
+
+    <div id="advanced" class="tab-content">
+        <!-- Subscription Cancellation Section -->
+        {% if user.is_subscription_active %}
+            <h3>Cancel Subscription</h3>
+            <p>If you cancel your subscription, you will lose access to pro features at the end of your billing cycle.</p>
+            <form id="cancelSubscriptionForm" method="POST" action="{{ url_for('cancel_subscription') }}">
+                <button type="submit" class="btn-danger">Cancel Subscription</button>
             </form>
-        </div>
+        {% endif %}
+        <!-- Account Deletion Section -->
+        <h3>Delete Account</h3>
+        <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+        <form method="POST" action="{{ url_for('delete_account') }}">
+            <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
+        </form>
+    </div>
 
-        <!-- Admin Tab Content -->
-        {% if user.is_admin %}
-        <div id="admin" class="tab-content admin-only">
+    {% if user.is_admin %}
+        <div id="admin" class="tab-content admin-only"> 
             <div class="admin-highlights">
                 <div class="metric">
                     <p>Users</p>
                     <p>{{ user_count }}</p>
                 </div>
-
                 <div class="metric">
                     <p>2FA Enabled</p>
                     <p>{{ two_fa_count }}</p>
                     <p>{{ two_fa_percentage | round(2) }}%</p>
                 </div>
-
                 <div class="metric">
                     <p>PGP Enabled</p>
                     <p>{{ pgp_key_count }}</p>
                     <p>{{ pgp_key_percentage | round(2) }}%</p>
                 </div>
             </div>
-            
             <h3>All Users</h3>
             {% if all_users %}
                 {% for user in all_users %}
@@ -234,11 +209,10 @@
                         </div>
                     </div>
                 {% endfor %}
-            {% else %}
-                <p>No users found.</p>
+                {% else %}
+                    <p>No users found.</p>
             {% endif %}
         </div>
         {% endif %}
     </div>
-</div>
 {% endblock %}
