@@ -566,6 +566,7 @@ def enable_2fa():
 
 @app.route("/disable-2fa", methods=["POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def disable_2fa():
     user_id = session.get("user_id")
     if not user_id:
@@ -585,6 +586,7 @@ def confirm_disable_2fa():
 
 @app.route("/show-qr-code")
 @limiter.limit("120 per minute")
+@require_2fa
 def show_qr_code():
     user = User.query.get(session["user_id"])
     if not user or not user.totp_secret:
@@ -665,7 +667,7 @@ def login():
                 ] = True  # Mark 2FA as verified since it's not required
                 return redirect(url_for("inbox", username=user.primary_username))
         else:
-            flash("Invalid username or password")
+            flash("⛔️ Invalid username or password")
 
     return render_template("login.html", form=form)
 
@@ -741,7 +743,7 @@ def inbox(username):
             is_secondary = True
         else:
             # If no matching primary or secondary user, deny access
-            flash("You are not authorized to view this inbox.")
+            flash("🔐 You are not authorized to view this inbox.")
             return redirect(url_for("index"))
 
     # Determine the user object to pass to the template based on whether accessing primary or secondary inbox
@@ -929,6 +931,7 @@ def toggle_2fa():
 
 @app.route("/change-password", methods=["POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def change_password():
     user_id = session.get("user_id")
     if not user_id:
@@ -1028,6 +1031,7 @@ def change_username():
 
 @app.route("/logout")
 @limiter.limit("120 per minute")
+@require_2fa
 def logout():
     # Explicitly remove specific session keys related to user authentication
     session.pop("user_id", None)
@@ -1218,6 +1222,7 @@ def is_valid_pgp_key(key):
 
 @app.route("/update_pgp_key", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def update_pgp_key():
     user_id = session.get("user_id")
     if not user_id:
@@ -1284,6 +1289,7 @@ list_keys()
 
 @app.route("/update_smtp_settings", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def update_smtp_settings():
     user_id = session.get("user_id")
     if not user_id:
@@ -1334,6 +1340,7 @@ def update_smtp_settings():
 
 @app.route("/delete_message/<int:message_id>", methods=["POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def delete_message(message_id):
     if "user_id" not in session:
         flash("🔑 Please log in to continue.")
@@ -1356,26 +1363,26 @@ def delete_message(message_id):
 
 
 @app.route("/delete-account", methods=["POST"])
-@limiter.limit("120 per minute")
 @require_2fa
 def delete_account():
     user_id = session.get("user_id")
     if not user_id:
-        flash("🔑 Please log in to continue.")
+        flash("Please log in to continue.")
         return redirect(url_for("login"))
 
     user = User.query.get(user_id)
     if user:
-        # Delete user and related records
+        # Explicitly delete secondary users if cascade delete is not configured
+        SecondaryUser.query.filter_by(user_id=user.id).delete()
+        # Now delete the user
         db.session.delete(user)
         db.session.commit()
 
-        # Clear session and log out
-        session.clear()
-        flash("👋 Your account has been deleted.")
+        session.clear()  # Clear the session
+        flash("Your account and all related information have been deleted.")
         return redirect(url_for("index"))
     else:
-        flash("🫥 User not found. Please log in again.")
+        flash("User not found. Please log in again.")
         return redirect(url_for("login"))
 
 
@@ -1490,6 +1497,7 @@ def secondary_user_settings(secondary_username):
 
 @app.route("/create-checkout-session", methods=["POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def create_checkout_session():
     user_id = session.get("user_id")
     if not user_id:
@@ -1536,6 +1544,7 @@ def create_checkout_session():
 
 @app.route("/payment-success")
 @limiter.limit("120 per minute")
+@require_2fa
 def payment_success():
     session_id = request.args.get("session_id")
 
@@ -1589,6 +1598,7 @@ def is_safe_url(target):
 
 @app.route("/payment-cancel")
 @limiter.limit("120 per minute")
+@require_2fa
 def payment_cancel():
     origin_page = request.args.get("origin", url_for("index"))
     if is_safe_url(origin_page):
@@ -1600,6 +1610,7 @@ def payment_cancel():
 
 
 @app.route("/stripe-webhook", methods=["POST"])
+@require_2fa
 def stripe_webhook():
     payload = request.get_data(as_text=True)
     sig_header = request.headers.get("Stripe-Signature")
