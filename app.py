@@ -699,65 +699,38 @@ def verify_2fa_login():
     return render_template("verify_2fa_login.html", form=form)
 
 
-@app.route("/inbox/<username>")
+@app.route("/inbox")
 @limiter.limit("120 per minute")
 @require_2fa
-def inbox(username):
+def inbox():
     # Redirect if not logged in
     if "user_id" not in session:
         flash("Please log in to access your inbox.")
         return redirect(url_for("login"))
 
     logged_in_user_id = session["user_id"]
-    # Attempt to find a primary user matching the requested username
-    primary_user = User.query.filter_by(primary_username=username).first()
+    # Use the logged-in user's ID to access the primary user's information directly
+    primary_user = User.query.get(logged_in_user_id)
 
     # Initialize variables for secondary user and message query
     secondary_user = None
     messages = []
     is_secondary = False
-
-    # Ensure 'secondary_users_dict' is initialized for template context
     secondary_users_dict = {}
 
-    # Check if the requested username matches the logged-in primary user
-    if primary_user and primary_user.id == logged_in_user_id:
-        messages = (
-            Message.query.filter_by(user_id=primary_user.id)
-            .order_by(Message.id.desc())
-            .all()
-        )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
-    else:
-        # Attempt to find a secondary user matching the requested username
-        # and verify it belongs to the logged-in user
-        secondary_user = SecondaryUser.query.filter_by(
-            username=username, user_id=logged_in_user_id
-        ).first()
-        if secondary_user:
-            messages = (
-                Message.query.filter_by(secondary_user_id=secondary_user.id)
-                .order_by(Message.id.desc())
-                .all()
-            )
-            is_secondary = True
-        else:
-            # If no matching primary or secondary user, deny access
-            flash("🔐 You are not authorized to view this inbox.")
-            return redirect(url_for("index"))
-
-    # Determine the user object to pass to the template based on whether accessing primary or secondary inbox
-    user_for_template = (
-        User.query.get(logged_in_user_id)
-        if primary_user
-        else secondary_user.primary_user
+    # Since we're directly accessing the logged-in user's inbox, we can simplify this to:
+    messages = (
+        Message.query.filter_by(user_id=primary_user.id)
+        .order_by(Message.id.desc())
+        .all()
     )
+    secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
 
     # Render the inbox template with necessary data
     return render_template(
         "inbox.html",
-        user=user_for_template,
-        secondary_user=secondary_user,
+        user=primary_user,
+        secondary_user=None,  # Adjusted for simplicity since we're focusing on the primary user
         messages=messages,
         is_secondary=is_secondary,
         secondary_users=secondary_users_dict,
