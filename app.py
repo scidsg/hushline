@@ -698,7 +698,6 @@ def verify_2fa_login():
 
 
 @app.route("/inbox/<username>")
-@limiter.limit("120 per minute")
 @require_2fa
 def inbox(username):
     # Redirect if not logged in
@@ -706,25 +705,26 @@ def inbox(username):
         flash("Please log in to access your inbox.")
         return redirect(url_for("login"))
 
-    # Initialize variables
-    current_user = User.query.get(session["user_id"])
-    requested_user = User.query.filter_by(primary_username=username).first()
+    logged_in_user_id = session["user_id"]
+    # Attempt to find a primary user matching the requested username
+    primary_user = User.query.filter_by(primary_username=username).first()
 
-    # Verify that the requested inbox belongs to the logged-in user
-    if requested_user and (
-        requested_user.id == session["user_id"] or session.get("is_admin", False)
-    ):
-        secondary_users_dict = {su.id: su for su in requested_user.secondary_users}
+    # Initialize variables for secondary user and message query
+    secondary_user = None
+    messages = []
+
+    # Check if the requested username matches the logged-in primary user
+    if primary_user and primary_user.id == logged_in_user_id:
         messages = (
-            Message.query.filter_by(user_id=requested_user.id)
+            Message.query.filter_by(user_id=primary_user.id)
             .order_by(Message.id.desc())
             .all()
         )
-        is_secondary = False
     else:
-        # Check if the requested inbox is a secondary user of the logged-in user (and not accessing another primary user's inbox)
+        # Attempt to find a secondary user matching the requested username
+        # and verify it belongs to the logged-in user
         secondary_user = SecondaryUser.query.filter_by(
-            username=username, user_id=session["user_id"]
+            username=username, user_id=logged_in_user_id
         ).first()
         if secondary_user:
             messages = (
@@ -732,21 +732,18 @@ def inbox(username):
                 .order_by(Message.id.desc())
                 .all()
             )
-            is_secondary = True
-            secondary_users_dict = (
-                {}
-            )  # Secondary users don't have their own secondary users
         else:
+            # If no matching primary or secondary user, deny access
             flash("You are not authorized to view this inbox.")
             return redirect(url_for("index"))
 
+    # Render the inbox template
     return render_template(
         "inbox.html",
-        user=current_user,  # Pass the current logged-in user
-        secondary_user=secondary_user if is_secondary else None,
+        user=primary_user if primary_user else secondary_user.primary_user,
+        secondary_user=secondary_user,
         messages=messages,
-        is_secondary=is_secondary,
-        secondary_users=secondary_users_dict,
+        is_secondary=bool(secondary_user),
     )
 
 
