@@ -40,8 +40,6 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
-STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 "sk_test_51OhDeALcBPqjxU07nk5zZ0eWvTRDgBc0u9bLjmRhXmzTczwPHq28yBwF3I9NugqnT4N5QZFr1Keb906DzEOFHXHY00ugAXDHrA" --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
-STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban redis redis-server -y
@@ -292,8 +290,6 @@ echo "DB_NAME=$DB_NAME" >> .env
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
-echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
-echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
 # Ask the user if registration should require codes and directly update the .env file
 if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
