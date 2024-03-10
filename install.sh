@@ -304,6 +304,9 @@ else
     echo "REGISTRATION_CODES_REQUIRED=False" >> .env
 fi
 
+# Only allow the file owner to read and write the .env file
+chmod 600 .env
+
 # Start Redis
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
