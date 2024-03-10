@@ -40,8 +40,6 @@ apt install whiptail -y
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
 DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
-STRIPE_SECRET_KEY=$(whiptail --inputbox "Enter the Stripe secret key" 8 39 "sk_test_51OhDeALcBPqjxU07nk5zZ0eWvTRDgBc0u9bLjmRhXmzTczwPHq28yBwF3I9NugqnT4N5QZFr1Keb906DzEOFHXHY00ugAXDHrA" --title "Stripe Secret Key" 3>&1 1>&2 2>&3)
-STRIPE_WH_SECRET=$(whiptail --inputbox "Enter the Stripe Webhook Signing Secret" 8 39 --title "Stripe Webhook Secret" 3>&1 1>&2 2>&3)
 
 # Install Python, pip, Git, Nginx, and MariaDB
 sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv gnupg tor certbot python3-certbot-nginx libnginx-mod-http-geoip ufw fail2ban redis redis-server -y
@@ -238,6 +236,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd $DOMAIN
+git switch ga-mvp
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -253,25 +252,6 @@ Acknowledgments: https://github.com/scidsg/hushline/blob/main/ACKNOWLEDGMENTS.md
 Policy: https://github.com/scidsg/hushline/blob/main/SECURITY.md
 Canonical: https://$DOMAIN/.well-known/security.txt
 EOL
-
-# Temporarily disable the error trap
-trap - ERR
-
-# Ask the user if paid features should be enabled by default
-PAID_FEATURES_ENABLED=$(whiptail --title "Enable Paid Features" --yesno "Do you want to enable paid features by default for all users?" 8 78 3>&1 1>&2 2>&3)
-
-exitstatus=$?
-if [ $exitstatus = 0 ]; then
-    # User selected Yes, enable paid features by default
-    echo "Enabling paid features by default..."
-    sed -i 's/has_paid = db.Column(db.Boolean, default=False)/has_paid = db.Column(db.Boolean, default=True)/' /var/www/html/$DOMAIN/app.py
-else
-    # User selected No, keep the default setting
-    echo "Keeping paid features disabled by default..."
-fi
-
-# Re-enable the error trap
-trap error_exit ERR
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
@@ -292,8 +272,6 @@ echo "DB_NAME=$DB_NAME" >> .env
 echo "DB_USER=$DB_USER" >> .env
 echo "DB_PASS=$DB_PASS" >> .env
 echo "SECRET_KEY=$SECRET_KEY" >> .env
-echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
-echo "STRIPE_WH_SECRET=$STRIPE_WH_SECRET" >> .env
 
 # Ask the user if registration should require codes and directly update the .env file
 if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
