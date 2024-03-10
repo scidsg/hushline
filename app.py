@@ -63,8 +63,6 @@ db_user = os.getenv("DB_USER")
 db_pass = os.getenv("DB_PASS")
 db_name = os.getenv("DB_NAME")
 secret_key = os.getenv("SECRET_KEY")
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-stripe_webhook_secret = os.getenv("STRIPE_WH_SECRET")
 
 # Load registration codes requirement setting from environment variable
 require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
