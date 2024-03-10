@@ -590,16 +590,7 @@ def submit_message(username):
             display_name_or_username = (
                 secondary_user.display_name or secondary_user.username
             )
-            # Check if the subscription has expired
-            if not user.has_paid or (
-                user.paid_features_expiry
-                and user.paid_features_expiry < datetime.utcnow()
-            ):
-                flash(
-                    "⚠️ This feature requires a premium account. Please upgrade to access.",
-                    "warning",
-                )
-                return redirect(url_for("settings"))
+            return redirect(url_for("settings"))
 
     if not user:
         flash("🫥 User not found.")
@@ -1182,6 +1173,7 @@ def change_username():
 
 @app.route("/enable-2fa", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
+@require_2fa
 def enable_2fa():
     user_id = session.get("user_id")
     if not user_id:
@@ -1436,21 +1428,6 @@ def toggle_verified(user_id):
     user.is_verified = not user.is_verified
     db.session.commit()
     flash("✅ User verification status toggled.", "success")
-    return redirect(url_for("settings"))
-
-
-@app.route("/admin/toggle_paid/<int:user_id>", methods=["POST"])
-@limiter.limit("120 per minute")
-@require_2fa
-def toggle_paid(user_id):
-    if not session.get("is_admin", False):
-        flash("Unauthorized access.", "error")
-        return redirect(url_for("settings"))
-
-    user = User.query.get_or_404(user_id)
-    user.has_paid = not user.has_paid
-    db.session.commit()
-    flash("✅ User payment status toggled.", "success")
     return redirect(url_for("settings"))
 
 
