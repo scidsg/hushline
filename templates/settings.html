@@ -36,6 +36,23 @@
             {% endif %}
             <button type="submit" name="update_display_name">Update Display Name</button>
         </form>
+
+        <!-- Change Username Section -->
+        <h3>Change Username</h3>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your username will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings') }}">
+            {{ change_username_form.hidden_tag() }}
+            <label for="new_username">Username</label>
+            {{ change_username_form.new_username(id='new_username', value=session['username']) }}
+            {% if change_username_form.new_username.errors %}
+                {% for error in change_username_form.new_username.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="change_username">Change Username</button>
+        </form>
     </div>
 
     <div id="auth" class="tab-content">
@@ -71,22 +88,6 @@
                 {% endfor %}
             {% endif %}
             <button type="submit">Change Password</button>
-        </form>
-        <!-- Change Username Section -->
-        <h3>Change Username</h3>
-        {% if user.is_verified %}
-            <p>⚠️ Changing your username will result in losing your verification status.</p>
-        {% endif %}
-        <form method="POST" action="{{ url_for('settings') }}">
-            {{ change_username_form.hidden_tag() }}
-            <label for="new_username">Username</label>
-            {{ change_username_form.new_username(id='new_username', value=session['username']) }}
-            {% if change_username_form.new_username.errors %}
-                {% for error in change_username_form.new_username.errors %}
-                    <span class="error">{{ error }}</span>
-                {% endfor %}
-            {% endif %}
-            <button type="submit" name="change_username">Change Username</button>
         </form>
     </div>
 
