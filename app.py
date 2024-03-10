@@ -1347,8 +1347,12 @@ def delete_account():
 
     user = User.query.get(user_id)
     if user:
-        # Explicitly delete secondary users if cascade delete is not configured
+        # Explicitly delete messages for the user
+        Message.query.filter_by(user_id=user.id).delete()
+
+        # Explicitly delete secondary users if necessary
         SecondaryUser.query.filter_by(user_id=user.id).delete()
+
         # Now delete the user
         db.session.delete(user)
         db.session.commit()
