@@ -1358,7 +1358,7 @@ def delete_account():
         db.session.commit()
 
         session.clear()  # Clear the session
-        flash("Your account and all related information have been deleted.")
+        flash("🔥 Your account and all related information have been deleted.")
         return redirect(url_for("index"))
     else:
         flash("User not found. Please log in again.")
@@ -1707,7 +1707,7 @@ def toggle_verified(user_id):
     user = User.query.get_or_404(user_id)
     user.is_verified = not user.is_verified
     db.session.commit()
-    flash("User verification status toggled.", "success")
+    flash("✅ User verification status toggled.", "success")
     return redirect(url_for("settings"))
 
 
@@ -1722,7 +1722,7 @@ def toggle_paid(user_id):
     user = User.query.get_or_404(user_id)
     user.has_paid = not user.has_paid
     db.session.commit()
-    flash("User payment status toggled.", "success")
+    flash("✅ User payment status toggled.", "success")
     return redirect(url_for("settings"))
 
 
@@ -1737,7 +1737,7 @@ def toggle_admin(user_id):
     user = User.query.get_or_404(user_id)
     user.is_admin = not user.is_admin
     db.session.commit()
-    flash("User admin status toggled.", "success")
+    flash("✅ User admin status toggled.", "success")
     return redirect(url_for("settings"))
 
 
