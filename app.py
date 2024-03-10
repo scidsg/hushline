@@ -67,24 +67,8 @@ secret_key = os.getenv("SECRET_KEY")
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 stripe_webhook_secret = os.getenv("STRIPE_WH_SECRET")
 
-# Load encryption key
-encryption_key = os.getenv("ENCRYPTION_KEY")
-if encryption_key is None:
-    raise ValueError("Encryption key not found. Please check your .env file.")
-fernet = Fernet(encryption_key)
-
-
-def encrypt_field(data):
-    if data is None:
-        return None
-    return fernet.encrypt(data.encode()).decode()
-
-
-def decrypt_field(data):
-    if data is None:
-        return None
-    return fernet.decrypt(data.encode()).decode()
-
+# Load registration codes requirement setting from environment variable
+require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
 app = Flask(__name__)
 
@@ -153,27 +137,49 @@ file_handler.setFormatter(
     )
 )
 
+
 # Add it to the Flask logger
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.DEBUG)
 
 
-# Password Policy
-class ComplexPassword(object):
-    def __init__(self, message=None):
-        if not message:
-            message = "⛔️ Password must include uppercase, lowercase, digit, and a special character."
-        self.message = message
+############################################################################################################
+############################################################################################################
 
-    def __call__(self, form, field):
-        password = field.data
-        if not (
-            re.search("[A-Z]", password)
-            and re.search("[a-z]", password)
-            and re.search("[0-9]", password)
-            and re.search("[^A-Za-z0-9]", password)
-        ):
-            raise ValidationError(self.message)
+# ENCRYPTION
+# Hush Line uses encryption at rest to protect user data.
+
+############################################################################################################
+############################################################################################################
+
+
+# Load encryption key
+encryption_key = os.getenv("ENCRYPTION_KEY")
+if encryption_key is None:
+    raise ValueError("Encryption key not found. Please check your .env file.")
+fernet = Fernet(encryption_key)
+
+
+def encrypt_field(data):
+    if data is None:
+        return None
+    return fernet.encrypt(data.encode()).decode()
+
+
+def decrypt_field(data):
+    if data is None:
+        return None
+    return fernet.decrypt(data.encode()).decode()
+
+
+############################################################################################################
+############################################################################################################
+
+# MODELS
+# Database models for users, secondary usernames, messages, and invite codes.
+
+############################################################################################################
+############################################################################################################
 
 
 # Database Models
@@ -345,6 +351,33 @@ class InviteCode(db.Model):
         return f"<InviteCode {self.code}>"
 
 
+############################################################################################################
+############################################################################################################
+
+# FORMS
+
+############################################################################################################
+############################################################################################################
+
+
+# Password Policy
+class ComplexPassword(object):
+    def __init__(self, message=None):
+        if not message:
+            message = "⛔️ Password must include uppercase, lowercase, digit, and a special character."
+        self.message = message
+
+    def __call__(self, form, field):
+        password = field.data
+        if not (
+            re.search("[A-Z]", password)
+            and re.search("[a-z]", password)
+            and re.search("[0-9]", password)
+            and re.search("[^A-Za-z0-9]", password)
+        ):
+            raise ValidationError(self.message)
+
+
 class MessageForm(FlaskForm):
     content = TextAreaField(
         "Message",
@@ -379,10 +412,6 @@ class RegistrationForm(FlaskForm):
     invite_code = StringField(
         "Invite Code", validators=[DataRequired(), Length(min=6, max=25)]
     )
-
-
-# Load registration codes requirement setting from environment variable
-require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
 
 class ChangePasswordForm(FlaskForm):
@@ -456,7 +485,16 @@ def handle_exception(e):
     return "An internal server error occurred", 500
 
 
-# Routes
+############################################################################################################
+############################################################################################################
+
+# ROUTES
+# All views of the app. Settings in the next section.
+
+############################################################################################################
+############################################################################################################
+
+
 @app.route("/")
 @limiter.limit("120 per minute")
 def index():
@@ -471,6 +509,279 @@ def index():
             return redirect(url_for("login"))
     else:
         return redirect(url_for("login"))
+
+
+@app.route("/inbox")
+@limiter.limit("120 per minute")
+@require_2fa
+def inbox():
+    # Redirect if not logged in
+    if "user_id" not in session:
+        flash("Please log in to access your inbox.")
+        return redirect(url_for("login"))
+
+    logged_in_user_id = session["user_id"]
+
+    # Check for a 'username' query parameter and compare it with the logged-in user's username
+    requested_username = request.args.get("username")
+    logged_in_username = User.query.get(logged_in_user_id).primary_username
+
+    # If the requested username does not match the logged-in user's username, redirect to the correct inbox URL
+    if requested_username and requested_username != logged_in_username:
+        return redirect(
+            url_for("inbox")
+        )  # Removes any 'username' query parameter to avoid confusion
+
+    # Proceed with loading the inbox as before
+    primary_user = User.query.get(logged_in_user_id)
+    messages = (
+        Message.query.filter_by(user_id=primary_user.id)
+        .order_by(Message.id.desc())
+        .all()
+    )
+    secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
+
+    return render_template(
+        "inbox.html",
+        user=primary_user,
+        secondary_user=None,
+        messages=messages,
+        is_secondary=False,
+        secondary_users=secondary_users_dict,
+    )
+
+
+def get_email_from_pgp_key(pgp_key):
+    try:
+        # Import the PGP key
+        imported_key = gpg.import_keys(pgp_key)
+
+        if imported_key.count > 0:
+            # Get the Key ID of the imported key
+            key_id = imported_key.results[0]["fingerprint"][-16:]
+
+            # List all keys to find the matching key
+            all_keys = gpg.list_keys()
+            for key in all_keys:
+                if key["keyid"] == key_id:
+                    # Extract email from the uid (user ID)
+                    uids = key["uids"][0]
+                    email_start = uids.find("<") + 1
+                    email_end = uids.find(">")
+                    if email_start > 0 and email_end > email_start:
+                        return uids[email_start:email_end]
+    except Exception as e:
+        app.logger.error(f"Error extracting email from PGP key: {e}")
+
+    return None
+
+
+@app.route("/submit_message/<username>", methods=["GET", "POST"])
+@limiter.limit("120 per minute")
+def submit_message(username):
+    form = MessageForm()
+
+    user = None
+    secondary_user = None
+    display_name_or_username = ""
+
+    primary_user = User.query.filter_by(primary_username=username).first()
+    if primary_user:
+        user = primary_user
+        display_name_or_username = (
+            primary_user.display_name or primary_user.primary_username
+        )
+    else:
+        secondary_user = SecondaryUser.query.filter_by(username=username).first()
+        if secondary_user:
+            user = secondary_user.primary_user
+            display_name_or_username = (
+                secondary_user.display_name or secondary_user.username
+            )
+            # Check if the subscription has expired
+            if not user.has_paid or (
+                user.paid_features_expiry
+                and user.paid_features_expiry < datetime.utcnow()
+            ):
+                flash(
+                    "⚠️ This feature requires a premium account. Please upgrade to access.",
+                    "warning",
+                )
+                return redirect(url_for("settings"))
+
+    if not user:
+        flash("🫥 User not found.")
+        return redirect(url_for("index"))
+
+    if form.validate_on_submit():
+        content = form.content.data
+        client_side_encrypted = (
+            request.form.get("client_side_encrypted", "false") == "true"
+        )
+
+        if not client_side_encrypted and user.pgp_key:
+            # Get the email address from the PGP key
+            pgp_email = get_email_from_pgp_key(user.pgp_key)
+            if pgp_email:
+                # Append the note indicating server-side encryption
+                content_with_note = content
+                # Now call encrypt_message with the correct pgp_email
+                encrypted_content = encrypt_message(content_with_note, pgp_email)
+                email_content = encrypted_content if encrypted_content else content
+                if not encrypted_content:
+                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
+                    return redirect(url_for("submit_message", username=username))
+            else:
+                flash("⛔️ Unable to extract email from PGP key.", "error")
+                return redirect(url_for("submit_message", username=username))
+        else:
+            email_content = content if client_side_encrypted else content
+
+        # Your logic to save and possibly email the message...
+        new_message = Message(
+            content=email_content,
+            user_id=user.id,
+            secondary_user_id=secondary_user.id if secondary_user else None,
+        )
+        db.session.add(new_message)
+        db.session.commit()
+
+        if all(
+            [
+                user.email,
+                user.smtp_server,
+                user.smtp_port,
+                user.smtp_username,
+                user.smtp_password,
+            ]
+        ):
+            try:
+                sender_email = user.smtp_username
+                # Assume send_email is a utility function to send emails
+                email_sent = send_email(
+                    user.email, "New Message", email_content, user, sender_email
+                )
+                flash_message = (
+                    "👍 Message submitted and email sent successfully."
+                    if email_sent
+                    else "👍 Message submitted, but failed to send email."
+                )
+                flash(flash_message)
+            except Exception as e:
+                flash(
+                    "👍 Message submitted, but an error occurred while sending email.",
+                    "warning",
+                )
+        else:
+            flash("👍 Message submitted successfully.")
+
+        return redirect(url_for("submit_message", username=username))
+
+    return render_template(
+        "submit_message.html",
+        form=form,
+        user=user,
+        secondary_user=secondary_user if secondary_user else None,
+        username=username,
+        display_name_or_username=display_name_or_username,
+        current_user_id=session.get("user_id"),
+        public_key=user.pgp_key,
+    )
+
+
+def send_email(recipient, subject, body, user, sender_email):
+    app.logger.debug(
+        f"SMTP settings being used: Server: {user.smtp_server}, Port: {user.smtp_port}, Username: {user.smtp_username}"
+    )
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = sender_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP(
+            user.smtp_server, user.smtp_port, timeout=10
+        ) as server:  # Added timeout
+            server.starttls()
+            server.login(user.smtp_username, user.smtp_password)
+            server.sendmail(sender_email, sender_email, msg.as_string())
+        app.logger.info("Email sent successfully.")
+        return True
+    except Exception as e:
+        app.logger.error(f"Error sending email: {e}", exc_info=True)
+        return False
+
+
+def is_valid_pgp_key(key):
+    app.logger.debug(f"Attempting to import key: {key}")
+    try:
+        imported_key = gpg.import_keys(key)
+        app.logger.info(f"Key import attempt: {imported_key.results}")
+        return imported_key.count > 0
+    except Exception as e:
+        app.logger.error(f"Error importing PGP key: {e}")
+        return False
+
+
+def encrypt_message(message, recipient_email):
+    gpg = gnupg.GPG(gnupghome=gpg_home, options=["--trust-model", "always"])
+    app.logger.info(f"Encrypting message for recipient: {recipient_email}")
+
+    try:
+        # Ensure the message is a byte string encoded in UTF-8
+        if isinstance(message, str):
+            message = message.encode("utf-8")
+        encrypted_data = gpg.encrypt(
+            message, recipients=recipient_email, always_trust=True
+        )
+
+        if not encrypted_data.ok:
+            app.logger.error(f"Encryption failed: {encrypted_data.status}")
+            return None
+
+        return str(encrypted_data)
+    except Exception as e:
+        app.logger.error(f"Error during encryption: {e}")
+        return None
+
+
+def list_keys():
+    try:
+        public_keys = gpg.list_keys()
+        app.logger.info("Public keys in the keyring:")
+        for key in public_keys:
+            app.logger.info(f"Key: {key}")
+    except Exception as e:
+        app.logger.error(f"Error listing keys: {e}")
+
+
+# Call this function after key import or during troubleshooting
+list_keys()
+
+
+@app.route("/delete_message/<int:message_id>", methods=["POST"])
+@limiter.limit("120 per minute")
+@require_2fa
+def delete_message(message_id):
+    if "user_id" not in session:
+        flash("🔑 Please log in to continue.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        flash("🫥 User not found. Please log in again.")
+        return redirect(url_for("login"))
+
+    message = Message.query.get(message_id)
+    if message and message.user_id == user.id:
+        db.session.delete(message)
+        db.session.commit()
+        flash("🗑️ Message deleted successfully.")
+    else:
+        flash("⛔️ Message not found or unauthorized access.")
+
+    return redirect(url_for("inbox", username=user.primary_username))
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -515,120 +826,6 @@ def register():
     return render_template(
         "register.html", form=form, require_invite_code=require_invite_code
     )
-
-
-@app.route("/enable-2fa", methods=["GET", "POST"])
-@limiter.limit("120 per minute")
-def enable_2fa():
-    user_id = session.get("user_id")
-    if not user_id:
-        return redirect(url_for("login"))
-
-    user = User.query.get(user_id)
-    form = TwoFactorForm()
-
-    if form.validate_on_submit():
-        verification_code = form.verification_code.data
-        temp_totp_secret = session.get("temp_totp_secret")
-        if temp_totp_secret and pyotp.TOTP(temp_totp_secret).verify(verification_code):
-            user.totp_secret = temp_totp_secret
-            db.session.commit()
-            session.pop("temp_totp_secret", None)
-            flash("👍 2FA setup successful. Please log in again with 2FA.")
-            return redirect(url_for("logout"))  # Redirect to logout
-        else:
-            flash("⛔️ Invalid 2FA code. Please try again.")
-            return redirect(url_for("enable_2fa"))
-
-    # Generate new 2FA secret and QR code
-    temp_totp_secret = pyotp.random_base32()
-    session["temp_totp_secret"] = temp_totp_secret
-    session["is_setting_up_2fa"] = True
-    totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-        name=user.primary_username, issuer_name="HushLine"
-    )
-    img = qrcode.make(totp_uri)
-    buffered = io.BytesIO()
-    img.save(buffered)
-    qr_code_img = (
-        "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
-    )
-
-    # Pass the text-based pairing code and the user to the template
-    return render_template(
-        "enable_2fa.html",
-        form=form,
-        qr_code_img=qr_code_img,
-        text_code=temp_totp_secret,
-        user=user,
-    )
-
-
-@app.route("/disable-2fa", methods=["POST"])
-@limiter.limit("120 per minute")
-@require_2fa
-def disable_2fa():
-    user_id = session.get("user_id")
-    if not user_id:
-        return redirect(url_for("login"))
-
-    user = db.session.get(User, user_id)
-    user.totp_secret = None
-    db.session.commit()
-    flash("🔓 2FA has been disabled.")
-    return redirect(url_for("settings"))
-
-
-@app.route("/confirm-disable-2fa", methods=["GET"])
-def confirm_disable_2fa():
-    return render_template("confirm_disable_2fa.html")
-
-
-@app.route("/show-qr-code")
-@limiter.limit("120 per minute")
-@require_2fa
-def show_qr_code():
-    user = User.query.get(session["user_id"])
-    if not user or not user.totp_secret:
-        return redirect(url_for("enable_2fa"))
-
-    form = TwoFactorForm()
-
-    totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
-        name=user.primary_username, issuer_name="Hush Line"
-    )
-    img = qrcode.make(totp_uri)
-
-    # Convert QR code to a data URI
-    buffered = io.BytesIO()
-    img.save(buffered)
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    qr_code_img = f"data:image/png;base64,{img_str}"
-
-    return render_template(
-        "show_qr_code.html",
-        form=form,
-        qr_code_img=qr_code_img,
-        user_secret=user.totp_secret,
-    )
-
-
-@app.route("/verify-2fa-setup", methods=["POST"])
-@limiter.limit("120 per minute")
-def verify_2fa_setup():
-    user = User.query.get(session["user_id"])
-    if not user:
-        return redirect(url_for("login"))
-
-    verification_code = request.form["verification_code"]
-    totp = pyotp.TOTP(user.totp_secret)
-    if totp.verify(verification_code):
-        flash("👍 2FA setup successful. Please log in again.")
-        session.pop("is_setting_up_2fa", None)
-        return redirect(url_for("logout"))
-    else:
-        flash("⛔️ Invalid 2FA code. Please try again.")
-        return redirect(url_for("show_qr_code"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -699,44 +896,31 @@ def verify_2fa_login():
     return render_template("verify_2fa_login.html", form=form)
 
 
-@app.route("/inbox")
+@app.route("/logout")
 @limiter.limit("120 per minute")
 @require_2fa
-def inbox():
-    # Redirect if not logged in
-    if "user_id" not in session:
-        flash("Please log in to access your inbox.")
-        return redirect(url_for("login"))
+def logout():
+    # Explicitly remove specific session keys related to user authentication
+    session.pop("user_id", None)
+    session.pop("2fa_verified", None)
 
-    logged_in_user_id = session["user_id"]
+    # Clear the entire session to ensure no leftover data
+    session.clear()
 
-    # Check for a 'username' query parameter and compare it with the logged-in user's username
-    requested_username = request.args.get("username")
-    logged_in_username = User.query.get(logged_in_user_id).primary_username
+    # Flash a confirmation message for the user
+    flash("👋 You have been logged out successfully.", "info")
 
-    # If the requested username does not match the logged-in user's username, redirect to the correct inbox URL
-    if requested_username and requested_username != logged_in_username:
-        return redirect(
-            url_for("inbox")
-        )  # Removes any 'username' query parameter to avoid confusion
+    # Redirect to the login page or home page after logout
+    return redirect(url_for("index"))
 
-    # Proceed with loading the inbox as before
-    primary_user = User.query.get(logged_in_user_id)
-    messages = (
-        Message.query.filter_by(user_id=primary_user.id)
-        .order_by(Message.id.desc())
-        .all()
-    )
-    secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
 
-    return render_template(
-        "inbox.html",
-        user=primary_user,
-        secondary_user=None,
-        messages=messages,
-        is_secondary=False,
-        secondary_users=secondary_users_dict,
-    )
+############################################################################################################
+############################################################################################################
+
+# SETTINGS
+
+############################################################################################################
+############################################################################################################
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -1004,195 +1188,118 @@ def change_username():
     return redirect(url_for("settings"))
 
 
-@app.route("/logout")
+@app.route("/enable-2fa", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
-@require_2fa
-def logout():
-    # Explicitly remove specific session keys related to user authentication
-    session.pop("user_id", None)
-    session.pop("2fa_verified", None)
+def enable_2fa():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
 
-    # Clear the entire session to ensure no leftover data
-    session.clear()
-
-    # Flash a confirmation message for the user
-    flash("👋 You have been logged out successfully.", "info")
-
-    # Redirect to the login page or home page after logout
-    return redirect(url_for("index"))
-
-
-def get_email_from_pgp_key(pgp_key):
-    try:
-        # Import the PGP key
-        imported_key = gpg.import_keys(pgp_key)
-
-        if imported_key.count > 0:
-            # Get the Key ID of the imported key
-            key_id = imported_key.results[0]["fingerprint"][-16:]
-
-            # List all keys to find the matching key
-            all_keys = gpg.list_keys()
-            for key in all_keys:
-                if key["keyid"] == key_id:
-                    # Extract email from the uid (user ID)
-                    uids = key["uids"][0]
-                    email_start = uids.find("<") + 1
-                    email_end = uids.find(">")
-                    if email_start > 0 and email_end > email_start:
-                        return uids[email_start:email_end]
-    except Exception as e:
-        app.logger.error(f"Error extracting email from PGP key: {e}")
-
-    return None
-
-
-@app.route("/submit_message/<username>", methods=["GET", "POST"])
-@limiter.limit("120 per minute")
-def submit_message(username):
-    form = MessageForm()
-
-    user = None
-    secondary_user = None
-    display_name_or_username = ""
-
-    primary_user = User.query.filter_by(primary_username=username).first()
-    if primary_user:
-        user = primary_user
-        display_name_or_username = (
-            primary_user.display_name or primary_user.primary_username
-        )
-    else:
-        secondary_user = SecondaryUser.query.filter_by(username=username).first()
-        if secondary_user:
-            user = secondary_user.primary_user
-            display_name_or_username = (
-                secondary_user.display_name or secondary_user.username
-            )
-            # Check if the subscription has expired
-            if not user.has_paid or (
-                user.paid_features_expiry
-                and user.paid_features_expiry < datetime.utcnow()
-            ):
-                flash(
-                    "⚠️ This feature requires a premium account. Please upgrade to access.",
-                    "warning",
-                )
-                return redirect(url_for("settings"))
-
-    if not user:
-        flash("🫥 User not found.")
-        return redirect(url_for("index"))
+    user = User.query.get(user_id)
+    form = TwoFactorForm()
 
     if form.validate_on_submit():
-        content = form.content.data
-        client_side_encrypted = (
-            request.form.get("client_side_encrypted", "false") == "true"
-        )
-
-        if not client_side_encrypted and user.pgp_key:
-            # Get the email address from the PGP key
-            pgp_email = get_email_from_pgp_key(user.pgp_key)
-            if pgp_email:
-                # Append the note indicating server-side encryption
-                content_with_note = content
-                # Now call encrypt_message with the correct pgp_email
-                encrypted_content = encrypt_message(content_with_note, pgp_email)
-                email_content = encrypted_content if encrypted_content else content
-                if not encrypted_content:
-                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
-                    return redirect(url_for("submit_message", username=username))
-            else:
-                flash("⛔️ Unable to extract email from PGP key.", "error")
-                return redirect(url_for("submit_message", username=username))
+        verification_code = form.verification_code.data
+        temp_totp_secret = session.get("temp_totp_secret")
+        if temp_totp_secret and pyotp.TOTP(temp_totp_secret).verify(verification_code):
+            user.totp_secret = temp_totp_secret
+            db.session.commit()
+            session.pop("temp_totp_secret", None)
+            flash("👍 2FA setup successful. Please log in again with 2FA.")
+            return redirect(url_for("logout"))  # Redirect to logout
         else:
-            email_content = content if client_side_encrypted else content
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return redirect(url_for("enable_2fa"))
 
-        # Your logic to save and possibly email the message...
-        new_message = Message(
-            content=email_content,
-            user_id=user.id,
-            secondary_user_id=secondary_user.id if secondary_user else None,
-        )
-        db.session.add(new_message)
-        db.session.commit()
+    # Generate new 2FA secret and QR code
+    temp_totp_secret = pyotp.random_base32()
+    session["temp_totp_secret"] = temp_totp_secret
+    session["is_setting_up_2fa"] = True
+    totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
+        name=user.primary_username, issuer_name="HushLine"
+    )
+    img = qrcode.make(totp_uri)
+    buffered = io.BytesIO()
+    img.save(buffered)
+    qr_code_img = (
+        "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
+    )
 
-        if all(
-            [
-                user.email,
-                user.smtp_server,
-                user.smtp_port,
-                user.smtp_username,
-                user.smtp_password,
-            ]
-        ):
-            try:
-                sender_email = user.smtp_username
-                # Assume send_email is a utility function to send emails
-                email_sent = send_email(
-                    user.email, "New Message", email_content, user, sender_email
-                )
-                flash_message = (
-                    "👍 Message submitted and email sent successfully."
-                    if email_sent
-                    else "👍 Message submitted, but failed to send email."
-                )
-                flash(flash_message)
-            except Exception as e:
-                flash(
-                    "👍 Message submitted, but an error occurred while sending email.",
-                    "warning",
-                )
-        else:
-            flash("👍 Message submitted successfully.")
+    # Pass the text-based pairing code and the user to the template
+    return render_template(
+        "enable_2fa.html",
+        form=form,
+        qr_code_img=qr_code_img,
+        text_code=temp_totp_secret,
+        user=user,
+    )
 
-        return redirect(url_for("submit_message", username=username))
+
+@app.route("/disable-2fa", methods=["POST"])
+@limiter.limit("120 per minute")
+@require_2fa
+def disable_2fa():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    user = db.session.get(User, user_id)
+    user.totp_secret = None
+    db.session.commit()
+    flash("🔓 2FA has been disabled.")
+    return redirect(url_for("settings"))
+
+
+@app.route("/confirm-disable-2fa", methods=["GET"])
+def confirm_disable_2fa():
+    return render_template("confirm_disable_2fa.html")
+
+
+@app.route("/show-qr-code")
+@limiter.limit("120 per minute")
+@require_2fa
+def show_qr_code():
+    user = User.query.get(session["user_id"])
+    if not user or not user.totp_secret:
+        return redirect(url_for("enable_2fa"))
+
+    form = TwoFactorForm()
+
+    totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
+        name=user.primary_username, issuer_name="Hush Line"
+    )
+    img = qrcode.make(totp_uri)
+
+    # Convert QR code to a data URI
+    buffered = io.BytesIO()
+    img.save(buffered)
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    qr_code_img = f"data:image/png;base64,{img_str}"
 
     return render_template(
-        "submit_message.html",
+        "show_qr_code.html",
         form=form,
-        user=user,
-        secondary_user=secondary_user if secondary_user else None,
-        username=username,
-        display_name_or_username=display_name_or_username,
-        current_user_id=session.get("user_id"),
-        public_key=user.pgp_key,
+        qr_code_img=qr_code_img,
+        user_secret=user.totp_secret,
     )
 
 
-def send_email(recipient, subject, body, user, sender_email):
-    app.logger.debug(
-        f"SMTP settings being used: Server: {user.smtp_server}, Port: {user.smtp_port}, Username: {user.smtp_username}"
-    )
-    msg = MIMEMultipart()
-    msg["From"] = sender_email
-    msg["To"] = sender_email
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
+@app.route("/verify-2fa-setup", methods=["POST"])
+@limiter.limit("120 per minute")
+def verify_2fa_setup():
+    user = User.query.get(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
 
-    try:
-        with smtplib.SMTP(
-            user.smtp_server, user.smtp_port, timeout=10
-        ) as server:  # Added timeout
-            server.starttls()
-            server.login(user.smtp_username, user.smtp_password)
-            server.sendmail(sender_email, sender_email, msg.as_string())
-        app.logger.info("Email sent successfully.")
-        return True
-    except Exception as e:
-        app.logger.error(f"Error sending email: {e}", exc_info=True)
-        return False
-
-
-def is_valid_pgp_key(key):
-    app.logger.debug(f"Attempting to import key: {key}")
-    try:
-        imported_key = gpg.import_keys(key)
-        app.logger.info(f"Key import attempt: {imported_key.results}")
-        return imported_key.count > 0
-    except Exception as e:
-        app.logger.error(f"Error importing PGP key: {e}")
-        return False
+    verification_code = request.form["verification_code"]
+    totp = pyotp.TOTP(user.totp_secret)
+    if totp.verify(verification_code):
+        flash("👍 2FA setup successful. Please log in again.")
+        session.pop("is_setting_up_2fa", None)
+        return redirect(url_for("logout"))
+    else:
+        flash("⛔️ Invalid 2FA code. Please try again.")
+        return redirect(url_for("show_qr_code"))
 
 
 @app.route("/update_pgp_key", methods=["GET", "POST"])
@@ -1224,42 +1331,6 @@ def update_pgp_key():
         flash("👍 PGP key updated successfully.")
         return redirect(url_for("settings"))
     return render_template("settings.html", form=form)
-
-
-def encrypt_message(message, recipient_email):
-    gpg = gnupg.GPG(gnupghome=gpg_home, options=["--trust-model", "always"])
-    app.logger.info(f"Encrypting message for recipient: {recipient_email}")
-
-    try:
-        # Ensure the message is a byte string encoded in UTF-8
-        if isinstance(message, str):
-            message = message.encode("utf-8")
-        encrypted_data = gpg.encrypt(
-            message, recipients=recipient_email, always_trust=True
-        )
-
-        if not encrypted_data.ok:
-            app.logger.error(f"Encryption failed: {encrypted_data.status}")
-            return None
-
-        return str(encrypted_data)
-    except Exception as e:
-        app.logger.error(f"Error during encryption: {e}")
-        return None
-
-
-def list_keys():
-    try:
-        public_keys = gpg.list_keys()
-        app.logger.info("Public keys in the keyring:")
-        for key in public_keys:
-            app.logger.info(f"Key: {key}")
-    except Exception as e:
-        app.logger.error(f"Error listing keys: {e}")
-
-
-# Call this function after key import or during troubleshooting
-list_keys()
 
 
 @app.route("/update_smtp_settings", methods=["GET", "POST"])
@@ -1313,30 +1384,6 @@ def update_smtp_settings():
     )
 
 
-@app.route("/delete_message/<int:message_id>", methods=["POST"])
-@limiter.limit("120 per minute")
-@require_2fa
-def delete_message(message_id):
-    if "user_id" not in session:
-        flash("🔑 Please log in to continue.")
-        return redirect(url_for("login"))
-
-    user = User.query.get(session["user_id"])
-    if not user:
-        flash("🫥 User not found. Please log in again.")
-        return redirect(url_for("login"))
-
-    message = Message.query.get(message_id)
-    if message and message.user_id == user.id:
-        db.session.delete(message)
-        db.session.commit()
-        flash("🗑️ Message deleted successfully.")
-    else:
-        flash("⛔️ Message not found or unauthorized access.")
-
-    return redirect(url_for("inbox", username=user.primary_username))
-
-
 @app.route("/delete-account", methods=["POST"])
 @require_2fa
 def delete_account():
@@ -1363,6 +1410,15 @@ def delete_account():
     else:
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
+
+
+############################################################################################################
+############################################################################################################
+
+# PAID FEATURES
+
+############################################################################################################
+############################################################################################################
 
 
 @app.route("/add-secondary-username", methods=["POST"])
@@ -1694,6 +1750,16 @@ def has_paid_features(user_id):
     ):
         return True
     return False
+
+
+############################################################################################################
+############################################################################################################
+
+# ADMIN
+# Utilities for admins. Toggling paid features, admin privileges, and verification status.
+
+############################################################################################################
+############################################################################################################
 
 
 @app.route("/admin/toggle_verified/<int:user_id>", methods=["POST"])
