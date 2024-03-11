@@ -353,6 +353,29 @@ header nav a:hover {
     text-decoration: underline;
 }
 
+header nav a:hover {
+    text-decoration: underline;
+}
+
+.logo-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #7D25C1;
+    color: white;
+    text-decoration: none;
+    border-radius: 50vw;
+    font-family: 'Atkinson Bold', sans-serif;
+    font-size: 1.25rem;
+}
+
+.logo-button:hover {
+    background-color: #6c21a5;
+}
+
+header h1 {
+    margin: 0;
+}
+
 .container {
     max-width: 960px;
     min-width: 480px;
