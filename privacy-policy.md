@@ -79,4 +79,4 @@ We reserve the right to modify this policy at any time. We will notify you of an
 
 ## Contact Us
 
-If you have any questions about this Privacy Policy, please contact us at https://beta.hushline.app/submit_message/scidsg.
+If you have any questions about this Privacy Policy, please contact us at https://tips.hushline.app/submit_message/scidsg.
