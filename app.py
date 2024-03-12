@@ -660,6 +660,13 @@ def submit_message(username):
 
         return redirect(url_for("submit_message", username=username))
 
+    # Attempt to get the user's real IP address if behind a proxy
+    if request.environ.get("HTTP_X_FORWARDED_FOR") is None:
+        user_ip_address = request.environ["REMOTE_ADDR"]
+    else:
+        # In case of multiple forwarded addresses, take the first one (closest to the client)
+        user_ip_address = request.environ["HTTP_X_FORWARDED_FOR"].split(",")[0]
+
     return render_template(
         "submit_message.html",
         form=form,
@@ -669,6 +676,7 @@ def submit_message(username):
         display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
         public_key=user.pgp_key,
+        user_ip_address=user_ip_address,
     )
 
 
