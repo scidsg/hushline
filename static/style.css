@@ -483,6 +483,7 @@ header .btn {
     padding-left: 2.5rem;
     align-items: center;
     font-size: .875rem;
+    font-weight: bold;
 }
 
 .btn .emoji {
@@ -856,7 +857,7 @@ a.dropbtn:hover {
 
     .container {
         min-width: initial;
-        padding: 2rem 1rem 1rem 1rem;
+        padding: 2rem 1rem;
     }
 
     header nav ul {
