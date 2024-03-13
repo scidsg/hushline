@@ -1,28 +1,47 @@
 # Terms of Service for Hush Line
 
-**Last Updated: Feb. 18, 2024**
+**Last Updated: March 10, 2024**
 
-Welcome to Hush Line! Hush Line is a service provided by Science & Design, Inc. ("we", "our", or "us"), a 501(c)(3) organization. Our website is located at [hushline.app](https://hushline.app), and our organization's website is [scidsg.org](https://scidsg.org). By using our services, you agree to the following terms and conditions (the "Terms of Service"). If you do not agree to these terms, please do not use our services.
+## Welcome to Hush Line 🤫
+
+We're delighted you've chosen Hush Line for your secure communication needs. Hush Line, provided by Science & Design, Inc., is committed to protecting your privacy and data. Please carefully review these Terms of Service (“Terms”) as they govern your use of our services provided via [hushline.app](https://hushline.app). By accessing or using Hush Line, you accept and agree to be bound by these Terms. If you disagree with any part of the Terms, please refrain from using our services.
 
 ## 1. Use of Our Service
 
-Hush Line provides secure communication solutions designed to protect your privacy and data. The services are subject to the following terms, which may be updated by us from time to time without notice to you. By using this service, you acknowledge and agree to these terms and conditions of use.
+Hush Line offers secure messaging solutions, intended to safeguard your communication. When using our services, you agree to:
+
+- Adhere to these Terms and Conditions.
+- Regularly check for updates to these Terms, as they may change over time. Updates will be communicated through our website or via email.
+
+Please note, we may update these Terms without prior notice, but we will make an effort to inform you of significant changes.
 
 ## 2. Privacy
 
-Your privacy is important to us. Our Privacy Policy explains how we collect, use, and protect your personal information. By using Hush Line, you agree to the collection and use of this information in accordance with our Privacy Policy.
+Your privacy is paramount. Our Privacy Policy outlines how we handle your personal information. Key points include:
+
+- Types of information we collect.
+- How we use and protect your information.
+- Your privacy rights.
+
+Read our full Privacy Policy [here](https://github.com/scidsg/hushline/blob/main/privacy-policy.md).
 
 ## 3. User Conduct
 
-You agree not to use the service to:
-- Transmit any content that is unlawful, harmful, threatening, abusive, harassing, tortious, defamatory, vulgar, obscene, libelous, invasive of another's privacy, hateful, or racially, ethnically, or otherwise objectionable.
-- Harm minors in any way.
-- Impersonate any person or entity, including, but not limited to, a Science & Design, Inc. official, or falsely state or otherwise misrepresent your affiliation with a person or entity.
-- Forge headers or otherwise manipulate identifiers in order to disguise the origin of any content transmitted through the service. While we prohibit the malicious manipulation of headers or identifiers to disguise the origin of any content transmitted through the service, we understand and support the use of privacy-enhancing technologies such as Tor Browser for the legitimate purpose of protecting user privacy. Users employing such technologies in good faith and without intent to harm the service or other users will not be considered in violation of this policy.
+By using Hush Line, you commit not to:
 
-## 4. Intellectual Property Rights and Open Source License
+- Post or transmit harmful, illegal, or offensive material.
+- Engage in activities that harm minors.
+- Impersonate others or misrepresent your affiliation.
+- Manipulate identifiers to hide content origins, except when using privacy-enhancing technologies like Tor for legitimate reasons.
 
-The content, arrangement, and layout of this site, including, but not limited to, the trademarks, service marks, text, artwork, and images, are the sole property of Science & Design, Inc. and/or its licensors. You are not permitted to use these materials without the express written consent of Science & Design, Inc., except as permitted by the AGPL 3.0 license under which Hush Line is distributed. For more details on the open-source license, please visit [AGPL 3.0 License](https://www.gnu.org/licenses/agpl-3.0.html).
+We support privacy-enhancing technologies when used responsibly.
+
+## 4. Intellectual Property Rights
+
+Unless otherwise stated, all content and materials on Hush Line are the exclusive property of Science & Design, Inc. You may:
+
+- Access and use Hush Line content in line with these Terms.
+- Not use, modify, or distribute our materials without our consent, except as allowed by the AGPL 3.0 license, detailed [here](https://www.gnu.org/licenses/agpl-3.0.html).
 
 ## 5. Termination
 
@@ -34,14 +53,14 @@ In no event shall Science & Design, Inc., nor its directors, employees, partners
 
 ## 7. Governing Law
 
-These Terms shall be governed and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.
+These Terms are governed by the laws of the United States, excluding its conflicts of law rules.
 
-## 8. Changes
+## 8. Changes to These Terms
 
-We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least [number] days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion.
+We may update these Terms as our service evolves. Material changes will be communicated to you at least 30 days before they take effect. Please review this page periodically to stay informed.
 
 ## 9. Contact Us
 
-If you have any questions about these Terms, please contact us at [Your Contact Information].
+If you have any questions or concerns about these Terms or our services, please contact us at hello@scidsg.org or on [Signal](https://signal.me/#eu/MxYFNAnB4INHPGTN7RsSCHf5QtGa4ImEiSmRAoaLzdu3oy+esgVOVrDkg/IIjshQ).
 
-By using Hush Line, you agree to be bound by these Terms of Service.
+By using Hush Line, you acknowledge that you have read, understood, and agreed to be bound by these Terms of Service.
