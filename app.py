@@ -4,6 +4,7 @@ import io
 import base64
 import logging
 import re
+import ipaddress
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 import smtplib
@@ -568,6 +569,30 @@ def get_email_from_pgp_key(pgp_key):
     return None
 
 
+def get_client_ip(request):
+    # Extract the X-Forwarded-For header if present
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        # Split into a list of IPs
+        addresses = [ip.strip() for ip in x_forwarded_for.split(",")]
+    else:
+        # Fallback to remote address if header is not present
+        addresses = [request.remote_addr]
+
+    # Attempt to prioritize IPv4 addresses
+    for address in addresses:
+        try:
+            ip_obj = ipaddress.ip_address(address)
+            # Immediately return the first IPv4 address found
+            if isinstance(ip_obj, ipaddress.IPv4Address):
+                return str(ip_obj)
+        except ValueError:
+            continue  # Ignore invalid IPs and move to the next
+
+    # No IPv4 found, fallback to the first address in the list which could be IPv6
+    return addresses[0] if addresses else "Unknown IP"
+
+
 @app.route("/submit_message/<username>", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
 def submit_message(username):
@@ -660,12 +685,8 @@ def submit_message(username):
 
         return redirect(url_for("submit_message", username=username))
 
-    # Attempt to get the user's real IP address if behind a proxy
-    if request.environ.get("HTTP_X_FORWARDED_FOR") is None:
-        user_ip_address = request.environ["REMOTE_ADDR"]
-    else:
-        # In case of multiple forwarded addresses, take the first one (closest to the client)
-        user_ip_address = request.environ["HTTP_X_FORWARDED_FOR"].split(",")[0]
+    # Function to extract and prioritize IPv4 over IPv6
+    user_ip_address = get_client_ip(request)
 
     return render_template(
         "submit_message.html",
