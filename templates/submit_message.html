@@ -28,7 +28,7 @@
 <form method="POST" action="/submit_message/{{ username }}" id="messageForm">
     {{ form.hidden_tag() }}
     <label for="content">Message</label>
-    {{ form.content(size=32) }}
+    <textarea id="content" maxlength="2000" name="content" placeholder="Include a contact method if you want a response..." required="" size="32" data-mvelo-frame="att" spellcheck="true"></textarea>
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->
@@ -36,7 +36,7 @@
     <button type="submit" id="submitBtn">Send Message</button>
 </form>
 <div class="ip-address-container">
-    <p>Your IP Address: <strong>{{ user_ip_address }}</strong>. <a href="">Learn more</a>.</p>
-    <p class="privacy-notice">For enhanced privacy, consider using <a href="https://torproject.org/download" target="_blank" rel="noopener noreferrer">Tor Browser</a>.</p>
+    <p>Your IP address: <strong>{{ user_ip_address }}</strong>. <a href="https://scidsg.github.io/hushline-docs/book/hosted/sending.html#your-ip-address" target="_blank" rel="noopener noreferrer">Learn more</a>.</p>
+    <p class="privacy-notice">For enhanced privacy, use <a href="https://torproject.org/download" target="_blank" rel="noopener noreferrer">Tor Browser</a>.</p>
 </div>
 {% endblock %}
