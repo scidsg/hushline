@@ -93,7 +93,29 @@ You have rights over your personal data, including:
 
 ## Age Restrictions
 
-Our app is intended for users who are 18 years of age or older. We do not knowingly collect personal information from children under 18. If we become aware that a child under 18 has provided us with personal information, we will take steps to delete such information.
+Our app, Hush Line, is designed for users who are 18 years of age or older. Account creation and message reception are intended for individuals meeting this age requirement. We do not knowingly collect personal information from children under the age of 18 for these purposes. Should we become aware of such information having been collected, immediate steps will be taken to delete it.
+
+### Contextual Exceptions for Users Under 18
+
+Hush Line acknowledges its potential use in specific scenarios involving users under the age of 18, such as confidential student reporting systems within schools. While account holders (e.g., school administrators and counselors) are required to be 18 or older, individuals under 18 are permitted to send messages through Hush Line in these controlled environments for their safety and well-being.
+
+### Implementation in Educational and Protective Environments
+
+When implementing Hush Line within educational institutions or similar settings for use by minors, we uphold the following principles:
+
+- **Institutional Responsibility:** It's crucial for institutions to ensure Hush Line's use complies with laws and regulations pertaining to minors' privacy and safety.
+- **Parental Consent:** Appropriate consent from parents or guardians for minors' use of Hush Line should be secured, emphasizing transparency and accountability.
+- **Privacy and Security with PGP Encryption:** We strongly recommend the use of PGP (Pretty Good Privacy) encryption for all messages sent through Hush Line, especially in contexts involving minors. PGP encryption helps secure the content of messages from unauthorized access, ensuring that sensitive information remains confidential and protected. This practice is vital for maintaining the privacy of all users and fostering a secure communication environment.
+
+### Why PGP Encryption Matters
+
+- **Enhanced Security:** PGP encryption provides a robust layer of security, safeguarding message content against potential interception or unauthorized access.
+- **Trust and Confidentiality:** By encrypting messages, users can trust that their communications are kept confidential, which is particularly important in sensitive situations such as student reporting.
+- **Compliance and Best Practices:** Using PGP encryption aligns with best practices for data protection and privacy, helping institutions comply with relevant regulations concerning the handling of personal information.
+
+### Our Commitment
+
+Hush Line commits to the privacy and protection of all users, advocating for responsible practices in the use of encryption and data security. We encourage educational institutions and organizations that engage with minors through Hush Line to prioritize these security measures. Our team is dedicated to providing support and guidance for integrating PGP encryption into your communication practices with Hush Line, ensuring a safe and private platform for all users.
 
 ## Third-Party Links
 
