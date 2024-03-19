@@ -255,12 +255,9 @@ EOL
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
-# Create and activate Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install Flask and other dependencies
-pip3 install -r requirements.txt
+# install dependencies
+pip install python-poetry
+poetry install
 
 SECRET_KEY=$(python3 -c 'import os; print(os.urandom(64).hex())')
 ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
@@ -337,7 +334,7 @@ fi
 
 # Verify Database Connection and Initialize DB
 echo "Verifying database connection and initializing database..."
-if ! python init_db.py; then
+if ! poetry run ./init_db.py; then
     echo "Database initialization failed. Please check your settings."
     exit 1
 else
@@ -430,9 +427,7 @@ echo "✅ UFW configuration complete."
 # Remove unused packages
 apt -y autoremove
 
-# Generate Codes
-chmod +x generate_codes.sh
-./generate_codes.sh
+poetry run ./generate_invite_codes.py
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service
