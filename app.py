@@ -569,37 +569,6 @@ def get_email_from_pgp_key(pgp_key):
     return None
 
 
-def get_client_ip(request):
-    # Extract the X-Forwarded-For header if present
-    x_forwarded_for = request.headers.get("X-Forwarded-For")
-    if x_forwarded_for:
-        # Split into a list of IPs, taking the first one (closest to the client)
-        addresses = [ip.strip() for ip in x_forwarded_for.split(",")]
-    else:
-        # Fallback to remote address if header is not present
-        addresses = [request.remote_addr]
-
-    # Initialize placeholders for IPv4 and IPv6 addresses
-    ipv4_address = None
-    ipv6_address = None
-
-    # Attempt to find the first valid IPv4 and IPv6 addresses
-    for address in addresses:
-        try:
-            ip_obj = ipaddress.ip_address(address)
-            if isinstance(ip_obj, ipaddress.IPv4Address):
-                ipv4_address = str(ip_obj)
-                break  # Stop at the first valid IPv4 address found
-            elif isinstance(ip_obj, ipaddress.IPv6Address) and not ipv6_address:
-                # Store the first IPv6 address in case no IPv4 address is found
-                ipv6_address = str(ip_obj)
-        except ValueError:
-            continue  # Ignore invalid IPs
-
-    # Prioritize IPv4, then IPv6, otherwise return "No IP"
-    return ipv4_address or ipv6_address or "No IP"
-
-
 @app.route("/submit_message/<username>", methods=["GET", "POST"])
 @limiter.limit("120 per minute")
 def submit_message(username):
@@ -692,9 +661,6 @@ def submit_message(username):
 
         return redirect(url_for("submit_message", username=username))
 
-    # Function to extract and prioritize IPv4 over IPv6
-    user_ip_address = get_client_ip(request)
-
     return render_template(
         "submit_message.html",
         form=form,
@@ -704,7 +670,6 @@ def submit_message(username):
         display_name_or_username=display_name_or_username,
         current_user_id=session.get("user_id"),
         public_key=user.pgp_key,
-        user_ip_address=user_ip_address,
     )
 
 
