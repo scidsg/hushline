@@ -25,7 +25,7 @@
         {% if user.is_verified %}
             <p>⚠️ Changing your display name will result in losing your verification status.</p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}">
             {{ display_name_form.hidden_tag() }}
                 <label for="display_name">Display Name</label>
             {{ display_name_form.display_name(id='display_name') }}
@@ -42,7 +42,7 @@
         {% if user.is_verified %}
             <p>⚠️ Changing your username will result in losing your verification status.</p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}">
             {{ change_username_form.hidden_tag() }}
             <label for="new_username">Username</label>
             {{ change_username_form.new_username(id='new_username', value=session['username']) }}
@@ -60,18 +60,18 @@
         <h3>Two-Factor Authentication</h3>
         {% if user.totp_secret %}
             <!-- If 2FA is enabled, show the Disable 2FA button -->
-            <form method="GET" action="{{ url_for('confirm_disable_2fa') }}">
+            <form method="GET" action="{{ url_for('settings.confirm_disable_2fa') }}">
                 <button type="submit">Disable 2FA</button>
             </form>
         {% else %}
         <!-- If 2FA is disabled, show the Enable 2FA button -->
-        <form method="POST" action="{{ url_for('toggle_2fa') }}">
+        <form method="POST" action="{{ url_for('settings.toggle_2fa') }}">
             <button type="submit">Enable 2FA</button>
         </form>
         {% endif %}
         <!-- Change Password Section in settings.html -->
         <h3>Change Password</h3>
-        <form method="POST" action="{{ url_for('change_password') }}">
+        <form method="POST" action="{{ url_for('settings.change_password') }}">
             {{ change_password_form.hidden_tag() }}
                 <label for="old_password">Old Password</label>
             {{ change_password_form.old_password(id='old_password') }}
@@ -94,7 +94,7 @@
     <div id="email" class="tab-content">
         <!-- SMTP Settings Section -->
         <h3>Email Delivery Settings</h3>
-        <form method="POST" action="{{ url_for('update_smtp_settings') }}">
+        <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
             {{ smtp_settings_form.smtp_username.label }}
             {{ smtp_settings_form.smtp_username }}
@@ -108,7 +108,7 @@
         </form>
         <!-- PGP Key Section -->
         <h3>Public PGP Key</h3>
-        <form method="POST" action="{{ url_for('update_pgp_key') }}">
+        <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
             <label for="pgp_key">Public PGP Key</label>
             {{ pgp_key_form.pgp_key(id='pgp_key') }}
@@ -125,7 +125,7 @@
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
         <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
-        <form method="POST" action="{{ url_for('delete_account') }}">
+        <form method="POST" action="{{ url_for('settings.delete_account') }}">
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>
     </div>

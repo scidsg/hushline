@@ -8,7 +8,7 @@
     <img class="qr" src="{{ qr_code_img }}" alt="QR Code">
     <p><span class="bold">Text Code:</span> <span class="mono">{{ text_code }}</span></p>
 
-    <form method="POST" action="{{ url_for('enable_2fa') }}">
+    <form method="POST" action="{{ url_for('settings.enable_2fa') }}">
         {{ form.hidden_tag() }}
         {{ form.verification_code.label }} {{ form.verification_code(size=6) }}
         {% if form.verification_code.errors %}

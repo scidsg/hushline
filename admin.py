@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import sys
-from app import app, db, User, SecondaryUser
+
+from hushline import SecondaryUser, User, app, db
 
 
 def toggle_admin(username):

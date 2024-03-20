@@ -16,11 +16,24 @@ flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
 gnupg = "^2.3.1"
+pymysql = "^1.1.0"
 pyotp = "^2.9.0"
 python-dotenv = "^1.0.1"
 qrcode = "^7.4.2"
 redis = "^5.0.3"
 
+[tool.poetry.group.dev.dependencies]
+black = "^24.3.0"
+flake8 = "^7.0.0"
+isort = "^5.13.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile= "black"
+line_length = 100

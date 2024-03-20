@@ -5,7 +5,7 @@
     <h2>Scan this QR Code with your 2FA app and enter the code</h2>
     <img class="qr" src="{{ qr_code_img }}" alt="QR Code">
     <p class="mono">Your pairing code: {{ user_secret }}</p>
-    <form method="POST" action="{{ url_for('verify_2fa_setup') }}">
+    <form method="POST" action="{{ url_for('settings.verify_2fa_setup') }}">
         {{ form.hidden_tag() }}
         <div>
             {{ form.verification_code(size=6) }}

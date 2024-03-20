@@ -36,6 +36,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt update && apt -y dist-upgrade 
 apt install whiptail -y
 
+export FLASK_APP=hushline:create_app
+
 # Collect variables using whiptail
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
 DB_USER=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
@@ -334,7 +336,7 @@ fi
 
 # Verify Database Connection and Initialize DB
 echo "Verifying database connection and initializing database..."
-if ! poetry run ./init_db.py; then
+if ! poetry run flask db-extras init-db; then
     echo "Database initialization failed. Please check your settings."
     exit 1
 else
@@ -358,7 +360,7 @@ After=network.target
 User=$USER
 Group=www-data
 WorkingDirectory=$WORKING_DIR
-ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 wsgi:app
+ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 hushline:create_app
 
 [Install]
 WantedBy=multi-user.target

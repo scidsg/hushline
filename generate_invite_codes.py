@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-from app import app, db, InviteCode
 import secrets
 from datetime import datetime, timedelta
+
+from hushline import InviteCode, app, db
 
 
 def create_invite_code():
