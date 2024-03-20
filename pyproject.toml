@@ -21,6 +21,18 @@ python-dotenv = "^1.0.1"
 qrcode = "^7.4.2"
 redis = "^5.0.3"
 
+[tool.poetry.group.dev.dependencies]
+black = "^24.3.0"
+flake8 = "^7.0.0"
+isort = "^5.13.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile= "black"
+line_length = 100
