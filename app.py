@@ -775,8 +775,13 @@ def list_keys():
         app.logger.error(f"Error listing keys: {e}")
 
 
-# Call this function after key import or during troubleshooting
-list_keys()
+@app.cli.command("debug-list-keys")
+def debug_list_keys():
+    """List GPG keys for debugging purposes."""
+    if os.getenv("HUSHLINE_DEBUG_OPTS") == "1":
+        list_keys()
+    else:
+        print("Debugging options are not enabled. Set HUSHLINE_DEBUG_OPTS=1 to enable.")
 
 
 @app.route("/delete_message/<int:message_id>", methods=["POST"])
