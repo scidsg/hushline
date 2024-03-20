@@ -264,12 +264,15 @@ poetry install
 SECRET_KEY=$(python3 -c 'import os; print(os.urandom(64).hex())')
 ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
 
-# Store in .env file
-echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" > .env
-echo "DB_NAME=$DB_NAME" >> .env  
-echo "DB_USER=$DB_USER" >> .env
-echo "DB_PASS=$DB_PASS" >> .env
-echo "SECRET_KEY=$SECRET_KEY" >> .env
+# Store in .env file more efficiently
+{
+echo "ENCRYPTION_KEY=$ENCRYPTION_KEY"
+echo "DB_NAME=$DB_NAME"
+echo "DB_USER=$DB_USER"
+echo "DB_PASS=$DB_PASS"
+echo "SECRET_KEY=$SECRET_KEY"
+echo "HUSHLINE_DEBUG_OPTS=0"
+} > .env
 
 # Ask the user if registration should require codes and directly update the .env file
 if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
