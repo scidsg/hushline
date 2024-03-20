@@ -21,3 +21,7 @@ lint: ## Lint the code
 fmt: ## Format the code
 	isort . && \
 		black .
+
+.PHONY: init-db
+init-db: ## Initialize the dev database
+	FLASK_APP=$(FLASK_APP) flask db-extras init-db
