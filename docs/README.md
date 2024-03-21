@@ -2,11 +2,11 @@
 
 Hush Line is the first free and open-source tip line-as-a-service platform for organizations and individuals. It's intended for journalists and newsrooms to offer the public a way to send confidential messages, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
-<img src="img/family.cover.png">
-
 ## Contents
 
 1. [Getting Started](https://github.com/scidsg/hushline/blob/main/docs/getting-started.md)
 2. [Threat Model](https://github.com/scidsg/hushline/blob/main/docs/threat-model.md)
 3. [Managed Service](https://github.com/scidsg/hushline/blob/main/docs/managed-service.md)
 4. [Personal Server](https://github.com/scidsg/hushline/blob/main/docs/personal-server.md)
+
+<img src="img/family.cover.png">
