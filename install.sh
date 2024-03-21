@@ -276,6 +276,7 @@ echo "DB_NAME=$DB_NAME"
 echo "DB_USER=$DB_USER"
 echo "DB_PASS=$DB_PASS"
 echo "SECRET_KEY=$SECRET_KEY"
+echo "HUSHLINE_DEBUG_OPTS=0"
 } > .env
 
 # Ask the user if registration should require codes and directly update the .env file
