@@ -61,7 +61,6 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 - The security assumptions of RSA (4096-bit GPG and SSH keys) are valid.
 - The security assumptions of bcrypt with randomly-generated salts are valid.
 - The security/anonymity assumptions of Tor and the onion service protocol are valid.
-- The security assumptions of the Tails operating system are valid.
 - The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, application dependencies are valid.
 
 ### Other Assumptions or Factors
@@ -90,6 +89,7 @@ Hush Line employs a verification system to ensure that users can trust the sourc
 ### Verified Accounts
 
 - **Display of Verification Status:** Hush Line indicates verified accounts with a distinctive badge (⭐️ Verified Account). This visual indicator helps users distinguish authentic accounts from potential impersonators, reducing the risk of phishing attacks.
+- **Data Retention:** The information used to verify you is never saved, even temporarily.
 
 ## User Education
 
