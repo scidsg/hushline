@@ -1,6 +1,6 @@
 # Hush Line Documentation
 
-Hush Line is a free and open-source tip line-as-a-service platform for organizations and individuals. It's intended for journalists and newsrooms to offer the public a way to send confidential messages, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
+Hush Line is the first free and open-source tip line-as-a-service platform for organizations and individuals. It's intended for journalists and newsrooms to offer the public a way to send confidential messages, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
 <img src="img/family.cover.png">
 
