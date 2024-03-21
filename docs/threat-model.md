@@ -14,15 +14,16 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 | Receiver         | Read messages                                                     |
 | Verifier         | Verifies Account Owners (journalists, public figures, businesses) |
 | Service Provider | Owner of Hush Line                                                |
+| Server Admin     | Maintain the working order of the application                     |
 
 ## Adversaries
 
-| User Type        | Goal                                                              |
-|------------------|-------------------------------------------------------------------|
-| Passive Observer | Passively logs IP addresses connecting to the service (ISP, DNS)  |
-| Active Observer  | Targeting specific connections                                    |
-| Passive Attacker | Scans the internet for vulnerabilities to take advantage of       |
-| Active Attacker  | Seeks persistence, exploitation of known vulnerabilities          |
+| User Type        | Goal                                                                                              |
+|------------------|---------------------------------------------------------------------------------------------------|
+| Passive Observer | Passively logs IP addresses connecting to the service (ISP, DNS)                                  |
+| Active Observer  | Targets specific connections                                                                      |
+| Passive Attacker | Scans the internet for vulnerabilities to take advantage of                                       |
+| Active Attacker  | Seeks persistence, exploitation of known vulnerabilities, seizure of physical equipment           |
 
 ## Assumptions
 
