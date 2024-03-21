@@ -56,10 +56,11 @@ def create_app() -> Flask:
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
 
-    # Correctly initialize the debug_cli AppGroup before defining commands
-    debug_cli = AppGroup("debug", help="Debugging related commands")
+    @app.cli.group(help="Debugging related commands")
+    def debug() -> None:
+        pass
 
-    @debug_cli.command("list-gpg-keys")
+    @debug.command("list-gpg-keys")
     def debug_list_gpg_keys():
         """List GPG keys for debugging."""
         if os.getenv("HUSHLINE_DEBUG_OPTS") == "1":
@@ -67,7 +68,7 @@ def create_app() -> Flask:
         else:
             print("Debugging options are not enabled. Set HUSHLINE_DEBUG_OPTS=1 to enable.")
 
-    app.cli.add_command(debug_cli)
+    app.cli.add_command(debug)
 
     @app.errorhandler(404)
     def page_not_found(e):
