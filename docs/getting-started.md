@@ -12,9 +12,37 @@ Hush Line is a free and open-source, anonymous-tip-line-as-a-service for organiz
 
 ## Prerequisites
 
-### 1. Gmail or other SMTP-compatible Email Provider
+### 1. Email
 
-We'll use Gmail for its high reliability. If you don't already have an account, create one. Having an email address separate from your personal account is a good practice.
+For Hush Line to email your message, you'll need SMTP information from your mail provider. We'll use Gmail for its high reliability. If you don't already have an account, create one. Maintaining an email address separate from your personal account is a good practice.
+
+You should never use your primary account password; instead, create app-specific passwords. These are purpose-made for single applications.
+
+#### 1.1. Create an app password
+
+From your Gmail account, click on your avatar to access your account-level options. Select `Manage Google Account`.
+
+<img src="img/14-profile-menu.png">
+
+Next, click on the Security tab on the left, then scroll to the bottom of the page to find App Passwords.
+
+<img src="img/15-security.png">
+<img src="img/16-app-passwords.png">
+
+Click on App Passwords, then enter a name, then click Create. A dialog will pop up with your app-specific password. Copy it to a notepad for easy access.
+
+<img src="img/17-create-password.png">
+<img src="img/18-copy-password.png">
+
+#### 1.2. SMTP Settings
+
+##### Gmail SMTP
+- Server: `smtp.gmail.com`
+- Port: `587` or `465`
+
+##### Riseup.net SMTP
+- Server: `mail.riseup.net`
+- Port: `587` or `465`
 
 ### 2. Mailvelope
 
@@ -55,32 +83,10 @@ Your PGP Key is in the grey box, beginning with `-----BEGIN PGP PUBLIC KEY BLOCK
 <img src="img/12-public-key.png">
 <img src="img/13-copy-key.png">
 
-### 3. SMTP Settings and App Passwords
+### 4. Tor Browser (Optional)
 
-For Hush Line to email your message, you'll need SMTP information from your mail provider. You should never use your primary account password; instead, create app-specific passwords. These are purpose-made for single applications.
+For users with advanced privacy needs, including IP address obfuscation, which hides your physical location, download [Tor Browser](https://torproject.org/download). Hush Line has an onion address, and when you connect to it using Tor Browser, you receive the greatest level of protections.
 
-#### Gmail SMTP
-- Server: `smtp.gmail.com`
-- Port: `587` or `465`
-
-#### Riseup.net SMTP
-- Server: `mail.riseup.net`
-- Port: `587` or `465`
-
-#### 3.1. Create an app password
-
-From your Gmail account, click on your avatar to access your account-level options. Select `Manage Google Account`.
-
-<img src="img/14-profile-menu.png">
-
-Next, click on the Security tab on the left, then scroll to the bottom of the page to find App Passwords.
-
-<img src="img/15-security.png">
-<img src="img/16-app-passwords.png">
-
-Click on App Passwords, then enter a name, then click Create. A dialog will pop up with your app-specific password. Copy it to a notepad for easy access.
-
-<img src="img/17-create-password.png">
-<img src="img/18-copy-password.png">
+<img src="../img/3-tor-browser.png">
 
 🎉 Congratulations, you're now ready to continue with Hush Line!
