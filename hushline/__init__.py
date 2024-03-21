@@ -94,7 +94,7 @@ def create_app() -> Flask:
     def db_extras() -> None:
         pass
 
-    @db_extras.command(help="Initiailzie the dev DB")
+    @db_extras.command(help="Initialize the dev DB")
     def init_db() -> None:
         db.create_all()
 

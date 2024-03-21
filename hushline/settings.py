@@ -1,6 +1,6 @@
 import base64
-from datetime import datetime
 import io
+from datetime import datetime
 
 import pyotp
 import qrcode

@@ -25,3 +25,7 @@ fmt: ## Format the code
 .PHONY: init-db
 init-db: ## Initialize the dev database
 	FLASK_APP=$(FLASK_APP) flask db-extras init-db
+
+.PHONY: test
+test: ## Run the test suite
+	pytest -vv tests
