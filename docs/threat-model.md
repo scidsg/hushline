@@ -70,6 +70,11 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ## Threats and Mitigations
 
+### Server Compromise
+
+- **Impacts:** If an attacker obtains the database encryption key, its contents may be decrypted. Still, we do not require PII. If you have SMTP delivery configured, your forwarding address will be visible. If you haven't added your own public PGP key to your account, message content will be visible.
+- **Mitigation:** Hush Line does not require PII, including an email address, to start using the service. To protect message content, users are encouraged to add their own PGP key. We store data encrypted in our database, remove IP addresses and country codes from access logs, and do not store timestamps or associate member data in any way. The database key is never hardcoded and stored in environment variables removing the chance of exposure in the source code.
+
 ### Network Observers and Global Adversaries
 
 - **Mitigation:** All data in transit is encrypted using TLS, and users are encouraged to access Hush Line via Tor for additional anonymity. This prevents network observers from deciphering the content or metadata of communications.
