@@ -11,7 +11,7 @@ from .crypto import encrypt_message, get_email_from_pgp_key
 from .db import db
 from .ext import limiter
 from .forms import ComplexPassword
-from .model import InviteCode, Message, SecondaryUser, User
+from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import require_2fa, send_email
 
 
@@ -81,15 +81,15 @@ def init_app(app: Flask) -> None:
         messages = (
             Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
         )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_users}
+        secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
             user=primary_user,
-            secondary_user=None,
+            secondary_username=None,
             messages=messages,
             is_secondary=False,
-            secondary_users=secondary_users_dict,
+            secondary_usernames=secondary_users_dict,
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
@@ -98,7 +98,7 @@ def init_app(app: Flask) -> None:
         form = MessageForm()
 
         user = None
-        secondary_user = None
+        secondary_username = None
         display_name_or_username = ""
 
         primary_user = User.query.filter_by(primary_username=username).first()
@@ -106,10 +106,12 @@ def init_app(app: Flask) -> None:
             user = primary_user
             display_name_or_username = primary_user.display_name or primary_user.primary_username
         else:
-            secondary_user = SecondaryUser.query.filter_by(username=username).first()
-            if secondary_user:
-                user = secondary_user.primary_user
-                display_name_or_username = secondary_user.display_name or secondary_user.username
+            secondary_username = SecondaryUsername.query.filter_by(username=username).first()
+            if secondary_username:
+                user = secondary_username.primary_user
+                display_name_or_username = (
+                    secondary_username.display_name or secondary_username.username
+                )
                 return redirect(url_for("settings"))
 
         if not user:
@@ -142,7 +144,7 @@ def init_app(app: Flask) -> None:
             new_message = Message(
                 content=email_content,
                 user_id=user.id,
-                secondary_user_id=secondary_user.id if secondary_user else None,
+                secondary_user_id=secondary_username.id if secondary_username else None,
             )
             db.session.add(new_message)
             db.session.commit()
@@ -182,7 +184,7 @@ def init_app(app: Flask) -> None:
             "submit_message.html",
             form=form,
             user=user,
-            secondary_user=secondary_user if secondary_user else None,
+            secondary_username=secondary_username if secondary_username else None,
             username=username,
             display_name_or_username=display_name_or_username,
             current_user_id=session.get("user_id"),

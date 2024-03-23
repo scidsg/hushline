@@ -22,7 +22,7 @@ from .crypto import is_valid_pgp_key
 from .db import db
 from .ext import limiter
 from .forms import ComplexPassword, TwoFactorForm
-from .model import Message, SecondaryUser, User
+from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
 
 
@@ -74,7 +74,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("login"))
 
         # Fetch all secondary usernames for the current user
-        secondary_usernames = SecondaryUser.query.filter_by(user_id=user.id).all()
+        secondary_usernames = SecondaryUsername.query.filter_by(user_id=user.id).all()
 
         # Initialize forms
         change_password_form = ChangePasswordForm()
@@ -507,7 +507,7 @@ def create_blueprint() -> Blueprint:
             Message.query.filter_by(user_id=user.id).delete()
 
             # Explicitly delete secondary users if necessary
-            SecondaryUser.query.filter_by(user_id=user.id).delete()
+            SecondaryUsername.query.filter_by(user_id=user.id).delete()
 
             # Now delete the user
             db.session.delete(user)

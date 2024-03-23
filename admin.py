@@ -2,7 +2,7 @@
 
 import sys
 
-from hushline import SecondaryUser, User, app, db
+from hushline import SecondaryUsername, User, app, db
 
 
 def toggle_admin(username):
@@ -11,9 +11,9 @@ def toggle_admin(username):
 
     # If not found, try to find a secondary user
     if not user:
-        secondary_user = SecondaryUser.query.filter_by(username=username).first()
-        if secondary_user:
-            user = secondary_user.primary_user
+        secondary_username = SecondaryUsername.query.filter_by(username=username).first()
+        if secondary_username:
+            user = secondary_username.primary_user
         else:
             print("User not found.")
             return

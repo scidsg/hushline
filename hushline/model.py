@@ -24,8 +24,8 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     # Corrected the relationship and backref here
-    secondary_users = db.relationship(
-        "SecondaryUser", backref=db.backref("primary_user", lazy=True)
+    secondary_usernames = db.relationship(
+        "SecondaryUsername", backref=db.backref("primary_user", lazy=True)
     )
 
     @property
@@ -129,8 +129,8 @@ class User(db.Model):
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
 
 
-class SecondaryUser(db.Model):
-    __tablename__ = "secondary_user"
+class SecondaryUsername(db.Model):
+    __tablename__ = "secondary_username"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -144,8 +144,8 @@ class Message(db.Model):
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
-    secondary_user_id = db.Column(db.Integer, db.ForeignKey("secondary_user.id"), nullable=True)
-    secondary_user = db.relationship("SecondaryUser", backref="messages")
+    secondary_user_id = db.Column(db.Integer, db.ForeignKey("secondary_username.id"), nullable=True)
+    secondary_username = db.relationship("SecondaryUsername", backref="messages")
 
     @property
     def content(self):
