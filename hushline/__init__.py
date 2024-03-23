@@ -12,7 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import admin, routes, settings
 from .db import db
-from .ext import bcrypt, limiter
+from .ext import limiter
 from .model import User
 from .crypto import list_keys
 
@@ -42,7 +42,6 @@ def create_app() -> Flask:
     db.init_app(app)
     _ = Migrate(app, db)
     limiter.init_app(app)
-    bcrypt.init_app(app)
 
     file_handler = RotatingFileHandler("flask.log", maxBytes=1024 * 1024 * 100, backupCount=20)
     file_handler.setLevel(logging.DEBUG)

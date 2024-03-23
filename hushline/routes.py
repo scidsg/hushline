@@ -9,7 +9,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import encrypt_message, get_email_from_pgp_key
 from .db import db
-from .ext import bcrypt, limiter
+from .ext import limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, SecondaryUser, User
 from .utils import require_2fa, send_email
@@ -239,7 +239,7 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+            password_hash = pwd_context.hash(password).decode("utf-8")
             new_user = User(primary_username=username, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
@@ -260,7 +260,7 @@ def init_app(app: Flask) -> None:
             # Use primary_username for filter_by
             user = User.query.filter_by(primary_username=username).first()
 
-            if user and bcrypt.check_password_hash(user.password_hash, password):
+            if user and pwd_context.verify(password, user.password_hash):
                 session.permanent = (
                     True  # Make the session permanent so it uses the configured lifetime
                 )

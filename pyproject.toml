@@ -21,6 +21,7 @@ pyotp = "^2.9.0"
 python-dotenv = "^1.0.1"
 qrcode = "^7.4.2"
 redis = "^5.0.3"
+passlib = "^1.7.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"
