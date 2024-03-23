@@ -12,8 +12,8 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 |------------------|-------------------------------------------------------------------|
 | Submitter        | Send a message                                                    |
 | Receiver         | Read messages                                                     |
-| Verifier         | Verifies Account Owners (journalists, public figures, businesses) |
-| Service Provider | Owner of Hush Line                                                |
+| Verifier         | Verifies account owners (journalists, public figures, businesses) |
+| Service Provider | Owns and operates Hush Line                                       |
 | Server Admin     | Maintain the working order of the application                     |
 
 ## Adversaries
