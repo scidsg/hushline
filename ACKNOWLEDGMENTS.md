@@ -4,6 +4,7 @@
 - Abbey Ripstra, Research
 - Alex Rojas, Industrial Design
 - Dr. Ashley Di Battista, Research
+- Brassy, Software Engineering, Architecture
 - Chirayu Desai, Privacy Engineering
 - David McKinney, Security Auditor
 - David Mirza Ahmad, Security Auditor
