@@ -8,22 +8,22 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 
 ## Users
 
-| User Type        | Goal                                                              |
-|------------------|-------------------------------------------------------------------|
-| Submitter        | Send a message                                                    |
-| Receiver         | Read messages                                                     |
-| Verifier         | Verifies account owners (journalists, public figures, businesses) |
-| Service Provider | Provide Hush Line service                                         |
-| Server Admin     | Maintain the working order of the application                     |
+| User Type | Goal |
+|-|-|
+| Submitter | Send a message |
+| Receiver | Read messages |
+| Verifier | Verifies account owners (journalists, public figures, businesses) |
+| Service Provider | Provide Hush Line service |
+| Server Admin | Maintain the working order of the application |
 
 ## Adversaries
 
-| User Type        | Goal                                                                                              |
-|------------------|---------------------------------------------------------------------------------------------------|
-| Passive Observer | Passively logs IP addresses connecting to the service (ISP, DNS)                                  |
-| Active Observer  | Targets specific connections                                                                      |
-| Passive Attacker | Scans the internet for vulnerabilities to take advantage of                                       |
-| Active Attacker  | Seeks persistence, exploitation of known vulnerabilities, seizure of physical equipment           |
+| User Type | Goal |
+|-|-|
+| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections |
+| Active Observer | Targets specific connections |
+| Passive Attacker | Scans the internet for vulnerabilities of which to take advantage |
+| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, seizure of physical equipment |
 
 ## Assumptions
 
@@ -32,7 +32,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 ### Assumptions About the Individual Submitting a Message
 
 - The individual submitting a message does so in good faith.
-- The individual submitting a message wants to remain anonymous, against a network observer, forensic analysis, or to Hush Line servers.
+- The individual submitting a message wants to remain anonymous against a network observer, forensic analysis, or to Hush Line servers.
 - The individual submitting a message is accessing the official Hush Line site.
 
 ### Assumptions About the Person or Organization Receiving a Message
@@ -60,9 +60,9 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 ### Assumptions About the World
 
 - The security assumptions of RSA (4096-bit GPG and SSH keys) are valid.
-- The security assumptions of bcrypt with randomly-generated salts are valid.
-- The security/anonymity assumptions of Tor and the onion service protocol are valid.
-- The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, application dependencies are valid.
+- The security assumptions of Passlib with randomly generated salts are valid.
+- The security/anonymity assumptions of Tor and the Onion service protocol are valid.
+- The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
 
 ### Other Assumptions or Factors
 
@@ -74,7 +74,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 ### Server Compromise
 
 - **Impacts:** If an attacker obtains the database encryption key, its contents may be decrypted. Still, we do not require PII. If you have SMTP delivery configured, your forwarding address will be visible. If you haven't added your own public PGP key to your account, message content will be visible.
-- **Mitigation:** Hush Line does not require PII, including an email address, to start using the service. To protect message content, users are encouraged to add their own PGP key. We store data encrypted in our database, remove IP addresses and country codes from access logs, and do not store timestamps or associate member data in any way. The database key is never hardcoded and stored in environment variables removing the chance of exposure in the source code.
+- **Mitigation:** Hush Line does not require PII, including an email address, to use the service. To protect message content, users are encouraged to add their own PGP key. We store data encrypted in our database, remove IP addresses and country codes from access logs, and do not store timestamps or associate member data in any way. The database key is never hardcoded and is stored in environment variables, removing the chance of exposure to the source code.
 
 ### Network Observers
 
