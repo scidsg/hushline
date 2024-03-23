@@ -1,7 +1,10 @@
 from flask import current_app
 
+from passlib.context import CryptContext
 from .crypto import decrypt_field, encrypt_field
 from .db import db
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class User(db.Model):
@@ -27,11 +30,18 @@ class User(db.Model):
 
     @property
     def password_hash(self):
-        return decrypt_field(self._password_hash)
+        decrypted_hash = decrypt_field(self._password_hash)
+        return decrypted_hash
 
     @password_hash.setter
-    def password_hash(self, value):
-        self._password_hash = encrypt_field(value)
+    def password_hash(self, plaintext_password):
+        hashed_password = pwd_context.hash(plaintext_password)
+        self._password_hash = encrypt_field(hashed_password)
+
+    def verify_password(self, plaintext_password):
+    decrypted_hash = decrypt_field(self._password_hash)
+    return pwd_context.verify(plaintext_password, decrypted_hash)
+
 
     @property
     def totp_secret(self):
