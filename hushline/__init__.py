@@ -1,6 +1,8 @@
 import logging
 import os
 from datetime import timedelta
+from logging.handlers import RotatingFileHandler
+
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
@@ -41,6 +43,12 @@ def create_app() -> Flask:
     _ = Migrate(app, db)
     limiter.init_app(app)
 
+    file_handler = RotatingFileHandler("flask.log", maxBytes=1024 * 1024 * 100, backupCount=20)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]")
+    )
+    app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.DEBUG)
 
     routes.init_app(app)
@@ -75,10 +83,8 @@ def create_app() -> Flask:
 
     @app.errorhandler(Exception)
     def handle_exception(e):
-        # Consider adjusting error handling as per your logging preferences
-        app.logger.error(
-            f"Error: {e}", exc_info=True
-        )  # Ensure appropriate logging configuration is in place
+        # Log the error and stacktrace
+        app.logger.error(f"Error: {e}", exc_info=True)
         return "An internal server error occurred", 500
 
     @app.cli.group(

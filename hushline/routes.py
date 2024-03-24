@@ -294,7 +294,7 @@ def init_app(app: Flask) -> None:
 
         user = User.query.get(session["user_id"])
         if not user:
-            flash("🫥 User not found. Please log in again.")
+            flash("🫥 User not found. Please login again.")
             session.clear()  # Clearing the session for security
             return redirect(url_for("login"))
 
