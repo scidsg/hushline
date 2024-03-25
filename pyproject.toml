@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "hushline"
 version = "0.0.1"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "A lightweight, secure, and anonymous tip line for organizations and individuals."
+authors = ["Science & Design, Inc, <hello@scidsg.org>"]
 license = "AGPL 3.0"
 readme = "README.md"
 
@@ -17,13 +17,13 @@ flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
 gnupg = "^2.3.1"
 passlib = "^1.7.4"
-pymysql = "^1.1.0"
 pyotp = "^2.9.0"
 python-dotenv = "^1.0.1"
 qrcode = "^7.4.2"
 redis = "^5.0.3"
 
 [tool.poetry.group.dev.dependencies]
+mypy = "^1.9"
 black = "^24.3.0"
 flake8 = "^7.0.0"
 isort = "^5.13.2"
