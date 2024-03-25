@@ -55,13 +55,13 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 ### Assumptions About Science & Design
 
 - Science & Design wants to preserve the anonymity of its sources.
-- Science & Design acts in the interest of allowing sources to submit messages, regardless of the contents of their contents.
+- Science & Design acts in the interest of allowing sources to submit messages, regardless of their contents.
 - The users of the system, and those with physical access to the servers, can be trusted to uphold the previous assumptions unless the entire organization has been compromised.
 - Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block document submissions, or hand over encrypted or decrypted submissions.
 
 ### Assumptions About the World
 
-- The security assumptions of 'bcrypt' with randomly generated salts are valid.
+- The security assumptions of `bcrypt` with randomly generated salts are valid.
 - The security/anonymity assumptions of Tor and the Onion service protocol are valid.
 - The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
 
@@ -87,7 +87,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ### Legal and Coercive Pressure
 
-- **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts. Furthermore, the use of encryption for stored data ensures that, even under pressure, Hush Line cannot divulge meaningful user data.
+- **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts.
 
 ## Verification System
 
