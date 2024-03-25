@@ -1,0 +1,46 @@
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name {{ domain }};
+    return 301 https://{{ domain }}$request_uri;
+}
+
+# HTTPS server block
+server {
+    listen 443 ssl http2; # Enable HTTP/2 if supported
+    server_name {{ domain }};
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    # Include additional SSL parameters from a common file (optional)
+    include snippets/ssl-params.conf;
+
+    # Root directory
+    root /var/www/html/hushline;
+
+    # Proxy pass configuration for handling requests
+    location / {
+        proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    location = /.well-known/security.txt {
+        alias /var/www/html/hushline/.well-known/security.txt;
+    }
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self';";
+    add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+    add_header Referrer-Policy "no-referrer";
+    add_header X-XSS-Protection "1; mode=block";
+}

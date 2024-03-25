@@ -1,0 +1,174 @@
+---
+- name: Setup Hush Line application server
+  hosts: all
+  become: yes
+  vars_files:
+    - vars/common.yml
+    - vars/secrets/secrets.yml
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - git
+          - nginx
+          - default-mysql-server
+          - python3-venv
+          - certbot
+          - python3-certbot-nginx
+          - libnginx-mod-http-geoip
+          - ufw
+          - fail2ban
+          - redis
+          - redis-server
+          - apt-transport-https
+          - curl
+          - sqlite3
+          - acl
+        update_cache: yes
+        state: latest
+
+    - name: Clone Hush Line repository
+      git:
+        repo: https://github.com/scidsg/hushline.git
+        dest: /var/www/html/hushline
+        version: ansible
+
+    - name: Install Poetry
+      shell: |
+        curl -sSL https://install.python-poetry.org | python3 -
+      args:
+        creates: /root/.local/bin/poetry
+
+    - name: Create virtual environment
+      shell: python3 -m venv /var/www/html/hushline/venv
+      args:
+        creates: /var/www/html/hushline/venv
+
+    - name: Configure Poetry to use existing virtual environment
+      shell: |
+        /root/.local/bin/poetry config virtualenvs.create false
+      args:
+        executable: /bin/bash
+
+    - name: Install dependencies with Poetry
+      shell: |
+        source /var/www/html/hushline/venv/bin/activate && /root/.local/bin/poetry install
+      args:
+        chdir: /var/www/html/hushline
+        executable: /bin/bash
+
+    - name: Perform database migrations
+      shell: |
+        source /var/www/html/hushline/venv/bin/activate && flask db upgrade
+      args:
+        chdir: /var/www/html/hushline
+        executable: /bin/bash
+      become: no
+      become_user: hushlineuser
+
+    - name: Create Hushline user
+      user:
+        name: hushlineuser
+        system: yes
+        shell: /usr/sbin/nologin
+        group: www-data
+        create_home: no
+
+    - name: Ensure SQLite directory exists
+      file:
+        path: /var/lib/hushline
+        state: directory
+        owner: hushlineuser
+        group: www-data
+
+    - name: Ensure /etc/hushline directory exists
+      file:
+        path: /etc/hushline
+        state: directory
+        owner: hushlineuser
+        group: www-data
+        mode: '0755'
+
+    - name: Setup environment variables for production
+      copy:
+        dest: /etc/hushline/hushline.conf
+        content: |
+          SECRET_KEY={{ secret_key }}
+          ENCRYPTION_KEY={{ encryption_key }}
+          DB_NAME={{ db_name }}
+          DB_USER={{ db_user }}
+          DB_PASS={{ db_pass }}
+          HUSHLINE_DEBUG_OPTS=0
+          SQLALCHEMY_DATABASE_URI=sqlite:///{{ sqlite_db_file }}
+          REDIS_URI={{ redis_uri }}
+          REGISTRATION_CODES_REQUIRED=false
+          SSL_CERT_PATH=/etc/letsencrypt/live/{{ domain }}/fullchain.pem
+          SSL_KEY_PATH=/etc/letsencrypt/live/{{ domain }}/privkey.pem
+          FLASK_ENV=production
+        owner: hushlineuser
+        group: www-data
+        mode: '0600'
+
+    - name: Configure Nginx for Hush Line
+      template:
+        src: hushline.nginx.j2
+        dest: "/etc/nginx/sites-available/{{ domain }}.nginx"
+      notify: reload nginx
+
+    - name: Enable Hush Line Nginx configuration
+      file:
+        src: "/etc/nginx/sites-available/{{ domain }}.nginx"
+        dest: "/etc/nginx/sites-enabled/{{ domain }}.nginx"
+        state: link
+      notify: reload nginx
+
+    - name: Setup Let's Encrypt certificates
+      include_role:
+        name: geerlingguy.certbot
+      vars:
+        certbot_create_if_missing: true
+        certbot_certs:
+          - domains:
+              - "{{ domain }}"
+            email: "{{ email }}"
+
+    - name: Set ACLs for hushlineuser on SSL directories and certificates
+      acl:
+        path: "{{ item.path }}"
+        entity: "{{ item.entity }}"
+        etype: user
+        permissions: "{{ item.permissions }}"
+        state: present
+      become: yes
+      loop:
+        - { path: "/etc/letsencrypt/", entity: "hushlineuser", permissions: "x" }
+        - { path: "/etc/letsencrypt/live/", entity: "hushlineuser", permissions: "x" }
+        - { path: "/etc/letsencrypt/archive/", entity: "hushlineuser", permissions: "x" }
+        - { path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem", entity: "hushlineuser", permissions: "r" }
+        - { path: "/etc/letsencrypt/live/{{ domain }}/privkey.pem", entity: "hushlineuser", permissions: "r" }
+
+    - name: Copy hushline service file into place
+      copy:
+        src: "{{ playbook_dir }}/files/hushline.service"
+        dest: "/etc/systemd/system/hushline.service"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd to recognize new service
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start hushline service
+      systemd:
+        name: hushline
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded

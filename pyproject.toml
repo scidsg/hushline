@@ -5,6 +5,7 @@ description = "A lightweight, secure, and anonymous tip line for organizations a
 authors = ["Science & Design, Inc. <hello@scidsg.org>"]
 license = "AGPL 3.0"
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"

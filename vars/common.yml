@@ -1,0 +1,12 @@
+hushline_user: hushlineuser
+hushline_group: www-data
+domain: dev.ourdemo.app
+email: hushline@scidsg.org
+redis_uri: redis://localhost:6379
+db_name: hushlinedb
+db_user: hushlineuser
+flask_app: /var/www/html/hushline/hushline/__init__.py
+sqlite_dir: /var/lib/hushline
+sqlite_db_file: "{{ sqlite_dir }}/hushline.db"
+service_file: /etc/systemd/system/hushline.service
+path_to_onion_address_file: /var/lib/tor/hushline/hostname
