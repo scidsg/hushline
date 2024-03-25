@@ -5,6 +5,7 @@ __pycache__
 .mypy_cache
 
 *.log
-DEV.md
 _DEV.md
 .DS_Store
+/venv
+hushline.db

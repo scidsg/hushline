@@ -15,7 +15,7 @@ server {
         location = /.well-known/security.txt {
             alias /var/www/html/hushline/.well-known/security.txt;
         }
-                
+
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
@@ -38,7 +38,7 @@ server {
             proxy_send_timeout 300s;
             proxy_read_timeout 300s;
         }
-                
+
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
         add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self';";

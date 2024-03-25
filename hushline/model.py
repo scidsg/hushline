@@ -1,7 +1,8 @@
 from flask import current_app
 
-from .crypto import decrypt_field, encrypt_field, pwd_context
+from .crypto import decrypt_field, encrypt_field
 from .db import db
+from .ext import bcrypt
 
 
 class User(db.Model):
@@ -26,18 +27,17 @@ class User(db.Model):
     )
 
     @property
-    def password_hash(self) -> str:
-        # Assuming you have some decryption logic if needed
-        decrypted_hash = decrypt_field(self._password_hash)
-        return decrypted_hash
+    def password_hash(self):
+        """Return the hashed password."""
+        return self._password_hash
 
     @password_hash.setter
-    def password_hash(self, value: str) -> None:
-        self._password_hash = encrypt_field(value)
+    def password_hash(self, plaintext_password):
+        """Hash plaintext password and store it."""
+        self._password_hash = bcrypt.generate_password_hash(plaintext_password).decode("utf-8")
 
-    def verify_password(self, plaintext_password: str) -> bool:
-        decrypted_hash = decrypt_field(self._password_hash)
-        return pwd_context.verify(plaintext_password, decrypted_hash)
+    def check_password(self, plaintext_password):
+        return bcrypt.check_password_hash(self.password_hash, plaintext_password)
 
     @property
     def totp_secret(self) -> str:
@@ -123,6 +123,12 @@ class User(db.Model):
         except Exception as e:
             # Log any exceptions that occur during the update
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
+
+    def __init__(self, *args, **kwargs):
+        plaintext_password = kwargs.pop("password", None)
+        super().__init__(*args, **kwargs)
+        if plaintext_password:
+            self.password_hash = plaintext_password  # This uses the @password_hash setter
 
 
 class SecondaryUsername(db.Model):

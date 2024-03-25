@@ -1,4 +1,4 @@
-# Acknowledgments 
+# Acknowledgments
 
 - Abbey Ripstra, Research
 - Alex Rojas, Industrial Design

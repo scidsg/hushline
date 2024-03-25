@@ -3,13 +3,10 @@ import os
 from datetime import timedelta
 from typing import Any, Tuple
 
-from dotenv import load_dotenv
 from flask import Flask, Response, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
 from flask_migrate import Migrate
 from werkzeug.middleware.proxy_fix import ProxyFix
-
-load_dotenv()
 
 from . import admin, routes, settings  # noqa: E402
 from .db import db  # noqa: E402
@@ -35,12 +32,14 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
-    ssl_cert = "/etc/mariadb/ssl/fullchain.pem"
-    ssl_key = "/etc/mariadb/ssl/privkey.pem"
+    # Conditional SSL configuration based on environment
+    if os.getenv("FLASK_ENV") == "production":
+        ssl_cert = "/etc/mariadb/ssl/fullchain.pem"
+        ssl_key = "/etc/mariadb/ssl/privkey.pem"
 
-    # Ensure SSL files exist
-    if not all(os.path.exists(path) for path in [ssl_cert, ssl_key]):
-        raise FileNotFoundError("SSL certificate or key file is missing.")
+        # Ensure SSL files exist
+        if not all(os.path.exists(path) for path in [ssl_cert, ssl_key]):
+            raise FileNotFoundError("SSL certificate or key file is missing.")
 
     db.init_app(app)
     _ = Migrate(app, db)

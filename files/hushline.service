@@ -6,7 +6,7 @@ After=network.target
 User=hushlineuser
 Group=www-data
 WorkingDirectory=/var/www/html/hushline
-Environment="PATH=/var/www/html/hushline/.env"
+EnvironmentFile=/etc/hushline/hushline.conf
 ExecStart=/var/www/html/hushline/venv/bin/gunicorn 'hushline:create_app()' --workers 2 --bind unix:/var/www/html/hushline/hushline.sock -m 007 --timeout 120
 
 [Install]

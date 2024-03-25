@@ -1,5 +1,4 @@
 .DEFAULT_GOAL := help
-FLASK_APP = hushline/__init__.py
 
 .PHONY: help
 help: ## Print the help message
@@ -9,7 +8,8 @@ help: ## Print the help message
 
 .PHONY: run
 run: ## Run the app
-	FLASK_APP=$(FLASK_APP) flask run --debug -h localhost -p 5000
+	@source ./env.sh && \
+	flask run --debug -h localhost -p 5000
 
 .PHONY: lint
 lint: ## Lint the code
@@ -25,7 +25,7 @@ fmt: ## Format the code
 
 .PHONY: init-db
 init-db: ## Initialize the dev database
-	FLASK_APP=$(FLASK_APP) flask db-extras init-db
+	flask db-extras init-db
 
 .PHONY: test
 test: ## Run the test suite
