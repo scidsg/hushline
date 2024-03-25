@@ -28,7 +28,9 @@ def create_app() -> Flask:
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///hushline.db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "SQLALCHEMY_DATABASE_URI", "sqlite:///hushline.db"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     app.config["SESSION_COOKIE_NAME"] = "__Host-session"
