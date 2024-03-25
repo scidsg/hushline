@@ -5,3 +5,5 @@ __pycache__
 *.log
 _DEV.md
 .DS_Store
+/venv
+hushline.db
