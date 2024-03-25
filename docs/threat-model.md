@@ -1,5 +1,7 @@
 # Hush Line Threat Model
 
+ℹ️ _This is a living document and is subject to change as the app evolves._
+
 Adapted from the threat/risk models published by [Cwtch](https://docs.cwtch.im/security/risk/), [SecureDrop](https://docs.securedrop.org/en/latest/threat_model/threat_model.html), and [Pond](https://web.archive.org/web/20150326154506/https://pond.imperialviolet.org/threat.html).
 
 ## Introduction
@@ -59,8 +61,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ### Assumptions About the World
 
-- The security assumptions of RSA (4096-bit GPG and SSH keys) are valid.
-- The security assumptions of Passlib with randomly generated salts are valid.
+- The security assumptions of 'bcrypt' with randomly generated salts are valid.
 - The security/anonymity assumptions of Tor and the Onion service protocol are valid.
 - The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
 
