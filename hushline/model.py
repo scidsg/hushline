@@ -4,7 +4,15 @@ from passlib.context import CryptContext
 from .crypto import decrypt_field, encrypt_field
 from .db import db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2i"],
+    deprecated="auto",
+    argon2__variant="i",
+    argon2__time_cost=3,
+    argon2__memory_cost=256000,
+    argon2__parallelism=4,  # Adjust parallelism based on your server's CPU cores
+    argon2__salt_size=16,
+)
 
 
 class User(db.Model):
