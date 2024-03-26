@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 #Run as root
 if [[ $EUID -ne 0 ]]; then
@@ -36,8 +35,6 @@ trap error_exit ERR
 export DEBIAN_FRONTEND=noninteractive
 apt update && apt -y dist-upgrade 
 apt install whiptail -y
-
-export FLASK_APP=hushline:create_app
 
 # Collect variables using whiptail
 DB_NAME=$(whiptail --inputbox "Enter the database name" 8 39 "hushlinedb" --title "Database Name" 3>&1 1>&2 2>&3)
@@ -78,11 +75,11 @@ systemctl restart tor.service
 sleep 10
 
 # Get the Onion address
-ONION_ADDRESS=$(cat /var/lib/tor/"$DOMAIN"/hostname)
-SAUTEED_ONION_ADDRESS=$(echo "$ONION_ADDRESS" | tr -d '.')
+ONION_ADDRESS=$(cat /var/lib/tor/$DOMAIN/hostname)
+SAUTEED_ONION_ADDRESS=$(echo $ONION_ADDRESS | tr -d '.')
 
 # Configure Nginx
-cat > /etc/nginx/sites-available/"$DOMAIN".nginx << EOL
+cat > /etc/nginx/sites-available/$DOMAIN.nginx << EOL
 server {
         root /var/www/html/$DOMAIN;
         server_name $DOMAIN;
@@ -195,31 +192,27 @@ http {
 }
 EOL
 
-ln -sf /etc/nginx/sites-available/"$DOMAIN".nginx /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/$DOMAIN.nginx /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
 if [ -e "/etc/nginx/sites-enabled/default" ]; then
     rm /etc/nginx/sites-enabled/default
 fi
-ln -sf /etc/nginx/sites-available/"$DOMAIN".nginx /etc/nginx/sites-enabled/
-if nginx -t; then
-    systemctl restart nginx
-else
-    error_exit
-fi
+ln -sf /etc/nginx/sites-available/$DOMAIN.nginx /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx || error_exit
 
-cd /var/www/html || exit
-git clone "$GIT"
-REPO_NAME=$(basename "$GIT" .git)
-mv "$REPO_NAME" "$DOMAIN"
+cd /var/www/html
+git clone $GIT
+REPO_NAME=$(basename $GIT .git)
+mv $REPO_NAME $DOMAIN
 
 SERVER_IP=$(curl -s ifconfig.me)
 WIDTH=$(tput cols)
-whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 "$WIDTH"
+whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 $WIDTH
 # Request the certificates
 echo "⏲️  Waiting 30 seconds for DNS to update..."
 sleep 30
-certbot --nginx -d "$DOMAIN","$SAUTEED_ONION_ADDRESS"."$DOMAIN" --agree-tos --non-interactive --no-eff-email --email "${EMAIL}"
+certbot --nginx -d $DOMAIN,$SAUTEED_ONION_ADDRESS.$DOMAIN --agree-tos --non-interactive --no-eff-email --email ${EMAIL}
 
 echo "Configuring automatic renewing certificates..."
 # Set up cron job to renew SSL certificate
@@ -228,12 +221,12 @@ echo "✅ Automatic HTTPS certificates configured."
 
 # Enable IPv6 in Nginx configuration
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN.nginx"
-sed -i '/listen 80;/a \    listen [::]:80;' "$NGINX_CONF"
-sed -i '/listen 443 ssl;/a \    listen [::]:443 ssl;' "$NGINX_CONF"
+sed -i '/listen 80;/a \    listen [::]:80;' $NGINX_CONF
+sed -i '/listen 443 ssl;/a \    listen [::]:443 ssl;' $NGINX_CONF
 echo "✅ IPv6 configuration appended to Nginx configuration file."
 
 # Append OCSP Stapling configuration for SSL
-sed -i "/listen \[::\]:443 ssl;/a \    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/$DOMAIN/chain.pem;\n    resolver 9.9.9.9 1.1.1.1 valid=300s;\n    resolver_timeout 5s;\n    ssl_session_cache shared:SSL:10m;" "$NGINX_CONF"
+sed -i "/listen \[::\]:443 ssl;/a \    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/$DOMAIN/chain.pem;\n    resolver 9.9.9.9 1.1.1.1 valid=300s;\n    resolver_timeout 5s;\n    ssl_session_cache shared:SSL:10m;" $NGINX_CONF
 echo "✅ OCSP Stapling, SSL Session, and Resolver Timeout added."
 
 # Test the Nginx configuration and reload if successful
@@ -242,7 +235,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 ####################################
 
-cd "$DOMAIN" || exit
+cd $DOMAIN
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -250,7 +243,7 @@ wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E
 mkdir -p .well-known
 
 # Configure Nginx with privacy-preserving logging
-cat > /var/www/html/"$DOMAIN"/.well-known/security.txt << EOL
+cat > /var/www/html/$DOMAIN/.well-known/security.txt << EOL
 Contact: mailto:security@scidsg.org
 Expires: 2025-01-01T00:00:00Z
 Encryption: https://$DOMAIN/public.asc
@@ -262,22 +255,22 @@ EOL
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
-# install dependencies
-pip install python-poetry
-poetry install
+# Create and activate Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Flask and other dependencies
+pip3 install -r requirements.txt
 
 SECRET_KEY=$(python3 -c 'import os; print(os.urandom(64).hex())')
 ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
 
-# Store in .env file more efficiently
-{
-echo "ENCRYPTION_KEY=$ENCRYPTION_KEY"
-echo "DB_NAME=$DB_NAME"
-echo "DB_USER=$DB_USER"
-echo "DB_PASS=$DB_PASS"
-echo "SECRET_KEY=$SECRET_KEY"
-echo "HUSHLINE_DEBUG_OPTS=0"
-} > .env
+# Store in .env file
+echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" > .env
+echo "DB_NAME=$DB_NAME" >> .env  
+echo "DB_USER=$DB_USER" >> .env
+echo "DB_PASS=$DB_PASS" >> .env
+echo "SECRET_KEY=$SECRET_KEY" >> .env
 
 # Ask the user if registration should require codes and directly update the .env file
 if whiptail --title "Require Registration Codes" --yesno "Do you want to require registration codes for new users?" 8 78; then
@@ -312,8 +305,8 @@ systemctl restart mariadb
 
 sudo mkdir -p /etc/mariadb/ssl
 
-sudo cp /etc/letsencrypt/live/"$DOMAIN"/fullchain.pem /etc/mariadb/ssl/
-sudo cp /etc/letsencrypt/live/"$DOMAIN"/privkey.pem /etc/mariadb/ssl/
+sudo cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /etc/mariadb/ssl/
+sudo cp /etc/letsencrypt/live/$DOMAIN/privkey.pem /etc/mariadb/ssl/
 
 sudo chown mysql:mysql /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
 sudo chmod 400 /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
@@ -344,7 +337,7 @@ fi
 
 # Verify Database Connection and Initialize DB
 echo "Verifying database connection and initializing database..."
-if ! poetry run flask db-extras init-db; then
+if ! python init_db.py; then
     echo "Database initialization failed. Please check your settings."
     exit 1
 else
@@ -352,7 +345,7 @@ else
 fi
 
 cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
-mysql -u root -p"$DB_PASS" -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+mysql -u root -p'$DB_PASS' -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
 
 # Define the working directory
 WORKING_DIR=$(pwd)
@@ -368,7 +361,7 @@ After=network.target
 User=$USER
 Group=www-data
 WorkingDirectory=$WORKING_DIR
-ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 hushline:create_app
+ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 wsgi:app
 
 [Install]
 WantedBy=multi-user.target
@@ -437,7 +430,9 @@ echo "✅ UFW configuration complete."
 # Remove unused packages
 apt -y autoremove
 
-poetry run ./generate_invite_codes.py
+# Generate Codes
+chmod +x generate_codes.sh
+./generate_codes.sh
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service

@@ -1,9 +1,9 @@
 # Acknowledgments 
 
+- 2024 Security Audit by [Subgraph](https://subgraph.com/index.en.html)
 - Abbey Ripstra, Research
 - Alex Rojas, Industrial Design
 - Dr. Ashley Di Battista, Research
-- Brassy, Software Engineering, Architecture
 - Chirayu Desai, Privacy Engineering
 - David McKinney, Security Auditor
 - David Mirza Ahmad, Security Auditor
@@ -20,7 +20,6 @@
 - Saptak Sengupta, Accessibility, Engineering
 - Scott Jenson, Content Design
 - Simon Wörpel, Engineering
-- [Subgraph](https://subgraph.com/index.en.html), 2024 Security Audit
 - Sooraj Sathyanarayanan, DevSecOps
 - Stef Daehler, Subject Matter Expert, Education
 - Ura Creative, Production Design, Packaging
