@@ -378,8 +378,9 @@ After=network.target
 User=$USER
 Group=www-data
 WorkingDirectory=$WORKING_DIR
+Environment="PATH=$WORKING_DIR/.env"
 Environment="ENCRYPTION_KEY=$ENCRYPTION_KEY"
-ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 hushline:create_app
+ExecStart=$WORKING_DIR/venv/bin/gunicorn 'hushline:create_app()' --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120
 
 [Install]
 WantedBy=multi-user.target
