@@ -39,9 +39,8 @@ class User(db.Model):
         self._password_hash = encrypt_field(hashed_password)
 
     def verify_password(self, plaintext_password):
-    decrypted_hash = decrypt_field(self._password_hash)
-    return pwd_context.verify(plaintext_password, decrypted_hash)
-
+        decrypted_hash = decrypt_field(self._password_hash)
+        return pwd_context.verify(plaintext_password, decrypted_hash)
 
     @property
     def totp_secret(self):
