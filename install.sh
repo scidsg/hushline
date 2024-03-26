@@ -222,7 +222,7 @@ sleep 30
 certbot --nginx -d "$DOMAIN","$SAUTEED_ONION_ADDRESS"."$DOMAIN" --agree-tos --non-interactive --no-eff-email --email "${EMAIL}"
 
 echo "Configuring automatic renewing certificates..."
-sleep 5
+sleep 10
 systemctl restart cron
 sleep 5
 # Set up cron job to renew SSL certificate
