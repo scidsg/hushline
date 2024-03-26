@@ -222,7 +222,7 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def register():
         # TODO this should be a setting pulled from `current_app`
-        require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
+        require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
         form = RegistrationForm()
 

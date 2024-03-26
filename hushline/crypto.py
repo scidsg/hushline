@@ -4,7 +4,7 @@ import gnupg
 from cryptography.fernet import Fernet
 from flask import current_app
 
-encryption_key = os.getenv("ENCRYPTION_KEY")
+encryption_key = os.environ.get("ENCRYPTION_KEY")
 if encryption_key is None:
     raise ValueError("Encryption key not found. Please check your .env file.")
 
