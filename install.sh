@@ -51,7 +51,7 @@ sudo apt install python3 python3-pip git nginx default-mysql-server python3-venv
 # Server, Nginx, HTTPS setup
 ############################
 
-DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 "beta.hushline.app" 3>&1 1>&2 2>&3)
+DOMAIN=$(whiptail --inputbox "Enter your domain name:" 8 60 "test.ourdemo.app" 3>&1 1>&2 2>&3)
 EMAIL=$(whiptail --inputbox "Enter your email:" 8 60 "hushline@scidsg.org" 3>&1 1>&2 2>&3)
 GIT=$(whiptail --inputbox "Enter your git repo's URL:" 8 60 "https://github.com/scidsg/hushline" 3>&1 1>&2 2>&3)
 
@@ -222,6 +222,9 @@ sleep 30
 certbot --nginx -d "$DOMAIN","$SAUTEED_ONION_ADDRESS"."$DOMAIN" --agree-tos --non-interactive --no-eff-email --email "${EMAIL}"
 
 echo "Configuring automatic renewing certificates..."
+sleep 5
+systemctl restart cron
+sleep 5
 # Set up cron job to renew SSL certificate
 (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
 echo "✅ Automatic HTTPS certificates configured."
@@ -262,8 +265,13 @@ EOL
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
 
-# install dependencies
-pip install python-poetry
+# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="/root/.local/bin:$PATH"
+echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc
+poetry lock
 poetry install
 
 SECRET_KEY=$(python3 -c 'import os; print(os.urandom(64).hex())')
@@ -277,6 +285,8 @@ echo "DB_USER=$DB_USER"
 echo "DB_PASS=$DB_PASS"
 echo "SECRET_KEY=$SECRET_KEY"
 echo "HUSHLINE_DEBUG_OPTS=0"
+# Construct the SQLALCHEMY_DATABASE_URI and append it
+echo "SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASS@localhost/$DB_NAME"
 } > .env
 
 # Ask the user if registration should require codes and directly update the .env file
@@ -368,6 +378,7 @@ After=network.target
 User=$USER
 Group=www-data
 WorkingDirectory=$WORKING_DIR
+Environment="ENCRYPTION_KEY=$ENCRYPTION_KEY"
 ExecStart=$WORKING_DIR/venv/bin/gunicorn --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120 hushline:create_app
 
 [Install]
@@ -436,8 +447,6 @@ echo "✅ UFW configuration complete."
 
 # Remove unused packages
 apt -y autoremove
-
-poetry run ./generate_invite_codes.py
 
 # Update Tor permissions
 # Create a systemd override directory for the Tor service
