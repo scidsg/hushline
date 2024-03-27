@@ -26,11 +26,9 @@ def create_app() -> Flask:
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
-
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["SQLALCHEMY_DATABASE_URI"]
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
     app.config["SESSION_COOKIE_NAME"] = "__Host-session"
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -54,8 +52,7 @@ def create_app() -> Flask:
 
     @debug.command("list-gpg-keys")
     def debug_list_gpg_keys():
-        """List GPG keys for debugging."""
-        if os.getenv("HUSHLINE_DEBUG_OPTS") == "1":
+        if os.environ.get("HUSHLINE_DEBUG_OPTS") == "1":
             list_keys()
         else:
             print("Debugging options are not enabled. Set HUSHLINE_DEBUG_OPTS=1 to enable.")
