@@ -221,7 +221,6 @@ def init_app(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def register():
-        logging.info("Register route accessed.")
         # TODO this should be a setting pulled from `current_app`
         require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
@@ -234,26 +233,22 @@ def init_app(app: Flask) -> None:
         if form.validate_on_submit():
             username = form.username.data
             password = form.password.data
-            logging.info(f"Attempting to register user: {username}")
 
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
                 invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
                 if not invite_code or invite_code.expiration_date < datetime.utcnow():
                     flash("⛔️ Invalid or expired invite code.", "error")
-                    logging.warning(f"Invalid or expired invite code for user: {username}")
                     return redirect(url_for("register"))
 
             if User.query.filter_by(primary_username=username).first():
                 flash("💔 Username already taken.", "error")
-                logging.warning(f"Username already taken: {username}")
                 return redirect(url_for("register"))
 
             password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
             new_user = User(primary_username=username, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
-            logging.info(f"User registered successfully: {username}")
 
             flash("👍 Registration successful! Please log in.", "success")
             return redirect(url_for("login"))
@@ -268,7 +263,6 @@ def init_app(app: Flask) -> None:
             if form.validate_on_submit():
                 username = form.username.data.strip()
                 password = form.password.data
-                logging.info(f"Login attempt for user: {username}")
 
                 user = User.query.filter_by(primary_username=username).first()
 
@@ -280,7 +274,6 @@ def init_app(app: Flask) -> None:
                     session["2fa_required"] = user.totp_secret is not None
                     session["2fa_verified"] = False
                     session["is_admin"] = user.is_admin
-                    logging.info(f"Login successful for user: {username}")
 
                     if user.totp_secret:
                         return redirect(url_for("verify_2fa_login"))
@@ -288,12 +281,8 @@ def init_app(app: Flask) -> None:
                         session["2fa_verified"] = True
                         return redirect(url_for("inbox", username=user.primary_username))
                 else:
-                    # These messages should only be flashed in response to a POST request
-                    logging.warning(f"Invalid password attempt for user: {username}")
                     flash("⛔️ Invalid username or password")
             else:
-                # Flashing a message or taking another action on form validation failure can go here
-                logging.warning("Login attempt with invalid form data")
                 flash("⛔️ Invalid form data")
 
         # GET requests will reach this point without triggering the flash messages
