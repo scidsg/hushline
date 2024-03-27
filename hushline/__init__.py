@@ -10,7 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import admin, routes, settings
 from .db import db
-from .ext import limiter
+from .ext import bcrypt, limiter
 from .model import User
 from .crypto import list_keys
 
@@ -40,6 +40,7 @@ def create_app() -> Flask:
     db.init_app(app)
     _ = Migrate(app, db)
     limiter.init_app(app)
+    bcrypt.init_app(app)
 
     app.logger.setLevel(logging.DEBUG)
 
