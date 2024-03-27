@@ -8,6 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+bcrypt = "^4.1.2"
 cryptography = "^42.0.5"
 flask = "^3.0.2"
 flask-bcrypt = "^1.0.1"

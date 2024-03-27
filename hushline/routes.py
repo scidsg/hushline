@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -11,8 +12,11 @@ from .crypto import encrypt_message, get_email_from_pgp_key
 from .db import db
 from .ext import limiter
 from .forms import ComplexPassword
-from .model import InviteCode, Message, SecondaryUsername, User
+from .model import InviteCode, Message, SecondaryUsername, User, pwd_context
 from .utils import require_2fa, send_email
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
 
 
 class TwoFactorForm(FlaskForm):
@@ -217,6 +221,7 @@ def init_app(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def register():
+        logging.info("Register route accessed.")
         # TODO this should be a setting pulled from `current_app`
         require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
@@ -229,22 +234,26 @@ def init_app(app: Flask) -> None:
         if form.validate_on_submit():
             username = form.username.data
             password = form.password.data
+            logging.info(f"Attempting to register user: {username}")
 
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
                 invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
                 if not invite_code or invite_code.expiration_date < datetime.utcnow():
                     flash("⛔️ Invalid or expired invite code.", "error")
+                    logging.warning(f"Invalid or expired invite code for user: {username}")
                     return redirect(url_for("register"))
 
             if User.query.filter_by(primary_username=username).first():
                 flash("💔 Username already taken.", "error")
+                logging.warning(f"Username already taken: {username}")
                 return redirect(url_for("register"))
 
-            password_hash = pwd_context.hash(password).decode("utf-8")
+            password_hash = pwd_context.hash(password)
             new_user = User(primary_username=username, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
+            logging.info(f"User registered successfully: {username}")
 
             flash("👍 Registration successful! Please log in.", "success")
             return redirect(url_for("login"))
@@ -258,6 +267,7 @@ def init_app(app: Flask) -> None:
         if form.validate_on_submit():
             username = form.username.data  # This is input from the form
             password = form.password.data
+            logging.info(f"Login attempt for user: {username}")
 
             # Use primary_username for filter_by
             user = User.query.filter_by(primary_username=username).first()
@@ -272,6 +282,7 @@ def init_app(app: Flask) -> None:
                 session["2fa_required"] = user.totp_secret is not None  # Check if 2FA is required
                 session["2fa_verified"] = False  # Initially mark 2FA as not verified
                 session["is_admin"] = user.is_admin  # Store admin status in session
+                logging.info(f"Login successful for user: {username}")
 
                 if user.totp_secret:
                     # If 2FA is enabled, redirect to the 2FA verification page
@@ -281,6 +292,7 @@ def init_app(app: Flask) -> None:
                     session["2fa_verified"] = True  # Mark 2FA as verified since it's not required
                     return redirect(url_for("inbox", username=user.primary_username))
             else:
+                logging.warning(f"Invalid password for user: {username}")
                 flash("⛔️ Invalid username or password")
 
         return render_template("login.html", form=form)
