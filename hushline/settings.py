@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .ext import limiter
+from .ext import bcrypt, limiter
 from .forms import ComplexPassword, TwoFactorForm
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
@@ -148,8 +148,10 @@ def create_blueprint() -> Blueprint:
 
             # Handle Change Password Form Submission
             elif change_password_form.validate_on_submit():
-                if pwd_context.verify(user.password_hash, change_password_form.old_password.data):
-                    user.password_hash = pwd_context.hash(
+                if bcrypt.check_password_hash(
+                    user.password_hash, change_password_form.old_password.data
+                ):
+                    user.password_hash = bcrypt.generate_password_hash(
                         change_password_form.new_password.data
                     ).decode("utf-8")
                     db.session.commit()
@@ -232,8 +234,8 @@ def create_blueprint() -> Blueprint:
             old_password = change_password_form.old_password.data
             new_password = change_password_form.new_password.data
 
-            if pwd_context.verify(user.password_hash, old_password):
-                user.password_hash = pwd_context.hash(new_password).decode("utf-8")
+            if bcrypt.check_password_hash(user.password_hash, old_password):
+                user.password_hash = bcrypt.generate_password_hash(new_password).decode("utf-8")
                 db.session.commit()
                 session.clear()  # Clears the session, logging the user out
                 flash(

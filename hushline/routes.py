@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -9,10 +10,13 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import encrypt_message, get_email_from_pgp_key
 from .db import db
-from .ext import limiter
+from .ext import bcrypt, limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import require_2fa, send_email
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
 
 
 class TwoFactorForm(FlaskForm):
@@ -241,7 +245,7 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            password_hash = pwd_context.hash(password).decode("utf-8")
+            password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
             new_user = User(primary_username=username, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
@@ -255,61 +259,60 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def login():
         form = LoginForm()
-        if form.validate_on_submit():
-            username = form.username.data  # This is input from the form
-            password = form.password.data
+        if request.method == "POST":  # Ensure we're processing form submissions
+            if form.validate_on_submit():
+                username = form.username.data.strip()
+                password = form.password.data
 
-            # Use primary_username for filter_by
-            user = User.query.filter_by(primary_username=username).first()
+                user = User.query.filter_by(primary_username=username).first()
 
-            if user and pwd_context.verify(password, user.password_hash):
-                session.permanent = (
-                    True  # Make the session permanent so it uses the configured lifetime
-                )
-                session["user_id"] = user.id
-                session["username"] = user.primary_username  # Store primary_username in session
-                session["is_authenticated"] = True  # Mark user as authenticated
-                session["2fa_required"] = user.totp_secret is not None  # Check if 2FA is required
-                session["2fa_verified"] = False  # Initially mark 2FA as not verified
-                session["is_admin"] = user.is_admin  # Store admin status in session
+                if user and bcrypt.check_password_hash(user.password_hash, password):
+                    session.permanent = True
+                    session["user_id"] = user.id
+                    session["username"] = user.primary_username
+                    session["is_authenticated"] = True
+                    session["2fa_required"] = user.totp_secret is not None
+                    session["2fa_verified"] = False
+                    session["is_admin"] = user.is_admin
 
-                if user.totp_secret:
-                    # If 2FA is enabled, redirect to the 2FA verification page
-                    return redirect(url_for("verify_2fa_login"))
+                    if user.totp_secret:
+                        return redirect(url_for("verify_2fa_login"))
+                    else:
+                        session["2fa_verified"] = True
+                        return redirect(url_for("inbox", username=user.primary_username))
                 else:
-                    # If 2FA is not enabled, directly log the user in
-                    session["2fa_verified"] = True  # Mark 2FA as verified since it's not required
-                    return redirect(url_for("inbox", username=user.primary_username))
+                    flash("⛔️ Invalid username or password")
             else:
-                flash("⛔️ Invalid username or password")
+                flash("⛔️ Invalid form data")
 
+        # GET requests will reach this point without triggering the flash messages
         return render_template("login.html", form=form)
 
-    @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
-    def verify_2fa_login():
-        # Redirect to login if user is not authenticated
-        if "user_id" not in session or not session.get("2fa_required", False):
-            return redirect(url_for("login"))
+        @app.route("/verify-2fa-login", methods=["GET", "POST"])
+        @limiter.limit("120 per minute")
+        def verify_2fa_login():
+            # Redirect to login if user is not authenticated
+            if "user_id" not in session or not session.get("2fa_required", False):
+                return redirect(url_for("login"))
 
-        user = User.query.get(session["user_id"])
-        if not user:
-            flash("🫥 User not found. Please login again.")
-            session.clear()  # Clearing the session for security
-            return redirect(url_for("login"))
+            user = User.query.get(session["user_id"])
+            if not user:
+                flash("🫥 User not found. Please login again.")
+                session.clear()  # Clearing the session for security
+                return redirect(url_for("login"))
 
-        form = TwoFactorForm()
+            form = TwoFactorForm()
 
-        if form.validate_on_submit():
-            verification_code = form.verification_code.data
-            totp = pyotp.TOTP(user.totp_secret)
-            if totp.verify(verification_code):
-                session["2fa_verified"] = True  # Set 2FA verification flag
-                return redirect(url_for("inbox", username=user.primary_username))
-            else:
-                flash("⛔️ Invalid 2FA code. Please try again.")
+            if form.validate_on_submit():
+                verification_code = form.verification_code.data
+                totp = pyotp.TOTP(user.totp_secret)
+                if totp.verify(verification_code):
+                    session["2fa_verified"] = True  # Set 2FA verification flag
+                    return redirect(url_for("inbox", username=user.primary_username))
+                else:
+                    flash("⛔️ Invalid 2FA code. Please try again.")
 
-        return render_template("verify_2fa_login.html", form=form)
+            return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")
     @limiter.limit("120 per minute")
