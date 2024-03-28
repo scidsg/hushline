@@ -108,6 +108,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Deletion account confirmation logic
+    document.getElementById('deleteAccountButton')?.addEventListener('click', function(event) {
+        const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    });
+
     if (form) {
         form.addEventListener('submit', async function(event) {
             event.preventDefault();

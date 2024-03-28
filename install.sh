@@ -366,6 +366,19 @@ mysql -u root -p"$DB_PASS" -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; F
 # Define the working directory
 WORKING_DIR=$(pwd)
 
+# Create a dedicated user for running the application
+HUSHLINE_USER="hushlineuser"
+HUSHLINE_GROUP="www-data"
+if ! id "$HUSHLINE_USER" &>/dev/null; then
+    echo "Creating a dedicated user: $HUSHLINE_USER..."
+    useradd -r -s /bin/false -g $HUSHLINE_GROUP $HUSHLINE_USER
+else
+    echo "Dedicated user $HUSHLINE_USER already exists."
+fi
+
+# Adjust the ownership of the application directory
+chown -R $HUSHLINE_USER:$HUSHLINE_GROUP /var/www/html/$DOMAIN
+
 # Create a systemd service file for the Flask app
 SERVICE_FILE=/etc/systemd/system/hushline-hosted.service
 cat <<EOF | tee $SERVICE_FILE
@@ -374,8 +387,8 @@ Description=Gunicorn instance to serve the Hushline Flask app
 After=network.target
 
 [Service]
-User=$USER
-Group=www-data
+User=$HUSHLINE_USER
+Group=$HUSHLINE_GROUP
 WorkingDirectory=$WORKING_DIR
 Environment="PATH=$WORKING_DIR/.env"
 Environment="ENCRYPTION_KEY=$ENCRYPTION_KEY"
