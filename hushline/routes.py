@@ -8,7 +8,7 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
-from .crypto import encrypt_message, get_email_from_pgp_key
+from .crypto import encrypt_message
 from .db import db
 from .ext import bcrypt, limiter
 from .forms import ComplexPassword
@@ -127,19 +127,11 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if not client_side_encrypted and user.pgp_key:
-                # Get the email address from the PGP key
-                pgp_email = get_email_from_pgp_key(user.pgp_key)
-                if pgp_email:
-                    # Append the note indicating server-side encryption
-                    content_with_note = content
-                    # Now call encrypt_message with the correct pgp_email
-                    encrypted_content = encrypt_message(content_with_note, pgp_email)
-                    email_content = encrypted_content if encrypted_content else content
-                    if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message with PGP key.", "error")
-                        return redirect(url_for("submit_message", username=username))
-                else:
-                    flash("⛔️ Unable to extract email from PGP key.", "error")
+                # Assuming you have a user's PGP key, and you directly use it for encryption
+                encrypted_content = encrypt_message(content, user.pgp_key)
+                email_content = encrypted_content if encrypted_content else content
+                if not encrypted_content:
+                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
                 email_content = content if client_side_encrypted else content
