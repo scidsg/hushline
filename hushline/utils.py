@@ -5,6 +5,8 @@ from functools import wraps
 
 from flask import current_app, flash, redirect, session, url_for
 
+from hushline.models import User
+
 
 def require_2fa(f):
     @wraps(f)
@@ -20,14 +22,14 @@ def require_2fa(f):
     return decorated_function
 
 
-def send_email(recipient, subject, body, user, sender_email):
+def send_email(subject: str, body: str, user: User, sender_email: str) -> bool:
     current_app.logger.debug(
         f"SMTP settings being used: Server: {user.smtp_server}, Port: {user.smtp_port}, "
         f"Username: {user.smtp_username}"
     )
     msg = MIMEMultipart()
     msg["From"] = sender_email
-    msg["To"] = sender_email
+    msg["To"] = sender_email  # TODO this is almost certainly a bug. sent *to* the sender?
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 

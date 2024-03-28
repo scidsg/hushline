@@ -1,20 +1,21 @@
 import logging
 import os
 from datetime import timedelta
+from typing import Any, Tuple
+
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, session, url_for
+from flask import Flask, Response, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
 from flask_migrate import Migrate
-from flask.cli import AppGroup
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import admin, routes, settings
-from .db import db
-from .ext import bcrypt, limiter
-from .model import User
-from .crypto import list_keys
-
 load_dotenv()
+
+from . import admin, routes, settings  # noqa: E402
+from .crypto import list_keys  # noqa: E402
+from .db import db  # noqa: E402
+from .ext import bcrypt, limiter  # noqa: E402
+from .model import User  # noqa: E402
 
 
 def create_app() -> Flask:
@@ -24,7 +25,7 @@ def create_app() -> Flask:
     def handle_rate_limit_exceeded(e):
         return render_template("rate_limit_exceeded.html"), 429
 
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
 
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
@@ -51,7 +52,7 @@ def create_app() -> Flask:
         pass
 
     @debug.command("list-gpg-keys")
-    def debug_list_gpg_keys():
+    def debug_list_gpg_keys() -> None:
         if os.environ.get("HUSHLINE_DEBUG_OPTS") == "1":
             list_keys()
         else:
@@ -60,19 +61,19 @@ def create_app() -> Flask:
     app.cli.add_command(debug)
 
     @app.errorhandler(404)
-    def page_not_found(e):
+    def page_not_found(e) -> Response:
         flash("⛓️‍💥 That page doesn't exist.", "warning")
         return redirect(url_for("index"))
 
     @app.context_processor
-    def inject_user():
+    def inject_user() -> dict[str, Any]:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
             return {"user": user}
         return {}
 
     @app.errorhandler(Exception)
-    def handle_exception(e):
+    def handle_exception(e) -> Tuple[str, int]:
         # Consider adjusting error handling as per your logging preferences
         app.logger.error(
             f"Error: {e}", exc_info=True

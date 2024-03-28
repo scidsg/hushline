@@ -1,19 +1,14 @@
 #!/usr/bin/env python
-
-import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
 import secrets
 from datetime import datetime, timedelta
 
-from hushline import InviteCode, app, db
+from hushline import create_app
+from hushline.db import db
+from hushline.model import InviteCode
 
 
-def create_invite_code():
-    with app.app_context():
+def create_invite_code() -> str:
+    with create_app().app_context():
         # Ensure all tables are created
         db.create_all()
 
