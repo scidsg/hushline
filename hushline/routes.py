@@ -280,31 +280,31 @@ def init_app(app: Flask) -> None:
         # GET requests will reach this point without triggering the flash messages
         return render_template("login.html", form=form)
 
-        @app.route("/verify-2fa-login", methods=["GET", "POST"])
-        @limiter.limit("120 per minute")
-        def verify_2fa_login():
-            # Redirect to login if user is not authenticated
-            if "user_id" not in session or not session.get("2fa_required", False):
-                return redirect(url_for("login"))
+    @app.route("/verify-2fa-login", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
+    def verify_2fa_login():
+        # Redirect to login if user is not authenticated
+        if "user_id" not in session or not session.get("2fa_required", False):
+            return redirect(url_for("login"))
 
-            user = User.query.get(session["user_id"])
-            if not user:
-                flash("🫥 User not found. Please login again.")
-                session.clear()  # Clearing the session for security
-                return redirect(url_for("login"))
+        user = User.query.get(session["user_id"])
+        if not user:
+            flash("🫥 User not found. Please login again.")
+            session.clear()  # Clearing the session for security
+            return redirect(url_for("login"))
 
-            form = TwoFactorForm()
+        form = TwoFactorForm()
 
-            if form.validate_on_submit():
-                verification_code = form.verification_code.data
-                totp = pyotp.TOTP(user.totp_secret)
-                if totp.verify(verification_code):
-                    session["2fa_verified"] = True  # Set 2FA verification flag
-                    return redirect(url_for("inbox", username=user.primary_username))
-                else:
-                    flash("⛔️ Invalid 2FA code. Please try again.")
+        if form.validate_on_submit():
+            verification_code = form.verification_code.data
+            totp = pyotp.TOTP(user.totp_secret)
+            if totp.verify(verification_code):
+                session["2fa_verified"] = True  # Set 2FA verification flag
+                return redirect(url_for("inbox", username=user.primary_username))
+            else:
+                flash("⛔️ Invalid 2FA code. Please try again.")
 
-            return render_template("verify_2fa_login.html", form=form)
+        return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")
     @limiter.limit("120 per minute")
