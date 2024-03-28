@@ -12,7 +12,6 @@ from . import admin, routes, settings
 from .db import db
 from .ext import bcrypt, limiter
 from .model import User
-from .crypto import list_keys
 
 load_dotenv()
 

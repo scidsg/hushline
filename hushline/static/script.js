@@ -1,74 +1,40 @@
 document.addEventListener('DOMContentLoaded', function() {
-    
-    // Handle mobile navigation toggle
-    const mobileNavButton = document.querySelector('.mobileNav');
-    const navMenu = document.querySelector('header nav ul');
-    
-    mobileNavButton.addEventListener('click', function() {
-        navMenu.classList.toggle('show');
-    });
+    // Isolate dropdown setup in its own function for better error handling
+    function setupDropdown() {
+        const dropdownToggle = document.querySelector('.dropdown .dropbtn');
+        if (!dropdownToggle) return; // Exit if no dropdown toggle found
 
-    // Handle account deletion confirmation
-    const deleteButton = document.getElementById('deleteAccountButton');
-    if (deleteButton) {
-        deleteButton.addEventListener('click', function(event) {
-            const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
-            if (!confirmed) {
+        const dropdownContent = document.querySelector('.dropdown-content');
+        const dropdownIcon = document.querySelector('.dropdown-icon');
+
+        // Ensure all elements needed for the dropdown are present
+        if (dropdownContent && dropdownIcon) {
+            dropdownToggle.addEventListener('click', function(event) {
                 event.preventDefault();
-            }
-        });
-    }
+                dropdownContent.classList.toggle('show');
+                dropdownContent.style.animation = dropdownContent.classList.contains('show') ? 'fadeInSlideDown 0.3s ease forwards' : 'fadeOutSlideUp 0.3s ease forwards';
+                dropdownIcon.classList.toggle('rotate-icon');
+            });
 
-    // Simplified Dropdown toggle logic
-    const dropdownToggle = document.querySelector('.dropdown .dropbtn');
-    const dropdownContent = document.querySelector('.dropdown-content');
-    const dropdownIcon = document.querySelector('.dropdown-icon');
-
-    // Function to handle opening the dropdown
-    function openDropdown() {
-        dropdownContent.classList.add('show');
-        dropdownContent.style.animation = 'fadeInSlideDown 0.3s ease forwards';
-        dropdownIcon.classList.add('rotate-icon');
-    }
-
-    // Function to handle closing the dropdown
-    function closeDropdown() {
-        dropdownContent.style.animation = 'fadeOutSlideUp 0.3s ease forwards';
-        dropdownIcon.classList.remove('rotate-icon');
-        dropdownContent.addEventListener('animationend', function() {
-            dropdownContent.classList.remove('show');
-            // Remove the animation style to ensure it can be applied again if the dropdown is reopened.
-            dropdownContent.style.animation = '';
-        }, { once: true }); // Use the {once: true} option to ensure the listener is removed after it executes
-    }
-
-    dropdownToggle.addEventListener('click', function(event) {
-        event.preventDefault();
-        if (dropdownContent.classList.contains('show')) {
-            closeDropdown();
-        } else {
-            openDropdown();
+            window.addEventListener('click', function(event) {
+                if (!dropdownToggle.contains(event.target) && dropdownContent.classList.contains('show')) {
+                    dropdownContent.classList.remove('show');
+                    dropdownIcon.classList.remove('rotate-icon');
+                }
+            });
         }
-    });
+    }
 
-    // Handle closing the dropdown when clicking outside
-    window.addEventListener('click', function(event) {
-        if (!dropdownToggle.contains(event.target) && dropdownContent.classList.contains('show')) {
-            closeDropdown();
-        }
-    });
-
+    // Execute dropdown setup
+    setupDropdown();
 
     // Handle message deletion confirmation
-    const deleteMessageButton = document.getElementById('deleteMessageButton');
-    if (deleteMessageButton) {
-        deleteMessageButton.addEventListener('click', function(event) {
-            const confirmed = confirm('Are you sure you want to delete this message? This cannot be undone.');
-            if (!confirmed) {
-                event.preventDefault();
-            }
-        });
-    }
+    document.getElementById('deleteMessageButton')?.addEventListener('click', function(event) {
+        const confirmed = confirm('Are you sure you want to delete this message? This cannot be undone.');
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    });
 
     // Mailvelope decryption logic
     const encryptedMessages = document.querySelectorAll('.message.encrypted');
@@ -79,17 +45,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.mailvelope) {
             mailvelope.createDisplayContainer({
                 id: decryptionContainer.getAttribute('id'),
-                encryptedMsg: encryptedContent
+                encryptedMsg: encryptedContent,
             }).then(displayContainer => {
-                messageElement.querySelector('.decrypted-content').style.display = 'none'; // Hide original content
+                messageElement.querySelector('.decrypted-content').style.display = 'none';
                 decryptionContainer.appendChild(displayContainer.element);
             }).catch(error => {
                 console.error('Decryption error:', error);
-                // Handle error or inform user
             });
         } else {
             console.log('Mailvelope not detected');
-            // Inform user or provide instructions for installing Mailvelope
         }
     });
 
@@ -98,12 +62,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabContents = document.querySelectorAll('.tab-content');
 
     function removeActiveClasses() {
-        tabs.forEach(tab => {
-            tab.classList.remove('active');
-        });
-        tabContents.forEach(content => {
-            content.style.display = 'none'; // Hide all tab content initially
-        });
+        tabs.forEach(tab => tab.classList.remove('active'));
+        tabContents.forEach(content => content.style.display = 'none');
     }
 
     tabs.forEach(tab => {
@@ -112,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             const activeTabContent = document.getElementById(this.getAttribute('data-tab'));
             if (activeTabContent) {
-                activeTabContent.style.display = 'block'; // Show the active tab content
+                activeTabContent.style.display = 'block';
             }
         });
     });
@@ -127,23 +87,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const encryptedFlag = document.getElementById('clientSideEncrypted');
     const publicKeyArmored = document.getElementById('publicKey') ? document.getElementById('publicKey').value : '';
 
-    console.log('DOMContentLoaded: Client-side encryption script loaded.');
-
     async function encryptMessage(publicKeyArmored, message) {
-        console.log('Attempting to encrypt message client-side.');
-
         if (!publicKeyArmored) {
             console.log('Public key not provided for encryption. Encryption cannot proceed.');
             return false;
         }
 
         try {
-            console.log('Public key available, starting encryption process.');
             const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
             const messageText = await openpgp.createMessage({ text: message });
             const encryptedMessage = await openpgp.encrypt({
                 message: messageText,
-                encryptionKeys: publicKey
+                encryptionKeys: publicKey,
             });
             console.log('Message encrypted client-side successfully.');
             return encryptedMessage;
@@ -155,27 +110,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (form) {
         form.addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent the form from submitting normally
+            event.preventDefault();
 
-            console.log('Form submit event triggered.');
-
-            // Append the note to the message before encryption
             const messageWithNote = messageField.value;
-
-            // Encrypt the message along with the note
             const encryptedMessage = await encryptMessage(publicKeyArmored, messageWithNote);
+
             if (encryptedMessage) {
-                console.log('Encryption successful!');
-                messageField.value = encryptedMessage; // Set the encrypted message including the note as the value
-                encryptedFlag.value = 'true'; // Indicate client-side encryption
-                console.log('Form being submitted with client-side encrypted message.');
-                form.submit(); // Submit the form programmatically
+                messageField.value = encryptedMessage;
+                encryptedFlag.value = 'true';
+                form.submit(); // Programmatically submit the form
             } else {
-                console.log('Encryption not successful, proceeding without client-side encryption.');
-                encryptedFlag.value = 'false'; // Proceed without client-side encryption
-                form.submit(); // Submit the form programmatically
+                console.log('Client-side encryption failed, submitting plaintext.');
+                encryptedFlag.value = 'false';
+                form.submit(); // Submit the plaintext message for potential server-side encryption
             }
         });
     }
-
 });

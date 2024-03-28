@@ -943,6 +943,38 @@ files = [
 ]
 
 [[package]]
+name = "pysequoia"
+version = "0.1.23"
+description = "Provides OpenPGP facilities using Sequoia-PGP library"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pysequoia-0.1.23-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:1120c8868dfb81814a1167746d11c1a95b3cae58fa3f24cfbfaf579c03491f21"},
+    {file = "pysequoia-0.1.23-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:49aa8d08359f0269cad807276dfa6005ff8f8f7e779ca06e675d9355c489f527"},
+    {file = "pysequoia-0.1.23-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2735d1290acf483b9bebd732668f4fd66a1f96650748cc9aa34ddda3ef59a068"},
+    {file = "pysequoia-0.1.23-cp310-none-win_amd64.whl", hash = "sha256:bbbd5e24e2a01221802ee204b5ba7fec3edc399ba80a39091560be60200fd49b"},
+    {file = "pysequoia-0.1.23-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:9239d7dcddb070ffeef640e777f227b0c27d7050b4a76be05f0727724c48660b"},
+    {file = "pysequoia-0.1.23-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:46fb7ed4503e6df774abffb56e414de3a87c6bd899a7b0b8cbed5924fda79c9e"},
+    {file = "pysequoia-0.1.23-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9d7ae181c88066e755d92aef0a1f32b4f74425b9f35cd45e08b2a20649f7cff5"},
+    {file = "pysequoia-0.1.23-cp311-none-win_amd64.whl", hash = "sha256:42493060026d1cdec937cd71b1df1d474c6812a921188d9814d59f15d5d0885c"},
+    {file = "pysequoia-0.1.23-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:b15d92426563dc75a50f79099049d35c01aa5a8edc6bd9900f12dadc2a97d560"},
+    {file = "pysequoia-0.1.23-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:43d24e3499e6c95ce994f49ae31f9e6917ed2cb8539d92843987bff7bbcf24cd"},
+    {file = "pysequoia-0.1.23-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:61dd4fab75639fc5dc36c4b65d9a4d4de4a4e33012e4393cfec6fb3c15e42826"},
+    {file = "pysequoia-0.1.23-cp312-none-win_amd64.whl", hash = "sha256:876f8d174745e8f2bd567c5952081fe77b32f83028e71f24e3c028cb76c31f91"},
+    {file = "pysequoia-0.1.23-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:267903dd9f7ed0d178dc38a3cf25305e562336fdd6573a3ff42ae13dba3e2231"},
+    {file = "pysequoia-0.1.23-cp37-none-win_amd64.whl", hash = "sha256:5165ae2817aaffa02a67fac9bdcaf1bd536e8452e60de00c4a323c83ffc2e219"},
+    {file = "pysequoia-0.1.23-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dffd72846906a4dbe28787bd216afae97f06c0d26a140d2c497a9d7bb11c812f"},
+    {file = "pysequoia-0.1.23-cp38-none-win_amd64.whl", hash = "sha256:80e2d016c18889e07c916dc1af59b1c008ea0404a7e68da7ad17df3d0ef6936b"},
+    {file = "pysequoia-0.1.23-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5694d7ea2bf0c850628d1b8586e3474e1cb725d077d0a0c055e0d884d149db7c"},
+    {file = "pysequoia-0.1.23-cp39-none-win_amd64.whl", hash = "sha256:c674ec3e3916ac748f72c6b97d628dd60d6f877c12257232b3abd845a4ec9ff9"},
+    {file = "pysequoia-0.1.23-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d979e9e17137d143fef47f307415f4d10c1e90bab140e9ee4c416237672b909d"},
+    {file = "pysequoia-0.1.23-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c872c349f0462adb25b78bce4bd656fc442989049f5eb3a3cd1e4541a5764783"},
+    {file = "pysequoia-0.1.23-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eced2d1e3d0f47c4519edd5ea6ab533bfb1b8b86bbf4b7dfb7de5ab6c6290fbf"},
+    {file = "pysequoia-0.1.23-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4fc38d0e74a4a5f56cd27b1f665d56f04ab09e3c2d26dfea840967660231fe63"},
+    {file = "pysequoia-0.1.23.tar.gz", hash = "sha256:8a965ed71023448206003b8186f72d44821f943d94d8d52957270e24119f3bc2"},
+]
+
+[[package]]
 name = "pytest"
 version = "8.1.1"
 description = "pytest: simple powerful testing with Python"
@@ -1282,4 +1314,4 @@ email = ["email-validator"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8b771d6a65e5e6cf4028d1a1b5e322d06802870c2616d0317ca369fb901cce0a"
+content-hash = "1fac08b6b42a257c856a245136976f03a524bdc95c508150f659d4f16e737600"

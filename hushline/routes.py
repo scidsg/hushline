@@ -8,7 +8,7 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
-from .crypto import encrypt_message, get_email_from_pgp_key
+from .crypto import encrypt_message
 from .db import db
 from .ext import bcrypt, limiter
 from .forms import ComplexPassword
@@ -100,7 +100,6 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def submit_message(username):
         form = MessageForm()
-
         user = None
         secondary_username = None
         display_name_or_username = ""
@@ -116,7 +115,6 @@ def init_app(app: Flask) -> None:
                 display_name_or_username = (
                     secondary_username.display_name or secondary_username.username
                 )
-                return redirect(url_for("settings"))
 
         if not user:
             flash("🫥 User not found.")
@@ -127,24 +125,14 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if not client_side_encrypted and user.pgp_key:
-                # Get the email address from the PGP key
-                pgp_email = get_email_from_pgp_key(user.pgp_key)
-                if pgp_email:
-                    # Append the note indicating server-side encryption
-                    content_with_note = content
-                    # Now call encrypt_message with the correct pgp_email
-                    encrypted_content = encrypt_message(content_with_note, pgp_email)
-                    email_content = encrypted_content if encrypted_content else content
-                    if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message with PGP key.", "error")
-                        return redirect(url_for("submit_message", username=username))
-                else:
-                    flash("⛔️ Unable to extract email from PGP key.", "error")
+                encrypted_content = encrypt_message(content, user.pgp_key)
+                email_content = encrypted_content if encrypted_content else content
+                if not encrypted_content:
+                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
-                email_content = content if client_side_encrypted else content
+                email_content = content
 
-            # Your logic to save and possibly email the message...
             new_message = Message(
                 content=email_content,
                 user_id=user.id,
@@ -164,7 +152,6 @@ def init_app(app: Flask) -> None:
             ):
                 try:
                     sender_email = user.smtp_username
-                    # Assume send_email is a utility function to send emails
                     email_sent = send_email(
                         user.email, "New Message", email_content, user, sender_email
                     )
@@ -174,11 +161,12 @@ def init_app(app: Flask) -> None:
                         else "👍 Message submitted, but failed to send email."
                     )
                     flash(flash_message)
-                except Exception:
+                except Exception as e:
                     flash(
                         "👍 Message submitted, but an error occurred while sending email.",
                         "warning",
                     )
+                    app.logger.error(f"Error sending email: {str(e)}")
             else:
                 flash("👍 Message submitted successfully.")
 
@@ -288,31 +276,31 @@ def init_app(app: Flask) -> None:
         # GET requests will reach this point without triggering the flash messages
         return render_template("login.html", form=form)
 
-        @app.route("/verify-2fa-login", methods=["GET", "POST"])
-        @limiter.limit("120 per minute")
-        def verify_2fa_login():
-            # Redirect to login if user is not authenticated
-            if "user_id" not in session or not session.get("2fa_required", False):
-                return redirect(url_for("login"))
+    @app.route("/verify-2fa-login", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
+    def verify_2fa_login():
+        # Redirect to login if user is not authenticated
+        if "user_id" not in session or not session.get("2fa_required", False):
+            return redirect(url_for("login"))
 
-            user = User.query.get(session["user_id"])
-            if not user:
-                flash("🫥 User not found. Please login again.")
-                session.clear()  # Clearing the session for security
-                return redirect(url_for("login"))
+        user = User.query.get(session["user_id"])
+        if not user:
+            flash("🫥 User not found. Please login again.")
+            session.clear()  # Clearing the session for security
+            return redirect(url_for("login"))
 
-            form = TwoFactorForm()
+        form = TwoFactorForm()
 
-            if form.validate_on_submit():
-                verification_code = form.verification_code.data
-                totp = pyotp.TOTP(user.totp_secret)
-                if totp.verify(verification_code):
-                    session["2fa_verified"] = True  # Set 2FA verification flag
-                    return redirect(url_for("inbox", username=user.primary_username))
-                else:
-                    flash("⛔️ Invalid 2FA code. Please try again.")
+        if form.validate_on_submit():
+            verification_code = form.verification_code.data
+            totp = pyotp.TOTP(user.totp_secret)
+            if totp.verify(verification_code):
+                session["2fa_verified"] = True  # Set 2FA verification flag
+                return redirect(url_for("inbox", username=user.primary_username))
+            else:
+                flash("⛔️ Invalid 2FA code. Please try again.")
 
-            return render_template("verify_2fa_login.html", form=form)
+        return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")
     @limiter.limit("120 per minute")
