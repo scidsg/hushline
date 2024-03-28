@@ -1,10 +1,10 @@
 import os
-
 from cryptography.fernet import Fernet
 from flask import current_app
 from pysequoia import Cert, encrypt, decrypt
 
 encryption_key = os.environ.get("ENCRYPTION_KEY")
+
 if encryption_key is None:
     raise ValueError("Encryption key not found. Please check your .env file.")
 
@@ -14,10 +14,12 @@ fernet = Fernet(encryption_key)
 def encrypt_field(data):
     if data is None:
         return None
+
     # Check if data is already a bytes object
     if not isinstance(data, bytes):
         # If data is a string, encode it to bytes
         data = data.encode()
+
     return fernet.encrypt(data).decode()
 
 
@@ -50,21 +52,7 @@ def encrypt_message(message, user_pgp_key):
         # Assuming there is no signer (i.e., unsigned encryption).
         # Adjust the call to encrypt by passing the encoded message
         encrypted = encrypt([recipient_cert], message_bytes)  # Use message_bytes
-
         return encrypted
     except Exception as e:
         current_app.logger.error(f"Error during encryption: {e}")
         return None
-
-
-def list_keys():
-    gpg = gnupg.GPG(gpg_home)
-    try:
-        public_keys = gpg.list_keys()
-        current_app.logger.info("Public keys in the keyring:")
-        for key in public_keys:
-            current_app.logger.info(f"Key: {key}")
-    except Exception as e:
-        current_app.logger.error(f"Error listing keys: {e}")
-
-    return None

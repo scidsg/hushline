@@ -100,7 +100,6 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def submit_message(username):
         form = MessageForm()
-
         user = None
         secondary_username = None
         display_name_or_username = ""
@@ -116,7 +115,6 @@ def init_app(app: Flask) -> None:
                 display_name_or_username = (
                     secondary_username.display_name or secondary_username.username
                 )
-                return redirect(url_for("settings"))
 
         if not user:
             flash("🫥 User not found.")
@@ -127,16 +125,14 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if not client_side_encrypted and user.pgp_key:
-                # Assuming you have a user's PGP key, and you directly use it for encryption
                 encrypted_content = encrypt_message(content, user.pgp_key)
                 email_content = encrypted_content if encrypted_content else content
                 if not encrypted_content:
                     flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
-                email_content = content if client_side_encrypted else content
+                email_content = content
 
-            # Your logic to save and possibly email the message...
             new_message = Message(
                 content=email_content,
                 user_id=user.id,
@@ -156,7 +152,6 @@ def init_app(app: Flask) -> None:
             ):
                 try:
                     sender_email = user.smtp_username
-                    # Assume send_email is a utility function to send emails
                     email_sent = send_email(
                         user.email, "New Message", email_content, user, sender_email
                     )
@@ -166,11 +161,12 @@ def init_app(app: Flask) -> None:
                         else "👍 Message submitted, but failed to send email."
                     )
                     flash(flash_message)
-                except Exception:
+                except Exception as e:
                     flash(
                         "👍 Message submitted, but an error occurred while sending email.",
                         "warning",
                     )
+                    app.logger.error(f"Error sending email: {str(e)}")
             else:
                 flash("👍 Message submitted successfully.")
 
