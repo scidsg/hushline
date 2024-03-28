@@ -245,6 +245,7 @@ nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test fail
 ####################################
 
 cd "$DOMAIN" || exit
+git switch seqouia
 
 # Download hello@scidsg.org key referenced in the security.txt file
 wget https://keys.openpgp.org/vks/v1/by-fingerprint/1B539E29F407E9E8896035DF8F4E83FB1B785F8E > public.asc
@@ -263,6 +264,9 @@ EOL
 
 mkdir -p ~/.gnupg
 chmod 700 ~/.gnupg
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install dependencies
 python3 -m venv venv
