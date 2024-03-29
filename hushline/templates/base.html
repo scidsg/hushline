@@ -5,7 +5,7 @@
     <meta name="theme-color" content="#7D25C1">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{% endblock %} - Hushline</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <header>
@@ -19,7 +19,7 @@
                         <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
                         <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                         <li class="dropdown">
-                            <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='dropdown.png') }}" alt="Dropdown"></a>
+                            <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='img/dropdown.png') }}" alt="Dropdown"></a>
                             <div class="dropdown-content">
                                 <ul>
                                     <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
@@ -69,7 +69,7 @@
     </footer>
     {% block scripts %}
     {% endblock %}
-    <script src="{{ url_for('static', filename='nav.js') }}></script>
+    <script src="{{ url_for('static', filename='js/nav.js') }}></script>
 
 </body>
 </html>
