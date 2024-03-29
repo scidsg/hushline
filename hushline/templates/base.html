@@ -67,7 +67,9 @@
             <a href="https://github.com/scidsg/hushline/blob/main/terms-of-service.md" target="_blank" rel="noopener noreferrer">Terms of Service</a>
         </p>
     </footer>
-    <script src="https://unpkg.com/openpgp@latest/dist/openpgp.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    {% block scripts %}
+    {% endblock %}
+    <script src="{{ url_for('static', filename='nav.js') }}></script>
+
 </body>
 </html>
