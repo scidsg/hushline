@@ -173,3 +173,8 @@
         {% endif %}
     </div>
 {% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
+
+{% endblock %}
