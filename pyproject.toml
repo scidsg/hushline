@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "hushline"
+name = "Hush Line"
 version = "0.0.1"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "A lightweight, secure, and anonymous tip line for organizations and individuals."
+authors = ["Science & Design, Inc. <hello@scidsg.org>"]
 license = "AGPL 3.0"
 readme = "README.md"
 
