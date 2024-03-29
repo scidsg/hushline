@@ -23,7 +23,7 @@
         {% endfor %}
     {% else %}
         <div class="emptyState">
-            <img class="empty" src="{{ url_for('static', filename='empty.png') }}" alt="Empty Inbox">
+            <img class="empty" src="{{ url_for('static', filename='img/empty.png') }}" alt="Empty Inbox">
             <h1>Nothing to see here...</h1>
             <p>No messages yet.</p>
         </div>
@@ -31,6 +31,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='mailvelope.js') }}"></script>
-<script src="{{ url_for('static', filename='inbox.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mailvelope.js') }}"></script>
+<script src="{{ url_for('static', filename='js/inbox.js') }}"></script>
 {% endblock %}

@@ -1,19 +1,19 @@
 @font-face {
     font-family: "Atkinson Hyperlegible";
-    src: url("fonts/sans/AtkinsonHyperlegible-Regular.woff") format("woff"),
-        url("fonts/sans/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+    src: url("../fonts/sans/AtkinsonHyperlegible-Regular.woff") format("woff"),
+        url("../fonts/sans/AtkinsonHyperlegible-Regular.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "Atkinson Bold";
-    src: url("fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
-        url("fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+    src: url("../fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
+        url("../fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "IBM Plex Mono";
-    src: url("fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
-        url("fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
+    src: url("../fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
+        url("../fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
 }
 
 body {
@@ -475,7 +475,7 @@ header .btn {
 
 
 .mobileNav {
-    background-image: url('icon-menu.png');
+    background-image: url('img/icon-menu.png');
     background-size: contain;
     width: 2.5rem;
     height: 2.5rem;
