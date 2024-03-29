@@ -125,7 +125,7 @@ By implementing these security headers, Hush Line aims to provide a secure platf
 
 We encourage responsible disclosure of any security vulnerabilities. Please report any security concerns to us via Hush Line:
 
-- https://beta.hushline.app/submit_message/scidsg-security
+- https://tips.hushline.app/submit_message/scidsg
 
 Our security team will investigate all reported issues and take appropriate actions to mitigate any vulnerabilities.
 
