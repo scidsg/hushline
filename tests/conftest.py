@@ -1,4 +1,5 @@
 import os
+from typing import Generator
 
 import pytest
 from cryptography.fernet import Fernet
@@ -18,7 +19,7 @@ def config(mocker: MockFixture) -> None:
 
 
 @pytest.fixture(scope="function")
-def app(config: None) -> Flask:
+def app(config: None) -> Generator[Flask, None, None]:
     app_ = create_app()
     app_.config["SERVER_NAME"] = "localhost:5000"
     app_.config["PREFERRED_URL_SCHEME"] = "http"

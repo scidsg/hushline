@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, session, url_for
+from flask import Blueprint, Response, flash, redirect, session, url_for
 
 from .db import db
 from .ext import limiter
@@ -12,7 +12,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/toggle_verified/<int:user_id>", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def toggle_verified(user_id):
+    def toggle_verified(user_id: int) -> Response:
         if not session.get("is_admin", False):
             flash("Unauthorized access.", "error")
             return redirect(url_for("settings.index"))
@@ -26,7 +26,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def toggle_admin(user_id):
+    def toggle_admin(user_id: int) -> Response:
         if not session.get("is_admin", False):
             flash("Unauthorized access.", "error")
             return redirect(url_for("settings.index"))

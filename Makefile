@@ -15,7 +15,8 @@ run: ## Run the app
 lint: ## Lint the code
 	isort --check . && \
 		black --check . && \
-		flake8 .
+		flake8 . && \
+		mypy .
 
 .PHONY: fmt
 fmt: ## Format the code

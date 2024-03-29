@@ -5,6 +5,8 @@ from functools import wraps
 
 from flask import current_app, flash, redirect, session, url_for
 
+from hushline.model import User
+
 
 def require_2fa(f):
     @wraps(f)
@@ -20,14 +22,10 @@ def require_2fa(f):
     return decorated_function
 
 
-def send_email(to_email, subject, body, user, sender_email):
-    smtp_server = user.smtp_server
-    smtp_port = user.smtp_port
-    smtp_username = user.smtp_username
-    smtp_password = user.smtp_password
-
+def send_email(to_email: str, subject: str, body: str, user: User, sender_email: str) -> bool:
     current_app.logger.debug(
-        f"SMTP settings being used: Server: {smtp_server}, Port: {smtp_port}, Username: {smtp_username}"
+        f"SMTP settings being used: Server: {user.smtp_server}, "
+        f"Port: {user.smtp_port}, Username: {user.smtp_username}"
     )
 
     message = MIMEMultipart()
@@ -41,11 +39,10 @@ def send_email(to_email, subject, body, user, sender_email):
         body = body.decode("utf-8")
 
     message.attach(MIMEText(body, "plain"))
-
     try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        with smtplib.SMTP(user.smtp_server, user.smtp_port) as server:
             server.starttls()
-            server.login(smtp_username, smtp_password)
+            server.login(user.smtp_username, user.smtp_password)
             server.send_message(message)
         return True
     except Exception as e:

@@ -1,7 +1,11 @@
 import os
+
 from cryptography.fernet import Fernet
 from flask import current_app
-from pysequoia import Cert, encrypt, decrypt
+from passlib.context import CryptContext
+from pysequoia import Cert, encrypt
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 encryption_key = os.environ.get("ENCRYPTION_KEY")
 
@@ -11,7 +15,7 @@ if encryption_key is None:
 fernet = Fernet(encryption_key)
 
 
-def encrypt_field(data):
+def encrypt_field(data: bytes | str | None) -> str | None:
     if data is None:
         return None
 
@@ -23,7 +27,7 @@ def encrypt_field(data):
     return fernet.encrypt(data).decode()
 
 
-def decrypt_field(data):
+def decrypt_field(data: str | None) -> str | None:
     if data is None:
         return None
     return fernet.decrypt(data.encode()).decode()
@@ -40,7 +44,7 @@ def is_valid_pgp_key(key):
         return False
 
 
-def encrypt_message(message, user_pgp_key):
+def encrypt_message(message: str | bytes, user_pgp_key: str) -> str | None:
     current_app.logger.info("Encrypting message for user with provided PGP key")
     try:
         # Load the user's PGP certificate (public key) from the key data
