@@ -185,7 +185,7 @@ if ! egrep -q '^SQLALCHEMY_DATABASE_URI=' .env; then
     echo 'Setting SQLALCHEMY_DATABASE_URI'
     # It's assumed DB_NAME, DB_USER, DB_PASS have been already captured above
     echo "SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASS@localhost/$DB_NAME" >> .env
-    
+
 fi
 
 if ! egrep -q '^REGISTRATION_CODES_REQUIRED=' .env; then
@@ -374,6 +374,9 @@ if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' 
     mysql -e "FLUSH PRIVILEGES;"
 fi
 
+# Reload the systemd daemon and restart MariaDB to apply changes
+systemctl daemon-reload
+systemctl restart mariadb
 
 
 ####################################################################################################
