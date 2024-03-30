@@ -5,7 +5,7 @@ from .db import db
 
 
 class User(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
@@ -123,7 +123,7 @@ class User(db.Model):
 
 
 class SecondaryUsername(db.Model):
-    __tablename__ = "secondary_username"
+    __tablename__ = "secondary_usernames"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
