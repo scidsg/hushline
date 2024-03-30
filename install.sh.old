@@ -1,0 +1,199 @@
+# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="/root/.local/bin:$PATH"
+echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc
+poetry lock
+poetry install
+
+
+
+# Start Redis
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+
+# Start MariaDB
+systemctl start mariadb
+
+# Secure MariaDB Installation
+mysql_secure_installation
+
+# Create an override file for MariaDB to restart on failure
+echo "Creating MariaDB service override..."
+mkdir -p /etc/systemd/system/mariadb.service.d
+echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/mariadb.service.d/override.conf
+
+# Reload the systemd daemon and restart MariaDB to apply changes
+systemctl daemon-reload
+systemctl restart mariadb
+
+sudo mkdir -p /etc/mariadb/ssl
+
+sudo cp /etc/letsencrypt/live/"$DOMAIN"/fullchain.pem /etc/mariadb/ssl/
+sudo cp /etc/letsencrypt/live/"$DOMAIN"/privkey.pem /etc/mariadb/ssl/
+
+sudo chown mysql:mysql /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
+sudo chmod 400 /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
+
+# MariaDB configuration file path
+MY_CNF="/etc/mysql/my.cnf"
+
+# Append SSL configuration to the MariaDB configuration file
+echo "ssl_cert=/etc/mariadb/ssl/fullchain.pem" | sudo tee -a $MY_CNF > /dev/null
+echo "ssl_key=/etc/mariadb/ssl/privkey.pem" | sudo tee -a $MY_CNF > /dev/null
+
+# Restart MariaDB to apply the new configuration
+sudo systemctl restart mariadb
+
+echo "✅ SSL configuration has been added to MariaDB."
+
+# Check if the database exists, create if not
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
+    mysql -e "CREATE DATABASE $DB_NAME;"
+fi
+
+# Check if the user exists and create it if it doesn't
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' AND host = 'localhost')" | grep -q 1; then
+    mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+    mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+    mysql -e "FLUSH PRIVILEGES;"
+fi
+
+# Verify Database Connection and Initialize DB
+echo "Verifying database connection and initializing database..."
+if ! poetry run flask db-extras init-db; then
+    echo "Database initialization failed. Please check your settings."
+    exit 1
+else
+    echo "✅ Database initialized successfully."
+fi
+
+cp assets/50-server.conf /etc/mysql/mariadb.conf.d/
+mysql -u root -p"$DB_PASS" -e "REVOKE FILE ON *.* FROM '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+
+# Define the working directory
+WORKING_DIR=$(pwd)
+
+# Create a dedicated user for running the application
+HUSHLINE_USER="hushlineuser"
+HUSHLINE_GROUP="www-data"
+if ! id "$HUSHLINE_USER" &>/dev/null; then
+    echo "Creating a dedicated user: $HUSHLINE_USER..."
+    useradd -r -s /bin/false -g $HUSHLINE_GROUP $HUSHLINE_USER
+else
+    echo "Dedicated user $HUSHLINE_USER already exists."
+fi
+
+# Adjust the ownership of the application directory
+chown -R $HUSHLINE_USER:$HUSHLINE_GROUP /var/www/html/$DOMAIN
+
+# Create a systemd service file for the Flask app
+SERVICE_FILE=/etc/systemd/system/hushline-hosted.service
+cat <<EOF | tee $SERVICE_FILE
+[Unit]
+Description=Gunicorn instance to serve the Hushline Flask app
+After=network.target
+
+[Service]
+User=$HUSHLINE_USER
+Group=$HUSHLINE_GROUP
+WorkingDirectory=$WORKING_DIR
+Environment="PATH=$WORKING_DIR/.env"
+Environment="ENCRYPTION_KEY=$ENCRYPTION_KEY"
+ExecStart=$WORKING_DIR/venv/bin/gunicorn 'hushline:create_app()' --workers 2 --bind unix:$WORKING_DIR/hushline-hosted.sock -m 007 --timeout 120
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create an override file for the Hushline service to restart on failure
+echo "Creating Hushline service override..."
+mkdir -p /etc/systemd/system/hushline-hosted.service.d
+echo -e "[Service]\nRestart=on-failure\nRestartSec=5s" | tee /etc/systemd/system/hushline-hosted.service.d/override.conf
+
+# Start and enable the Flask app service
+systemctl daemon-reload
+systemctl start hushline-hosted
+systemctl enable hushline-hosted
+systemctl restart hushline-hosted
+
+# Restart Nginx to apply changes
+systemctl restart nginx
+
+# Start and enable Nginx
+systemctl enable nginx
+
+# Enable the "security" and "updates" repositories
+echo "Configuring unattended-upgrades..."
+cp assets/50unattended-upgrades /etc/apt/apt.conf.d
+cp assets/20auto-upgrades /etc/apt/apt.conf.d
+
+systemctl restart unattended-upgrades
+
+echo "✅ Automatic updates have been installed and configured."
+
+# Configure Fail2Ban
+
+echo "Configuring fail2ban..."
+
+systemctl start fail2ban
+systemctl enable fail2ban
+cp /etc/fail2ban/jail.{conf,local}
+
+# Configure fail2ban
+cp assets/jail.local /etc/fail2ban
+
+systemctl restart fail2ban
+
+echo "✅ Fail2Ban configuration complete."
+
+# Configure UFW (Uncomplicated Firewall)
+
+echo "Configuring UFW..."
+
+# Default rules
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+# Allow SSH (modify as per your requirements)
+ufw allow ssh
+ufw limit ssh/tcp
+
+# Enable UFW non-interactively
+echo "y" | ufw enable
+
+echo "✅ UFW configuration complete."
+
+# Remove unused packages
+apt -y autoremove
+
+# Update Tor permissions
+# Create a systemd override directory for the Tor service
+mkdir -p /etc/systemd/system/tor@default.service.d
+
+# Create an override file with an ExecStartPost command and restart on failure for the Tor service
+cat <<EOT > /etc/systemd/system/tor@default.service.d/override.conf
+[Service]
+Restart=on-failure
+RestartSec=5s
+ExecStartPost=/bin/sh -c 'until [ -S /var/www/html/$DOMAIN/hushline-hosted.sock ]; do sleep 1; done; chown debian-tor:www-data /var/www/html/$DOMAIN/hushline-hosted.sock'
+EOT
+
+# Reload the systemd daemon to apply the override
+systemctl daemon-reload
+
+
+echo "
+✅ Hush Line installation complete! Access your site at these addresses:
+                                               
+https://$DOMAIN
+https://$SAUTEED_ONION_ADDRESS.$DOMAIN;
+http://$ONION_ADDRESS
+"
+
+echo "⏲️ Rebooting in 10 seconds..."
+sleep 10
+reboot
