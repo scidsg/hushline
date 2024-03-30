@@ -6,7 +6,7 @@
 
 DOMAIN="test.ourdemo.app"
 EMAIL="hushline@scidsg.org"
-GIT="https://github.com/scidsg/hushline"
+GIT="https://github.com/scidsg/hushline.git"
 HUSHLINE_USER="hushlineuser"
 HUSHLINE_GROUP="www-data"
 SERVICE_FILE="/etc/systemd/system/hushline-hosted.service"
@@ -15,6 +15,9 @@ TORRC_PATH="/etc/tor/torrc"
 DOMAIN_CONFIG="HiddenServiceDir /var/lib/tor/$DOMAIN/"
 NGINX_SITE_PATH="/etc/nginx/sites-available/hushline.nginx"
 NGINX_CONF_PATH="/etc/nginx/nginx.conf"
+DB_NAME="${DB_NAME:-defaultdbname}"
+DB_USER="${DB_USER:-defaultdbuser}"
+DB_PASS="${DB_PASS:-defaultdbpass}"
 
 
 ####################################################################################################
@@ -72,7 +75,11 @@ apt install -y \
     default-mysql-server \
     python3-venv \
     tor \
+    certbot \
+    python3-certbot-nginx \
     libnginx-mod-http-geoip \
+    ufw \
+    fail2ban \
     redis \
     redis-server
 
@@ -81,10 +88,24 @@ if [ ! -d hushline ]; then
     git clone $GIT
 fi
 cd hushline
+git switch migrations
+sleep 5
+
+chmod +x install.sh
+
+# Create a dedicated user for running the application
+if ! id "$HUSHLINE_USER" &>/dev/null; then
+    echo "Creating a dedicated user: $HUSHLINE_USER..."
+    useradd -r -s /bin/false -g $HUSHLINE_GROUP $HUSHLINE_USER
+    echo "✅ Dedicated user $HUSHLINE_USER created."
+else
+    echo "👍 Dedicated user $HUSHLINE_USER already exists."
+fi
 
 if ! command -v rustc &> /dev/null; then
     echo "Rust is not installed. Installing Rust..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
 else
     echo "Rust is already installed."
 fi
@@ -99,6 +120,19 @@ export PATH="/root/.local/bin:$PATH"
 echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc
 poetry lock
 poetry install
+
+# Ensuring virtual environment binaries are executable only if necessary
+echo "Checking and setting execute permissions on virtual environment binaries..."
+
+for file in /var/www/html/hushline/venv/bin/*; do
+    if [ ! -x "$file" ]; then
+        echo "Setting execute permission on $file"
+        chmod +x "$file"
+        echo "✅ Execute permission set."
+    else
+        echo "👍 Permissions already set."
+    fi
+done
 
 # Install Flask and other dependencies
 poetry self add poetry-plugin-export
@@ -138,7 +172,7 @@ fi
 
 if ! egrep -q '^DB_PASS=' .env; then
     echo 'Setting DB password'
-    DB_PASS=$(whiptail --inputbox "Enter the database username" 8 39 "hushlineuser" --title "Database Username" 3>&1 1>&2 2>&3)
+    DB_PASS=$(whiptail --passwordbox "Enter the database password" 8 39 "dbpassword" --title "Database Password" 3>&1 1>&2 2>&3)
     echo "DB_PASS=$DB_PASS" >> .env
 fi
 
@@ -151,6 +185,7 @@ if ! egrep -q '^SQLALCHEMY_DATABASE_URI=' .env; then
     echo 'Setting SQLALCHEMY_DATABASE_URI'
     # It's assumed DB_NAME, DB_USER, DB_PASS have been already captured above
     echo "SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASS@localhost/$DB_NAME" >> .env
+    
 fi
 
 if ! egrep -q '^REGISTRATION_CODES_REQUIRED=' .env; then
@@ -173,7 +208,7 @@ chmod 600 .env
 
 # Check if the torrc file contains specific configuration for your domain
 if grep -q "$DOMAIN_CONFIG" "$TORRC_PATH"; then
-    echo "Tor configuration for $DOMAIN already exists in $TORRC_PATH. Skipping configuration."
+    echo "👍 Tor configuration for $DOMAIN already exists in $TORRC_PATH. Skipping configuration."
 else
     echo "Adding Tor configuration for $DOMAIN to $TORRC_PATH..."
     echo -e "\n$DOMAIN_CONFIG" >> "$TORRC_PATH"
@@ -209,7 +244,7 @@ if [ ! -f "$NGINX_SITE_PATH" ]; then
     sed -i "s/\$ONION_ADDRESS/$ONION_ADDRESS/g" $NGINX_SITE_PATH
     sed -i "s/\$SAUTEED_ONION_ADDRESS/$SAUTEED_ONION_ADDRESS/g" $NGINX_SITE_PATH
 
-    echo "Nginx configuration updated successfully."
+    echo "✅ Nginx configuration updated successfully."
 
     ln -sf $NGINX_SITE_PATH /etc/nginx/sites-enabled/
     nginx -t && systemctl restart nginx
@@ -223,7 +258,7 @@ if [ ! -f "$NGINX_SITE_PATH" ]; then
         error_exit
     fi
 else
-    echo "Nginx site configuration already exists."
+    echo "👍 Nginx site configuration already exists."
 fi
 
 
@@ -234,6 +269,8 @@ fi
 # Check if the SSL certificate directory for the domain exists
 if [ ! -d "/etc/letsencrypt/live/"$DOMAIN"/" ]; then
     echo "SSL certificate directory for $DOMAIN does not exist. Obtaining SSL certificate..."
+    SERVER_IP=$(curl -s ifconfig.me)
+    WIDTH=$(tput cols)
     whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 "$WIDTH"
     
     # Request the certificates
@@ -241,22 +278,22 @@ if [ ! -d "/etc/letsencrypt/live/"$DOMAIN"/" ]; then
     sleep 30
 
     certbot --nginx -d "$DOMAIN" -d "$SAUTEED_ONION_ADDRESS.$DOMAIN" --agree-tos --non-interactive --no-eff-email --email "$EMAIL"
-    (crontab -l 2>/dev/null; echo "30 2 * * 1 /usr/bin/certbot renew --quiet") | crontab -
+    echo "30 2 * * 1 root /usr/bin/certbot renew --quiet" > /etc/cron.d/hushline_cert_renewal
     echo "✅ Automatic HTTPS certificates configured."
 
     # Enable IPv6 in Nginx configuration
-    sed -i '/listen 80;/a \    listen [::]:80;' "$$NGINX_SITE_PATH"
-    sed -i '/listen 443 ssl;/a \    listen [::]:443 ssl;' "$$NGINX_SITE_PATH"
+    sed -i '/listen 80;/a \    listen [::]:80;' "$NGINX_SITE_PATH"
+    sed -i '/listen 443 ssl;/a \    listen [::]:443 ssl;' "$NGINX_SITE_PATH"
     echo "✅ IPv6 configuration appended to Nginx configuration file."
 
     # Append OCSP Stapling configuration for SSL
-    sed -i "/listen \[::\]:443 ssl;/a \    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/$DOMAIN/chain.pem;\n    resolver 9.9.9.9 1.1.1.1 valid=300s;\n    resolver_timeout 5s;\n    ssl_session_cache shared:SSL:10m;" "$NGINX_CONF"
+    sed -i "/listen \[::\]:443 ssl;/a \    ssl_stapling on;\n    ssl_stapling_verify on;\n    ssl_trusted_certificate /etc/letsencrypt/live/$DOMAIN/chain.pem;\n    resolver 9.9.9.9 1.1.1.1 valid=300s;\n    resolver_timeout 5s;\n    ssl_session_cache shared:SSL:10m;" "$NGINX_SITE_PATH"
     echo "✅ OCSP Stapling, SSL Session, and Resolver Timeout added."
 
     # Test the Nginx configuration and reload if successful
     nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test failed, please check the configuration."
 else
-    echo "SSL certificate directory for $DOMAIN already exists. Skipping SSL certificate acquisition."
+    echo "👍 SSL certificate directory for $DOMAIN already exists. Skipping SSL certificate acquisition."
 fi
 
 
@@ -290,20 +327,34 @@ fi
 
 if ! systemctl is-active --quiet mariadb; then
     echo "MariaDB server is not running. Starting MariaDB server..."
-    sudo systemctl start mariadb
-    sudo systemctl enable mariadb
-    echo "MariaDB server started and enabled to start at boot."
+    systemctl start mariadb
+    systemctl enable mariadb
+    echo "✅ MariaDB server started and enabled to start at boot."
 else
-    echo "MariaDB server is already running."
+    echo "🏃‍➡️ MariaDB server is already running."
 fi
 
 # Check if MariaDB/MySQL is installed
+# Define the path for the flag file
+MYSQL_SECURED_FLAG="/etc/mysql/mysql_secure_installation_done"
+
+# Check if MariaDB/MySQL is installed and if the secure installation has not been done yet
 if mysql --version &> /dev/null; then
     echo "MySQL/MariaDB is installed."
-    mysql_secure_installation
+    if [ ! -f "$MYSQL_SECURED_FLAG" ]; then
+        echo "Running mysql_secure_installation..."
+        mysql_secure_installation
+
+        # After running mysql_secure_installation, create a flag file to indicate it's been done
+        touch "$MYSQL_SECURED_FLAG"
+        echo "✅ mysql_secure_installation is completed. This will not run again unless the flag file is removed."
+    else
+        echo "👍 mysql_secure_installation has already been run previously."
+    fi
 else
-    echo "MySQL/MariaDB is not installed. Skipping mysql_secure_installation."
+    echo "⚠️ MySQL/MariaDB is not installed. Skipping mysql_secure_installation."
 fi
+
 
 # Check if MariaDB/MySQL service is running
 if ! systemctl is-active --quiet mariadb; then
@@ -311,39 +362,40 @@ if ! systemctl is-active --quiet mariadb; then
     systemctl start mariadb
 fi
 
-# Prompt to run mysql_secure_installation for initial setup
-echo "Running mysql_secure_installation to secure your MariaDB/MySQL installation."
-mysql_secure_installation
-
-
-####################################################################################################
-# APPLICATION USER
-####################################################################################################
-
-# Create a dedicated user for running the application
-if ! id "$HUSHLINE_USER" &>/dev/null; then
-    echo "Creating a dedicated user: $HUSHLINE_USER..."
-    useradd -r -s /bin/false -g $HUSHLINE_GROUP $HUSHLINE_USER
-else
-    echo "Dedicated user $HUSHLINE_USER already exists."
+# Check if the database exists, create if not
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
+    mysql -e "CREATE DATABASE $DB_NAME;"
 fi
 
-# Adjust the ownership of the application directory
-chown -R $HUSHLINE_USER:$HUSHLINE_GROUP /var/www/html/$DOMAIN
+# Check if the user exists and create it if it doesn't
+if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' AND host = 'localhost')" | grep -q 1; then
+    mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+    mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+    mysql -e "FLUSH PRIVILEGES;"
+fi
+
 
 
 ####################################################################################################
 # UPGRADE DB
 ####################################################################################################
 
+# Check if the migrations folder does not exist
+if [ ! -d "migrations" ]; then
+    echo "Initializing database migrations..."
+    poetry run flask db init
+    echo "✅ Database migrations initialized..."
+else
+    echo "👍 Migrations already initialized."
+fi
+
+systemctl restart mariadb
+sleep 5
+
 # Upgrade DB
 export FLASK_APP=hushline:create_app
+poetry run flask db migrate
 poetry run flask db upgrade
-
-# Change owner and permissions
-chown -R $HUSHLINE_USER:$HUSHLINE_GROUP /var/www/html/hushline
-
-cp files/hushline-hosted.service /etc/systemd/system/hushline-hosted.service
 
 
 ####################################################################################################
@@ -352,11 +404,11 @@ cp files/hushline-hosted.service /etc/systemd/system/hushline-hosted.service
 
 if ! systemctl is-active --quiet redis-server; then
     echo "Redis server is not running. Starting Redis server..."
-    sudo systemctl start redis-server
-    sudo systemctl enable redis-server
-    echo "Redis server started and enabled to start at boot."
+    systemctl start redis-server
+    systemctl enable redis-server
+    echo "✅ Redis server started and enabled to start at boot."
 else
-    echo "Redis server is already running."
+    echo "🏃‍➡️ Redis server is already running."
 fi
 
 
@@ -365,23 +417,23 @@ fi
 ####################################################################################################
 
 # Extract ENCRYPTION_KEY from .env file
-ENCRYPTION_KEY=$(grep 'ENCRYPTION_KEY=' .env | cut -d'=' -f2)
+ENCRYPTION_KEY=$(grep 'ENCRYPTION_KEY=' .env | awk -F"ENCRYPTION_KEY=" '{print $2}')
 
 # Check if ENCRYPTION_KEY is already set in the service file, if not, add it after the last Environment= line
 if ! grep -q 'Environment="ENCRYPTION_KEY=' "${SERVICE_FILE}"; then
     echo 'Updating encryption key in the service file...'
+    cp files/hushline-hosted.service /etc/systemd/system/hushline-hosted.service
     sed -i "/Environment=/a Environment=\"ENCRYPTION_KEY=${ENCRYPTION_KEY}\"" "${SERVICE_FILE}"
 fi
-
-systemctl daemon-reload
-systemctl enable hushline-hosted.service
-systemctl start hushline-hosted.service
-systemctl restart hushline-hosted.service
 
 
 ####################################################################################################
 # MISC STUFF
 ####################################################################################################
+
+# Git Permissions
+chown -R $(whoami):$(whoami) /var/www/html/hushline
+chmod -R 755 /var/www/html/hushline
 
 # Unattended Upgrades
 echo "Configuring unattended-upgrades..."
@@ -389,11 +441,45 @@ echo "Configuring unattended-upgrades..."
 cp files/50unattended-upgrades /etc/apt/apt.conf.d/
 cp files/20auto-upgrades /etc/apt/apt.conf.d/
 
-systemctl start fail2ban
-systemctl enable fail2ban
+# Only start and enable fail2ban if it isn't already running
+if ! systemctl is-active --quiet fail2ban; then
+    echo "Fail2Ban is not running. Starting and enabling Fail2Ban..."
+    systemctl start fail2ban
+    systemctl enable fail2ban
+    echo "✅ Fail2Ban started and enabled."
+else
+    echo "🏃‍➡️ Fail2Ban is already running."
+fi
 
 # Remove existing jail.local if it exists, then copy the new one
 rm -f /etc/fail2ban/jail.local
 cp files/jail.local /etc/fail2ban/
 
 systemctl restart fail2ban
+
+
+####################################################################################################
+# WRAPPING UP
+####################################################################################################
+
+# Ensuring the correct ownership and permissions for the application directory
+echo "Setting correct permissions for the application directory..."
+find /var/www/html/hushline -type d -exec chmod 750 {} \;
+find /var/www/html/hushline -type f -exec chmod 640 {} \;
+
+# Ensuring virtual environment binaries are executable
+echo "Ensuring virtual environment binaries are executable..."
+chmod +x /var/www/html/hushline/venv/bin/*
+chown -R $HUSHLINE_USER:$HUSHLINE_GROUP /var/www/html/hushline
+
+# Update the global Git configuration
+git config --global --add safe.directory /var/www/html/hushline
+
+# Restart and enable related services, including Gunicorn, ensuring they use the updated permissions
+echo "Restarting and enabling services..."
+systemctl daemon-reload
+systemctl restart nginx
+systemctl enable hushline-hosted.service
+systemctl restart hushline-hosted.service
+
+echo "Installation and configuration completed successfully."
