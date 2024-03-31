@@ -13,7 +13,7 @@ server {
         }
 
         location = /.well-known/security.txt {
-            alias /var/www/html/$DOMAIN/.well-known/security.txt;
+            alias /var/www/html/hushline/.well-known/security.txt;
         }
                 
         add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
