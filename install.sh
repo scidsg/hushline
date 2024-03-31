@@ -1,27 +1,15 @@
 #!/bin/bash
 
 ####################################################################################################
-# VARIABLES
-####################################################################################################
 
-DOMAIN="test.ourdemo.app"
-EMAIL="hushline@scidsg.org"
-GIT="https://github.com/scidsg/hushline.git"
-HUSHLINE_USER="hushlineuser"
-HUSHLINE_GROUP="www-data"
-SERVICE_FILE="/etc/systemd/system/hushline-hosted.service"
-MY_CNF="/etc/mysql/my.cnf"
-TORRC_PATH="/etc/tor/torrc"
-DOMAIN_CONFIG="HiddenServiceDir /var/lib/tor/$DOMAIN/"
-NGINX_SITE_PATH="/etc/nginx/sites-available/hushline.nginx"
-NGINX_CONF_PATH="/etc/nginx/nginx.conf"
-DB_NAME="${DB_NAME:-defaultdbname}"
-DB_USER="${DB_USER:-defaultdbuser}"
-DB_PASS="${DB_PASS:-defaultdbpass}"
-
-
-####################################################################################################
 # BEGIN SCRIPT
+
+# This section starts the installer, ensuring it runs with root privileges for necessary system 
+# changes, setting strict error handling to immediately halt on errors, and introducing Hush Line 
+# with ASCII art and a brief description. An error_exit function provides a fallback to gracefully 
+# handle and report errors, ensuring a clear exit strategy if the script encounters issues during 
+# execution.
+
 ####################################################################################################
 
 set -euo pipefail
@@ -57,10 +45,20 @@ error_exit() {
 # Trap any errors and call the error_exit function
 trap error_exit ERR
 
+####################################################################################################
+
+# INSTALLATION STUFF
+
+# Here, the script prepares the environment for Hush Line by updating system packages and installing 
+# necessary dependencies like Python, Nginx, and MariaDB. It checks for the presence of a specific 
+# user and creates it if missing, ensuring the application runs under a dedicated account for 
+# security. Additionally, Rust and Python's Poetry are installed to handle backend dependencies.
 
 ####################################################################################################
-# INSTALLATION STUFF
-####################################################################################################
+
+GIT="https://github.com/scidsg/hushline.git"
+HUSHLINE_USER="hushlineuser"
+HUSHLINE_GROUP="www-data"
 
 # Update packages and install whiptail
 export DEBIAN_FRONTEND=noninteractive
@@ -74,14 +72,14 @@ apt install -y \
     nginx \
     default-mysql-server \
     python3-venv \
-    tor \
     certbot \
     python3-certbot-nginx \
     libnginx-mod-http-geoip \
     ufw \
     fail2ban \
     redis \
-    redis-server
+    redis-server \
+    apt-transport-https
 
 cd /var/www/html
 if [ ! -d hushline ]; then
@@ -90,7 +88,6 @@ fi
 cd hushline
 git switch migrations
 sleep 5
-
 chmod +x install.sh
 
 # Create a dedicated user for running the application
@@ -101,7 +98,6 @@ if ! id "$HUSHLINE_USER" &>/dev/null; then
 else
     echo "👍 Dedicated user $HUSHLINE_USER already exists."
 fi
-
 if ! command -v rustc &> /dev/null; then
     echo "Rust is not installed. Installing Rust..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -138,10 +134,21 @@ done
 poetry self add poetry-plugin-export
 export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 
+####################################################################################################
+
+# .ENV STUFF
+
+# This segment of the script configures Hush Line's environment by dynamically creating a .env file 
+# if it doesn't already exist. It populates this file with essential variables, including secret 
+# keys for security, database connection details, and configuration options for debug and 
+# registration codes. User inputs are gathered via whiptail dialogs for a friendly interface, 
+# allowing for customized setup.
 
 ####################################################################################################
-# .ENV STUFF
-####################################################################################################
+
+DB_NAME="${DB_NAME:-defaultdbname}"
+DB_USER="${DB_USER:-defaultdbuser}"
+DB_PASS="${DB_PASS:-defaultdbpass}"
 
 touch .env
 
@@ -185,7 +192,6 @@ if ! egrep -q '^SQLALCHEMY_DATABASE_URI=' .env; then
     echo 'Setting SQLALCHEMY_DATABASE_URI'
     # It's assumed DB_NAME, DB_USER, DB_PASS have been already captured above
     echo "SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASS@localhost/$DB_NAME" >> .env
-
 fi
 
 if ! egrep -q '^REGISTRATION_CODES_REQUIRED=' .env; then
@@ -201,18 +207,55 @@ fi
 
 chmod 600 .env
 
+####################################################################################################
+
+# TOR STUFF
+
+# In this part, the script enhances Hush Line's privacy features by integrating it with the Tor 
+# network. It adds the Tor package repository if it's not already present, ensuring access to the 
+# latest versions directly from the Tor Project. This step includes verifying and adding the 
+# repository's GPG key for secure package installations. Next, it configures Tor by appending a 
+# custom hidden service directory and port configuration to the torrc file, making Hush Line 
+# accessible via a .onion address.
 
 ####################################################################################################
-# TOR STUFF
-####################################################################################################
+
+TORRC_PATH="/etc/tor/torrc"
+DOMAIN_CONFIG="HiddenServiceDir /var/lib/tor/hushline/"
+DISTRIBUTION=$(lsb_release -cs)
+REPO_URL="https://deb.torproject.org/torproject.org ${DISTRIBUTION} main"
+REPO_SRC_URL="https://deb.torproject.org/torproject.org ${DISTRIBUTION} main"
+GPG_KEY_URL="https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc"
+KEYRING_PATH="/usr/share/keyrings/tor-archive-keyring.gpg"
+
+# Enable Tor Package Repo
+# Check if the Tor repository is already in the sources.list or sources.list.d/
+if ! grep -Rq "^deb \[signed-by=/usr/share/keyrings/tor-archive-keyring.gpg\] ${REPO_URL}$" /etc/apt/sources.list /etc/apt/sources.list.d/*; then
+    echo "deb [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] ${REPO_URL}" | tee /etc/apt/sources.list.d/tor.list
+    echo "deb-src [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] ${REPO_SRC_URL}" | tee -a /etc/apt/sources.list.d/tor.list
+    echo "✅ Added the Tor repository..."
+else
+    echo "👍 Tor repository already exists."
+fi
+
+# Check if the GPG keyring already exists
+if [ ! -f "$KEYRING_PATH" ]; then
+    wget -qO- "$GPG_KEY_URL" | gpg --dearmor | tee "$KEYRING_PATH" >/dev/null
+    apt update
+    apt install -y tor deb.torproject.org-keyring
+    echo "✅ Added the Tor GPG key and installed Tor."
+else
+    echo "👍 Tor GPG keyring already exists."
+fi
 
 # Check if the torrc file contains specific configuration for your domain
 if grep -q "$DOMAIN_CONFIG" "$TORRC_PATH"; then
-    echo "👍 Tor configuration for $DOMAIN already exists in $TORRC_PATH. Skipping configuration."
+    echo "👍 Tor configuration for Hush Line already exists in $TORRC_PATH. Skipping configuration."
 else
-    echo "Adding Tor configuration for $DOMAIN to $TORRC_PATH..."
     echo -e "\n$DOMAIN_CONFIG" >> "$TORRC_PATH"
-    echo "HiddenServicePort 80 unix:/var/www/html/$DOMAIN/hushline-hosted.sock" >> "$TORRC_PATH"
+    echo "HiddenServicePort 80 unix:/var/www/html/hushline/hushline.sock" >> "$TORRC_PATH"
+    echo "✅ Added Tor configuration for Hush Line to $TORRC_PATH."
+
     # Restart Tor to apply new configuration
     systemctl restart tor
 
@@ -221,13 +264,24 @@ else
     sleep 10
 fi
 
-ONION_ADDRESS=$(cat /var/lib/tor/"$DOMAIN"/hostname)
-SAUTEED_ONION_ADDRESS=$(echo "$ONION_ADDRESS" | tr -d '.')
-
-
 ####################################################################################################
+
 # NGINX STUFF
+
+# In this section, the script configures Nginx to serve Hush Line, setting up a reverse proxy to 
+# forward requests to the application. It involves copying a predefined Nginx configuration file, 
+# replacing placeholders with actual domain names and paths, and ensuring Nginx recognizes the new 
+# site configuration by linking it into the sites-enabled directory. This process also includes a 
+# verification step using nginx -t to ensure the configuration is correct before attempting to 
+# restart Nginx.
+
 ####################################################################################################
+
+DOMAIN="test.ourdemo.app"
+NGINX_SITE_PATH="/etc/nginx/sites-available/hushline.nginx"
+NGINX_CONF_PATH="/etc/nginx/nginx.conf"
+ONION_ADDRESS=$(cat /var/lib/tor/hushline/hostname)
+SAUTEED_ONION_ADDRESS=$(echo "$ONION_ADDRESS" | tr -d '.')
 
 # Check if hushline.nginx exists in /etc/nginx/sites-available/
 if [ ! -f "$NGINX_SITE_PATH" ]; then
@@ -261,22 +315,30 @@ else
     echo "👍 Nginx site configuration already exists."
 fi
 
+####################################################################################################
+
+# LET'S ENCRYPT
+
+# This section secures Hush Line's web traffic by obtaining SSL certificates from Let's Encrypt. It 
+# prompts the user to ensure DNS records are set up correctly before proceeding with certificate 
+# acquisition. Utilizing certbot with Nginx, the script automates the certificate request and 
+# installation process, including configuring automatic renewal. Additionally, it adjusts Nginx 
+# settings to support IPv6 and enhances SSL security with OCSP Stapling and resolver configurations. 
 
 ####################################################################################################
-# LET'S ENCRYPT
-####################################################################################################
+
+EMAIL="hushline@scidsg.org"
+SERVER_IP=$(curl -s ifconfig.me)
+WIDTH=$(tput cols)
 
 # Check if the SSL certificate directory for the domain exists
 if [ ! -d "/etc/letsencrypt/live/"$DOMAIN"/" ]; then
     echo "SSL certificate directory for $DOMAIN does not exist. Obtaining SSL certificate..."
-    SERVER_IP=$(curl -s ifconfig.me)
-    WIDTH=$(tput cols)
     whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 "$WIDTH"
     
     # Request the certificates
     echo "⏲️  Waiting 30 seconds for DNS to update..."
     sleep 30
-
     certbot --nginx -d "$DOMAIN" -d "$SAUTEED_ONION_ADDRESS.$DOMAIN" --agree-tos --non-interactive --no-eff-email --email "$EMAIL"
     echo "30 2 * * 1 root /usr/bin/certbot renew --quiet" > /etc/cron.d/hushline_cert_renewal
     echo "✅ Automatic HTTPS certificates configured."
@@ -296,17 +358,27 @@ else
     echo "👍 SSL certificate directory for $DOMAIN already exists. Skipping SSL certificate acquisition."
 fi
 
+####################################################################################################
+
+# DATABASE STUFF
+
+# This portion of the script focuses on setting up and securing the MariaDB (or MySQL) database for 
+# Hush Line. It involves creating a database and a user with the necessary permissions if they don't 
+# already exist. The script also ensures SSL is enabled for database connections by placing SSL 
+# certificates in the correct directory and updating the database configuration to use them. For 
+# environments where MariaDB or MySQL is not yet secured, it runs the mysql_secure_installation 
+# script. Additionally, the script checks if the MariaDB/MySQL service is active and starts it if 
+# needed, ensuring the database is ready for Hush Line's data storage needs.
 
 ####################################################################################################
-# DATABASE STUFF
-####################################################################################################
+
+MY_CNF="/etc/mysql/my.cnf"
+MYSQL_SECURED_FLAG="/etc/mysql/mysql_secure_installation_done"
 
 # Add SSL keys to mariadb
 mkdir -p /etc/mariadb/ssl
-
 cp /etc/letsencrypt/live/"$DOMAIN"/fullchain.pem /etc/mariadb/ssl/
 cp /etc/letsencrypt/live/"$DOMAIN"/privkey.pem /etc/mariadb/ssl/
-
 chown mysql:mysql /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
 chmod 400 /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
 
@@ -334,18 +406,12 @@ else
     echo "🏃‍➡️ MariaDB server is already running."
 fi
 
-# Check if MariaDB/MySQL is installed
-# Define the path for the flag file
-MYSQL_SECURED_FLAG="/etc/mysql/mysql_secure_installation_done"
-
 # Check if MariaDB/MySQL is installed and if the secure installation has not been done yet
 if mysql --version &> /dev/null; then
     echo "MySQL/MariaDB is installed."
     if [ ! -f "$MYSQL_SECURED_FLAG" ]; then
         echo "Running mysql_secure_installation..."
         mysql_secure_installation
-
-        # After running mysql_secure_installation, create a flag file to indicate it's been done
         touch "$MYSQL_SECURED_FLAG"
         echo "✅ mysql_secure_installation is completed. This will not run again unless the flag file is removed."
     else
@@ -354,7 +420,6 @@ if mysql --version &> /dev/null; then
 else
     echo "⚠️ MySQL/MariaDB is not installed. Skipping mysql_secure_installation."
 fi
-
 
 # Check if MariaDB/MySQL service is running
 if ! systemctl is-active --quiet mariadb; then
@@ -378,9 +443,16 @@ fi
 systemctl daemon-reload
 systemctl restart mariadb
 
-
 ####################################################################################################
+
 # UPGRADE DB
+
+# This section ensures the database schema is up to date for Hush Line. It checks for the existence 
+# of a "migrations" directory to determine if database migrations need to be initialized with 
+# Flask-Migrate. If the migrations are already set up, the script proceeds to apply any pending 
+# migrations using Flask's db upgrade command, effectively upgrading the database schema to the 
+# latest version required by Hush Line.
+
 ####################################################################################################
 
 # Check if the migrations folder does not exist
@@ -400,9 +472,14 @@ export FLASK_APP=hushline:create_app
 poetry run flask db migrate
 poetry run flask db upgrade
 
-
 ####################################################################################################
+
 # REDIS STUFF
+
+# Here, the script sets up Redis, a key-value store that Hush Line uses for caching and session 
+# management, among other things. It checks if the Redis server is running and starts it if not, 
+# also ensuring that it's enabled to start automatically on system boot. 
+
 ####################################################################################################
 
 if ! systemctl is-active --quiet redis-server; then
@@ -414,56 +491,60 @@ else
     echo "🏃‍➡️ Redis server is already running."
 fi
 
-
 ####################################################################################################
+
 # SERVICE FILE
+
+# This section deals with setting up a systemd service file for Hush Line, ensuring it starts 
+# automatically at boot and can be managed with standard systemd commands like start, stop, and 
+# restart. It updates the service file with the environment variable for the encryption key from the 
+# .env file, if it's not already set. This setup allows Hush Line to run as a background service, 
+# providing stability and ease of management.
+
 ####################################################################################################
 
-# Extract ENCRYPTION_KEY from .env file
+SERVICE_FILE="/etc/systemd/system/hushline.service"
 ENCRYPTION_KEY=$(grep 'ENCRYPTION_KEY=' .env | awk -F"ENCRYPTION_KEY=" '{print $2}')
 
 # Check if ENCRYPTION_KEY is already set in the service file, if not, add it after the last Environment= line
 if ! grep -q 'Environment="ENCRYPTION_KEY=' "${SERVICE_FILE}"; then
     echo 'Updating encryption key in the service file...'
-    cp files/hushline-hosted.service /etc/systemd/system/hushline-hosted.service
+    cp files/hushline.service /etc/systemd/system/hushline.service
     sed -i "/Environment=/a Environment=\"ENCRYPTION_KEY=${ENCRYPTION_KEY}\"" "${SERVICE_FILE}"
 fi
 
+####################################################################################################
+
+# UNATTENDED UPGRADES
+
+# This segment ensures that the system automatically installs security updates without manual 
+# intervention. It configures unattended-upgrades by copying predefined configuration files that 
+# specify which package categories should be automatically updated. This setup minimizes 
+# vulnerabilities by ensuring timely application of security patches, maintaining system security 
+# and stability over time.
 
 ####################################################################################################
-# MISC STUFF
+
+echo "Configuring unattended-upgrades..."
+cp files/50unattended-upgrades /etc/apt/apt.conf.d/
+cp files/20auto-upgrades /etc/apt/apt.conf.d/
+
+####################################################################################################
+
+# PERMISSIONS AND SERVICES
+
+# In the final section, the script secures the Hush Line installation by setting appropriate file 
+# permissions and ensuring all related services, such as Nginx and Redis, are correctly configured 
+# and restarted. It meticulously adjusts ownership and permissions within the Hush Line directory 
+# for security, updates the global Git configuration to include the Hush Line repository safely, and 
+# ensures the systemd service for Hush Line is enabled and started, facilitating automatic startup 
+# at boot.
+
 ####################################################################################################
 
 # Git Permissions
 chown -R $(whoami):$(whoami) /var/www/html/hushline
 chmod -R 755 /var/www/html/hushline
-
-# Unattended Upgrades
-echo "Configuring unattended-upgrades..."
-
-cp files/50unattended-upgrades /etc/apt/apt.conf.d/
-cp files/20auto-upgrades /etc/apt/apt.conf.d/
-
-# Only start and enable fail2ban if it isn't already running
-if ! systemctl is-active --quiet fail2ban; then
-    echo "Fail2Ban is not running. Starting and enabling Fail2Ban..."
-    systemctl start fail2ban
-    systemctl enable fail2ban
-    echo "✅ Fail2Ban started and enabled."
-else
-    echo "🏃‍➡️ Fail2Ban is already running."
-fi
-
-# Remove existing jail.local if it exists, then copy the new one
-rm -f /etc/fail2ban/jail.local
-cp files/jail.local /etc/fail2ban/
-
-systemctl restart fail2ban
-
-
-####################################################################################################
-# WRAPPING UP
-####################################################################################################
 
 # Ensuring the correct ownership and permissions for the application directory
 echo "Setting correct permissions for the application directory..."
@@ -482,7 +563,11 @@ git config --global --add safe.directory /var/www/html/hushline
 echo "Restarting and enabling services..."
 systemctl daemon-reload
 systemctl restart nginx
-systemctl enable hushline-hosted.service
-systemctl restart hushline-hosted.service
+systemctl enable hushline.service
+systemctl restart hushline.service
 
-echo "Installation and configuration completed successfully."
+# Reboot the system
+echo "✅ Installation and configuration completed successfully."
+echo "⏲️ Rebooting in 10 seconds..."
+sleep 10
+reboot
