@@ -26,10 +26,18 @@ server {
         add_header X-XSS-Protection "1; mode=block";
 }
 server {
-        server_name $ONION_ADDRESS;
-        access_log /var/log/nginx/hs-my-website.log;
-        index index.html;
         root /var/www/html/hushline;
+        server_name $ONION_ADDRESS;
+        location / {
+            proxy_pass http://unix:/var/www/html/hushline/hushline-hosted.sock;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
                 
         add_header X-Frame-Options DENY;
         add_header X-Content-Type-Options nosniff;
