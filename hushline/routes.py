@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 import pyotp
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
@@ -52,7 +52,7 @@ class LoginForm(FlaskForm):
 def init_app(app: Flask) -> None:
     @app.route("/")
     @limiter.limit("120 per minute")
-    def index():
+    def index() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
             if user:
@@ -68,7 +68,7 @@ def init_app(app: Flask) -> None:
     @app.route("/inbox")
     @limiter.limit("120 per minute")
     @require_2fa
-    def inbox():
+    def inbox() -> Response | str:
         # Redirect if not logged in
         if "user_id" not in session:
             flash("Please log in to access your inbox.")
@@ -98,7 +98,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def submit_message(username):
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
         user = None
         secondary_username = None
@@ -141,14 +141,13 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if all(
-                [
-                    user.email,
-                    user.smtp_server,
-                    user.smtp_port,
-                    user.smtp_username,
-                    user.smtp_password,
-                ]
+            if (
+                user.email
+                and user.smtp_server
+                and user.smtp_port
+                and user.smtp_username
+                and user.smtp_password
+                and email_content
             ):
                 try:
                     sender_email = user.smtp_username
@@ -186,7 +185,7 @@ def init_app(app: Flask) -> None:
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def delete_message(message_id):
+    def delete_message(message_id: int) -> Response:
         if "user_id" not in session:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
@@ -208,7 +207,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def register():
+    def register() -> Response | str:
         # TODO this should be a setting pulled from `current_app`
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
@@ -245,7 +244,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def login():
+    def login() -> Response | str:
         form = LoginForm()
         if request.method == "POST":  # Ensure we're processing form submissions
             if form.validate_on_submit():
@@ -278,7 +277,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def verify_2fa_login():
+    def verify_2fa_login() -> Response | str:
         # Redirect to login if user is not authenticated
         if "user_id" not in session or not session.get("2fa_required", False):
             return redirect(url_for("login"))
@@ -305,7 +304,7 @@ def init_app(app: Flask) -> None:
     @app.route("/logout")
     @limiter.limit("120 per minute")
     @require_2fa
-    def logout():
+    def logout() -> Response:
         # Explicitly remove specific session keys related to user authentication
         session.pop("user_id", None)
         session.pop("2fa_verified", None)

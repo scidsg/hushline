@@ -6,6 +6,7 @@ import pyotp
 import qrcode
 from flask import (
     Blueprint,
+    Response,
     current_app,
     flash,
     redirect,
@@ -63,7 +64,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def index():
+    def index() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -171,9 +172,9 @@ def create_blueprint() -> Blueprint:
                 two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
                 pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
             else:
-                user_count = (
-                    two_fa_count
-                ) = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+                user_count = two_fa_count = pgp_key_count = two_fa_percentage = (
+                    pgp_key_percentage
+                ) = None
 
         # Prepopulate form fields
         smtp_settings_form.smtp_server.data = user.smtp_server
@@ -204,7 +205,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/toggle-2fa", methods=["POST"])
     @limiter.limit("120 per minute")
-    def toggle_2fa():
+    def toggle_2fa() -> Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -218,7 +219,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/change-password", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def change_password():
+    def change_password() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -261,7 +262,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/change-username", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def change_username():
+    def change_username() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             flash("Please log in to continue.", "info")
@@ -310,7 +311,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/enable-2fa", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def enable_2fa():
+    def enable_2fa() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -319,9 +320,13 @@ def create_blueprint() -> Blueprint:
         form = TwoFactorForm()
 
         if form.validate_on_submit():
-            verification_code = form.verification_code.data
             temp_totp_secret = session.get("temp_totp_secret")
-            if temp_totp_secret and pyotp.TOTP(temp_totp_secret).verify(verification_code):
+            verification_code = form.verification_code.data
+            if (
+                verification_code
+                and temp_totp_secret
+                and pyotp.TOTP(temp_totp_secret).verify(verification_code)
+            ):
                 user.totp_secret = temp_totp_secret
                 db.session.commit()
                 session.pop("temp_totp_secret", None)
