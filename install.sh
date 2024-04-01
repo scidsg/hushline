@@ -190,7 +190,7 @@ fi
 
 if ! egrep -q '^SQLALCHEMY_DATABASE_URI=' .env; then
     echo 'Setting SQLALCHEMY_DATABASE_URI'
-    echo "SQLALCHEMY_DATABASE_URI=sqlite:///hushline.db" >> .env
+    echo "SQLALCHEMY_DATABASE_URI=sqlite:////var/lib/hushline/hushline.db" >> .env
 fi
 
 if ! egrep -q '^REGISTRATION_CODES_REQUIRED=' .env; then
@@ -355,6 +355,25 @@ if [ ! -d "/etc/letsencrypt/live/"$DOMAIN"/" ]; then
     nginx -t && systemctl reload nginx || echo "Error: Nginx configuration test failed, please check the configuration."
 else
     echo "👍 SSL certificate directory for $DOMAIN already exists. Skipping SSL certificate acquisition."
+fi
+
+####################################################################################################
+# SQLite DB SETUP
+####################################################################################################
+
+# SQLite database directory and file path
+SQLITE_DIR="/var/lib/hushline"
+SQLITE_DB_FILE="$SQLITE_DIR/hushline.db"
+
+# Ensure SQLite directory exists
+if [ ! -d "$SQLITE_DIR" ]; then
+    echo "Creating SQLite directory at $SQLITE_DIR..."
+    mkdir -p "$SQLITE_DIR"
+    # Ensure the directory is owned by the application user
+    chown $HUSHLINE_USER:$HUSHLINE_GROUP "$SQLITE_DIR"
+    echo "✅ SQLite directory created."
+else
+    echo "👍 SQLite directory already exists."
 fi
 
 ####################################################################################################
