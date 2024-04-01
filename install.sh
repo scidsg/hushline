@@ -227,6 +227,8 @@ REPO_URL="https://deb.torproject.org/torproject.org ${DISTRIBUTION} main"
 REPO_SRC_URL="https://deb.torproject.org/torproject.org ${DISTRIBUTION} main"
 GPG_KEY_URL="https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc"
 KEYRING_PATH="/usr/share/keyrings/tor-archive-keyring.gpg"
+OVERRIDE_DIR="/etc/systemd/system/tor@default.service.d"
+OVERRIDE_FILE="${OVERRIDE_DIR}/override.conf"
 
 # Enable Tor Package Repo
 # Check if the Tor repository is already in the sources.list or sources.list.d/
@@ -262,6 +264,18 @@ else
     # Restart Tor service
     systemctl restart tor.service
     sleep 10
+fi
+
+# Create an override file with an ExecStartPost command and restart on failure for the Tor service
+if [ ! -d "$OVERRIDE_DIR" ]; then
+    echo "Creating systemd override directory for Tor..."
+    mkdir -p "$OVERRIDE_DIR"
+    cp files/override.conf "$OVERRIDE_FILE"
+    systemctl daemon-reload
+    systemctl restart tor@default.service
+    echo "✅ Systemd override directory created and Tor service restarted."
+else
+    echo "👍 Systemd override directory for Tor already exists."
 fi
 
 ####################################################################################################
