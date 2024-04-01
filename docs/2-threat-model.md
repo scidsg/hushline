@@ -12,11 +12,11 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 
 | User Type | Goal |
 |-|-|
-| Submitter | Send a message |
-| Receiver | Read messages |
-| Verifier | Staff member who verifies account owners (journalists, public figures, businesses) |
-| Service Provider | Provides Hush Line service |
-| Server Admin | Maintain the working order of the application |
+| Submitter | Individual who sends a message. |
+| Receiver | Individual or organization representative who reads messages. |
+| Verifier | Staff member who verifies account owners (journalists, public figures, businesses). |
+| Service Provider | Individual or organization who provides Hush Line services. |
+| Server Admin | Individual who maintains the server operating Hush Line. |
 
 ## Adversaries
 
@@ -79,14 +79,17 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ### Network Observers
 
+- **Impacts:** Adversaries who monitor network connections to our server can see your IP address and the domain you're visiting.
 - **Mitigation:** All data in transit is encrypted using TLS, and users are encouraged to access Hush Line via Tor for additional anonymity. This prevents network observers from deciphering the content or metadata of communications.
 
 ### Account Compromise
 
+- **Impacts:** Disruption of Hush Line usage, impersonation which could lead to reputational harm or other damages.
 - **Mitigation:** Strong password policies, optional 2FA, and secure password reset mechanisms are in place to protect user accounts. Users are educated on best practices for maintaining account security.
 
 ### Legal and Coercive Pressure
 
+**Impacts:** Science & Design, Inc. and Hush Line must comply with legitimate legal requests, which could result in the forfeiture of data that includes your username, SMTP information, public PGP key, or other information you provide to Hush Line. No PII is required to use the Hush Line service, but if you've donated to our Open Collective or purchased anything from our Shopify store, potentially identifying information, including your shipping and billing address, name, email address, and IP address, could be tied back to you with sufficient analysis.
 - **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts.
 
 ## Verification System
