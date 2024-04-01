@@ -22,10 +22,10 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 
 | User Type | Goal |
 |-|-|
-| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers) |
-| Active Observer | Targets specific connections |
-| Passive Attacker | Scans the internet for vulnerabilities of which to take advantage |
-| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, seizure of physical equipment |
+| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers). |
+| Active Observer | Targets specific connections. |
+| Passive Attacker | Scans the internet for vulnerabilities to take advantage of. |
+| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, and seizure of physical equipment. |
 
 ## Assumptions
 
