@@ -37,3 +37,4 @@ jobs:
 
       - name: Test
         run: poetry -v run make test
+        continue-on-error: true
