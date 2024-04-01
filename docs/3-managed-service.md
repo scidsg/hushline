@@ -73,13 +73,13 @@ Once your Display Name matches the format above, we'll promptly verify your acco
 
 To help guard against abuse, our verification system is built so that if a verified user changes their username or display name, they'll lose their verified status and need to initiate the process again. This feature is intended to eliminate the risk of a user with a verified account changing their information to impersonate another person or organization.
 
-<img src="img/settings.verified.png"> 
+<img src="img/settings.verified.png">
 
 ## Sending Messages
 
-When you log in to your account, click on the "Submit Message" link at the top of the screen. You can publicly share the URL for this page wherever you're advertising your tip line. You'll notice some instructional text is only visible to you with suggestions for sharing your address. 
+When you log in to your account, click on the "Submit Message" link at the top of the screen. You can publicly share the URL for this page wherever you're advertising your tip line. You'll notice some instructional text is only visible to you with suggestions for sharing your address.
 
-You'll also see a message indicating if you've uploaded a PGP key. This will be visible to someone submitting a message, so if you'll receive sensitive information, it is advised to add your public PGP key in Settings. 
+You'll also see a message indicating if you've uploaded a PGP key. This will be visible to someone submitting a message, so if you'll receive sensitive information, it is advised to add your public PGP key in Settings.
 
 <img src="img/submit.encrypted.private.png">
 
@@ -107,13 +107,13 @@ New users are greeted by their empty inbox.
 
 <img src="img/inbox.empty.png">
 
-When you receive a message, they'll appear here. 
+When you receive a message, they'll appear here.
 
 <img src="img/inbox.unencrypted.png">
 
 ### Message Encryption
 
-By default, Hush Line doesn't require a PGP key, but it's strongly encouraged. After adding your PGP key, only you can read the messages you receive. 
+By default, Hush Line doesn't require a PGP key, but it's strongly encouraged. After adding your PGP key, only you can read the messages you receive.
 
 As a baseline security measure, we encrypt your message content by default on our server. While this protects the contents of our database, if the encryption key becomes compromised, it can be decrypted. But if you add your PGP key, any message received will only be able to be decrypted by you. If you expect to receive messages containing sensitive content, enabling this feature is strongly encouraged.
 
@@ -121,11 +121,11 @@ As a baseline security measure, we encrypt your message content by default on ou
 
 ### Mailvelope
 
-After installing the Mailvelope extension in your browser, you can decrypt your messages directly in the app. This is highly recommended, as it's one of the easiest and most straightforward methods of decrypting your messages. 
+After installing the Mailvelope extension in your browser, you can decrypt your messages directly in the app. This is highly recommended, as it's one of the easiest and most straightforward methods of decrypting your messages.
 
 <img src="img/inbox.mailvelope.png">
 
-You'll see a new interface where the encrypted message was. Click "Show message" to decrypt. You'll enter the password you created when setting up your PGP key, and the contents will be visible. 
+You'll see a new interface where the encrypted message was. Click "Show message" to decrypt. You'll enter the password you created when setting up your PGP key, and the contents will be visible.
 
 <img src="img/inbox.decrypted.png">
 
@@ -183,7 +183,7 @@ Users can opt to have their messages encrypted so they're only readable by them.
 
 #### Delete Account
 
-Easily and permanently delete your account whenever you want. 
+Easily and permanently delete your account whenever you want.
 
 <img src="img/settings.advanced.png">
 

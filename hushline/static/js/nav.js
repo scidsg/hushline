@@ -3,11 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle mobile navigation toggle
     const mobileNavButton = document.querySelector('.mobileNav');
     const navMenu = document.querySelector('header nav ul');
-    
+
     mobileNavButton.addEventListener('click', function() {
         navMenu.classList.toggle('show');
     });
-    
+
     // Isolate dropdown setup in its own function for better error handling
     function setupDropdown() {
         const dropdownToggle = document.querySelector('.dropdown .dropbtn');
