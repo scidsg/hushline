@@ -48,6 +48,7 @@ line_length = 100
 pythonpath = "."
 
 [tool.mypy]
+python_version = "3.11"
 strict = false
 disable_error_code = [
     "import-untyped",
