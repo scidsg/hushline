@@ -359,91 +359,6 @@ fi
 
 ####################################################################################################
 
-# DATABASE STUFF
-
-# This portion of the script focuses on setting up and securing the MariaDB (or MySQL) database for 
-# Hush Line. It involves creating a database and a user with the necessary permissions if they don't 
-# already exist. The script also ensures SSL is enabled for database connections by placing SSL 
-# certificates in the correct directory and updating the database configuration to use them. For 
-# environments where MariaDB or MySQL is not yet secured, it runs the mysql_secure_installation 
-# script. Additionally, the script checks if the MariaDB/MySQL service is active and starts it if 
-# needed, ensuring the database is ready for Hush Line's data storage needs.
-
-####################################################################################################
-
-MY_CNF="/etc/mysql/my.cnf"
-MYSQL_SECURED_FLAG="/etc/mysql/mysql_secure_installation_done"
-
-# Add SSL keys to mariadb
-mkdir -p /etc/mariadb/ssl
-cp /etc/letsencrypt/live/"$DOMAIN"/fullchain.pem /etc/mariadb/ssl/
-cp /etc/letsencrypt/live/"$DOMAIN"/privkey.pem /etc/mariadb/ssl/
-chown mysql:mysql /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
-chmod 400 /etc/mariadb/ssl/fullchain.pem /etc/mariadb/ssl/privkey.pem
-
-# Enable SSL for MQSQL
-cp files/50-server.conf /etc/mysql/mariadb.conf.d/
-
-# Check and append ssl_cert configuration if it doesn't exist
-if ! grep -q '^ssl_cert=' "$MY_CNF"; then
-    echo 'Appending ssl_cert configuration...'
-    echo "ssl_cert=/etc/mariadb/ssl/fullchain.pem" >> "$MY_CNF"
-fi
-
-# Check and append ssl_key configuration if it doesn't exist
-if ! grep -q '^ssl_key=' "$MY_CNF"; then
-    echo 'Appending ssl_key configuration...'
-    echo "ssl_key=/etc/mariadb/ssl/privkey.pem" >> "$MY_CNF"
-fi
-
-if ! systemctl is-active --quiet mariadb; then
-    echo "MariaDB server is not running. Starting MariaDB server..."
-    systemctl start mariadb
-    systemctl enable mariadb
-    echo "✅ MariaDB server started and enabled to start at boot."
-else
-    echo "🏃‍➡️ MariaDB server is already running."
-fi
-
-# Check if MariaDB/MySQL is installed and if the secure installation has not been done yet
-if mysql --version &> /dev/null; then
-    echo "MySQL/MariaDB is installed."
-    if [ ! -f "$MYSQL_SECURED_FLAG" ]; then
-        echo "Running mysql_secure_installation..."
-        mysql_secure_installation
-        touch "$MYSQL_SECURED_FLAG"
-        echo "✅ mysql_secure_installation is completed. This will not run again unless the flag file is removed."
-    else
-        echo "👍 mysql_secure_installation has already been run previously."
-    fi
-else
-    echo "⚠️ MySQL/MariaDB is not installed. Skipping mysql_secure_installation."
-fi
-
-# Check if MariaDB/MySQL service is running
-if ! systemctl is-active --quiet mariadb; then
-    echo "MariaDB/MySQL service is not running. Starting it now..."
-    systemctl start mariadb
-fi
-
-# Check if the database exists, create if not
-if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = '$DB_NAME')" | grep -q 1; then
-    mysql -e "CREATE DATABASE $DB_NAME;"
-fi
-
-# Check if the user exists and create it if it doesn't
-if ! mysql -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DB_USER' AND host = 'localhost')" | grep -q 1; then
-    mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
-    mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
-    mysql -e "FLUSH PRIVILEGES;"
-fi
-
-# Reload the systemd daemon and restart MariaDB to apply changes
-systemctl daemon-reload
-systemctl restart mariadb
-
-####################################################################################################
-
 # UPGRADE DB
 
 # This section ensures the database schema is up to date for Hush Line. It checks for the existence 
@@ -463,7 +378,6 @@ else
     echo "👍 Migrations already initialized."
 fi
 
-systemctl restart mariadb
 sleep 5
 
 # Upgrade DB
