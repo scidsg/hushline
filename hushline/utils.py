@@ -5,6 +5,8 @@ from functools import wraps
 
 from flask import current_app, flash, redirect, session, url_for
 
+from hushline.model import User
+
 
 def require_2fa(f):
     @wraps(f)
@@ -20,26 +22,29 @@ def require_2fa(f):
     return decorated_function
 
 
-def send_email(recipient, subject, body, user, sender_email):
+def send_email(to_email: str, subject: str, body: str, user: User, sender_email: str) -> bool:
     current_app.logger.debug(
-        f"SMTP settings being used: Server: {user.smtp_server}, Port: {user.smtp_port}, "
-        f"Username: {user.smtp_username}"
+        f"SMTP settings being used: Server: {user.smtp_server}, "
+        f"Port: {user.smtp_port}, Username: {user.smtp_username}"
     )
-    msg = MIMEMultipart()
-    msg["From"] = sender_email
-    msg["To"] = sender_email
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
 
-    # TODO we shouldn't return true/false but probably raise our own custom exception
-    # since using a bool is less "pythonic"
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = to_email
+    message["Subject"] = subject
+
+    # Check if body is a bytes object
+    if isinstance(body, bytes):
+        # Decode the bytes object to a string
+        body = body.decode("utf-8")
+
+    message.attach(MIMEText(body, "plain"))
     try:
-        with smtplib.SMTP(user.smtp_server, user.smtp_port, timeout=10) as server:  # Added timeout
+        with smtplib.SMTP(user.smtp_server, user.smtp_port) as server:
             server.starttls()
             server.login(user.smtp_username, user.smtp_password)
-            server.sendmail(sender_email, sender_email, msg.as_string())
-        current_app.logger.info("Email sent successfully.")
+            server.send_message(message)
         return True
     except Exception as e:
-        current_app.logger.error(f"Error sending email: {e}", exc_info=True)
+        current_app.logger.error(f"Error sending email: {str(e)}")
         return False

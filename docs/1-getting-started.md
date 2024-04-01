@@ -87,6 +87,6 @@ Your PGP Key is in the grey box, beginning with `-----BEGIN PGP PUBLIC KEY BLOCK
 
 For users with advanced privacy needs, including IP address obfuscation, which hides your physical location, download [Tor Browser](https://torproject.org/download). Hush Line has an onion address, and when you connect to it using Tor Browser, you receive the greatest level of protections.
 
-<img src="../img/3-tor-browser.png">
+<img src="img/3-tor-browser.png">
 
 🎉 Congratulations, you're now ready to continue with Hush Line!

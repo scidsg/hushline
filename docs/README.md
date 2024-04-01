@@ -4,9 +4,12 @@ Hush Line is the first free and open-source tip line-as-a-service platform for o
 
 ## Contents
 
-1. [Getting Started](https://github.com/scidsg/hushline/blob/main/docs/getting-started.md)
-2. [Threat Model](https://github.com/scidsg/hushline/blob/main/docs/threat-model.md)
-3. [Managed Service](https://github.com/scidsg/hushline/blob/main/docs/managed-service.md)
-4. [Personal Server](https://github.com/scidsg/hushline/blob/main/docs/personal-server.md)
+1. [Getting Started](https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md)
+2. [Threat Model](https://github.com/scidsg/hushline/blob/main/docs/2-threat-model.md)
+3. [Managed Service](https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md)
+4. [Personal Server](https://github.com/scidsg/hushline/blob/main/docs/4-personal-server.md)
+5. [Privacy Policy](https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md)
+6. [Terms and Conditions](https://github.com/scidsg/hushline/blob/main/docs/TERMS.md)
+7. [❤️ Acknowledgments](https://github.com/scidsg/hushline/blob/main/docs/ACKNOWLEDGMENTS.md)
 
 <img src="img/family.cover.png">

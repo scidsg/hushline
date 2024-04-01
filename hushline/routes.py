@@ -1,18 +1,22 @@
+import logging
 import os
 from datetime import datetime
 
 import pyotp
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
-from .crypto import encrypt_message, get_email_from_pgp_key
+from .crypto import encrypt_message
 from .db import db
-from .ext import limiter
+from .ext import bcrypt, limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import require_2fa, send_email
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
 
 
 class TwoFactorForm(FlaskForm):
@@ -48,7 +52,7 @@ class LoginForm(FlaskForm):
 def init_app(app: Flask) -> None:
     @app.route("/")
     @limiter.limit("120 per minute")
-    def index():
+    def index() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
             if user:
@@ -64,7 +68,7 @@ def init_app(app: Flask) -> None:
     @app.route("/inbox")
     @limiter.limit("120 per minute")
     @require_2fa
-    def inbox():
+    def inbox() -> Response | str:
         # Redirect if not logged in
         if "user_id" not in session:
             flash("Please log in to access your inbox.")
@@ -94,9 +98,8 @@ def init_app(app: Flask) -> None:
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def submit_message(username):
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
-
         user = None
         secondary_username = None
         display_name_or_username = ""
@@ -112,7 +115,6 @@ def init_app(app: Flask) -> None:
                 display_name_or_username = (
                     secondary_username.display_name or secondary_username.username
                 )
-                return redirect(url_for("settings"))
 
         if not user:
             flash("🫥 User not found.")
@@ -123,24 +125,14 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if not client_side_encrypted and user.pgp_key:
-                # Get the email address from the PGP key
-                pgp_email = get_email_from_pgp_key(user.pgp_key)
-                if pgp_email:
-                    # Append the note indicating server-side encryption
-                    content_with_note = content
-                    # Now call encrypt_message with the correct pgp_email
-                    encrypted_content = encrypt_message(content_with_note, pgp_email)
-                    email_content = encrypted_content if encrypted_content else content
-                    if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message with PGP key.", "error")
-                        return redirect(url_for("submit_message", username=username))
-                else:
-                    flash("⛔️ Unable to extract email from PGP key.", "error")
+                encrypted_content = encrypt_message(content, user.pgp_key)
+                email_content = encrypted_content if encrypted_content else content
+                if not encrypted_content:
+                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
-                email_content = content if client_side_encrypted else content
+                email_content = content
 
-            # Your logic to save and possibly email the message...
             new_message = Message(
                 content=email_content,
                 user_id=user.id,
@@ -149,18 +141,16 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if all(
-                [
-                    user.email,
-                    user.smtp_server,
-                    user.smtp_port,
-                    user.smtp_username,
-                    user.smtp_password,
-                ]
+            if (
+                user.email
+                and user.smtp_server
+                and user.smtp_port
+                and user.smtp_username
+                and user.smtp_password
+                and email_content
             ):
                 try:
                     sender_email = user.smtp_username
-                    # Assume send_email is a utility function to send emails
                     email_sent = send_email(
                         user.email, "New Message", email_content, user, sender_email
                     )
@@ -170,11 +160,12 @@ def init_app(app: Flask) -> None:
                         else "👍 Message submitted, but failed to send email."
                     )
                     flash(flash_message)
-                except Exception:
+                except Exception as e:
                     flash(
                         "👍 Message submitted, but an error occurred while sending email.",
                         "warning",
                     )
+                    app.logger.error(f"Error sending email: {str(e)}")
             else:
                 flash("👍 Message submitted successfully.")
 
@@ -194,7 +185,7 @@ def init_app(app: Flask) -> None:
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def delete_message(message_id):
+    def delete_message(message_id: int) -> Response:
         if "user_id" not in session:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
@@ -216,9 +207,9 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def register():
+    def register() -> Response | str:
         # TODO this should be a setting pulled from `current_app`
-        require_invite_code = os.getenv("REGISTRATION_CODES_REQUIRED", "True") == "True"
+        require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
 
         form = RegistrationForm()
 
@@ -241,7 +232,7 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            password_hash = pwd_context.hash(password).decode("utf-8")
+            password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
             new_user = User(primary_username=username, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
@@ -253,41 +244,40 @@ def init_app(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def login():
+    def login() -> Response | str:
         form = LoginForm()
-        if form.validate_on_submit():
-            username = form.username.data  # This is input from the form
-            password = form.password.data
+        if request.method == "POST":  # Ensure we're processing form submissions
+            if form.validate_on_submit():
+                username = form.username.data.strip()
+                password = form.password.data
 
-            # Use primary_username for filter_by
-            user = User.query.filter_by(primary_username=username).first()
+                user = User.query.filter_by(primary_username=username).first()
 
-            if user and pwd_context.verify(password, user.password_hash):
-                session.permanent = (
-                    True  # Make the session permanent so it uses the configured lifetime
-                )
-                session["user_id"] = user.id
-                session["username"] = user.primary_username  # Store primary_username in session
-                session["is_authenticated"] = True  # Mark user as authenticated
-                session["2fa_required"] = user.totp_secret is not None  # Check if 2FA is required
-                session["2fa_verified"] = False  # Initially mark 2FA as not verified
-                session["is_admin"] = user.is_admin  # Store admin status in session
+                if user and bcrypt.check_password_hash(user.password_hash, password):
+                    session.permanent = True
+                    session["user_id"] = user.id
+                    session["username"] = user.primary_username
+                    session["is_authenticated"] = True
+                    session["2fa_required"] = user.totp_secret is not None
+                    session["2fa_verified"] = False
+                    session["is_admin"] = user.is_admin
 
-                if user.totp_secret:
-                    # If 2FA is enabled, redirect to the 2FA verification page
-                    return redirect(url_for("verify_2fa_login"))
+                    if user.totp_secret:
+                        return redirect(url_for("verify_2fa_login"))
+                    else:
+                        session["2fa_verified"] = True
+                        return redirect(url_for("inbox", username=user.primary_username))
                 else:
-                    # If 2FA is not enabled, directly log the user in
-                    session["2fa_verified"] = True  # Mark 2FA as verified since it's not required
-                    return redirect(url_for("inbox", username=user.primary_username))
+                    flash("⛔️ Invalid username or password")
             else:
-                flash("⛔️ Invalid username or password")
+                flash("⛔️ Invalid form data")
 
+        # GET requests will reach this point without triggering the flash messages
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def verify_2fa_login():
+    def verify_2fa_login() -> Response | str:
         # Redirect to login if user is not authenticated
         if "user_id" not in session or not session.get("2fa_required", False):
             return redirect(url_for("login"))
@@ -314,7 +304,7 @@ def init_app(app: Flask) -> None:
     @app.route("/logout")
     @limiter.limit("120 per minute")
     @require_2fa
-    def logout():
+    def logout() -> Response:
         # Explicitly remove specific session keys related to user authentication
         session.pop("user_id", None)
         session.pop("2fa_verified", None)

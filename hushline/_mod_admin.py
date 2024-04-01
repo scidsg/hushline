@@ -2,10 +2,12 @@
 
 import sys
 
-from hushline import SecondaryUsername, User, app, db
+from hushline import create_app
+from hushline.db import db
+from hushline.model import SecondaryUsername, User
 
 
-def toggle_admin(username):
+def toggle_admin(username: str) -> None:
     # First, try to find a primary user
     user = User.query.filter_by(primary_username=username).first()
 
@@ -32,5 +34,5 @@ if __name__ == "__main__":
 
     username = sys.argv[1]
 
-    with app.app_context():
+    with create_app().app_context():
         toggle_admin(username)

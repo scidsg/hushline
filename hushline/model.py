@@ -1,14 +1,11 @@
 from flask import current_app
 
-from passlib.context import CryptContext
-from .crypto import decrypt_field, encrypt_field
+from .crypto import decrypt_field, encrypt_field, pwd_context
 from .db import db
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class User(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
@@ -29,82 +26,81 @@ class User(db.Model):
     )
 
     @property
-    def password_hash(self):
+    def password_hash(self) -> str:
+        # Assuming you have some decryption logic if needed
         decrypted_hash = decrypt_field(self._password_hash)
         return decrypted_hash
 
     @password_hash.setter
-    def password_hash(self, plaintext_password):
-        hashed_password = pwd_context.hash(plaintext_password)
-        self._password_hash = encrypt_field(hashed_password)
+    def password_hash(self, value: str) -> None:
+        self._password_hash = encrypt_field(value)
 
-    def verify_password(self, plaintext_password):
-    decrypted_hash = decrypt_field(self._password_hash)
-    return pwd_context.verify(plaintext_password, decrypted_hash)
-
+    def verify_password(self, plaintext_password: str) -> bool:
+        decrypted_hash = decrypt_field(self._password_hash)
+        return pwd_context.verify(plaintext_password, decrypted_hash)
 
     @property
-    def totp_secret(self):
+    def totp_secret(self) -> str:
         return decrypt_field(self._totp_secret)
 
     @totp_secret.setter
-    def totp_secret(self, value):
+    def totp_secret(self, value: str) -> None:
         if value is None:
             self._totp_secret = None
         else:
             self._totp_secret = encrypt_field(value)
 
     @property
-    def email(self):
+    def email(self) -> str:
         return decrypt_field(self._email)
 
     @email.setter
-    def email(self, value):
+    def email(self, value: str) -> None:
         self._email = encrypt_field(value)
 
     @property
-    def smtp_server(self):
+    def smtp_server(self) -> str:
         return decrypt_field(self._smtp_server)
 
     @smtp_server.setter
-    def smtp_server(self, value):
+    def smtp_server(self, value: str) -> None:
         self._smtp_server = encrypt_field(value)
 
     @property
-    def smtp_username(self):
+    def smtp_username(self) -> str:
         return decrypt_field(self._smtp_username)
 
     @smtp_username.setter
-    def smtp_username(self, value):
+    def smtp_username(self, value: str) -> None:
         self._smtp_username = encrypt_field(value)
 
     @property
-    def smtp_password(self):
+    def smtp_password(self) -> str:
         return decrypt_field(self._smtp_password)
 
     @smtp_password.setter
-    def smtp_password(self, value):
+    def smtp_password(self, value: str) -> None:
         self._smtp_password = encrypt_field(value)
 
     @property
-    def pgp_key(self):
+    def pgp_key(self) -> str:
         return decrypt_field(self._pgp_key)
 
     @pgp_key.setter
-    def pgp_key(self, value):
+    def pgp_key(self, value: str) -> None:
         if value is None:
             self._pgp_key = None
         else:
             self._pgp_key = encrypt_field(value)
 
-    def update_display_name(self, new_display_name):
+    def update_display_name(self, new_display_name: str) -> None:
         """Update the user's display name and remove verification status if the user is verified."""
         self.display_name = new_display_name
         if self.is_verified:
             self.is_verified = False
 
     # In the User model
-    def update_username(self, new_username):
+    def update_username(self, new_username: str) -> None:
         """Update the user's username and remove verification status if the user is verified."""
         try:
             # Log the attempt to update the username
@@ -130,29 +126,31 @@ class User(db.Model):
 
 
 class SecondaryUsername(db.Model):
-    __tablename__ = "secondary_username"
+    __tablename__ = "secondary_usernames"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     # This foreign key points to the 'user' table's 'id' field
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     display_name = db.Column(db.String(80), nullable=True)
 
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
-    secondary_user_id = db.Column(db.Integer, db.ForeignKey("secondary_username.id"), nullable=True)
+    secondary_user_id = db.Column(
+        db.Integer, db.ForeignKey("secondary_usernames.id"), nullable=True
+    )
     secondary_username = db.relationship("SecondaryUsername", backref="messages")
 
     @property
-    def content(self):
+    def content(self) -> str:
         return decrypt_field(self._content)
 
     @content.setter
-    def content(self, value):
+    def content(self, value: str) -> None:
         self._content = encrypt_field(value)
 
 
@@ -161,5 +159,5 @@ class InviteCode(db.Model):
     code = db.Column(db.String(255), unique=True, nullable=False)
     expiration_date = db.Column(db.DateTime, nullable=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"

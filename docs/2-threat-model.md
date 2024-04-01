@@ -1,5 +1,7 @@
 # Hush Line Threat Model
 
+ℹ️ _This is a living document and is subject to change as the app evolves._
+
 Adapted from the threat/risk models published by [Cwtch](https://docs.cwtch.im/security/risk/), [SecureDrop](https://docs.securedrop.org/en/latest/threat_model/threat_model.html), and [Pond](https://web.archive.org/web/20150326154506/https://pond.imperialviolet.org/threat.html).
 
 ## Introduction
@@ -10,20 +12,20 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 
 | User Type | Goal |
 |-|-|
-| Submitter | Send a message |
-| Receiver | Read messages |
-| Verifier | Verifies account owners (journalists, public figures, businesses) |
-| Service Provider | Provide Hush Line service |
-| Server Admin | Maintain the working order of the application |
+| Submitter | Individual who sends a message. |
+| Receiver | Individual or organization representative who reads messages. |
+| Verifier | Staff member who verifies account owners (journalists, public figures, businesses). |
+| Service Provider | Individual or organization who provides Hush Line services. |
+| Server Admin | Individual who maintains the server operating Hush Line. |
 
 ## Adversaries
 
 | User Type | Goal |
 |-|-|
-| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers) |
-| Active Observer | Targets specific connections |
-| Passive Attacker | Scans the internet for vulnerabilities of which to take advantage |
-| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, seizure of physical equipment |
+| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers). |
+| Active Observer | Targets specific connections. |
+| Passive Attacker | Scans the internet for vulnerabilities to take advantage of. |
+| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, and seizure of physical equipment. |
 
 ## Assumptions
 
@@ -53,14 +55,13 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 ### Assumptions About Science & Design
 
 - Science & Design wants to preserve the anonymity of its sources.
-- Science & Design acts in the interest of allowing sources to submit messages, regardless of the contents of their contents.
+- Science & Design acts in the interest of allowing sources to submit messages, regardless of their contents.
 - The users of the system, and those with physical access to the servers, can be trusted to uphold the previous assumptions unless the entire organization has been compromised.
-- Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block document submissions, or hand over encrypted or decrypted submissions.
+- Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block message submissions, or hand over encrypted or decrypted submissions.
 
 ### Assumptions About the World
 
-- The security assumptions of RSA (4096-bit GPG and SSH keys) are valid.
-- The security assumptions of Passlib with randomly generated salts are valid.
+- The security assumptions of `bcrypt` with randomly generated salts are valid.
 - The security/anonymity assumptions of Tor and the Onion service protocol are valid.
 - The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
 
@@ -78,15 +79,18 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ### Network Observers
 
+- **Impacts:** Adversaries who monitor network connections to our server can see your IP address and the domain you're visiting.
 - **Mitigation:** All data in transit is encrypted using TLS, and users are encouraged to access Hush Line via Tor for additional anonymity. This prevents network observers from deciphering the content or metadata of communications.
 
 ### Account Compromise
 
+- **Impacts:** Disruption of Hush Line usage, impersonation which could lead to reputational harm or other damages.
 - **Mitigation:** Strong password policies, optional 2FA, and secure password reset mechanisms are in place to protect user accounts. Users are educated on best practices for maintaining account security.
 
 ### Legal and Coercive Pressure
 
-- **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts. Furthermore, the use of encryption for stored data ensures that, even under pressure, Hush Line cannot divulge meaningful user data.
+- **Impacts:** Science & Design, Inc. and Hush Line must comply with legitimate legal requests, which could result in the forfeiture of data that includes your username, SMTP information, public PGP key, or other information you provide to Hush Line. No PII is required to use the Hush Line service, but if you've donated to our Open Collective or purchased anything from our Shopify store, potentially identifying information, including your shipping and billing address, name, email address, and IP address, could be tied back to you with sufficient analysis.
+- **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts.
 
 ## Verification System
 

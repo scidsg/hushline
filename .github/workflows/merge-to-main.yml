@@ -1,0 +1,39 @@
+---
+name: Merge to Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - users: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with: 
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+            ${{ runner.os }}-poetry-
+          path: |
+            ~/.cache/poetry
+
+      - name: Install Python dependencies
+        run: poetry install --all-extras
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test

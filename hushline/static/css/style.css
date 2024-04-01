@@ -1,19 +1,19 @@
 @font-face {
     font-family: "Atkinson Hyperlegible";
-    src: url("fonts/sans/AtkinsonHyperlegible-Regular.woff") format("woff"),
-        url("fonts/sans/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+    src: url("../fonts/sans/AtkinsonHyperlegible-Regular.woff") format("woff"),
+        url("../fonts/sans/AtkinsonHyperlegible-Regular.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "Atkinson Bold";
-    src: url("fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
-        url("fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+    src: url("../fonts/sans/AtkinsonHyperlegible-Bold.woff") format("woff"),
+        url("../fonts/sans/AtkinsonHyperlegible-Bold.woff2") format("woff2");
 }
 
 @font-face {
     font-family: "IBM Plex Mono";
-    src: url("fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
-        url("fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
+    src: url("../fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
+        url("../fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
 }
 
 body {
@@ -208,7 +208,8 @@ img.empty {
     border-radius: .5rem;
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     width: max-content;
-    max-width: 90vw;
+    max-width: 78vw;
+    text-align: center;
     opacity: 0;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
     z-index: 99;
@@ -475,7 +476,7 @@ header .btn {
 
 
 .mobileNav {
-    background-image: url('icon-menu.png');
+    background-image: url('../img/icon-menu.png');
     background-size: contain;
     width: 2.5rem;
     height: 2.5rem;
