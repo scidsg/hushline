@@ -525,6 +525,7 @@ fi
 
 ####################################################################################################
 
+# Unattended Upgrades
 echo "Configuring unattended-upgrades..."
 cp files/50unattended-upgrades /etc/apt/apt.conf.d/
 cp files/20auto-upgrades /etc/apt/apt.conf.d/
