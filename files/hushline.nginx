@@ -2,7 +2,7 @@ server {
         root /var/www/html/hushline;
         server_name $DOMAIN;
         location / {
-            proxy_pass http://unix:/var/www/html/hushline/hushline-hosted.sock;
+            proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -29,7 +29,7 @@ server {
         root /var/www/html/hushline;
         server_name $ONION_ADDRESS;
         location / {
-            proxy_pass http://unix:/var/www/html/hushline/hushline-hosted.sock;
+            proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -56,6 +56,6 @@ server {
     server_name $SAUTEED_ONION_ADDRESS.$DOMAIN;
 
     location / {
-        proxy_pass http://unix:/var/www/html/hushline/hushline-hosted.sock;
+        proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
     }
 }
