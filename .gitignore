@@ -6,3 +6,4 @@ __pycache__
 *.log
 DEV.md
 _DEV.md
+.DS_Store
