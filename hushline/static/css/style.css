@@ -208,7 +208,8 @@ img.empty {
     border-radius: .5rem;
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     width: max-content;
-    max-width: 90vw;
+    max-width: 78vw;
+    text-align: center;
     opacity: 0;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
     z-index: 99;
@@ -475,7 +476,7 @@ header .btn {
 
 
 .mobileNav {
-    background-image: url('img/icon-menu.png');
+    background-image: url('../img/icon-menu.png');
     background-size: contain;
     width: 2.5rem;
     height: 2.5rem;

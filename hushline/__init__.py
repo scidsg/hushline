@@ -35,6 +35,13 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
+    ssl_cert = "/etc/mariadb/ssl/fullchain.pem"
+    ssl_key = "/etc/mariadb/ssl/privkey.pem"
+
+    # Ensure SSL files exist
+    if not all(os.path.exists(path) for path in [ssl_cert, ssl_key]):
+        raise FileNotFoundError("SSL certificate or key file is missing.")
+
     db.init_app(app)
     _ = Migrate(app, db)
     limiter.init_app(app)

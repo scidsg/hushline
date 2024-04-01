@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve the Hushline Flask app
+After=network.target
+
+[Service]
+User=hushlineuser
+Group=www-data
+WorkingDirectory=/var/www/html/hushline
+Environment="PATH=/var/www/html/hushline/.env"
+ExecStart=/var/www/html/hushline/venv/bin/gunicorn 'hushline:create_app()' --workers 2 --bind unix:/var/www/html/hushline/hushline.sock -m 007 --timeout 120
+
+[Install]
+WantedBy=multi-user.target

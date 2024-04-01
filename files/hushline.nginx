@@ -1,0 +1,61 @@
+server {
+        root /var/www/html/hushline;
+        server_name $DOMAIN;
+        location / {
+            proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+
+        location = /.well-known/security.txt {
+            alias /var/www/html/hushline/.well-known/security.txt;
+        }
+                
+        add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header Onion-Location http://$ONION_ADDRESS$request_uri;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self';";
+        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+        add_header Referrer-Policy "no-referrer";
+        add_header X-XSS-Protection "1; mode=block";
+}
+server {
+        root /var/www/html/hushline;
+        server_name $ONION_ADDRESS;
+        location / {
+            proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+                
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://unpkg.com; img-src 'self' data: https:; style-src 'self'; frame-ancestors 'none'; connect-src 'self';";
+        add_header Permissions-Policy "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()";
+        add_header Referrer-Policy "no-referrer";
+        add_header X-XSS-Protection "1; mode=block";
+}
+server {
+        listen 80;
+        server_name $DOMAIN; # YOUR URLS
+        return 301 https://$DOMAIN$request_uri;
+}
+server {
+    listen 80;
+    server_name $SAUTEED_ONION_ADDRESS.$DOMAIN;
+
+    location / {
+        proxy_pass http://unix:/var/www/html/hushline/hushline.sock;
+    }
+}

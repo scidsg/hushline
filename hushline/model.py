@@ -5,7 +5,7 @@ from .db import db
 
 
 class User(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
@@ -126,21 +126,23 @@ class User(db.Model):
 
 
 class SecondaryUsername(db.Model):
-    __tablename__ = "secondary_username"
+    __tablename__ = "secondary_usernames"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     # This foreign key points to the 'user' table's 'id' field
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     display_name = db.Column(db.String(80), nullable=True)
 
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
-    secondary_user_id = db.Column(db.Integer, db.ForeignKey("secondary_username.id"), nullable=True)
+    secondary_user_id = db.Column(
+        db.Integer, db.ForeignKey("secondary_usernames.id"), nullable=True
+    )
     secondary_username = db.relationship("SecondaryUsername", backref="messages")
 
     @property
