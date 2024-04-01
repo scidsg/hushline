@@ -190,8 +190,7 @@ fi
 
 if ! egrep -q '^SQLALCHEMY_DATABASE_URI=' .env; then
     echo 'Setting SQLALCHEMY_DATABASE_URI'
-    # It's assumed DB_NAME, DB_USER, DB_PASS have been already captured above
-    echo "SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASS@localhost/$DB_NAME" >> .env
+    echo "SQLALCHEMY_DATABASE_URI=sqlite:///hushline.db" >> .env
 fi
 
 if ! egrep -q '^REGISTRATION_CODES_REQUIRED=' .env; then
