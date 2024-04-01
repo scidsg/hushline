@@ -57,7 +57,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 - Science & Design wants to preserve the anonymity of its sources.
 - Science & Design acts in the interest of allowing sources to submit messages, regardless of their contents.
 - The users of the system, and those with physical access to the servers, can be trusted to uphold the previous assumptions unless the entire organization has been compromised.
-- Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block document submissions, or hand over encrypted or decrypted submissions.
+- Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block message submissions, or hand over encrypted or decrypted submissions.
 
 ### Assumptions About the World
 
