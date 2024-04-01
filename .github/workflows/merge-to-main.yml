@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - users: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Poetry
         run: pip install poetry
@@ -27,13 +27,13 @@ jobs:
             ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
             ${{ runner.os }}-poetry-
           path: |
-            ~/.cache/poetry
+            ~/.cache/pypoetry
 
       - name: Install Python dependencies
         run: poetry install --all-extras
 
       - name: Lint
-        run: make lint
+        run: poetry -v run make lint
 
       - name: Test
-        run: make test
+        run: poetry -v run make test
