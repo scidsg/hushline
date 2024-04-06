@@ -45,7 +45,7 @@ At Hush Line, we're committed to building a trusted community where communicatio
 
 To ensure your account is recognized as authentic, users belonging to the categories listed above can apply for verification. Follow these steps to initiate the verification process:
 
-1. **Send a Message:** Send a message to our administrator account here: [https://beta.hushline.app/submit_message/admin(https://beta.hushline.app/submit_message/admin). Include your name or organization's name and a preferred method of contact (email or phone number). We'll get back to you to schedule a verification meeting.
+1. **Send a Message:** Send a message to our administrator account here: [https://beta.hushline.app/submit_message/admin](https://beta.hushline.app/submit_message/admin). Include your name or organization's name and a preferred method of contact (email or phone number). We'll get back to you to schedule a verification meeting.
 2. **Prepare Your Documents:** To verify your identity or your authority to represent an organization, please include the relevant documents for your role:
    - **A Valid ID:** Government-issued identification that shows your full name and photo.
    - **Proof of Employment or Association:** A letter from your employer or organization confirming your role or a recent pay stub.
