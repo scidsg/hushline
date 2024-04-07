@@ -172,9 +172,9 @@ def create_blueprint() -> Blueprint:
                 two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
                 pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
             else:
-                user_count = (
-                    two_fa_count
-                ) = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+                user_count = two_fa_count = pgp_key_count = two_fa_percentage = (
+                    pgp_key_percentage
+                ) = None
 
         # Prepopulate form fields
         smtp_settings_form.smtp_server.data = user.smtp_server
