@@ -29,6 +29,7 @@ This guide preps your machine to run Hush Line locally using the included `Makef
 - `source venv/bin/activate`
 - `poetry install`
 - `source env.sh`
+- `poetry run flask db upgrade` _Optional_
 - `poetry run make init-db run`
 
 ### Windows
