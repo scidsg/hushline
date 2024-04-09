@@ -124,6 +124,12 @@ class User(db.Model):
             # Log any exceptions that occur during the update
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
 
+    def __init__(self, *args, **kwargs):
+        plaintext_password = kwargs.pop("password", None)
+        super().__init__(*args, **kwargs)
+        if plaintext_password:
+            self.password_hash = plaintext_password  # This uses the @password_hash setter
+
 
 class SecondaryUsername(db.Model):
     __tablename__ = "secondary_usernames"

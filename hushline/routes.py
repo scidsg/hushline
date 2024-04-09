@@ -228,8 +228,7 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            new_user = User(primary_username=username)
-            new_user.password_hash = password
+            new_user = User(primary_username=username, password=password)
             db.session.add(new_user)
             db.session.commit()
 
