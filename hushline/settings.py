@@ -51,7 +51,7 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class PGPKeyForm(FlaskForm):
-    pgp_key = TextAreaField("PGP Key", validators=[Length(max=20000)])
+    pgp_key = TextAreaField("PGP Key", validators=[Length(max=100000)])
 
 
 class DisplayNameForm(FlaskForm):
