@@ -2,10 +2,7 @@ import os
 
 from cryptography.fernet import Fernet
 from flask import current_app
-from passlib.context import CryptContext
 from pysequoia import Cert, encrypt
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 encryption_key = os.environ.get("ENCRYPTION_KEY")
 

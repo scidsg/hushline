@@ -208,12 +208,8 @@ def init_app(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def register() -> Response | str:
-        # TODO this should be a setting pulled from `current_app`
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
-
         form = RegistrationForm()
-
-        # TODO don't dynamically remove the form field. instead use a custom renderer and validator
         if not require_invite_code:
             del form.invite_code
 
@@ -232,8 +228,7 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-            new_user = User(primary_username=username, password_hash=password_hash)
+            new_user = User(primary_username=username, password=password)
             db.session.add(new_user)
             db.session.commit()
 
@@ -246,7 +241,7 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def login() -> Response | str:
         form = LoginForm()
-        if request.method == "POST":  # Ensure we're processing form submissions
+        if request.method == "POST":
             if form.validate_on_submit():
                 username = form.username.data.strip()
                 password = form.password.data
@@ -271,8 +266,6 @@ def init_app(app: Flask) -> None:
                     flash("⛔️ Invalid username or password")
             else:
                 flash("⛔️ Invalid form data")
-
-        # GET requests will reach this point without triggering the flash messages
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
