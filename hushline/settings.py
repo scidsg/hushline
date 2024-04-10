@@ -443,7 +443,7 @@ def create_blueprint() -> Blueprint:
             else:
                 # If the PGP key is invalid
                 flash("⛔️ Invalid PGP key format or import failed.")
-                return redirect(url_for("settings"))
+                return redirect(url_for(".index"))
 
             db.session.commit()
             flash("👍 PGP key updated successfully.")
