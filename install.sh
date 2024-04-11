@@ -4,10 +4,10 @@
 
 # BEGIN SCRIPT
 
-# This section starts the installer, ensuring it runs with root privileges for necessary system 
-# changes, setting strict error handling to immediately halt on errors, and introducing Hush Line 
-# with ASCII art and a brief description. An error_exit function provides a fallback to gracefully 
-# handle and report errors, ensuring a clear exit strategy if the script encounters issues during 
+# This section starts the installer, ensuring it runs with root privileges for necessary system
+# changes, setting strict error handling to immediately halt on errors, and introducing Hush Line
+# with ASCII art and a brief description. An error_exit function provides a fallback to gracefully
+# handle and report errors, ensuring a clear exit strategy if the script encounters issues during
 # execution.
 
 ####################################################################################################
@@ -22,8 +22,8 @@ fi
 
 # Welcome message and ASCII art
 cat <<"EOF"
- _   _           _       _     _            
-| | | |_   _ ___| |__   | |   (_)_ __   ___ 
+ _   _           _       _     _
+| | | |_   _ ___| |__   | |   (_)_ __   ___
 | |_| | | | / __| '_ \  | |   | | '_ \ / _ \
 |  _  | |_| \__ \ | | | | |___| | | | |  __/
 |_| |_|\__,_|___/_| |_| |_____|_|_| |_|\___|
@@ -49,9 +49,9 @@ trap error_exit ERR
 
 # INSTALLATION STUFF
 
-# Here, the script prepares the environment for Hush Line by updating system packages and installing 
-# necessary dependencies like Python, Nginx, and MariaDB. It checks for the presence of a specific 
-# user and creates it if missing, ensuring the application runs under a dedicated account for 
+# Here, the script prepares the environment for Hush Line by updating system packages and installing
+# necessary dependencies like Python, Nginx, and MariaDB. It checks for the presence of a specific
+# user and creates it if missing, ensuring the application runs under a dedicated account for
 # security. Additionally, Rust and Python's Poetry are installed to handle backend dependencies.
 
 ####################################################################################################
@@ -62,7 +62,7 @@ HUSHLINE_GROUP="www-data"
 
 # Update packages and install whiptail
 export DEBIAN_FRONTEND=noninteractive
-apt update && apt -y dist-upgrade 
+apt update && apt -y dist-upgrade
 
 # Install Python, pip, Git, Nginx, and MariaDB
 apt install -y \
@@ -138,10 +138,10 @@ export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 
 # .ENV STUFF
 
-# This segment of the script configures Hush Line's environment by dynamically creating a .env file 
-# if it doesn't already exist. It populates this file with essential variables, including secret 
-# keys for security, database connection details, and configuration options for debug and 
-# registration codes. User inputs are gathered via whiptail dialogs for a friendly interface, 
+# This segment of the script configures Hush Line's environment by dynamically creating a .env file
+# if it doesn't already exist. It populates this file with essential variables, including secret
+# keys for security, database connection details, and configuration options for debug and
+# registration codes. User inputs are gathered via whiptail dialogs for a friendly interface,
 # allowing for customized setup.
 
 ####################################################################################################
@@ -210,11 +210,11 @@ chmod 600 .env
 
 # TOR STUFF
 
-# In this part, the script enhances Hush Line's privacy features by integrating it with the Tor 
-# network. It adds the Tor package repository if it's not already present, ensuring access to the 
-# latest versions directly from the Tor Project. This step includes verifying and adding the 
-# repository's GPG key for secure package installations. Next, it configures Tor by appending a 
-# custom hidden service directory and port configuration to the torrc file, making Hush Line 
+# In this part, the script enhances Hush Line's privacy features by integrating it with the Tor
+# network. It adds the Tor package repository if it's not already present, ensuring access to the
+# latest versions directly from the Tor Project. This step includes verifying and adding the
+# repository's GPG key for secure package installations. Next, it configures Tor by appending a
+# custom hidden service directory and port configuration to the torrc file, making Hush Line
 # accessible via a .onion address.
 
 ####################################################################################################
@@ -267,11 +267,11 @@ fi
 
 # NGINX STUFF
 
-# In this section, the script configures Nginx to serve Hush Line, setting up a reverse proxy to 
-# forward requests to the application. It involves copying a predefined Nginx configuration file, 
-# replacing placeholders with actual domain names and paths, and ensuring Nginx recognizes the new 
-# site configuration by linking it into the sites-enabled directory. This process also includes a 
-# verification step using nginx -t to ensure the configuration is correct before attempting to 
+# In this section, the script configures Nginx to serve Hush Line, setting up a reverse proxy to
+# forward requests to the application. It involves copying a predefined Nginx configuration file,
+# replacing placeholders with actual domain names and paths, and ensuring Nginx recognizes the new
+# site configuration by linking it into the sites-enabled directory. This process also includes a
+# verification step using nginx -t to ensure the configuration is correct before attempting to
 # restart Nginx.
 
 ####################################################################################################
@@ -301,7 +301,7 @@ if [ ! -f "$NGINX_SITE_PATH" ]; then
 
     ln -sf $NGINX_SITE_PATH /etc/nginx/sites-enabled/
     nginx -t && systemctl restart nginx
-    
+
     if [ -e "/etc/nginx/sites-enabled/default" ]; then
         rm /etc/nginx/sites-enabled/default
     fi
@@ -318,11 +318,11 @@ fi
 
 # LET'S ENCRYPT
 
-# This section secures Hush Line's web traffic by obtaining SSL certificates from Let's Encrypt. It 
-# prompts the user to ensure DNS records are set up correctly before proceeding with certificate 
-# acquisition. Utilizing certbot with Nginx, the script automates the certificate request and 
-# installation process, including configuring automatic renewal. Additionally, it adjusts Nginx 
-# settings to support IPv6 and enhances SSL security with OCSP Stapling and resolver configurations. 
+# This section secures Hush Line's web traffic by obtaining SSL certificates from Let's Encrypt. It
+# prompts the user to ensure DNS records are set up correctly before proceeding with certificate
+# acquisition. Utilizing certbot with Nginx, the script automates the certificate request and
+# installation process, including configuring automatic renewal. Additionally, it adjusts Nginx
+# settings to support IPv6 and enhances SSL security with OCSP Stapling and resolver configurations.
 
 ####################################################################################################
 
@@ -334,7 +334,7 @@ WIDTH=$(tput cols)
 if [ ! -d "/etc/letsencrypt/live/"$DOMAIN"/" ]; then
     echo "SSL certificate directory for $DOMAIN does not exist. Obtaining SSL certificate..."
     whiptail --msgbox --title "Instructions" "\nPlease ensure that your DNS records are correctly set up before proceeding:\n\nAdd an A record with the name: @ and content: $SERVER_IP\n* Add a CNAME record with the name $SAUTEED_ONION_ADDRESS.$DOMAIN and content: $DOMAIN\n* Add a CAA record with the name: @ and content: 0 issue \"letsencrypt.org\"\n" 14 "$WIDTH"
-    
+
     # Request the certificates
     echo "⏲️  Waiting 30 seconds for DNS to update..."
     sleep 30
@@ -380,10 +380,10 @@ fi
 
 # UPGRADE DB
 
-# This section ensures the database schema is up to date for Hush Line. It checks for the existence 
-# of a "migrations" directory to determine if database migrations need to be initialized with 
-# Flask-Migrate. If the migrations are already set up, the script proceeds to apply any pending 
-# migrations using Flask's db upgrade command, effectively upgrading the database schema to the 
+# This section ensures the database schema is up to date for Hush Line. It checks for the existence
+# of a "migrations" directory to determine if database migrations need to be initialized with
+# Flask-Migrate. If the migrations are already set up, the script proceeds to apply any pending
+# migrations using Flask's db upgrade command, effectively upgrading the database schema to the
 # latest version required by Hush Line.
 
 ####################################################################################################
@@ -408,9 +408,9 @@ poetry run flask db upgrade
 
 # REDIS STUFF
 
-# Here, the script sets up Redis, a key-value store that Hush Line uses for caching and session 
-# management, among other things. It checks if the Redis server is running and starts it if not, 
-# also ensuring that it's enabled to start automatically on system boot. 
+# Here, the script sets up Redis, a key-value store that Hush Line uses for caching and session
+# management, among other things. It checks if the Redis server is running and starts it if not,
+# also ensuring that it's enabled to start automatically on system boot.
 
 ####################################################################################################
 
@@ -427,10 +427,10 @@ fi
 
 # SERVICE FILE
 
-# This section deals with setting up a systemd service file for Hush Line, ensuring it starts 
-# automatically at boot and can be managed with standard systemd commands like start, stop, and 
-# restart. It updates the service file with the environment variable for the encryption key from the 
-# .env file, if it's not already set. This setup allows Hush Line to run as a background service, 
+# This section deals with setting up a systemd service file for Hush Line, ensuring it starts
+# automatically at boot and can be managed with standard systemd commands like start, stop, and
+# restart. It updates the service file with the environment variable for the encryption key from the
+# .env file, if it's not already set. This setup allows Hush Line to run as a background service,
 # providing stability and ease of management.
 
 ####################################################################################################
@@ -449,10 +449,10 @@ fi
 
 # UNATTENDED UPGRADES
 
-# This segment ensures that the system automatically installs security updates without manual 
-# intervention. It configures unattended-upgrades by copying predefined configuration files that 
-# specify which package categories should be automatically updated. This setup minimizes 
-# vulnerabilities by ensuring timely application of security patches, maintaining system security 
+# This segment ensures that the system automatically installs security updates without manual
+# intervention. It configures unattended-upgrades by copying predefined configuration files that
+# specify which package categories should be automatically updated. This setup minimizes
+# vulnerabilities by ensuring timely application of security patches, maintaining system security
 # and stability over time.
 
 ####################################################################################################
@@ -466,11 +466,11 @@ cp files/20auto-upgrades /etc/apt/apt.conf.d/
 
 # PERMISSIONS AND SERVICES
 
-# In the final section, the script secures the Hush Line installation by setting appropriate file 
-# permissions and ensuring all related services, such as Nginx and Redis, are correctly configured 
-# and restarted. It meticulously adjusts ownership and permissions within the Hush Line directory 
-# for security, updates the global Git configuration to include the Hush Line repository safely, and 
-# ensures the systemd service for Hush Line is enabled and started, facilitating automatic startup 
+# In the final section, the script secures the Hush Line installation by setting appropriate file
+# permissions and ensuring all related services, such as Nginx and Redis, are correctly configured
+# and restarted. It meticulously adjusts ownership and permissions within the Hush Line directory
+# for security, updates the global Git configuration to include the Hush Line repository safely, and
+# ensures the systemd service for Hush Line is enabled and started, facilitating automatic startup
 # at boot.
 
 ####################################################################################################

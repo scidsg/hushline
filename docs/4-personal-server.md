@@ -20,15 +20,15 @@ After the updates, your device's screen will display a QR code that links to a l
 
 ## 4. Scan the code
 
-Scan the code or visit https://hushline.local/setup from a device on the same network as your Hush Line Personal Server. 
+Scan the code or visit https://hushline.local/setup from a device on the same network as your Hush Line Personal Server.
 
 ## 5. Add SMTP & PGP information
 
-The form will ask for five pieces of information that we set up in the [prerequisites](../prereqs/general.md). 
+The form will ask for five pieces of information that we set up in the [prerequisites](../prereqs/general.md).
 
 👉 Make sure your public PGP key is unmodified, beginning with `-----BEGIN PGP PUBLIC KEY BLOCK-----` and ending with `-----END PGP PUBLIC KEY BLOCK-----`.
 
-The information you'll need: 
+The information you'll need:
 
 - SMTP email address
 - SMTP address: `smtp.gmail.com`
@@ -44,4 +44,4 @@ You'll receive an encrypted email confirming your Hush Line Personal Server's su
 
 Your screen will reset and display a QR code linking to a local information page intended for use by individuals interested in using your tip line. You can print this page, copy the content, email it, and post your Hush Line address on your social channels and website.
 
-🎉 Congratulations! You've successfully set up your own anonymous tip line! 
+🎉 Congratulations! You've successfully set up your own anonymous tip line!

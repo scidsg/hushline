@@ -896,7 +896,7 @@ a.dropbtn:hover {
     header nav .dropbtn {
         display: none;
     }
-    
+
     header nav .dropdown-content {
         display: flex;
         opacity: 1;
@@ -905,20 +905,20 @@ a.dropbtn:hover {
         outline: 0;
         box-shadow: none;
     }
-    
+
     .dropdown-content ul {
         display: flex;
         gap: 1.5rem;
     }
-    
+
     .dropdown-content a:hover {
         background-color: white;
     }
-    
+
     header nav .dropdown-content a {
         padding: 0;
     }
-        
+
     header nav .dropdown {
         height: fit-content;
     }
