@@ -51,7 +51,7 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class PGPKeyForm(FlaskForm):
-    pgp_key = TextAreaField("PGP Key", validators=[Length(max=20000)])
+    pgp_key = TextAreaField("PGP Key", validators=[Length(max=100000)])
 
 
 class DisplayNameForm(FlaskForm):
@@ -443,7 +443,7 @@ def create_blueprint() -> Blueprint:
             else:
                 # If the PGP key is invalid
                 flash("⛔️ Invalid PGP key format or import failed.")
-                return redirect(url_for("settings"))
+                return redirect(url_for(".index"))
 
             db.session.commit()
             flash("👍 PGP key updated successfully.")
