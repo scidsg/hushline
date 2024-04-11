@@ -32,6 +32,9 @@ pytest = "^8.1.1"
 pytest-mock = "^3.12.0"
 types-flask-migrate = "^4.0.0.20240311"
 
+[[tool.poetry.packages]]
+include = "hushline"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
