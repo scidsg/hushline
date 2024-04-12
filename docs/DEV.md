@@ -17,20 +17,19 @@ This guide preps your machine to run Hush Line locally using the included `Makef
 | Macbook M1 | OSX 14.4.1 | Safari 17.4.1 | ☑️ | Apr. 2024 | App starts but a CSRF token mismatch blocks registration. |
 
 #### Install Packages
-- `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-- `eval "$(/opt/homebrew/bin/brew shellenv)"`
-- `brew install python git git-lfs redis rust poetry`
+1. `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+2. `eval "$(/opt/homebrew/bin/brew shellenv)"`
+3. `brew install python git git-lfs redis rust poetry`
 
 #### Clone the Repo
-- `git clone https://github.com/scidsg/hushline.git`
-- `cd hushline`
-- `git switch makefile` # Temporary until we merge back into Main
-- `/opt/homebrew/bin/python3 -m venv venv`
-- `source venv/bin/activate`
-- `poetry install`
-- `source env.sh`
-- `poetry run flask db upgrade` _Optional_
-- `poetry run make init-db run`
+4. `git clone https://github.com/scidsg/hushline.git`
+5. `cd hushline`
+6. `/opt/homebrew/bin/python3 -m venv venv`
+7. `source venv/bin/activate`
+8. `poetry install`
+9. `source env.sh` 
+10. `poetry run flask db upgrade` _Optional_
+11. `poetry run make init-db run`
 
 ### Windows
 
