@@ -25,7 +25,7 @@ jobs:
 
       - name: Cache Python dependencies
         uses: actions/cache@v3
-        with: 
+        with:
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
