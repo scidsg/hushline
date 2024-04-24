@@ -10,8 +10,7 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name:
-    fileConfig(config.config_file_name)
+fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
 
