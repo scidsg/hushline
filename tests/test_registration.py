@@ -14,7 +14,7 @@ def client():
     load_dotenv("env.sh")
 
     # Create a temporary file for the SQLite database
-    db_fd, db_path = tempfile.mkstemp()
+    db_fd, db_path = tempfile.mkstemp(suffix=".db")
     app = create_app()
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
