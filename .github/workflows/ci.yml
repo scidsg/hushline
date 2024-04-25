@@ -1,4 +1,4 @@
-name: Hush Line Continuous Integration Tests
+name: CI/CD
 
 on:
   push:
