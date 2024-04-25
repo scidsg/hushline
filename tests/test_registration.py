@@ -13,9 +13,13 @@ def client():
     # Load environment variables from env.sh
     load_dotenv("env.sh")
 
-    # Create a temporary directory for the SQLite database
-    temp_dir = tempfile.mkdtemp()
-    db_path = os.path.join(temp_dir, "hushline.db")
+    # Create the directory if it doesn't exist
+    db_dir = os.path.join(os.getcwd(), "instance")
+    os.makedirs(db_dir, exist_ok=True)
+
+    # Create a temporary file for the SQLite database
+    db_fd, db_path = tempfile.mkstemp(suffix=".db", dir=db_dir)
+    os.close(db_fd)
 
     app = create_app()
     app.config["TESTING"] = True
@@ -30,8 +34,8 @@ def client():
         yield app.test_client()
         db.drop_all()
 
-    # Remove the temporary directory and its contents after the test
-    os.rmdir(temp_dir)
+    # Remove the temporary database file after the test
+    os.remove(db_path)
 
 
 def test_register_page_loads(client):
