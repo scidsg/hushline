@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: debian-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
