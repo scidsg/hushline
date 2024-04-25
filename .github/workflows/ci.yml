@@ -39,12 +39,12 @@ jobs:
     - name: Source environment variables from env.sh
       run: |
         chmod +x ./env.sh
-        source ./env.sh
-      shell: bash
+        . ./env.sh
+      shell: bash -l {0}
 
     - name: Run tests using Make
       run: |
         make test
-      shell: bash
+      shell: bash -l {0}
       env:
         PATH: ${{ env.PATH }}:/home/runner/.local/bin
