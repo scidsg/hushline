@@ -38,9 +38,8 @@ jobs:
 
     - name: Source environment variables from env.sh
       run: |
-        chmod +x ./env.sh
-        . ./env.sh
-      shell: bash -l {0}
+        source ../env.sh
+      shell: bash
 
     - name: Run tests using Make
       run: |
