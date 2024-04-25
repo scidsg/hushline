@@ -44,7 +44,7 @@ jobs:
 
     - name: Run tests using Make
       run: |
-        make test
+        poetry run make test
       shell: bash -l {0}
       env:
         PATH: ${{ env.PATH }}:/home/runner/.local/bin
