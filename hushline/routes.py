@@ -10,7 +10,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import encrypt_message
 from .db import db
-from .ext import bcrypt, limiter
+from .ext import limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import require_2fa, send_email
@@ -228,7 +228,9 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return redirect(url_for("register"))
 
-            new_user = User(primary_username=username, password=password)
+            # Create new user instance
+            new_user = User(primary_username=username)
+            new_user.password_hash = password  # This triggers the password_hash setter
             db.session.add(new_user)
             db.session.commit()
 
@@ -248,7 +250,7 @@ def init_app(app: Flask) -> None:
 
                 user = User.query.filter_by(primary_username=username).first()
 
-                if user and bcrypt.check_password_hash(user.password_hash, password):
+                if user and user.check_password(password):
                     session.permanent = True
                     session["user_id"] = user.id
                     session["username"] = user.primary_username
@@ -264,8 +266,6 @@ def init_app(app: Flask) -> None:
                         return redirect(url_for("inbox", username=user.primary_username))
                 else:
                     flash("⛔️ Invalid username or password")
-            else:
-                flash("⛔️ Invalid form data")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
