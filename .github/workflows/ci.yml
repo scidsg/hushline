@@ -16,8 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0  # Ensures the entire git history is available if needed
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -25,19 +23,23 @@ jobs:
         python-version: 3.8
 
     - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
+      run: curl -sSL https://install.python-poetry.org | python3 -
+      shell: bash
 
     - name: Configure Poetry
       run: |
         echo "$HOME/.local/bin" >> $GITHUB_PATH
         poetry config virtualenvs.create false
+      shell: bash
 
     - name: Install dependencies
       run: poetry install
+      shell: bash
 
     - name: Source environment variables from env.sh
-      run: source env.sh
+      run: |
+        chmod +x ./env.sh
+        source ./env.sh
       shell: bash
 
     - name: Run tests using Make
