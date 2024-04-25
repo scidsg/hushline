@@ -9,6 +9,10 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash  # Set bash as the default shell for all run commands
+
     steps:
       - uses: actions/setup-python@v4
         with:
@@ -32,9 +36,26 @@ jobs:
       - name: Install Python dependencies
         run: poetry install --all-extras
 
+      - name: Set Environment Variables
+        run: |
+          echo "FLASK_APP=hushline/__init__.py" >> $GITHUB_ENV
+          echo "REDIS_URI=memory://" >> $GITHUB_ENV
+          echo "SECRET_KEY=cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd" >> $GITHUB_ENV
+          echo "ENCRYPTION_KEY=bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw=" >> $GITHUB_ENV
+          echo "DB_NAME=hushlinedb" >> $GITHUB_ENV
+          echo "DB_USER=hushlineuser" >> $GITHUB_ENV
+          echo "DB_PASS=dbpassword" >> $GITHUB_ENV
+          echo "HUSHLINE_DEBUG_OPTS=0" >> $GITHUB_ENV
+          echo "SQLALCHEMY_DATABASE_URI=sqlite:///$PWD/hushline.db" >> $GITHUB_ENV
+          echo "REGISTRATION_CODES_REQUIRED=False" >> $GITHUB_ENV
+          echo "FLASK_ENV=development" >> $GITHUB_ENV
+
       - name: Lint
         run: poetry -v run make lint
 
       - name: Test
-        run: poetry -v run make test
+        run: |
+          export CI=true
+          poetry -v run make test
         continue-on-error: true
+
