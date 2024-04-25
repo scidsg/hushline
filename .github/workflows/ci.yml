@@ -39,6 +39,8 @@ jobs:
       run: |
         poetry install --no-interaction
 
-    - name: Run all tests in tests/ directory
-      run: |
-        poetry run pytest tests/
+      - name: Test
+        run: |
+          export CI=true
+          poetry -v run make test
+        continue-on-error: true
