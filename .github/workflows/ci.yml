@@ -1,32 +1,45 @@
-name: Python application Test Workflow
+name: Python Application CI
 
 on:
   push:
     branches:
-      - main  # Trigger the workflow on push events to the main branch
+      - main
+      - develop  # Add any other branches as needed
   pull_request:
     branches:
-      - main  # Trigger the workflow on pull requests to the main branch
+      - main
+      - develop
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Ensures the entire git history is available if needed
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
 
-    - name: Install dependencies
+    - name: Install Poetry
       run: |
-        python -m pip install --upgrade pip
-        pip install poetry
-        poetry install
+        curl -sSL https://install.python-poetry.org | python3 -
 
-    - name: Run tests
-      env:
-        SQLALCHEMY_DATABASE_URI: 'sqlite:///:memory:'  # Example using an in-memory SQLite database
+    - name: Configure Poetry
       run: |
-        pytest
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        poetry config virtualenvs.create false
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Source environment variables from env.sh
+      run: source env.sh
+      shell: bash
+
+    - name: Run tests using Make
+      run: poetry run make test
+      shell: bash
