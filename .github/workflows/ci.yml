@@ -1,4 +1,4 @@
-name: Run Python Tests
+name: CI/CD Tests
 
 on:
   push:
