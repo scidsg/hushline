@@ -1,15 +1,22 @@
-name: Python Flask CI with Poetry
+name: Run Python Tests
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'hushline/**'
+      - 'tests/**'
   pull_request:
     branches:
       - main
+    paths:
+      - 'hushline/**'
+      - 'tests/**'
 
 jobs:
-  build-and-test:
+  test:
+
     runs-on: ubuntu-latest
 
     steps:
@@ -20,32 +27,18 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Cache Poetry virtual environment
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pypoetry/virtualenvs
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
-
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
-      shell: bash
 
     - name: Configure Poetry
       run: |
-        $HOME/.local/bin/poetry config virtualenvs.create false
-        $HOME/.local/bin/poetry config virtualenvs.in-project true
-      shell: bash
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Install dependencies
       run: |
-        $HOME/.local/bin/poetry install --no-root
-      shell: bash
+        poetry install --no-interaction
 
-    - name: Run tests
+    - name: Run all tests in tests/ directory
       run: |
-        $HOME/.local/bin/poetry run make test
-      shell: bash
-
+        poetry run pytest tests/
