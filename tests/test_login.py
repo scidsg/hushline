@@ -1,4 +1,5 @@
 # test_login.py
+import os
 import pytest
 
 from hushline import create_app  # Adjust the import according to your application structure
@@ -11,6 +12,9 @@ def app():
         {
             "TESTING": True,
             "WTF_CSRF_ENABLED": False,  # Disable CSRF tokens for testing purposes
+            "SQLALCHEMY_DATABASE_URI": os.getenv(
+                "SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:"
+            ),  # Use an in-memory SQLite database for tests
         }
     )
     # Ensure other configurations that might affect your tests are properly set or disabled
