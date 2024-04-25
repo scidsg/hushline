@@ -58,4 +58,3 @@ jobs:
           export CI=true
           poetry -v run make test
         continue-on-error: true
-

@@ -28,9 +28,9 @@ def client():
 
     app = create_app()
     app.config["TESTING"] = True
-    app.config[
-        "SQLALCHEMY_DATABASE_URI"
-    ] = f"sqlite:///{os.path.join(current_directory, db_dir, db_file)}"
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
+        f"sqlite:///{os.path.join(current_directory, db_dir, db_file)}"
+    )
     app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF protection for testing
 
     # Setup the app context and database schema
