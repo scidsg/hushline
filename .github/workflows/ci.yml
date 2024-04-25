@@ -1,10 +1,12 @@
-name: Python Application CI
+name: Python Flask CI with Poetry
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build-and-test:
@@ -13,37 +15,30 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python
+    - name: Set up Python 3.11
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11
+        python-version: '3.11'
 
-    - name: Install system dependencies
-      run: sudo apt-get update && sudo apt-get install -y make
-      shell: bash
+    - name: Cache Poetry virtual environment
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
 
     - name: Install Poetry
-      run: curl -sSL https://install.python-poetry.org | python3 -
-      shell: bash
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
 
     - name: Configure Poetry
       run: |
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-        poetry config virtualenvs.create false
-      shell: bash
+        $HOME/.local/bin/poetry config virtualenvs.create false
+        $HOME/.local/bin/poetry config virtualenvs.in-project true
 
     - name: Install dependencies
-      run: poetry install
-      shell: bash
+      run: $HOME/.local/bin/poetry install --no-root
 
-    - name: Source environment variables from env.sh
-      run: |
-        source ./env.sh
-      shell: bash
-
-    - name: Run tests using Make
-      run: |
-        poetry run make test
-      shell: bash -l {0}
-      env:
-        PATH: ${{ env.PATH }}:/home/runner/.local/bin
+    - name: Run tests
+      run: $HOME/.local/bin/poetry run pytest tests/
