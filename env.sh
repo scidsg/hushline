@@ -1,3 +1,4 @@
+#!/bin/bash
 export FLASK_APP="hushline/__init__.py"
 export REDIS_URI="memory://"
 export SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
