@@ -38,7 +38,7 @@ jobs:
 
     - name: Source environment variables from env.sh
       run: |
-        source ../env.sh
+        source ./env.sh
       shell: bash
 
     - name: Run tests using Make
