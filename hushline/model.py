@@ -1,8 +1,8 @@
 from flask import current_app
+from passlib.hash import scrypt
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
-from .ext import bcrypt
 
 
 class User(db.Model):
@@ -11,7 +11,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80))
-    _password_hash = db.Column("password_hash", db.String(255))
+    _password_hash = db.Column("password_hash", db.String(512))
     _totp_secret = db.Column("totp_secret", db.String(255))
     _email = db.Column("email", db.String(255))
     _smtp_server = db.Column("smtp_server", db.String(255))
@@ -33,11 +33,12 @@ class User(db.Model):
 
     @password_hash.setter
     def password_hash(self, plaintext_password):
-        """Hash plaintext password and store it."""
-        self._password_hash = bcrypt.generate_password_hash(plaintext_password).decode("utf-8")
+        """Hash plaintext password using scrypt and store it."""
+        self._password_hash = scrypt.hash(plaintext_password)
 
     def check_password(self, plaintext_password):
-        return bcrypt.check_password_hash(self.password_hash, plaintext_password)
+        """Check the plaintext password against the stored hash."""
+        return scrypt.verify(plaintext_password, self._password_hash)
 
     @property
     def totp_secret(self) -> str:
@@ -128,7 +129,7 @@ class User(db.Model):
         plaintext_password = kwargs.pop("password", None)
         super().__init__(*args, **kwargs)
         if plaintext_password:
-            self.password_hash = plaintext_password  # This uses the @password_hash setter
+            self.password_hash = plaintext_password
 
 
 class SecondaryUsername(db.Model):
