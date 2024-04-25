@@ -1,3 +1,13 @@
+name: Python application Test Workflow
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on push events to the main branch
+  pull_request:
+    branches:
+      - main  # Trigger the workflow on pull requests to the main branch
+
 jobs:
   build:
     runs-on: ubuntu-latest
