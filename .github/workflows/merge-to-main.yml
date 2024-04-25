@@ -40,5 +40,5 @@ jobs:
         run: poetry -v run make lint
 
       - name: Test
-        run: poetry -v run make test
+        run: bash -c "poetry -v run make test"
         continue-on-error: true
