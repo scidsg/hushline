@@ -237,7 +237,7 @@ def create_blueprint() -> Blueprint:
                 db.session.commit()
                 session.clear()  # Clears the session, logging the user out
                 flash(
-                    "Password successfully changed. Please log in with your new password.",
+                    "👍 Password successfully changed. Please log in again.",
                     "success",
                 )
                 return redirect(
