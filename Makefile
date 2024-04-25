@@ -15,8 +15,8 @@ run: ## Run the app
 lint: ## Lint the code
 	isort --check . && \
 		black --check . && \
-		flake8 . && \
-		mypy .
+		flake8 --config setup.cfg . && \
+		mypy --config-file pyproject.toml .
 
 .PHONY: fmt
 fmt: ## Format the code
