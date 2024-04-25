@@ -31,14 +31,21 @@ jobs:
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
+      shell: bash
 
     - name: Configure Poetry
       run: |
         $HOME/.local/bin/poetry config virtualenvs.create false
         $HOME/.local/bin/poetry config virtualenvs.in-project true
+      shell: bash
 
     - name: Install dependencies
-      run: $HOME/.local/bin/poetry install --no-root
+      run: |
+        $HOME/.local/bin/poetry install --no-root
+      shell: bash
 
     - name: Run tests
-      run: $HOME/.local/bin/poetry run pytest tests/
+      run: |
+        $HOME/.local/bin/poetry run make test
+      shell: bash
+
