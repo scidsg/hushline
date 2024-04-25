@@ -23,9 +23,14 @@ def client():
     # Use a simple file name without special characters
     db_file = "hushline.db"
 
+    # Get the current working directory using Python's os module
+    current_directory = os.getcwd()
+
     app = create_app()
     app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(db_dir, db_file)}"
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
+        f"sqlite:///{os.path.join(current_directory, db_dir, db_file)}"
+    )
     app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF protection for testing
 
     # Setup the app context and database schema
