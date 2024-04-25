@@ -29,4 +29,8 @@ init-db: ## Initialize the dev database
 
 .PHONY: test
 test: ## Run the test suite
+ifeq ($(CI),true)
+	pytest -vv tests
+else
 	@source ./env.sh && pytest -vv tests
+endif
