@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 from . import admin, routes, settings  # noqa: E402
 from .db import db  # noqa: E402
-from .ext import bcrypt, limiter  # noqa: E402
+from .ext import limiter  # noqa: E402
 from .model import User  # noqa: E402
 
 
@@ -53,7 +53,6 @@ def create_app() -> Flask:
     db.init_app(app)
     _ = Migrate(app, db)
     limiter.init_app(app)
-    bcrypt.init_app(app)
 
     app.logger.setLevel(logging.DEBUG)
 
