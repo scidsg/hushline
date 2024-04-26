@@ -32,5 +32,5 @@ test: ## Run the test suite
 ifeq ($(CI),true)
 	pytest -vv tests
 else
-	@source ./env.sh && pytest -vv tests
+	@source ./env.sh && pytest -vv tests -p no:warnings
 endif
