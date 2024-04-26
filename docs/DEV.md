@@ -87,20 +87,29 @@ This guide preps your machine to run Hush Line locally using the included `Makef
     
     ```
     (venv) glennsorrentino@m1 hushline % poetry run make test
-    ================================================================================ test session starts ================================================================================
+    ======================================================================== test session starts =========================================================================
     platform darwin -- Python 3.12.2, pytest-8.1.1, pluggy-1.5.0 -- /Users/glennsorrentino/Nextcloud/Git/hushline/venv/bin/python
     cachedir: .pytest_cache
     rootdir: /Users/glennsorrentino/Nextcloud/Git/hushline
     configfile: pyproject.toml
     plugins: mock-3.14.0
-    collected 8 items
+    collected 14 items                                                                                                                                                   
     
-    tests/test_registration_and_login.py::test_user_registration_with_invite_code_disabled PASSED                                                                                 [ 12%]
-    tests/test_registration_and_login.py::test_user_registration_with_invite_code_enabled PASSED                                                                                  [ 25%]
-    tests/test_registration_and_login.py::test_register_page_loads PASSED                                                                                                         [ 37%]
-    tests/test_registration_and_login.py::test_login_link PASSED                                                                                                                  [ 50%]
-    tests/test_registration_and_login.py::test_registration_link PASSED                                                                                                           [ 62%]
-    tests/test_registration_and_login.py::test_user_login_after_registration PASSED                                                                                               [ 75%]
-    tests/test_submit_message.py::test_submit_message_page_loads PASSED                                                                                                           [ 87%]
-    tests/test_submit_message.py::test_submit_message PASSED                                                                                                                      [100%]
+    tests/test_registration_and_login.py::test_user_registration_with_invite_code_disabled PASSED                                                                  [  7%]
+    tests/test_registration_and_login.py::test_user_registration_with_invite_code_enabled PASSED                                                                   [ 14%]
+    tests/test_registration_and_login.py::test_register_page_loads PASSED                                                                                          [ 21%]
+    tests/test_registration_and_login.py::test_login_link PASSED                                                                                                   [ 28%]
+    tests/test_registration_and_login.py::test_registration_link PASSED                                                                                            [ 35%]
+    tests/test_registration_and_login.py::test_user_login_after_registration PASSED                                                                                [ 42%]
+    tests/test_settings.py::test_settings_page_loads PASSED                                                                                                        [ 50%]
+    tests/test_settings.py::test_change_display_name PASSED                                                                                                        [ 57%]
+    tests/test_settings.py::test_change_username PASSED                                                                                                            [ 64%]
+    tests/test_settings.py::test_add_pgp_key PASSED                                                                                                                [ 71%]
+    tests/test_settings.py::test_add_invalid_pgp_key PASSED                                                                                                        [ 78%]
+    tests/test_settings.py::test_update_smtp_settings PASSED                                                                                                       [ 85%]
+    tests/test_submit_message.py::test_submit_message_page_loads PASSED                                                                                            [ 92%]
+    tests/test_submit_message.py::test_submit_message PASSED                                                                                                       [100%]
+    
+    ========================================================================= 14 passed in 5.46s =========================================================================
+    (venv) glennsorrentino@m1 hushline % 
     ```
