@@ -46,13 +46,13 @@ This guide preps your machine to run Hush Line locally using the included `Makef
 
 <details>
     <summary><h2>Tests, Linters, and Formatters</h2></summary>
-    
+
 ## Testing Changes
 
 1. Check for formatting or other issues using `poetry run pre-commit run --all-files --verbose`.
 
     The expected output looks like this:
-  
+
     ```
     (venv) glennsorrentino@m1 hushline % poetry run pre-commit run --all-files --verbose
     trim trailing whitespace.................................................Passed
@@ -70,10 +70,10 @@ This guide preps your machine to run Hush Line locally using the included `Makef
     black....................................................................Passed
     - hook id: black
     - duration: 0.23s
-    
+
     All done! ✨ 🍰 ✨
     20 files left unchanged.
-    
+
     isort....................................................................Passed
     - hook id: isort
     - duration: 0.09s
@@ -83,26 +83,26 @@ This guide preps your machine to run Hush Line locally using the included `Makef
     mypy.....................................................................Passed
     - hook id: mypy
     - duration: 0.2s
-    
+
     Success: no issues found in 20 source files
-    
+
     (venv) glennsorrentino@m1 hushline %
     ```
 
 2. After writing new unit tests for your code, run `poetry run make test`.
 
     The expected output shold look like this:
-    
+
     ```
-    (venv) glennsorrentino@m1 hushline % poetry run make test                           
+    (venv) glennsorrentino@m1 hushline % poetry run make test
     ======================================== test session starts ========================================
     platform darwin -- Python 3.12.2, pytest-8.1.1, pluggy-1.5.0 -- /Users/glennsorrentino/Nextcloud/Git/hushline/venv/bin/python
     cachedir: .pytest_cache
     rootdir: /Users/glennsorrentino/Nextcloud/Git/hushline
     configfile: pyproject.toml
     plugins: mock-3.14.0
-    collected 14 items                                                                                  
-    
+    collected 14 items
+
     tests/test_registration_and_login.py::test_user_registration_with_invite_code_disabled PASSED [  7%]
     tests/test_registration_and_login.py::test_user_registration_with_invite_code_enabled PASSED  [ 14%]
     tests/test_registration_and_login.py::test_register_page_loads PASSED                         [ 21%]
@@ -117,8 +117,8 @@ This guide preps your machine to run Hush Line locally using the included `Makef
     tests/test_settings.py::test_update_smtp_settings PASSED                                      [ 85%]
     tests/test_submit_message.py::test_submit_message_page_loads PASSED                           [ 92%]
     tests/test_submit_message.py::test_submit_message PASSED                                      [100%]
-    
+
     ======================================== 14 passed in 5.55s =========================================
-    (venv) glennsorrentino@m1 hushline % 
+    (venv) glennsorrentino@m1 hushline %
     ```
 </details>
