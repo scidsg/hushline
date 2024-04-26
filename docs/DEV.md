@@ -86,7 +86,7 @@ This guide preps your machine to run Hush Line locally using the included `Makef
     The expected output shold look like this:
     
     ```
-    (venv) glennsorrentino@m1 hushline % make test
+    (venv) glennsorrentino@m1 hushline % poetry run make test
     ================================================================================ test session starts ================================================================================
     platform darwin -- Python 3.12.2, pytest-8.1.1, pluggy-1.5.0 -- /Users/glennsorrentino/Nextcloud/Git/hushline/venv/bin/python
     cachedir: .pytest_cache
