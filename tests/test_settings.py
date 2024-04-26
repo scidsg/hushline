@@ -187,3 +187,34 @@ eODK+oGDFyTbXtSFsc1yS4dkfDsSSf8=
 
     # Check for success message
     assert b"PGP key updated successfully" in response.data, "Success message not found"
+
+
+def test_add_invalid_pgp_key(client):
+    # Register and log in a user
+    user = register_user(client, "user_invalid_pgp", "SecureTestPass123!")
+    assert user is not None, "User registration failed"
+
+    login_user(client, "user_invalid_pgp", "SecureTestPass123!")
+
+    # Define an invalid PGP key string
+    invalid_pgp_key = "NOT A VALID PGP KEY BLOCK"
+
+    # Submit POST request to add the invalid PGP key
+    response = client.post(
+        "/settings/update_pgp_key",  # Adjust to your app's correct endpoint
+        data={"pgp_key": invalid_pgp_key},
+        follow_redirects=True,
+    )
+
+    # Check that update was not successful
+    assert response.status_code == 200, "HTTP status code check"
+
+    # Fetch updated user info from the database to confirm no change
+    updated_user = User.query.filter_by(primary_username="user_invalid_pgp").first()
+    assert updated_user is not None, "User was not found after update attempt"
+    assert (
+        updated_user.pgp_key != invalid_pgp_key
+    ), "Invalid PGP key should not have been updated in the database"
+
+    # Optional: Check for error message in response
+    assert b"Invalid PGP key format" in response.data, "Error message for invalid PGP key not found"
