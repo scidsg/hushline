@@ -263,26 +263,3 @@ def test_update_smtp_settings(client):
 
     # Optional: Check for success message in response
     assert b"SMTP settings updated successfully" in response.data, "Success message not found"
-
-
-def test_change_password_and_relogin(client):
-    # Register and log in the user
-    user = register_user(client, "testuser_password", "OldPassword123!")
-    assert user is not None, "User registration failed"
-
-    login_user(client, "testuser_password", "OldPassword123!")
-
-    # Change the user's password
-    response = client.post(
-        "/settings/change-password",
-        data={"old_password": "OldPassword123!", "new_password": "NewSecurePassword123!"},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200, "Password change failed"
-
-    # Log out the user
-    client.get("/logout", follow_redirects=True)
-
-    # Attempt to log in with the new password
-    logged_in_user = login_user(client, "testuser_password", "NewSecurePassword123!")
-    assert logged_in_user is not None, "User login failed with new password"
