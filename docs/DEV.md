@@ -2,6 +2,8 @@
 
 👋 Welcome to the Hush Line Development setup guide. This document provides detailed instructions for configuring your local development environment across Mac, Windows, and Linux systems. It includes specific steps for installing dependencies, cloning the repository, and initiating a local server using the included `Makefile`. The guide also covers utilizing tests, linters, and formatters to ensure code integrity and consistency. Follow these instructions to prepare your machine for Hush Line development 👇.
 
+<img src="https://github.com/scidsg/hushline/assets/28545431/0a3e8429-c1b4-4367-8e35-f6a3436fba6f" width="66%">
+
 <details>
     <summary><h2>Local Development</h2></summary>
 
@@ -42,8 +44,6 @@
 |  |  |
 
 </details>
-
-
 <details>
     <summary><h2>Tests, Linters, and Formatters</h2></summary>
 
