@@ -87,15 +87,13 @@ def init_app(app: Flask) -> None:
         )
         secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
 
-        return (
-            render_template(
-                "inbox.html",
-                user=primary_user,
-                secondary_username=None,
-                messages=messages,
-                is_secondary=False,
-                secondary_usernames=secondary_users_dict,
-            ),
+        return render_template(
+            "inbox.html",
+            user=primary_user,
+            secondary_username=None,
+            messages=messages,
+            is_secondary=False,
+            secondary_usernames=secondary_users_dict,
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
