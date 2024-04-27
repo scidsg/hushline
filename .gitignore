@@ -7,4 +7,3 @@ _DEV.md
 .DS_Store
 /venv
 hushline.db
-/migrations
