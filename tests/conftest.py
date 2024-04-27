@@ -3,7 +3,7 @@ from typing import Generator
 
 import pytest
 from cryptography.fernet import Fernet
-from flask import Flask
+from flask import Flask, FlaskClient
 from pytest_mock import MockFixture
 
 from hushline import create_app, db
@@ -36,6 +36,6 @@ def app(config: None) -> Generator[Flask, None, None]:
 
 
 @pytest.fixture(scope="function")
-def client(app: Flask) -> Generator[Flask, None, None]:
+def client(app: Flask) -> Generator[FlaskClient, None, None]:
     with app.test_client() as client:
         yield client
