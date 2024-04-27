@@ -1,10 +1,8 @@
 import os
 
 import pytest
-from dotenv import load_dotenv
 
 # Import the application and database setup
-from hushline import create_app, db
 from hushline.generate_invite_codes import create_invite_code
 
 # Import models and other modules
@@ -13,24 +11,7 @@ from hushline.model import User
 
 @pytest.fixture
 def client():
-    # Load environment variables from .env file or the equivalent
-    load_dotenv("env.sh")
-
-    # Use a simple file name without special characters
-    db_file = "hushline.db"
-
-    # Construct the database path based on the environment
-    if os.environ.get("GITHUB_ACTIONS"):
-        # GitHub Actions environment
-        db_dir = "/home/runner/work/hushline/hushline"
-        os.makedirs(db_dir, exist_ok=True)
-    else:
-        # Local testing environment
-        db_dir = "/tmp/hushline"
-
-    db_path = os.path.join(db_dir, db_file)
-
-    print(f"SQLite database path: {db_path}")  # Print the database path for debugging
+    from hushline import create_app, db
 
     app = create_app()
     app.config["TESTING"] = True
@@ -38,37 +19,9 @@ def client():
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    print("Creating test client...")  # Debug statement
-
-    # Setup the app context and database schema
     with app.app_context():
-        print("Creating database tables...")  # Debug statement
-        try:
-            db.create_all()
-            print("Database tables created successfully.")  # Debug statement
-        except Exception as e:
-            print(f"Error creating database tables: {str(e)}")  # Debug statement
-            raise
-
+        db.create_all()
         yield app.test_client()
-
-        print("Dropping database tables...")  # Debug statement
-        try:
-            db.drop_all()
-            print("Database tables dropped successfully.")  # Debug statement
-        except Exception as e:
-            print(f"Error dropping database tables: {str(e)}")  # Debug statement
-            raise
-
-    # Clean up the temporary directory after tests are done (for local testing)
-    if not os.environ.get("GITHUB_ACTIONS"):
-        import shutil
-
-        try:
-            shutil.rmtree(db_dir)
-            print(f"Temporary directory {db_dir} removed.")  # Debug statement
-        except OSError as e:
-            print(f"Error removing temporary directory: {e}")
 
 
 def test_user_registration_with_invite_code_disabled(client):
