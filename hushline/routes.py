@@ -183,17 +183,15 @@ def init_app(app: Flask) -> None:
 
             return redirect(url_for("submit_message", username=username))
 
-        return (
-            render_template(
-                "submit_message.html",
-                form=form,
-                user=user,
-                secondary_username=secondary_username if secondary_username else None,
-                username=username,
-                display_name_or_username=display_name_or_username,
-                current_user_id=session.get("user_id"),
-                public_key=user.pgp_key,
-            ),
+        return render_template(
+            "submit_message.html",
+            form=form,
+            user=user,
+            secondary_username=secondary_username if secondary_username else None,
+            username=username,
+            display_name_or_username=display_name_or_username,
+            current_user_id=session.get("user_id"),
+            public_key=user.pgp_key,
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
@@ -315,14 +313,11 @@ def init_app(app: Flask) -> None:
             totp = pyotp.TOTP(user.totp_secret)
             if totp.verify(verification_code):
                 session["2fa_verified"] = True  # Set 2FA verification flag
-                return redirect(
-                    url_for("inbox", username=user.primary_username)
-                )  # HTTP 302 Found for successful redirection
+                return redirect(url_for("inbox", username=user.primary_username))
             else:
                 flash("⛔️ Invalid 2FA code. Please try again.")
                 return render_template("verify_2fa_login.html", form=form), 401
 
-        # Render the 2FA form with HTTP 200 OK status if GET request or the form is not validated
         return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")

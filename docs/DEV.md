@@ -27,7 +27,7 @@ This guide preps your machine to run Hush Line locally using the included `Makef
 6. `/opt/homebrew/bin/python3 -m venv venv`
 7. `source venv/bin/activate`
 8. `poetry install`
-9. `source env.sh` 
+9. `source env.sh`
 10. `poetry run flask db upgrade` _Optional_
 11. `poetry run make init-db run`
 
