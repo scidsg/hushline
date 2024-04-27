@@ -36,7 +36,7 @@ def test_user_registration_with_invite_code_disabled(client):
 
     # Validate response
     assert response.status_code == 200
-    assert b"Registration successful! Please log in." in response.data
+    assert "Registration successful! Please log in." in response.text
 
     # Verify user is added to the database
     user = User.query.filter_by(primary_username="test_user").first()
@@ -63,7 +63,7 @@ def test_user_registration_with_invite_code_enabled(client):
 
     # Validate response
     assert response.status_code == 200
-    assert b"Registration successful! Please log in." in response.data
+    assert "Registration successful! Please log in." in response.text
 
     # Verify user is added to the database
     user = User.query.filter_by(primary_username="newuser").first()
@@ -74,7 +74,7 @@ def test_user_registration_with_invite_code_enabled(client):
 def test_register_page_loads(client):
     response = client.get("/register")
     assert response.status_code == 200
-    assert b"<h2>Register</h2>" in response.data
+    assert "<h2>Register</h2>" in response.text
 
 
 def test_login_link(client):
@@ -83,14 +83,12 @@ def test_login_link(client):
     assert response.status_code == 200
 
     # Check if the login link is in the response
-    assert (
-        b'href="/login"' in response.data
-    ), "Login link should be present on the registration page"
+    assert 'href="/login"' in response.text, "Login link should be present on the registration page"
 
     # Simulate clicking the login link
     login_response = client.get("/login")
     assert login_response.status_code == 200
-    assert b"<h2>Login</h2>" in login_response.data, "Should be on the login page now"
+    assert "<h2>Login</h2>" in login_response.text, "Should be on the login page now"
 
 
 def test_registration_link(client):
@@ -100,13 +98,13 @@ def test_registration_link(client):
 
     # Check if the registration link is in the response
     assert (
-        b'href="/register"' in response.data
+        'href="/register"' in response.text
     ), "Registration link should be present on the login page"
 
     # Simulate clicking the registration link
     register_response = client.get("/register")
     assert register_response.status_code == 200, "Should be on the registration page now"
-    assert b"<h2>Register</h2>" in register_response.data, "Should be on the registration page"
+    assert "<h2>Register</h2>" in register_response.text, "Should be on the registration page"
 
 
 def test_user_login_after_registration(client):
@@ -127,7 +125,7 @@ def test_user_login_after_registration(client):
 
     # Validate login response
     assert login_response.status_code == 200
-    assert b"Inbox" in login_response.data, "Should be redirected to the Inbox page"
+    assert "Inbox" in login_response.text, "Should be redirected to the Inbox page"
     assert (
-        b'href="/inbox?username=newuser"' in login_response.data
+        'href="/inbox?username=newuser"' in login_response.text
     ), "Inbox link should be present for the user"
