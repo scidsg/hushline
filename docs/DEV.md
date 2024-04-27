@@ -38,7 +38,7 @@ This guide preps your machine to run Hush Line locally using the included `Makef
 |-|-|
 |  |  |
 
-## Linux
+### Linux
 
 | Tested Platform | Date |
 |-|-|

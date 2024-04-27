@@ -10,6 +10,7 @@ Hush Line is the first free and open-source tip line-as-a-service platform for o
 4. [Personal Server](https://github.com/scidsg/hushline/blob/main/docs/4-personal-server.md)
 5. [Privacy Policy](https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md)
 6. [Terms and Conditions](https://github.com/scidsg/hushline/blob/main/docs/TERMS.md)
-7. [❤️ Acknowledgments](https://github.com/scidsg/hushline/blob/main/docs/ACKNOWLEDGMENTS.md)
+7. [Development](https://github.com/scidsg/hushline/blob/main/docs/DEV.md)
+8. [❤️ Acknowledgments](https://github.com/scidsg/hushline/blob/main/docs/ACKNOWLEDGMENTS.md)
 
 <img src="img/family.cover.png">
