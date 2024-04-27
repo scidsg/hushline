@@ -29,4 +29,4 @@ init-db: ## Initialize the dev database
 
 .PHONY: test
 test: ## Run the test suite
-	pytest -vv tests
+	@source ./env.sh && pytest -vv tests
