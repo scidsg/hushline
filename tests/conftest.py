@@ -3,7 +3,8 @@ from typing import Generator
 
 import pytest
 from cryptography.fernet import Fernet
-from flask import Flask, FlaskClient
+from flask import Flask
+from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
 from hushline import create_app, db
