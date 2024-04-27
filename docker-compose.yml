@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:2.10.4
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - traefik-public
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik_letsencrypt:/letsencrypt/"
+    command:
+      - "--log.level=INFO"
+      - "--global.sendAnonymousUsage=false"
+      - "--providers.docker=true"
+      - "--providers.docker.swarmMode=false"
+      - "--providers.docker.watch=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=traefik-public"
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.http.http.redirections.entryPoint.to=https"
+      - "--entrypoints.http.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.http.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.https.address=:443"
+      - "--certificatesResolvers.letsencrypt.acme=true"
+      - "--certificatesResolvers.letsencrypt.acme.email=${LETS_ENCRYPT_EMAIL:-hushline@scidsg.org}"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge=true"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=http"
+      - "--certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  app: &app_config
+    image: "scidsg/hushline:${CONTAINER_VERSION:-latest}"
+    networks:
+      - traefik-public
+    environment:
+      FLASK_APP: "hushline:app"
+    volumes:
+      - "/opt/hushline:/app"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.app.rule: "Host(`${HUSHLINE_DOMAIN:-staging.hushline.app}`)"
+      traefik.http.routers.app.entrypoints: "https"
+      traefik.http.routers.app.tls: "true"
+      traefik.http.routers.app.tls.certresolver: "letsencrypt"
+      traefik.http.services.app.loadbalancer.server.port: "8080"
+      traefik.http.middlewares.app-secure-headers.headers.stsseconds: "63072000"
+      traefik.http.middlewares.app-secure-headers.headers.stsincludesubdomains: "true"
+      traefik.http.middlewares.app-secure-headers.headers.stspreload: "true"
+      traefik.http.middlewares.app-secure-headers.headers.framedeny: "true"
+      traefik.http.middlewares.app-secure-headers.headers.contenttypenosniff: "true"
+      traefik.http.middlewares.app-secure-headers.headers.contentsecuritypolicy: "default-src 'self'"
+      traefik.http.middlewares.app-secure-headers.headers.referrerpolicy: "no-referrer"
+      traefik.http.routers.app.middlewares: "app-secure-headers@docker"
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: "15s"
+        order: "start-first"
+      restart_policy:
+        condition: on-failure
+
+  migration:
+    <<: *app_config
+    command: ["flask", "db", "upgrade"]
+    labels:
+      traefik.enable: "false"
+
+networks:
+  traefik-public:
+    name: traefik-public
+    driver: overlay
+
+volumes:
+  traefik_letsencrypt:
