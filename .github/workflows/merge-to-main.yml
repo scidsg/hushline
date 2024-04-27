@@ -54,7 +54,6 @@ jobs:
         run: poetry -v run make lint
 
       - name: Test
-        run: |
-          export CI=true
-          poetry -v run make test
-        continue-on-error: true
+        run: poetry -v run make test
+        env:
+          CI: true
