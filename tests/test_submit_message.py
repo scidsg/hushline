@@ -1,26 +1,6 @@
-import pytest
 from auth_helper import login_user, register_user
-from dotenv import load_dotenv
 
-from hushline import create_app, db
 from hushline.model import Message
-
-
-@pytest.fixture
-def client():
-    # Load environment variables from .env file or the equivalent
-    load_dotenv("env.sh")
-
-    app = create_app()
-    app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    app.config["WTF_CSRF_ENABLED"] = False
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    with app.app_context():
-        db.create_all()
-        yield app.test_client()
-        db.drop_all()
 
 
 def test_submit_message_page_loads(client):

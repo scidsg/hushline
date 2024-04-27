@@ -1,7 +1,5 @@
 import os
 
-import pytest
-
 # Import the application and database setup
 from hushline.generate_invite_codes import create_invite_code
 
@@ -9,25 +7,7 @@ from hushline.generate_invite_codes import create_invite_code
 from hushline.model import User
 
 
-@pytest.fixture
-def client():
-    from hushline import create_app, db
-
-    app = create_app()
-    app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    app.config["WTF_CSRF_ENABLED"] = False
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    with app.app_context():
-        db.create_all()
-        yield app.test_client()
-
-
 def test_user_registration_with_invite_code_disabled(client):
-    # Prepare the environment to not require invite codes
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
-
     # User registration data
     user_data = {"username": "test_user", "password": "SecurePassword123!"}
 
@@ -129,3 +109,30 @@ def test_user_login_after_registration(client):
     assert (
         'href="/inbox?username=newuser"' in login_response.text
     ), "Inbox link should be present for the user"
+
+
+def test_user_login_with_incorrect_password(client):
+    # Prepare the environment to not require invite codes
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+
+    # User registration data
+    registration_data = {"username": "newuser", "password": "SecurePassword123!"}
+
+    # Post request to register a new user
+    client.post("/register", data=registration_data, follow_redirects=True)
+
+    # Login data with an incorrect password
+    login_data = {"username": "newuser", "password": "Wrong_Password!"}
+
+    # Attempt to log in with the registered user and incorrect password
+    login_response = client.post("/login", data=login_data, follow_redirects=True)
+
+    # Validate login response
+    assert login_response.status_code == 200
+    assert "Inbox" not in login_response.text, "Should not be redirected to the Inbox page"
+    assert (
+        'href="/inbox?username=newuser"' not in login_response.text
+    ), "Inbox link should not be present for the user"
+    assert (
+        "Invalid username or password" in login_response.text
+    ), "Error message should be displayed"
