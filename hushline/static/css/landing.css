@@ -25,10 +25,17 @@ h3 a {
   color: #370C6B;
 }
 
+.btn,
+nav a,
+.badge {
+  letter-spacing: .025rem;
+}
+
 .btn {
   align-content: center;
   text-decoration: none;
   width: fit-content;
+  min-width: initial;
 }
 
 .btn:hover {
@@ -66,6 +73,10 @@ section:not(.intro) {
   align-items: center;
 }
 
+.featues {
+  align-items: left;
+}
+
 .cards h2 {
   width: 100%;
   text-align: center;
@@ -83,8 +94,12 @@ header.island {
   box-shadow: 0px 8px 32px -16px rgba(0,0,0,0.15);
 }
 
+header.island nav ul {
+  gap: 1rem;
+}
+
 header h1 {
-  margin-right: 2rem;
+  margin-right: 3rem;
 }
 
 header nav ul {
@@ -194,10 +209,6 @@ ol, ul {
     transform: rotate(-180deg);
 }
 
-#hardware {
-    background-color: var(--color-light-translucent);
-}
-
 .faq-list code {
     line-break: anywhere;
     padding-left: .5rem;
@@ -243,6 +254,10 @@ ol, ul {
   margin-bottom: 1rem;
 }
 
+.flip {
+  order: 1;
+}
+
 /*MISSION STATEMENT*/
 
 .statement {
@@ -279,15 +294,57 @@ ol, ul {
   font-family: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
 }
 
-/*PERSONAL SERVER*/
+/*FEATURE*/
 
-#hardware .group img {
-  scale: 1.25;
-  transform-origin: left
+section.why {
+  padding: 0;
 }
 
-#hardware {
+.feature .flip + img {
+  transform-origin: right;
+}
+
+.feature h2 {
+  margin-bottom: .5rem;
+}
+
+.feature img {
+  width: 50%;
+  transform-origin: center;
+}
+
+.feature {
   overflow: hidden;
+  padding: 4rem 0;
+}
+
+.feature:nth-of-type(1) {
+  padding: 6rem 0 3rem 0;
+}
+
+.feature:nth-of-type(2) {
+  padding: 3rem 0 6rem 0;
+}
+
+.feature .wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
+}
+
+.feature .description {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+}
+
+.flip.description {
+  order: 1;
+}
+
+body.landing .feature .description p {
+  margin-bottom: 1rem;
 }
 
 @media only screen and (max-width: 960px) {
@@ -341,6 +398,24 @@ ol, ul {
   .cards .description {
     align-items: center;
     text-align: center;
+  }
+
+  .feature .wrapper {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .feature .description {
+    width: 100%;
+  }
+
+  .feature img {
+    transform: initial;
+    width: 100%;
+  }
+
+  .feature .flip {
+    order: 0;
   }
 
 }
