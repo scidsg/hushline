@@ -229,10 +229,6 @@ ol, ul {
 
 /*CARDS*/
 
-.cards {
-  background-color: #F1F2F8;
-}
-
 .cards .wrapper {
   display: flex;
   gap: 1rem;
