@@ -310,3 +310,19 @@ def init_app(app: Flask) -> None:
 
         # Redirect to the login page or home page after logout
         return redirect(url_for("index"))
+
+    @app.route("/settings/update_directory_visibility", methods=["POST"])
+    def update_directory_visibility():
+        if "user_id" in session:
+            user = User.query.get(session["user_id"])
+            user.show_in_directory = "show_in_directory" in request.form
+            db.session.commit()
+            flash("Directory visibility updated.")
+        else:
+            flash("You need to be logged in to update settings.")
+        return redirect(url_for("settings.index"))
+
+    @app.route("/directory")
+    def directory():
+        users = User.query.filter_by(show_in_directory=True).all()
+        return render_template("directory.html", users=users)

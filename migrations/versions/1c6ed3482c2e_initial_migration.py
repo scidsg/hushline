@@ -1,8 +1,8 @@
-"""empty message
+"""Initial Migration
 
-Revision ID: dfeb75b32d3f
+Revision ID: 1c6ed3482c2e
 Revises:
-Create Date: 2024-04-23 20:23:46.586664
+Create Date: 2024-04-29 13:48:18.257498
 
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "dfeb75b32d3f"
+revision = "1c6ed3482c2e"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -41,6 +41,7 @@ def upgrade():
         sa.Column("pgp_key", sa.Text(), nullable=True),
         sa.Column("is_verified", sa.Boolean(), nullable=True),
         sa.Column("is_admin", sa.Boolean(), nullable=True),
+        sa.Column("show_in_directory", sa.Boolean(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("primary_username"),
     )

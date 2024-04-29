@@ -21,6 +21,17 @@
                 <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
             </div>
         </div>
+
+        <h3>User Directory</h3>
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            {{ directory_visibility_form.hidden_tag() }}
+            <div>
+                {{ directory_visibility_form.show_in_directory.label }}
+                {{ directory_visibility_form.show_in_directory() }}
+            </div>
+            <button type="submit" name="update_directory_visibility">Update Visibility</button>
+        </form>
+
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
             <p>⚠️ Changing your display name will result in losing your verification status.</p>

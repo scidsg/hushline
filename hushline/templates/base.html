@@ -20,11 +20,12 @@
     <header>
         <!-- Navigation bar, logo, etc. -->
         <h1>🤫 Hush Line</h1>
-        {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or ('2fa_verified' in session and session['2fa_verified'])) %}
-            <nav>
-                <div class="navGroup">
-                    <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
-                    <ul>
+        <nav>
+            <div class="navGroup">
+                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                <ul>
+                    <li><a href="{{ url_for('directory') }}">Directory</a></li>
+                    {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or ('2fa_verified' in session and session['2fa_verified'])) %}
                         <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
                         <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                         <li class="dropdown">
@@ -36,20 +37,14 @@
                                 </ul>
                             </div>
                         </li>
-                    </ul>
-                    <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
-                </div>
-            </nav>
-            {% else %}
-            <nav>
-                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
-                <ul>
-                    <li><a href="{{ url_for('login') }}">Login</a></li>
-                    <li><a href="{{ url_for('register') }}">Register</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li><a href="{{ url_for('register') }}">Register</a></li>
+                    {% endif %}
                 </ul>
                 <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
-            </nav>
-            {% endif %}
+            </div>
+        </nav>
     </header>
 
     {% with messages = get_flashed_messages() %}
