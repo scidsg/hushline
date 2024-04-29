@@ -218,6 +218,7 @@ header nav .primaryBtn {
   left: 60%;
   top: 50%;
   transform: translateY(-50%);
+  margin-top: 1.5rem;
 }
 
 /*BADGE*/
