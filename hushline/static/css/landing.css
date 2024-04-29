@@ -1,3 +1,21 @@
+/*ICONS*/
+
+.description .icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 0 1rem 0;
+  align-self: auto;
+  background-size: cover;
+}
+
+.icon.verified {
+  background-image: url('../img/landing/icon-verified.png');
+}
+
+.icon.hardware {
+  background-image: url('../img/landing/icon-hardware.png');
+}
+
 /*GLOBAL STYLES*/
 
 body.landing {
@@ -48,7 +66,7 @@ nav a,
 }
 
 p {
-  font-size: 1rem;
+  font-size: 1.125rem;
   line-height: 1.5;
   margin-bottom: 1rem;
 }
@@ -157,6 +175,7 @@ header nav .primaryBtn {
 .intro .wrapper {
   display: flex;
   flex-direction: column;
+  margin-top: 1.5rem;
 }
 
 .intro h2 {
@@ -282,6 +301,7 @@ ol, ul {
   display: flex;
   flex-direction: column;
   align-content: center;
+  flex: 1 1 0px;
 }
 
 .cards img {
