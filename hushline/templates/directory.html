@@ -7,7 +7,6 @@
         <div class="user-entry">
             <p>Username: {{ user.primary_username }}</p>
             <p>Display Name: {{ user.display_name or 'N/A' }}</p>
-            <p>Bio: {{ user.bio or 'No bio provided.' }}</p>
         </div>
     {% else %}
         <p>No users found in the directory.</p>
