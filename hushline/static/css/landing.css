@@ -31,7 +31,7 @@ h3,
 h4,
 h5,
 h6 {
-  color: #370C6B;
+  color: #333;
 }
 
 h2 {
@@ -44,7 +44,7 @@ h3 {
 }
 
 h3 a {
-  color: #370C6B;
+  color: #333;
 }
 
 .btn,
@@ -184,8 +184,8 @@ header nav .primaryBtn {
 
 .intro h2 {
   font-size: 3.5rem;
-  margin-bottom: 1rem;
-
+  margin-bottom: .5rem;
+  color: #370C6B;
 }
 
 .intro h2,
