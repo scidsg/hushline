@@ -1,0 +1,331 @@
+/*GLOBAL STYLES*/
+
+body.landing {
+  padding: 0;
+}
+
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #370C6B;
+}
+
+h2 {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+h3 {
+  font-size: 1.75rem;
+}
+
+h3 a {
+  color: #370C6B;
+}
+
+.btn {
+  align-content: center;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.primaryBtn {
+  background-color: #7D25C1;
+  color: white;
+}
+
+p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+main.landing {
+  width: 100%;
+  max-width: 100%;
+}
+
+.wrapper {
+  max-width: 1280px;
+  width: 100%;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  box-sizing: border-box;
+}
+
+section:not(.intro) {
+  padding: 6rem 0;
+}
+
+/*HEADER*/
+
+header.island {
+  width: fit-content;
+  margin: 1rem auto 0 auto;
+  border-radius: 10rem;
+  padding: .5rem .5rem .5rem 1rem;
+  min-height: initial;
+  outline: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0px 8px 32px -16px rgba(0,0,0,0.15);
+}
+
+header h1 {
+  margin-right: 2rem;
+}
+
+header nav ul {
+  align-items: center;
+}
+
+header nav .btn {
+  margin-left: 0;
+}
+
+header nav .primaryBtn {
+  margin-left: .25rem;
+}
+
+/*INTRO*/
+
+.intro {
+  min-height: 100vh;
+  align-items: center;
+  position: relative;
+  justify-content: center;
+  background-size: cover !important;
+  overflow: hidden;
+  display: flex;
+}
+
+.intro .wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.intro h2 {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+
+}
+
+.intro h2,
+.intro p {
+  max-width: 55%;
+}
+
+.intro p {
+  font-size: 1.25rem;
+}
+
+.intro img {
+  max-width: 1024px;
+  width: 100%;
+  display: flex;
+  height: auto;
+  position: absolute;
+  left: 60%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/*BADGE*/
+
+p.badge {
+  font-size: .75rem;
+  margin-bottom: 2rem;
+}
+
+/*FAQ*/
+
+#faq {
+  background-color: #FAFAFD;
+
+}
+
+.faq-answer {
+    display: none;
+    margin-top: 5px;
+}
+
+.faq-question {
+    display: flex;
+    padding: 1rem 0;
+    cursor: pointer;
+    align-items: center;
+    width: fit-content;
+    text-decoration: none;
+}
+
+.faq-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+ol, ul {
+    max-width: 640px;
+  }
+
+.faq-list ol {
+    margin-left: 1.25rem;
+}
+
+.arrow {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    width: 1.5rem;
+    margin-right: 1rem;
+}
+
+.faq-question.active .arrow {
+    transform: rotate(-180deg);
+}
+
+#hardware {
+    background-color: var(--color-light-translucent);
+}
+
+.faq-list code {
+    line-break: anywhere;
+    padding-left: .5rem;
+    padding-right: .5rem;
+    line-height: 2.75;
+    font-size: .9125rem;
+    border-radius: .25rem;
+}
+
+/*MISSION STATEMENT*/
+
+.statement {
+  display: flex;
+  align-self: center;
+  background-color: #FAFAFD;
+  flex-direction: column;
+  padding: 0 calc(4rem * 2);
+}
+
+.statement .wrapper {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.statement.description {
+  margin: 0;
+}
+
+.statement p {
+  font-size: 1.75rem;
+  max-width: 640px;
+}
+
+.statement p:first-of-type {
+  margin-bottom: 1rem;
+}
+
+.highlight {
+  background-color: #7D25C1;
+  color: white;
+  font-weight: normal;
+  font-family: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
+}
+
+.faq-list code {
+  line-break: anywhere;
+  padding: .5rem;
+  line-height: 2.75;
+  font-size: .825rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  font-family: monospace;
+}
+
+/*PERSONAL SERVER*/
+
+#hardware .group img {
+  scale: 1.25;
+  transform-origin: left
+}
+
+#hardware {
+  overflow: hidden;
+}
+
+@media only screen and (max-width: 960px) {
+  .intro h2 {
+    font-size: 3rem;
+  }
+
+  .intro h2,
+  .intro p {
+    max-width: 63%;
+  }
+
+  .intro img {
+    left: 66%;
+  }
+
+  h2 {
+    font-size: 2.25rem;
+  }
+
+  h3 {
+    font-size: 1.625rem;
+  }
+
+  .arrow {
+    width: 1.25rem;
+  }
+  .statement p {
+    font-size: calc(1.75rem * .9);
+  }
+
+}
+
+@media only screen and (max-width: 768px) {
+  .intro h2 {
+    font-size: 2.75rem;
+  }
+
+  h2 {
+    font-size: 2.125rem;
+  }
+
+  .statement p {
+    font-size: calc(1.75rem * .8);
+  }
+
+}
+
+@media only screen and (max-width: 640px) {
+  .intro .wrapper {
+    margin-top: 11rem;
+    display: flex;
+    text-align: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .intro h2 {
+    font-size: 2.5rem;
+  }
+
+  .intro h2,
+  .intro p {
+    max-width: 100%;
+  }
+
+  .intro img {
+    position: initial;
+    margin: 4rem auto -2rem auto;
+    transform: initial !important;
+  }
+
+  .statement p {
+    font-size: calc(1.75rem * .8);
+  }
+}

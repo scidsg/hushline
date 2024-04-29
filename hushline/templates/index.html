@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="theme-color" content="#7D25C1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta property="og:title" content="Hush Line" />
+    <meta property="og:description" content="A lightweight, secure, and anonymous tip line platform." />
+    <meta property="og:url" content="https://hushline.app" />
+    <meta property="og:image" content="https://hushline.app/design-system/images/social/social.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@scidsg">
+    <meta name="twitter:title" content="Hush Line">
+    <meta name="twitter:description" content="A lightweight, secure, and anonymous tip line platform.">
+    <meta name="twitter:image" content="https://hushline.app/design-system/images/social/social.png">
+    <title>{% block title %}{% endblock %} - Hushline</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+<body class="landing">
+    <header class="island">
+        <!-- Navigation bar, logo, etc. -->
+        <h1>🤫 Hush Line</h1>
+        {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or ('2fa_verified' in session and session['2fa_verified'])) %}
+            <nav>
+                <div class="navGroup">
+                    <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                    <ul>
+                        <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
+                        <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='img/dropdown.png') }}" alt="Dropdown"></a>
+                            <div class="dropdown-content">
+                                <ul>
+                                    <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
+                                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                    <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
+                </div>
+            </nav>
+            {% else %}
+            <nav>
+                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+                <ul>
+                    <li><a href="https://opencollective.com/scidsg/" target="_blank" rel="noopener noreferrer">Donate</a></li>
+                    <li><a href="https://github.com/scidsg/hushline/" target="_blank" rel="noopener noreferrer">Code</a></li>
+                    <li><a href="https://github.com/scidsg/hushline/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs</a></li>
+                    <a class="btn" href="{{ url_for('login') }}">Login</a>
+                </ul>
+                <a class="btn primaryBtn" href="{{ url_for('register') }}">Register</a>
+            </nav>
+            {% endif %}
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="landing">
+        <section class="intro">
+            <div class="wrapper">
+                <p class="badge">📋 Pre-Launch</p>
+                <h2>A lightweight, secure, and anonymous tip line platform.</h2>
+                <p>Hush Line is the first free and open-source anonymous tipline-as-a-service for organizations and individuals.</p>
+                <a href="https://github.com/scidsg/project-info/blob/main/hush-line/9.%20Hackathon/2024/Info/2024%20Ground%20Rules.md" class="btn btnLrg" rel="noopener noreferrer" target="_blank">🏴‍☠️ Hack Hush Line</a>
+                <img src="{{ url_for('static', filename='img/landing/family.png') }}" alt="Hush Line Product Suite">
+            </div>
+        </section>
+        <section class="statement">
+            <div class="wrapper">
+                <p>One of the top reasons people fail to report their concerns is fear of retaliation. Whether you're a journalist, school administrator, or an employer, <span class="highlight">your communities want to help</span> but aren't always able to take on the associated risks.</p>
+                <p>Hush Line is a safe way for anyone to share information without jumping through hoops or compromising their identity.</p>
+            </div>
+        </section>
+        <section id="faq">
+            <div class="wrapper">
+                <div class="description">
+                    <div class="icon faq"></div>
+                    <h2>Frequently Asked Questions</h2>
+                </div>
+                <ul class="faq-list">
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> How anonymous is Hush Line?</a></h3>
+                        <div class="faq-answer">
+                            <p>Hush Line requires no personally identifying information (PII) for tip line owners to use the service, including an email address. We scrub IP addresses and country codes from access logs and don't timestamp messages or relate account data in any way.</p>
+                            <p>We offer an Onion service for users with advanced privacy needs, which can be accessed using the <a href="https://torproject.org/download" target="_blank" rel="noopener noreferrer">Tor Browser</a>, making connections and activity completely anonymous.</p>
+                            <p>Message submitters are not required to create an account and may also choose to use our Onion service to access the app.</p>
+                            <p>The Onion address for this site is:<br><code>w25rxxn62dgix7qdbw4ot37m2y4ty7kxfrinspw4ce7jzse7pb6rhaqd.onion</code></p>
+                            <p>The Onion address for the app is:<br><code>ghj4vviaoccj4tj2r3ss52arbnchkfvs7uft4sgtrkuvdha5zjgo6yqd.onion</code></p>
+                            <p><a href="https://community.torproject.org/onion-services/overview/" target="_blank" rel="noopener noreferrer">Learn more about Onion services</a>.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Is Hush Line end-to-end encrypted?</a></h3>
+                        <div class="faq-answer">
+                            <p>Hush Line uses <a href="https://github.com/openpgpjs/openpgpjs" target="_blank" rel="noopener noreferrer">OpenPGP.js</a> for client-side encryption, giving users who add their public PGP key end-to-end encryption for their messages. Users who disable JavaScript use server-side encryption.</p>
+                            <p>Adding your PGP key enables only you to have technical access to your decrypted messages. Neither the server administrators nor an attacker with access to the server can learn their contents. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">Setting up PGP is easy using our getting started guide</a>.</p>
+                            <p>Hush Line uses TLS encryption for data in transit, message data is stored encrypted at rest on our database, and server access is limited to relevant members of the technical staff.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Is two-way communication available?</a></h3>
+                        <div class="faq-answer">
+                            <p>If the individual submitting a message feels comfortable enough to include a contact method, they may choose to.</p>
+                            <p>For anonymous, indirect two-way communication through Hush Line, someone submitting a message may create a Hush Line account and leave the receiver their username.</p>
+                            <p>This is distinct from chatting with a known contact in your address book and returning to an ongoing message thread to jump back into a conversation. To increase your privacy, we do not relate account data in any way, meaning inter-account communication isn't technically possible.</p>
+                            <p>If having a dedicated message history is important, one solution could be for both parties to create Hush Line accounts that will only be used for that conversation. This method does not decrease privacy properties, as we do not timestamp messages, log user IPs, or relate account data.</p>
+                            <p>We strongly encourage both parties to <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">upload their public PGP keys</a> if pursuing two-way communication through the platform.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}">Can I be deanonymized?</a></h3>
+                        <div class="faq-answer">
+                            <p>Neither us scrubbing IPs nor you using Tor and Signal are silver bullets, and there are many ways to deanonymize yourself. <a href="https://github.com/scidsg/project-info/blob/main/hush-line/5.%20Research/2.%20Legal/apple-v-andrew-aude.pdf" target="_blank" rel="noopener noreferrer">Take, for example, the case of Apple v. Andrew Aude</a>. He was using Signal on a work-issued phone. Even if he was using Tor in combination, if your employer can just take screenshots of your device, no amount of encryption or technology will keep you private. The lesson: never use your work-issued devices for anything you want to remain private or an employer-owned network to connect to a site you want to keep  private.</p>
+                            <p>If connecting to Hush Line using our clearnet address, attackers who can observe network connections—including your DNS or internet service providers—may be able to see your IP address and the address to which you're connecting. They *will not* be able to see which page you're on, who you're messaging, or the contents of your message.</p>
+                            <p>When thinking about blowing the whistle, always consider: What are you protecting, and who are you protecting it from? Is it a message to the local newspaper about the noisy neighborhood construction, an abusive business owner, or a corrupt local official? You can connect using our clearnet address and have confidence you'll remain anonymous.</p>
+                            <p>Or are you sharing national security secrets from within an authoritarian government that censors their internet and murders journalists? This is not legal advice, but a reasonable, though possibly prohibitively complex, way to ensure anonymity may be to somehow acquire and use a Tor-only amnesiac operating system like Tails or Qubes with a Whonix disposable VM on an uncompromised burner device where you'll encrypt your message locally before ever connecting the device to the internet. When you connect to the Hush Line Onion service, it should be on an uncompromised network you do not own, to which you are not related, and that isn't near your residence. Oh, and don't go anywhere that uses surveillance cameras or biometric identification, only use cash and don't go to an ATM near where you'll buy the device, leave your primary cell phone at home, don't check in to any location requiring your real name or ID, and if you have a car with a GPS in it, don't drive it. Reasonable, right? This might sound like a lot, but the point is that there is no one way to use Hush Line or "perfect" anonymity. You must consider your own situation uniquely. No matter what tool you use to send a message, if you share sensitive enough information about an individual or entity with enough time, money, and power, operational security will always be critically important.</p>
+                            <p>Sometimes, you can get in trouble by just being in the wrong place at the wrong time, <a href="https://www.nbcnews.com/news/us-news/google-tracked-his-bike-ride-past-burglarized-home-made-him-n1151761" target="_blank" rel="noopener noreferrer">like when this guy was arrested for riding his bike past a crime scene and became a suspect</a>. Law enforcement subpoenaed Google for information about any device in that location in a given time period, and that was enough to bring the cops to his door. This raises the question: If you're sharing information of great enough importance, should you use a computer, phone, or operating system built by a major corporation that could be subject to such subpoenas?</p>
+                            <p>Sometimes, just having software on your phone is enough to make you suspicious, <a href="https://twitter.com/olabini/status/1776585700663611868" target="_blank" rel="noopener noreferrer">like in the recent case against Ola Bini in Ecuador</a>.</p>
+                            <p>If you are considering blowing the whistle, it's always good to seek the advice of a legal professional familiar with your country's laws. If you do not have anyone you can contact locally, you may contact a firm specializing in whistleblower cases, which might be able to connect you to someone who can help.</p>
+                            <p></p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Why not just use Signal?</a></h3>
+                        <div class="faq-answer">
+                            <p>Signal is great, but it's not anonymous. For someone to send you a message, they must first:</p>
+                                <ol>
+                                    <li>Have an active phone number.</li>
+                                    <li>Sign in to an app store, requiring an email address.</li>
+                                    <li>Download Signal.</li>
+                                    <li>Register their phone number. (Yes, you still have to do this, even with usernames.)</li>
+                                    <li>Create a username.</li>
+                                    <li>Find your username or phone number.</li>
+                                    <li>Contact you.</li>
+                                </ol>
+                            <p>Signal is a perfect tool for talking to someone you know or with whom you have a baseline level of trust. It is linked to your phone, and you need a device with a phone number to start using it.</p>
+                            <p>In contrast, Hush Line works with what's already on your phone or computer. All you need is a web browser to send a message anonymously. The end-user submitting a message doesn't need to create an account, and needs no technical proficiency or prior knowledge to use the app immediately.</p>
+                            <p>Hush Line aims to be the first step for whistleblowers. When they don't know what to do first or next, a safe and effortless way to contact the right person should be the least of their worries. Once a baseline level of trust is established, other tools like Signal are more appropriate.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> How is Hush Line different from SecureDrop?</a></h3>
+                        <div class="faq-answer">
+                            <p>SecureDrop is a robust whistleblowing platform whose architecture is necessitated by very specific use cases: A.) To safely manage files sent by anonymous people so that a device or network isn't accidentally compromised, and  B.) To provide a censorship-resistant and anonymous method of sending those files. When someone submits a message, an account is created for them, allowing two-way communication. To use SecureDrop:</p>
+                            <p>The tip line owner must:</p>
+                            <ol>
+                                <li>Do A LOT. SecureDrop is an "on-prem" solution, requiring you to store multiple servers locally, all focused on isolated tasks, using a dedicated network. Think of SecureDrop as a fixed workflow for receiving and handling potentially malicious files. You must do all of the things correctly to assume safe operation. It requires a lot of time, which means a lot of money. The installation and setup of the system, in most cases, needs to be conducted by a member of the SD team, with service contracts helping to ensure proper maintenance of the infrastructure.</li>
+                            </ol>
+                            <p>The message submitter must:</p>
+                            <ol>
+                                <li>Learn how to use SecureDrop.</li>
+                                <li>Download Tor Browser.</li>
+                                <li>Find the correct Onion address for their recipient.</li>
+                                <li>Submit a message.</li>
+                                <li>Save their account credentials.</li>
+                                <li>Check back for progress.</li>
+                            </ol>
+                            <p>Hush Line is not a replacement for SecureDrop. Instead, it's for organizations who might not have the staff required to manage such a system or need nation-state levels of defense for all of their anonymous tips. We simplify <a href="https://github.com/scidsg/hushline/blob/main/docs/2-threat-model.md" target="_blank" rel="noopener noreferrer">our threat model</a> by being a text-only service, meaning there is no possibility of receiving files that could harm your computer or network.</p>
+                            <p>We're a managed service, so you don't have to worry about maintaining physical infrastructure or learning new workflows. In fact, to use Hush Line, you don't even have to log back into the service after setting it up. We can deliver messages directly to your email inbox, so you can set it, forget it, and never miss a beat. Users can add their own public PGP key, giving them end-to-end encryption and ensuring messages cannot be read by anyone but them.</p>
+                            <p>Hush Line is also available on a clearnet address, or through our Onion service. Using the browser already on your computer or phone, you can easily submit a message without ever downloading a new app. Users who need higher levels of anonymity may optionally use our Onion service, requiring them to download Tor Browser. This flexibility allows for our service to be used for benign use cases or elevated threat levels.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Why not fork SecureDrop's code?</a></h3>
+                        <div class="faq-answer">
+                            <p>While open-source, forking SecureDrop would require significant rework. Building a new solution allows us to optimize Hush Line as an easy-to-use hosted service.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Why Python?</a></h3>
+                        <div class="faq-answer">
+                            <p>We use Python and the Flask framework because they're well-documented and supported. The developer ecosystem is rich with extensions for everything from user authentication to message encryption. Python is also one of the most used languages, making the project accessible to a greater number of engineers.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> Why can't I receive files?</a></h3>
+                        <div class="faq-answer">
+                            <p>Receiving files comes with significant risk, and the functionality is only sometimes necessary. It can lead to compromising your device, network, and any other device connected to it.</p>
+                            <p>For the sender, acquiring and sending files is one of the riskiest things they can attempt to do. Take the case of <a href="https://www.nytimes.com/2022/12/06/opinion/reality-winner.html" target="_blank" rel="noopener noreferrer">Reality Winner</a>, who was caught because the document she shared detailing Russian interference in the US elections could be easily traced back to the originating printer, and from there, it was trivial to learn who printed it. She spent four years in prison. Or of <a href="https://www.aclu.org/news/free-speech/chelsea-manning-case-timeline" target="_blank" rel="noopener noreferrer">Chelsea Manning</a>, whose chat logs revealing war crimes led to the evidence bringing her conviction. She spent seven years in prison. Or of <a href="https://www.wired.com/2014/08/edward-snowden/" target="_blank" rel="noopener noreferrer">Edward Snowden</a>, who, even with highly technical knowledge and after using tools like Tor and Tails, shared thousands of NSA files documenting warrantless surveillance programs and more and is now exiled in Russia.</p>
+                            <p>Moreover, we challenge the need to immediately receive files by asking the question: Should you be receiving files anonymously without any baseline level of trust? If so, there are tools for that, but we don't recommend starting with them.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <h3><a href="#" class="faq-question"><img class="arrow" src="{{ url_for('static', filename='img/landing/icon-chevron.png') }}"> How do I verify a recipient is legitimate?</a></h3>
+                        <div class="faq-answer">
+                            <p>Hush Line offers human-verified accounts for journalists, organizations, and public figures so you can ensure you're communicating with the right recipient. Do you need to <a href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer">verify your account?</a> <a href="https://tips.hushline.app/submit_message/verify" target="_blank" rel="noopener noreferrer">Send us a message!</a></p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </main>
+    {% block scripts %}
+    {% endblock %}
+    <script src="{{ url_for('static', filename='js/nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/faq.js') }}"></script>
+
+</body>
+</html>

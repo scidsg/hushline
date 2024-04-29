@@ -63,7 +63,8 @@ def init_app(app: Flask) -> None:
                 session.pop("user_id", None)  # Clear the invalid user_id from session
                 return redirect(url_for("login"))
         else:
-            return redirect(url_for("login"))
+            # Render the custom index page when the user is not authenticated
+            return render_template("index.html")
 
     @app.route("/inbox")
     @limiter.limit("120 per minute")
