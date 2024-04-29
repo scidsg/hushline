@@ -16,6 +16,10 @@
   background-image: url('../img/landing/icon-hardware.png');
 }
 
+.icon.faq {
+  background-image: url('../img/landing/icon-faq.png');
+}
+
 /*GLOBAL STYLES*/
 
 body.landing {
@@ -374,7 +378,7 @@ section.why {
 }
 
 .feature:nth-of-type(1) {
-  padding: 1.5rem 0 3rem 0;
+  padding: .75rem 0 3rem 0;
 }
 
 .feature:nth-of-type(2) {
