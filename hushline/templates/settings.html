@@ -25,7 +25,7 @@
         <h3>User Directory</h3>
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ directory_visibility_form.hidden_tag() }}
-            <div>
+            <div class="checkbox-group">
                 {{ directory_visibility_form.show_in_directory.label }}
                 {{ directory_visibility_form.show_in_directory() }}
             </div>
