@@ -225,6 +225,13 @@ ol, ul {
   font-size: .825rem;
   border: 1px solid rgba(0,0,0,0.1);
   font-family: monospace;
+  background-color: white;
+}
+
+.faq-list ul li,
+.faq-list ol li {
+  margin-bottom: 1rem;
+  line-height: 1.5;
 }
 
 /*CARDS*/
@@ -315,7 +322,7 @@ section.why {
 }
 
 .feature:nth-of-type(1) {
-  padding: 6rem 0 3rem 0;
+  padding: 3rem 0 3rem 0;
 }
 
 .feature:nth-of-type(2) {
