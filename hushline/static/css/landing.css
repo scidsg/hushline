@@ -338,6 +338,11 @@ ol, ul {
     flex-direction: column;
   }
 
+  .cards .description {
+    align-items: center;
+    text-align: center;
+  }
+
 }
 
 @media only screen and (max-width: 640px) {
