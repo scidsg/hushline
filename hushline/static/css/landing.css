@@ -61,6 +61,14 @@ main.landing {
 
 section:not(.intro) {
   padding: 6rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cards h2 {
+  width: 100%;
+  text-align: center;
 }
 
 /*HEADER*/
@@ -199,6 +207,42 @@ ol, ul {
     border-radius: .25rem;
 }
 
+.faq-list code {
+  line-break: anywhere;
+  padding: .5rem;
+  line-height: 2.75;
+  font-size: .825rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  font-family: monospace;
+}
+
+/*CARDS*/
+
+.cards {
+  background-color: #F1F2F8;
+}
+
+.cards .wrapper {
+  display: flex;
+  gap: 1rem;
+}
+
+.cards .description {
+  padding: 2.5rem 2rem;
+  border-radius: .5rem;
+  outline: 1px solid rgba(0,0,0,0.1);
+  background-color: white;
+  box-shadow: 0px 8px 32px -16px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+}
+
+.cards img {
+  max-width: 120px;
+  margin-bottom: 1rem;
+}
+
 /*MISSION STATEMENT*/
 
 .statement {
@@ -215,7 +259,7 @@ ol, ul {
   flex-direction: column;
 }
 
-.statement.description {
+.statement .description {
   margin: 0;
 }
 
@@ -233,15 +277,6 @@ ol, ul {
   color: white;
   font-weight: normal;
   font-family: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
-}
-
-.faq-list code {
-  line-break: anywhere;
-  padding: .5rem;
-  line-height: 2.75;
-  font-size: .825rem;
-  border: 1px solid rgba(0,0,0,0.1);
-  font-family: monospace;
 }
 
 /*PERSONAL SERVER*/
@@ -297,6 +332,10 @@ ol, ul {
 
   .statement p {
     font-size: calc(1.75rem * .8);
+  }
+
+  .cards .wrapper {
+    flex-direction: column;
   }
 
 }
