@@ -21,7 +21,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 5.25rem 1rem 1rem 1rem;
+    padding: 5rem 1rem 1rem 1rem;
     position: relative;
     margin: 0;
     font-family: 'Atkinson Hyperlegible', sans-serif;
@@ -852,10 +852,6 @@ a.dropbtn:hover {
 }
 
 @media only screen and (max-width: 640px) {
-    body {
-        padding-top: 5.5rem;
-    }
-
     .container {
         min-width: initial;
         padding: 2rem 1rem;
@@ -881,7 +877,7 @@ a.dropbtn:hover {
         display: flex;
         flex-direction: column;
         position: absolute;
-        top: 3.5rem;
+        top: 3.825rem;
         background-color: white;
         width: fit-content;
         box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);

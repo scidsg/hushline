@@ -108,6 +108,7 @@ header nav ul {
 
 header nav .btn {
   margin-left: 0;
+  padding: .75rem 1rem;
 }
 
 header nav .primaryBtn {
@@ -424,6 +425,10 @@ body.landing .feature .description p {
 }
 
 @media only screen and (max-width: 640px) {
+  header nav .primaryBtn {
+    margin-left: .5rem;
+  }
+
   .intro .wrapper {
     margin-top: 11rem;
     display: flex;
@@ -449,5 +454,21 @@ body.landing .feature .description p {
 
   .statement p {
     font-size: calc(1.75rem * .8);
+  }
+
+  header nav ul.show {
+    align-items: start;
+  }
+
+  header nav ul.show li {
+    margin: .25rem 0;
+  }
+
+  li.dropdown {
+    display: none;
+  }
+
+  header nav ul.show {
+    top: 3.325rem;
   }
 }
