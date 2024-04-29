@@ -32,6 +32,21 @@
             <button type="submit" name="update_directory_visibility">Update Visibility</button>
         </form>
 
+        <h3>Bio</h3>
+        <form method="POST" action="{{ url_for('settings.update_profile') }}">
+            {{ profile_form.hidden_tag() }}
+            <div>
+                {{ profile_form.bio.label }}
+                {{ profile_form.bio(rows=4) }}
+                {% if profile_form.bio.errors %}
+                    {% for error in profile_form.bio.errors %}
+                        <div class="alert alert-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <button type="submit">Update Profile</button>
+        </form>
+
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
             <p>⚠️ Changing your display name will result in losing your verification status.</p>
