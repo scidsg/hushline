@@ -677,7 +677,7 @@ img.upgrade {
     gap: .5rem;
 }
 
-.user p {
+.user p:not(.badge) {
     font-size: .75rem;
     font-family: 'IBM Plex Mono', monospace;
     margin: .25rem 0;
@@ -849,6 +849,28 @@ a.dropbtn:hover {
 
 .ip-address-container p {
     margin: .25rem 0 0 0;
+}
+
+.checkbox-group {
+    display: flex;
+}
+
+.checkbox-group label {
+  order: 1;
+}
+
+.checkbox-group input[type="checkbox"] {
+  order: 0;
+  width: initial;
+  margin-right: .425rem;
+}
+
+.user .badge {
+    margin: 1rem 0;
+}
+
+.user:first-of-type {
+    margin-top: 1rem;
 }
 
 @media only screen and (max-width: 640px) {

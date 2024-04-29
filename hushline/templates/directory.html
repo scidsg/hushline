@@ -4,9 +4,13 @@
 <h2>Public Directory</h2>
 <div class="user-list">
     {% for user in users %}
-        <div class="user-entry">
-            <p>Username: {{ user.primary_username }}</p>
-            <p>Display Name: {{ user.display_name or 'N/A' }}</p>
+        <div class="user">
+            <h3>{{ user.primary_username }}</h3>
+            <p class="meta">{{ user.display_name or 'No display name set' }}</p>
+            {% if user.is_verified %}
+            <p class="badge">⭐️ Verified Account</p>
+            {% endif %}
+            <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
         </div>
     {% else %}
         <p>No users found in the directory.</p>
