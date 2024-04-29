@@ -16,7 +16,14 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms import (
+    BooleanField,
+    IntegerField,
+    PasswordField,
+    StringField,
+    TextAreaField,
+    validators,
+)
 from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
@@ -62,6 +69,14 @@ class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 
 
+class ProfileForm(FlaskForm):
+    bio = TextAreaField(
+        "Bio",
+        validators=[validators.Length(max=1000)],
+        render_kw={"placeholder": "Write something about yourself up to 250 words."},
+    )
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -88,6 +103,14 @@ def create_blueprint() -> Blueprint:
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+        profile_form = ProfileForm(obj=user)
+
+        if request.method == "POST":
+            if profile_form.validate_on_submit():
+                user.bio = profile_form.bio.data
+                db.session.commit()
+                flash("Profile updated successfully.")
+                return redirect(url_for("settings.index"))
 
         if request.method == "POST":
             if (
@@ -218,6 +241,7 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
+            profile_form=profile_form,
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
@@ -543,5 +567,23 @@ def create_blueprint() -> Blueprint:
         else:
             flash("User not found. Please log in again.")
             return redirect(url_for("login"))
+
+    @bp.route("/update_profile", methods=["POST"])
+    @require_2fa
+    def update_profile():
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("Please log in to continue.")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        profile_form = ProfileForm(request.form)
+        if user and profile_form.validate_on_submit():
+            user.bio = profile_form.bio.data
+            db.session.commit()
+            flash("Profile updated successfully.")
+            return redirect(url_for("settings.index"))
+        else:
+            return render_template("settings.html", profile_form=profile_form, user=user)
 
     return bp
