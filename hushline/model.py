@@ -21,6 +21,7 @@ class User(db.Model):
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
+    show_in_directory = db.Column(db.Boolean, default=False)
     # Corrected the relationship and backref here
     secondary_usernames = db.relationship(
         "SecondaryUsername", backref=db.backref("primary_user", lazy=True)

@@ -16,7 +16,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from wtforms import IntegerField, PasswordField, StringField, TextAreaField
+from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
@@ -58,6 +58,10 @@ class DisplayNameForm(FlaskForm):
     display_name = StringField("Display Name", validators=[Length(max=100)])
 
 
+class DirectoryVisibilityForm(FlaskForm):
+    show_in_directory = BooleanField("Show on public directory")
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -74,15 +78,26 @@ def create_blueprint() -> Blueprint:
             flash("🫥 User not found.")
             return redirect(url_for("login"))
 
-        # Fetch all secondary usernames for the current user
+        directory_visibility_form = DirectoryVisibilityForm(
+            show_in_directory=user.show_in_directory
+        )
         secondary_usernames = SecondaryUsername.query.filter_by(user_id=user.id).all()
-
-        # Initialize forms
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
         smtp_settings_form = SMTPSettingsForm()
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
+        directory_visibility_form = DirectoryVisibilityForm()
+
+        if request.method == "POST":
+            if (
+                directory_visibility_form.validate_on_submit()
+                and "update_directory_visibility" in request.form
+            ):
+                user.show_in_directory = directory_visibility_form.show_in_directory.data
+                db.session.commit()
+                flash("Directory visibility updated successfully.")
+                return redirect(url_for("settings.index"))
 
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
@@ -182,6 +197,7 @@ def create_blueprint() -> Blueprint:
         smtp_settings_form.smtp_username.data = user.smtp_username
         pgp_key_form.pgp_key.data = user.pgp_key
         display_name_form.display_name.data = user.display_name or user.primary_username
+        directory_visibility_form.show_in_directory.data = user.show_in_directory
 
         return render_template(
             "settings.html",
@@ -201,6 +217,7 @@ def create_blueprint() -> Blueprint:
             pgp_key_count=pgp_key_count,
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
+            directory_visibility_form=directory_visibility_form,
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Directory{% endblock %}
+{% block content %}
+<h2>Public Directory</h2>
+<div class="user-list">
+    {% for user in users %}
+        <div class="user-entry">
+            <p>Username: {{ user.primary_username }}</p>
+            <p>Display Name: {{ user.display_name or 'N/A' }}</p>
+        </div>
+    {% else %}
+        <p>No users found in the directory.</p>
+    {% endfor %}
+</div>
+{% endblock %}
