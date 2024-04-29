@@ -20,6 +20,18 @@
   background-image: url('../img/landing/icon-faq.png');
 }
 
+.icon.security {
+  background-image: url('../img/landing/icon-security.png');
+}
+
+.icon.opensource {
+  background-image: url('../img/landing/icon-opensource.png');
+}
+
+.icon.mail {
+  background-image: url('../img/landing/icon-mail.png');
+}
+
 /*GLOBAL STYLES*/
 
 body.landing {
@@ -217,11 +229,6 @@ p.badge {
 
 /*FAQ*/
 
-#faq {
-  background-color: #FAFAFD;
-
-}
-
 .faq-answer {
     display: none;
     margin-top: 5px;
@@ -400,6 +407,19 @@ section.why {
 
 .flip.description {
   order: 1;
+}
+
+/*FOOTER*/
+
+footer {
+  display: flex;
+  justify-content: center;
+  position: initial;
+  background-color: #FAFAFD;
+}
+
+footer p {
+  font-size: .8125rem;
 }
 
 body.landing .feature .description p {

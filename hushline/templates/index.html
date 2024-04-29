@@ -118,26 +118,54 @@
             <h2 class=wrapper>Why Hush Line?</h2>
             <div class="feature">
                 <div class="wrapper">
-                        <div class="description">
-                            <div class="icon verified"></div>
-                            <h3>Human Verified Accounts</h3>
-                            <p>We offer verified accounts for journalists, newsrooms, public figures and activists, and organizations so you know your message is going to the right place.</p>
-                            <a class="btn" role="button" href="https://hushline.app/submit_message/verify" rel="noopener noreferrer">Request Verification</a>
-                        </div>
-                        <img src="{{ url_for('static', filename='img/landing/verified.png') }}" alt="Verified Accounts Screenshot">
+                    <div class="description">
+                        <div class="icon verified"></div>
+                        <h3>Human Verified Accounts</h3>
+                        <p>We offer verified accounts for journalists, newsrooms, public figures and activists, and organizations so you know your message is going to the right place.</p>
+                        <a class="btn" role="button" href="https://hushline.app/submit_message/verify" rel="noopener noreferrer">Request Verification</a>
                     </div>
+                    <img src="{{ url_for('static', filename='img/landing/verified.png') }}" alt="Verified Accounts Screenshot">
                 </div>
             </div>
             <div class="feature">
                 <div class="wrapper">
-                        <div class="description flip">
-                            <div class="icon hardware"></div>
-                            <h3>The Personal Server</h3>
-                            <p>The Personal Server is the most secure way to operate Hush Line when control over your infrastruture is critical - a hardened Tor-only tip line on physical hardware in a custom-designed milled aluminum case 🔥. A beautiful e-paper display guides you through setup and usage. Coming soon!</p>
-                            <a class="btn" role="button" href="https://shop.scidsg.org" rel="noopener noreferrer">Shop Now</a>
-                        </div>
-                        <img src="{{ url_for('static', filename='img/landing/personal-server.jpg') }}" alt="Personal Server Device">
+                    <div class="description flip">
+                        <div class="icon security"></div>
+                        <h3>Strong Privacy and Security</h3>
+                        <p>From offering users two-factor and using their own PGP key to data being encrypted at rest on our server and Tor onion site support, we go beyond conventional measures to protect you and your data.</p>
                     </div>
+                    <img src="{{ url_for('static', filename='img/landing/security.png') }}" alt="2FA and Encrypted Message Screenshot">
+                </div>
+            </div>
+            <div class="feature">
+                <div class="wrapper">
+                    <div class="description">
+                        <div class="icon opensource"></div>
+                        <h3>Free and Open Source</h3>
+                        <p>Hush Line costs nothing to use. Our software is open-source, so you can verify or contribute to the code, too!</p>
+                    </div>
+                    <img src="{{ url_for('static', filename='img/landing/opensource.png') }}" alt="Screenshot of Github">
+                </div>
+            </div>
+            <div class="feature">
+                <div class="wrapper">
+                    <div class="description flip">
+                        <div class="icon mail"></div>
+                        <h3>Mailvelope Integration</h3>
+                        <p>Bring the power of PGP to your web browser. Decrypt messages directly in the app with the Mailvelope browser extension for Firefox and Chrome!</p>
+                    </div>
+                    <img src="{{ url_for('static', filename='img/landing/mailvelope.png') }}" alt="Screenshot of Inbox with Mailvelope">
+                </div>
+            </div>
+            <div class="feature">
+                <div class="wrapper">
+                    <div class="description">
+                        <div class="icon hardware"></div>
+                        <h3>The Personal Server</h3>
+                        <p>When control over your infrastruture is critical - the Personal Server is a hardened Tor-only tip line on physical hardware in a custom-designed milled aluminum case with an e-paper display!</p>
+                        <a class="btn" role="button" href="https://shop.scidsg.org" rel="noopener noreferrer">Shop Now</a>
+                    </div>
+                    <img src="{{ url_for('static', filename='img/landing/personal-server.jpg') }}" alt="Personal Server Device">
                 </div>
             </div>
         </section>
@@ -259,6 +287,13 @@
                 </ul>
             </div>
         </section>
+        <footer>
+            <div class="wrapper">
+                <p>Made with ✊ by <a property="cc:attributionName" href="https://scidsg.org/" target="_blank" rel="cc:attributionURL dct:creator noopener noreferrer">Science &amp; Design, Inc.</a> a <a href="https://github.com/scidsg/business-resources/blob/main/Business%20Resources/501(c)(3)%20Determination%20Letter.pdf" target="_blank" rel="noopener noreferrer">501(c)(3)</a> non-profit.</p><p>Licensed under the <a href="https://github.com/scidsg/hushline/blob/main/LICENSE" target="_blank" rel="license noopener noreferrer">GNU AGPL License, Version 3</a>.</p>
+                <p><a href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy Policy</a></p>
+                <p><a href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md" target="_blank" rel="noopener noreferrer">Terms of Service</a></p>
+            </div>
+        </footer>
     </main>
     {% block scripts %}
     {% endblock %}
