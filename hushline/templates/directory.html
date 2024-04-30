@@ -14,16 +14,26 @@
 <div id="verified" class="tab-content active">
     <div class="user-list">
         {% for user in users %}
-            {% if user.is_verified %}
+            {% if user.is_verified and user.show_in_directory %}
                 <div class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
                     {% if user.display_name %}
                         <p class="meta">{{ user.primary_username }}</p>
                     {% endif %}
+                    <div class="badgeContainer">
+                        {% if user.is_admin %}
+                        <p class="badge">⚙️ Admin</p>
+                        {% endif %}
+                    </div>
                     {% if user.bio %}
                         <p class="bio">{{ user.bio }}</p>
                     {% endif %}
-                    <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
+                    <div class="user-actions">
+                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                        {% if logged_in %}
+                            <a href="#" onclick="reportUser('{{ user.primary_username }}', '{{ user.display_name or user.primary_username }}', '{{ user.bio }}')">Report Account</a>
+                        {% endif %}
+                    </div>
                 </div>
             {% endif %}
         {% else %}
@@ -34,26 +44,37 @@
 <div id="all" class="tab-content">
     <div class="user-list">
         {% for user in users %}
-            <div class="user">
-                <h3>{{ user.display_name or user.primary_username }}</h3>
-                {% if user.display_name %}
-                    <p class="meta">{{ user.primary_username }}</p>
-                {% endif %}
-                {% if user.is_verified %}
-                    <p class="badge">⭐️ Verified Account</p>
-                {% endif %}
-                {% if user.bio %}
-                    <p class="bio">{{ user.bio }}</p>
-                {% endif %}
-                <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
-            </div>
+            {% if user.show_in_directory %}
+                <div class="user">
+                    <h3>{{ user.display_name or user.primary_username }}</h3>
+                    {% if user.display_name %}
+                        <p class="meta">{{ user.primary_username }}</p>
+                    {% endif %}
+                    <div class="badgeContainer">
+                        {% if user.is_verified %}
+                        <p class="badge">⭐️ Verified Account</p>
+                        {% endif %}
+                        {% if user.is_admin %}
+                        <p class="badge">⚙️ Admin</p>
+                        {% endif %}
+                    </div>
+                    {% if user.bio %}
+                        <p class="bio">{{ user.bio }}</p>
+                    {% endif %}
+                    <div class="user-actions">
+                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                        {% if logged_in %}
+                            <a href="#" onclick="reportUser('{{ user.primary_username }}', '{{ user.display_name or user.primary_username }}', '{{ user.bio }}')">Report Account</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
         {% else %}
             <p>No users found in the directory.</p>
         {% endfor %}
     </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 {% endblock %}

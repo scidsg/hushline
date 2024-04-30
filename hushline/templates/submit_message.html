@@ -28,7 +28,7 @@
 <form method="POST" action="/submit_message/{{ username }}" id="messageForm">
     {{ form.hidden_tag() }}
     <label for="content">Message</label>
-    <textarea id="content" maxlength="2000" name="content" placeholder="Include a contact method if you want a response..." required="" size="32" data-mvelo-frame="att" spellcheck="true"></textarea>
+    <textarea id="content" maxlength="2000" name="content" placeholder="Include a contact method if you want a response..." required="" size="32" data-mvelo-frame="att" spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->
