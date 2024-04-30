@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Hush Line User Directory</h2>
 {% if not logged_in %}
-    <p class="helper">👋 Welcome to Hush Line! If you need to message someone but don't have their username, and if they've opted-in to being listed here, you can find it below.</p>
+    <p class="helper">👋 Welcome to Hush Line! Find users who've opted into being listed below.</p>
 {% endif %}
 <div class="directory-tabs">
     <ul class="tab-list">
@@ -18,7 +18,7 @@
                 <div class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
                     {% if user.display_name %}
-                        <p class="meta">{{ user.primary_username }}</p>
+                        <p class="meta">@{{ user.primary_username }}</p>
                     {% endif %}
                     {% if user.is_admin %}
                     <div class="badgeContainer">
@@ -48,7 +48,7 @@
                 <div class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
                     {% if user.display_name %}
-                        <p class="meta">{{ user.primary_username }}</p>
+                        <p class="meta">@{{ user.primary_username }}</p>
                     {% endif %}
                     {% if user.is_verified or user.is_admin %}
                     <div class="badgeContainer">
