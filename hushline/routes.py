@@ -58,12 +58,11 @@ def init_app(app: Flask) -> None:
             if user:
                 return redirect(url_for("inbox", username=user.primary_username))
             else:
-                # Handle case where user ID in session does not exist in the database
                 flash("🫥 User not found. Please log in again.")
                 session.pop("user_id", None)  # Clear the invalid user_id from session
                 return redirect(url_for("login"))
         else:
-            return redirect(url_for("login"))
+            return redirect(url_for("directory"))
 
     @app.route("/inbox")
     @limiter.limit("120 per minute")
@@ -324,5 +323,6 @@ def init_app(app: Flask) -> None:
 
     @app.route("/directory")
     def directory():
-        users = User.query.filter_by(show_in_directory=True).all()
-        return render_template("directory.html", users=users)
+        logged_in = "user_id" in session
+        users = User.query.all()
+        return render_template("directory.html", users=users, logged_in=logged_in)
