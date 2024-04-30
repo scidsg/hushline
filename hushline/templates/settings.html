@@ -22,16 +22,6 @@
             </div>
         </div>
 
-        <h3>User Directory</h3>
-        <form method="POST" action="{{ url_for('settings.index') }}">
-            {{ directory_visibility_form.hidden_tag() }}
-            <div class="checkbox-group">
-                {{ directory_visibility_form.show_in_directory.label }}
-                {{ directory_visibility_form.show_in_directory() }}
-            </div>
-            <button type="submit" name="update_directory_visibility">Update Visibility</button>
-        </form>
-
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
             <p>⚠️ Changing your display name will result in losing your verification status.</p>
@@ -48,6 +38,27 @@
             <button type="submit" name="update_display_name">Update Display Name</button>
         </form>
 
+        <h3>User Directory</h3>
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            {{ directory_visibility_form.hidden_tag() }}
+            <div class="checkbox-group">
+                {{ directory_visibility_form.show_in_directory.label }}
+                {{ directory_visibility_form.show_in_directory() }}
+            </div>
+            <button type="submit" name="update_directory_visibility">Update Visibility</button>
+        </form>
+
+        <h3>Add Your Bio</h3>
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            <div class="form-group">
+                <label for="bio">Bio (up to 250 words):</label>
+                <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
+            </div>
+            <button type="submit" name="update_bio">Update Bio</button>
+        </form>
+    </div>
+
+    <div id="auth" class="tab-content">
         <!-- Change Username Section -->
         <h3>Change Username</h3>
         {% if user.is_verified %}
@@ -64,9 +75,7 @@
             {% endif %}
             <button type="submit" name="change_username">Change Username</button>
         </form>
-    </div>
 
-    <div id="auth" class="tab-content">
         <!-- Two-Factor Authentication Section -->
         <h3>Two-Factor Authentication</h3>
         {% if user.totp_secret %}

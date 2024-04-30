@@ -62,6 +62,14 @@ class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 
 
+class ProfileForm(FlaskForm):
+    bio = TextAreaField(
+        "Bio",
+        validators=[Length(max=1000)],
+        render_kw={"placeholder": "Write something about yourself up to 250 words."},
+    )
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -88,6 +96,13 @@ def create_blueprint() -> Blueprint:
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+
+        if request.method == "POST":
+            if "update_bio" in request.form:  # Check if the bio update form was submitted
+                user.bio = request.form["bio"]
+                db.session.commit()
+                flash("Bio updated successfully.")
+                return redirect(url_for("settings.index"))
 
         if request.method == "POST":
             if (
