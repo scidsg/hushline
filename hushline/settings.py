@@ -65,8 +65,8 @@ class DirectoryVisibilityForm(FlaskForm):
 class ProfileForm(FlaskForm):
     bio = TextAreaField(
         "Bio",
-        validators=[Length(max=1000)],
-        render_kw={"placeholder": "Write something about yourself up to 250 words."},
+        validators=[Length(max=250)],
+        render_kw={"placeholder": "Write something about yourself up to 250 characters."},
     )
 
 

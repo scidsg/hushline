@@ -474,7 +474,6 @@ header .btn {
     border-color: darkred;
 }
 
-
 .mobileNav {
     background-image: url('../img/icon-menu.png');
     background-size: contain;
@@ -899,6 +898,12 @@ a.dropbtn:hover {
 p.helper {
     margin-bottom: 1.25rem;
     margin-top: .5rem
+}
+
+.user-actions {
+    display: flex;
+    gap: .625rem;
+    font-size: .875rem;
 }
 
 @media only screen and (max-width: 640px) {

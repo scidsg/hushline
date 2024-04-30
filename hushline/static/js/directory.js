@@ -16,3 +16,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+function reportUser(username, displayName, bio) {
+    // Construct the message content with explicit line breaks
+    const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
+
+    // Encode the message content to ensure line breaks and other special characters are correctly handled
+    const encodedMessage = encodeURIComponent(messageContent);
+
+    // Redirect to the message submission form for the admin with the pre-filled content
+    const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
+    window.location.href = submissionUrl;
+}

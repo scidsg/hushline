@@ -12,7 +12,7 @@ from .crypto import encrypt_message
 from .db import db
 from .ext import bcrypt, limiter
 from .forms import ComplexPassword
-from .model import InviteCode, Message, SecondaryUsername, User
+from .model import InviteCode, Message, User
 from .utils import require_2fa, send_email
 
 # Logging setup
@@ -98,31 +98,30 @@ def init_app(app: Flask) -> None:
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def submit_message(username: str) -> Response | str:
+        # Initialize the form
         form = MessageForm()
-        user = None
-        secondary_username = None
-        display_name_or_username = ""
 
-        primary_user = User.query.filter_by(primary_username=username).first()
-        if primary_user:
-            user = primary_user
-            display_name_or_username = primary_user.display_name or primary_user.primary_username
-        else:
-            secondary_username = SecondaryUsername.query.filter_by(username=username).first()
-            if secondary_username:
-                user = secondary_username.primary_user
-                display_name_or_username = (
-                    secondary_username.display_name or secondary_username.username
-                )
-
+        # Retrieve the user details
+        user = User.query.filter_by(primary_username=username).first()
         if not user:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
+        # Decide the display name or username
+        display_name_or_username = user.display_name or user.primary_username
+
+        # Check if there is a prefill content
+        prefill_content = request.args.get("prefill", "")
+        if prefill_content:
+            # Pre-fill the form with the content if provided
+            form.content.data = prefill_content
+
+        # Process form submission
         if form.validate_on_submit():
             content = form.content.data
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
+            # Handle encryption if necessary
             if not client_side_encrypted and user.pgp_key:
                 encrypted_content = encrypt_message(content, user.pgp_key)
                 email_content = encrypted_content if encrypted_content else content
@@ -132,14 +131,12 @@ def init_app(app: Flask) -> None:
             else:
                 email_content = content
 
-            new_message = Message(
-                content=email_content,
-                user_id=user.id,
-                secondary_user_id=secondary_username.id if secondary_username else None,
-            )
+            # Save the new message
+            new_message = Message(content=email_content, user_id=user.id)
             db.session.add(new_message)
             db.session.commit()
 
+            # Attempt to send an email notification
             if (
                 user.email
                 and user.smtp_server
@@ -170,11 +167,11 @@ def init_app(app: Flask) -> None:
 
             return redirect(url_for("submit_message", username=username))
 
+        # Render the form page
         return render_template(
             "submit_message.html",
             form=form,
             user=user,
-            secondary_username=secondary_username if secondary_username else None,
             username=username,
             display_name_or_username=display_name_or_username,
             current_user_id=session.get("user_id"),

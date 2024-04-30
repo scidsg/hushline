@@ -51,7 +51,7 @@
         <h3>Add Your Bio</h3>
         <form method="POST" action="{{ url_for('settings.index') }}">
             <div class="form-group">
-                <label for="bio">Bio (up to 250 words):</label>
+                <label for="bio">Bio (up to 250 characters):</label>
                 <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
             </div>
             <button type="submit" name="update_bio">Update Bio</button>
