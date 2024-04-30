@@ -38,7 +38,7 @@
             <button type="submit" name="update_display_name">Update Display Name</button>
         </form>
 
-        <h3>User Directory</h3>
+        <h3>Public User Directory</h3>
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ directory_visibility_form.hidden_tag() }}
             <div class="checkbox-group">

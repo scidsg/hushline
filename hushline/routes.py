@@ -321,8 +321,12 @@ def init_app(app: Flask) -> None:
             flash("You need to be logged in to update settings.")
         return redirect(url_for("settings.index"))
 
+    def sort_users_by_display_name(users):
+        return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
+
     @app.route("/directory")
     def directory():
         logged_in = "user_id" in session
-        users = User.query.all()
-        return render_template("directory.html", users=users, logged_in=logged_in)
+        users = User.query.all()  # Fetch all users
+        sorted_users = sort_users_by_display_name(users)  # Sort users in Python
+        return render_template("directory.html", users=sorted_users, logged_in=logged_in)
