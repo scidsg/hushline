@@ -685,6 +685,8 @@ img.upgrade {
     min-height: 0;
     min-width: 0;
     padding: .25rem .75rem;
+    margin-top: 1rem;
+    margin-bottom: 0;
 }
 
 /* Dropdown Button */
@@ -896,7 +898,7 @@ a.dropbtn:hover {
 }
 
 p.helper {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
     margin-top: .5rem
 }
 
