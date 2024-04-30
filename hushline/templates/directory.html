@@ -2,9 +2,12 @@
 {% block title %}Directory{% endblock %}
 {% block content %}
 <h2>Public Directory</h2>
+{% if not logged_in %}
+    <p class="landing-message">👋 Welcome to Hush Line! If you need to message someone but don't have their username, and if they've opted-in to being listed here, you can find it below.</p>
+{% endif %}
 <div class="directory-tabs">
     <ul class="tab-list">
-        <li class="tab active" data-tab="verified">⭐️ Verified</li>
+        <li class="tab active" data-tab="verified">Verified</li>
         <li class="tab" data-tab="all">All</li>
     </ul>
 </div>
