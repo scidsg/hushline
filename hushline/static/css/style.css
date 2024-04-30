@@ -138,7 +138,7 @@ p.badge {
     margin-top: 0;
     font-family: 'Atkinson Bold', sans-serif;
     line-height: 1;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .metric p {
@@ -896,8 +896,8 @@ a.dropbtn:hover {
     margin-bottom: 0;
 }
 
-p.landing-message {
-    margin-bottom: 1rem;
+p.helper {
+    margin-bottom: 1.25rem;
     margin-top: .5rem
 }
 
