@@ -677,12 +677,6 @@ img.upgrade {
     gap: .5rem;
 }
 
-.user p:not(.badge) {
-    font-size: .75rem;
-    font-family: 'IBM Plex Mono', monospace;
-    margin: .25rem 0;
-}
-
 .user form {
     margin-bottom: 0;
 }
@@ -865,11 +859,36 @@ a.dropbtn:hover {
   margin-right: .425rem;
 }
 
+.user {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
 .user .badge {
-    margin: 1rem 0;
+    margin: .75rem 0 .5rem 0;
 }
 
 .user:first-of-type {
+    margin-top: 1rem;
+}
+
+.user .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .825rem;
+    margin: .25rem 0 0 0;
+}
+
+.user h3 {
+    margin-bottom: 0;
+}
+
+.user p.bio {
+    margin: .8125rem 0 0 0;
+}
+
+.user a {
     margin-top: 1rem;
 }
 
