@@ -2,25 +2,55 @@
 {% block title %}Directory{% endblock %}
 {% block content %}
 <h2>Public Directory</h2>
-<div class="user-list">
-    {% for user in users %}
-        <div class="user">
-            <!-- Conditionally show display name or primary username in the header -->
-            <h3>{{ user.display_name or user.primary_username }}</h3>
-            <!-- Conditionally show primary username as meta when display name is present -->
-            {% if user.display_name %}
-                <p class="meta">{{ user.primary_username }}</p>
-            {% endif %}
-            {% if user.is_verified %}
-                <p class="badge">⭐️ Verified Account</p>
-            {% endif %}
-            {% if user.bio %}
-                <p class="bio">{{ user.bio }}</p>
-            {% endif %}
-            <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
-        </div>
-    {% else %}
-        <p>No users found in the directory.</p>
-    {% endfor %}
+<div class="directory-tabs">
+    <ul class="tab-list">
+        <li class="tab active" data-tab="verified">⭐️ Verified</li>
+        <li class="tab" data-tab="all">All</li>
+    </ul>
 </div>
+<div id="verified" class="tab-content active">
+    <div class="user-list">
+        {% for user in users %}
+            {% if user.is_verified %}
+                <div class="user">
+                    <h3>{{ user.display_name or user.primary_username }}</h3>
+                    {% if user.display_name %}
+                        <p class="meta">{{ user.primary_username }}</p>
+                    {% endif %}
+                    {% if user.bio %}
+                        <p class="bio">{{ user.bio }}</p>
+                    {% endif %}
+                    <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
+                </div>
+            {% endif %}
+        {% else %}
+            <p>No verified users found in the directory.</p>
+        {% endfor %}
+    </div>
+</div>
+<div id="all" class="tab-content">
+    <div class="user-list">
+        {% for user in users %}
+            <div class="user">
+                <h3>{{ user.display_name or user.primary_username }}</h3>
+                {% if user.display_name %}
+                    <p class="meta">{{ user.primary_username }}</p>
+                {% endif %}
+                {% if user.is_verified %}
+                    <p class="badge">⭐️ Verified Account</p>
+                {% endif %}
+                {% if user.bio %}
+                    <p class="bio">{{ user.bio }}</p>
+                {% endif %}
+                <a href="/submit_message/{{ user.primary_username }}">Send a message</a>
+            </div>
+        {% else %}
+            <p>No users found in the directory.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 {% endblock %}
