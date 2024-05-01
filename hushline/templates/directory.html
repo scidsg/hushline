@@ -11,6 +11,10 @@
         <li class="tab" data-tab="all">All</li>
     </ul>
 </div>
+<div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search users..." oninput="searchUsers()">
+    <span id="clearIcon" onclick="clearSearch()" style="cursor: pointer;">&times;</span>
+</div>
 <div id="verified" class="tab-content active">
     <div class="user-list">
         {% for user in users %}

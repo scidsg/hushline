@@ -908,6 +908,29 @@ p.helper {
     font-size: .875rem;
 }
 
+.search-box {
+    position: relative;
+    display: inline-block;
+}
+
+#searchInput {
+    width: 100%;
+    padding-right: 30px; /* Make space for the icon */
+    box-sizing: border-box;
+}
+
+#clearIcon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ccc;
+    font-size: 20px;
+    visibility: hidden; /* Hide the icon initially */
+    cursor: pointer;
+}
+
+
 @media only screen and (max-width: 640px) {
     body {
         padding-top: 5.5rem;

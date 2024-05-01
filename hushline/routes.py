@@ -3,7 +3,17 @@ import os
 from datetime import datetime
 
 import pyotp
-from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    Response,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
@@ -318,12 +328,63 @@ def init_app(app: Flask) -> None:
             flash("You need to be logged in to update settings.")
         return redirect(url_for("settings.index"))
 
-    def sort_users_by_display_name(users):
-        return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
+    def sort_users_by_display_name(users, admin_first=True):
+        if admin_first:
+            # Sorts admins to the top, then by display name or username
+            return sorted(
+                users,
+                key=lambda u: (
+                    not u.is_admin,
+                    (u.display_name or u.primary_username).strip().lower(),
+                ),
+            )
+        else:
+            # Sorts only by display name or username
+            return sorted(
+                users, key=lambda u: (u.display_name or u.primary_username).strip().lower()
+            )
 
     @app.route("/directory")
     def directory():
         logged_in = "user_id" in session
         users = User.query.all()  # Fetch all users
-        sorted_users = sort_users_by_display_name(users)  # Sort users in Python
+        sorted_users = sort_users_by_display_name(
+            users, admin_first=True
+        )  # Sort users in Python with admins first
         return render_template("directory.html", users=sorted_users, logged_in=logged_in)
+
+    @app.route("/directory/search")
+    @limiter.exempt
+    def directory_search():
+        query = request.args.get("query", "").strip()
+        tab = request.args.get("tab", "all")
+
+        try:
+            # Define a general filter for matching username, display name, or bio
+            general_filter = User.query.filter(
+                db.or_(
+                    User.primary_username.ilike(f"%{query}%"),
+                    User.display_name.ilike(f"%{query}%"),
+                    User.bio.ilike(f"%{query}%"),
+                )
+            )
+
+            if tab == "verified":
+                users = general_filter.filter(User.is_verified.is_(True)).all()
+            else:
+                users = general_filter.all()
+
+            users_data = [
+                {
+                    "primary_username": user.primary_username,
+                    "display_name": user.display_name or user.primary_username,
+                    "is_verified": user.is_verified,
+                    "bio": user.bio,
+                }
+                for user in users
+            ]
+
+            return jsonify(users_data)
+        except Exception as e:
+            print(f"Error during search: {e}")
+            return jsonify({"error": "Internal Server Error"}), 500
