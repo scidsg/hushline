@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('#' + tab.getAttribute('data-tab')).classList.add('active');
 
             updatePlaceholder();
-            clearSearch(); // Clear the input and reset the list when changing tabs
+            // clearSearch(); // Clear the input and reset the list when changing tabs
         });
     });
 
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <h3>${user.display_name || user.primary_username}</h3>
                     <p class="meta">@${user.primary_username}</p>
                     ${user.is_verified ? '<p class="badge">⭐️ Verified Account</p>' : ''}
-                    ${user.bio ? `<p class="bio">${user.bio}</p>` : '<p class="bio">No bio available.</p>'}
+                    ${user.bio ? `<p class="bio">${user.bio}</p>` : ''}
                     <a href="/submit_message/${user.primary_username}">Send a Message</a>
                 `;
                 userList.appendChild(userDiv);
