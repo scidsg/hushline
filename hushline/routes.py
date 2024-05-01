@@ -354,7 +354,7 @@ def init_app(app: Flask) -> None:
         return render_template("directory.html", users=sorted_users, logged_in=logged_in)
 
     @app.route("/directory/search")
-    @limiter.exempt
+    @limiter.limit("500 per minute")
     def directory_search():
         query = request.args.get("query", "").strip()
         tab = request.args.get("tab", "all")
