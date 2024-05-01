@@ -3,6 +3,8 @@
   --color-brand: #7D25C1;
   --color-text: #333;
   --color-text-light: #595959;
+  --color-highlight: rgba(125,37,193,.1);
+  --color-brand-bg: #fbf3ff;
 
   --border: 1px solid var(--color-border);
 
@@ -40,7 +42,7 @@
 }
 
 body {
-    background-color: #fbf3ff;
+    background-color: var(--color-brand-bg);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -970,9 +972,14 @@ p.helper {
 }
 
 .search-highlight {
-    background-color: var(--color-brand);
-    color: white;
+    background-color: var(--color-highlight);
     border-radius: .125rem;
+    font-family: var(--font-sans-bold);
+}
+
+.meta .search-highlight {
+    font-family: var(--font-mono);
+    font-weight: bold;
 }
 
 @media only screen and (max-width: 640px) {
