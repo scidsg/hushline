@@ -52,21 +52,33 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     };
 
+    function highlightMatch(text, query) {
+        if (!query) return text; // If no query, return the text unmodified
+        const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
     function updateUsersList(users) {
+        const query = document.getElementById('searchInput').value.trim();
         const userList = document.querySelector('.tab-content.active .user-list');
         console.log('Clearing user list and updating with new data...'); // Debug
         userList.innerHTML = ''; // Clear the list before adding new entries
         console.log('User list cleared.');
         if (users && users.length > 0) {
             users.forEach(user => {
+                const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
+                const userNameHighlighted = highlightMatch(user.primary_username, query);
+                const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : '';
                 const userDiv = document.createElement('div');
                 userDiv.classList.add('user');
                 userDiv.innerHTML = `
-                    <h3>${user.display_name || user.primary_username}</h3>
-                    <p class="meta">@${user.primary_username}</p>
+                    <h3>${displayNameHighlighted}</h3>
+                    <p class="meta">@${userNameHighlighted}</p>
                     ${user.is_verified ? '<p class="badge">⭐️ Verified Account</p>' : ''}
-                    ${user.bio ? `<p class="bio">${user.bio}</p>` : ''}
-                    <a href="/submit_message/${user.primary_username}">Send a Message</a>
+                    ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
+                    <div class="user-actions">
+                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                    </div>
                 `;
                 userList.appendChild(userDiv);
                 console.log('Added user:', user.primary_username); // Debug

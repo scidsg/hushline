@@ -965,6 +965,13 @@ p.helper {
     font-size: 4rem;
 }
 
+.search-highlight {
+/*    font-weight: bold;*/
+    background-color: var(--color-brand);
+    color: white;
+    border-radius: .125rem;
+}
+
 @media only screen and (max-width: 640px) {
     body {
         padding-top: 5.5rem;
