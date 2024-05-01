@@ -932,6 +932,14 @@ p.helper {
     cursor: pointer;
 }
 
+.empty-message {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.emoji-message {
+    font-size: 4rem;
+}
 
 @media only screen and (max-width: 640px) {
     body {
