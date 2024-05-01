@@ -915,17 +915,19 @@ p.helper {
 
 #searchInput {
     width: 100%;
-    padding-right: 30px; /* Make space for the icon */
+    padding-right: 2.5rem;
     box-sizing: border-box;
+    margin-bottom: 0;
+    margin-top: 1rem;
 }
 
 #clearIcon {
     position: absolute;
-    right: 10px;
-    top: 50%;
+    right: 1rem;
+    top: 60%;
     transform: translateY(-50%);
-    color: #ccc;
-    font-size: 20px;
+    color: #666;
+    font-size: 24px;
     visibility: hidden; /* Hide the icon initially */
     cursor: pointer;
 }
