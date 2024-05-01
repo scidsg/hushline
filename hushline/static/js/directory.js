@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } else {
             console.log('No users found to display.'); // Debug
-            userList.innerHTML = '<p>No users found.</p>'; // Show this message if no users are found
+            userList.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>'; // Show this message if no users are found
         }
     }
 
