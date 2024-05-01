@@ -911,6 +911,10 @@ a.dropbtn:hover {
     margin: .625rem 0 .0125rem 0;
 }
 
+textarea#bio {
+    height: 175px;
+}
+
 .user a {
     margin-top: 1rem;
 }
@@ -966,7 +970,6 @@ p.helper {
 }
 
 .search-highlight {
-/*    font-weight: bold;*/
     background-color: var(--color-brand);
     color: white;
     border-radius: .125rem;
