@@ -1062,6 +1062,11 @@ p.helper {
 
 @media only screen and (max-width: 480px) {
     #searchInput {
-        max-width: 100%;
+        min-width: 100%;
+
+    }
+
+    .search-box {
+        width: 100%;
     }
 }
