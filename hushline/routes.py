@@ -360,7 +360,6 @@ def init_app(app: Flask) -> None:
         tab = request.args.get("tab", "all")
 
         try:
-            # Define a general filter for matching username, display name, or bio
             general_filter = User.query.filter(
                 db.or_(
                     User.primary_username.ilike(f"%{query}%"),
@@ -379,6 +378,7 @@ def init_app(app: Flask) -> None:
                     "primary_username": user.primary_username,
                     "display_name": user.display_name or user.primary_username,
                     "is_verified": user.is_verified,
+                    "is_admin": user.is_admin,  # Ensure this attribute is correctly being sent
                     "bio": user.bio,
                 }
                 for user in users

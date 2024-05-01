@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('#' + tab.getAttribute('data-tab')).classList.add('active');
 
             updatePlaceholder();
-            // clearSearch(); // Clear the input and reset the list when changing tabs
         });
     });
 
@@ -42,10 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return response.json();
             })
-            .then(users => {
-                console.log('Fetched users:', users);  // Log fetched users to see what we get
-                updateUsersList(users);
-            })
+            .then(users => updateUsersList(users))
             .catch(error => {
                 console.error('Error fetching users:', error);
                 document.querySelector('.user-list').innerHTML = `<p class="error">Error fetching users: ${error.message}</p>`;
@@ -61,37 +57,42 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateUsersList(users) {
         const query = document.getElementById('searchInput').value.trim();
         const userList = document.querySelector('.tab-content.active .user-list');
-        console.log('Clearing user list and updating with new data...'); // Debug
-        userList.innerHTML = ''; // Clear the list before adding new entries
-        console.log('User list cleared.');
+        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
+
+        userList.innerHTML = '';
         if (users && users.length > 0) {
             users.forEach(user => {
                 const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
                 const userNameHighlighted = highlightMatch(user.primary_username, query);
                 const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : '';
+
+                const adminBadge = user.is_admin ? '<p class="badge">⚙️ Admin</p>' : '';
+                const verifiedBadge = user.is_verified && tab === 'all' ? '<p class="badge">⭐️ Verified Account</p>' : '';
+
                 const userDiv = document.createElement('div');
                 userDiv.classList.add('user');
                 userDiv.innerHTML = `
                     <h3>${displayNameHighlighted}</h3>
                     <p class="meta">@${userNameHighlighted}</p>
-                    ${user.is_verified ? '<p class="badge">⭐️ Verified Account</p>' : ''}
+                    <div class="badgeContainer">
+                        ${verifiedBadge}
+                        ${adminBadge}
+                    </div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
-                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                        <a href="/submit_message/${user.primary_username}">Send a Message</a>
                     </div>
                 `;
                 userList.appendChild(userDiv);
-                console.log('Added user:', user.primary_username); // Debug
             });
         } else {
-            console.log('No users found to display.'); // Debug
-            userList.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>'; // Show this message if no users are found
+            userList.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
         }
     }
 
     function clearSearch() {
-        searchInput.value = ''; // Clear the input
-        clearIcon.style.visibility = 'hidden'; // Hide the clear icon
+        searchInput.value = '';
+        clearIcon.style.visibility = 'hidden';
         searchUsers(); // Reset the user view
     }
 
