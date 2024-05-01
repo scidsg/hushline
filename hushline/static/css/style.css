@@ -1,3 +1,26 @@
+:root {
+  --color-border: rgba(0,0,0,.18);
+  --color-brand: #7D25C1;
+  --color-text: #333;
+  --color-text-light: #595959;
+
+  --border: 1px solid var(--color-border);
+
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
+  --font-sans-bold: 'Atkinson Bold', Helvetica, Arial, sans-serif;
+
+  --font-size-base: 1rem;
+  --font-size-small: .875rem;
+  --font-size-smaller: .8125rem;
+  --font-size-smallest: .75rem;
+
+  --font-size-1: 1.75rem;
+  --font-size-2: 1.75rem;
+  --font-size-3: 1.5rem;
+  --font-size-4: 1.125rem;
+}
+
 @font-face {
     font-family: "Atkinson Hyperlegible";
     src: url("../fonts/sans/AtkinsonHyperlegible-Regular.woff") format("woff"),
@@ -24,7 +47,7 @@ body {
     padding: 5.25rem 1rem 1rem 1rem;
     position: relative;
     margin: 0;
-    font-family: 'Atkinson Hyperlegible', sans-serif;
+    font-family: var(--font-sans);
 }
 
 main {
@@ -39,19 +62,19 @@ h4,
 h5,
 h6 {
     margin: 0 0 .5rem 0;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
     font-weight: normal;
     line-height: 1.1;
 }
 
 h1 {
-    font-size: 1.75rem;
+    font-size: var(--font-size-1);
     line-height: 1.2;
 }
 
 h2 {
     margin-bottom: .75rem;
-    font-size: 1.75rem;
+    font-size: var(--font-size-2);
 }
 
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
@@ -67,8 +90,7 @@ h2+p+p {
 }
 
 h3 {
-    font-size: 1.25rem;
-    /*  margin-bottom: 1rem; */
+    font-size: var(--font-size-3);
 }
 
 .formBody h3 {
@@ -80,7 +102,7 @@ h3 {
 }
 
 h4 {
-    font-size: 1.125rem;
+    font-size: var(--font-size-4);
 }
 
 h1+p.badge+p,
@@ -102,7 +124,7 @@ p.instr+p {
 }
 
 a {
-    color: #7D25C1;
+    color: var(--color-brand);
 }
 
 p {
@@ -116,8 +138,8 @@ p.info {
 
 p.instr {
     font-style: italic;
-    font-size: .825rem;
-    color: #595959;
+    font-size: var(--font-size-smaller);
+    color: var(--color-text-light);
     margin-bottom: 1rem;
     margin-top: 0;
 }
@@ -129,14 +151,14 @@ p.instr {
 
 p.badge {
     background-color: white;
-    color: #7D25C1;
-    border: 1px solid #7D25C1;
+    color: var(--color-brand);
+    border: 1px solid var(--color-brand);
     border-radius: .25rem;
     width: fit-content;
-    font-size: .75rem;
+    font-size: var(--font-size-smallest);
     padding: .4125rem .5rem;
     margin-top: 0;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
     line-height: 1;
     margin-bottom: 1rem;
 }
@@ -146,8 +168,8 @@ p.badge {
 }
 
 .metric p:nth-child(1n) {
-    font-size: .875rem;
-    color: #595959;
+    font-size: var(--font-size-small);
+    color: var(--color-text-light);
 }
 
 .metric p:nth-child(2n) {
@@ -162,7 +184,7 @@ p.badge {
 
 .error {
     margin-top: -8px;
-    font-size: .875rem;
+    font-size: var(--font-size-small);
     margin-bottom: 1rem;
     color: darkred;
     display: flex;
@@ -203,9 +225,9 @@ img.empty {
     right: 50%;
     transform: translateX(50%);
     background-color: white;
-    outline: 1px solid rgba(0, 0, 0, 0.1);
+    border: var(--border);
     padding: 1.25rem 2rem;
-    border-radius: .5rem;
+    border-radius: .25rem;
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     width: max-content;
     max-width: 78vw;
@@ -217,14 +239,14 @@ img.empty {
 
 .message .message-label,
 .message.encrypted .message-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .7125rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-smallest);
     margin-bottom: 1.25rem;
     background-color: rgba(0, 0, 0, 0.04);
     width: fit-content;
     padding: .25rem .425rem;
     border-radius: .25rem;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: var(--border);
 }
 
 @keyframes fadeInDown {
@@ -280,19 +302,19 @@ img.empty {
 }
 
 .message button {
-    font-size: .825rem;
+    font-size: var(--font-size-small);
     padding: .5rem 1rem;
     min-height: initial;
     min-width: initial;
 }
 
 .mono {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     font-size: .925rem;
 }
 
 .bold {
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
 }
 
 img.qr {
@@ -361,7 +383,7 @@ header nav a:hover {
     width: 100%;
     display: flex;
     flex-direction: column;
-    outline: 1px solid rgba(0, 0, 0, 0.1);
+    border: var(--border);
     padding: 2.5rem 2rem;
     box-sizing: border-box;
     background-color: white;
@@ -374,14 +396,14 @@ header nav .mobileNav {
 }
 
 label {
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
     margin-bottom: .5rem;
     display: flex;
 }
 
 p.meta {
-    font-size: .875rem;
-    color: #595959;
+    font-size: var(--font-size-small);
+    color: var(--color-text-light);
     display: flex;
     align-items: center;
 }
@@ -402,17 +424,17 @@ textarea {
     max-width: 640px;
     width: 100%;
     padding: .75rem;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     margin-bottom: 1rem;
     border-radius: .25rem;
-    border: 1px solid rgba(0, 0, 0, 0.25);
+    border: var(--border);
     box-sizing: border-box;
-    font-family: 'Atkinson Hyperlegible', sans-serif;
+    font-family: var(--font-sans);
 }
 
 textarea#pgp_key {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .8125rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-smaller);
     padding: 1rem;
 }
 
@@ -420,8 +442,8 @@ input:focus,
 input[type="submit"]:focus,
 textarea:focus,
 button:focus {
-    outline: 4px double #7D25C1;
-    border: 1px solid #7D25C1;
+    outline: 4px double var(--color-brand);
+    border: 1px solid var(--color-brand);
     box-shadow: none;
 }
 
@@ -435,10 +457,10 @@ button,
     min-height: 44px;
     min-width: 120px;
     font-size: 1rem;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
     border-radius: 50vw;
     border: 0px;
-    background-color: #7D25C1;
+    background-color: var(--color-brand);
     color: white;
     padding: 0 1rem;
     margin: .5rem 0;
@@ -446,7 +468,7 @@ button,
 
 header .btn {
     padding: .625rem .825rem;
-    font-size: .875rem;
+    font-size: var(--font-size-small);
     margin-left: 1rem;
     min-width: initial;
     min-height: initial;
@@ -458,10 +480,10 @@ header .btn {
 .formBody button,
 .btn {
     background-color: white;
-    color: #7D25C1;
-    border: 1px solid #7D25C1;
+    color: var(--color-brand);
+    border: 1px solid var(--color-brand);
     border-radius: 50vw;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
 }
 
 .formBody h3 + form button {
@@ -482,7 +504,7 @@ header .btn {
     background-repeat: no-repeat;
     padding-left: 2.25rem;
     align-items: center;
-    font-size: .875rem;
+    font-size: var(--font-size-small);
     font-weight: bold;
 }
 
@@ -506,8 +528,8 @@ a.logoutLink {
 }
 
 .message.encrypted p {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .85rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-small);
     white-space: break-spaces
 }
 
@@ -515,7 +537,7 @@ footer {
     position: fixed;
     bottom: 0;
     left: 0;
-    font-size: .8125rem;
+    font-size: var(--font-size-small);
     padding: .625rem 1rem;
     background-color: #fbf3ff;
     border-radius: 0 .25rem 0 0;
@@ -534,7 +556,7 @@ footer a:hover {
 }
 
 li a.small {
-    font-size: .875rem;
+    font-size: var(--font-size-small);
     margin-right: .325rem;
 }
 
@@ -545,7 +567,7 @@ li a.small {
 
 .formBody li::marker {
     font-size: .9125rem;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
 }
 
 .formBody ol li {
@@ -585,7 +607,7 @@ img.upgrade {
 
 .promo {
     text-align: center;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: var(--border);
     padding: 2rem;
     border-radius: .5rem;
     box-shadow: 0px 9px 18px -9px rgba(0, 0, 0, 0.1);
@@ -595,14 +617,14 @@ img.upgrade {
 }
 
 .promo p {
-    font-size: .95rem;
+    font-size: var(--font-size-base);
     max-width: 80%;
     line-height: 145%;
 
 }
 
 .formBody .promo .primaryBtn {
-    background-color: #7D25C1;
+    background-color: var(--color-brand);
     color: white;
 }
 
@@ -616,7 +638,7 @@ img.upgrade {
     overflow-y: hidden;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: var(--border);
 }
 
 .tab-list::-webkit-scrollbar {
@@ -629,7 +651,7 @@ img.upgrade {
     outline: none;
     cursor: pointer;
     padding: .75rem .625rem;
-    font-size: .925rem;
+    font-size: var(--font-size-base);
     white-space: nowrap;
 }
 
@@ -640,8 +662,8 @@ img.upgrade {
 
 /* Create an active/current tablink class */
 .tab.active {
-    border-bottom: 3px solid #7D25C1;
-    font-family: 'Atkinson Bold', sans-serif;
+    border-bottom: 3px solid var(--color-brand);
+    font-family: var(--font-sans-bold);
 }
 
 /* Style the tab content (and hide it by default) */
@@ -664,7 +686,7 @@ img.upgrade {
 }
 
 .user {
-    border: 1px solid rgba(0,0,0,0.1);
+    border: var(--border);
     border-radius: .25rem;
     padding: 1rem;
     margin-bottom: .75rem;
@@ -716,7 +738,7 @@ a.dropbtn:hover {
   z-index: 1;
   border-radius: .25rem;
   top:  3.5rem;
-  outline: 1px solid rgba(0,0,0,0.1);
+  border: var(--border);
   opacity: 0;
 }
 
@@ -802,7 +824,7 @@ a.dropbtn:hover {
     flex-direction: column;
     flex: 1 1 0px;
     align-items: center;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: var(--border);
     justify-content: center;
     padding: 1rem;
     border-radius: .25rem;
@@ -814,7 +836,7 @@ a.dropbtn:hover {
     background-color: #c6ffff;
     padding: .125rem .25rem;
     border-radius: .25rem;
-    font-family: 'Atkinson Bold', sans-serif;
+    font-family: var(--font-sans-bold);
 }
 
 .rate-limit {
@@ -838,7 +860,7 @@ a.dropbtn:hover {
 
 .ip-address-container {
     font-size: .75rem;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--font-mono);
     padding: 1rem 0 0 0;
 }
 
@@ -851,13 +873,13 @@ a.dropbtn:hover {
 }
 
 .checkbox-group label {
-  order: 1;
+    order: 1;
 }
 
 .checkbox-group input[type="checkbox"] {
-  order: 0;
-  width: initial;
-  margin-right: .425rem;
+    order: 0;
+    width: initial;
+    margin-right: .425rem;
 }
 
 .user {
@@ -876,8 +898,8 @@ a.dropbtn:hover {
 }
 
 .user .meta {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .825rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-smaller);
     margin: .25rem 0 0 0;
 }
 
@@ -905,12 +927,13 @@ p.helper {
 .user-actions {
     display: flex;
     gap: .625rem;
-    font-size: .875rem;
+    font-size: var(--font-size-small);
 }
 
 .search-box {
     position: relative;
     display: inline-block;
+    width: fit-content;
 }
 
 #searchInput {
@@ -919,6 +942,7 @@ p.helper {
     box-sizing: border-box;
     margin-bottom: 0;
     margin-top: 1rem;
+    min-width: 320px;
 }
 
 #clearIcon {
@@ -979,7 +1003,7 @@ p.helper {
         box-sizing: border-box;
         z-index: 100;
         border-radius: .25rem;
-        outline: 1px solid rgba(0, 0, 0, 0.1);
+        outline: var(--border);
         min-width: 140px;
     }
 
@@ -1016,5 +1040,11 @@ p.helper {
     .admin-highlights {
         gap: .5rem;
     }
+}
 
+
+@media only screen and (max-width: 480px) {
+    #searchInput {
+        max-width: 100%;
+    }
 }
