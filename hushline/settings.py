@@ -101,7 +101,7 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form:  # Check if the bio update form was submitted
                 user.bio = request.form["bio"]
                 db.session.commit()
-                flash("Bio updated successfully.")
+                flash("👍 Bio updated successfully.")
                 return redirect(url_for("settings.index"))
 
         if request.method == "POST":
@@ -111,7 +111,7 @@ def create_blueprint() -> Blueprint:
             ):
                 user.show_in_directory = directory_visibility_form.show_in_directory.data
                 db.session.commit()
-                flash("Directory visibility updated successfully.")
+                flash("👍 Directory visibility updated successfully.")
                 return redirect(url_for("settings.index"))
 
         # Additional admin-specific data initialization
