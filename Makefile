@@ -29,4 +29,8 @@ init-db: ## Initialize the dev database
 
 .PHONY: test
 test: ## Run the test suite
-	@source ./env.sh && pytest -vv tests -p no:warnings
+	@if [ -n "$$BASH_VERSION" ]; then \
+		source ./env.sh && pytest -vv tests -p no:warnings; \
+	else \
+		. ./env.sh; pytest -vv tests -p no:warnings; \
+	fi
