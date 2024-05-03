@@ -499,7 +499,7 @@ header .btn {
 }
 
 .mobileNav {
-    background-image: url('../img/icon-menu.png');
+    background-image: url('../img/app/icon-menu.png');
     background-size: contain;
     width: 2.5rem;
     height: 2.5rem;
