@@ -16,12 +16,13 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
+from passlib.hash import scrypt
 from wtforms import IntegerField, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .ext import bcrypt, limiter
+from .ext import limiter
 from .forms import ComplexPassword, TwoFactorForm
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
@@ -149,12 +150,9 @@ def create_blueprint() -> Blueprint:
 
             # Handle Change Password Form Submission
             elif change_password_form.validate_on_submit():
-                if bcrypt.check_password_hash(
-                    user.password_hash, change_password_form.old_password.data
-                ):
-                    user.password_hash = bcrypt.generate_password_hash(
-                        change_password_form.new_password.data
-                    ).decode("utf-8")
+                if scrypt.verify(change_password_form.old_password.data, user.password_hash):
+                    # Hash the new password using scrypt and update the user object
+                    user.password_hash = scrypt.hash(change_password_form.new_password.data)
                     db.session.commit()
                     flash("👍 Password changed successfully.")
                 else:
@@ -222,40 +220,40 @@ def create_blueprint() -> Blueprint:
     def change_password() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
+            flash("Session expired, please log in again.", "info")
             return redirect(url_for("login"))
 
         user = User.query.get(user_id)
+        if not user:
+            flash("User not found.", "error")
+            return redirect(url_for("login"))
+
         change_password_form = ChangePasswordForm(request.form)
-        change_username_form = ChangeUsernameForm()
-        smtp_settings_form = SMTPSettingsForm()
-        pgp_key_form = PGPKeyForm()
-        display_name_form = DisplayNameForm()
-
         if change_password_form.validate_on_submit():
-            old_password = change_password_form.old_password.data
-            new_password = change_password_form.new_password.data
-
-            if bcrypt.check_password_hash(user.password_hash, old_password):
-                user.password_hash = bcrypt.generate_password_hash(new_password).decode("utf-8")
+            # Verify the old password
+            if user.check_password(change_password_form.old_password.data):
+                # Set the new password
+                user.password_hash = change_password_form.new_password.data
                 db.session.commit()
                 session.clear()  # Clears the session, logging the user out
                 flash(
-                    "👍 Password successfully changed. Please log in with your new password.",
+                    "👍 Password successfully changed. Please log in again.",
                     "success",
                 )
                 return redirect(
                     url_for("login")
                 )  # Redirect to the login page for re-authentication
             else:
-                flash("⛔️ Incorrect old password.")
+                flash("Incorrect old password.", "error")
 
+        # Render the settings page with all forms
         return render_template(
             "settings.html",
             change_password_form=change_password_form,
-            change_username_form=change_username_form,
-            smtp_settings_form=smtp_settings_form,
-            pgp_key_form=pgp_key_form,
-            display_name_form=display_name_form,
+            change_username_form=ChangeUsernameForm(),
+            smtp_settings_form=SMTPSettingsForm(),
+            pgp_key_form=PGPKeyForm(),
+            display_name_form=DisplayNameForm(),
             user=user,
         )
 

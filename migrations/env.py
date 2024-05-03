@@ -10,12 +10,7 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-# Ensure the configuration file name is not None before attempting to use it.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-else:
-    raise ValueError("Configuration file name is missing.")
-
+fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
 

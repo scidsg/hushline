@@ -16,13 +16,13 @@
     {% if user.pgp_key %}
         <p class="info">🔐 Your message will be encrypted and only readable by you.</p>
     {% else %}
-        <p class="info">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information, please <a href="https://scidsg.github.io/hushline-docs/book/prereqs/general.html" target="_blank" rel="noopener noreferrer">add a public PGP key</a>.</p>
+        <p class="info">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information, please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">add a public PGP key</a>.</p>
     {% endif %}
     {% else %}
     {% if user.pgp_key %}
         <p class="info">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
     {% else %}
-        <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username }} to add a public PGP key. <a href="https://scidsg.github.io/hushline-docs/book/prereqs/general.html" target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
+        <p class="info">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username }} to add a public PGP key. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
     {% endif %}
 {% endif %}
 <form method="POST" action="/submit_message/{{ username }}" id="messageForm">

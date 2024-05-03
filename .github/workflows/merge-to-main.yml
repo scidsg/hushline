@@ -9,6 +9,10 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash  # Set bash as the default shell for all run commands
+
     steps:
       - uses: actions/setup-python@v4
         with:
@@ -37,4 +41,5 @@ jobs:
 
       - name: Test
         run: poetry -v run make test
-        continue-on-error: true
+        env:
+          CI: true
