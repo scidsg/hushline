@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from hushline import create_app
 from hushline.db import db
@@ -16,7 +16,7 @@ def create_invite_code() -> str:
         code = secrets.token_urlsafe(16)
 
         # Set the expiration date for the invite code to one year from now
-        expiration_date = datetime.utcnow() + timedelta(days=365)
+        expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
 
         # Create a new InviteCode object
         new_code = InviteCode(code=code, expiration_date=expiration_date)

@@ -29,7 +29,7 @@ def toggle_admin(username: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python admin.py <username>")
+        print("Usage: python make_admin.py <username>")
         sys.exit(1)
 
     username = sys.argv[1]
