@@ -42,11 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(users => updateUsersList(users))
-            .catch(error => {
-                console.error('Error fetching users:', error);
-                document.querySelector('.user-list').innerHTML = `<p class="error">Error fetching users: ${error.message}</p>`;
-            });
-    };
+        };
 
     function highlightMatch(text, query) {
         if (!query) return text; // If no query, return the text unmodified
