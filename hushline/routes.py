@@ -266,7 +266,7 @@ def init_app(app: Flask) -> None:
 
                 user = User.query.filter_by(primary_username=username).first()
 
-                if user and bcrypt.check_password_hash(user.password_hash, password):
+                if user and user.check_password(password):
                     session.permanent = True
                     session["user_id"] = user.id
                     session["username"] = user.primary_username
@@ -282,8 +282,6 @@ def init_app(app: Flask) -> None:
                         return redirect(url_for("inbox", username=user.primary_username))
                 else:
                     flash("⛔️ Invalid username or password")
-            else:
-                flash("⛔️ Invalid form data")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])

@@ -16,8 +16,8 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
 from passlib.hash import scrypt
+from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
