@@ -40,10 +40,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
+exclude = '/(migrations)/'
 
 [tool.isort]
 profile= "black"
 line_length = 100
+skip = ["migrations"]
 
 [tool.pytest.ini_options]
 pythonpath = "."
@@ -57,3 +59,4 @@ disable_error_code = [
     "return-value",
     "union-attr",
 ]
+exclude = ['migrations']
