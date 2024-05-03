@@ -8,15 +8,15 @@ help: ## Print the help message
 
 .PHONY: run
 run: ## Run the app
-	@source ./env.sh && \
+	@source ./files/dev/env.sh && \
 	flask run --debug -h localhost -p 5000
 
 .PHONY: lint
 lint: ## Lint the code
 	isort --check . && \
 		black --check . && \
-		flake8 . && \
-		mypy .
+		flake8 --config setup.cfg . && \
+		mypy --config-file pyproject.toml .
 
 .PHONY: fmt
 fmt: ## Format the code
@@ -29,4 +29,4 @@ init-db: ## Initialize the dev database
 
 .PHONY: test
 test: ## Run the test suite
-	@source ./env.sh && pytest -vv tests
+	@source ./files/dev/env.sh && pytest -vv tests -p no:warnings
