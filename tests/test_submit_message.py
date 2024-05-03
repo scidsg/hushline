@@ -54,7 +54,7 @@ def test_submit_message(client):
     assert response.status_code == 200
 
     # Assert that the success message is displayed
-    assert b"Message submitted!" in response.data
+    assert b"Message submitted successfully." in response.data
 
     # Verify that the message is saved in the database
     message = Message.query.filter_by(user_id=user.id).first()
