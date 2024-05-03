@@ -8,7 +8,7 @@ help: ## Print the help message
 
 .PHONY: run
 run: ## Run the app
-	@source ./files/dev/env.sh && \
+	@source ./env.sh && \
 	flask run --debug -h localhost -p 5000
 
 .PHONY: lint
@@ -29,4 +29,4 @@ init-db: ## Initialize the dev database
 
 .PHONY: test
 test: ## Run the test suite
-	@source ./files/dev/env.sh && pytest -vv tests -p no:warnings
+	@source ./env.sh && pytest -vv tests -p no:warnings
