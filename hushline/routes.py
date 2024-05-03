@@ -124,14 +124,26 @@ def init_app(app: Flask) -> None:
             content = form.content.data
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
-            if not client_side_encrypted and user.pgp_key:
-                encrypted_content = encrypt_message(content, user.pgp_key)
-                email_content = encrypted_content if encrypted_content else content
-                if not encrypted_content:
-                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
-                    return redirect(url_for("submit_message", username=username))
-            else:
-                email_content = content
+        if not client_side_encrypted and user.pgp_key:
+            encrypted_content = encrypt_message(content, user.pgp_key)
+            email_content = encrypted_content if encrypted_content else content
+            if not encrypted_content:
+                flash("⛔️ Failed to encrypt message with PGP key.", "error")
+                return (
+                    render_template(
+                        "submit_message.html",
+                        form=form,
+                        user=user,
+                        secondary_username=secondary_username if secondary_username else None,
+                        username=username,
+                        display_name_or_username=display_name_or_username,
+                        current_user_id=session.get("user_id"),
+                        public_key=user.pgp_key,
+                    ),
+                    400,
+                )
+        else:
+            email_content = content
 
             new_message = Message(
                 content=email_content,
@@ -198,10 +210,10 @@ def init_app(app: Flask) -> None:
             db.session.delete(message)
             db.session.commit()
             flash("🗑️ Message deleted successfully.")
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             flash("⛔️ Message not found or unauthorized access.")
-
-        return redirect(url_for("inbox", username=user.primary_username))
+            return redirect(url_for("inbox", username=user.primary_username))
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
@@ -220,11 +232,21 @@ def init_app(app: Flask) -> None:
                 invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
                 if not invite_code or invite_code.expiration_date < datetime.utcnow():
                     flash("⛔️ Invalid or expired invite code.", "error")
-                    return redirect(url_for("register"))
+                    return (
+                        render_template(
+                            "register.html", form=form, require_invite_code=require_invite_code
+                        ),
+                        400,
+                    )
 
             if User.query.filter_by(primary_username=username).first():
                 flash("💔 Username already taken.", "error")
-                return redirect(url_for("register"))
+                return (
+                    render_template(
+                        "register.html", form=form, require_invite_code=require_invite_code
+                    ),
+                    409,
+                )
 
             # Create new user instance
             new_user = User(primary_username=username)
@@ -248,7 +270,7 @@ def init_app(app: Flask) -> None:
 
                 user = User.query.filter_by(primary_username=username).first()
 
-                if user and user.check_password(password):
+                if user and bcrypt.check_password_hash(user.password_hash, password):
                     session.permanent = True
                     session["user_id"] = user.id
                     session["username"] = user.primary_username
@@ -264,13 +286,16 @@ def init_app(app: Flask) -> None:
                         return redirect(url_for("inbox", username=user.primary_username))
                 else:
                     flash("⛔️ Invalid username or password")
+            else:
+                flash("⛔️ Invalid form data")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def verify_2fa_login() -> Response | str:
-        # Redirect to login if user is not authenticated
+        # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
+            flash("You need to log in first.")
             return redirect(url_for("login"))
 
         user = User.query.get(session["user_id"])
@@ -289,6 +314,7 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox", username=user.primary_username))
             else:
                 flash("⛔️ Invalid 2FA code. Please try again.")
+                return render_template("verify_2fa_login.html", form=form), 401
 
         return render_template("verify_2fa_login.html", form=form)
 
