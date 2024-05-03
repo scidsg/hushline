@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import encrypt_message
 from .db import db
-from .ext import bcrypt, limiter
+from .ext import limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, User
 from .utils import require_2fa, send_email
@@ -206,10 +206,10 @@ def init_app(app: Flask) -> None:
             db.session.delete(message)
             db.session.commit()
             flash("🗑️ Message deleted successfully.")
+            return redirect(url_for("inbox", username=user.primary_username))
         else:
             flash("⛔️ Message not found or unauthorized access.")
-
-        return redirect(url_for("inbox", username=user.primary_username))
+            return redirect(url_for("inbox", username=user.primary_username))
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
@@ -228,13 +228,25 @@ def init_app(app: Flask) -> None:
                 invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
                 if not invite_code or invite_code.expiration_date < datetime.utcnow():
                     flash("⛔️ Invalid or expired invite code.", "error")
-                    return redirect(url_for("register"))
+                    return (
+                        render_template(
+                            "register.html", form=form, require_invite_code=require_invite_code
+                        ),
+                        400,
+                    )
 
             if User.query.filter_by(primary_username=username).first():
                 flash("💔 Username already taken.", "error")
-                return redirect(url_for("register"))
+                return (
+                    render_template(
+                        "register.html", form=form, require_invite_code=require_invite_code
+                    ),
+                    409,
+                )
 
-            new_user = User(primary_username=username, password=password)
+            # Create new user instance
+            new_user = User(primary_username=username)
+            new_user.password_hash = password  # This triggers the password_hash setter
             db.session.add(new_user)
             db.session.commit()
 
@@ -277,8 +289,9 @@ def init_app(app: Flask) -> None:
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     def verify_2fa_login() -> Response | str:
-        # Redirect to login if user is not authenticated
+        # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
+            flash("You need to log in first.")
             return redirect(url_for("login"))
 
         user = User.query.get(session["user_id"])
@@ -297,6 +310,7 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox", username=user.primary_username))
             else:
                 flash("⛔️ Invalid 2FA code. Please try again.")
+                return render_template("verify_2fa_login.html", form=form), 401
 
         return render_template("verify_2fa_login.html", form=form)
 
