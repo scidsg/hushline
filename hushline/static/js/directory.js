@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const contents = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
+    const reportLinks = document.querySelectorAll('.report-link');
 
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
@@ -31,7 +32,17 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.focus(); // Focus on the search input after clearing
     });
 
-    window.searchUsers = function() {
+    reportLinks.forEach(link => {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            const username = this.getAttribute('data-username');
+            const displayName = this.getAttribute('data-display-name');
+            const bio = this.getAttribute('data-bio') || 'No bio.';
+            reportUser(username, displayName, bio);
+        });
+    });
+
+    function searchUsers() {
         const query = searchInput.value.trim();
         const tab = document.querySelector('.tab.active').getAttribute('data-tab');
         fetch(`/directory/search?query=${query}&tab=${tab}`)
