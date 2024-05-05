@@ -516,8 +516,11 @@ header .btn {
 }
 
 input[type="submit"]:hover,
-button:hover {
+button:hover,
+.btn:hover {
     cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0px 2px 0px 0px rgba(125,37,193,.25);
 }
 
 textarea {
