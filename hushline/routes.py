@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from datetime import datetime
 
 import pyotp
@@ -16,7 +17,7 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
@@ -27,6 +28,13 @@ from .utils import require_2fa, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
+
+
+def valid_username(form, field):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", field.data):
+        raise ValidationError(
+            "Username must contain only letters, numbers, underscores, or hyphens."
+        )
 
 
 class TwoFactorForm(FlaskForm):
@@ -42,7 +50,9 @@ class MessageForm(FlaskForm):
 
 
 class RegistrationForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+    username = StringField(
+        "Username", validators=[DataRequired(), Length(min=4, max=25), valid_username]
+    )
     password = PasswordField(
         "Password",
         validators=[
