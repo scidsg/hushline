@@ -70,7 +70,7 @@
                     <div class="user-actions">
                         <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
                         {% if logged_in %}
-                            <a href="#" onclick="reportUser('{{ user.primary_username }}', '{{ user.display_name or user.primary_username }}', '{{ user.bio }}')">Report Account</a>
+                            <a href="#" class="report-link" data-username="{{ user.primary_username }}" data-display-name="{{ user.display_name or user.primary_username }}" data-bio="{{ user.bio }}">Report Account</a>
                         {% endif %}
                     </div>
                 </div>
