@@ -7,3 +7,4 @@ _DEV.md
 .DS_Store
 /venv
 hushline.db
+/tests/__pycache__
