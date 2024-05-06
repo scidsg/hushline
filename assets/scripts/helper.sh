@@ -8,16 +8,16 @@ fi
 
 # Welcome message and ASCII art
 cat <<"EOF"
-  _    _           _       _      _            
- | |  | |         | |     | |    (_)           
- | |__| |_   _ ___| |__   | |     _ _ __   ___ 
+  _    _           _       _      _
+ | |  | |         | |     | |    (_)
+ | |__| |_   _ ___| |__   | |     _ _ __   ___
  |  __  | | | / __| '_ \  | |    | | '_ \ / _ \
  | |  | | |_| \__ \ | | | | |____| | | | |  __/
  |_|  |_|\__,_|___/_| |_| |______|_|_| |_|\___|
- __                            __                
-|__)  _  _  _  _   _   _  |   (_   _  _     _  _ 
-|    (- |  _) (_) | ) (_| |   __) (- |  \/ (- |  
-                                                                                                
+ __                            __
+|__)  _  _  _  _   _   _  |   (_   _  _     _  _
+|    (- |  _) (_) | ) (_| |   __) (- |  \/ (- |
+
 🤫 A self-hosted, anonymous tip line. Learn more at hushline.app
 EOF
 sleep 3
@@ -40,7 +40,15 @@ cp /home/hush/hushline/assets/service/hushline-installer.service /etc/systemd/sy
 
 systemctl daemon-reload
 systemctl enable hushline-installer.service
-apt-get -y install redis-server git python3 python3-venv python3-pip nginx tor unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
+apt-get -y install libopenjp2-7 redis-server git python3 python3-venv python3-pip nginx tor unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Ensure Rust is available for all users (optional, based on your security policies)
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /etc/profile
+source /etc/profile
 
 # Install Waveshare e-Paper library
 pip install --upgrade pip

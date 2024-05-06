@@ -6,6 +6,10 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo /bin/bash "$0" "$@"
 fi
 
+# Download splash screen image
+cd /home/hush/hushline
+wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
+
 # Install required packages for e-ink display
 apt update && apt -y dist-upgrade && apt install -y python3-pip
 
@@ -29,10 +33,6 @@ systemctl daemon-reload
 systemctl enable clear-display.service
 systemctl enable display-status.service
 systemctl start display-status.service
-
-# Download splash screen image
-cd /home/hush/hushline
-wget https://raw.githubusercontent.com/scidsg/hushline-assets/main/images/splash.png
 
 echo "✅ E-ink display configuration complete. Rebooting Hush Line..."
 sleep 3

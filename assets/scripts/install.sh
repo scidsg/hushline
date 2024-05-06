@@ -28,7 +28,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt update && apt -y dist-upgrade -o Dpkg::Options::="--force-confnew" && apt -y autoremove
 
 # Install required packages
-apt -y install sudo wget curl git python3 python3-venv python3-pip nginx tor whiptail unattended-upgrades gunicorn libssl-dev net-tools jq fail2ban ufw
+apt -y install libopenjp2-7 sudo wget curl git python3 python3-venv python3-pip nginx tor whiptail unattended-upgrades gunicorn libssl-dev net-tools jq fail2ban ufw
 
 
 # Function to kill process on a given port
@@ -36,7 +36,7 @@ kill_process_on_port() {
     local port="$1"
     local pids
     pids=$(lsof -t -i :"$port")
-    
+
     if [ -z "$pids" ]; then
         echo "No process found on port $port."
     else
@@ -306,8 +306,8 @@ HUSHLINE_PATH="/home/hush/hushline"
 
 echo "
 ✅ Installation complete!
-                                               
-Hush Line is a product by Science & Design. 
+
+Hush Line is a product by Science & Design.
 Learn more about us at https://scidsg.org.
 Have feedback? Send us an email at hushline@scidsg.org."
 
