@@ -43,6 +43,7 @@ systemctl enable hushline-installer.service
 apt-get -y install redis-server git python3 python3-venv python3-pip nginx tor unattended-upgrades gunicorn libssl-dev net-tools jq ufw rfkill
 
 # Install Waveshare e-Paper library
+pip install --upgrade pip
 pip3 install flask setuptools-rust pgpy gunicorn cryptography segno requests
 pip3 install qrcode[pil]
 pip3 install requests python-gnupg
