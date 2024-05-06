@@ -2,6 +2,12 @@ FROM python:3.12.3-bullseye
 
 WORKDIR /src
 
+# Copy the entrypoint script
+COPY files/docker/entrypoint.sh /usr/src/app/entrypoint.sh
+
+# Set the script as the entrypoint
+ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
+
 # Install necessary system packages for both Rust, Python, and required libraries
 RUN apt-get update && \
     apt-get install -y curl gcc libc6-dev libpq-dev build-essential \
@@ -35,6 +41,10 @@ RUN poetry export --without-hashes --format requirements.txt > requirements.txt 
 # Clean up to reduce image size
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create the directory for the SQLite database
+RUN mkdir -p /var/lib/hushline
+RUN chown -R www-data:www-data /var/lib/hushline
 
 # Copy the rest of the application from the project root
 COPY hushline ./hushline
