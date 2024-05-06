@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Settings for {{ secondary_username.display_name or secondary_username.username }}</h2>
+
+<form method="POST">
+    <label for="display_name">Display Name</label>
+    <input type="text" id="display_name" name="display_name" value="{{ secondary_username.display_name or '' }}" placeholder="Display Name">
+    <button type="submit">Update</button>
+</form>
+{% endblock %}

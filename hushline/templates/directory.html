@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Directory{% endblock %}
+{% block content %}
+<h2>Hush Line User Directory</h2>
+{% if not logged_in %}
+    <p class="helper">👋 Welcome to Hush Line! Find users who've opted into being listed below.</p>
+{% endif %}
+<div class="directory-tabs">
+    <ul class="tab-list">
+        <li class="tab active" data-tab="verified">Verified</li>
+        <li class="tab" data-tab="all">All</li>
+    </ul>
+</div>
+<div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search users...">
+    <span id="clearIcon" style="cursor: pointer;">&times;</span>
+</div>
+<div id="verified" class="tab-content active">
+    <div class="user-list">
+        {% for user in users %}
+            {% if user.is_verified and user.show_in_directory %}
+                <div class="user">
+                    <h3>{{ user.display_name or user.primary_username }}</h3>
+                    {% if user.display_name %}
+                        <p class="meta">@{{ user.primary_username }}</p>
+                    {% endif %}
+                    {% if user.is_admin %}
+                    <div class="badgeContainer">
+                        <p class="badge">⚙️ Admin</p>
+                    </div>
+                    {% endif %}
+                    {% if user.bio %}
+                        <p class="bio">{{ user.bio }}</p>
+                    {% endif %}
+                    <div class="user-actions">
+                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                        {% if logged_in %}
+                            <a href="#" class="report-link" data-username="{{ user.primary_username }}" data-display-name="{{ user.display_name or user.primary_username }}" data-bio="{{ user.bio }}">Report Account</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
+        {% endfor %}
+    </div>
+</div>
+<div id="all" class="tab-content">
+    <div class="user-list">
+        {% for user in users %}
+            {% if user.show_in_directory %}
+                <div class="user">
+                    <h3>{{ user.display_name or user.primary_username }}</h3>
+                    {% if user.display_name %}
+                        <p class="meta">@{{ user.primary_username }}</p>
+                    {% endif %}
+                    {% if user.is_verified or user.is_admin %}
+                    <div class="badgeContainer">
+                        {% if user.is_verified %}
+                        <p class="badge">⭐️ Verified Account</p>
+                        {% endif %}
+                        {% if user.is_admin %}
+                        <p class="badge">⚙️ Admin</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if user.bio %}
+                        <p class="bio">{{ user.bio }}</p>
+                    {% endif %}
+                    <div class="user-actions">
+                        <a href="/submit_message/{{ user.primary_username }}">Send a Message</a>
+                        {% if logged_in %}
+                            <a href="#" class="report-link" data-username="{{ user.primary_username }}" data-display-name="{{ user.display_name or user.primary_username }}" data-bio="{{ user.bio }}">Report Account</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,9 @@
+.env
+*.pyc
+__pycache__
+.mypy_cache
+*.log
+_DEV.md
+.DS_Store
+/venv
+hushline.db

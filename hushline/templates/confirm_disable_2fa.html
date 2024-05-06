@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+    <h2>Disable Two-Factor Authentication</h2>
+    <p>Are you sure you want to disable 2FA?</p>
+    <form method="POST" action="{{ url_for('settings.disable_2fa') }}">
+        <button type="submit">Yes, Disable 2FA</button>
+    </form>
+    <a href="{{ url_for('settings.index') }}">Cancel</a>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+    <h2>Scan this QR Code with your 2FA app and enter the code</h2>
+    <img class="qr" src="{{ qr_code_img }}" alt="QR Code">
+    <p class="mono">Your pairing code: {{ user_secret }}</p>
+    <form method="POST" action="{{ url_for('settings.verify_2fa_setup') }}">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.verification_code(size=6) }}
+            {% if form.verification_code.errors %}
+                <div class="error">{{ form.verification_code.errors[0] }}</div>
+            {% endif %}
+        </div>
+        <button type="submit">Verify Setup</button>
+    </form>
+{% endblock %}

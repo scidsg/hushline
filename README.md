@@ -1,117 +1,41 @@
-# Anonymous Tip Line
+# 🤫 Hush Line
 
-## Easy Install
+[Hush Line](https://hushline.app) is a free and open-source, anonymous-tip-line-as-a-service for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line; by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
-```
-curl -sSL https://raw.githubusercontent.com/scidsg/tip-line/master/install.sh | bash
-```
+[More project information...](https://github.com/scidsg/project-info/tree/main/hush-line)
 
-To deploy your Flask application to a production environment, you can follow these general steps:
+![Frame 152](https://github.com/scidsg/hushline/assets/28545431/5c9b1c09-dcff-46da-9ea6-630d9b525855)
 
-    Use a production-ready WSGI server like Gunicorn to run your Flask app.
-    Configure a reverse proxy like Nginx to handle incoming requests and forward them to your Flask app.
-    Secure your application with an SSL certificate using Let's Encrypt.
-    (Optional) Deploy your application to a cloud service like AWS, Google Cloud, or Heroku.
+## Contribution Guidelines
 
-Here's a step-by-step guide to deploy your Flask application using Gunicorn, Nginx, and Let's Encrypt on an Ubuntu server:
+❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you follow these guidelines:
 
-## Step 1: Install necessary packages
+### Code of Conduct
 
-Install Gunicorn and Nginx:
+By contributing to Hush Line, you agree to our [Code of Conduct](https://github.com/scidsg/business-resources/blob/main/Policies%20%26%20Procedures/Code%20of%20Conduct.md).
 
-```
-sudo apt update
-sudo apt install gunicorn nginx
-```
+### Reporting Bugs
 
-## Step 2: Run your Flask app with Gunicorn
+If you find a bug in the software, we appreciate your help in reporting it. To report a bug:
 
-Navigate to your Flask app directory and run the following command to start your Flask app with Gunicorn:
+1. **Check Existing Issues**: Before creating a new issue, please check if it has already been reported. If it has, you can add any new information you have to the existing issue.
+2. **Create a New Issue**: If the bug hasn't been reported, create a new issue and provide as much detail as possible, including:
+   - A clear and descriptive title.
+   - Steps to reproduce the bug.
+   - Expected behavior and what actually happens.
+   - Any relevant screenshots or error messages.
+   - Your operating system, browser, and any other relevant system information.
 
-bash
+### Submitting Pull Requests
 
-gunicorn --bind 0.0.0.0:8000 app:app
+Contributions to the codebase are submitted via pull requests (PRs). Here's how to do it:
 
-This command will start Gunicorn on port 8000.
+1. **Create a New Branch**: Always create a new branch for your changes.
+2. **Make Your Changes**: Implement your changes in your branch.
+3. **Follow Coding Standards**: Ensure your code adheres to the coding standards set for this project.
+4. **Write Good Commit Messages**: Write concise and descriptive commit messages. This helps maintainers understand and review your changes better.
+5. **Test Your Changes**: Before submitting your PR, test your changes thoroughly. Please link to a [Gist](https://gist.github.com) containing your terminal's output of the end-to-end install of Hush Line. For an example of a Gist, refer to the QA table below under the "Install Gist" column.
+6. **Create a Pull Request**: Once you are ready, create a pull request against the main branch of the repository. In your pull request description, explain your changes and reference any related issue(s).
+7. **Review by Maintainers**: Wait for the maintainers to review your pull request. Be ready to make changes if they suggest any.
 
-## Step 3: Configure Nginx
-
-Create a new Nginx configuration file for your Flask app:
-
-```
-sudo nano /etc/nginx/sites-available/my_flask_app
-```
-
-Add the following configuration to the file, replacing your_domain with your actual domain:
-
-```
-server {
-    listen 80;
-    server_name your_domain;
-
-    location / {
-        proxy_pass http://0.0.0.0:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-Save and exit the file.
-
-Create a symbolic link for the configuration file:
-
-```
-sudo ln -s /etc/nginx/sites-available/my_flask_app /etc/nginx/sites-enabled/
-```
-
-Test the Nginx configuration:
-
-```
-sudo nginx -t
-```
-
-If the test is successful, restart Nginx:
-
-```
-sudo systemctl restart nginx
-```
-
-## Step 4: Secure your application with Let's Encrypt
-
-Install Certbot and the Nginx plugin:
-
-```
-sudo apt install certbot python3-certbot-nginx
-```
-
-Obtain and install the SSL certificate:
-
-```
-sudo certbot --nginx -d your_domain
-```
-
-Follow the prompts to complete the certificate installation. Certbot will automatically modify your Nginx configuration to use the SSL certificate.
-
-## Step 5: (Optional) Deploy your application to a cloud service
-
-If you prefer to deploy your Flask application to a cloud service like AWS, Google Cloud, or Heroku, you can follow their respective documentation and guidelines:
-
-    Deploying a Flask app on AWS Elastic Beanstalk
-    Deploying a Flask app on Google App Engine
-    Deploying a Flask app on Heroku
-
-Remember to set your Flask app's environment to production and disable debug mode before deploying. In your app.py, change the last line to:
-
-```
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
-```
-
-And in your application's environment, set the FLASK_ENV variable to production:
-
-```
-export FLASK_ENV=production
-```
-
-This will ensure your application is running in a production environment.
+By following these guidelines, you help to ensure a smooth and efficient contribution process for everyone.

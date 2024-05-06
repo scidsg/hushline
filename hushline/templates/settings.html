@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h2>Settings</h2>
+<div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
+    <ul class="tab-list">
+        <li class="tab active" data-tab="profile">Profile</li>
+        <li class="tab" data-tab="auth">Authentication</li>
+        <li class="tab" data-tab="email">Email & PGP</li>
+        <li class="tab" data-tab="advanced">Advanced</li>
+        {% if user.is_admin %}
+            <li class="tab admin-only" data-tab="admin">Admin</li>
+        {% endif %}
+    </ul>
+</div>
+<div class="formBody">
+    <div id="profile" class="tab-content active">
+        <div class="form-list">
+            <div class="text-only">
+                <h3>Large Organizations</h3>
+                <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
+            </div>
+        </div>
+
+        <h3>Update Display Name</h3>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your display name will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            {{ display_name_form.hidden_tag() }}
+                <label for="display_name">Display Name</label>
+            {{ display_name_form.display_name(id='display_name') }}
+            {% if display_name_form.display_name.errors %}
+                {% for error in display_name_form.display_name.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="update_display_name">Update Display Name</button>
+        </form>
+
+        <h3>Public User Directory</h3>
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            {{ directory_visibility_form.hidden_tag() }}
+            <div class="checkbox-group">
+                {{ directory_visibility_form.show_in_directory.label }}
+                {{ directory_visibility_form.show_in_directory() }}
+            </div>
+            <button type="submit" name="update_directory_visibility">Update Visibility</button>
+        </form>
+
+        <h3>Add Your Bio</h3>
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            <div class="form-group">
+                <label for="bio">Bio (up to 250 characters):</label>
+                <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
+            </div>
+            <button type="submit" name="update_bio">Update Bio</button>
+        </form>
+    </div>
+
+    <div id="auth" class="tab-content">
+        <!-- Change Username Section -->
+        <h3>Change Username</h3>
+        {% if user.is_verified %}
+            <p>⚠️ Changing your username will result in losing your verification status.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('settings.index') }}">
+            {{ change_username_form.hidden_tag() }}
+            <label for="new_username">Username</label>
+            {{ change_username_form.new_username(id='new_username', value=session['username']) }}
+            {% if change_username_form.new_username.errors %}
+                {% for error in change_username_form.new_username.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit" name="change_username">Change Username</button>
+        </form>
+
+        <!-- Two-Factor Authentication Section -->
+        <h3>Two-Factor Authentication</h3>
+        {% if user.totp_secret %}
+            <!-- If 2FA is enabled, show the Disable 2FA button -->
+            <form method="GET" action="{{ url_for('settings.confirm_disable_2fa') }}">
+                <button type="submit">Disable 2FA</button>
+            </form>
+        {% else %}
+        <!-- If 2FA is disabled, show the Enable 2FA button -->
+        <form method="POST" action="{{ url_for('settings.toggle_2fa') }}">
+            <button type="submit">Enable 2FA</button>
+        </form>
+        {% endif %}
+        <!-- Change Password Section in settings.html -->
+        <h3>Change Password</h3>
+        <form method="POST" action="{{ url_for('settings.change_password') }}">
+            {{ change_password_form.hidden_tag() }}
+                <label for="old_password">Old Password</label>
+            {{ change_password_form.old_password(id='old_password') }}
+            {% if change_password_form.old_password.errors %}
+                {% for error in change_password_form.old_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <label for="new_password">New Password</label>
+            {{ change_password_form.new_password(id="new_password") }}
+            {% if change_password_form.new_password.errors %}
+                {% for error in change_password_form.new_password.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit">Change Password</button>
+        </form>
+    </div>
+
+    <div id="email" class="tab-content">
+        <!-- SMTP Settings Section -->
+        <h3>Email Delivery Settings</h3>
+        <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
+            {{ smtp_settings_form.hidden_tag() }}
+            {{ smtp_settings_form.smtp_username.label }}
+            {{ smtp_settings_form.smtp_username }}
+            {{ smtp_settings_form.smtp_server.label }}
+            {{ smtp_settings_form.smtp_server }}
+            {{ smtp_settings_form.smtp_port.label }}
+            {{ smtp_settings_form.smtp_port }}
+            {{ smtp_settings_form.smtp_password.label }}
+            {{ smtp_settings_form.smtp_password }}
+            <button type="submit">Update Settings</button>
+        </form>
+        <!-- PGP Key Section -->
+        <h3>Public PGP Key</h3>
+        <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
+            {{ pgp_key_form.hidden_tag() }}
+            <label for="pgp_key">Public PGP Key</label>
+            {{ pgp_key_form.pgp_key(id='pgp_key') }}
+            {% if pgp_key_form.pgp_key.errors %}
+                {% for error in pgp_key_form.pgp_key.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+            <button type="submit">Update PGP Key</button>
+        </form>
+    </div>
+
+    <div id="advanced" class="tab-content">
+        <!-- Account Deletion Section -->
+        <h3>Delete Account</h3>
+        <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+        <form method="POST" action="{{ url_for('settings.delete_account') }}">
+            <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
+        </form>
+    </div>
+
+    {% if user.is_admin %}
+        <div id="admin" class="tab-content admin-only">
+            <div class="admin-highlights">
+                <div class="metric">
+                    <p>Users</p>
+                    <p>{{ user_count }}</p>
+                </div>
+                <div class="metric">
+                    <p>2FA Enabled</p>
+                    <p>{{ two_fa_count }}</p>
+                    <p>{{ two_fa_percentage | round(2) }}%</p>
+                </div>
+                <div class="metric">
+                    <p>PGP Enabled</p>
+                    <p>{{ pgp_key_count }}</p>
+                    <p>{{ pgp_key_percentage | round(2) }}%</p>
+                </div>
+            </div>
+            <h3>All Users</h3>
+            {% if all_users %}
+                {% for user in all_users %}
+                    <div class="user">
+                        <h4>{{ user.primary_username }}</h4>
+                        <p class="meta">Display Name: {{ user.display_name or 'No display name' }}</p>
+                        <p class="meta">Verified: {{ "✅ Yes" if user.is_verified else "👎 No" }}</p>
+                        <p class="meta">Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}</p>
+                        <div class="tableActions">
+                            <form action="/admin/toggle_verified/{{ user.id }}" method="POST">
+                                <button type="submit">Toggle Verified</button>
+                            </form>
+                            <form action="/admin/toggle_admin/{{ user.id }}" method="POST">
+                                <button type="submit">Toggle Admin</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% else %}
+                    <p>No users found.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+
+{% endblock %}

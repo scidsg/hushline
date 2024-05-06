@@ -1,0 +1,62 @@
+[tool.poetry]
+name = "hushline"
+version = "0.0.1"
+description = "A lightweight, secure, and anonymous tip line for organizations and individuals."
+authors = ["Science & Design, Inc. <hello@scidsg.org>"]
+license = "AGPL 3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+cryptography = "^42.0.5"
+flask = "^3.0.2"
+flask-limiter = "^3.5.1"
+flask-migrate = "^4.0.7"
+flask-sqlalchemy = "^3.1.1"
+flask-wtf = "^1.2.1"
+gunicorn = "^22.0.0"
+passlib = "^1.7.4"
+pyotp = "^2.9.0"
+pysequoia = "^0.1.23"
+python-dotenv = "^1.0.1"
+qrcode = "^7.4.2"
+redis = "^5.0.3"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.3.0"
+flake8 = "^7.0.0"
+isort = "^5.13.2"
+mypy = "^1.9.0"
+pytest = "^8.1.1"
+pytest-mock = "^3.12.0"
+types-flask-migrate = "^4.0.0.20240311"
+
+[[tool.poetry.packages]]
+include = "hushline"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+exclude = '/(migrations)/'
+
+[tool.isort]
+profile= "black"
+line_length = 100
+skip = ["migrations"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+disable_error_code = [
+    "import-untyped",
+    "name-defined",
+    "return-value",
+    "union-attr",
+]
+exclude = ['migrations']
