@@ -410,7 +410,7 @@ p.meta {
 }
 
 .dirMeta {
-    margin: 1.125rem 0 1.25rem 0;
+    margin: 1rem 0;
     background-color: rgb(255, 249, 234);
     border-radius: .25rem;
     padding: .9125rem 1rem;
