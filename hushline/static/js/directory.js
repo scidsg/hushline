@@ -3,11 +3,83 @@ document.addEventListener('DOMContentLoaded', function () {
     const contents = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
-    const reportLinks = document.querySelectorAll('.report-link');
+    let userData = []; // Will hold the user data loaded from JSON
 
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
-        searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`; // Update placeholder dynamically
+        searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`;
+    }
+
+    function searchUsers() {
+        const query = searchInput.value.trim().toLowerCase();
+        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
+        const filteredUsers = userData.filter(user => {
+            const userText = `${user.primary_username} ${user.display_name || ''} ${user.bio || ''}`.toLowerCase();
+            return userText.includes(query) && (tab === 'all' || (user.is_verified && tab === 'verified'));
+        });
+        updateUsersList(filteredUsers);
+    }
+
+    function loadData() {
+        fetch('/static/data/users_directory.json')
+            .then(response => response.json())
+            .then(data => {
+                userData = data;
+                handleSearchInput(); // Initial display after data is loaded
+            })
+            .catch(error => console.error('Failed to load user data:', error));
+    }
+
+    function filterUsers(query) {
+        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
+        return userData.filter(user => {
+            const searchText = `${user.primary_username} ${user.display_name} ${user.bio}`.toLowerCase();
+            const matchesTab = tab === 'all' || (tab === 'verified' && user.is_verified);
+            return searchText.includes(query.toLowerCase()) && matchesTab;
+        });
+    }
+
+    function highlightMatch(text, query) {
+        if (!query) return text; // If no query, return the text unmodified
+        const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    function displayUsers(users, query) {
+        const userListContainer = document.querySelector('.tab-content.active .user-list');
+        userListContainer.innerHTML = '';
+        if (users.length > 0) {
+            users.forEach(user => {
+                const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
+                const usernameHighlighted = highlightMatch(user.primary_username, query);
+                const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : '';
+
+                const userDiv = document.createElement('div');
+                userDiv.className = 'user';
+                userDiv.innerHTML = `
+                    <h3>${displayNameHighlighted}</h3>
+                    <p class="meta">@${usernameHighlighted}</p>
+                    <div class="badgeContainer">
+                        ${user.is_verified ? '<p class="badge">⭐️ Verified Account</p>' : ''}
+                        ${user.is_admin ? '<p class="badge">⚙️ Admin</p>' : ''}
+                    </div>
+                    ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
+                    <div class="user-actions">
+                        <a href="/submit_message/${user.primary_username}">Send a Message</a>
+                    </div>
+                `;
+                userListContainer.appendChild(userDiv);
+            });
+        } else {
+            userListContainer.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+        }
+    }
+
+    function handleSearchInput() {
+        const query = searchInput.value.trim();
+        const filteredUsers = filterUsers(query);
+        displayUsers(filteredUsers, query);
+        clearIcon.style.visibility = query.length ? 'visible' : 'hidden';
     }
 
     tabs.forEach(tab => {
@@ -16,99 +88,21 @@ document.addEventListener('DOMContentLoaded', function () {
             contents.forEach(c => c.classList.remove('active'));
 
             tab.classList.add('active');
-            document.querySelector('#' + tab.getAttribute('data-tab')).classList.add('active');
+            const activeContent = document.getElementById(tab.getAttribute('data-tab'));
+            activeContent.classList.add('active');
 
+            handleSearchInput(); // Filter again when tab changes
             updatePlaceholder();
         });
     });
 
-    searchInput.addEventListener('input', function () {
-        searchUsers(); // Trigger search on input
-        clearIcon.style.visibility = this.value ? 'visible' : 'hidden'; // Show clear icon if there's text
-    });
-
+    searchInput.addEventListener('input', handleSearchInput);
     clearIcon.addEventListener('click', function () {
-        clearSearch();
-        searchInput.focus(); // Focus on the search input after clearing
-    });
-
-    reportLinks.forEach(link => {
-        link.addEventListener('click', function (event) {
-            event.preventDefault();
-            const username = this.getAttribute('data-username');
-            const displayName = this.getAttribute('data-display-name');
-            const bio = this.getAttribute('data-bio') || 'No bio.';
-            reportUser(username, displayName, bio);
-        });
-    });
-
-    function searchUsers() {
-        const query = searchInput.value.trim();
-        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
-        fetch(`/directory/search?query=${query}&tab=${tab}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(users => updateUsersList(users))
-        };
-
-    function highlightMatch(text, query) {
-        if (!query) return text; // If no query, return the text unmodified
-        const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
-    }
-
-    function updateUsersList(users) {
-        const query = document.getElementById('searchInput').value.trim();
-        const userList = document.querySelector('.tab-content.active .user-list');
-        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
-
-        userList.innerHTML = '';
-        if (users && users.length > 0) {
-            users.forEach(user => {
-                const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
-                const userNameHighlighted = highlightMatch(user.primary_username, query);
-                const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : '';
-
-                const adminBadge = user.is_admin ? '<p class="badge">⚙️ Admin</p>' : '';
-                const verifiedBadge = user.is_verified && tab === 'all' ? '<p class="badge">⭐️ Verified Account</p>' : '';
-
-                const userDiv = document.createElement('div');
-                userDiv.classList.add('user');
-                userDiv.innerHTML = `
-                    <h3>${displayNameHighlighted}</h3>
-                    <p class="meta">@${userNameHighlighted}</p>
-                    <div class="badgeContainer">
-                        ${verifiedBadge}
-                        ${adminBadge}
-                    </div>
-                    ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
-                    <div class="user-actions">
-                        <a href="/submit_message/${user.primary_username}">Send a Message</a>
-                    </div>
-                `;
-                userList.appendChild(userDiv);
-            });
-        } else {
-            userList.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
-        }
-    }
-
-    function clearSearch() {
         searchInput.value = '';
         clearIcon.style.visibility = 'hidden';
-        searchUsers(); // Reset the user view
-    }
+        handleSearchInput();
+    });
 
-    updatePlaceholder(); // Set initial placeholder text when page loads
+    loadData(); // Load the data when the page is ready
+    updatePlaceholder(); // Initialize placeholder text
 });
-
-function reportUser(username, displayName, bio) {
-    const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
-    const encodedMessage = encodeURIComponent(messageContent);
-    const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
-    window.location.href = submissionUrl;
-}

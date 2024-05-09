@@ -8,3 +8,4 @@ _DEV.md
 /venv
 hushline.db
 /tests/__pycache__
+hushline/static/data/users_directory.json
