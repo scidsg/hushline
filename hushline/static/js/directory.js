@@ -47,22 +47,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function displayUsers(users, query) {
         const userListContainer = document.querySelector('.tab-content.active .user-list');
+        const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
         userListContainer.innerHTML = '';
+
         if (users.length > 0) {
             users.forEach(user => {
                 const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
                 const usernameHighlighted = highlightMatch(user.primary_username, query);
                 const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : '';
 
+                let badgeContainer = '';
+
+                if (user.is_admin) {
+                    badgeContainer += '<p class="badge">⚙️ Admin</p>';
+                }
+
+                // Only include the "Verified" badge if the "all" tab is active
+                if (activeTab === 'all' && user.is_verified) {
+                    badgeContainer += '<p class="badge">⭐️ Verified Account</p>';
+                }
+
                 const userDiv = document.createElement('div');
                 userDiv.className = 'user';
                 userDiv.innerHTML = `
                     <h3>${displayNameHighlighted}</h3>
                     <p class="meta">@${usernameHighlighted}</p>
-                    <div class="badgeContainer">
-                        ${user.is_verified ? '<p class="badge">⭐️ Verified Account</p>' : ''}
-                        ${user.is_admin ? '<p class="badge">⚙️ Admin</p>' : ''}
-                    </div>
+                    <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
                         <a href="/submit_message/${user.primary_username}">Send a Message</a>
