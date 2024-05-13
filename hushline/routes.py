@@ -7,8 +7,8 @@ import pyotp
 from flask import (
     Flask,
     Response,
+    current_app,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -16,6 +16,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
+from sqlalchemy import event
 from wtforms import PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 
@@ -24,7 +25,7 @@ from .db import db
 from .ext import limiter
 from .forms import ComplexPassword
 from .model import InviteCode, Message, User
-from .utils import require_2fa, send_email
+from .utils import generate_user_directory_json, require_2fa, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -375,38 +376,7 @@ def init_app(app: Flask) -> None:
         )  # Sort users in Python with admins first
         return render_template("directory.html", users=sorted_users, logged_in=logged_in)
 
-    @app.route("/directory/search")
-    @limiter.limit("500 per minute")
-    def directory_search():
-        query = request.args.get("query", "").strip()
-        tab = request.args.get("tab", "all")
-
-        try:
-            general_filter = User.query.filter(
-                db.or_(
-                    User.primary_username.ilike(f"%{query}%"),
-                    User.display_name.ilike(f"%{query}%"),
-                    User.bio.ilike(f"%{query}%"),
-                )
-            )
-
-            if tab == "verified":
-                users = general_filter.filter(User.is_verified.is_(True)).all()
-            else:
-                users = general_filter.all()
-
-            users_data = [
-                {
-                    "primary_username": user.primary_username,
-                    "display_name": user.display_name or user.primary_username,
-                    "is_verified": user.is_verified,
-                    "is_admin": user.is_admin,  # Ensure this attribute is correctly being sent
-                    "bio": user.bio,
-                }
-                for user in users
-            ]
-
-            return jsonify(users_data)
-        except Exception as e:
-            print(f"Error during search: {e}")
-            return jsonify({"error": "Internal Server Error"}), 500
+    @event.listens_for(User, "after_update")
+    def receive_after_update(mapper, connection, target):
+        current_app.logger.info("Triggering JSON regeneration due to user update/insert")
+        generate_user_directory_json()
