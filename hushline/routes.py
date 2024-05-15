@@ -2,13 +2,16 @@ import logging
 import os
 import re
 from datetime import datetime
+from urllib.parse import urljoin, urlparse
 
 import pyotp
+import stripe
 from flask import (
     Flask,
     Response,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -74,6 +77,8 @@ class LoginForm(FlaskForm):
 
 
 def init_app(app: Flask) -> None:
+    stripe.api_key = app.config.get("STRIPE_API_KEY")
+
     @app.route("/")
     @limiter.limit("120 per minute")
     def index() -> Response:
@@ -382,3 +387,186 @@ def init_app(app: Flask) -> None:
     def receive_after_update(mapper, connection, target):
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
+
+    @app.route("/create-checkout-session", methods=["POST"])
+    def create_checkout_session():
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        try:
+            customer = (
+                stripe.Customer.create(email=user.email)
+                if not user.stripe_customer_id
+                else stripe.Customer.retrieve(user.stripe_customer_id)
+            )
+            user.stripe_customer_id = customer.id
+            db.session.commit()
+
+            checkout_session = stripe.checkout.Session.create(
+                customer=user.stripe_customer_id,
+                payment_method_types=["card"],
+                line_items=[{"price": "price_1OhiU5LcBPqjxU07a4eKQHrO", "quantity": 1}],
+                mode="subscription",
+                success_url=url_for("payment_success", _external=True)
+                + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=url_for("payment_cancel", _external=True),
+            )
+            return jsonify({"id": checkout_session.id})
+        except Exception as e:
+            app.logger.error(f"Failed to create checkout session: {str(e)}")
+            return jsonify({"error": "Failed to create checkout session", "details": str(e)}), 500
+
+    @app.route("/payment-success")
+    def payment_success():
+        session_id = request.args.get("session_id")
+
+        if "user_id" in session:
+            user_id = session["user_id"]
+            user = User.query.get(user_id)
+            if user:
+                try:
+                    checkout_session = stripe.checkout.Session.retrieve(session_id)
+                    subscription = stripe.Subscription.retrieve(checkout_session.subscription)
+
+                    # Update user's subscription details
+                    user.has_paid = True
+                    user.stripe_subscription_id = subscription.id
+                    user.paid_features_expiry = datetime.fromtimestamp(
+                        subscription.current_period_end
+                    )
+
+                    user.is_subscription_active = True
+                    db.session.commit()
+                    flash("🎉 Payment successful! Your account has been upgraded.", "success")
+                except Exception as e:
+                    app.logger.error(f"Failed to retrieve subscription details: {e}")
+                    flash("An error occurred while processing your payment.", "error")
+            else:
+                flash("🫥 User not found.", "error")
+        else:
+            flash("⛔️ You are not logged in.", "warning")
+
+        origin_page = request.args.get("origin", url_for("index"))
+        if is_safe_url(origin_page):
+            return redirect(origin_page)
+        else:
+            flash("Warning: Unsafe redirect attempt detected.", "warning")
+            return redirect(url_for("index"))
+
+    def is_safe_url(target):
+        ref_url = urlparse(request.host_url)
+        test_url = urlparse(urljoin(request.host_url, target))
+        return (
+            test_url.scheme in ("", "http", "https")
+            and ref_url.netloc == test_url.netloc
+            and test_url.path.startswith("/")
+        )
+
+    @app.route("/payment-cancel")
+    def payment_cancel():
+        origin_page = request.args.get("origin", url_for("index"))
+        if is_safe_url(origin_page):
+            flash("👍 Payment was cancelled.", "warning")
+            return redirect(origin_page)
+        else:
+            flash("Warning: Unsafe redirect attempt detected.", "warning")
+            return redirect(url_for("index"))
+
+    @app.route("/stripe-webhook", methods=["POST"])
+    def stripe_webhook():
+        payload = request.get_data(as_text=True)
+        sig_header = request.headers.get("Stripe-Signature")
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, stripe_webhook_secret  # noqa: F821
+            )  # noqa: F821
+
+            # Handle the checkout.session.completed event
+            if event["type"] == "checkout.session.completed":
+                session = event["data"]["object"]
+                user = find_user_by_stripe_customer_id(session["customer"])
+                if user:
+                    user.has_paid = True
+                    db.session.commit()
+
+            # Handle the customer.subscription.deleted event
+            elif event["type"] == "customer.subscription.deleted":
+                subscription = event["data"]["object"]
+                user = find_user_by_stripe_customer_id(subscription["customer"])
+                if user:
+                    # Use the subscription's current period end for paid_features_expiry
+                    user.paid_features_expiry = datetime.utcfromtimestamp(
+                        subscription["current_period_end"]
+                    )
+                    user.is_subscription_active = False
+                    db.session.commit()
+
+            # Handle the invoice.payment_failed event
+            elif event["type"] == "invoice.payment_failed":
+                invoice = event["data"]["object"]
+                user = find_user_by_stripe_customer_id(invoice["customer"])
+                if user:
+                    user.has_paid = False
+                    db.session.commit()
+
+            return jsonify({"status": "success"})
+        except ValueError:
+            # Invalid payload
+            app.logger.error("Invalid payload received from Stripe webhook.", exc_info=True)
+            return jsonify({"error": "Invalid payload"}), 400
+        except stripe.error.SignatureVerificationError:
+            # Invalid signature
+            app.logger.error("Invalid signature for Stripe webhook.", exc_info=True)
+            return jsonify({"error": "Invalid signature"}), 400
+        except Exception as e:  # noqa: F841
+            # Other exceptions
+            app.logger.error("Error processing Stripe webhook.", exc_info=True)
+            return jsonify({"error": "An error occurred"}), 400
+
+    def find_user_by_stripe_customer_id(customer_id):
+        return User.query.filter_by(stripe_customer_id=customer_id).first()
+
+    @app.route("/cancel-subscription", methods=["POST"])
+    @require_2fa
+    def cancel_subscription():
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if not user or not user.stripe_subscription_id:
+            flash("Subscription not found.", "error")
+            return redirect(url_for("settings"))
+
+        try:
+            # Cancel the subscription on Stripe
+            stripe.Subscription.delete(user.stripe_subscription_id)
+
+            # Update the database to reflect the subscription's end date
+            subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
+            user.is_subscription_active = False
+            user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
+            db.session.commit()
+
+            flash(
+                "Your subscription has been canceled. You will retain access to paid features until the end of your billing period.",  # noqa: E501
+                "success",
+            )
+        except Exception as e:
+            app.logger.error(f"Failed to cancel subscription: {e}")
+            flash("An error occurred while attempting to cancel your subscription.", "error")
+
+        return redirect(url_for("settings"))
+
+    def has_paid_features(user_id):
+        user = User.query.get(user_id)
+        if user and user.paid_features_expiry and user.paid_features_expiry > datetime.utcnow():
+            return True
+        return False
