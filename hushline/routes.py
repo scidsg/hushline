@@ -125,9 +125,24 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str):
+    @limiter.limit("120 per minute")
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
+
+        # Try to get the user either by primary or secondary username
         user = User.query.filter_by(primary_username=username).first()
+        secondary_user = None
+        display_name_or_username = ""
+
+        if user:
+            display_name_or_username = user.display_name or user.primary_username
+        else:
+            # If not found, check in secondary usernames
+            secondary_user = SecondaryUsername.query.filter_by(username=username).first()
+            if secondary_user:
+                user = secondary_user.primary_user
+                display_name_or_username = secondary_user.display_name or secondary_user.username
+
         if not user:
             flash("User not found.")
             return redirect(url_for("index"))
@@ -158,7 +173,12 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(content=content_to_save, user_id=user.id)
+            # Save the new message
+            new_message = Message(
+                content=email_content,
+                user_id=user.id,
+                secondary_user_id=secondary_user.id if secondary_user else None,
+            )
             db.session.add(new_message)
             db.session.commit()
 
@@ -195,6 +215,7 @@ def init_app(app: Flask) -> None:
             "submit_message.html",
             form=form,
             user=user,
+            secondary_user=secondary_user,
             username=username,
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
@@ -668,6 +689,9 @@ def init_app(app: Flask) -> None:
             else:
                 flash("Display name cannot be empty.", "error")
 
+        # Pass the secondary user object correctly to the template
         return render_template(
-            "secondary_user_settings.html", user=user, secondary_user=secondary_user
+            "secondary_user_settings.html",
+            user=user,
+            secondary_username=secondary_user,  # Ensure this variable name matches the expectation in your template  # noqa: E501
         )
