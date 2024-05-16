@@ -27,7 +27,7 @@ from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .limiter import limiter
-from .model import InviteCode, Message, User
+from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
 # Logging setup
@@ -113,7 +113,7 @@ def init_app(app: Flask) -> None:
         messages = (
             Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
         )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
+        secondary_usernames_dict = {su.id: su for su in primary_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
@@ -121,7 +121,7 @@ def init_app(app: Flask) -> None:
             secondary_username=None,
             messages=messages,
             is_secondary=False,
-            secondary_usernames=secondary_users_dict,
+            secondary_usernames=secondary_usernames_dict,
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
@@ -570,3 +570,104 @@ def init_app(app: Flask) -> None:
         if user and user.paid_features_expiry and user.paid_features_expiry > datetime.utcnow():
             return True
         return False
+
+    @app.route("/add-secondary-username", methods=["POST"])
+    @require_2fa
+    def add_secondary_username():
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if not user:
+            flash("🫥 User not found.", "error")
+            return redirect(url_for("logout"))
+
+        # Check if the user has paid for the premium feature
+        if not user.has_paid:
+            flash(
+                "⚠️ This feature requires a paid account.",
+                "warning",
+            )
+            return redirect(url_for("create_checkout_session"))
+
+        # Check if the user already has the maximum number of secondary usernames
+        if len(user.secondary_usernames) >= 5:
+            flash("⚠️ You have reached the maximum number of secondary usernames.", "error")
+            return redirect(url_for("settings.index"))
+
+        username = request.form.get("username").strip()
+        if not username:
+            flash("⛔️ Username is required.", "error")
+            return redirect(url_for("settings.index"))
+
+        # Check if the secondary username is already taken
+        existing_user = SecondaryUsername.query.filter_by(username=username).first()
+        if existing_user:
+            flash("⚠️ This username is already taken.", "error")
+            return redirect(url_for("settings.index"))
+
+        # Add the new secondary username
+        new_secondary_user = SecondaryUsername(username=username, user_id=user.id)
+        db.session.add(new_secondary_user)
+        db.session.commit()
+        flash("👍 Username added successfully.", "success")
+        return redirect(url_for("settings.index"))
+
+    @app.route("/settings/secondary/<secondary_username>/update", methods=["POST"])
+    @require_2fa
+    def update_secondary_username(secondary_username):
+        # Ensure the user is logged in
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        # Find the secondary user in the database
+        secondary_user = SecondaryUsername.query.filter_by(
+            username=secondary_username, user_id=user_id
+        ).first_or_404()
+
+        # Update the secondary user's display name from the form data
+        new_display_name = request.form.get("display_name").strip()
+        if new_display_name:
+            secondary_user.display_name = new_display_name
+            db.session.commit()
+            flash("Display name updated successfully.", "success")
+        else:
+            flash("Display name cannot be empty.", "error")
+
+        # Redirect back to the settings page for the secondary user
+        return redirect(url_for("secondary_user_settings", secondary_username=secondary_username))
+
+    @app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
+    @require_2fa
+    def secondary_user_settings(secondary_username):
+        # Ensure the user is logged in
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        # Retrieve the primary user
+        user = User.query.get(user_id)
+
+        # Find the secondary user in the database
+        secondary_user = SecondaryUsername.query.filter_by(
+            username=secondary_username, user_id=user_id
+        ).first_or_404()
+
+        if request.method == "POST":
+            # Update the secondary user's display name or other settings
+            new_display_name = request.form.get("display_name", "").strip()
+            if new_display_name:
+                secondary_user.display_name = new_display_name
+                db.session.commit()
+                flash("👍 Settings updated successfully.")
+            else:
+                flash("Display name cannot be empty.", "error")
+
+        return render_template(
+            "secondary_user_settings.html", user=user, secondary_user=secondary_user
+        )
