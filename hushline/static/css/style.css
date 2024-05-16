@@ -422,6 +422,10 @@ p.meta {
     margin-bottom: .75rem;
 }
 
+.badge + form {
+    margin-bottom: 1rem;
+}
+
 h1+p.meta {
     margin-bottom: 1.5rem;
     margin-top: 0;
@@ -604,6 +608,7 @@ li a.small {
     border: 1px solid rgba(68, 51, 11, 0.13);
     border-radius: .25rem;
     padding: 1.25rem 1rem;
+    margin-bottom: 2rem;
 }
 
 .username-list li:last-of-type {
