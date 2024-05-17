@@ -17,7 +17,7 @@
                 <p class="decrypted-content">{{ message.content }}</p>
                 <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
                 <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
-                    <button type="submit" class="btn btn-danger" id="deleteMessageButton">Delete</button>
+                    <button type="submit" class="btn btn-danger deleteMessageButton">Delete</button>
                 </form>
             </div>
         {% endfor %}
