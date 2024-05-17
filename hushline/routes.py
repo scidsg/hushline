@@ -142,6 +142,10 @@ def init_app(app: Flask) -> None:
             if secondary_user:
                 user = secondary_user.primary_user
                 display_name_or_username = secondary_user.display_name or secondary_user.username
+                # Check if the subscription has expired for secondary usernames
+                if not user.has_paid or user.paid_features_expiry < datetime.utcnow():
+                    flash("🫥 User not found.")
+                    return redirect(url_for("index"))
 
         if not user:
             flash("User not found.")
