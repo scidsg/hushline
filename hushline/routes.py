@@ -564,13 +564,13 @@ def init_app(app: Flask) -> None:
         user = User.query.get(user_id)
         if not user or not user.stripe_subscription_id:
             flash("Subscription not found.", "error")
-            return redirect(url_for("settings"))
+            return redirect(url_for("settings.index"))
 
         try:
             # Cancel the subscription on Stripe
             stripe.Subscription.delete(user.stripe_subscription_id)
 
-            # Update the database to reflect the subscription's end date
+            # Retrieve the subscription again to update local database info
             subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
             user.is_subscription_active = False
             user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
@@ -584,7 +584,7 @@ def init_app(app: Flask) -> None:
             app.logger.error(f"Failed to cancel subscription: {e}")
             flash("An error occurred while attempting to cancel your subscription.", "error")
 
-        return redirect(url_for("settings"))
+        return redirect(url_for("settings.index"))
 
     def has_paid_features(user_id):
         user = User.query.get(user_id)
