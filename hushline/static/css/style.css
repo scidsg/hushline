@@ -5,8 +5,10 @@
   --color-text-light: #595959;
   --color-highlight: rgba(125,37,193,.1);
   --color-brand-bg: #fbf3ff;
+  --color-callout: rgb(255, 249, 234);
 
   --border: 1px solid var(--color-border);
+  --border-callout: 1px solid rgba(232, 212, 180, .8);
 
   --font-mono: 'IBM Plex Mono', monospace;
   --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
@@ -411,10 +413,10 @@ p.meta {
 
 .dirMeta {
     margin: 1rem 0;
-    background-color: rgb(255, 249, 234);
+    background-color: var(--color-callout);
     border-radius: .25rem;
     padding: .9125rem 1rem;
-    border: 1px solid rgba(232, 212, 180, .8);
+    border: var(--border-callout);
     color: #545454;
 }
 
@@ -604,11 +606,11 @@ li a.small {
 }
 
 .username-list {
-    background-color: #FEFAF4;
-    border: 1px solid rgba(68, 51, 11, 0.13);
     border-radius: .25rem;
     padding: 1.25rem 1rem;
     margin-bottom: 2rem;
+    background-color: var(--color-callout);
+    border: var(--border-callout);
 }
 
 .username-list li:last-of-type {
