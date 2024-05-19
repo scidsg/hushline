@@ -413,6 +413,7 @@ def init_app(app: Flask) -> None:
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
 
+    # Stripe Checkout session creation
     @app.route("/create-checkout-session", methods=["POST"])
     def create_checkout_session():
         user_id = session.get("user_id")
@@ -424,13 +425,12 @@ def init_app(app: Flask) -> None:
             return jsonify({"error": "User not found"}), 404
 
         try:
-            customer = (
-                stripe.Customer.create(email=user.email)
-                if not user.stripe_customer_id
-                else stripe.Customer.retrieve(user.stripe_customer_id)
-            )
-            user.stripe_customer_id = customer.id
-            db.session.commit()
+            if not user.stripe_customer_id:
+                customer = stripe.Customer.create(email=user.email)
+                user.stripe_customer_id = customer.id
+                db.session.commit()
+            else:
+                customer = stripe.Customer.retrieve(user.stripe_customer_id)
 
             checkout_session = stripe.checkout.Session.create(
                 customer=user.stripe_customer_id,
@@ -446,51 +446,42 @@ def init_app(app: Flask) -> None:
             app.logger.error(f"Failed to create checkout session: {str(e)}")
             return jsonify({"error": "Failed to create checkout session", "details": str(e)}), 500
 
+    # Handling successful payment
     @app.route("/payment-success")
     def payment_success():
         session_id = request.args.get("session_id")
-
-        if "user_id" in session:
-            user_id = session["user_id"]
-            user = User.query.get(user_id)
-            if user:
-                try:
-                    checkout_session = stripe.checkout.Session.retrieve(session_id)
-                    subscription = stripe.Subscription.retrieve(checkout_session.subscription)
-
-                    # Update user's subscription details
-                    user.has_paid = True
-                    user.stripe_subscription_id = subscription.id
-                    user.paid_features_expiry = datetime.fromtimestamp(
-                        subscription.current_period_end
-                    )
-
-                    user.is_subscription_active = True
-                    db.session.commit()
-                    flash("🎉 Payment successful! Your account has been upgraded.", "success")
-                except Exception as e:
-                    app.logger.error(f"Failed to retrieve subscription details: {e}")
-                    flash("An error occurred while processing your payment.", "error")
-            else:
-                flash("🫥 User not found.", "error")
-        else:
+        user_id = session.get("user_id")
+        if not user_id:
             flash("⛔️ You are not logged in.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if user:
+            try:
+                checkout_session = stripe.checkout.Session.retrieve(session_id)
+                subscription = stripe.Subscription.retrieve(checkout_session.subscription)
+
+                # Update user's subscription details
+                user.has_paid = True
+                user.stripe_subscription_id = subscription.id
+                user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
+                user.is_subscription_active = True
+                db.session.commit()
+                flash("🎉 Payment successful! Your account has been upgraded.", "success")
+            except Exception as e:
+                app.logger.error(f"Failed to retrieve subscription details: {e}")
+                flash("An error occurred while processing your payment.", "error")
+        else:
+            flash("🫥 User not found.", "error")
 
         origin_page = request.args.get("origin", url_for("index"))
-        if is_safe_url(origin_page):
-            return redirect(origin_page)
-        else:
-            flash("Warning: Unsafe redirect attempt detected.", "warning")
-            return redirect(url_for("index"))
+        return redirect(origin_page)
 
+    # Ensure URLs are safe before redirecting
     def is_safe_url(target):
         ref_url = urlparse(request.host_url)
         test_url = urlparse(urljoin(request.host_url, target))
-        return (
-            test_url.scheme in ("", "http", "https")
-            and ref_url.netloc == test_url.netloc
-            and test_url.path.startswith("/")
-        )
+        return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
 
     @app.route("/payment-cancel")
     def payment_cancel():
@@ -506,53 +497,29 @@ def init_app(app: Flask) -> None:
     def stripe_webhook():
         payload = request.get_data(as_text=True)
         sig_header = request.headers.get("Stripe-Signature")
+        endpoint_secret = os.getenv("STRIPE_API_KEY", "default_secret_if_not_set")
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, stripe_webhook_secret  # noqa: F821
-            )  # noqa: F821
+            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
 
-            # Handle the checkout.session.completed event
+            # Handle the event
             if event["type"] == "checkout.session.completed":
                 session = event["data"]["object"]
-                user = find_user_by_stripe_customer_id(session["customer"])
+                user = User.query.filter_by(stripe_customer_id=session["customer"]).first()
                 if user:
                     user.has_paid = True
                     db.session.commit()
 
-            # Handle the customer.subscription.deleted event
-            elif event["type"] == "customer.subscription.deleted":
-                subscription = event["data"]["object"]
-                user = find_user_by_stripe_customer_id(subscription["customer"])
-                if user:
-                    # Use the subscription's current period end for paid_features_expiry
-                    user.paid_features_expiry = datetime.utcfromtimestamp(
-                        subscription["current_period_end"]
-                    )
-                    user.is_subscription_active = False
-                    db.session.commit()
-
-            # Handle the invoice.payment_failed event
-            elif event["type"] == "invoice.payment_failed":
-                invoice = event["data"]["object"]
-                user = find_user_by_stripe_customer_id(invoice["customer"])
-                if user:
-                    user.has_paid = False
-                    db.session.commit()
-
-            return jsonify({"status": "success"})
-        except ValueError:
-            # Invalid payload
-            app.logger.error("Invalid payload received from Stripe webhook.", exc_info=True)
+            return jsonify({"status": "success"}), 200
+        except ValueError as e:
+            app.logger.error(f"Invalid payload: {str(e)}")
             return jsonify({"error": "Invalid payload"}), 400
-        except stripe.error.SignatureVerificationError:
-            # Invalid signature
-            app.logger.error("Invalid signature for Stripe webhook.", exc_info=True)
+        except stripe.error.SignatureVerificationError as e:
+            app.logger.error(f"Invalid signature: {str(e)}")
             return jsonify({"error": "Invalid signature"}), 400
-        except Exception as e:  # noqa: F841
-            # Other exceptions
-            app.logger.error("Error processing Stripe webhook.", exc_info=True)
-            return jsonify({"error": "An error occurred"}), 400
+        except Exception as e:
+            app.logger.error(f"Unknown error: {str(e)}")
+            return jsonify({"error": "Unknown error"}), 400
 
     def find_user_by_stripe_customer_id(customer_id):
         return User.query.filter_by(stripe_customer_id=customer_id).first()
@@ -574,7 +541,7 @@ def init_app(app: Flask) -> None:
             # Cancel the subscription on Stripe
             stripe.Subscription.delete(user.stripe_subscription_id)
 
-            # Retrieve the subscription again to update local database info
+            # Refresh the subscription info to ensure it's properly updated
             subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
             user.is_subscription_active = False
             user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
@@ -585,7 +552,7 @@ def init_app(app: Flask) -> None:
                 "success",
             )
         except Exception as e:
-            app.logger.error(f"Failed to cancel subscription: {e}")
+            app.logger.error(f"Failed to cancel subscription: {str(e)}")
             flash("An error occurred while attempting to cancel your subscription.", "error")
 
         return redirect(url_for("settings.index"))
