@@ -161,7 +161,7 @@
             <button type="submit">Update Settings</button>
         </form>
         <!-- PGP Key Section -->
-        <h3>Public PGP Key</h3>
+        <h3>Message Encryption</h3>
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
             <label for="pgp_key">Public PGP Key</label>
