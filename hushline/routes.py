@@ -435,7 +435,7 @@ def init_app(app: Flask) -> None:
             checkout_session = stripe.checkout.Session.create(
                 customer=user.stripe_customer_id,
                 payment_method_types=["card"],
-                line_items=[{"price": "price_1OhiU5LcBPqjxU07a4eKQHrO", "quantity": 1}],
+                line_items=[{"price": "price_1OhhYFLcBPqjxU07u2wYbUcF", "quantity": 1}],
                 mode="subscription",
                 success_url=url_for("payment_success", _external=True)
                 + "?session_id={CHECKOUT_SESSION_ID}",
@@ -497,12 +497,12 @@ def init_app(app: Flask) -> None:
     def stripe_webhook():
         payload = request.get_data(as_text=True)
         sig_header = request.headers.get("Stripe-Signature")
-        endpoint_secret = os.getenv("STRIPE_API_KEY", "default_secret_if_not_set")
+        endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
 
-            # Handle the event
+            # Process the webhook event
             if event["type"] == "checkout.session.completed":
                 session = event["data"]["object"]
                 user = User.query.filter_by(stripe_customer_id=session["customer"]).first()
@@ -511,6 +511,7 @@ def init_app(app: Flask) -> None:
                     db.session.commit()
 
             return jsonify({"status": "success"}), 200
+
         except ValueError as e:
             app.logger.error(f"Invalid payload: {str(e)}")
             return jsonify({"error": "Invalid payload"}), 400
