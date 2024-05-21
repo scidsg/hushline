@@ -1,7 +1,3 @@
-from dotenv import load_dotenv
-
-load_dotenv("/etc/hushline/hushline.conf")
-
 import logging  # noqa: E402
 import os  # noqa: E402
 from datetime import timedelta  # noqa: E402
@@ -9,20 +5,18 @@ from typing import Any, Tuple  # noqa: E402
 
 from flask import Flask, Response, flash, redirect, render_template, session, url_for  # noqa: E402
 from flask_limiter import RateLimitExceeded  # noqa: E402
-from flask_migrate import Migrate  # noqa: E402
+from flask_migrate import Migrate, upgrade  # noqa: E402
 from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 from . import admin, routes, settings  # noqa: E402
 from .db import db  # noqa: E402
-from .ext import limiter  # noqa: E402
+from .limiter import limiter  # noqa: E402
 from .model import User  # noqa: E402
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
 
-    config_path = "/etc/hushline/hushline.conf"
-    load_dotenv(config_path)
     app.logger.debug(f"Loaded ENCRYPTION_KEY: {os.environ.get('ENCRYPTION_KEY')}")
 
     @app.errorhandler(RateLimitExceeded)
@@ -52,6 +46,7 @@ def create_app() -> Flask:
 
     db.init_app(app)
     _ = Migrate(app, db)
+
     limiter.init_app(app)
 
     app.logger.setLevel(logging.DEBUG)
@@ -80,14 +75,8 @@ def create_app() -> Flask:
         )  # Ensure appropriate logging configuration is in place
         return "An internal server error occurred", 500
 
-    @app.cli.group(
-        help="More DB management besides migration",
-    )
-    def db_extras() -> None:
-        pass
-
-    @db_extras.command(help="Initialize the dev DB")
-    def init_db() -> None:
-        db.create_all()
+    # Run migrations
+    with app.app_context():
+        upgrade()
 
     return app

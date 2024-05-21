@@ -6,31 +6,22 @@ help: ## Print the help message
 		sort | \
 		column -s ':' -t
 
-.PHONY: run
-run: ## Run the app
-	@source ./files/dev/env.sh && \
-	flask run --debug -h localhost -p 5000
-
-.PHONY: lint
-lint: ## Lint the code
-	isort --check . && \
-		black --check . && \
-		flake8 --config setup.cfg . && \
-		mypy --config-file pyproject.toml .
-
-.PHONY: fmt
-fmt: ## Format the code
-	isort . && \
-		black .
-
-.PHONY: init-db
-init-db: ## Initialize the dev database
-	flask db-extras init-db
+.PHONY: dev
+dev: ## Run the app in development mode
+	docker-compose up --build
 
 .PHONY: test
 test: ## Run the test suite
-	@if [ -n "$$BASH_VERSION" ]; then \
-		source ./files/dev/env.sh && pytest -vv tests -p no:warnings; \
-	else \
-		. ./files/dev/env.sh; pytest -vv tests -p no:warnings; \
-	fi
+	docker-compose exec app bash -c "poetry run pytest -vv tests -p no:warnings"
+
+.PHONY: lint
+lint: ## Lint the code
+	docker-compose exec app poetry run bash -c "isort --check . && black --check . && flake8 --config setup.cfg . && mypy --config-file pyproject.toml ."
+
+.PHONY: fmt
+fmt: ## Format the code
+	docker-compose exec app poetry run bash -c "isort . && black ."
+
+.PHONY: shell
+shell: ## Get a shell in the container
+	docker-compose exec app bash

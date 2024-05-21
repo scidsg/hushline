@@ -47,7 +47,9 @@ def test_submit_message(client):
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/submit_message/{user.primary_username}", data=message_data, follow_redirects=True
+        f"/submit_message/{user.primary_username}",
+        data=message_data,
+        follow_redirects=True,
     )
 
     # Assert that the response status code is 200 (OK)

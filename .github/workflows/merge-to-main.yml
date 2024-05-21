@@ -37,9 +37,9 @@ jobs:
         run: poetry install --all-extras
 
       - name: Lint
-        run: poetry -v run make lint
+        run: poetry run isort --check . && poetry run black --check . && poetry run flake8 --config setup.cfg . && poetry run mypy --config-file pyproject.toml .
 
       - name: Test
-        run: poetry -v run make test
+        run: source test.env && poetry run pytest -vv tests -p no:warnings
         env:
           CI: true

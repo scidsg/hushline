@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - SQLALCHEMY_DATABASE_URI=sqlite:////data/hushline.db
+      - FLASK_ENV=development
+      - SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
+      - ENCRYPTION_KEY="bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
+      - REDIS_URI=redis://redis:6379
+    volumes:
+      - ./volumes/app:/data
+      - ./:/app
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"

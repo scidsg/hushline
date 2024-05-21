@@ -9,3 +9,5 @@ _DEV.md
 hushline.db
 /tests/__pycache__
 hushline/static/data/users_directory.json
+volumes/app
+volumes/redis

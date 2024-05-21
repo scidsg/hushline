@@ -22,8 +22,8 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .ext import limiter
 from .forms import ComplexPassword, TwoFactorForm
+from .limiter import limiter
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
 

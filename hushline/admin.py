@@ -1,7 +1,7 @@
 from flask import Blueprint, Response, flash, redirect, session, url_for
 
 from .db import db
-from .ext import limiter
+from .limiter import limiter
 from .model import User
 from .utils import require_2fa
 

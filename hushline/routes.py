@@ -22,8 +22,8 @@ from wtforms.validators import DataRequired, Length, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
-from .ext import limiter
 from .forms import ComplexPassword
+from .limiter import limiter
 from .model import InviteCode, Message, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
@@ -241,7 +241,9 @@ def init_app(app: Flask) -> None:
                     flash("⛔️ Invalid or expired invite code.", "error")
                     return (
                         render_template(
-                            "register.html", form=form, require_invite_code=require_invite_code
+                            "register.html",
+                            form=form,
+                            require_invite_code=require_invite_code,
                         ),
                         400,
                     )
@@ -250,7 +252,9 @@ def init_app(app: Flask) -> None:
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(
-                        "register.html", form=form, require_invite_code=require_invite_code
+                        "register.html",
+                        form=form,
+                        require_invite_code=require_invite_code,
                     ),
                     409,
                 )
@@ -364,7 +368,8 @@ def init_app(app: Flask) -> None:
         else:
             # Sorts only by display name or username
             return sorted(
-                users, key=lambda u: (u.display_name or u.primary_username).strip().lower()
+                users,
+                key=lambda u: (u.display_name or u.primary_username).strip().lower(),
             )
 
     @app.route("/directory")

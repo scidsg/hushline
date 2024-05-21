@@ -8,6 +8,8 @@ from hushline.model import User
 
 
 def test_user_registration_with_invite_code_disabled(client):
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+
     # User registration data
     user_data = {"username": "test_user", "password": "SecurePassword123!"}
 
