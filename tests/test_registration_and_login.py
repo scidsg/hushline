@@ -65,9 +65,7 @@ def test_login_link(client):
     assert response.status_code == 200
 
     # Check if the login link is in the response
-    assert (
-        'href="/login"' in response.text
-    ), "Login link should be present on the registration page"
+    assert 'href="/login"' in response.text, "Login link should be present on the registration page"
 
     # Simulate clicking the login link
     login_response = client.get("/login")
@@ -87,12 +85,8 @@ def test_registration_link(client):
 
     # Simulate clicking the registration link
     register_response = client.get("/register")
-    assert (
-        register_response.status_code == 200
-    ), "Should be on the registration page now"
-    assert (
-        "<h2>Register</h2>" in register_response.text
-    ), "Should be on the registration page"
+    assert register_response.status_code == 200, "Should be on the registration page now"
+    assert "<h2>Register</h2>" in register_response.text, "Should be on the registration page"
 
 
 def test_user_login_after_registration(client):
@@ -137,9 +131,7 @@ def test_user_login_with_incorrect_password(client):
 
     # Validate login response
     assert login_response.status_code == 200
-    assert (
-        "Inbox" not in login_response.text
-    ), "Should not be redirected to the Inbox page"
+    assert "Inbox" not in login_response.text, "Should not be redirected to the Inbox page"
     assert (
         'href="/inbox?username=newuser"' not in login_response.text
     ), "Inbox link should not be present for the user"

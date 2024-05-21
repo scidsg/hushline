@@ -22,8 +22,8 @@ from wtforms.validators import DataRequired, Length, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
-from .limiter import limiter
 from .forms import ComplexPassword
+from .limiter import limiter
 from .model import InviteCode, Message, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
