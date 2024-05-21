@@ -57,7 +57,7 @@ is_verified: True
 
 - **Complexity Requirements:** Passwords must include uppercase and lowercase letters, digits, and a special character.
 - **Length Requirements:** Passwords must be between 18 and 128 characters long.
-- **Encryption:** Passwords are encrypted using `bcrypt` and securely stored.
+- **Encryption:** Passwords are encrypted using `scrypt` and securely stored.
 
 ## Additional Security Measures
 
@@ -127,45 +127,47 @@ In the event of a data breach that compromises the security, confidentiality, or
 
 ***
 
-# Privacy Policy for the people under the GDPR
+# Privacy Policy for the People Under the GDPR
 
-We provide this information according to the [EU Regulation 2016/679 (GDPR)](https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32016R0679&from=EN) for those who consult the website https://hushline.org. Note that this information applies only to that website and not to other websites that the user may consult through links. 
+We provide this information according to the [EU Regulation 2016/679 (GDPR)](https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32016R0679&from=EN) for those who consult the website https://hushline.app. Note that this information applies only to that website and not to other websites that the user may consult through links. 
 
 ## Information to be provided according to Article 13 of the GDPR.
-At the outset, it should be clear that the administrator of a Hushline instance is obliged, in their capacity as data controller, to provide information to the data subject according to Article 13 of the GDPR.
+At the outset, it should be clear that the administrator of a Hush Line instance is obliged, in their capacity as data controller, to provide information to the data subject according to Article 13 of the GDPR.
 
 ## Data controller
 
-The data controller is [**data of the controller**] - [**email address**]. 
+The data controller is TBD - hushline@scidsg.org. 
 
 ## What data is collected.
 	
-Regarding this point, we must distinguish XX steps <how many steps?>.
 (a) Registration: username, password, and email;
-(b) Access: IP address, username, password, and email.
+(b) Access: Username, password, and email.
+(c) Third-Parties: SMTP username, SMTP port, SMTP address.
+(d) Profile: Bio, display name, verification status.
 
 
 ## The purposes of the processing.
 	
 The purpose is to consult the website and use the services provided.
 
-A) Consult the website. Accessing this website and requesting to register as a user means the user gave consent. Hence, the processing of personal data is based on consent - according to Article 6, par. 1, letter a) of EU Regulation 2016/679 - expressed by the user by browsing this website and its consultation, thus accepting this information. Consent is optional, and the user can withdraw at any time by request sent by email to [**email address**], specifying that, in this case, whether the user does not consent, they cannot consult this website, either register or remain as a registered user.
+A) Consult the website. Accessing this website and requesting to register as a user means the user gave consent. Hence, the processing of personal data is based on consent - according to Article 6, par. 1, letter a) of EU Regulation 2016/679 - expressed by the user by browsing this website and its consultation, thus accepting this information. Consent is optional, and the user can withdraw at any time by request sent by email to hushline@scidsg.org, specifying that, in this case, whether the user does not consent, they cannot consult this website, either register or remain as a registered user.
 B) Services provided. The purposes are also related to accessing the services we provide. In that case, the legal basis is the contract to which the data subject is party or in order to take steps at the request of the data subject prior to entering into a contract.
-t
+
 ## Legal basis for the processing
 	
 Regarding the purposes related to letter A) of the previous point, the data subject has given consent to the processing of his or her personal data for one or more specific purposes, according to Article 6, par. 1, letter a) of EU Regulation 2016/679, in compliance with the provisions of the same Regulation.
+
 Regarding the purposes related to letter A) of the previous point, the processing of personal data is necessary for the performance of a contract to which the data subject is party or in order to take steps at the request of the data subject prior to entering into a contract, according to Article 6, par. 1, letter b) of EU Regulation 2016/679, in compliance with the provisions of the same Regulation. 
 
 ## Processing of data
 
 ### _Browsing data_
 
-The user (data subject) can access this website and navigate through a web browser. Some data are necessary for surfing the Internet and could identify users through processing and association with data held by third parties. In particular, we intend to refer to the IP addresses or domain names of the computers used by users connecting to this website, the addresses in URI (Uniform Resource Identifier) notation of the requested resources, the time of the request, etc. We could use these data uniquely for anonymous statistical information on the use of the website and check its correct functioning, which is deleted immediately after processing. We could use data for any responsibility in the hypothesis of computer crimes connected to this website. Data relating to those who have submitted requests to [**Hushline**] using the tools on this website are stored for no more than seven days, however, for the time necessary to provide the answers and for any need to ascertain part of the judicial authority. 
+The user (data subject) can access this website and navigate through a web browser. Some data are necessary for surfing the Internet and could identify users through processing and association with data held by third parties. In particular, we intend to refer to the IP addresses or domain names of the computers used by users connecting to this website, the addresses in URI (Uniform Resource Identifier) notation of the requested resources, the time of the request, etc. We could use these data uniquely for anonymous statistical information on the use of the website and check its correct functioning, which is deleted immediately after processing. We could use data for any responsibility in the hypothesis of computer crimes connected to this website. Data relating to those who have submitted requests to [**Hush Line**] using the tools on this website are stored for no more than seven days, however, for the time necessary to provide the answers and for any need to ascertain part of the judicial authority. 
 
 ### _Data communicated by users_
 
-The optional, explicit, and voluntary sending of electronic mail to the [**Hushline**] addresses involves the acquisition of the sender's address necessary for the replies and any other personal data contained in the message. These data are processed to respond to messages sent and handle any related requests. Failure to provide personal data for communications with [**Hushline**] or send any requests will prevent evading them. We store data for the time strictly necessary for the purposes related to data processing. 
+The optional, explicit, and voluntary sending of electronic mail to the [**Hush Line**] addresses involves the acquisition of the sender's address necessary for the replies and any other personal data contained in the message. These data are processed to respond to messages sent and handle any related requests. Failure to provide personal data for communications with [**Hush Line**] or send any requests will prevent evading them. We store data for the time strictly necessary for the purposes related to data processing. 
 
 ## Cookies
 
@@ -196,15 +198,15 @@ We do not communicate personal data collected from this website following its co
 
 ## Period for storing personal data
 
-Apart from what is specified above, the data collected by this website during its operation are stored for the time strictly necessary for the activities specified. The data will be deleted or anonymized at the expiry date unless there are no further purposes for storing it. For analytics purposes (statistics), we use [**Service**], but only if you have agreed to this by providing consent once you have reached this site. 
+Apart from what is specified above, the data collected by this website during its operation are stored for the time strictly necessary for the activities specified. The data will be deleted or anonymized at the expiry date unless there are no further purposes for storing it. We do not use any form of analytics for the Hush Line service. 
 
 ## Transferring personal data to a third country or international organization
 	
-If the Hushline instance is installed on a server within the European Economic Area (EEA), the data controller does not transfer data outside the EEA.
+If the Hush Line instance is installed on a server within the European Economic Area (EEA), the data controller does not transfer data outside the EEA.
 
 Users registered on an instance are always solely responsible for their activities.
 
-There is no transfer outside the SEE when registered users on an instance within the same EEA perform activities on the same server (instance). For example, our instance (https://hushline.org) is located in [**Country**] and thus within the EEA. 
+There is no transfer outside the SEE when registered users on an instance within the same EEA perform activities on the same server (instance). For example, our instance (https://hushline.app) is located in the [**United States**] and thus within the EEA. 
 
 ## Security measures
 	
@@ -212,7 +214,7 @@ Visitors' or users' data are processed lawfully and correctly by adopting approp
 
 ## Data subjects' rights
 	
-This website's users (data subject) may exercise the rights according to Articles 15 to 22 of EU Regulation 2016/679. You can lodge all requests to exercise these rights by writing to [**email address**].
+This website's users (data subject) may exercise the rights according to Articles 15 to 22 of EU Regulation 2016/679. You can lodge all requests to exercise these rights by writing to [**hushline@scidsg.org**].
 
 ## Right to lodge a complaint
 	
