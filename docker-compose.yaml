@@ -5,9 +5,7 @@ services:
       - "5000:5000"
     environment:
       - SQLALCHEMY_DATABASE_URI=sqlite:////data/hushline.db
-      - REGISTRATION_CODES_REQUIRED=False
       - FLASK_ENV=development
-      - HUSHLINE_DEBUG_OPTS="0"
       - SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
       - ENCRYPTION_KEY="bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
       - REDIS_URI=redis://redis:6379
