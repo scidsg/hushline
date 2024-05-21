@@ -18,6 +18,8 @@ if storage_uri.startswith("redis://"):
             print("Waiting for Redis...")
             time.sleep(1)
 
+print("Using limiter storage URI:", storage_uri)
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],

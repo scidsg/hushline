@@ -17,12 +17,18 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from passlib.hash import scrypt
-from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms import (
+    BooleanField,
+    IntegerField,
+    PasswordField,
+    StringField,
+    TextAreaField,
+)
 from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .ext import limiter
+from .limiter import limiter
 from .forms import ComplexPassword, TwoFactorForm
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
