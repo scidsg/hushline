@@ -129,31 +129,30 @@ In the event of a data breach that compromises the security, confidentiality, or
 
 # Privacy Policy for the people under the GDPR
 
-We provide this information according to the [EU Regulation 2016/679 (GDPR)](https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32016R0679&from=EN) for those who consult the website https://hushline.org. Note that this information applies only to that website and not to other websites that the user may consult through links. 
+We provide this information according to the [EU Regulation 2016/679 (GDPR)](https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32016R0679&from=EN) for those who consult the website https://hushline.app. Note that this information applies only to that website and not to other websites that the user may consult through links.
 
 ## Information to be provided according to Article 13 of the GDPR.
 At the outset, it should be clear that the administrator of a Hushline instance is obliged, in their capacity as data controller, to provide information to the data subject according to Article 13 of the GDPR.
 
 ## Data controller
 
-The data controller is [**data of the controller**] - [**email address**]. 
+The data controller is **Glenn Sorrentino** - **glenn@scidsg.org**.
 
 ## What data is collected.
-	
-Regarding this point, we must distinguish XX steps <how many steps?>.
+
 (a) Registration: username, password, and email;
 (b) Access: IP address, username, password, and email.
 
 
 ## The purposes of the processing.
-	
+
 The purpose is to consult the website and use the services provided.
 
 A) Consult the website. Accessing this website and requesting to register as a user means the user gave consent. Hence, the processing of personal data is based on consent - according to Article 6, par. 1, letter a) of EU Regulation 2016/679 - expressed by the user by browsing this website and its consultation, thus accepting this information. Consent is optional, and the user can withdraw at any time by request sent by email to [**email address**], specifying that, in this case, whether the user does not consent, they cannot consult this website, either register or remain as a registered user.
 B) Services provided. The purposes are also related to accessing the services we provide. In that case, the legal basis is the contract to which the data subject is party or in order to take steps at the request of the data subject prior to entering into a contract.
 t
 ## Legal basis for the processing
-	
+
 Regarding the purposes related to letter A) of the previous point, the data subject has given consent to the processing of his or her personal data for one or more specific purposes, according to Article 6, par. 1, letter a) of EU Regulation 2016/679, in compliance with the provisions of the same Regulation.
 Regarding the purposes related to letter A) of the previous point, the processing of personal data is necessary for the performance of a contract to which the data subject is party or in order to take steps at the request of the data subject prior to entering into a contract, according to Article 6, par. 1, letter b) of EU Regulation 2016/679, in compliance with the provisions of the same Regulation. 
 
@@ -161,17 +160,17 @@ Regarding the purposes related to letter A) of the previous point, the processin
 
 ### _Browsing data_
 
-The user (data subject) can access this website and navigate through a web browser. Some data are necessary for surfing the Internet and could identify users through processing and association with data held by third parties. In particular, we intend to refer to the IP addresses or domain names of the computers used by users connecting to this website, the addresses in URI (Uniform Resource Identifier) notation of the requested resources, the time of the request, etc. We could use these data uniquely for anonymous statistical information on the use of the website and check its correct functioning, which is deleted immediately after processing. We could use data for any responsibility in the hypothesis of computer crimes connected to this website. Data relating to those who have submitted requests to [**Hushline**] using the tools on this website are stored for no more than seven days, however, for the time necessary to provide the answers and for any need to ascertain part of the judicial authority. 
+The user (data subject) can access this website and navigate through a web browser. Some data are necessary for surfing the Internet and could identify users through processing and association with data held by third parties. In particular, we intend to refer to the IP addresses or domain names of the computers used by users connecting to this website, the addresses in URI (Uniform Resource Identifier) notation of the requested resources, the time of the request, etc. We could use these data uniquely for anonymous statistical information on the use of the website and check its correct functioning, which is deleted immediately after processing. We could use data for any responsibility in the hypothesis of computer crimes connected to this website. Data relating to those who have submitted requests to [**Hushline**] using the tools on this website are stored for no more than seven days, however, for the time necessary to provide the answers and for any need to ascertain part of the judicial authority.
 
 ### _Data communicated by users_
 
-The optional, explicit, and voluntary sending of electronic mail to the [**Hushline**] addresses involves the acquisition of the sender's address necessary for the replies and any other personal data contained in the message. These data are processed to respond to messages sent and handle any related requests. Failure to provide personal data for communications with [**Hushline**] or send any requests will prevent evading them. We store data for the time strictly necessary for the purposes related to data processing. 
+The optional, explicit, and voluntary sending of electronic mail to the [**Hush Line**] addresses involves the acquisition of the sender's address necessary for the replies and any other personal data contained in the message. These data are processed to respond to messages sent and handle any related requests. Failure to provide personal data for communications with [**Hush Line**] or send any requests will prevent evading them. We store data for the time strictly necessary for the purposes related to data processing.
 
 ## Cookies
 
 The only cookies present are only **functional ones** and, therefore, no profiling or tracking activities.
 
-**Thus, this site does not use cookies other than functional cookies solely for the functional purposes described above, and their installation does not require the user's consent**. 
+**Thus, this site does not use cookies other than functional cookies solely for the functional purposes described above, and their installation does not require the user's consent**.
 
 ### What are cookies?
 
@@ -179,43 +178,43 @@ Cookies (small text files that the visited website sends to your device, where t
 
 _Session cookies_ (not stored permanently on the user's computer and disappear when the browser is closed) and are strictly limited to the transmission of session identifiers (consisting of random numbers generated by the server) necessary to allow safe browsing and efficiency of the site. Session cookies used on this site avoid using other technologies that could compromise the privacy of users' browsing and do not allow the acquisition of personal data.
 
-It is, however, possible for the user to set cookies from the "Preferences" of the browser used and eventually automatically refuse the receipt of cookies by activating the appropriate option: the non-use of technical cookies, however, could involve technical difficulties of interaction with this website. 
+It is, however, possible for the user to set cookies from the "Preferences" of the browser used and eventually automatically refuse the receipt of cookies by activating the appropriate option: the non-use of technical cookies, however, could involve technical difficulties of interaction with this website.
 
-You can find instructions for disabling cookies on the following web pages: 
+You can find instructions for disabling cookies on the following web pages:
 
-- [Mozilla Firefox](https://support.mozilla.org/en-US/kb/enable-and-disable-cookies-website-preferences) 
-- [Microsoft Internet Explorer](https://support.microsoft.com/ha-latn-ng/help/17442/windows-internet-explorer-delete-manage-cookies) 
-- [Microsoft Edge](https://support.microsoft.com/en-us/help/4468242/microsoft-edge-browsing-data-and-privacy-microsoft-privacy) 
-- [Google Chrome](https://support.google.com/chrome/answer/95647?co=GENIE.Platform%3DDesktop&hl=en-GB) 
+- [Mozilla Firefox](https://support.mozilla.org/en-US/kb/enable-and-disable-cookies-website-preferences)
+- [Microsoft Internet Explorer](https://support.microsoft.com/ha-latn-ng/help/17442/windows-internet-explorer-delete-manage-cookies)
+- [Microsoft Edge](https://support.microsoft.com/en-us/help/4468242/microsoft-edge-browsing-data-and-privacy-microsoft-privacy)
+- [Google Chrome](https://support.google.com/chrome/answer/95647?co=GENIE.Platform%3DDesktop&hl=en-GB)
 - [Opera](https://help.opera.com/en/latest/security-and-privacy/)
-- [Apple Safari](https://support.apple.com/lv-lv/HT201265) 
+- [Apple Safari](https://support.apple.com/lv-lv/HT201265)
 
 ## Data recipients
 
-We do not communicate personal data collected from this website following its consultation to recipients or categories of recipients. 
+We do not communicate personal data collected from this website following its consultation to recipients or categories of recipients.
 
 ## Period for storing personal data
 
-Apart from what is specified above, the data collected by this website during its operation are stored for the time strictly necessary for the activities specified. The data will be deleted or anonymized at the expiry date unless there are no further purposes for storing it. For analytics purposes (statistics), we use [**Service**], but only if you have agreed to this by providing consent once you have reached this site. 
+Apart from what is specified above, the data collected by this website during its operation are stored for the time strictly necessary for the activities specified. The data will be deleted or anonymized at the expiry date unless there are no further purposes for storing it.
 
 ## Transferring personal data to a third country or international organization
-	
+
 If the Hushline instance is installed on a server within the European Economic Area (EEA), the data controller does not transfer data outside the EEA.
 
 Users registered on an instance are always solely responsible for their activities.
 
-There is no transfer outside the SEE when registered users on an instance within the same EEA perform activities on the same server (instance). For example, our instance (https://hushline.org) is located in [**Country**] and thus within the EEA. 
+There is no transfer outside the SEE when registered users on an instance within the same EEA perform activities on the same server (instance). For example, our instance (https://hushline.app) is located in [**TBD**] and thus within the EEA.
 
 ## Security measures
-	
-Visitors' or users' data are processed lawfully and correctly by adopting appropriate security measures to prevent unauthorized access, disclosure, modification, or unauthorized destruction of data. Your data in the communication session with this website are protected by a Secure Sockets Layer (SSL) certificate that uses a cryptographic presentation protocol to encrypt the information. In addition to the controller, in some cases, authorized persons may have access to the data as involved in the organization of the website or external subjects (such as third-party technical service providers and hosting providers). 
+
+Visitors' or users' data are processed lawfully and correctly by adopting appropriate security measures to prevent unauthorized access, disclosure, modification, or unauthorized destruction of data. Your data in the communication session with this website are protected by a Secure Sockets Layer (SSL) certificate that uses a cryptographic presentation protocol to encrypt the information. In addition to the controller, in some cases, authorized persons may have access to the data as involved in the organization of the website or external subjects (such as third-party technical service providers and hosting providers).
 
 ## Data subjects' rights
-	
-This website's users (data subject) may exercise the rights according to Articles 15 to 22 of EU Regulation 2016/679. You can lodge all requests to exercise these rights by writing to [**email address**].
+
+This website's users (data subject) may exercise the rights according to Articles 15 to 22 of EU Regulation 2016/679. You can lodge all requests to exercise these rights by writing to **hushline@scidsg.org**.
 
 ## Right to lodge a complaint
-	
+
 Whether a data subject considers that the processing of personal data relating to him or her as performed via this website infringes the Regulation, he or she has the right to lodge a complaint with the Garante according to Article 77 of the EU Regulation 2016/679.
 
 ***
