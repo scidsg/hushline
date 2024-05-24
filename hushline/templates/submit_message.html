@@ -18,7 +18,7 @@
     {% else %}
         <p class="helper">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information, please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">add a public PGP key</a>.</p>
     {% endif %}
-    {% else %}
+{% else %}
     {% if user.pgp_key %}
         <p class="helper">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
     {% else %}
@@ -27,8 +27,10 @@
 {% endif %}
 <form method="POST" action="/submit_message/{{ username }}" id="messageForm">
     {{ form.hidden_tag() }}
+    <label for="contact_method">Contact Method (Optional)</label>
+    <input type="text" id="contact_method" name="contact_method" placeholder="Your email or phone number" value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}">
     <label for="content">Message</label>
-    <textarea id="content" maxlength="2000" name="content" placeholder="Include a contact method if you want a response..." required="" size="32" data-mvelo-frame="att" spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
+    <textarea id="content" maxlength="10000" name="content" placeholder="Include details about your inquiry..." required="" spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->
@@ -40,7 +42,4 @@
 {% block scripts %}
 <script src="https://unpkg.com/openpgp@latest/dist/openpgp.min.js"></script>
 <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
-
-
-
 {% endblock %}

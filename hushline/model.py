@@ -147,6 +147,9 @@ class SecondaryUsername(db.Model):
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
+    _contact_method = db.Column(
+        "contact_method", db.String(255), nullable=True
+    )  # Encrypted contact method
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
     secondary_user_id = db.Column(
@@ -161,6 +164,14 @@ class Message(db.Model):
     @content.setter
     def content(self, value: str) -> None:
         self._content = encrypt_field(value)
+
+    @property
+    def contact_method(self) -> str:
+        return decrypt_field(self._contact_method)
+
+    @contact_method.setter
+    def contact_method(self, value: str) -> None:
+        self._contact_method = encrypt_field(value)
 
 
 class InviteCode(db.Model):
