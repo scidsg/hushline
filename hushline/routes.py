@@ -18,7 +18,7 @@ from flask import (
 from flask_wtf import FlaskForm
 from sqlalchemy import event
 from wtforms import PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
@@ -43,10 +43,13 @@ class TwoFactorForm(FlaskForm):
 
 
 class MessageForm(FlaskForm):
+    contact_method = StringField(
+        "Contact Method",
+        validators=[Optional(), Length(max=255)],  # Optional if you want it to be non-mandatory
+    )
     content = TextAreaField(
         "Message",
         validators=[DataRequired(), Length(max=10000)],
-        render_kw={"placeholder": "Include a contact method if you want a response..."},
     )
 
 
@@ -117,84 +120,78 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
-    def submit_message(username: str) -> Response | str:
-        # Initialize the form
+    def submit_message(username: str):
         form = MessageForm()
-
-        # Retrieve the user details
         user = User.query.filter_by(primary_username=username).first()
         if not user:
-            flash("🫥 User not found.")
+            flash("User not found.")
             return redirect(url_for("index"))
 
-        # Decide the display name or username
-        display_name_or_username = user.display_name or user.primary_username
-
-        # Check if there is a prefill content
-        prefill_content = request.args.get("prefill", "")
-        if prefill_content:
-            # Pre-fill the form with the content if provided
-            form.content.data = prefill_content
-
-        # Process form submission
         if form.validate_on_submit():
             content = form.content.data
+            contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
+            full_content = (
+                f"Contact Method: {contact_method}\n\n{content}" if contact_method else content
+            )
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
-            # Handle encryption if necessary
-            if not client_side_encrypted and user.pgp_key:
-                encrypted_content = encrypt_message(content, user.pgp_key)
-                email_content = encrypted_content if encrypted_content else content
-                if not encrypted_content:
-                    flash("⛔️ Failed to encrypt message with PGP key.", "error")
+            if client_side_encrypted:
+                content_to_save = (
+                    content  # Assume content is already encrypted and includes contact method
+                )
+            elif user.pgp_key:
+                try:
+                    encrypted_content = encrypt_message(full_content, user.pgp_key)
+                    if not encrypted_content:
+                        flash("Failed to encrypt message with PGP key.", "error")
+                        return redirect(url_for("submit_message", username=username))
+                    content_to_save = encrypted_content
+                except Exception as e:
+                    app.logger.error("Encryption failed: %s", str(e), exc_info=True)
+                    flash("Failed to encrypt message due to an error.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
-                email_content = content
+                content_to_save = full_content
 
-            # Save the new message
-            new_message = Message(content=email_content, user_id=user.id)
+            new_message = Message(content=content_to_save, user_id=user.id)
             db.session.add(new_message)
             db.session.commit()
 
-            # Attempt to send an email notification
             if (
                 user.email
                 and user.smtp_server
                 and user.smtp_port
                 and user.smtp_username
                 and user.smtp_password
-                and email_content
+                and content_to_save
             ):
                 try:
                     sender_email = user.smtp_username
                     email_sent = send_email(
-                        user.email, "New Message", email_content, user, sender_email
+                        user.email, "New Message", content_to_save, user, sender_email
                     )
                     flash_message = (
-                        "👍 Message submitted and email sent successfully."
+                        "Message submitted and email sent successfully."
                         if email_sent
-                        else "👍 Message submitted, but failed to send email."
+                        else "Message submitted, but failed to send email."
                     )
                     flash(flash_message)
                 except Exception as e:
+                    app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
                     flash(
-                        "👍 Message submitted, but an error occurred while sending email.",
-                        "warning",
+                        "Message submitted, but an error occurred while sending email.", "warning"
                     )
-                    app.logger.error(f"Error sending email: {str(e)}")
             else:
-                flash("👍 Message submitted successfully.")
+                flash("Message submitted successfully.")
 
             return redirect(url_for("submit_message", username=username))
 
-        # Render the form page
         return render_template(
             "submit_message.html",
             form=form,
             user=user,
             username=username,
-            display_name_or_username=display_name_or_username,
+            display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
         )
