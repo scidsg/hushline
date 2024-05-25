@@ -21,6 +21,11 @@ class User(db.Model):
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
+    has_paid = db.Column(db.Boolean, default=False)
+    stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), unique=True, nullable=True)
+    paid_features_expiry = db.Column(db.DateTime, nullable=True)
+    is_subscription_active = db.Column(db.Boolean, default=False)
     show_in_directory = db.Column(db.Boolean, default=False)
     bio = db.Column(db.Text, nullable=True)
     # Corrected the relationship and backref here

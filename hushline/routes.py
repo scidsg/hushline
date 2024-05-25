@@ -2,13 +2,16 @@ import logging
 import os
 import re
 from datetime import datetime
+from urllib.parse import urljoin, urlparse
 
 import pyotp
+import stripe
 from flask import (
     Flask,
     Response,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -24,7 +27,7 @@ from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .limiter import limiter
-from .model import InviteCode, Message, User
+from .model import InviteCode, Message, SecondaryUsername, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
 # Logging setup
@@ -74,6 +77,8 @@ class LoginForm(FlaskForm):
 
 
 def init_app(app: Flask) -> None:
+    stripe.api_key = app.config.get("STRIPE_API_KEY")
+
     @app.route("/")
     @limiter.limit("120 per minute")
     def index() -> Response:
@@ -108,7 +113,7 @@ def init_app(app: Flask) -> None:
         messages = (
             Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
         )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
+        secondary_usernames_dict = {su.id: su for su in primary_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
@@ -116,13 +121,32 @@ def init_app(app: Flask) -> None:
             secondary_username=None,
             messages=messages,
             is_secondary=False,
-            secondary_usernames=secondary_users_dict,
+            secondary_usernames=secondary_usernames_dict,
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str):
+    @limiter.limit("120 per minute")
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
+
+        # Try to get the user either by primary or secondary username
         user = User.query.filter_by(primary_username=username).first()
+        secondary_user = None
+        display_name_or_username = ""
+
+        if user:
+            display_name_or_username = user.display_name or user.primary_username
+        else:
+            # If not found, check in secondary usernames
+            secondary_user = SecondaryUsername.query.filter_by(username=username).first()
+            if secondary_user:
+                user = secondary_user.primary_user
+                display_name_or_username = secondary_user.display_name or secondary_user.username
+                # Check if the subscription has expired for secondary usernames
+                if not user.has_paid or user.paid_features_expiry < datetime.utcnow():
+                    flash("🫥 User not found.")
+                    return redirect(url_for("index"))
+
         if not user:
             flash("User not found.")
             return redirect(url_for("index"))
@@ -153,7 +177,12 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(content=content_to_save, user_id=user.id)
+            # Save the new message
+            new_message = Message(
+                content=email_content,
+                user_id=user.id,
+                secondary_user_id=secondary_user.id if secondary_user else None,
+            )
             db.session.add(new_message)
             db.session.commit()
 
@@ -190,6 +219,7 @@ def init_app(app: Flask) -> None:
             "submit_message.html",
             form=form,
             user=user,
+            secondary_user=secondary_user,
             username=username,
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
@@ -382,3 +412,258 @@ def init_app(app: Flask) -> None:
     def receive_after_update(mapper, connection, target):
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
+
+    # Stripe Checkout session creation
+    @app.route("/create-checkout-session", methods=["POST"])
+    def create_checkout_session():
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        try:
+            if not user.stripe_customer_id:
+                customer = stripe.Customer.create(email=user.email)
+                user.stripe_customer_id = customer.id
+                db.session.commit()
+            else:
+                customer = stripe.Customer.retrieve(user.stripe_customer_id)
+
+            checkout_session = stripe.checkout.Session.create(
+                customer=user.stripe_customer_id,
+                payment_method_types=["card"],
+                line_items=[{"price": "price_1OhhYFLcBPqjxU07u2wYbUcF", "quantity": 1}],
+                mode="subscription",
+                success_url=url_for("payment_success", _external=True)
+                + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=url_for("payment_cancel", _external=True),
+            )
+            return jsonify({"id": checkout_session.id})
+        except Exception as e:
+            app.logger.error(f"Failed to create checkout session: {str(e)}")
+            return jsonify({"error": "Failed to create checkout session", "details": str(e)}), 500
+
+    # Handling successful payment
+    @app.route("/payment-success")
+    def payment_success():
+        session_id = request.args.get("session_id")
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("⛔️ You are not logged in.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if user:
+            try:
+                checkout_session = stripe.checkout.Session.retrieve(session_id)
+                subscription = stripe.Subscription.retrieve(checkout_session.subscription)
+
+                # Update user's subscription details
+                user.has_paid = True
+                user.stripe_subscription_id = subscription.id
+                user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
+                user.is_subscription_active = True
+                db.session.commit()
+                flash("🎉 Payment successful! Your account has been upgraded.", "success")
+            except Exception as e:
+                app.logger.error(f"Failed to retrieve subscription details: {e}")
+                flash("An error occurred while processing your payment.", "error")
+        else:
+            flash("🫥 User not found.", "error")
+
+        origin_page = request.args.get("origin", url_for("index"))
+        return redirect(origin_page)
+
+    # Ensure URLs are safe before redirecting
+    def is_safe_url(target):
+        ref_url = urlparse(request.host_url)
+        test_url = urlparse(urljoin(request.host_url, target))
+        return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+
+    @app.route("/payment-cancel")
+    def payment_cancel():
+        origin_page = request.args.get("origin", url_for("index"))
+        if is_safe_url(origin_page):
+            flash("👍 Payment was cancelled.", "warning")
+            return redirect(origin_page)
+        else:
+            flash("Warning: Unsafe redirect attempt detected.", "warning")
+            return redirect(url_for("index"))
+
+    @app.route("/stripe-webhook", methods=["POST"])
+    def stripe_webhook():
+        payload = request.get_data(as_text=True)
+        sig_header = request.headers.get("Stripe-Signature")
+        endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+
+            # Process the webhook event
+            if event["type"] == "checkout.session.completed":
+                session = event["data"]["object"]
+                user = User.query.filter_by(stripe_customer_id=session["customer"]).first()
+                if user:
+                    user.has_paid = True
+                    db.session.commit()
+
+            return jsonify({"status": "success"}), 200
+
+        except ValueError as e:
+            app.logger.error(f"Invalid payload: {str(e)}")
+            return jsonify({"error": "Invalid payload"}), 400
+        except stripe.error.SignatureVerificationError as e:
+            app.logger.error(f"Invalid signature: {str(e)}")
+            return jsonify({"error": "Invalid signature"}), 400
+        except Exception as e:
+            app.logger.error(f"Unknown error: {str(e)}")
+            return jsonify({"error": "Unknown error"}), 400
+
+    def find_user_by_stripe_customer_id(customer_id):
+        return User.query.filter_by(stripe_customer_id=customer_id).first()
+
+    @app.route("/cancel-subscription", methods=["POST"])
+    @require_2fa
+    def cancel_subscription():
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if not user or not user.stripe_subscription_id:
+            flash("Subscription not found.", "error")
+            return redirect(url_for("settings.index"))
+
+        try:
+            # Cancel the subscription on Stripe
+            stripe.Subscription.delete(user.stripe_subscription_id)
+
+            # Refresh the subscription info to ensure it's properly updated
+            subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
+            user.is_subscription_active = False
+            user.paid_features_expiry = datetime.fromtimestamp(subscription.current_period_end)
+            db.session.commit()
+
+            flash(
+                "Your subscription has been canceled. You will retain access to paid features until the end of your billing period.",  # noqa: E501
+                "success",
+            )
+        except Exception as e:
+            app.logger.error(f"Failed to cancel subscription: {str(e)}")
+            flash("An error occurred while attempting to cancel your subscription.", "error")
+
+        return redirect(url_for("settings.index"))
+
+    def has_paid_features(user_id):
+        user = User.query.get(user_id)
+        if user and user.paid_features_expiry and user.paid_features_expiry > datetime.utcnow():
+            return True
+        return False
+
+    @app.route("/add-secondary-username", methods=["POST"])
+    @require_2fa
+    def add_secondary_username():
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        user = User.query.get(user_id)
+        if not user:
+            flash("🫥 User not found.", "error")
+            return redirect(url_for("logout"))
+
+        # Check if the user has paid for the premium feature
+        if not user.has_paid:
+            flash(
+                "⚠️ This feature requires a paid account.",
+                "warning",
+            )
+            return redirect(url_for("create_checkout_session"))
+
+        # Check if the user already has the maximum number of secondary usernames
+        if len(user.secondary_usernames) >= 5:
+            flash("⚠️ You have reached the maximum number of secondary usernames.", "error")
+            return redirect(url_for("settings.index"))
+
+        username = request.form.get("username").strip()
+        if not username:
+            flash("⛔️ Username is required.", "error")
+            return redirect(url_for("settings.index"))
+
+        # Check if the secondary username is already taken
+        existing_user = SecondaryUsername.query.filter_by(username=username).first()
+        if existing_user:
+            flash("⚠️ This username is already taken.", "error")
+            return redirect(url_for("settings.index"))
+
+        # Add the new secondary username
+        new_secondary_user = SecondaryUsername(username=username, user_id=user.id)
+        db.session.add(new_secondary_user)
+        db.session.commit()
+        flash("👍 Username added successfully.", "success")
+        return redirect(url_for("settings.index"))
+
+    @app.route("/settings/secondary/<secondary_username>/update", methods=["POST"])
+    @require_2fa
+    def update_secondary_username(secondary_username):
+        # Ensure the user is logged in
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        # Find the secondary user in the database
+        secondary_user = SecondaryUsername.query.filter_by(
+            username=secondary_username, user_id=user_id
+        ).first_or_404()
+
+        # Update the secondary user's display name from the form data
+        new_display_name = request.form.get("display_name").strip()
+        if new_display_name:
+            secondary_user.display_name = new_display_name
+            db.session.commit()
+            flash("Display name updated successfully.", "success")
+        else:
+            flash("Display name cannot be empty.", "error")
+
+        # Redirect back to the settings page for the secondary user
+        return redirect(url_for("secondary_user_settings", secondary_username=secondary_username))
+
+    @app.route("/settings/secondary/<secondary_username>", methods=["GET", "POST"])
+    @require_2fa
+    def secondary_user_settings(secondary_username):
+        # Ensure the user is logged in
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("👉 Please log in to continue.", "warning")
+            return redirect(url_for("login"))
+
+        # Retrieve the primary user
+        user = User.query.get(user_id)
+
+        # Find the secondary user in the database
+        secondary_user = SecondaryUsername.query.filter_by(
+            username=secondary_username, user_id=user_id
+        ).first_or_404()
+
+        if request.method == "POST":
+            # Update the secondary user's display name or other settings
+            new_display_name = request.form.get("display_name", "").strip()
+            if new_display_name:
+                secondary_user.display_name = new_display_name
+                db.session.commit()
+                flash("👍 Settings updated successfully.")
+            else:
+                flash("Display name cannot be empty.", "error")
+
+        # Pass the secondary user object correctly to the template
+        return render_template(
+            "secondary_user_settings.html",
+            user=user,
+            secondary_username=secondary_user,  # Ensure this variable name matches the expectation in your template  # noqa: E501
+        )
