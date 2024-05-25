@@ -153,11 +153,7 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(
-                content=content_to_save,
-                user_id=user.id,
-                contact_method=contact_method if contact_method else None,
-            )
+            new_message = Message(content=content_to_save, user_id=user.id)
             db.session.add(new_message)
             db.session.commit()
 
