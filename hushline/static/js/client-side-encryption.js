@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Client-side encryption
     const form = document.getElementById('messageForm');
     const messageField = document.querySelector('textarea[name="content"]');
+    const contactMethodField = document.getElementById('contact_method');
     const encryptedFlag = document.getElementById('clientSideEncrypted');
     const publicKeyArmored = document.getElementById('publicKey') ? document.getElementById('publicKey').value : '';
 
@@ -26,22 +26,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (form) {
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault();
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
 
-            const messageWithNote = messageField.value;
-            const encryptedMessage = await encryptMessage(publicKeyArmored, messageWithNote);
+        const contactMethod = contactMethodField.value.trim();
+        let fullMessage = messageField.value;
+        if (contactMethod) {
+            fullMessage = `Contact Method: ${contactMethod}\n\n${messageField.value}`;
+        }
 
-            if (encryptedMessage) {
-                messageField.value = encryptedMessage;
-                encryptedFlag.value = 'true';
-                form.submit(); // Programmatically submit the form
-            } else {
-                console.log('Client-side encryption failed, submitting plaintext.');
-                encryptedFlag.value = 'false';
-                form.submit(); // Submit the plaintext message for potential server-side encryption
-            }
-        });
-    }
+        const encryptedMessage = await encryptMessage(publicKeyArmored, fullMessage);
+
+        if (encryptedMessage) {
+            messageField.value = encryptedMessage;
+            encryptedFlag.value = 'true';
+            contactMethodField.disabled = true; // Disable the contact method field to prevent it from being submitted
+        } else {
+            console.log('Client-side encryption failed, submitting plaintext.');
+            encryptedFlag.value = 'false';
+        }
+
+        form.submit(); // Submit the form after processing
+    });
 });

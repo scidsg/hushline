@@ -46,12 +46,10 @@ class MessageForm(FlaskForm):
     contact_method = StringField(
         "Contact Method",
         validators=[Optional(), Length(max=255)],  # Optional if you want it to be non-mandatory
-        render_kw={"placeholder": "Your email, phone, etc."},
     )
     content = TextAreaField(
         "Message",
         validators=[DataRequired(), Length(max=10000)],
-        render_kw={"placeholder": "Include details about your inquiry..."},
     )
 
 
@@ -122,43 +120,39 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
-    def submit_message(username: str) -> Response | str:
+    def submit_message(username: str):
         form = MessageForm()
-
         user = User.query.filter_by(primary_username=username).first()
         if not user:
-            flash("🫥 User not found.")
+            flash("User not found.")
             return redirect(url_for("index"))
 
         if form.validate_on_submit():
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
-
-            # Prepare the content by including the contact method if provided
             full_content = (
                 f"Contact Method: {contact_method}\n\n{content}" if contact_method else content
             )
-
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
-            # Check if encryption needs to be performed server-side
-            if not client_side_encrypted and user.pgp_key:
+            if client_side_encrypted:
+                content_to_save = (
+                    content  # Assume content is already encrypted and includes contact method
+                )
+            elif user.pgp_key:
                 try:
-                    # Encrypt the combined content including the contact method
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
                     if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message with PGP key.", "error")
+                        flash("Failed to encrypt message with PGP key.", "error")
                         return redirect(url_for("submit_message", username=username))
                     content_to_save = encrypted_content
                 except Exception as e:
                     app.logger.error("Encryption failed: %s", str(e), exc_info=True)
-                    flash("⛔️ Failed to encrypt message due to an error.", "error")
+                    flash("Failed to encrypt message due to an error.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
                 content_to_save = full_content
 
-            # Create and save the new message
             new_message = Message(
                 content=content_to_save,
                 user_id=user.id,
@@ -167,7 +161,6 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            # Attempt to send an email notification if applicable
             if (
                 user.email
                 and user.smtp_server
@@ -182,19 +175,18 @@ def init_app(app: Flask) -> None:
                         user.email, "New Message", content_to_save, user, sender_email
                     )
                     flash_message = (
-                        "👍 Message submitted and email sent successfully."
+                        "Message submitted and email sent successfully."
                         if email_sent
-                        else "👍 Message submitted, but failed to send email."
+                        else "Message submitted, but failed to send email."
                     )
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
                     flash(
-                        "👍 Message submitted, but an error occurred while sending email.",
-                        "warning",
+                        "Message submitted, but an error occurred while sending email.", "warning"
                     )
             else:
-                flash("👍 Message submitted successfully.")
+                flash("Message submitted successfully.")
 
             return redirect(url_for("submit_message", username=username))
 
