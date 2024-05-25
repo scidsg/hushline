@@ -71,3 +71,46 @@ def test_submit_message(client):
 
     # Assert that the submitted message is displayed in the inbox
     assert b"This is a test message." in response.data
+
+
+def test_submit_message_with_contact_method(client):
+    # Register a user
+    user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert user is not None
+
+    # Log in the user
+    login_success = login_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert login_success
+
+    # Prepare the message and contact method data
+    message_content = "This is a test message."
+    contact_method = "email@example.com"
+    message_data = {
+        "content": message_content,
+        "contact_method": contact_method,
+        "client_side_encrypted": "false",  # Simulate that this is not client-side encrypted
+    }
+
+    # Send a POST request to submit the message
+    response = client.post(
+        f"/submit_message/{user.primary_username}",
+        data=message_data,
+        follow_redirects=True,
+    )
+
+    # Assert that the response status code is 200 (OK)
+    assert response.status_code == 200
+    assert b"Message submitted successfully." in response.data
+
+    # Verify that the message is saved in the database
+    message = Message.query.filter_by(user_id=user.id).first()
+    assert message is not None
+
+    # Check if the message content includes the concatenated contact method
+    expected_content = f"Contact Method: {contact_method}\n\n{message_content}"
+    assert message.content == expected_content
+
+    # Navigate to the inbox to check if the message displays correctly
+    response = client.get(f"/inbox?username={user.primary_username}", follow_redirects=True)
+    assert response.status_code == 200
+    assert expected_content.encode() in response.data
