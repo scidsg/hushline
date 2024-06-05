@@ -21,11 +21,9 @@ pysequoia = "^0.1.23"
 python-dotenv = "^1.0.1"
 qrcode = "^7.4.2"
 redis = "^5.0.3"
+ruff = "^0.4.7"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.3.0"
-flake8 = "^7.0.0"
-isort = "^5.13.2"
 mypy = "^1.9.0"
 pytest = "^8.1.1"
 pytest-mock = "^3.12.0"
@@ -38,25 +36,49 @@ include = "hushline"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 100
-exclude = '/(migrations)/'
-
-[tool.isort]
-profile= "black"
-line_length = 100
-skip = ["migrations"]
-
 [tool.pytest.ini_options]
 pythonpath = "."
 
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle errors
+    "E",
+    # pyflakes
+    "F",
+    # isort
+    "I",
+    # flake8-gettext
+    "INT",
+    # flake8-pie
+    "PIE",
+    # pylint
+    "PL",
+    # flake8-pytest-style
+    "PT",
+    # flake8-pyi
+    "PYI",
+    # flake8-return
+    "RET",
+    # flake8-bandit
+    "S",
+    # flake8-simplify
+    "SIM",
+    # pyupgrade
+    "UP",
+    # pycodestyle warnings
+    "W",
+    # Unused noqa directive
+    "RUF100",
+]
+ignore = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
-strict = false
-disable_error_code = [
-    "import-untyped",
-    "name-defined",
-    "return-value",
-    "union-attr",
-]
-exclude = ['migrations']
+no_implicit_optional = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_unused_configs = true

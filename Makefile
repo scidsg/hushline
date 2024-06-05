@@ -6,9 +6,23 @@ help: ## Print the help message
 		sort | \
 		column -s ':' -t
 
-.PHONY: dev
-dev: ## Run the app in development mode
-	docker-compose up --build
+.PHONY: run
+run: ## Run the app
+	@source ./files/dev/env.sh && \
+	flask run --debug -h localhost -p 5000
+
+.PHONY: lint
+lint: ## Lint the code
+	ruff check && \
+	mypy
+
+.PHONY: fmt
+fmt: ## Format the code
+	ruff check --fix
+
+.PHONY: init-db
+init-db: ## Initialize the dev database
+	flask db-extras init-db
 
 .PHONY: test
 test: ## Run the test suite
