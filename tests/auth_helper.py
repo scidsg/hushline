@@ -1,11 +1,12 @@
 import os
 
+from flask.testing import FlaskClient
 from werkzeug import HTTPStatus
 
 from hushline.model import User
 
 
-def register_user(client, username, password):
+def register_user(client: FlaskClient, username: str, password: str) -> User:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
@@ -28,7 +29,7 @@ def register_user(client, username, password):
     return user
 
 
-def login_user(client, username, password):
+def login_user(client: FlaskClient, username: str, password: str) -> User:
     # Login data should match the registration data
     login_data = {"username": username, "password": password}
 

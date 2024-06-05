@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import current_app
 from passlib.hash import scrypt
 
@@ -29,21 +31,21 @@ class User(db.Model):
     )
 
     @property
-    def password_hash(self):
+    def password_hash(self) -> str:
         """Return the hashed password."""
         return self._password_hash
 
     @password_hash.setter
-    def password_hash(self, plaintext_password):
+    def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using scrypt and store it."""
         self._password_hash = scrypt.hash(plaintext_password)
 
-    def check_password(self, plaintext_password):
+    def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
         return scrypt.verify(plaintext_password, self._password_hash)
 
     @property
-    def totp_secret(self) -> str:
+    def totp_secret(self) -> str | None:
         return decrypt_field(self._totp_secret)
 
     @totp_secret.setter
@@ -54,7 +56,7 @@ class User(db.Model):
             self._totp_secret = encrypt_field(value)
 
     @property
-    def email(self) -> str:
+    def email(self) -> str | None:
         return decrypt_field(self._email)
 
     @email.setter
@@ -62,7 +64,7 @@ class User(db.Model):
         self._email = encrypt_field(value)
 
     @property
-    def smtp_server(self) -> str:
+    def smtp_server(self) -> str | None:
         return decrypt_field(self._smtp_server)
 
     @smtp_server.setter
@@ -70,7 +72,7 @@ class User(db.Model):
         self._smtp_server = encrypt_field(value)
 
     @property
-    def smtp_username(self) -> str:
+    def smtp_username(self) -> str | None:
         return decrypt_field(self._smtp_username)
 
     @smtp_username.setter
@@ -78,7 +80,7 @@ class User(db.Model):
         self._smtp_username = encrypt_field(value)
 
     @property
-    def smtp_password(self) -> str:
+    def smtp_password(self) -> str | None:
         return decrypt_field(self._smtp_password)
 
     @smtp_password.setter
@@ -86,7 +88,7 @@ class User(db.Model):
         self._smtp_password = encrypt_field(value)
 
     @property
-    def pgp_key(self) -> str:
+    def pgp_key(self) -> str | None:
         return decrypt_field(self._pgp_key)
 
     @pgp_key.setter
@@ -127,7 +129,7 @@ class User(db.Model):
             # Log any exceptions that occur during the update
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: tuple[str, ...], **kwargs: dict[str, Any]) -> None:
         plaintext_password = kwargs.pop("password", None)
         super().__init__(*args, **kwargs)
         if plaintext_password:
@@ -155,7 +157,7 @@ class Message(db.Model):
     secondary_username = db.relationship("SecondaryUsername", backref="messages")
 
     @property
-    def content(self) -> str:
+    def content(self) -> str | None:
         return decrypt_field(self._content)
 
     @content.setter

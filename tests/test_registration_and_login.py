@@ -1,5 +1,6 @@
 import os
 
+from flask.testing import FlaskClient
 from werkzeug import HTTPStatus
 
 # Import the application and database setup
@@ -9,7 +10,7 @@ from hushline.generate_invite_codes import create_invite_code
 from hushline.model import User
 
 
-def test_user_registration_with_invite_code_disabled(client):
+def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
     # User registration data
@@ -28,7 +29,7 @@ def test_user_registration_with_invite_code_disabled(client):
     assert user.primary_username == "test_user"
 
 
-def test_user_registration_with_invite_code_enabled(client):
+def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None:
     # Enable invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "True"
 
@@ -55,13 +56,13 @@ def test_user_registration_with_invite_code_enabled(client):
     assert user.primary_username == "newuser"
 
 
-def test_register_page_loads(client):
+def test_register_page_loads(client: FlaskClient) -> None:
     response = client.get("/register")
     assert response.status_code == HTTPStatus.OK
     assert "<h2>Register</h2>" in response.text
 
 
-def test_login_link(client):
+def test_login_link(client: FlaskClient) -> None:
     # Get the registration page
     response = client.get("/register")
     assert response.status_code == HTTPStatus.OK
@@ -75,7 +76,7 @@ def test_login_link(client):
     assert "<h2>Login</h2>" in login_response.text, "Should be on the login page now"
 
 
-def test_registration_link(client):
+def test_registration_link(client: FlaskClient) -> None:
     # Get the login page
     response = client.get("/login")
     assert response.status_code == HTTPStatus.OK, "Login page should be accessible"
@@ -91,7 +92,7 @@ def test_registration_link(client):
     assert "<h2>Register</h2>" in register_response.text, "Should be on the registration page"
 
 
-def test_user_login_after_registration(client):
+def test_user_login_after_registration(client: FlaskClient) -> None:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
@@ -115,7 +116,7 @@ def test_user_login_after_registration(client):
     ), "Inbox link should be present for the user"
 
 
-def test_user_login_with_incorrect_password(client):
+def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 

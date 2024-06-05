@@ -1,10 +1,11 @@
 from auth_helper import login_user, register_user
+from flask.testing import FlaskClient
 from werkzeug import HTTPStatus
 
 from hushline import db
 
 
-def test_directory_accessible(client):
+def test_directory_accessible(client: FlaskClient) -> None:
     # Get the directory page
     response = client.get("/directory")
 
@@ -13,7 +14,7 @@ def test_directory_accessible(client):
     assert "User Directory" in response.get_data(as_text=True)
 
 
-def test_directory_lists_only_opted_in_users(client):
+def test_directory_lists_only_opted_in_users(client: FlaskClient) -> None:
     """Test that only users who have opted to be shown are listed in the directory."""
     with client.application.app_context():
         # Register and opt-in a user

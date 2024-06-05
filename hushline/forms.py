@@ -1,12 +1,12 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import StringField
+from wtforms import Field, Form, StringField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 
 class ComplexPassword:
-    def __init__(self, message=None):
+    def __init__(self, message: str | None = None) -> None:
         if not message:
             message = (
                 "⛔️ Password must include uppercase, lowercase, digit, and a special character."
@@ -14,7 +14,7 @@ class ComplexPassword:
         self.message = message
 
     # TODO the regexes here should be fields in the class so they are compiled once
-    def __call__(self, form, field):
+    def __call__(self, form: Form, field: Field) -> None:
         password = field.data
         if not (
             re.search("[A-Z]", password)

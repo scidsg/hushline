@@ -14,7 +14,7 @@ run: ## Run the app
 .PHONY: lint
 lint: ## Lint the code
 	ruff check && \
-	mypy
+	mypy .
 
 .PHONY: fmt
 fmt: ## Format the code

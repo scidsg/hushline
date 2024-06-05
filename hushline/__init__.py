@@ -4,10 +4,11 @@ from datetime import timedelta
 from typing import Any, Tuple
 
 from dotenv import load_dotenv
-from flask import Flask, Response, flash, redirect, render_template, session, url_for
+from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
 from flask_migrate import Migrate, upgrade
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
 from .db import db
@@ -23,7 +24,7 @@ def create_app() -> Flask:
     app.logger.debug(f"Loaded ENCRYPTION_KEY: {os.environ.get('ENCRYPTION_KEY')}")
 
     @app.errorhandler(RateLimitExceeded)
-    def handle_rate_limit_exceeded(e):
+    def handle_rate_limit_exceeded(e: RateLimitExceeded) -> tuple[str, int]:
         return render_template("rate_limit_exceeded.html"), 429
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
@@ -59,7 +60,7 @@ def create_app() -> Flask:
         app.register_blueprint(module.create_blueprint())
 
     @app.errorhandler(404)
-    def page_not_found(e) -> Response:
+    def page_not_found(e: Exception) -> Response:
         flash("⛓️‍💥 That page doesn't exist.", "warning")
         return redirect(url_for("index"))
 
@@ -71,7 +72,7 @@ def create_app() -> Flask:
         return {}
 
     @app.errorhandler(Exception)
-    def handle_exception(e) -> Tuple[str, int]:
+    def handle_exception(e: Exception) -> Tuple[str, int]:
         # Consider adjusting error handling as per your logging preferences
         app.logger.error(
             f"Error: {e}", exc_info=True

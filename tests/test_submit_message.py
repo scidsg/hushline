@@ -1,10 +1,11 @@
 from auth_helper import login_user, register_user
+from flask.testing import FlaskClient
 from werkzeug import HTTPStatus
 
 from hushline.model import Message
 
 
-def test_submit_message_page_loads(client):
+def test_submit_message_page_loads(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_username", "Hush-Line-Test-Password9")
 
@@ -33,7 +34,7 @@ def test_submit_message_page_loads(client):
     )
 
 
-def test_submit_message(client):
+def test_submit_message(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user", "Hush-Line-Test-Password9")
 

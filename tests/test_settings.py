@@ -1,10 +1,11 @@
 from auth_helper import login_user, register_user
+from flask.testing import FlaskClient
 from werkzeug import HTTPStatus
 
 from hushline.model import User  # Ensure the User model is imported
 
 
-def test_settings_page_loads(client):
+def test_settings_page_loads(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "testuser_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -18,7 +19,7 @@ def test_settings_page_loads(client):
     assert response.status_code == HTTPStatus.OK, "Failed to load the settings page"
 
 
-def test_change_display_name(client):
+def test_change_display_name(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "testuser_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -51,7 +52,7 @@ def test_change_display_name(client):
     ), "Success message not found in response"
 
 
-def test_change_username(client):
+def test_change_username(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "original_username", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -91,7 +92,7 @@ def test_change_username(client):
     ), "Success message not found in response"
 
 
-def test_add_pgp_key(client):
+def test_add_pgp_key(client: FlaskClient) -> None:
     # Setup and login
     user = register_user(client, "user_with_pgp", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -117,7 +118,7 @@ def test_add_pgp_key(client):
     assert b"PGP key updated successfully" in response.data, "Success message not found"
 
 
-def test_add_invalid_pgp_key(client):
+def test_add_invalid_pgp_key(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "user_invalid_pgp", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -148,7 +149,7 @@ def test_add_invalid_pgp_key(client):
     assert b"Invalid PGP key format" in response.data, "Error message for invalid PGP key not found"
 
 
-def test_update_smtp_settings(client):
+def test_update_smtp_settings(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "user_smtp_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"

@@ -6,7 +6,6 @@ from datetime import datetime
 import pyotp
 from flask import (
     Flask,
-    Response,
     current_app,
     flash,
     redirect,
@@ -17,8 +16,11 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from sqlalchemy import event
-from wtforms import PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.orm import Mapper
+from werkzeug.wrappers.response import Response
+from wtforms import Field, Form, PasswordField, StringField, TextAreaField
+from wtforms.validators import DataRequired, Length, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
@@ -31,7 +33,7 @@ from .utils import generate_user_directory_json, require_2fa, send_email
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
 
 
-def valid_username(form, field):
+def valid_username(form: Form, field: Field) -> None:
     if not re.match(r"^[a-zA-Z0-9_-]+$", field.data):
         raise ValidationError(
             "Username must contain only letters, numbers, underscores, or hyphens."
@@ -221,7 +223,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def register() -> Response | str:
+    def register() -> Response | str | tuple[Response | str, int]:
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
         form = RegistrationForm()
         if not require_invite_code:
@@ -297,7 +299,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def verify_2fa_login() -> Response | str:
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
             flash("You need to log in first.")
@@ -341,7 +343,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("index"))
 
     @app.route("/settings/update_directory_visibility", methods=["POST"])
-    def update_directory_visibility():
+    def update_directory_visibility() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
             user.show_in_directory = "show_in_directory" in request.form
@@ -351,7 +353,7 @@ def init_app(app: Flask) -> None:
             flash("You need to be logged in to update settings.")
         return redirect(url_for("settings.index"))
 
-    def sort_users_by_display_name(users, admin_first=True):
+    def sort_users_by_display_name(users: list[User], admin_first: bool = True) -> list[User]:
         if admin_first:
             # Sorts admins to the top, then by display name or username
             return sorted(
@@ -366,7 +368,7 @@ def init_app(app: Flask) -> None:
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     @app.route("/directory")
-    def directory():
+    def directory() -> Response | str:
         logged_in = "user_id" in session
         users = User.query.all()  # Fetch all users
         sorted_users = sort_users_by_display_name(
@@ -375,6 +377,6 @@ def init_app(app: Flask) -> None:
         return render_template("directory.html", users=sorted_users, logged_in=logged_in)
 
     @event.listens_for(User, "after_update")
-    def receive_after_update(mapper, connection, target):
+    def receive_after_update(mapper: Mapper, connection: Connection, target: User) -> None:
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
