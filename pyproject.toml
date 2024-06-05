@@ -74,7 +74,16 @@ select = [
     # Unused noqa directive
     "RUF100",
 ]
-ignore = ["E501"]
+ignore = [
+    # https://docs.astral.sh/ruff/rules/too-many-statements/
+    "PLR0915",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    # https://docs.astral.sh/ruff/rules/assert/
+    "S101",
+]
 
 [tool.mypy]
 python_version = "3.11"

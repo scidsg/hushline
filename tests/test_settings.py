@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from werkzeug import HTTPStatus
 
 from hushline.model import User  # Ensure the User model is imported
 
@@ -14,7 +15,7 @@ def test_settings_page_loads(client):
 
     # Access the /settings page
     response = client.get("/settings/", follow_redirects=True)
-    assert response.status_code == 200, "Failed to load the settings page"
+    assert response.status_code == HTTPStatus.OK, "Failed to load the settings page"
 
 
 def test_change_display_name(client):
@@ -38,7 +39,7 @@ def test_change_display_name(client):
     )
 
     # Verify update was successful
-    assert response.status_code == 200, "Failed to update display name"
+    assert response.status_code == HTTPStatus.OK, "Failed to update display name"
 
     # Fetch updated user info from the database to confirm change
     updated_user = User.query.filter_by(primary_username="testuser_settings").first()
@@ -71,7 +72,7 @@ def test_change_username(client):
     )
 
     # Verify update was successful
-    assert response.status_code == 200, "Failed to update username"
+    assert response.status_code == HTTPStatus.OK, "Failed to update username"
 
     # Fetch updated user info from the database to confirm change
     updated_user = User.query.filter_by(primary_username=new_username).first()
@@ -97,7 +98,7 @@ def test_add_pgp_key(client):
     login_user(client, "user_with_pgp", "SecureTestPass123!")
 
     # Load the PGP key from a file
-    with open("tests/test_pgp_key.txt", "r") as file:
+    with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read()
 
     # Submit POST request to add the PGP key
@@ -108,7 +109,7 @@ def test_add_pgp_key(client):
     )
 
     # Check successful update
-    assert response.status_code == 200, "Failed to update PGP key"
+    assert response.status_code == HTTPStatus.OK, "Failed to update PGP key"
     updated_user = User.query.filter_by(primary_username="user_with_pgp").first()
     assert updated_user.pgp_key == new_pgp_key, "PGP key was not updated correctly"
 
@@ -134,7 +135,7 @@ def test_add_invalid_pgp_key(client):
     )
 
     # Check that update was not successful
-    assert response.status_code == 200, "HTTP status code check"
+    assert response.status_code == HTTPStatus.OK, "HTTP status code check"
 
     # Fetch updated user info from the database to confirm no change
     updated_user = User.query.filter_by(primary_username="user_invalid_pgp").first()
@@ -170,7 +171,7 @@ def test_update_smtp_settings(client):
     )
 
     # Check successful update
-    assert response.status_code == 200, "Failed to update SMTP settings"
+    assert response.status_code == HTTPStatus.OK, "Failed to update SMTP settings"
 
     # Fetch updated user info from the database to confirm changes
     updated_user = User.query.filter_by(primary_username="user_smtp_settings").first()

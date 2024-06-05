@@ -14,13 +14,13 @@ from hushline import create_app, db
 os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
 
-@pytest.fixture(scope="function")
-def config(mocker: MockFixture) -> None:
+@pytest.fixture()
+def _config(mocker: MockFixture) -> None:
     mocker.patch.dict(os.environ, {})
 
 
-@pytest.fixture(scope="function")
-def app(config: None) -> Generator[Flask, None, None]:
+@pytest.fixture()
+def app(_config: None) -> Generator[Flask, None, None]:
     app = create_app()
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
@@ -36,7 +36,7 @@ def app(config: None) -> Generator[Flask, None, None]:
         db.drop_all()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def client(app: Flask) -> Generator[FlaskClient, None, None]:
     with app.test_client() as client:
         yield client

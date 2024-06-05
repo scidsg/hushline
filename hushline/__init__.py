@@ -1,17 +1,20 @@
-import logging  # noqa: E402
-import os  # noqa: E402
-from datetime import timedelta  # noqa: E402
-from typing import Any, Tuple  # noqa: E402
+import logging
+import os
+from datetime import timedelta
+from typing import Any, Tuple
 
-from flask import Flask, Response, flash, redirect, render_template, session, url_for  # noqa: E402
-from flask_limiter import RateLimitExceeded  # noqa: E402
-from flask_migrate import Migrate, upgrade  # noqa: E402
-from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
+from dotenv import load_dotenv
+from flask import Flask, Response, flash, redirect, render_template, session, url_for
+from flask_limiter import RateLimitExceeded
+from flask_migrate import Migrate, upgrade
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import admin, routes, settings  # noqa: E402
-from .db import db  # noqa: E402
-from .limiter import limiter  # noqa: E402
-from .model import User  # noqa: E402
+from . import admin, routes, settings
+from .db import db
+from .ext import limiter
+from .model import User
+
+load_dotenv("/etc/hushline/hushline.conf")
 
 
 def create_app() -> Flask:

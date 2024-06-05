@@ -81,12 +81,12 @@ def init_app(app: Flask) -> None:
             user = User.query.get(session["user_id"])
             if user:
                 return redirect(url_for("inbox", username=user.primary_username))
-            else:
-                flash("🫥 User not found. Please log in again.")
-                session.pop("user_id", None)  # Clear the invalid user_id from session
-                return redirect(url_for("login"))
-        else:
-            return redirect(url_for("directory"))
+
+            flash("🫥 User not found. Please log in again.")
+            session.pop("user_id", None)  # Clear the invalid user_id from session
+            return redirect(url_for("login"))
+
+        return redirect(url_for("directory"))
 
     @app.route("/inbox")
     @limiter.limit("120 per minute")
@@ -215,9 +215,9 @@ def init_app(app: Flask) -> None:
             db.session.commit()
             flash("🗑️ Message deleted successfully.")
             return redirect(url_for("inbox", username=user.primary_username))
-        else:
-            flash("⛔️ Message not found or unauthorized access.")
-            return redirect(url_for("inbox", username=user.primary_username))
+
+        flash("⛔️ Message not found or unauthorized access.")
+        return redirect(url_for("inbox", username=user.primary_username))
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
@@ -271,29 +271,28 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def login() -> Response | str:
         form = LoginForm()
-        if request.method == "POST":
-            if form.validate_on_submit():
-                username = form.username.data.strip()
-                password = form.password.data
+        if request.method == "POST" and form.validate_on_submit():
+            username = form.username.data.strip()
+            password = form.password.data
 
-                user = User.query.filter_by(primary_username=username).first()
+            user = User.query.filter_by(primary_username=username).first()
 
-                if user and user.check_password(password):
-                    session.permanent = True
-                    session["user_id"] = user.id
-                    session["username"] = user.primary_username
-                    session["is_authenticated"] = True
-                    session["2fa_required"] = user.totp_secret is not None
-                    session["2fa_verified"] = False
-                    session["is_admin"] = user.is_admin
+            if user and user.check_password(password):
+                session.permanent = True
+                session["user_id"] = user.id
+                session["username"] = user.primary_username
+                session["is_authenticated"] = True
+                session["2fa_required"] = user.totp_secret is not None
+                session["2fa_verified"] = False
+                session["is_admin"] = user.is_admin
 
-                    if user.totp_secret:
-                        return redirect(url_for("verify_2fa_login"))
-                    else:
-                        session["2fa_verified"] = True
-                        return redirect(url_for("inbox", username=user.primary_username))
-                else:
-                    flash("⛔️ Invalid username or password")
+                if user.totp_secret:
+                    return redirect(url_for("verify_2fa_login"))
+
+                session["2fa_verified"] = True
+                return redirect(url_for("inbox", username=user.primary_username))
+
+            flash("⛔️ Invalid username or password")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
@@ -318,9 +317,9 @@ def init_app(app: Flask) -> None:
             if totp.verify(verification_code):
                 session["2fa_verified"] = True  # Set 2FA verification flag
                 return redirect(url_for("inbox", username=user.primary_username))
-            else:
-                flash("⛔️ Invalid 2FA code. Please try again.")
-                return render_template("verify_2fa_login.html", form=form), 401
+
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return render_template("verify_2fa_login.html", form=form), 401
 
         return render_template("verify_2fa_login.html", form=form)
 
@@ -362,12 +361,9 @@ def init_app(app: Flask) -> None:
                     (u.display_name or u.primary_username).strip().lower(),
                 ),
             )
-        else:
-            # Sorts only by display name or username
-            return sorted(
-                users,
-                key=lambda u: (u.display_name or u.primary_username).strip().lower(),
-            )
+
+        # Sorts only by display name or username
+        return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     @app.route("/directory")
     def directory():

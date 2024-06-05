@@ -28,7 +28,7 @@ def toggle_admin(username: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 2:  # noqa: PLR2004
         print("Usage: python make_admin.py <username>")
         sys.exit(1)
 

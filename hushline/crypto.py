@@ -52,8 +52,7 @@ def encrypt_message(message: str | bytes, user_pgp_key: str) -> str | None:
 
         # Assuming there is no signer (i.e., unsigned encryption).
         # Adjust the call to encrypt by passing the encoded message
-        encrypted = encrypt([recipient_cert], message_bytes)  # Use message_bytes
-        return encrypted
+        return encrypt([recipient_cert], message_bytes)  # Use message_bytes
     except Exception as e:
         current_app.logger.error(f"Error during encryption: {e}")
         return None

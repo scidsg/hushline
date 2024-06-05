@@ -5,7 +5,7 @@ from wtforms import StringField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 
-class ComplexPassword(object):
+class ComplexPassword:
     def __init__(self, message=None):
         if not message:
             message = (

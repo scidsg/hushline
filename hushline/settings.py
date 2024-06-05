@@ -77,7 +77,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def index() -> str | Response:
+    def index() -> str | Response:  # noqa: PLR0911, PLR0912
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -98,22 +98,21 @@ def create_blueprint() -> Blueprint:
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
 
-        if request.method == "POST":
-            if "update_bio" in request.form:  # Check if the bio update form was submitted
-                user.bio = request.form["bio"]
-                db.session.commit()
-                flash("👍 Bio updated successfully.")
-                return redirect(url_for("settings.index"))
+        # Check if the bio update form was submitted
+        if request.method == "POST" and "update_bio" in request.form:
+            user.bio = request.form["bio"]
+            db.session.commit()
+            flash("👍 Bio updated successfully.")
+            return redirect(url_for("settings.index"))
 
-        if request.method == "POST":
-            if (
-                directory_visibility_form.validate_on_submit()
-                and "update_directory_visibility" in request.form
-            ):
-                user.show_in_directory = directory_visibility_form.show_in_directory.data
-                db.session.commit()
-                flash("👍 Directory visibility updated successfully.")
-                return redirect(url_for("settings.index"))
+        if request.method == "POST" and (
+            directory_visibility_form.validate_on_submit()
+            and "update_directory_visibility" in request.form
+        ):
+            user.show_in_directory = directory_visibility_form.show_in_directory.data
+            db.session.commit()
+            flash("👍 Directory visibility updated successfully.")
+            return redirect(url_for("settings.index"))
 
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
@@ -144,7 +143,7 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for(".index"))
 
             # Handle Change Username Form Submission
-            elif "change_username" in request.form and change_username_form.validate_on_submit():
+            if "change_username" in request.form and change_username_form.validate_on_submit():
                 new_username = change_username_form.new_username.data
                 existing_user = User.query.filter_by(primary_username=new_username).first()
                 if existing_user:
@@ -161,7 +160,7 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for(".index"))
 
             # Handle SMTP Settings Form Submission
-            elif smtp_settings_form.validate_on_submit():
+            if smtp_settings_form.validate_on_submit():
                 user.email = smtp_settings_form.smtp_username.data
                 user.smtp_server = smtp_settings_form.smtp_server.data
                 user.smtp_port = smtp_settings_form.smtp_port.data
@@ -172,14 +171,14 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for("settings"))
 
             # Handle PGP Key Form Submission
-            elif pgp_key_form.validate_on_submit():
+            if pgp_key_form.validate_on_submit():
                 user.pgp_key = pgp_key_form.pgp_key.data
                 db.session.commit()
                 flash("👍 PGP key updated successfully.")
                 return redirect(url_for("settings"))
 
             # Handle Change Password Form Submission
-            elif change_password_form.validate_on_submit():
+            if change_password_form.validate_on_submit():
                 if scrypt.verify(change_password_form.old_password.data, user.password_hash):
                     # Hash the new password using scrypt and update the user object
                     user.password_hash = scrypt.hash(change_password_form.new_password.data)
@@ -243,8 +242,8 @@ def create_blueprint() -> Blueprint:
         user = db.session.get(User, user_id)
         if user.totp_secret:
             return redirect(url_for(".disable_2fa"))
-        else:
-            return redirect(url_for(".enable_2fa"))
+
+        return redirect(url_for(".enable_2fa"))
 
     @bp.route("/change-password", methods=["POST"])
     @limiter.limit("120 per minute")
@@ -275,8 +274,8 @@ def create_blueprint() -> Blueprint:
                 return redirect(
                     url_for("login")
                 )  # Redirect to the login page for re-authentication
-            else:
-                flash("Incorrect old password.", "error")
+
+            flash("Incorrect old password.", "error")
 
         # Render the settings page with all forms
         return render_template(
@@ -362,9 +361,9 @@ def create_blueprint() -> Blueprint:
                 session.pop("temp_totp_secret", None)
                 flash("👍 2FA setup successful. Please log in again with 2FA.")
                 return redirect(url_for("logout"))  # Redirect to logout
-            else:
-                flash("⛔️ Invalid 2FA code. Please try again.")
-                return redirect(url_for(".enable_2fa"))
+
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return redirect(url_for(".enable_2fa"))
 
         # Generate new 2FA secret and QR code
         temp_totp_secret = pyotp.random_base32()
@@ -446,9 +445,9 @@ def create_blueprint() -> Blueprint:
             flash("👍 2FA setup successful. Please log in again.")
             session.pop("is_setting_up_2fa", None)
             return redirect(url_for("logout"))
-        else:
-            flash("⛔️ Invalid 2FA code. Please try again.")
-            return redirect(url_for("show_qr_code"))
+
+        flash("⛔️ Invalid 2FA code. Please try again.")
+        return redirect(url_for("show_qr_code"))
 
     @bp.route("/update_pgp_key", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
@@ -553,8 +552,8 @@ def create_blueprint() -> Blueprint:
             session.clear()  # Clear the session
             flash("🔥 Your account and all related information have been deleted.")
             return redirect(url_for("index"))
-        else:
-            flash("User not found. Please log in again.")
-            return redirect(url_for("login"))
+
+        flash("User not found. Please log in again.")
+        return redirect(url_for("login"))
 
     return bp

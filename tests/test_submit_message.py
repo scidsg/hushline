@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from werkzeug import HTTPStatus
 
 from hushline.model import Message
 
@@ -23,7 +24,7 @@ def test_submit_message_page_loads(client):
     response = client.get(f"/submit_message/{user.primary_username}")
 
     # Assert that the response status code is 200 (OK)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
     # Assert that the page contains the expected content
     assert (
@@ -53,7 +54,7 @@ def test_submit_message(client):
     )
 
     # Assert that the response status code is 200 (OK)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
     # Assert that the success message is displayed
     assert b"Message submitted successfully." in response.data
@@ -67,7 +68,7 @@ def test_submit_message(client):
     response = client.get(f"/inbox?username={user.primary_username}", follow_redirects=True)
 
     # Assert that the response status code is 200 (OK)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
     # Assert that the submitted message is displayed in the inbox
     assert b"This is a test message." in response.data
