@@ -83,6 +83,8 @@ ignore = [
 "tests/*.py" = [
     # https://docs.astral.sh/ruff/rules/assert/
     "S101",
+    # https://docs.astral.sh/ruff/rules/magic-value-comparison/
+    "PLR2004",
 ]
 
 [tool.mypy]

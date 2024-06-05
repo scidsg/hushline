@@ -1,7 +1,6 @@
 import os
 
 from flask.testing import FlaskClient
-from werkzeug import HTTPStatus
 
 from hushline.model import User
 
@@ -17,7 +16,7 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     response = client.post("/register", data=user_data, follow_redirects=True)
 
     # Validate response
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
     assert b"Registration successful! Please log in." in response.data
 
     # Verify user is added to the database
@@ -37,7 +36,7 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
     response = client.post("/login", data=login_data, follow_redirects=True)
 
     # Validate login response
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
     assert b"Inbox" in response.data
     assert (
         f'href="/inbox?username={username}"'.encode() in response.data

@@ -1,6 +1,5 @@
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
-from werkzeug import HTTPStatus
 
 from hushline import db
 
@@ -10,7 +9,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get("/directory")
 
     # Check if the page loads successfully
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
     assert "User Directory" in response.get_data(as_text=True)
 
 
