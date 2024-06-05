@@ -74,7 +74,7 @@ def test_submit_message(client: FlaskClient) -> None:
     assert b"This is a test message." in response.data
 
 
-def test_submit_message_with_contact_method(client):
+def test_submit_message_with_contact_method(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
     assert user is not None

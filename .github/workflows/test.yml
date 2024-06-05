@@ -1,18 +1,13 @@
 ---
-name: Merge to Main
+name: Tests
 
 on:
-  push:
-    branches:
-      - main
+  - push
+  - pull_request
 
 jobs:
   ci:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash  # Set bash as the default shell for all run commands
-
     steps:
       - uses: actions/setup-python@v4
         with:
@@ -34,12 +29,10 @@ jobs:
             ~/.cache/pypoetry
 
       - name: Install Python dependencies
-        run: poetry install --all-extras
+        run: poetry install
 
       - name: Lint
-        run: poetry run isort --check . && poetry run black --check . && poetry run flake8 --config setup.cfg . && poetry run mypy --config-file pyproject.toml .
+        run: poetry run make lint
 
       - name: Test
-        run: source test.env && poetry run pytest -vv tests -p no:warnings
-        env:
-          CI: true
+        run: poetry run make test

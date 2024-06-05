@@ -20,7 +20,7 @@ from sqlalchemy.engine.base import Connection
 from sqlalchemy.orm import Mapper
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
 from .crypto import encrypt_message
 from .db import db
@@ -125,7 +125,7 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str):
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
         user = User.query.filter_by(primary_username=username).first()
         if not user:

@@ -8,7 +8,7 @@ help: ## Print the help message
 
 .PHONY: run
 run: ## Run the app
-	@source ./files/dev/env.sh && \
+	. ./dev_env.sh && \
 	flask run --debug -h localhost -p 5000
 
 .PHONY: lint
@@ -22,21 +22,10 @@ fix: ## Format the code
 
 .PHONY: migrate
 migrate:
-	@source ./files/dev/env.sh && \
+	. ./dev_env.sh && \
 	flask db upgrade
 
 .PHONY: test
 test: ## Run the test suite
-	docker-compose exec app bash -c "poetry run pytest -vv tests -p no:warnings"
-
-.PHONY: lint
-lint: ## Lint the code
-	docker-compose exec app poetry run bash -c "isort --check . && black --check . && flake8 --config setup.cfg . && mypy --config-file pyproject.toml ."
-
-.PHONY: fmt
-fmt: ## Format the code
-	docker-compose exec app poetry run bash -c "isort . && black ."
-
-.PHONY: shell
-shell: ## Get a shell in the container
-	docker-compose exec app bash
+	. ./dev_env.sh && \
+	pytest -vv tests -p no:warnings

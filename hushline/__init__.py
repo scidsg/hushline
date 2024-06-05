@@ -1,18 +1,17 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Tuple
+from typing import Any
 
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
 from flask_migrate import Migrate, upgrade
-from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
 from .db import db
-from .ext import limiter
+from .limiter import limiter
 from .model import User
 
 load_dotenv("/etc/hushline/hushline.conf")
@@ -21,13 +20,11 @@ load_dotenv("/etc/hushline/hushline.conf")
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    # Configure logging
+    app.logger.setLevel(logging.DEBUG)
     app.logger.debug(f"Loaded ENCRYPTION_KEY: {os.environ.get('ENCRYPTION_KEY')}")
 
-    @app.errorhandler(RateLimitExceeded)
-    def handle_rate_limit_exceeded(e: RateLimitExceeded) -> tuple[str, int]:
-        return render_template("rate_limit_exceeded.html"), 429
-
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
+    # app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
 
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
@@ -48,16 +45,21 @@ def create_app() -> Flask:
         if not all(os.path.exists(path) for path in [ssl_cert, ssl_key] if path):
             raise FileNotFoundError("SSL certificate or key file is missing.")
 
+    # Run migrations
     db.init_app(app)
     _ = Migrate(app, db)
+    with app.app_context():
+        upgrade()
 
     limiter.init_app(app)
-
-    app.logger.setLevel(logging.DEBUG)
 
     routes.init_app(app)
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
+
+    @app.errorhandler(RateLimitExceeded)
+    def handle_rate_limit_exceeded(e: RateLimitExceeded) -> tuple[str, int]:
+        return render_template("rate_limit_exceeded.html"), 429
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:
@@ -70,17 +72,5 @@ def create_app() -> Flask:
             user = User.query.get(session["user_id"])
             return {"user": user}
         return {}
-
-    @app.errorhandler(Exception)
-    def handle_exception(e: Exception) -> Tuple[str, int]:
-        # Consider adjusting error handling as per your logging preferences
-        app.logger.error(
-            f"Error: {e}", exc_info=True
-        )  # Ensure appropriate logging configuration is in place
-        return "An internal server error occurred", 500
-
-    # Run migrations
-    with app.app_context():
-        upgrade()
 
     return app

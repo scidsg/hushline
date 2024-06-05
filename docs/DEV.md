@@ -20,6 +20,12 @@ You need Python, Poetry, and pipx. If you're on macOS, install these with [Homeb
 brew install python poetry pipx
 ```
 
+You also need Rust to install some of the Python dependencies. Install [rustup](https://rustup.rs/) like this:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
 Using pipx, install Python packages required for linting and static type checking:
 
 ```sh
