@@ -16,13 +16,14 @@ lint: ## Lint the code
 	ruff check && \
 	mypy .
 
-.PHONY: fmt
-fmt: ## Format the code
+.PHONY: fix
+fix: ## Format the code
 	ruff check --fix
 
-.PHONY: init-db
-init-db: ## Initialize the dev database
-	flask db-extras init-db
+.PHONY: migrate
+migrate:
+	@source ./files/dev/env.sh && \
+	flask db upgrade
 
 .PHONY: test
 test: ## Run the test suite
