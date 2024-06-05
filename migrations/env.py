@@ -1,6 +1,5 @@
 import logging
 from logging.config import fileConfig
-from typing import List
 
 from alembic import context
 from alembic.runtime.migration import MigrationContext
@@ -87,13 +86,16 @@ def run_migrations_online() -> None:
     # when there are no changes to the schema
     # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
     def process_revision_directives(
-        context: MigrationContext, revision: str, directives: List[Script]
+        context: MigrationContext, revision: str, directives: list[Script]
     ) -> None:
-        if getattr(config.cmd_opts, "autogenerate", False):
-            script = directives[0]
-            if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info("No changes in schema detected.")
+        # TODO: regenerate this code with alembic to support typing
+        pass
+
+        # if getattr(config.cmd_opts, "autogenerate", False):
+        #     script = directives[0]
+        #     if script.upgrade_ops.is_empty():
+        #         directives[:] = []
+        #         logger.info("No changes in schema detected.")
 
     conf_args = current_app.extensions["migrate"].configure_args
     if conf_args.get("process_revision_directives") is None:

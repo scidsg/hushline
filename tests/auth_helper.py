@@ -29,7 +29,7 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     return user
 
 
-def login_user(client: FlaskClient, username: str, password: str) -> User:
+def login_user(client: FlaskClient, username: str, password: str) -> User | None:
     # Login data should match the registration data
     login_data = {"username": username, "password": password}
 

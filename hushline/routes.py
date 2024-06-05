@@ -101,16 +101,19 @@ def init_app(app: Flask) -> None:
 
         logged_in_user_id = session["user_id"]
         requested_username = request.args.get("username")
-        logged_in_username = User.query.get(logged_in_user_id).primary_username
+        logged_in_user = User.query.get(logged_in_user_id)
+        if logged_in_user:
+            logged_in_username = logged_in_user.primary_username
 
         if requested_username and requested_username != logged_in_username:
             return redirect(url_for("inbox"))
 
         primary_user = User.query.get(logged_in_user_id)
-        messages = (
-            Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
-        )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
+        if primary_user:
+            messages = (
+                Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
+            )
+            secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
@@ -346,7 +349,8 @@ def init_app(app: Flask) -> None:
     def update_directory_visibility() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
-            user.show_in_directory = "show_in_directory" in request.form
+            if user:
+                user.show_in_directory = "show_in_directory" in request.form
             db.session.commit()
             flash("Directory visibility updated.")
         else:

@@ -239,8 +239,8 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
-        if user.totp_secret:
+        user = db.session.query(User).get(user_id)
+        if user and user.totp_secret:
             return redirect(url_for(".disable_2fa"))
 
         return redirect(url_for(".enable_2fa"))
@@ -357,6 +357,7 @@ def create_blueprint() -> Blueprint:
                 verification_code
                 and temp_totp_secret
                 and pyotp.TOTP(temp_totp_secret).verify(verification_code)
+                and user
             ):
                 user.totp_secret = temp_totp_secret
                 db.session.commit()
@@ -371,9 +372,10 @@ def create_blueprint() -> Blueprint:
         temp_totp_secret = pyotp.random_base32()
         session["temp_totp_secret"] = temp_totp_secret
         session["is_setting_up_2fa"] = True
-        totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-            name=user.primary_username, issuer_name="HushLine"
-        )
+        if user:
+            totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
+                name=user.primary_username, issuer_name="HushLine"
+            )
         img = qrcode.make(totp_uri)
         buffered = io.BytesIO()
         img.save(buffered)
@@ -396,8 +398,9 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
-        user.totp_secret = None
+        user = db.session.query(User).get(user_id)
+        if user:
+            user.totp_secret = None
         db.session.commit()
         flash("🔓 2FA has been disabled.")
         return redirect(url_for(".index"))
@@ -460,17 +463,19 @@ def create_blueprint() -> Blueprint:
             flash("⛔️ User not authenticated.")
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
+        user = db.session.query(User).get(user_id)
         form = PGPKeyForm()
         if form.validate_on_submit():
             pgp_key = form.pgp_key.data
 
             if pgp_key.strip() == "":
                 # If the field is empty, remove the PGP key
-                user.pgp_key = None
+                if user:
+                    user.pgp_key = None
             elif is_valid_pgp_key(pgp_key):
                 # If the field is not empty and the key is valid, update the PGP key
-                user.pgp_key = pgp_key
+                if user:
+                    user.pgp_key = pgp_key
             else:
                 # If the PGP key is invalid
                 flash("⛔️ Invalid PGP key format or import failed.")
@@ -489,7 +494,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
+        user = db.session.query(User).get(user_id)
         if not user:
             flash("⛔️ User not found")
             return redirect(url_for(".index"))

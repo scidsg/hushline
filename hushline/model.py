@@ -1,13 +1,20 @@
-from typing import Any
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 from flask import current_app
+from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
 
+if TYPE_CHECKING:
+    from flask_sqlalchemy.model import Model
+else:
+    Model = db.Model
 
-class User(db.Model):
+
+class User(Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -129,14 +136,12 @@ class User(db.Model):
             # Log any exceptions that occur during the update
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
 
-    def __init__(self, *args: tuple[str, ...], **kwargs: dict[str, Any]) -> None:
-        plaintext_password = kwargs.pop("password", None)
-        super().__init__(*args, **kwargs)
-        if plaintext_password:
-            self.password_hash = plaintext_password
+    def __init__(self, primary_username: str) -> None:
+        super().__init__()
+        self.primary_username = primary_username
 
 
-class SecondaryUsername(db.Model):
+class SecondaryUsername(Model):
     __tablename__ = "secondary_usernames"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -146,7 +151,7 @@ class SecondaryUsername(db.Model):
     display_name = db.Column(db.String(80), nullable=True)
 
 
-class Message(db.Model):
+class Message(Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -155,6 +160,11 @@ class Message(db.Model):
         db.Integer, db.ForeignKey("secondary_usernames.id"), nullable=True
     )
     secondary_username = db.relationship("SecondaryUsername", backref="messages")
+
+    def __init__(self, content: str, user_id: int) -> None:
+        super().__init__()
+        self.content = content
+        self.user_id = user_id
 
     @property
     def content(self) -> str | None:
@@ -165,10 +175,15 @@ class Message(db.Model):
         self._content = encrypt_field(value)
 
 
-class InviteCode(db.Model):
+class InviteCode(Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(255), unique=True, nullable=False)
     expiration_date = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, code: str, expiration_date: datetime) -> None:
+        super().__init__()
+        self.code = code
+        self.expiration_date = expiration_date
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"

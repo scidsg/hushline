@@ -44,6 +44,7 @@ def test_change_display_name(client: FlaskClient) -> None:
 
     # Fetch updated user info from the database to confirm change
     updated_user = User.query.filter_by(primary_username="testuser_settings").first()
+    assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.display_name == new_display_name, "Display name was not updated correctly"
 
     # Optional: Check for success message in response
@@ -112,6 +113,7 @@ def test_add_pgp_key(client: FlaskClient) -> None:
     # Check successful update
     assert response.status_code == HTTPStatus.OK, "Failed to update PGP key"
     updated_user = User.query.filter_by(primary_username="user_with_pgp").first()
+    assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.pgp_key == new_pgp_key, "PGP key was not updated correctly"
 
     # Check for success message
