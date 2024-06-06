@@ -51,7 +51,7 @@ poetry install
 Run the database migrations:
 
 ```sh
-poetry run migrate
+poetry run make migrate
 ```
 
 Run the app in debug mode:
