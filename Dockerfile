@@ -23,5 +23,5 @@ RUN poetry install
 COPY . /app
 
 # Run!
-ENV FLASK_APP="hushline/__init__.py"
+ENV FLASK_APP="hushline"
 CMD ["poetry", "run", "flask", "run", "-p", "5000", "--host", "0.0.0.0"]

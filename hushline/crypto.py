@@ -30,7 +30,7 @@ def decrypt_field(data: str | None) -> str | None:
     return fernet.decrypt(data.encode()).decode()
 
 
-def is_valid_pgp_key(key):
+def is_valid_pgp_key(key: str) -> bool:
     current_app.logger.debug(f"Attempting to validate key: {key}")
     try:
         # Attempt to load the PGP key to verify its validity
@@ -41,7 +41,7 @@ def is_valid_pgp_key(key):
         return False
 
 
-def encrypt_message(message: str | bytes, user_pgp_key: str) -> str | None:
+def encrypt_message(message: str, user_pgp_key: str) -> str | None:
     current_app.logger.info("Encrypting message for user with provided PGP key")
     try:
         # Load the user's PGP certificate (public key) from the key data
@@ -52,8 +52,7 @@ def encrypt_message(message: str | bytes, user_pgp_key: str) -> str | None:
 
         # Assuming there is no signer (i.e., unsigned encryption).
         # Adjust the call to encrypt by passing the encoded message
-        encrypted = encrypt([recipient_cert], message_bytes)  # Use message_bytes
-        return encrypted
+        return encrypt([recipient_cert], message_bytes)  # Use message_bytes
     except Exception as e:
         current_app.logger.error(f"Error during encryption: {e}")
         return None

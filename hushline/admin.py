@@ -1,4 +1,5 @@
-from flask import Blueprint, Response, flash, redirect, session, url_for
+from flask import Blueprint, flash, redirect, session, url_for
+from werkzeug.wrappers.response import Response
 
 from .db import db
 from .limiter import limiter

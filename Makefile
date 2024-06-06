@@ -6,22 +6,26 @@ help: ## Print the help message
 		sort | \
 		column -s ':' -t
 
-.PHONY: dev
-dev: ## Run the app in development mode
-	docker-compose up --build
-
-.PHONY: test
-test: ## Run the test suite
-	docker-compose exec app bash -c "poetry run pytest -vv tests -p no:warnings"
+.PHONY: run
+run: ## Run the app
+	. ./dev_env.sh && \
+	flask run --debug -h localhost -p 5000
 
 .PHONY: lint
 lint: ## Lint the code
-	docker-compose exec app poetry run bash -c "isort --check . && black --check . && flake8 --config setup.cfg . && mypy --config-file pyproject.toml ."
+	ruff check && \
+	mypy .
 
-.PHONY: fmt
-fmt: ## Format the code
-	docker-compose exec app poetry run bash -c "isort . && black ."
+.PHONY: fix
+fix: ## Format the code
+	ruff check --fix
 
-.PHONY: shell
-shell: ## Get a shell in the container
-	docker-compose exec app bash
+.PHONY: migrate
+migrate:
+	. ./dev_env.sh && \
+	flask db upgrade
+
+.PHONY: test
+test: ## Run the test suite
+	. ./dev_env.sh && \
+	pytest -vv tests -p no:warnings

@@ -6,7 +6,6 @@ from datetime import datetime
 import pyotp
 from flask import (
     Flask,
-    Response,
     current_app,
     flash,
     redirect,
@@ -17,7 +16,10 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from sqlalchemy import event
-from wtforms import PasswordField, StringField, TextAreaField
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.orm import Mapper
+from werkzeug.wrappers.response import Response
+from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
 from .crypto import encrypt_message
@@ -31,7 +33,7 @@ from .utils import generate_user_directory_json, require_2fa, send_email
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
 
 
-def valid_username(form, field):
+def valid_username(form: Form, field: Field) -> None:
     if not re.match(r"^[a-zA-Z0-9_-]+$", field.data):
         raise ValidationError(
             "Username must contain only letters, numbers, underscores, or hyphens."
@@ -81,12 +83,12 @@ def init_app(app: Flask) -> None:
             user = User.query.get(session["user_id"])
             if user:
                 return redirect(url_for("inbox", username=user.primary_username))
-            else:
-                flash("🫥 User not found. Please log in again.")
-                session.pop("user_id", None)  # Clear the invalid user_id from session
-                return redirect(url_for("login"))
-        else:
-            return redirect(url_for("directory"))
+
+            flash("🫥 User not found. Please log in again.")
+            session.pop("user_id", None)  # Clear the invalid user_id from session
+            return redirect(url_for("login"))
+
+        return redirect(url_for("directory"))
 
     @app.route("/inbox")
     @limiter.limit("120 per minute")
@@ -99,16 +101,19 @@ def init_app(app: Flask) -> None:
 
         logged_in_user_id = session["user_id"]
         requested_username = request.args.get("username")
-        logged_in_username = User.query.get(logged_in_user_id).primary_username
+        logged_in_user = User.query.get(logged_in_user_id)
+        if logged_in_user:
+            logged_in_username = logged_in_user.primary_username
 
         if requested_username and requested_username != logged_in_username:
             return redirect(url_for("inbox"))
 
         primary_user = User.query.get(logged_in_user_id)
-        messages = (
-            Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
-        )
-        secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
+        if primary_user:
+            messages = (
+                Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
+            )
+            secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
@@ -120,7 +125,7 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str):
+    def submit_message(username: str) -> Response | str:
         form = MessageForm()
         user = User.query.filter_by(primary_username=username).first()
         if not user:
@@ -215,13 +220,13 @@ def init_app(app: Flask) -> None:
             db.session.commit()
             flash("🗑️ Message deleted successfully.")
             return redirect(url_for("inbox", username=user.primary_username))
-        else:
-            flash("⛔️ Message not found or unauthorized access.")
-            return redirect(url_for("inbox", username=user.primary_username))
+
+        flash("⛔️ Message not found or unauthorized access.")
+        return redirect(url_for("inbox", username=user.primary_username))
 
     @app.route("/register", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def register() -> Response | str:
+    def register() -> Response | str | tuple[Response | str, int]:
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
         form = RegistrationForm()
         if not require_invite_code:
@@ -271,34 +276,33 @@ def init_app(app: Flask) -> None:
     @limiter.limit("120 per minute")
     def login() -> Response | str:
         form = LoginForm()
-        if request.method == "POST":
-            if form.validate_on_submit():
-                username = form.username.data.strip()
-                password = form.password.data
+        if request.method == "POST" and form.validate_on_submit():
+            username = form.username.data.strip()
+            password = form.password.data
 
-                user = User.query.filter_by(primary_username=username).first()
+            user = User.query.filter_by(primary_username=username).first()
 
-                if user and user.check_password(password):
-                    session.permanent = True
-                    session["user_id"] = user.id
-                    session["username"] = user.primary_username
-                    session["is_authenticated"] = True
-                    session["2fa_required"] = user.totp_secret is not None
-                    session["2fa_verified"] = False
-                    session["is_admin"] = user.is_admin
+            if user and user.check_password(password):
+                session.permanent = True
+                session["user_id"] = user.id
+                session["username"] = user.primary_username
+                session["is_authenticated"] = True
+                session["2fa_required"] = user.totp_secret is not None
+                session["2fa_verified"] = False
+                session["is_admin"] = user.is_admin
 
-                    if user.totp_secret:
-                        return redirect(url_for("verify_2fa_login"))
-                    else:
-                        session["2fa_verified"] = True
-                        return redirect(url_for("inbox", username=user.primary_username))
-                else:
-                    flash("⛔️ Invalid username or password")
+                if user.totp_secret:
+                    return redirect(url_for("verify_2fa_login"))
+
+                session["2fa_verified"] = True
+                return redirect(url_for("inbox", username=user.primary_username))
+
+            flash("⛔️ Invalid username or password")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
-    def verify_2fa_login() -> Response | str:
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
             flash("You need to log in first.")
@@ -318,9 +322,9 @@ def init_app(app: Flask) -> None:
             if totp.verify(verification_code):
                 session["2fa_verified"] = True  # Set 2FA verification flag
                 return redirect(url_for("inbox", username=user.primary_username))
-            else:
-                flash("⛔️ Invalid 2FA code. Please try again.")
-                return render_template("verify_2fa_login.html", form=form), 401
+
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return render_template("verify_2fa_login.html", form=form), 401
 
         return render_template("verify_2fa_login.html", form=form)
 
@@ -342,17 +346,18 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("index"))
 
     @app.route("/settings/update_directory_visibility", methods=["POST"])
-    def update_directory_visibility():
+    def update_directory_visibility() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
-            user.show_in_directory = "show_in_directory" in request.form
+            if user:
+                user.show_in_directory = "show_in_directory" in request.form
             db.session.commit()
             flash("Directory visibility updated.")
         else:
             flash("You need to be logged in to update settings.")
         return redirect(url_for("settings.index"))
 
-    def sort_users_by_display_name(users, admin_first=True):
+    def sort_users_by_display_name(users: list[User], admin_first: bool = True) -> list[User]:
         if admin_first:
             # Sorts admins to the top, then by display name or username
             return sorted(
@@ -362,15 +367,12 @@ def init_app(app: Flask) -> None:
                     (u.display_name or u.primary_username).strip().lower(),
                 ),
             )
-        else:
-            # Sorts only by display name or username
-            return sorted(
-                users,
-                key=lambda u: (u.display_name or u.primary_username).strip().lower(),
-            )
+
+        # Sorts only by display name or username
+        return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     @app.route("/directory")
-    def directory():
+    def directory() -> Response | str:
         logged_in = "user_id" in session
         users = User.query.all()  # Fetch all users
         sorted_users = sort_users_by_display_name(
@@ -379,6 +381,6 @@ def init_app(app: Flask) -> None:
         return render_template("directory.html", users=sorted_users, logged_in=logged_in)
 
     @event.listens_for(User, "after_update")
-    def receive_after_update(mapper, connection, target):
+    def receive_after_update(mapper: Mapper, connection: Connection, target: User) -> None:
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()

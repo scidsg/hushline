@@ -1,9 +1,10 @@
 from auth_helper import login_user, register_user
+from flask.testing import FlaskClient
 
 from hushline.model import User  # Ensure the User model is imported
 
 
-def test_settings_page_loads(client):
+def test_settings_page_loads(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "testuser_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -17,7 +18,7 @@ def test_settings_page_loads(client):
     assert response.status_code == 200, "Failed to load the settings page"
 
 
-def test_change_display_name(client):
+def test_change_display_name(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "testuser_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -42,6 +43,7 @@ def test_change_display_name(client):
 
     # Fetch updated user info from the database to confirm change
     updated_user = User.query.filter_by(primary_username="testuser_settings").first()
+    assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.display_name == new_display_name, "Display name was not updated correctly"
 
     # Optional: Check for success message in response
@@ -50,7 +52,7 @@ def test_change_display_name(client):
     ), "Success message not found in response"
 
 
-def test_change_username(client):
+def test_change_username(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "original_username", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -90,14 +92,14 @@ def test_change_username(client):
     ), "Success message not found in response"
 
 
-def test_add_pgp_key(client):
+def test_add_pgp_key(client: FlaskClient) -> None:
     # Setup and login
     user = register_user(client, "user_with_pgp", "SecureTestPass123!")
     assert user is not None, "User registration failed"
     login_user(client, "user_with_pgp", "SecureTestPass123!")
 
     # Load the PGP key from a file
-    with open("tests/test_pgp_key.txt", "r") as file:
+    with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read()
 
     # Submit POST request to add the PGP key
@@ -110,13 +112,14 @@ def test_add_pgp_key(client):
     # Check successful update
     assert response.status_code == 200, "Failed to update PGP key"
     updated_user = User.query.filter_by(primary_username="user_with_pgp").first()
+    assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.pgp_key == new_pgp_key, "PGP key was not updated correctly"
 
     # Check for success message
     assert b"PGP key updated successfully" in response.data, "Success message not found"
 
 
-def test_add_invalid_pgp_key(client):
+def test_add_invalid_pgp_key(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "user_invalid_pgp", "SecureTestPass123!")
     assert user is not None, "User registration failed"
@@ -147,7 +150,7 @@ def test_add_invalid_pgp_key(client):
     assert b"Invalid PGP key format" in response.data, "Error message for invalid PGP key not found"
 
 
-def test_update_smtp_settings(client):
+def test_update_smtp_settings(client: FlaskClient) -> None:
     # Register and log in a user
     user = register_user(client, "user_smtp_settings", "SecureTestPass123!")
     assert user is not None, "User registration failed"

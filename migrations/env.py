@@ -1,9 +1,12 @@
 import logging
 from logging.config import fileConfig
 
-from flask import current_app
-
 from alembic import context
+from alembic.runtime.migration import MigrationContext
+from alembic.script import Script
+from flask import current_app
+from sqlalchemy import MetaData
+from sqlalchemy.engine.base import Engine
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -11,11 +14,13 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+if config.config_file_name:
+    fileConfig(config.config_file_name)
+
 logger = logging.getLogger("alembic.env")
 
 
-def get_engine():
+def get_engine() -> Engine:
     try:
         # this works with Flask-SQLAlchemy<3 and Alchemical
         return current_app.extensions["migrate"].db.get_engine()
@@ -24,7 +29,7 @@ def get_engine():
         return current_app.extensions["migrate"].db.engine
 
 
-def get_engine_url():
+def get_engine_url() -> str:
     try:
         return get_engine().url.render_as_string(hide_password=False).replace("%", "%%")
     except AttributeError:
@@ -44,13 +49,13 @@ target_db = current_app.extensions["migrate"].db
 # ... etc.
 
 
-def get_metadata():
+def get_metadata() -> MetaData:
     if hasattr(target_db, "metadatas"):
         return target_db.metadatas[None]
     return target_db.metadata
 
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -69,7 +74,7 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
@@ -80,12 +85,17 @@ def run_migrations_online():
     # this callback is used to prevent an auto-migration from being generated
     # when there are no changes to the schema
     # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
-    def process_revision_directives(context, revision, directives):
-        if getattr(config.cmd_opts, "autogenerate", False):
-            script = directives[0]
-            if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info("No changes in schema detected.")
+    def process_revision_directives(
+        context: MigrationContext, revision: str, directives: list[Script]
+    ) -> None:
+        # TODO: regenerate this code with alembic to support typing
+        pass
+
+        # if getattr(config.cmd_opts, "autogenerate", False):
+        #     script = directives[0]
+        #     if script.upgrade_ops.is_empty():
+        #         directives[:] = []
+        #         logger.info("No changes in schema detected.")
 
     conf_args = current_app.extensions["migrate"].configure_args
     if conf_args.get("process_revision_directives") is None:

@@ -1,11 +1,20 @@
+from datetime import datetime
+from typing import TYPE_CHECKING
+
 from flask import current_app
+from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
 
+if TYPE_CHECKING:
+    from flask_sqlalchemy.model import Model
+else:
+    Model = db.Model
 
-class User(db.Model):
+
+class User(Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -29,21 +38,21 @@ class User(db.Model):
     )
 
     @property
-    def password_hash(self):
+    def password_hash(self) -> str:
         """Return the hashed password."""
         return self._password_hash
 
     @password_hash.setter
-    def password_hash(self, plaintext_password):
+    def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using scrypt and store it."""
         self._password_hash = scrypt.hash(plaintext_password)
 
-    def check_password(self, plaintext_password):
+    def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
         return scrypt.verify(plaintext_password, self._password_hash)
 
     @property
-    def totp_secret(self) -> str:
+    def totp_secret(self) -> str | None:
         return decrypt_field(self._totp_secret)
 
     @totp_secret.setter
@@ -54,7 +63,7 @@ class User(db.Model):
             self._totp_secret = encrypt_field(value)
 
     @property
-    def email(self) -> str:
+    def email(self) -> str | None:
         return decrypt_field(self._email)
 
     @email.setter
@@ -62,7 +71,7 @@ class User(db.Model):
         self._email = encrypt_field(value)
 
     @property
-    def smtp_server(self) -> str:
+    def smtp_server(self) -> str | None:
         return decrypt_field(self._smtp_server)
 
     @smtp_server.setter
@@ -70,7 +79,7 @@ class User(db.Model):
         self._smtp_server = encrypt_field(value)
 
     @property
-    def smtp_username(self) -> str:
+    def smtp_username(self) -> str | None:
         return decrypt_field(self._smtp_username)
 
     @smtp_username.setter
@@ -78,7 +87,7 @@ class User(db.Model):
         self._smtp_username = encrypt_field(value)
 
     @property
-    def smtp_password(self) -> str:
+    def smtp_password(self) -> str | None:
         return decrypt_field(self._smtp_password)
 
     @smtp_password.setter
@@ -86,7 +95,7 @@ class User(db.Model):
         self._smtp_password = encrypt_field(value)
 
     @property
-    def pgp_key(self) -> str:
+    def pgp_key(self) -> str | None:
         return decrypt_field(self._pgp_key)
 
     @pgp_key.setter
@@ -127,14 +136,12 @@ class User(db.Model):
             # Log any exceptions that occur during the update
             current_app.logger.error(f"Error updating username: {e}", exc_info=True)
 
-    def __init__(self, *args, **kwargs):
-        plaintext_password = kwargs.pop("password", None)
-        super().__init__(*args, **kwargs)
-        if plaintext_password:
-            self.password_hash = plaintext_password
+    def __init__(self, primary_username: str) -> None:
+        super().__init__()
+        self.primary_username = primary_username
 
 
-class SecondaryUsername(db.Model):
+class SecondaryUsername(Model):
     __tablename__ = "secondary_usernames"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -144,7 +151,7 @@ class SecondaryUsername(db.Model):
     display_name = db.Column(db.String(80), nullable=True)
 
 
-class Message(db.Model):
+class Message(Model):
     id = db.Column(db.Integer, primary_key=True)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -154,8 +161,13 @@ class Message(db.Model):
     )
     secondary_username = db.relationship("SecondaryUsername", backref="messages")
 
+    def __init__(self, content: str, user_id: int) -> None:
+        super().__init__()
+        self.content = content
+        self.user_id = user_id
+
     @property
-    def content(self) -> str:
+    def content(self) -> str | None:
         return decrypt_field(self._content)
 
     @content.setter
@@ -163,10 +175,15 @@ class Message(db.Model):
         self._content = encrypt_field(value)
 
 
-class InviteCode(db.Model):
+class InviteCode(Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(255), unique=True, nullable=False)
     expiration_date = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, code: str, expiration_date: datetime) -> None:
+        super().__init__()
+        self.code = code
+        self.expiration_date = expiration_date
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"

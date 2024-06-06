@@ -4,31 +4,76 @@
 
 <img src="https://github.com/scidsg/hushline/assets/28545431/3108811e-226e-4451-9793-c893da96184c" width="80%">
 
-<h2>Local Development</h2>
+### Development environment
 
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for your platform.
+Hush Line is written in Python. To ensure code integrity and consistency, we use [Ruff](https://docs.astral.sh/ruff/) for linting and [mypy](https://www.mypy-lang.org/) for static type checking.
 
-Clone the repo:
+The recommended development environment is [Visual Studio Code](https://code.visualstudio.com/) with the following extensions:
+
+- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+- [Ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff)
+- [Mypy](https://marketplace.visualstudio.com/items?itemName=matangover.mypy)
+
+You need Python, Poetry, and pipx. If you're on macOS, install these with [Homebrew](https://brew.sh/):
+
+```sh
+brew install python poetry pipx
+```
+
+You also need Rust to install some of the Python dependencies. Install [rustup](https://rustup.rs/) like this:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Using pipx, install Python packages required for linting and static type checking:
+
+```sh
+pipx install ruff
+pipx install mypy
+```
+
+### Getting started
+
+Clone the Hush Line code:
 
 ```sh
 git clone https://github.com/scidsg/hushline.git
 cd hushline
 ```
 
-Start Hush Line for development:
+Install Poetry dependencies:
 
 ```sh
-make dev
+poetry install
 ```
 
-Test changes:
+Run the database migrations:
 
 ```sh
-make test
+poetry run make migrate
 ```
 
-If you need to get a shell in the container to manually run commands:
+Run the app in debug mode:
 
 ```sh
-make shell
+poetry run make run
+```
+
+Run the tests:
+
+```sh
+poetry run make test
+```
+
+Run the linters:
+
+```sh
+poetry run make lint
+```
+
+Format the code:
+
+```sh
+poetry run make fix
 ```

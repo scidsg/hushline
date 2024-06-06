@@ -6,7 +6,6 @@ import pyotp
 import qrcode
 from flask import (
     Blueprint,
-    Response,
     current_app,
     flash,
     redirect,
@@ -17,6 +16,7 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from passlib.hash import scrypt
+from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
 
@@ -77,7 +77,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def index() -> str | Response:
+    def index() -> str | Response:  # noqa: PLR0911, PLR0912
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -98,22 +98,21 @@ def create_blueprint() -> Blueprint:
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
 
-        if request.method == "POST":
-            if "update_bio" in request.form:  # Check if the bio update form was submitted
-                user.bio = request.form["bio"]
-                db.session.commit()
-                flash("👍 Bio updated successfully.")
-                return redirect(url_for("settings.index"))
+        # Check if the bio update form was submitted
+        if request.method == "POST" and "update_bio" in request.form:
+            user.bio = request.form["bio"]
+            db.session.commit()
+            flash("👍 Bio updated successfully.")
+            return redirect(url_for("settings.index"))
 
-        if request.method == "POST":
-            if (
-                directory_visibility_form.validate_on_submit()
-                and "update_directory_visibility" in request.form
-            ):
-                user.show_in_directory = directory_visibility_form.show_in_directory.data
-                db.session.commit()
-                flash("👍 Directory visibility updated successfully.")
-                return redirect(url_for("settings.index"))
+        if request.method == "POST" and (
+            directory_visibility_form.validate_on_submit()
+            and "update_directory_visibility" in request.form
+        ):
+            user.show_in_directory = directory_visibility_form.show_in_directory.data
+            db.session.commit()
+            flash("👍 Directory visibility updated successfully.")
+            return redirect(url_for("settings.index"))
 
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
@@ -144,7 +143,7 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for(".index"))
 
             # Handle Change Username Form Submission
-            elif "change_username" in request.form and change_username_form.validate_on_submit():
+            if "change_username" in request.form and change_username_form.validate_on_submit():
                 new_username = change_username_form.new_username.data
                 existing_user = User.query.filter_by(primary_username=new_username).first()
                 if existing_user:
@@ -161,7 +160,7 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for(".index"))
 
             # Handle SMTP Settings Form Submission
-            elif smtp_settings_form.validate_on_submit():
+            if smtp_settings_form.validate_on_submit():
                 user.email = smtp_settings_form.smtp_username.data
                 user.smtp_server = smtp_settings_form.smtp_server.data
                 user.smtp_port = smtp_settings_form.smtp_port.data
@@ -172,14 +171,14 @@ def create_blueprint() -> Blueprint:
                 return redirect(url_for("settings"))
 
             # Handle PGP Key Form Submission
-            elif pgp_key_form.validate_on_submit():
+            if pgp_key_form.validate_on_submit():
                 user.pgp_key = pgp_key_form.pgp_key.data
                 db.session.commit()
                 flash("👍 PGP key updated successfully.")
                 return redirect(url_for("settings"))
 
             # Handle Change Password Form Submission
-            elif change_password_form.validate_on_submit():
+            if change_password_form.validate_on_submit():
                 if scrypt.verify(change_password_form.old_password.data, user.password_hash):
                     # Hash the new password using scrypt and update the user object
                     user.password_hash = scrypt.hash(change_password_form.new_password.data)
@@ -240,11 +239,11 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
-        if user.totp_secret:
+        user = db.session.query(User).get(user_id)
+        if user and user.totp_secret:
             return redirect(url_for(".disable_2fa"))
-        else:
-            return redirect(url_for(".enable_2fa"))
+
+        return redirect(url_for(".enable_2fa"))
 
     @bp.route("/change-password", methods=["POST"])
     @limiter.limit("120 per minute")
@@ -275,8 +274,8 @@ def create_blueprint() -> Blueprint:
                 return redirect(
                     url_for("login")
                 )  # Redirect to the login page for re-authentication
-            else:
-                flash("Incorrect old password.", "error")
+
+            flash("Incorrect old password.", "error")
 
         # Render the settings page with all forms
         return render_template(
@@ -298,10 +297,12 @@ def create_blueprint() -> Blueprint:
             flash("Please log in to continue.", "info")
             return redirect(url_for("login"))
 
-        new_username = request.form.get("new_username").strip()
+        new_username = request.form.get("new_username")
         if not new_username:
             flash("No new username provided.", "error")
             return redirect(url_for(".settings"))
+
+        new_username = new_username.strip()
 
         user = User.query.get(user_id)
         if not user:
@@ -356,23 +357,25 @@ def create_blueprint() -> Blueprint:
                 verification_code
                 and temp_totp_secret
                 and pyotp.TOTP(temp_totp_secret).verify(verification_code)
+                and user
             ):
                 user.totp_secret = temp_totp_secret
                 db.session.commit()
                 session.pop("temp_totp_secret", None)
                 flash("👍 2FA setup successful. Please log in again with 2FA.")
                 return redirect(url_for("logout"))  # Redirect to logout
-            else:
-                flash("⛔️ Invalid 2FA code. Please try again.")
-                return redirect(url_for(".enable_2fa"))
+
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return redirect(url_for(".enable_2fa"))
 
         # Generate new 2FA secret and QR code
         temp_totp_secret = pyotp.random_base32()
         session["temp_totp_secret"] = temp_totp_secret
         session["is_setting_up_2fa"] = True
-        totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-            name=user.primary_username, issuer_name="HushLine"
-        )
+        if user:
+            totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
+                name=user.primary_username, issuer_name="HushLine"
+            )
         img = qrcode.make(totp_uri)
         buffered = io.BytesIO()
         img.save(buffered)
@@ -390,25 +393,26 @@ def create_blueprint() -> Blueprint:
     @bp.route("/disable-2fa", methods=["POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def disable_2fa():
+    def disable_2fa() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
-        user.totp_secret = None
+        user = db.session.query(User).get(user_id)
+        if user:
+            user.totp_secret = None
         db.session.commit()
         flash("🔓 2FA has been disabled.")
         return redirect(url_for(".index"))
 
     @bp.route("/confirm-disable-2fa", methods=["GET"])
-    def confirm_disable_2fa():
+    def confirm_disable_2fa() -> Response | str:
         return render_template("confirm_disable_2fa.html")
 
     @bp.route("/show-qr-code")
     @limiter.limit("120 per minute")
     @require_2fa
-    def show_qr_code():
+    def show_qr_code() -> Response | str:
         user = User.query.get(session["user_id"])
         if not user or not user.totp_secret:
             return redirect(url_for(".enable_2fa"))
@@ -435,7 +439,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/verify-2fa-setup", methods=["POST"])
     @limiter.limit("120 per minute")
-    def verify_2fa_setup():
+    def verify_2fa_setup() -> Response | str:
         user = User.query.get(session["user_id"])
         if not user:
             return redirect(url_for("login"))
@@ -446,30 +450,32 @@ def create_blueprint() -> Blueprint:
             flash("👍 2FA setup successful. Please log in again.")
             session.pop("is_setting_up_2fa", None)
             return redirect(url_for("logout"))
-        else:
-            flash("⛔️ Invalid 2FA code. Please try again.")
-            return redirect(url_for("show_qr_code"))
+
+        flash("⛔️ Invalid 2FA code. Please try again.")
+        return redirect(url_for("show_qr_code"))
 
     @bp.route("/update_pgp_key", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def update_pgp_key():
+    def update_pgp_key() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             flash("⛔️ User not authenticated.")
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
+        user = db.session.query(User).get(user_id)
         form = PGPKeyForm()
         if form.validate_on_submit():
             pgp_key = form.pgp_key.data
 
             if pgp_key.strip() == "":
                 # If the field is empty, remove the PGP key
-                user.pgp_key = None
+                if user:
+                    user.pgp_key = None
             elif is_valid_pgp_key(pgp_key):
                 # If the field is not empty and the key is valid, update the PGP key
-                user.pgp_key = pgp_key
+                if user:
+                    user.pgp_key = pgp_key
             else:
                 # If the PGP key is invalid
                 flash("⛔️ Invalid PGP key format or import failed.")
@@ -483,12 +489,12 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update_smtp_settings", methods=["GET", "POST"])
     @limiter.limit("120 per minute")
     @require_2fa
-    def update_smtp_settings():
+    def update_smtp_settings() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.get(User, user_id)
+        user = db.session.query(User).get(user_id)
         if not user:
             flash("⛔️ User not found")
             return redirect(url_for(".index"))
@@ -532,7 +538,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/delete-account", methods=["POST"])
     @require_2fa
-    def delete_account():
+    def delete_account() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             flash("Please log in to continue.")
@@ -553,8 +559,8 @@ def create_blueprint() -> Blueprint:
             session.clear()  # Clear the session
             flash("🔥 Your account and all related information have been deleted.")
             return redirect(url_for("index"))
-        else:
-            flash("User not found. Please log in again.")
-            return redirect(url_for("login"))
+
+        flash("User not found. Please log in again.")
+        return redirect(url_for("login"))
 
     return bp
