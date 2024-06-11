@@ -4,7 +4,7 @@ services:
     ports:
       - "5001:5000"
     environment:
-      - SQLALCHEMY_DATABASE_URI=sqlite:////data/hushline.db
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://hushline:hushline@postgres:5432/hushline
       - FLASK_ENV=development
       - SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
       - ENCRYPTION_KEY="bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
@@ -20,3 +20,14 @@ services:
     image: "redis:alpine"
     ports:
       - "6379:6379"
+
+  postgres:
+    image: "postgres:alpine"
+    environment:
+      - POSTGRES_USER=hushline
+      - POSTGRES_PASSWORD=hushline
+      - POSTGRES_DB=hushline
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
