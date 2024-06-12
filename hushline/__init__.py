@@ -33,15 +33,6 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
-    # Conditional SSL configuration based on environment
-    if os.getenv("FLASK_ENV") == "production":
-        ssl_cert = os.getenv("SSL_CERT_PATH")
-        ssl_key = os.getenv("SSL_KEY_PATH")
-
-        # Ensure SSL files exist
-        if not all(os.path.exists(path) for path in [ssl_cert, ssl_key] if path):
-            raise FileNotFoundError("SSL certificate or key file is missing.")
-
     # Run migrations
     db.init_app(app)
     _ = Migrate(app, db)
