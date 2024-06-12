@@ -386,5 +386,5 @@ def init_app(app: Flask) -> None:
         generate_user_directory_json()
 
     @app.route("/health.json")
-    def health() -> Response:
+    def health() -> dict[str, str]:
         return {"status": "ok"}
