@@ -22,9 +22,9 @@ RUN poetry install
 # Copy the rest of the application
 COPY . /app
 
-# Expose port 5000
-EXPOSE 5000
+# Expose port 8080
+EXPOSE 8080
 
 # Run!
 ENV FLASK_APP="hushline"
-CMD ["poetry", "run", "flask", "run", "-p", "5000", "--host", "0.0.0.0"]
+CMD ["poetry", "run", "flask", "run", "-p", "8080", "--host", "0.0.0.0"]

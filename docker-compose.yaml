@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "5001:5000"
+      - "8080:8080"
     environment:
       - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://hushline:hushline@postgres:5432/hushline
       - FLASK_ENV=development
