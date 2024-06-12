@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - health-check
 
 jobs:
   build-and-push:
