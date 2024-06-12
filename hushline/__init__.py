@@ -3,7 +3,6 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
 from flask_migrate import Migrate, upgrade
@@ -13,8 +12,6 @@ from . import admin, routes, settings
 from .db import db
 from .limiter import limiter
 from .model import User
-
-load_dotenv("/etc/hushline/hushline.conf")
 
 
 def create_app() -> Flask:
