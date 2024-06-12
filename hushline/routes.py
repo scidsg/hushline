@@ -384,3 +384,7 @@ def init_app(app: Flask) -> None:
     def receive_after_update(mapper: Mapper, connection: Connection, target: User) -> None:
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
+
+    @app.route("/health.json")
+    def health() -> Response:
+        return {"status": "ok"}
