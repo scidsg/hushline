@@ -22,9 +22,6 @@ def create_app() -> Flask:
 
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
-    app.logger.debug(f"Loaded ENCRYPTION_KEY: {os.environ.get('ENCRYPTION_KEY')}")
-
-    # app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
 
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
