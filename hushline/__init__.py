@@ -3,14 +3,12 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from flask import Flask, flash, redirect, render_template, session, url_for
-from flask_limiter import RateLimitExceeded
+from flask import Flask, flash, redirect, session, url_for
 from flask_migrate import Migrate, upgrade
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
 from .db import db
-from .limiter import limiter
 from .model import User
 
 
@@ -38,15 +36,9 @@ def create_app() -> Flask:
     with app.app_context():
         upgrade()
 
-    limiter.init_app(app)
-
     routes.init_app(app)
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
-
-    @app.errorhandler(RateLimitExceeded)
-    def handle_rate_limit_exceeded(e: RateLimitExceeded) -> tuple[str, int]:
-        return render_template("rate_limit_exceeded.html"), 429
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:

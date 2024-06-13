@@ -25,7 +25,6 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
-from .limiter import limiter
 from .model import InviteCode, Message, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
@@ -77,7 +76,6 @@ class LoginForm(FlaskForm):
 
 def init_app(app: Flask) -> None:
     @app.route("/")
-    @limiter.limit("120 per minute")
     def index() -> Response:
         if "user_id" in session:
             user = User.query.get(session["user_id"])
@@ -91,7 +89,6 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("directory"))
 
     @app.route("/inbox")
-    @limiter.limit("120 per minute")
     @require_2fa
     def inbox() -> Response | str:
         # Redirect if not logged in
@@ -202,7 +199,6 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
-    @limiter.limit("120 per minute")
     @require_2fa
     def delete_message(message_id: int) -> Response:
         if "user_id" not in session:
@@ -225,7 +221,6 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("inbox", username=user.primary_username))
 
     @app.route("/register", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
     def register() -> Response | str | tuple[Response | str, int]:
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
         form = RegistrationForm()
@@ -273,7 +268,6 @@ def init_app(app: Flask) -> None:
         return render_template("register.html", form=form, require_invite_code=require_invite_code)
 
     @app.route("/login", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
     def login() -> Response | str:
         form = LoginForm()
         if request.method == "POST" and form.validate_on_submit():
@@ -301,7 +295,6 @@ def init_app(app: Flask) -> None:
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    @limiter.limit("120 per minute")
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
@@ -329,7 +322,6 @@ def init_app(app: Flask) -> None:
         return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")
-    @limiter.limit("120 per minute")
     @require_2fa
     def logout() -> Response:
         # Explicitly remove specific session keys related to user authentication
