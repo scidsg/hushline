@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Any
 
 from flask import Flask, flash, redirect, session, url_for
-from flask_migrate import Migrate, upgrade
+from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
@@ -32,9 +32,7 @@ def create_app() -> Flask:
     # Run migrations
     print("Running migrations")
     db.init_app(app)
-    _ = Migrate(app, db)
-    with app.app_context():
-        upgrade()
+    Migrate(app, db)
 
     routes.init_app(app)
     for module in [admin, settings]:

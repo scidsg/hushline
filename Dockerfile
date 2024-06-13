@@ -27,4 +27,4 @@ EXPOSE 8080
 
 # Run!
 ENV FLASK_APP="hushline"
-CMD ["poetry", "run", "flask", "run", "-p", "8080", "--host", "0.0.0.0"]
+CMD ["./start.sh"]
