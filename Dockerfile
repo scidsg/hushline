@@ -17,7 +17,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Poetry dependencies
 COPY poetry.lock pyproject.toml /app/
-RUN poetry install
+RUN poetry install --no-root
 
 # Copy the rest of the application
 COPY . /app
