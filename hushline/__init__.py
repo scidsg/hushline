@@ -56,5 +56,4 @@ def create_app() -> Flask:
             return {"user": user}
         return {}
 
-    print("App created")
     return app
