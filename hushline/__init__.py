@@ -31,7 +31,6 @@ def create_app() -> Flask:
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
     # Run migrations
-    print("Running migrations")
     db.init_app(app)
     Migrate(app, db)
 
