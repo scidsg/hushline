@@ -4,4 +4,4 @@
 poetry run flask db upgrade
 
 # Start the server
-poetry run flask run -p 8080 --host 0.0.0.0
+poetry run gunicorn "hushline:create_app()" -b 0.0.0.0:8080
