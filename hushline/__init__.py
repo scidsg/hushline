@@ -3,10 +3,9 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_limiter import RateLimitExceeded
-from flask_migrate import Migrate, upgrade
+from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
@@ -14,17 +13,12 @@ from .db import db
 from .limiter import limiter
 from .model import User
 
-load_dotenv("/etc/hushline/hushline.conf")
-
 
 def create_app() -> Flask:
     app = Flask(__name__)
 
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
-    app.logger.debug(f"Loaded ENCRYPTION_KEY: {os.environ.get('ENCRYPTION_KEY')}")
-
-    # app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)  # type: ignore
 
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
@@ -36,20 +30,9 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
-    # Conditional SSL configuration based on environment
-    if os.getenv("FLASK_ENV") == "production":
-        ssl_cert = os.getenv("SSL_CERT_PATH")
-        ssl_key = os.getenv("SSL_KEY_PATH")
-
-        # Ensure SSL files exist
-        if not all(os.path.exists(path) for path in [ssl_cert, ssl_key] if path):
-            raise FileNotFoundError("SSL certificate or key file is missing.")
-
     # Run migrations
     db.init_app(app)
-    _ = Migrate(app, db)
-    with app.app_context():
-        upgrade()
+    Migrate(app, db)
 
     limiter.init_app(app)
 

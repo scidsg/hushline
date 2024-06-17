@@ -1129,6 +1129,20 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
+name = "types-cffi"
+version = "1.16.0.20240331"
+description = "Typing stubs for cffi"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-cffi-1.16.0.20240331.tar.gz", hash = "sha256:b8b20d23a2b89cfed5f8c5bc53b0cb8677c3aac6d970dbc771e28b9c698f5dee"},
+    {file = "types_cffi-1.16.0.20240331-py3-none-any.whl", hash = "sha256:a363e5ea54a4eb6a4a105d800685fde596bc318089b025b27dee09849fe41ff0"},
+]
+
+[package.dependencies]
+types-setuptools = "*"
+
+[[package]]
 name = "types-flask-migrate"
 version = "4.0.0.20240311"
 description = "Typing stubs for Flask-Migrate"
@@ -1142,6 +1156,47 @@ files = [
 [package.dependencies]
 Flask = ">=2.0.0"
 Flask-SQLAlchemy = ">=3.0.1"
+
+[[package]]
+name = "types-pyopenssl"
+version = "24.1.0.20240425"
+description = "Typing stubs for pyOpenSSL"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-pyOpenSSL-24.1.0.20240425.tar.gz", hash = "sha256:0a7e82626c1983dc8dc59292bf20654a51c3c3881bcbb9b337c1da6e32f0204e"},
+    {file = "types_pyOpenSSL-24.1.0.20240425-py3-none-any.whl", hash = "sha256:f51a156835555dd2a1f025621e8c4fbe7493470331afeef96884d1d29bf3a473"},
+]
+
+[package.dependencies]
+cryptography = ">=35.0.0"
+types-cffi = "*"
+
+[[package]]
+name = "types-redis"
+version = "4.6.0.20240425"
+description = "Typing stubs for redis"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-redis-4.6.0.20240425.tar.gz", hash = "sha256:9402a10ee931d241fdfcc04592ebf7a661d7bb92a8dea631279f0d8acbcf3a22"},
+    {file = "types_redis-4.6.0.20240425-py3-none-any.whl", hash = "sha256:ac5bc19e8f5997b9e76ad5d9cf15d0392d9f28cf5fc7746ea4a64b989c45c6a8"},
+]
+
+[package.dependencies]
+cryptography = ">=35.0.0"
+types-pyOpenSSL = "*"
+
+[[package]]
+name = "types-setuptools"
+version = "70.0.0.20240524"
+description = "Typing stubs for setuptools"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-setuptools-70.0.0.20240524.tar.gz", hash = "sha256:e31fee7b9d15ef53980526579ac6089b3ae51a005a281acf97178e90ac71aff6"},
+    {file = "types_setuptools-70.0.0.20240524-py3-none-any.whl", hash = "sha256:8f5379b9948682d72a9ab531fbe52932e84c4f38deda570255f9bae3edd766bc"},
+]
 
 [[package]]
 name = "typing-extensions"
@@ -1281,4 +1336,4 @@ email = ["email-validator"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f71dbe676f43b29054915a89b6fde875df4bcae3e6a1c7ea50120dc0857ddaa8"
+content-hash = "74dd7a6fcb99bec086b87257178ab7cb1f9d2008188c5996553dedfd672f58bd"

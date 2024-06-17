@@ -17,11 +17,14 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Poetry dependencies
 COPY poetry.lock pyproject.toml /app/
-RUN poetry install
+RUN poetry install --no-root
 
 # Copy the rest of the application
 COPY . /app
 
+# Expose port 8080
+EXPOSE 8080
+
 # Run!
 ENV FLASK_APP="hushline"
-CMD ["poetry", "run", "flask", "run", "-p", "5000", "--host", "0.0.0.0"]
+CMD ["./start.sh"]
