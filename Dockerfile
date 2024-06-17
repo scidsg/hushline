@@ -1,4 +1,4 @@
-FROM python:3.12-bookworm
+FROM python:3.12-bookworm as base
 WORKDIR /app
 
 # Install system dependencies
@@ -21,6 +21,15 @@ RUN poetry install --no-root
 
 # Copy the rest of the application
 COPY . /app
+
+FROM base as test
+
+RUN . ./dev_env.sh && poetry run pytest -vv /app/tests
+
+FROM base as app
+
+# Buildkit will skip the test stage unless we have an explicit dependency on it
+COPY --from=test /app/README.md /app
 
 # Expose port 8080
 EXPOSE 8080
