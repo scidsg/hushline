@@ -15,7 +15,6 @@ from .model import User
 
 
 def create_app() -> Flask:
-    print("Creating app")
     app = Flask(__name__)
 
     # Configure logging
@@ -32,7 +31,6 @@ def create_app() -> Flask:
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
     # Run migrations
-    print("Running migrations")
     db.init_app(app)
     Migrate(app, db)
 
@@ -58,5 +56,4 @@ def create_app() -> Flask:
             return {"user": user}
         return {}
 
-    print("App created")
     return app
