@@ -15,7 +15,6 @@ from .model import User
 
 
 def create_app() -> Flask:
-    print("Creating app")
     app = Flask(__name__)
 
     # Configure logging
