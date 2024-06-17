@@ -2,6 +2,7 @@ from flask import Blueprint, flash, redirect, session, url_for
 from werkzeug.wrappers.response import Response
 
 from .db import db
+from .limiter import limiter
 from .model import User
 from .utils import require_2fa
 
@@ -10,6 +11,7 @@ def create_blueprint() -> Blueprint:
     bp = Blueprint("admin", __file__, url_prefix="/admin")
 
     @bp.route("/toggle_verified/<int:user_id>", methods=["POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def toggle_verified(user_id: int) -> Response:
         if not session.get("is_admin", False):
@@ -23,6 +25,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("settings.index"))
 
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def toggle_admin(user_id: int) -> Response:
         if not session.get("is_admin", False):

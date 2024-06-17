@@ -23,6 +23,7 @@ from wtforms.validators import DataRequired, Length
 from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, TwoFactorForm
+from .limiter import limiter
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
 
@@ -74,6 +75,7 @@ def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
     @bp.route("/", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def index() -> str | Response:  # noqa: PLR0911, PLR0912
         user_id = session.get("user_id")
@@ -231,6 +233,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
+    @limiter.limit("120 per minute")
     def toggle_2fa() -> Response:
         user_id = session.get("user_id")
         if not user_id:
@@ -243,6 +246,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for(".enable_2fa"))
 
     @bp.route("/change-password", methods=["POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def change_password() -> str | Response:
         user_id = session.get("user_id")
@@ -285,6 +289,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/change-username", methods=["POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def change_username() -> Response | str:
         user_id = session.get("user_id")
@@ -335,6 +340,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for(".settings"))
 
     @bp.route("/enable-2fa", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def enable_2fa() -> Response | str:
         user_id = session.get("user_id")
@@ -385,6 +391,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/disable-2fa", methods=["POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def disable_2fa() -> Response | str:
         user_id = session.get("user_id")
@@ -403,6 +410,7 @@ def create_blueprint() -> Blueprint:
         return render_template("confirm_disable_2fa.html")
 
     @bp.route("/show-qr-code")
+    @limiter.limit("120 per minute")
     @require_2fa
     def show_qr_code() -> Response | str:
         user = User.query.get(session["user_id"])
@@ -430,6 +438,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/verify-2fa-setup", methods=["POST"])
+    @limiter.limit("120 per minute")
     def verify_2fa_setup() -> Response | str:
         user = User.query.get(session["user_id"])
         if not user:
@@ -446,6 +455,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("show_qr_code"))
 
     @bp.route("/update_pgp_key", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def update_pgp_key() -> Response | str:
         user_id = session.get("user_id")
@@ -477,6 +487,7 @@ def create_blueprint() -> Blueprint:
         return render_template("settings.html", form=form)
 
     @bp.route("/update_smtp_settings", methods=["GET", "POST"])
+    @limiter.limit("120 per minute")
     @require_2fa
     def update_smtp_settings() -> Response | str:
         user_id = session.get("user_id")
