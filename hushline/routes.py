@@ -377,7 +377,6 @@ def init_app(app: Flask) -> None:
         current_app.logger.info("Triggering JSON regeneration due to user update/insert")
         generate_user_directory_json()
 
-    @limiter.limit("120 per minute")
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}
