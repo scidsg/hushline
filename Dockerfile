@@ -22,6 +22,8 @@ RUN poetry install --no-root
 # Copy the rest of the application
 COPY . /app
 
+RUN . ./dev_env.sh && poetry run pytest -vv /app/tests
+
 # Expose port 8080
 EXPOSE 8080
 
