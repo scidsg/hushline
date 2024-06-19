@@ -1,12 +1,12 @@
 import os
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from flask.testing import FlaskClient
 
-# Import the application and database setup
-from hushline.generate_invite_codes import create_invite_code
-
 # Import models and other modules
-from hushline.model import User
+from hushline import db
+from hushline.model import User, InviteCode
 
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
@@ -33,13 +33,17 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     os.environ["REGISTRATION_CODES_REQUIRED"] = "True"
 
     # Generate a valid invite code using the script
-    invite_code_str = create_invite_code()
+    code = secrets.token_urlsafe(16)
+    expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
+    new_code = InviteCode(code=code, expiration_date=expiration_date)
+    db.session.add(new_code)
+    db.session.commit()
 
     # User registration data with valid invite code
     user_data = {
         "username": "newuser",
         "password": "SecurePassword123!",
-        "invite_code": invite_code_str,
+        "invite_code": code,
     }
 
     # Post request to register a new user

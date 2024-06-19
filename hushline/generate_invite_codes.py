@@ -26,6 +26,7 @@ def create_invite_code() -> str:
         db.session.commit()
 
         # Return the generated code
+        print("Generated invite code:", code)
         return code
 
 
