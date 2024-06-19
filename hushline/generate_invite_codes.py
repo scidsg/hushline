@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-import secrets
-from datetime import datetime, timedelta, timezone
-
 from hushline import create_app
 from hushline.db import db
 from hushline.model import InviteCode
@@ -12,21 +9,13 @@ def create_invite_code() -> str:
         # Ensure all tables are created
         db.create_all()
 
-        # Generate a unique invite code
-        code = secrets.token_urlsafe(16)
-
-        # Set the expiration date for the invite code to one year from now
-        expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
-
         # Create a new InviteCode object
-        new_code = InviteCode(code=code, expiration_date=expiration_date)
-
-        # Add the new code to the session and commit it to the database
+        new_code = InviteCode()
         db.session.add(new_code)
         db.session.commit()
 
         # Return the generated code
-        return code
+        return new_code.code
 
 
 if __name__ == "__main__":

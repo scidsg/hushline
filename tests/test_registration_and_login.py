@@ -1,6 +1,4 @@
 import os
-import secrets
-from datetime import datetime, timedelta, timezone
 
 from flask.testing import FlaskClient
 
@@ -33,17 +31,15 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     os.environ["REGISTRATION_CODES_REQUIRED"] = "True"
 
     # Generate a valid invite code using the script
-    code = secrets.token_urlsafe(16)
-    expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
-    new_code = InviteCode(code=code, expiration_date=expiration_date)
-    db.session.add(new_code)
+    code = InviteCode()
+    db.session.add(code)
     db.session.commit()
 
     # User registration data with valid invite code
     user_data = {
         "username": "newuser",
         "password": "SecurePassword123!",
-        "invite_code": code,
+        "invite_code": code.code,
     }
 
     # Post request to register a new user

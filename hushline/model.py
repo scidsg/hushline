@@ -1,4 +1,5 @@
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from flask import current_app
@@ -180,10 +181,10 @@ class InviteCode(Model):
     code = db.Column(db.String(255), unique=True, nullable=False)
     expiration_date = db.Column(db.DateTime, nullable=False)
 
-    def __init__(self, code: str, expiration_date: datetime) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.code = code
-        self.expiration_date = expiration_date
+        self.code = secrets.token_urlsafe(16)
+        self.expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"
