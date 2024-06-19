@@ -21,14 +21,15 @@ def _config(mocker: MockFixture) -> None:
 
 @pytest.fixture()
 def app(_config: None) -> Generator[Flask, None, None]:
+    os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    os.environ["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+
     app = create_app()
     app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["WTF_CSRF_ENABLED"] = False
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SERVER_NAME"] = "localhost:5000"
+    app.config["SERVER_NAME"] = "localhost:8080"
     app.config["PREFERRED_URL_SCHEME"] = "http"
-    app.config["REGISTRATION_CODES_REQUIRED"] = False
 
     with app.app_context():
         db.create_all()
