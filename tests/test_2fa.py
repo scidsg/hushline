@@ -89,3 +89,49 @@ def test_invalid_2fa_should_not_login(client: FlaskClient) -> None:
     )
     assert invalid_2fa_response.status_code == 401
     assert "Invalid 2FA code" in invalid_2fa_response.text
+
+
+def test_reuse_of_2fa_code_should_fail(client: FlaskClient) -> None:
+    # Register a new user and enable 2FA
+    user_data = {"username": "test_user", "password": "SecurePassword123!"}
+    response = client.post("/register", data=user_data, follow_redirects=True)
+    assert response.status_code == 200
+    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    assert login_response.status_code == 200
+    enable_2fa_response = client.post("/settings/toggle-2fa", follow_redirects=True)
+    assert enable_2fa_response.status_code == 200
+    soup = bs4.BeautifulSoup(enable_2fa_response.data, "html.parser")
+    totp_secret = soup.select_one(".totp-secret").text
+    totp = pyotp.TOTP(totp_secret)
+    verification_code = totp.now()
+    verify_2fa_data = {"verification_code": verification_code}
+    verify_2fa_response = client.post(
+        "/settings/enable-2fa", data=verify_2fa_data, follow_redirects=True
+    )
+    assert verify_2fa_response.status_code == 200
+
+    # Make sure we have a valid verification code
+    verification_code = totp.now()
+    verify_2fa_data = {"verification_code": verification_code}
+
+    # Log in
+    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    assert login_response.status_code == 200
+    valid_2fa_response = client.post(
+        "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
+    )
+    assert valid_2fa_response.status_code == 200
+
+    # Log out
+    logout_response = client.get("/logout", follow_redirects=True)
+    assert logout_response.status_code == 200
+
+    # Log in again with the same 2FA code
+    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    assert login_response.status_code == 200
+    valid_2fa_response = client.post(
+        "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
+    )
+    # Should be rejected
+    assert valid_2fa_response.status_code == 401
