@@ -10,7 +10,7 @@ help: ## Print the help message
 run: ## Run the app
 	. ./dev_env.sh && \
 	flask db upgrade && \
-	gunicorn "hushline:create_app()" -b 0.0.0.0:8080
+	flask run --debug -h localhost -p 8080
 
 .PHONY: lint
 lint: ## Lint the code
