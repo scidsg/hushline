@@ -6,7 +6,7 @@ from flask.testing import FlaskClient
 
 # Import models and other modules
 from hushline import db
-from hushline.model import User, InviteCode
+from hushline.model import InviteCode, User
 
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
