@@ -1,0 +1,60 @@
+---
+name: Create Dev Deployment
+
+on:
+  pull_request:
+    types: [labeled]
+    
+env:
+  TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
+  ORGANIZATION: science-and-design
+  PROJECT: Hush Line Dev
+
+jobs:
+ deploy:
+   if: ${{ github.event.label.name == 'dev-deploy' }}
+   runs-on: ubuntu-latest
+   steps:
+     - name: checkout terraform
+       uses: actions/checkout@v4
+       with:
+         repository: 'scidsg/hushline-infra'
+         ref: dev-deploy
+         token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+
+     - name: Use branch workspace
+       uses: dflook/terraform-new-workspace@v1.43.0
+       with:
+         path: terraform/dev
+         workspace: dev-${{ github.head_ref }}
+
+     - name: Update workspace attributes
+       run: |
+         curl -X PATCH https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/dev-${{ github.head_ref }} \
+              -H 'Content-Type: application/vnd.api+json' \
+              -H 'Authorization: Bearer ${{ secrets.TERRAFORM_API_TOKEN }}' \
+              -d '{
+                    "data": {
+                      "type": "workspaces",
+                      "attributes": {
+                        "working-directory": "terraform/dev"
+                      },
+                      "relationships": {
+                        "project": {
+                          "data": {
+                            "id": "prj-iEruEQFmaNTCRAtA"
+                          }
+                        }
+                      }
+                    }
+                  }'
+ 
+     - name: Plan test infrastrucutre
+       uses: dflook/terraform-plan@v1.43.0
+       with:
+         path: terraform/dev
+         workspace: dev-${{ github.head_ref }}
+         add_github_comment: false
+         variables: |
+           tag = "latest"
+           name = "hushline-${{ github.head_ref }}"
