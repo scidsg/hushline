@@ -1,10 +1,11 @@
 import os
+from datetime import datetime, timedelta
 
 import bs4
 import pyotp
 from flask.testing import FlaskClient
 
-from hushline.model import User
+from hushline.model import AuthenticationLog, User
 
 
 def register_user(client: FlaskClient, username: str, password: str) -> User:
@@ -73,6 +74,10 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     login_response = client.post("/login", data=login_data, follow_redirects=True)
     assert login_response.status_code == 200
     assert "Enter your 2FA Code" in login_response.text
+
+    # Modify the timestamps on the AuthenticationLog entries to allow for 2FA verification
+    for log in AuthenticationLog.query.all():
+        log.timestamp = datetime.now() - timedelta(minutes=5)
 
     return (user, totp_secret)
 

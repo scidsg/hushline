@@ -142,6 +142,26 @@ class User(Model):
         self.primary_username = primary_username
 
 
+class AuthenticationLog(Model):
+    __tablename__ = "authentication_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user = db.relationship("User", backref=db.backref("authentication_logs", lazy=True))
+    successful = db.Column(db.Boolean, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
+
+    # Open question: should we store the IP address and user agent?
+    # It's useful for auditing, but it's identifable
+    # ip_address = db.Column(db.String(45), nullable=False)
+    # user_agent = db.Column(db.String(255), nullable=False)
+
+    def __init__(self, user_id: int, successful: bool) -> None:
+        super().__init__()
+        self.user_id = user_id
+        self.successful = successful
+
+
 class SecondaryUsername(Model):
     __tablename__ = "secondary_usernames"
 
