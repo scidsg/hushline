@@ -1,7 +1,6 @@
 import pyotp
-from flask.testing import FlaskClient
-
 from auth_helper import register_user_2fa
+from flask.testing import FlaskClient
 
 
 def test_enable_2fa(client: FlaskClient) -> None:

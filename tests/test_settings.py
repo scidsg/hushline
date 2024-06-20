@@ -1,8 +1,7 @@
+from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
 from hushline.model import User
-
-from auth_helper import login_user, register_user
 
 
 def test_settings_page_loads(client: FlaskClient) -> None:

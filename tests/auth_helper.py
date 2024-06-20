@@ -30,7 +30,7 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     return user
 
 
-def register_user_2fa(client: FlaskClient, username: str, password: str) -> tuple[User, str] | None:
+def register_user_2fa(client: FlaskClient, username: str, password: str) -> tuple[User, str]:
     # Register a new user
     user_data = {"username": username, "password": password}
     response = client.post("/register", data=user_data, follow_redirects=True)
