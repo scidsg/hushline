@@ -82,7 +82,7 @@ def test_reuse_of_2fa_code_should_fail(client: FlaskClient) -> None:
         "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
     )
     # Should be rejected
-    assert valid_2fa_response.status_code == 401
+    assert valid_2fa_response.status_code == 429
 
 
 def test_limit_invalid_2fa_guesses(client: FlaskClient) -> None:
@@ -106,7 +106,7 @@ def test_limit_invalid_2fa_guesses(client: FlaskClient) -> None:
                 return random_code
 
     # Try 5 invalid codes
-    for i in range(5):
+    for _ in range(5):
         invalid_2fa_data = {"verification_code": random_verification_code()}
         invalid_2fa_response = client.post(
             "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
@@ -119,5 +119,5 @@ def test_limit_invalid_2fa_guesses(client: FlaskClient) -> None:
     invalid_2fa_response = client.post(
         "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
     )
-    assert invalid_2fa_response.status_code == 401
+    assert invalid_2fa_response.status_code == 429
     assert "Please wait a moment before trying again" in invalid_2fa_response.text

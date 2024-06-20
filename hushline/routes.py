@@ -315,6 +315,9 @@ def init_app(app: Flask) -> None:
         form = TwoFactorForm()
 
         if form.validate_on_submit():
+            # Rate limit 2FA attempts
+            rate_limit = False
+
             # If there was a succesful login in the last 30 seconds, don't allow another one
             last_login = (
                 AuthenticationLog.query.filter_by(user_id=user.id, successful=True)
@@ -322,8 +325,20 @@ def init_app(app: Flask) -> None:
                 .first()
             )
             if last_login and last_login.timestamp > datetime.now() - timedelta(seconds=30):
+                rate_limit = True
+
+            # If there were 5 failed logins in the last 30 seconds, don't allow another one
+            failed_logins = (
+                AuthenticationLog.query.filter_by(user_id=user.id, successful=False)
+                .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
+                .count()
+            )
+            if failed_logins >= 5:
+                rate_limit = True
+
+            if rate_limit:
                 flash("⏲️ Please wait a moment before trying again.")
-                return render_template("verify_2fa_login.html", form=form), 401
+                return render_template("verify_2fa_login.html", form=form), 429
 
             verification_code = form.verification_code.data
             totp = pyotp.TOTP(user.totp_secret)
