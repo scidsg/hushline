@@ -1,3 +1,5 @@
+import secrets
+
 import pyotp
 from auth_helper import register_user_2fa
 from flask.testing import FlaskClient
@@ -81,3 +83,41 @@ def test_reuse_of_2fa_code_should_fail(client: FlaskClient) -> None:
     )
     # Should be rejected
     assert valid_2fa_response.status_code == 401
+
+
+def test_limit_invalid_2fa_guesses(client: FlaskClient) -> None:
+    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+    user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
+
+    # Make sure we have a valid verification code
+    totp = pyotp.TOTP(totp_secret)
+    verification_code = totp.now()
+
+    # Log in
+    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    assert login_response.status_code == 200
+
+    # Make a random invalid verification code
+    def random_verification_code() -> str:
+        rand = secrets.SystemRandom()
+        while True:
+            random_code = str(rand.randint(100000, 999999))
+            if random_code != verification_code:
+                return random_code
+
+    # Try 5 invalid codes
+    for i in range(5):
+        invalid_2fa_data = {"verification_code": random_verification_code()}
+        invalid_2fa_response = client.post(
+            "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
+        )
+        assert invalid_2fa_response.status_code == 401
+        assert "Invalid 2FA code" in invalid_2fa_response.text
+
+    # The 6th guess should give a different error
+    invalid_2fa_data = {"verification_code": random_verification_code()}
+    invalid_2fa_response = client.post(
+        "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
+    )
+    assert invalid_2fa_response.status_code == 401
+    assert "Please wait a moment before trying again" in invalid_2fa_response.text
