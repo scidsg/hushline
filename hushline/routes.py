@@ -333,7 +333,7 @@ def init_app(app: Flask) -> None:
                 .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
                 .count()
             )
-            if failed_logins >= 5:
+            if failed_logins >= 5:  # noqa: PLR2004
                 rate_limit = True
 
             if rate_limit:
