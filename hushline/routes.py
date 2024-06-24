@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pyotp
 from flask import (
@@ -25,7 +25,7 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
-from .model import InviteCode, Message, User
+from .model import AuthenticationLog, InviteCode, Message, User
 from .utils import generate_user_directory_json, require_2fa, send_email
 
 # Logging setup
@@ -288,6 +288,11 @@ def init_app(app: Flask) -> None:
                 if user.totp_secret:
                     return redirect(url_for("verify_2fa_login"))
 
+                # Successful login
+                auth_log = AuthenticationLog(user_id=user.id, successful=True)
+                db.session.add(auth_log)
+                db.session.commit()
+
                 session["2fa_verified"] = True
                 return redirect(url_for("inbox", username=user.primary_username))
 
@@ -311,10 +316,50 @@ def init_app(app: Flask) -> None:
 
         if form.validate_on_submit():
             verification_code = form.verification_code.data
+
+            # Rate limit 2FA attempts
+            rate_limit = False
+
+            # If the most recent successful login was made with the same OTP code, reject this one
+            last_login = (
+                AuthenticationLog.query.filter_by(user_id=user.id, successful=True)
+                .order_by(AuthenticationLog.timestamp.desc())
+                .first()
+            )
+            if last_login and last_login.otp_code == verification_code:
+                # There's a one in one million chance that the same OTP code is generated again, but
+                # if that happens the user can just wait 30 seconds and try again
+                rate_limit = True
+
+            # If there were 5 failed logins in the last 30 seconds, don't allow another one
+            failed_logins = (
+                AuthenticationLog.query.filter_by(user_id=user.id, successful=False)
+                .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
+                .count()
+            )
+            if failed_logins >= 5:  # noqa: PLR2004
+                rate_limit = True
+
+            if rate_limit:
+                flash("⏲️ Please wait a moment before trying again.")
+                return render_template("verify_2fa_login.html", form=form), 429
+
             totp = pyotp.TOTP(user.totp_secret)
             if totp.verify(verification_code):
+                # Successful login
+                auth_log = AuthenticationLog(
+                    user_id=user.id, successful=True, otp_code=verification_code
+                )
+                db.session.add(auth_log)
+                db.session.commit()
+
                 session["2fa_verified"] = True  # Set 2FA verification flag
                 return redirect(url_for("inbox", username=user.primary_username))
+
+            # Failed login
+            auth_log = AuthenticationLog(user_id=user.id, successful=False)
+            db.session.add(auth_log)
+            db.session.commit()
 
             flash("⛔️ Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
