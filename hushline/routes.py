@@ -315,6 +315,8 @@ def init_app(app: Flask) -> None:
         form = TwoFactorForm()
 
         if form.validate_on_submit():
+            totp = pyotp.TOTP(user.totp_secret)
+            timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
 
             # Rate limit 2FA attempts
@@ -326,9 +328,14 @@ def init_app(app: Flask) -> None:
                 .order_by(AuthenticationLog.timestamp.desc())
                 .first()
             )
-            if last_login and last_login.otp_code == verification_code:
-                # There's a one in one million chance that the same OTP code is generated again, but
-                # if that happens the user can just wait 30 seconds and try again
+            if (
+                last_login
+                and last_login.timecode == timecode
+                and last_login.otp_code == verification_code
+            ):
+                # If the time interval has incremented, then a repeat TOTP code which passes the
+                # totp.verify(...) check is OK & part of the security model of the TOTP spec.
+                # However, a repeat TOTP code during the same time interval should be disallowed.
                 rate_limit = True
 
             # If there were 5 failed logins in the last 30 seconds, don't allow another one
@@ -344,11 +351,10 @@ def init_app(app: Flask) -> None:
                 flash("⏲️ Please wait a moment before trying again.")
                 return render_template("verify_2fa_login.html", form=form), 429
 
-            totp = pyotp.TOTP(user.totp_secret)
             if totp.verify(verification_code):
                 # Successful login
                 auth_log = AuthenticationLog(
-                    user_id=user.id, successful=True, otp_code=verification_code
+                    user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
                 db.session.add(auth_log)
                 db.session.commit()

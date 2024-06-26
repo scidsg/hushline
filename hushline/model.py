@@ -151,17 +151,25 @@ class AuthenticationLog(Model):
     successful = db.Column(db.Boolean, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
     otp_code = db.Column(db.String(6), nullable=True)
+    timecode = db.Column(db.Integer, nullable=True)
 
     # Open question: should we store the IP address and user agent?
     # It's useful for auditing, but it's identifable
     # ip_address = db.Column(db.String(45), nullable=False)
     # user_agent = db.Column(db.String(255), nullable=False)
 
-    def __init__(self, user_id: int, successful: bool, otp_code: str | None = None) -> None:
+    def __init__(
+        self,
+        user_id: int,
+        successful: bool,
+        otp_code: str | None = None,
+        timecode: int | None = None,
+    ) -> None:
         super().__init__()
         self.user_id = user_id
         self.successful = successful
         self.otp_code = otp_code
+        self.timecode = timecode
 
 
 class SecondaryUsername(Model):
