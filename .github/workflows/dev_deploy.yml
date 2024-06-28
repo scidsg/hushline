@@ -12,7 +12,7 @@ env:
 
 jobs:
  deploy:
-   if: ${{ github.event.label.name == 'dev-deploy' }}
+   if: ${{ github.event.label.name == 'deploy' }}
    runs-on: ubuntu-latest
    steps:
      - name: checkout terraform
