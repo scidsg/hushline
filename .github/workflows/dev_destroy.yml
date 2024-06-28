@@ -1,0 +1,30 @@
+---
+name: Create Dev Deployment
+
+on:
+  pull_request:
+    types: [unlabeled]
+    
+env:
+  TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
+  ORGANIZATION: science-and-design
+  PROJECT: Hush Line Dev
+
+jobs:
+ deploy:
+   if: ${{ github.event.label.name == 'dev-deploy' }}
+   runs-on: ubuntu-latest
+   steps:
+     - name: checkout terraform
+       uses: actions/checkout@v4
+       with:
+         repository: 'scidsg/hushline-infra'
+         ref: dev-deploy
+         token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+
+     - name: destroy worspace
+       uses: dflook/terraform-destroy-workspace@v1.43.0
+       with:
+         path: terraform/dev
+         workspace: dev-${{ github.head_ref }}
+
