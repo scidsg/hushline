@@ -1,9 +1,9 @@
 ---
-name: Create Dev Deployment
+name: Destroy Dev Deployment
 
 on:
   pull_request:
-    types: [unlabeled]
+    types: [labeled]
     
 env:
   TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
@@ -12,7 +12,7 @@ env:
 
 jobs:
  deploy:
-   if: ${{ github.event.label.name == 'dev-deploy' }}
+   if: ${{ github.event.label.name == 'destroy' }}
    runs-on: ubuntu-latest
    steps:
      - name: checkout terraform
@@ -27,4 +27,15 @@ jobs:
        with:
          path: terraform/dev
          workspace: dev-${{ github.head_ref }}
+         variables: |
+           tag = "latest"
+           name = "hushline-${{ github.head_ref }}"
+
+     - name: remove labels
+       uses: actions-ecosystem/action-remove-labels@v1.3.0
+       with:
+         github_token: ${{ github.token }}
+         labels: |
+           deploy
+           destroy
 
