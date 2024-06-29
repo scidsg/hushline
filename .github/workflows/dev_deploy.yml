@@ -54,7 +54,17 @@ jobs:
        with:
          path: terraform/dev
          workspace: dev-${{ github.head_ref }}
-         add_github_comment: false
+         add_github_comment: true
+         github_token: ${{ github.token }}
+         variables: |
+           tag = "latest"
+           name = "hushline-${{ github.head_ref }}"
+
+     - name: Apply test infrastrucutre
+       uses: dflook/terraform-apply@v1.43.0
+       with:
+         path: terraform/dev
+         workspace: dev-${{ github.head_ref }}
          variables: |
            tag = "latest"
            name = "hushline-${{ github.head_ref }}"
