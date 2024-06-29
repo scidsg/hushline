@@ -9,6 +9,7 @@ env:
   TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
   ORGANIZATION: science-and-design
   PROJECT: Hush Line Dev
+  GITHUB_TOKEN: ${{ github.token }}
 
 jobs:
  deploy:
@@ -55,7 +56,6 @@ jobs:
          path: terraform/dev
          workspace: dev-${{ github.head_ref }}
          add_github_comment: true
-         github_token: ${{ github.token }}
          variables: |
            tag = "latest"
            name = "hushline-${{ github.head_ref }}"
