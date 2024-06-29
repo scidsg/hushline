@@ -68,6 +68,24 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "hushline-${{ github.head_ref }}"
+
+      - name: terraform output
+        uses: dflook/terraform-output@v1.43.0
+        id: tf-outputs
+        with:
+          path: terraform/dev
+          workspace: dev-${{ github.head_ref }}
+
+      - name: comment app url
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: ':rocket: App successfully deployed to ${{ steps.tf-outputs.outputs.app_urn }}!'
+            })
  
   destroy:
     if: ${{ github.event.label.name == 'destroy' }}
