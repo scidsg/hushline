@@ -1,5 +1,5 @@
 ---
-name: Create Dev Deployment
+name: Deploy/Destroy Branch Dev Environment
 
 on:
   pull_request:
@@ -12,59 +12,88 @@ env:
   GITHUB_TOKEN: ${{ github.token }}
 
 jobs:
- deploy:
-   if: ${{ github.event.label.name == 'deploy' }}
-   runs-on: ubuntu-latest
-   steps:
-     - name: checkout terraform
-       uses: actions/checkout@v4
-       with:
-         repository: 'scidsg/hushline-infra'
-         ref: dev-deploy
-         token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
-
-     - name: Use branch workspace
-       uses: dflook/terraform-new-workspace@v1.43.0
-       with:
-         path: terraform/dev
-         workspace: dev-${{ github.head_ref }}
-
-     - name: Update workspace attributes
-       run: |
-         curl -X PATCH https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/dev-${{ github.head_ref }} \
-              -H 'Content-Type: application/vnd.api+json' \
-              -H 'Authorization: Bearer ${{ secrets.TERRAFORM_API_TOKEN }}' \
-              -d '{
-                    "data": {
-                      "type": "workspaces",
-                      "attributes": {
-                        "working-directory": "terraform/dev"
-                      },
-                      "relationships": {
-                        "project": {
-                          "data": {
-                            "id": "prj-iEruEQFmaNTCRAtA"
-                          }
-                        }
-                      }
-                    }
-                  }'
+  deploy:
+    if: ${{ github.event.label.name == 'deploy' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout terraform
+        uses: actions/checkout@v4
+        with:
+          repository: 'scidsg/hushline-infra'
+          ref: dev-deploy
+          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
  
-     - name: Plan test infrastrucutre
-       uses: dflook/terraform-plan@v1.43.0
-       with:
-         path: terraform/dev
-         workspace: dev-${{ github.head_ref }}
-         add_github_comment: true
-         variables: |
-           tag = "latest"
-           name = "hushline-${{ github.head_ref }}"
-
-     - name: Apply test infrastrucutre
-       uses: dflook/terraform-apply@v1.43.0
-       with:
-         path: terraform/dev
-         workspace: dev-${{ github.head_ref }}
-         variables: |
-           tag = "latest"
-           name = "hushline-${{ github.head_ref }}"
+      - name: Use branch workspace
+        uses: dflook/terraform-new-workspace@v1.43.0
+        with:
+          path: terraform/dev
+          workspace: dev-${{ github.head_ref }}
+ 
+      - name: Update workspace attributes
+        run: |
+          curl -X PATCH https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/dev-${{ github.head_ref }} \
+               -H 'Content-Type: application/vnd.api+json' \
+               -H 'Authorization: Bearer ${{ secrets.TERRAFORM_API_TOKEN }}' \
+               -d '{
+                     "data": {
+                       "type": "workspaces",
+                       "attributes": {
+                         "working-directory": "terraform/dev"
+                       },
+                       "relationships": {
+                         "project": {
+                           "data": {
+                             "id": "prj-iEruEQFmaNTCRAtA"
+                           }
+                         }
+                       }
+                     }
+                   }'
+  
+      - name: Plan test infrastrucutre
+        uses: dflook/terraform-plan@v1.43.0
+        with:
+          path: terraform/dev
+          workspace: dev-${{ github.head_ref }}
+          add_github_comment: true
+          variables: |
+            tag = "latest"
+            name = "hushline-${{ github.head_ref }}"
+ 
+      - name: Apply test infrastrucutre
+        uses: dflook/terraform-apply@v1.43.0
+        with:
+          path: terraform/dev
+          workspace: dev-${{ github.head_ref }}
+          variables: |
+            tag = "latest"
+            name = "hushline-${{ github.head_ref }}"
+ 
+  destroy:
+    if: ${{ github.event.label.name == 'destroy' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout terraform
+        uses: actions/checkout@v4
+        with:
+          repository: 'scidsg/hushline-infra'
+          ref: dev-deploy
+          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+ 
+      - name: destroy worspace
+        uses: dflook/terraform-destroy-workspace@v1.43.0
+        with:
+          path: terraform/dev
+          workspace: dev-${{ github.head_ref }}
+          variables: |
+            tag = "latest"
+            name = "hushline-${{ github.head_ref }}"
+ 
+      - name: remove labels
+        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        with:
+          github_token: ${{ github.token }}
+          labels: |
+            deploy
+            destroy
+ 
