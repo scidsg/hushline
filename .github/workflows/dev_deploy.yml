@@ -3,7 +3,7 @@ name: Deploy/Destroy Branch Dev Environment
 
 on:
   pull_request:
-    types: [labeled]
+    types: [labeled, closed]
     
 env:
   TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
@@ -13,7 +13,7 @@ env:
 
 jobs:
   deploy:
-    if: ${{ github.event.label.name == 'deploy' }}
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'deploy' }}
     runs-on: ubuntu-latest
     steps:
       - name: checkout terraform
@@ -84,11 +84,11 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: ':rocket: App successfully deployed to ${{ steps.tf-outputs.outputs.app_urn }}!'
+              body: ':rocket: App successfully deployed to ${{ steps.tf-outputs.outputs.app_live_url }}!'
             })
  
   destroy:
-    if: ${{ github.event.label.name == 'destroy' }}
+    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'destroy') || github.event.action == 'closed' }}
     runs-on: ubuntu-latest
     steps:
       - name: checkout terraform
