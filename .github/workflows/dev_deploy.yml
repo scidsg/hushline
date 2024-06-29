@@ -57,7 +57,7 @@ jobs:
           workspace: dev-${{ github.head_ref }}
           add_github_comment: true
           variables: |
-            tag = "latest"
+            branch = "${{ github.head_ref }}"
             name = "hushline-${{ github.head_ref }}"
  
       - name: Apply test infrastrucutre
@@ -66,7 +66,7 @@ jobs:
           path: terraform/dev
           workspace: dev-${{ github.head_ref }}
           variables: |
-            tag = "latest"
+            branch = "${{ github.head_ref }}"
             name = "hushline-${{ github.head_ref }}"
  
   destroy:
@@ -86,7 +86,7 @@ jobs:
           path: terraform/dev
           workspace: dev-${{ github.head_ref }}
           variables: |
-            tag = "latest"
+            branch = "${{ github.head_ref }}"
             name = "hushline-${{ github.head_ref }}"
  
       - name: remove labels
