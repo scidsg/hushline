@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [[ ! $SQLALCHEMY_DATABASE_URI && $DATABASE_URL]]; then
-  export SQLALCHEMY_DATABASE_URI=$DATABASE_URI
-fi
-
-
 # Run migrations
 poetry run flask db upgrade
 
