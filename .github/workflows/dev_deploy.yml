@@ -93,6 +93,7 @@ jobs:
     steps:
       - name: checkout terraform
         uses: actions/checkout@v4
+        if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           repository: 'scidsg/hushline-infra'
           ref: dev-deploy
@@ -100,6 +101,7 @@ jobs:
  
       - name: destroy worspace
         uses: dflook/terraform-destroy-workspace@v1.43.0
+        if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           path: terraform/dev
           workspace: dev-${{ github.head_ref }}
@@ -107,12 +109,18 @@ jobs:
             branch = "${{ github.head_ref }}"
             name = "hushline-${{ github.head_ref }}"
  
-      - name: remove labels
+      - name: remove deploy label
         uses: actions-ecosystem/action-remove-labels@v1.3.0
-        continue-on-error: true
+        if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           github_token: ${{ github.token }}
           labels: |
             deploy
-            destroy
  
+      - name: remove destroy label
+        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        if: contains(github.event.pull_request.labels.*.name, 'destroy')
+        with:
+          github_token: ${{ github.token }}
+          labels: |
+            destroy
