@@ -9,8 +9,7 @@ help: ## Print the help message
 .PHONY: run
 run: ## Run the app
 	. ./dev_env.sh && \
-	flask db upgrade && \
-	flask run --debug -h localhost -p 8080
+	poetry run flask run --debug -h localhost -p 8080
 
 .PHONY: lint
 lint: ## Lint the code
