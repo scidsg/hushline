@@ -64,7 +64,11 @@ def send_email(to_email: str, subject: str, body: str, user: User, sender_email:
 
 def generate_user_directory_json() -> None:
     try:
-        users = User.query.filter_by(show_in_directory=True).all()
+        users = User.query.filter_by(show_in_directory=True).order_by(
+            User.is_admin.desc(), 
+            User.display_name.asc()
+        ).all()
+
         users_json = [
             {
                 "primary_username": user.primary_username,
