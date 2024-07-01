@@ -10,6 +10,16 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`;
     }
 
+    function sortUsers(users) {
+        return users.sort((a, b) => {
+            if (a.is_admin) return -1;
+            if (b.is_admin) return 1;
+            const nameA = (a.display_name || a.primary_username).toLowerCase();
+            const nameB = (b.display_name || b.primary_username).toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+    }
+
     function searchUsers() {
         const query = searchInput.value.trim().toLowerCase();
         const tab = document.querySelector('.tab.active').getAttribute('data-tab');
@@ -24,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('/static/data/users_directory.json')
             .then(response => response.json())
             .then(data => {
-                userData = data;
+                userData = sortUsers(data); // Sort the data after loading
                 handleSearchInput(); // Initial display after data is loaded
             })
             .catch(error => console.error('Failed to load user data:', error));
