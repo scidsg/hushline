@@ -37,6 +37,8 @@ jobs:
         run: |
           sudo snap install doctl
           doctl auth init -t $DIGITALOCEAN_TOKEN
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
       - name: Trigger deployment on DigitalOcean App Platform
         run: |
