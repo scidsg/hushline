@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import pyotp
 from flask import (
     Flask,
-    current_app,
     flash,
     redirect,
     render_template,
@@ -15,9 +14,6 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from sqlalchemy import event
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.orm import Mapper
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
