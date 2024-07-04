@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import pyotp
 from flask import (
     Flask,
-    current_app,
     flash,
     redirect,
     render_template,
@@ -15,9 +14,6 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from sqlalchemy import event
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.orm import Mapper
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -26,7 +22,7 @@ from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, User
-from .utils import generate_user_directory_json, require_2fa, send_email
+from .utils import require_2fa, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -414,19 +410,30 @@ def init_app(app: Flask) -> None:
         # Sorts only by display name or username
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
+    def get_directory_users() -> list[User]:
+        return (
+            User.query.filter_by(show_in_directory=True)
+            .order_by(User.is_admin.desc(), User.display_name.asc())
+            .all()
+        )
+
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        users = User.query.all()  # Fetch all users
-        sorted_users = sort_users_by_display_name(
-            users, admin_first=True
-        )  # Sort users in Python with admins first
-        return render_template("directory.html", users=sorted_users, logged_in=logged_in)
+        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in)
 
-    @event.listens_for(User, "after_update")
-    def receive_after_update(mapper: Mapper, connection: Connection, target: User) -> None:
-        current_app.logger.info("Triggering JSON regeneration due to user update/insert")
-        generate_user_directory_json()
+    @app.route("/directory/users.json")
+    def directory_users() -> list[dict[str, str]]:
+        return [
+            {
+                "primary_username": user.primary_username,
+                "display_name": user.display_name or user.primary_username,
+                "bio": user.bio,
+                "is_admin": user.is_admin,
+                "is_verified": user.is_verified,
+            }
+            for user in get_directory_users()
+        ]
 
     @app.route("/health.json")
     def health() -> dict[str, str]:

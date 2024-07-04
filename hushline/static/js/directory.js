@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadData() {
-        fetch('/static/data/users_directory.json')
+        fetch('/directory/users.json')
             .then(response => response.json())
             .then(data => {
                 userData = data;
