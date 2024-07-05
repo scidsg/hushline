@@ -3,7 +3,7 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from flask import Flask, flash, redirect, session, url_for, request
+from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
