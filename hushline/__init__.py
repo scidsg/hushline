@@ -3,7 +3,7 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from flask import Flask, flash, redirect, session, url_for
+from flask import Flask, flash, redirect, session, url_for, request
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
@@ -53,5 +53,14 @@ def create_app() -> Flask:
             user = User.query.get(session["user_id"])
             return {"user": user}
         return {}
+
+    # Add Onion-Location header to all responses
+    onion_hostname: str | None = os.environ.get("ONION_HOSTNAME", None)
+    if onion_hostname:
+
+        @app.after_request
+        def add_onion_location_header(response: Response) -> Response:
+            response.headers["Onion-Location"] = f"http://{onion_hostname}{request.path}"
+            return response
 
     return app
