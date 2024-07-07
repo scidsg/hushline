@@ -1064,6 +1064,7 @@ p.helper {
         top: 0;
         outline: 0;
         box-shadow: none;
+        border: none;
     }
 
     .dropdown-content ul {
