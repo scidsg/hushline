@@ -533,7 +533,7 @@ header .btn {
     padding-left: 2.25rem;
     align-items: center;
     font-size: var(--font-size-small);
-    font-weight: bold;
+    font-family: var(--font-sans-bold);
 }
 
 .btn .emoji {
