@@ -472,7 +472,7 @@ button,
     border: 0px;
     background-color: var(--color-brand);
     color: white;
-    padding: .725rem;
+    padding: .725rem 1rem;
     margin: .5rem 0;
     line-height: 1;
 }
@@ -484,6 +484,8 @@ header .btn {
     min-height: initial;
     margin-top: 0;
     margin-bottom: 0;
+    padding-left: .75rem;
+    padding-right: .75rem;
 }
 
 .formBody input[type="submit"],
@@ -1016,7 +1018,7 @@ p.helper {
 
     .container {
         min-width: initial;
-        padding: 2rem 1rem;
+        padding: 2rem 1.5rem;
     }
 
     header nav ul {
