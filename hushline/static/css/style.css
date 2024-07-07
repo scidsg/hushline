@@ -1073,7 +1073,7 @@ p.helper {
 
     .dropdown-content ul {
         display: flex;
-        gap: 1.5rem;
+        gap: 1.125rem;
     }
 
     .dropdown-content a:hover {
