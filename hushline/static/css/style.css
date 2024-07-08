@@ -360,7 +360,7 @@ header nav {
 
 header nav ul {
     display: flex;
-    gap: 1.5rem;
+    gap: 1.125rem;
     margin: 0;
     padding: 0;
 }
@@ -472,18 +472,20 @@ button,
     border: 0px;
     background-color: var(--color-brand);
     color: white;
-    padding: 0 1rem;
+    padding: .725rem 1rem;
     margin: .5rem 0;
+    line-height: 1;
 }
 
 header .btn {
-    padding: .625rem .825rem;
     font-size: var(--font-size-small);
     margin-left: 1rem;
     min-width: initial;
     min-height: initial;
     margin-top: 0;
     margin-bottom: 0;
+    padding-left: .75rem;
+    padding-right: .75rem;
 }
 
 .formBody input[type="submit"],
@@ -494,6 +496,22 @@ header .btn {
     border: 1px solid var(--color-brand);
     border-radius: 50vw;
     font-family: var(--font-sans-bold);
+    text-decoration: none;
+    box-shadow: 0px 2px 0px 0px rgba(125,37,193,.25);
+}
+
+.formBody input[type="submit"]:hover,
+.formBody button:hover,
+.btn:hover {
+    box-shadow: none;
+    text-decoration: none;
+}
+
+.formBody input[type="submit"]:active,
+.formBody button:active,
+.btn:active {
+    box-shadow: inset 0px 2px 0px 0px rgba(125,37,193,.25);
+    text-decoration: none;
 }
 
 .formBody h3 + form button {
@@ -515,7 +533,7 @@ header .btn {
     padding-left: 2.25rem;
     align-items: center;
     font-size: var(--font-size-small);
-    font-weight: bold;
+    font-family: var(--font-sans-bold);
 }
 
 .btn .emoji {
@@ -523,9 +541,9 @@ header .btn {
     display: inline-flex;
 }
 
-input[type="submit"]:hover,
-button:hover,
-.btn:hover {
+input[type="submit"],
+button,
+.btn {
     cursor: pointer;
     text-decoration: none;
     box-shadow: 0px 2px 0px 0px rgba(125,37,193,.25);
@@ -993,14 +1011,18 @@ p.helper {
     font-weight: bold;
 }
 
+@media only screen and (max-width: 768px) {
+    header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }   
+}
+
 @media only screen and (max-width: 640px) {
-    body {
-        padding-top: 5.5rem;
-    }
 
     .container {
         min-width: initial;
-        padding: 2rem 1rem;
+        padding: 2rem 1.5rem;
     }
 
     header nav ul {
@@ -1046,11 +1068,12 @@ p.helper {
         top: 0;
         outline: 0;
         box-shadow: none;
+        border: none;
     }
 
     .dropdown-content ul {
         display: flex;
-        gap: 1.5rem;
+        gap: 1.125rem;
     }
 
     .dropdown-content a:hover {
