@@ -235,7 +235,7 @@ img.empty {
     max-width: 78vw;
     text-align: center;
     opacity: 0;
-    visibility: hidden;
+    z-index: 10;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
 }
 
@@ -259,7 +259,7 @@ img.empty {
     }
 
     100% {
-        transform: translateX(50%) translateY(4.5em);
+        transform: translateX(50%) translateY(1em);
         opacity: 1;
         visibility: visible;
     }
@@ -267,7 +267,7 @@ img.empty {
 
 @keyframes fadeOutUp {
     0% {
-        transform: translateX(50%) translateY(4.5em);
+        transform: translateX(50%) translateY(1em);
         opacity: 1;
         visibility: visible;
     }
