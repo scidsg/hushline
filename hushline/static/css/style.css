@@ -225,7 +225,7 @@ img.empty {
     position: fixed;
     top: 1rem;
     right: 50%;
-    transform: translateX(50%);
+    transform: translateX(50%) translateY(0%);
     background-color: white;
     border: var(--border);
     padding: 1.25rem 2rem;
@@ -235,8 +235,8 @@ img.empty {
     max-width: 78vw;
     text-align: center;
     opacity: 0;
+    visibility: hidden;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
-    z-index: 99;
 }
 
 .message .message-label,
@@ -253,30 +253,34 @@ img.empty {
 
 @keyframes fadeInDown {
     0% {
-        top: 0px;
+        transform: translateX(50%) translateY(0%);
         opacity: 0;
+        visibility: hidden;
     }
 
     100% {
-        top: 1rem;
+        transform: translateX(50%) translateY(4.5em);
         opacity: 1;
+        visibility: visible;
     }
 }
 
 @keyframes fadeOutUp {
     0% {
-        top: 1rem;
+        transform: translateX(50%) translateY(4.5em);
         opacity: 1;
+        visibility: visible;
     }
 
     99% {
-        top: 0;
+        transform: translateX(50%) translateY(0%);
         opacity: 0;
+        visibility: hidden; 
     }
 
     100% {
         opacity: 0;
-        z-index: -999;
+        visibility: hidden;
     }
 
 }
