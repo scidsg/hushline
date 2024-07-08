@@ -3,7 +3,7 @@ import os
 from datetime import timedelta
 from typing import Any
 
-from flask import Flask, flash, redirect, session, url_for
+from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
@@ -33,6 +33,7 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+    app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
 
     # Run migrations
     db.init_app(app)
@@ -53,5 +54,15 @@ def create_app() -> Flask:
             user = User.query.get(session["user_id"])
             return {"user": user}
         return {}
+
+    # Add Onion-Location header to all responses
+    if app.config["ONION_HOSTNAME"]:
+
+        @app.after_request
+        def add_onion_location_header(response: Response) -> Response:
+            response.headers["Onion-Location"] = (
+                f"http://{app.config['ONION_HOSTNAME']}{request.path}"
+            )
+            return response
 
     return app
