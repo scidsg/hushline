@@ -33,6 +33,7 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+    app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
 
     # Run migrations
     db.init_app(app)
@@ -55,12 +56,13 @@ def create_app() -> Flask:
         return {}
 
     # Add Onion-Location header to all responses
-    onion_hostname: str | None = os.environ.get("ONION_HOSTNAME", None)
-    if onion_hostname:
+    if app.config["ONION_HOSTNAME"]:
 
         @app.after_request
         def add_onion_location_header(response: Response) -> Response:
-            response.headers["Onion-Location"] = f"http://{onion_hostname}{request.path}"
+            response.headers["Onion-Location"] = (
+                f"http://{app.config['ONION_HOSTNAME']}{request.path}"
+            )
             return response
 
     return app
