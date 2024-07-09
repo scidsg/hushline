@@ -1147,15 +1147,33 @@ p.helper {
     outline-offset: 2px;
 }
 
+.label-with-wordcount {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-direction: column;
+    margin-bottom: .5rem;
+}
+
+.label-with-wordcount label {
+    margin-bottom: 0;
+}
+
 button[name="update_directory_visibility"] {
     visibility: hidden;
     display: none;
 }
 
+@media(min-width: 480px) {
+    .label-with-wordcount {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
 @media only screen and (max-width: 480px) {
     #searchInput {
         min-width: 100%;
-
     }
 
     .search-box {

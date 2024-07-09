@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tab functionality
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
+    const bioCountEl = document.querySelector('.bio-count');
 
     function removeActiveClasses() {
         tabs.forEach(tab => tab.classList.remove('active'));
@@ -36,5 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             document.querySelector("button[name='update_directory_visibility']").click();
         }, 200)
+    });
+
+    document.getElementById('bio').addEventListener('keyup', function(e) {
+        bioCountEl.textContent = e.target.value.length;
     });
 });
