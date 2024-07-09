@@ -30,4 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
             event.preventDefault();
         }
     });
+
+    document.querySelector("input[name='show_in_directory']").addEventListener('change', function(e) {
+        // time out to let animation finish
+        setTimeout(() => {
+            document.querySelector("button[name='update_directory_visibility']").click();
+        }, 200)
+    });
 });
