@@ -13,6 +13,7 @@ env:
   DEV_TF_PATH: terraform/dev
   DO_APP_NAME: hushline-dev-${{ github.head_ref }}
   HUSHLINE_INFRA_REPO: scidsg/hushline-infra
+  HUSHLINE_INFRA_REF: main
 
 jobs:
   deploy:
@@ -23,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
-          ref: dev-deploy
+          ref: ${{ env.HUSHLINE_INFRA_REF }}
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
  
       - name: Use branch workspace
@@ -99,7 +100,7 @@ jobs:
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
-          ref: dev-deploy
+          ref: ${{ env.HUSHLINE_INFRA_REF }}
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
  
       - name: destroy worspace
