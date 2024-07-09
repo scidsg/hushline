@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function reportUser(username, displayName, bio) {
 
         // Construct the message content with explicit line breaks
-        const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
+        const messageContent = `Reported user: ${username}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
 
         // Encode the message content to ensure line breaks and other special characters are correctly handled
         const encodedMessage = encodeURIComponent(messageContent);
@@ -103,17 +103,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 userListContainer.appendChild(userDiv);
             });
 
-            const reportLinks = document.querySelectorAll('.report-link');
-
-            reportLinks.forEach(link => {
-                link.addEventListener('click', function (event) {
+            userListContainer.addEventListener('click', function(event) {
+                if (event.target.classList.contains('report-link')) {
                     event.preventDefault();
+                    const link = event.target;
                     const username = link.getAttribute('data-username');
                     const displayName = link.getAttribute('data-display-name');
                     const bio = link.getAttribute('data-bio');
                     reportUser(username, displayName, bio);
-                });
-
+                }
             });
         } else {
             userListContainer.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
