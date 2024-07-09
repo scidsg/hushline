@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
+    let isSessionUser = false
 
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
@@ -30,6 +31,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Failed to load user data:', error));
     }
 
+    async function checkIfSessionUser() {
+        const response = await fetch('/directory/get-session-user.json');
+        const {logged_in} = await response.json();
+        isSessionUser = logged_in;
+    }
+
     function filterUsers(query) {
         const tab = document.querySelector('.tab.active').getAttribute('data-tab');
         return userData.filter(user => {
@@ -43,6 +50,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!query) return text; // If no query, return the text unmodified
         const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
         return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+
+    function reportUser(username, displayName, bio) {
+
+        // Construct the message content with explicit line breaks
+        const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
+
+        // Encode the message content to ensure line breaks and other special characters are correctly handled
+        const encodedMessage = encodeURIComponent(messageContent);
+
+        // Redirect to the message submission form for the admin with the pre-filled content
+        const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
+        window.location.href = submissionUrl;
     }
 
     function displayUsers(users, query) {
@@ -76,9 +97,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
                         <a href="/submit_message/${user.primary_username}">Send a Message</a>
+                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username }" data-bio="${user.bio }">Report Account</a>` : ``}
                     </div>
                 `;
                 userListContainer.appendChild(userDiv);
+            });
+
+            const reportLinks = document.querySelectorAll('.report-link');
+
+            reportLinks.forEach(link => {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const username = link.getAttribute('data-username');
+                    const displayName = link.getAttribute('data-display-name');
+                    const bio = link.getAttribute('data-bio');
+                    reportUser(username, displayName, bio);
+                });
+
             });
         } else {
             userListContainer.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
@@ -105,14 +140,15 @@ document.addEventListener('DOMContentLoaded', function () {
             updatePlaceholder();
         });
     });
-
+    
     searchInput.addEventListener('input', handleSearchInput);
     clearIcon.addEventListener('click', function () {
         searchInput.value = '';
         clearIcon.style.visibility = 'hidden';
         handleSearchInput();
     });
-
-    loadData(); // Load the data when the page is ready
+    
+    checkIfSessionUser()
     updatePlaceholder(); // Initialize placeholder text
+    loadData(); // Load the data when the page is ready
 });

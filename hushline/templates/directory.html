@@ -32,7 +32,7 @@
                         <p class="badge">⚙️ Admin</p>
                     </div>
                     {% endif %}
-                    {% if user.bio %}
+                    {% if user.bio %}dwa
                         <p class="bio">{{ user.bio }}</p>
                     {% endif %}
                     <div class="user-actions">
@@ -54,7 +54,7 @@
             {% if user.show_in_directory %}
                 <div class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
-                    {% if user.display_name %}
+                    {% if user.primary_username %}
                         <p class="meta">@{{ user.primary_username }}</p>
                     {% endif %}
                     {% if user.is_verified or user.is_admin %}
