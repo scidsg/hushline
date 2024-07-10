@@ -667,10 +667,11 @@ img.upgrade {
 .tab-list {
     list-style-type: none;
     margin: 0 0 1.75rem 0;
-    padding: 0;
+    padding: 0.5rem 0 0 0;
     overflow-x: auto;
     display: flex;
     overflow-y: hidden;
+    gap: 10px;
     -ms-overflow-style: none;
     scrollbar-width: none;
     border-bottom: var(--border);
@@ -681,31 +682,25 @@ img.upgrade {
 }
 
 /* Tab button styling */
-.tab {
-    border: none;
-    outline: none;
-    cursor: pointer;
-    padding: .75rem .625rem;
-    font-size: var(--font-size-base);
-    white-space: nowrap;
-}
-
-.tab button {
+.tab  {
   min-height: 0px;
   min-width: auto;
+  padding: .75rem .625rem;
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
+  white-space: nowrap;
   border-radius: 0px;
   border: 0px;
   background-color: transparent;
   color: var(--color-text);
   box-shadow: none;
-  padding: 0px;
+  margin: 0;
+  box-sizing: content-box;
+  outline: none;
 }
 
-.tab button:focus-within {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 4px;
+.tab:focus-within {
+  outline: none;
 }
 /* Change background color of tabs on hover */
 .tab:hover {
@@ -717,7 +712,7 @@ img.upgrade {
     border-bottom: 3px solid var(--color-brand);
 }
 
-.tab.active button {
+.tab.active  {
   font-family: var(--font-sans-bold);
 }
 
