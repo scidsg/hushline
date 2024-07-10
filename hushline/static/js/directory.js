@@ -53,10 +53,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function reportUser(username, displayName, bio) {
+    function reportUser(displayName, bio) {
 
         // Construct the message content with explicit line breaks
-        const messageContent = `Reported user: ${username}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
+        const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
 
         // Encode the message content to ensure line breaks and other special characters are correctly handled
         const encodedMessage = encodeURIComponent(messageContent);
@@ -103,16 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 userListContainer.appendChild(userDiv);
             });
 
-            userListContainer.addEventListener('click', function(event) {
-                if (event.target.classList.contains('report-link')) {
-                    event.preventDefault();
-                    const link = event.target;
-                    const username = link.getAttribute('data-username');
-                    const displayName = link.getAttribute('data-display-name');
-                    const bio = link.getAttribute('data-bio');
-                    reportUser(username, displayName, bio);
-                }
-            });
+            createReportEventListeners('.tab-content.active .user-list');
         } else {
             userListContainer.innerHTML = '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
         }
@@ -136,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             handleSearchInput(); // Filter again when tab changes
             updatePlaceholder();
+            loadData();
         });
     });
     
@@ -145,8 +137,23 @@ document.addEventListener('DOMContentLoaded', function () {
         clearIcon.style.visibility = 'hidden';
         handleSearchInput();
     });
-    
+
+
+
+    function createReportEventListeners(selector) {
+        document.querySelector(selector).addEventListener('click', function(event) {
+            if (event.target.classList.contains('report-link')) {
+                event.preventDefault();
+                const link = event.target;
+                const username = link.getAttribute('data-username');
+                const displayName = link.getAttribute('data-display-name');
+                const bio = link.getAttribute('data-bio');
+                reportUser(username, displayName, bio);
+            }
+        });
+    }
+
+    createReportEventListeners('.tab-content.active .user-list');
     checkIfSessionUser()
     updatePlaceholder(); // Initialize placeholder text
-    loadData(); // Load the data when the page is ready
 });
