@@ -28,6 +28,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/hushline:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}/hushline:release
+          platforms: linux/amd64,linux/arm64
 
   deploy:
     runs-on: ubuntu-latest
