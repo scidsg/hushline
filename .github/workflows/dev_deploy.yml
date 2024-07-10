@@ -6,7 +6,7 @@ on:
     types: [labeled, closed]
     
 env:
-  TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.TERRAFORM_API_TOKEN }}
+  TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_DEV_TF_TOKEN }}
   GITHUB_TOKEN: ${{ github.token }}
   WORKSPACE_NAME: hushline-dev-${{ github.head_ref }}
   TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
@@ -26,33 +26,56 @@ jobs:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
           ref: ${{ env.HUSHLINE_INFRA_REF }}
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
- 
-      - name: Use branch workspace
-        uses: dflook/terraform-new-workspace@v1.43.0
-        with:
-          path: ${{ env.DEV_TF_PATH }}
-          workspace: ${{ env.WORKSPACE_NAME }}
- 
-      - name: Update workspace attributes
+
+      - name: Create workspace
         run: |
-          curl -X PATCH https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${{ env.WORKSPACE_NAME }} \
+          set -e
+          resp=$(curl -s -o /dev/null -w "%{http_code}" \
+               -X GET https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${{ env.WORKSPACE_NAME }} \
                -H 'Content-Type: application/vnd.api+json' \
-               -H 'Authorization: Bearer ${{ secrets.TERRAFORM_API_TOKEN }}' \
-               -d '{
-                     "data": {
-                       "type": "workspaces",
-                       "attributes": {
-                         "working-directory": "${{ env.DEV_TF_PATH }}"
-                       },
-                       "relationships": {
-                         "project": {
-                           "data": {
-                             "id": "${{ env.TF_PROJECT_HUSH_LINE_DEV }}"
-                           }
+               -H 'Authorization: Bearer ${{ secrets.HUSHLINE_DEV_TF_TOKEN }}')
+          echo "Got $resp when looking up workspace"
+          if [[ "$resp" == '404' ]]; then
+            echo "Attempting to create workspace..."
+            resp=$(curl -X POST https://app.terraform.io/api/v2/organizations/science-and-design/workspaces \
+                 -H 'Content-Type: application/vnd.api+json' \
+                 -H 'Authorization: Bearer ${{ secrets.HUSHLINE_DEV_TF_TOKEN }}' \
+                 -d '{
+                   "data": {
+                     "type": "workspaces",
+                     "attributes": {
+                       "working-directory": "${{ env.DEV_TF_PATH }}",
+                       "name": "${{ env.WORKSPACE_NAME }}",
+                       "auto-destroy-activity-duration": "14d",
+                       "execution-mode": "remote",
+                       "source-name": "scidsg/hushline dev deploy"
+                     },
+                     "relationships": {
+                       "project": {
+                         "data": {
+                           "id": "${{ env.TF_PROJECT_HUSH_LINE_DEV }}"
                          }
                        }
                      }
-                   }'
+                   }
+                 }')
+            workspace_id=$(echo $resp | jq -r '.data.id')
+            echo "Created workspace '${{ env.WORKSPACE_NAME }}' with id '$workspace_id'"
+            echo "Tagging workspace with the 'dev' tag..."
+            curl -X POST https://app.terraform.io/api/v2/workspaces/${workspace_id}/relationships/tags \
+                 -H 'Content-Type: application/vnd.api+json' \
+                 -H 'Authorization: Bearer ${{ secrets.HUSHLINE_DEV_TF_TOKEN }}' \
+                 -d '{
+                       "data": [
+                         {
+                           "type": "tags",
+                           "attributes": {
+                             "name": "dev"
+                           }
+                         }
+                       ]
+                     }'
+          fi
   
       - name: Plan test infrastrucutre
         uses: dflook/terraform-plan@v1.43.0
@@ -106,6 +129,8 @@ jobs:
       - name: destroy worspace
         uses: dflook/terraform-destroy-workspace@v1.43.0
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
+        id: first_try
+        continue-on-error: true
         with:
           path: ${{ env.DEV_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -113,6 +138,16 @@ jobs:
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
  
+      - name: retry destroy worspace
+        uses: dflook/terraform-destroy-workspace@v1.43.0
+        if: ${{ steps.first_try.outputs.failure-reason == 'destroy-failed' }}
+        with:
+          path: ${{ env.DEV_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          variables: |
+            branch = "${{ github.head_ref }}"
+            name = "${{ env.DO_APP_NAME }}"
+
       - name: remove deploy label
         uses: actions-ecosystem/action-remove-labels@v1.3.0
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
