@@ -225,7 +225,7 @@ img.empty {
     position: fixed;
     top: 1rem;
     right: 50%;
-    transform: translateX(50%);
+    transform: translateX(50%) translateY(0%);
     background-color: white;
     border: var(--border);
     padding: 1.25rem 2rem;
@@ -235,8 +235,8 @@ img.empty {
     max-width: 78vw;
     text-align: center;
     opacity: 0;
+    z-index: 10;
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
-    z-index: 99;
 }
 
 .message .message-label,
@@ -253,30 +253,34 @@ img.empty {
 
 @keyframes fadeInDown {
     0% {
-        top: 0px;
+        transform: translateX(50%) translateY(0%);
         opacity: 0;
+        visibility: hidden;
     }
 
     100% {
-        top: 1rem;
+        transform: translateX(50%) translateY(1em);
         opacity: 1;
+        visibility: visible;
     }
 }
 
 @keyframes fadeOutUp {
     0% {
-        top: 1rem;
+        transform: translateX(50%) translateY(1em);
         opacity: 1;
+        visibility: visible;
     }
 
     99% {
-        top: 0;
+        transform: translateX(50%) translateY(0%);
         opacity: 0;
+        visibility: hidden; 
     }
 
     100% {
         opacity: 0;
-        z-index: -999;
+        visibility: hidden;
     }
 
 }
@@ -1022,7 +1026,7 @@ p.helper {
 
     .container {
         min-width: initial;
-        padding: 2rem 1.5rem;
+        padding: 2rem 1.25rem;
     }
 
     header nav ul {
@@ -1093,11 +1097,83 @@ p.helper {
     }
 }
 
+.toggle-ui {
+    position: relative;
+    overflow: hidden;
+}
+
+.toggle-ui label {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: .5rem;
+}
+
+.toggle-ui input[type="checkbox"] {
+    position: absolute;
+    left: -100%;
+}
+
+.toggle {
+    width: 50px;
+    height: 18px;
+    padding: 3px 0px;
+    background: var(--color-text-light);
+    position: relative;
+    border-radius: 100px;
+    overflow: hidden;
+}
+
+.toggle__ball {
+    height: 18px;
+    width: 18px;
+    position: absolute;
+    left: 4px;
+    background: white;
+    border-radius: 100%;
+    transition: transform 0.2s;
+}
+
+.toggle-ui input[type="checkbox"]:checked ~ label .toggle {
+    background: var(--color-brand);
+}
+
+.toggle-ui input[type="checkbox"]:checked ~ label .toggle__ball {
+    transform: translateX(24px);
+}
+
+.toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+    outline: 2px solid  var(--color-brand);
+    outline-offset: 2px;
+}
+
+.label-with-wordcount {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-direction: column;
+    margin-bottom: .5rem;
+}
+
+.label-with-wordcount label {
+    margin-bottom: 0;
+}
+
+button[name="update_directory_visibility"] {
+    visibility: hidden;
+    display: none;
+}
+
+@media(min-width: 480px) {
+    .label-with-wordcount {
+        flex-direction: row;
+        align-items: center;
+    }
+}
 
 @media only screen and (max-width: 480px) {
     #searchInput {
         min-width: 100%;
-
     }
 
     .search-box {

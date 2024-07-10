@@ -41,9 +41,14 @@
         <h3>Public User Directory</h3>
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ directory_visibility_form.hidden_tag() }}
-            <div class="checkbox-group">
-                {{ directory_visibility_form.show_in_directory.label }}
-                {{ directory_visibility_form.show_in_directory() }}
+            <div class="checkbox-group toggle-ui">
+                {{ directory_visibility_form.show_in_directory() }}    
+                <label for="show_in_directory" class="toggle-label">
+                    Show on public directory
+                    <div class="toggle">
+                        <div class="toggle__ball"></div>
+                    </div>
+                </label>
             </div>
             <button type="submit" name="update_directory_visibility">Update Visibility</button>
         </form>
@@ -51,7 +56,10 @@
         <h3>Add Your Bio</h3>
         <form method="POST" action="{{ url_for('settings.index') }}">
             <div class="form-group">
-                <label for="bio">Bio (up to 250 characters):</label>
+                <div class="label-with-wordcount">
+                    <label for="bio">Bio (up to 250 characters):</label>
+                    <span><span class="bio-count">0</span>/250</span>
+                </div>
                 <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
             </div>
             <button type="submit" name="update_bio">Update Bio</button>
