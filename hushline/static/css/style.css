@@ -690,6 +690,23 @@ img.upgrade {
     white-space: nowrap;
 }
 
+.tab button {
+  min-height: 0px;
+  min-width: auto;
+  font-size: var(--font-size-base);
+  font-family: var(--font-sans);
+  border-radius: 0px;
+  border: 0px;
+  background-color: transparent;
+  color: var(--color-text);
+  box-shadow: none;
+  padding: 0px;
+}
+
+.tab button:focus-within {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 4px;
+}
 /* Change background color of tabs on hover */
 .tab:hover {
     background-color: #fbf3ff;
@@ -698,8 +715,12 @@ img.upgrade {
 /* Create an active/current tablink class */
 .tab.active {
     border-bottom: 3px solid var(--color-brand);
-    font-family: var(--font-sans-bold);
 }
+
+.tab.active button {
+  font-family: var(--font-sans-bold);
+}
+
 
 /* Style the tab content (and hide it by default) */
 .tab-content {
