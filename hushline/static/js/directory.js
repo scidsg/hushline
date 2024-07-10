@@ -155,10 +155,3 @@ document.addEventListener('DOMContentLoaded', function () {
     updatePlaceholder(); // Initialize placeholder text
     loadData();
 });
-
-
-
-// /submit_message/admin?prefill=
-// Reported%20user%3A%20admin%0A%0ABio%3A%20Hush%20Line%20Admin%0A%0AReason%3A
-// Reported%20user%3A%20rammeyy%0A%0ABio%3A%20No%20bio%0A%0AReason%3A here
-
