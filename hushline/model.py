@@ -30,7 +30,7 @@ class User(Model):
     _smtp_password = db.Column("smtp_password", db.String(255))
     _pgp_key = db.Column("pgp_key", db.Text)
     is_verified = db.Column(db.Boolean, default=False)
-    is_admin = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=True)
     show_in_directory = db.Column(db.Boolean, default=False)
     bio = db.Column(db.Text, nullable=True)
     # Corrected the relationship and backref here

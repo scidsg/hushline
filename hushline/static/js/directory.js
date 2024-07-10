@@ -53,14 +53,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function reportUser(displayName, bio) {
+    function reportUser(username, bio) {
 
         // Construct the message content with explicit line breaks
-        const messageContent = `Reported user: ${displayName}\n\nBio: ${bio || 'No bio.'}\n\nReason:`;
+        const messageContent = `Reported user: ${username}\n\nBio: ${bio}\n\nReason:`;
 
         // Encode the message content to ensure line breaks and other special characters are correctly handled
         const encodedMessage = encodeURIComponent(messageContent);
-
+        
         // Redirect to the message submission form for the admin with the pre-filled content
         const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
         window.location.href = submissionUrl;
@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     badgeContainer += '<p class="badge">⭐️ Verified Account</p>';
                 }
 
+                console.log(user, 'user')
                 const userDiv = document.createElement('div');
                 userDiv.className = 'user';
                 userDiv.innerHTML = `
@@ -97,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
                         <a href="/submit_message/${user.primary_username}">Send a Message</a>
-                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username }" data-bio="${user.bio }">Report Account</a>` : ``}
+                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username }" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
                 userListContainer.appendChild(userDiv);
@@ -145,15 +146,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 const link = event.target;
                 const username = link.getAttribute('data-username');
-                const displayName = link.getAttribute('data-display-name');
                 const bio = link.getAttribute('data-bio');
-                reportUser(username, displayName, bio);
+                reportUser(username, bio);
             }
         });
     }
-
-    createReportEventListeners('.tab-content.active .user-list');
     checkIfSessionUser()
     updatePlaceholder(); // Initialize placeholder text
     loadData();
 });
+
+
+
+// /submit_message/admin?prefill=
+// Reported%20user%3A%20admin%0A%0ABio%3A%20Hush%20Line%20Admin%0A%0AReason%3A
+// Reported%20user%3A%20rammeyy%0A%0ABio%3A%20No%20bio%0A%0AReason%3A here
+
