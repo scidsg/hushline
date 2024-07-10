@@ -667,10 +667,11 @@ img.upgrade {
 .tab-list {
     list-style-type: none;
     margin: 0 0 1.75rem 0;
-    padding: 0;
+    padding: 0.5rem 0 0 0;
     overflow-x: auto;
     display: flex;
     overflow-y: hidden;
+    gap: 10px;
     -ms-overflow-style: none;
     scrollbar-width: none;
     border-bottom: var(--border);
@@ -681,15 +682,26 @@ img.upgrade {
 }
 
 /* Tab button styling */
-.tab {
-    border: none;
-    outline: none;
-    cursor: pointer;
-    padding: .75rem .625rem;
-    font-size: var(--font-size-base);
-    white-space: nowrap;
+.tab  {
+  min-height: 0px;
+  min-width: auto;
+  padding: .75rem .625rem;
+  font-size: var(--font-size-base);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  border-radius: 0px;
+  border: 0px;
+  background-color: transparent;
+  color: var(--color-text);
+  box-shadow: none;
+  margin: 0;
+  box-sizing: content-box;
+  outline: none;
 }
 
+.tab:focus-within {
+  outline: none;
+}
 /* Change background color of tabs on hover */
 .tab:hover {
     background-color: #fbf3ff;
@@ -698,8 +710,12 @@ img.upgrade {
 /* Create an active/current tablink class */
 .tab.active {
     border-bottom: 3px solid var(--color-brand);
-    font-family: var(--font-sans-bold);
 }
+
+.tab.active  {
+  font-family: var(--font-sans-bold);
+}
+
 
 /* Style the tab content (and hide it by default) */
 .tab-content {
