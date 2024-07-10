@@ -127,7 +127,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             handleSearchInput(); // Filter again when tab changes
             updatePlaceholder();
-            loadData();
         });
     });
     
@@ -156,4 +155,5 @@ document.addEventListener('DOMContentLoaded', function () {
     createReportEventListeners('.tab-content.active .user-list');
     checkIfSessionUser()
     updatePlaceholder(); // Initialize placeholder text
+    loadData();
 });
