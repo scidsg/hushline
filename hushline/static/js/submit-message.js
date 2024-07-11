@@ -10,6 +10,16 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
+    function prefillMessage() {
+      // get the query param value from the URL to set as textarea value
+      const urlParams = new URLSearchParams(window.location.search);
+      const prefill = urlParams.get('prefill');
+      const textarea = document.getElementById('content');
+      if (prefill) {
+        textarea.value = prefill;
+      }
+    }
     // Run the function to correct double periods
     correctDoublePeriods();
+    prefillMessage();
 });
