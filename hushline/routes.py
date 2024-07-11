@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(mess
 
 def valid_username(form: Form, field: Field) -> None:
     # Corrected regex pattern with length constraint (4 to 20 characters)
-    if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9_-]{2,18}[a-zA-Z0-9])?$", field.data):
+    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{2,18}[a-zA-Z0-9]$", field.data):
         raise ValidationError(
             "Username must contain only letters, numbers, underscores, or hyphens, "
             "and be between 4 and 20 characters long, without starting or ending with "
