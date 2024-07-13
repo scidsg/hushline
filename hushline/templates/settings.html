@@ -4,12 +4,32 @@
 <h2>Settings</h2>
 <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list">
-        <li class="tab active" data-tab="profile">Profile</li>
-        <li class="tab" data-tab="auth">Authentication</li>
-        <li class="tab" data-tab="email">Email & PGP</li>
-        <li class="tab" data-tab="advanced">Advanced</li>
+        <li>
+            <button type="button" class="tab active" data-tab="profile">
+                Profile
+            </button>
+        </li>
+        <li>
+            <button type="button" class="tab" data-tab="auth">
+                Authentication
+            </button>
+        </li>
+        <li>
+            <button type="button" class="tab" data-tab="email">
+                Email
+            </button>
+        </li>
+        <li>
+            <button type="button" class="tab" data-tab="advanced">
+                Advanced
+            </button>
+        </li>
         {% if user.is_admin %}
-            <li class="tab admin-only" data-tab="admin">Admin</li>
+            <li>
+                <button type="button" class="tab admin-only" data-tab="admin">
+                    Admin
+                </button>
+            </li>
         {% endif %}
     </ul>
 </div>
