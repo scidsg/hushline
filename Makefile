@@ -7,10 +7,9 @@ help: ## Print the help message
 		column -s ':' -t
 
 .PHONY: run
-run: ## Run the app
+run: migrate ## Run the app
 	. ./dev_env.sh && \
-	flask db upgrade && \
-	flask run --debug -h localhost -p 8080
+	poetry run flask run --debug -h localhost -p 8080
 
 .PHONY: lint
 lint: ## Lint the code
@@ -24,9 +23,9 @@ fix: ## Format the code
 .PHONY: migrate
 migrate:
 	. ./dev_env.sh && \
-	flask db upgrade
+	poetry run flask db upgrade
 
 .PHONY: test
 test: ## Run the test suite
 	. ./dev_env.sh && \
-	pytest -vv tests -p no:warnings
+	poetry run pytest -vv tests -p no:warnings
