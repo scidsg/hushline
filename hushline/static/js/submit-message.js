@@ -22,4 +22,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // Run the function to correct double periods
     correctDoublePeriods();
     prefillMessage();
+
+    document.getElementById('messageForm').addEventListener('submit', function() {
+        document.getElementById('submitBtn').disabled = true;
+    });
 });
