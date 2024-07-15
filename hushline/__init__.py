@@ -12,14 +12,26 @@ from .db import db
 from .model import User
 
 
+def _production_app_secrets_insertion(app: Flask) -> None:
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
+
+
+def _development_app_secrets_insertion(app: Flask) -> None:
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
 
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
+    if os.environ.get("IS_RUNNING_PRODUCTION", "False").strip().lower() == "true":
+        _production_app_secrets_insertion(app)
+    else:
+        _development_app_secrets_insertion(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     # if it's a Postgres URI, replace the scheme with `postgresql+psycopg`
     # because we're using the psycopg driver

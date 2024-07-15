@@ -19,8 +19,9 @@ def _config(mocker: MockFixture) -> None:
     mocker.patch.dict(os.environ, {})
 
 
-@pytest.fixture()
-def app(_config: None) -> Generator[Flask, None, None]:
+@pytest.fixture(params=["True", "False"])
+def app(_config: None, request: pytest.FixtureRequest) -> Generator[Flask, None, None]:
+    os.environ["IS_RUNNING_PRODUCTION"] = request.param
     os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     os.environ["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
