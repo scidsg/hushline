@@ -1,13 +1,11 @@
-import secrets
 from base64 import b64encode
 
 import pytest
+from conftest import vault
 
-from hushline.crypto.secrets_manager import SecretsManager, truncated_b64decode
+from hushline.crypto.secrets_manager import truncated_b64decode
 
 DERIVED_KEYS_PER_DISTINCT_INPUTS: dict = {}
-TEST_ADMIN_SECRET: bytearray = bytearray(secrets.token_bytes(32))
-vault = SecretsManager(TEST_ADMIN_SECRET.copy())
 
 
 def test_device_salt_is_static_once_created() -> None:

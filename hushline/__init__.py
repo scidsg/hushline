@@ -1,5 +1,7 @@
+import getpass
 import logging
 import os
+from base64 import urlsafe_b64decode
 from datetime import timedelta
 from typing import Any
 
@@ -8,18 +10,27 @@ from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
+from .crypto import SecretsManager
 from .db import db
 from .model import User
 
 
 def _production_app_secrets_insertion(app: Flask) -> None:
+    app.config["VAULT"] = SecretsManager(
+        bytearray(getpass.getpass("admin secret: "), encoding="utf-8")
+    )
+    app.config["ENCRYPTION_KEY"] = os.environ.get("ENCRYPTION_KEY")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
 
 
 def _development_app_secrets_insertion(app: Flask) -> None:
+    encryption_key = os.environ.get("ENCRYPTION_KEY", "")
+    if not encryption_key:
+        raise ValueError("Encryption key not found. Please check your .env file.")
+
+    app.config["VAULT"] = SecretsManager(bytearray(urlsafe_b64decode(encryption_key)))
+    app.config["ENCRYPTION_KEY"] = os.environ.get("ENCRYPTION_KEY")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
 
 
 def create_app() -> Flask:
