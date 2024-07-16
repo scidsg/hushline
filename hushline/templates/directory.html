@@ -17,7 +17,7 @@
 </div>
 <div class="search-box">
     <input type="text" id="searchInput" placeholder="Search users...">
-    <span id="clearIcon" style="cursor: pointer;">&times;</span>
+    <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="clear field">&times;</button>
 </div>
 <div id="verified" class="tab-content active">
     {% if not logged_in %}
@@ -26,7 +26,7 @@
     <div class="user-list">
         {% for user in users %}
             {% if user.is_verified and user.show_in_directory %}
-                <div class="user">
+                <article class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
                     {% if user.primary_username %}
                         <p class="meta">@{{ user.primary_username }}</p>
@@ -45,7 +45,7 @@
                             <a href="#" class="report-link" data-username="{{ user.primary_username }}" data-display-name="{{ user.display_name or user.primary_username }}" data-bio="{{ user.bio }}">Report Account</a>
                         {% endif %}
                     </div>
-                </div>
+                </article>
             {% endif %}
         {% else %}
             <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
@@ -56,7 +56,7 @@
     <div class="user-list">
         {% for user in users %}
             {% if user.show_in_directory %}
-                <div class="user">
+                <article class="user">
                     <h3>{{ user.display_name or user.primary_username }}</h3>
                     {% if user.primary_username %}
                         <p class="meta">@{{ user.primary_username }}</p>
@@ -80,7 +80,7 @@
                             <a href="#" class="report-link" data-username="{{ user.primary_username }}" data-display-name="{{ user.display_name or user.primary_username }}" data-bio="{{ user.bio }}">Report Account</a>
                         {% endif %}
                     </div>
-                </div>
+                </article>
             {% endif %}
         {% else %}
             <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>

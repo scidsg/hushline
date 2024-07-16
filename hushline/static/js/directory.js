@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function highlightMatch(text, query) {
         if (!query) return text; // If no query, return the text unmodified
         const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
+        return text.replace(regex, '<mark class="search-highlight">$1</mark>');
     }
 
 
@@ -88,9 +88,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     badgeContainer += '<p class="badge">⭐️ Verified Account</p>';
                 }
 
-                console.log(user, 'user')
-                const userDiv = document.createElement('div');
+                
+                const userDiv = document.createElement('article');
                 userDiv.className = 'user';
+                userDiv.setAttribute('aria-label', `User ${user.display_name || user.primary_username}`);
                 userDiv.innerHTML = `
                     <h3>${displayNameHighlighted}</h3>
                     <p class="meta">@${usernameHighlighted}</p>
@@ -135,6 +136,8 @@ document.addEventListener('DOMContentLoaded', function () {
     clearIcon.addEventListener('click', function () {
         searchInput.value = '';
         clearIcon.style.visibility = 'hidden';
+        // put focus back on input after clear button is invoked
+        document.getElementById("searchInput").focus();
         handleSearchInput();
     });
 
