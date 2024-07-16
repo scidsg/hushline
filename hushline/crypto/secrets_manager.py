@@ -3,12 +3,13 @@ A class definition to simplify the careful handling of cryptographic secrets.
 """
 
 import warnings
-from base64 import b64decode
+from base64 import b64decode, urlsafe_b64encode
 from hashlib import shake_256
 from pathlib import Path
 from secrets import token_bytes
 
 from aiootp.generics.canon import canonical_pack, fullblock_ljust
+from cryptography.fernet import Fernet, InvalidToken
 from passlib.hash import argon2
 
 
@@ -75,9 +76,36 @@ class SecretsManager:
         hashed_secret_with_metadata.clear()
 
     def derive_key(
-        self, domain: bytes | bytearray, aad: bytes | bytearray = b"", size: int = 32
+        self, *, domain: bytes | bytearray, aad: bytes | bytearray = b"", size: int = 32
     ) -> bytearray:
         kdf = self._kdf.copy()
         size_as_bytes = size.to_bytes(8, "big")
         kdf.update(canonical_pack(domain, aad, size_as_bytes, blocksize=self._KDF_BLOCKSIZE))
         return bytearray(kdf.digest(size))
+
+    def encrypt(
+        self,
+        data: bytes | bytearray,
+        *,
+        domain: bytes | bytearray,
+        aad: bytes | bytearray = b"",
+    ) -> bytes:
+        key = bytearray(urlsafe_b64encode(self.derive_key(domain=domain, aad=aad, size=32)))
+        try:
+            return Fernet(key).encrypt(data)
+        finally:
+            key.clear()
+
+    def decrypt(
+        self,
+        data: bytes | bytearray,
+        *,
+        domain: bytes | bytearray,
+        aad: bytes | bytearray = b"",
+        ttl: int | None = None,
+    ) -> bytes:
+        key = bytearray(urlsafe_b64encode(self.derive_key(domain=domain, aad=aad, size=32)))
+        try:
+            return Fernet(key).decrypt(data, ttl=ttl)
+        finally:
+            key.clear()

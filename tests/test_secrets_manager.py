@@ -1,9 +1,10 @@
 from base64 import b64encode
+from secrets import token_bytes
 
 import pytest
 from conftest import vault
 
-from hushline.crypto.secrets_manager import truncated_b64decode
+from hushline.crypto.secrets_manager import InvalidToken, truncated_b64decode
 
 DERIVED_KEYS_PER_DISTINCT_INPUTS: dict = {}
 
@@ -34,3 +35,16 @@ def test_distinct_derived_keys_per_distinct_inputs(domain: bytes, aad: bytes, si
     assert bytes_key[:24] not in DERIVED_KEYS_PER_DISTINCT_INPUTS
     assert bytes_key not in DERIVED_KEYS_PER_DISTINCT_INPUTS
     DERIVED_KEYS_PER_DISTINCT_INPUTS[bytes_key] = True
+
+
+@pytest.mark.parametrize("data", [token_bytes(32) for _ in range(16)])
+def test_encryption_correctness(data: bytes) -> None:
+    ciphertext = vault.encrypt(data, domain=b"test")
+    assert data not in ciphertext
+    assert data == vault.decrypt(ciphertext, domain=b"test")
+    try:
+        vault.decrypt(ciphertext, domain=b"wrong-domain")
+    except InvalidToken:
+        assert True
+    else:
+        pytest.fail("Encryption succeeded with the wrong key.")

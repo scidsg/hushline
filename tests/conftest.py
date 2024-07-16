@@ -3,7 +3,6 @@ import secrets
 from typing import Generator
 
 import pytest
-from cryptography.fernet import Fernet
 from flask import Flask
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -13,10 +12,6 @@ from hushline.crypto.secrets_manager import SecretsManager
 
 TEST_ADMIN_SECRET: bytearray = bytearray(secrets.token_bytes(32))
 vault = SecretsManager(TEST_ADMIN_SECRET.copy())
-
-# TODO once we refactor `fernet` to not be global, move this into the `config` fixture.
-# this needs to be imported before importing `hushline`
-os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
 
 @pytest.fixture()

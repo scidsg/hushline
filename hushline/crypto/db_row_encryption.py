@@ -3,19 +3,12 @@ Facilitates the transparent encryption & decryption of sensitive database
 fields.
 """
 
-import os
-
-from cryptography.fernet import Fernet
-
-encryption_key = os.environ.get("ENCRYPTION_KEY")
-
-if encryption_key is None:
-    raise ValueError("Encryption key not found. Please check your .env file.")
-
-fernet = Fernet(encryption_key)
+from flask import current_app
 
 
-def encrypt_field(data: bytes | str | None) -> str | None:
+def encrypt_field(
+    data: bytes | str | None, *, domain: bytes | bytearray, aad: bytes | bytearray = b""
+) -> str | None:
     if data is None:
         return None
 
@@ -24,10 +17,16 @@ def encrypt_field(data: bytes | str | None) -> str | None:
         # If data is a string, encode it to bytes
         data = data.encode()
 
-    return fernet.encrypt(data).decode()
+    return current_app.config["VAULT"].encrypt(data, domain=domain, aad=aad).decode()
 
 
-def decrypt_field(data: str | None) -> str | None:
+def decrypt_field(
+    data: str | None,
+    *,
+    domain: bytes | bytearray,
+    aad: bytes | bytearray = b"",
+    ttl: int | None = None,
+) -> str | None:
     if data is None:
         return None
-    return fernet.decrypt(data.encode()).decode()
+    return current_app.config["VAULT"].decrypt(data.encode(), domain=domain, aad=aad).decode()

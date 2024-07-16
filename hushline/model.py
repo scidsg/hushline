@@ -54,57 +54,57 @@ class User(Model):
 
     @property
     def totp_secret(self) -> str | None:
-        return decrypt_field(self._totp_secret)
+        return decrypt_field(self._totp_secret, domain=b"totp_secret")
 
     @totp_secret.setter
     def totp_secret(self, value: str) -> None:
         if value is None:
             self._totp_secret = None
         else:
-            self._totp_secret = encrypt_field(value)
+            self._totp_secret = encrypt_field(value, domain=b"totp_secret")
 
     @property
     def email(self) -> str | None:
-        return decrypt_field(self._email)
+        return decrypt_field(self._email, domain=b"user_email_address")
 
     @email.setter
     def email(self, value: str) -> None:
-        self._email = encrypt_field(value)
+        self._email = encrypt_field(value, domain=b"user_email_address")
 
     @property
     def smtp_server(self) -> str | None:
-        return decrypt_field(self._smtp_server)
+        return decrypt_field(self._smtp_server, domain=b"smtp_server")
 
     @smtp_server.setter
     def smtp_server(self, value: str) -> None:
-        self._smtp_server = encrypt_field(value)
+        self._smtp_server = encrypt_field(value, domain=b"smtp_server")
 
     @property
     def smtp_username(self) -> str | None:
-        return decrypt_field(self._smtp_username)
+        return decrypt_field(self._smtp_username, domain=b"smtp_username")
 
     @smtp_username.setter
     def smtp_username(self, value: str) -> None:
-        self._smtp_username = encrypt_field(value)
+        self._smtp_username = encrypt_field(value, domain=b"smtp_username")
 
     @property
     def smtp_password(self) -> str | None:
-        return decrypt_field(self._smtp_password)
+        return decrypt_field(self._smtp_password, domain=b"smtp_password")
 
     @smtp_password.setter
     def smtp_password(self, value: str) -> None:
-        self._smtp_password = encrypt_field(value)
+        self._smtp_password = encrypt_field(value, domain=b"smtp_password")
 
     @property
     def pgp_key(self) -> str | None:
-        return decrypt_field(self._pgp_key)
+        return decrypt_field(self._pgp_key, domain=b"user_pgp_key")
 
     @pgp_key.setter
     def pgp_key(self, value: str) -> None:
         if value is None:
             self._pgp_key = None
         else:
-            self._pgp_key = encrypt_field(value)
+            self._pgp_key = encrypt_field(value, domain=b"user_pgp_key")
 
     def update_display_name(self, new_display_name: str) -> None:
         """Update the user's display name and remove verification status if the user is verified."""
@@ -199,11 +199,11 @@ class Message(Model):
 
     @property
     def content(self) -> str | None:
-        return decrypt_field(self._content)
+        return decrypt_field(self._content, domain=b"message_content")
 
     @content.setter
     def content(self, value: str) -> None:
-        self._content = encrypt_field(value)
+        self._content = encrypt_field(value, domain=b"message_content")
 
 
 class InviteCode(Model):

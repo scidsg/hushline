@@ -19,7 +19,6 @@ def _production_app_secrets_insertion(app: Flask) -> None:
     app.config["VAULT"] = SecretsManager(
         bytearray(getpass.getpass("admin secret: "), encoding="utf-8")
     )
-    app.config["ENCRYPTION_KEY"] = os.environ.get("ENCRYPTION_KEY")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 
@@ -29,7 +28,6 @@ def _development_app_secrets_insertion(app: Flask) -> None:
         raise ValueError("Encryption key not found. Please check your .env file.")
 
     app.config["VAULT"] = SecretsManager(bytearray(urlsafe_b64decode(encryption_key)))
-    app.config["ENCRYPTION_KEY"] = os.environ.get("ENCRYPTION_KEY")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 
