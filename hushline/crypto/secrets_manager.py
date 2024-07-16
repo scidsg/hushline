@@ -12,6 +12,8 @@ from aiootp.generics.canon import canonical_pack, fullblock_ljust
 from cryptography.fernet import Fernet, InvalidToken
 from passlib.hash import argon2
 
+__all__ = ["InvalidToken", "SecretsManager"]
+
 
 def truncated_b64decode(value: bytearray) -> bytearray:
     if bool(remainder := len(value) % 4):
