@@ -118,18 +118,59 @@ document.addEventListener('DOMContentLoaded', function () {
         clearIcon.style.visibility = query.length ? 'visible' : 'hidden';
     }
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function () {
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
+    function activateTab(event) {    
+        const selectedTab = event.target;
+        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
 
-            tab.classList.add('active');
-            const activeContent = document.getElementById(tab.getAttribute('data-tab'));
-            activeContent.classList.add('active');
-
-            handleSearchInput(); // Filter again when tab changes
-            updatePlaceholder();
+        // Deselect all tabs and hide all panels
+        tabs.forEach(tab => {
+            tab.setAttribute('aria-selected', 'false');
+            tab.classList.remove('active');
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = true;
         });
+
+        // Select the clicked tab and show the corresponding panel
+        selectedTab.setAttribute('aria-selected', 'true');
+        selectedTab.classList.add('active');
+        targetPanel.hidden = false;
+
+        handleSearchInput(); // Filter again when tab changes
+        updatePlaceholder();
+        
+    }
+
+    function handleKeydown(event) {
+        const { key } = event;
+        const currentTab = event.target;
+        let newTab;
+
+        switch (key) {
+            case 'ArrowLeft':
+                newTab = currentTab.parentElement.previousElementSibling?.querySelector('.tab');
+                break;
+            case 'ArrowRight':
+                newTab = currentTab.parentElement.nextElementSibling?.querySelector('.tab');
+                break;
+            case 'Home':
+                newTab = tabs[0];
+                break;
+            case 'End':
+                newTab = tabs[tabs.length - 1];
+                break;
+            default:
+                return;
+        }
+
+        if (newTab) {
+            newTab.focus();
+            newTab.click();
+            event.preventDefault();
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', activateTab);
+        tab.addEventListener('keydown', handleKeydown);
     });
     
     searchInput.addEventListener('input', handleSearchInput);

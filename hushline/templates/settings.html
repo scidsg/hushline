@@ -3,30 +3,30 @@
 {% block content %}
 <h2>Settings</h2>
 <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
-    <ul class="tab-list">
-        <li>
-            <button type="button" class="tab active" data-tab="profile">
+    <ul class="tab-list" role="tablist">
+        <li role="presentation">
+            <button type="button" class="tab active" data-tab="profile" role="tab" aria-selected="true" aria-controls="profile" id="profile-tab">
                 Profile
             </button>
         </li>
-        <li>
-            <button type="button" class="tab" data-tab="auth">
+        <li role="presentation">
+            <button type="button" class="tab" data-tab="auth" role="tab" aria-selected="false" aria-controls="auth" id="auth-tab">
                 Authentication
             </button>
         </li>
-        <li>
-            <button type="button" class="tab" data-tab="email">
+        <li role="presentation">
+            <button type="button" class="tab" data-tab="email" role="tab" aria-selected="false" aria-controls="email" id="email-tab">
                 Email
             </button>
         </li>
-        <li>
-            <button type="button" class="tab" data-tab="advanced">
+        <li role="presentation">
+            <button type="button" class="tab" data-tab="advanced" role="tab" aria-selected="false" aria-controls="advanced" id="advanced-tab">
                 Advanced
             </button>
         </li>
         {% if user.is_admin %}
-            <li>
-                <button type="button" class="tab admin-only" data-tab="admin">
+            <li role="presentation">
+                <button type="button" class="tab admin-only" data-tab="admin" role="tab" aria-selected="false" aria-controls="advanced" id="admin-tab"></button>
                     Admin
                 </button>
             </li>
@@ -34,7 +34,7 @@
     </ul>
 </div>
 <div class="formBody">
-    <div id="profile" class="tab-content active">
+    <div id="profile" class="tab-content active" role="tabpanel" aria-labelledby="profile-tab">
         <div class="form-list">
             <div class="text-only">
                 <h3>Large Organizations</h3>
@@ -86,7 +86,7 @@
         </form>
     </div>
 
-    <div id="auth" class="tab-content">
+    <div id="auth" class="tab-content" role="tabpanel" aria-labelledby="auth-tab" hidden>
         <!-- Change Username Section -->
         <h3>Change Username</h3>
         {% if user.is_verified %}
@@ -139,7 +139,7 @@
         </form>
     </div>
 
-    <div id="email" class="tab-content">
+    <div id="email" class="tab-content" role="tabpanel" aria-labelledby="email-tab" hidden>
         <!-- SMTP Settings Section -->
         <h3>Email Delivery Settings</h3>
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
@@ -169,7 +169,7 @@
         </form>
     </div>
 
-    <div id="advanced" class="tab-content">
+    <div id="advanced" class="tab-content" role="tabpanel" aria-labelledby="advanced-tab" hidden>
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
         <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
@@ -179,7 +179,7 @@
     </div>
 
     {% if user.is_admin %}
-        <div id="admin" class="tab-content admin-only">
+        <div id="admin" class="tab-content admin-only" role="tabpanel" aria-labelledby="admin-tab" hidden>
             <div class="admin-highlights">
                 <div class="metric">
                     <p>Users</p>

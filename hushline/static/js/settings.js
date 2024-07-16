@@ -1,24 +1,62 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Tab functionality
     const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
     const bioCountEl = document.querySelector('.bio-count');
 
-    function removeActiveClasses() {
-        tabs.forEach(tab => tab.classList.remove('active'));
-        tabContents.forEach(content => content.style.display = 'none');
+    function activateTab(event) {
+        const selectedTab = event.target;
+        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
+    
+        // Deselect all tabs and hide all panels
+        tabs.forEach(tab => {
+            tab.setAttribute('aria-selected', 'false');
+            tab.classList.remove('active');
+            const panel = document.getElementById(tab.getAttribute('aria-controls'));
+            panel.hidden = true;
+            panel.style.display = 'none';
+        });
+    
+        // Select the clicked tab and show the corresponding panel
+        selectedTab.setAttribute('aria-selected', 'true');
+        selectedTab.classList.add('active');
+        targetPanel.hidden = false;
+        targetPanel.style.display = 'block';
+    }
+    
+    function handleKeydown(event) {
+        const { key } = event;
+        const currentTab = event.target;
+        let newTab;
+    
+        switch (key) {
+            case 'ArrowLeft':
+                newTab = currentTab.parentElement.previousElementSibling?.querySelector('.tab');
+                break;
+            case 'ArrowRight':
+                newTab = currentTab.parentElement.nextElementSibling?.querySelector('.tab');
+                break;
+            case 'Home':
+                newTab = tabs[0];
+                break;
+            case 'End':
+                newTab = tabs[tabs.length - 1];
+                break;
+            default:
+                return;
+        }
+    
+        if (newTab) {
+            newTab.focus();
+            newTab.click();
+            event.preventDefault();
+        }
     }
 
     tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            removeActiveClasses();
-            this.classList.add('active');
-            const activeTabContent = document.getElementById(this.getAttribute('data-tab'));
-            if (activeTabContent) {
-                activeTabContent.style.display = 'block';
-            }
-        });
+        tab.addEventListener('click', activateTab);
+        tab.addEventListener('keydown', handleKeydown);
     });
+    
 
     if (tabs.length > 0) {
         tabs[0].click(); // Open the first tab automatically
