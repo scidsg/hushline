@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Get the path prefix
+    // If window.location.pathname is /tips/directory, then prefix is /tips
+    // If it's /directory, then prefix is /
+    const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
+
     const tabs = document.querySelectorAll('.tab');
     const contents = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
@@ -22,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadData() {
-        fetch('/directory/users.json')
+        fetch(`${pathPrefix}/directory/users.json`)
             .then(response => response.json())
             .then(data => {
                 userData = data;
@@ -32,8 +37,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function checkIfSessionUser() {
-        const response = await fetch('/directory/get-session-user.json');
-        const {logged_in} = await response.json();
+        const response = await fetch(`${pathPrefix}/directory/get-session-user.json`);
+        const { logged_in } = await response.json();
         isSessionUser = logged_in;
     }
 
@@ -60,9 +65,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Encode the message content to ensure line breaks and other special characters are correctly handled
         const encodedMessage = encodeURIComponent(messageContent);
-        
+
         // Redirect to the message submission form for the admin with the pre-filled content
-        const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
+        const submissionUrl = `${pathPrefix}/submit_message/admin?prefill=${encodedMessage}`;
         window.location.href = submissionUrl;
     }
 
@@ -98,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
                         <a href="/submit_message/${user.primary_username}">Send a Message</a>
-                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username }" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
+                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
                 userListContainer.appendChild(userDiv);
@@ -130,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updatePlaceholder();
         });
     });
-    
+
     searchInput.addEventListener('input', handleSearchInput);
     clearIcon.addEventListener('click', function () {
         searchInput.value = '';
@@ -141,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     function createReportEventListeners(selector) {
-        document.querySelector(selector).addEventListener('click', function(event) {
+        document.querySelector(selector).addEventListener('click', function (event) {
             if (event.target.classList.contains('report-link')) {
                 event.preventDefault();
                 const link = event.target;
