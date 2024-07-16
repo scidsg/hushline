@@ -765,11 +765,21 @@ img.upgrade {
 /* Dropdown Button */
 .dropbtn {
   cursor: pointer;
+  background: none;
+  padding: 0;
+  min-height: 0px;
+  min-width: 0px;
+  box-shadow: none;
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }
 
- .dropdown a {
-    font-size: .875rem;
+.dropbtn:focus-within {
+    outline: none;
+    border: 2px solid var(--color-text);
 }
+
 
  .dropdown ul a {
     margin-left: 0;
