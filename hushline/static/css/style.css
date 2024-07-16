@@ -1019,8 +1019,6 @@ p.helper {
 #clearIcon {
     position: absolute;
     right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
     color: #666;
     font-size: 24px;
     padding: 0;
