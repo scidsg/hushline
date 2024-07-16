@@ -16,8 +16,12 @@
     </ul>
 </div>
 <div class="search-box">
+    <label
+        for="searchInput"
+        aria-label="Search users"
+    >🔍</label>
     <input type="text" id="searchInput" placeholder="Search users...">
-    <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="clear field">&times;</button>
+    <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="Clear search field">&times;</button>
 </div>
 <div id="verified" class="tab-content active">
     {% if not logged_in %}

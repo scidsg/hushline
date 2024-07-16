@@ -997,8 +997,11 @@ p.helper {
 
 .search-box {
     position: relative;
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: fit-content;
+    margin-top: 1rem;
 }
 
 #searchInput {
@@ -1006,7 +1009,6 @@ p.helper {
     padding-right: 2.5rem;
     box-sizing: border-box;
     margin-bottom: 0;
-    margin-top: 1rem;
     min-width: 320px;
 }
 
