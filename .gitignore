@@ -2,6 +2,7 @@
 *.pyc
 __pycache__
 .mypy_cache
+_app_secrets
 *.log
 _DEV.md
 .DS_Store
