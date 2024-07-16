@@ -1004,6 +1004,10 @@ p.helper {
     margin-top: 1rem;
 }
 
+#searchIcon {
+    margin-bottom: 0px;
+}
+
 #searchInput {
     width: 100%;
     padding-right: 2.5rem;
