@@ -984,7 +984,7 @@ a.dropbtn:hover {
 }
 
 .user p.bio {
-    margin: .625rem 0 .0125rem 0;
+    margin: 0 0 .0125rem 0;
 }
 
 textarea#bio {
