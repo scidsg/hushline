@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 userDiv.className = 'user';
                 const isVerified = user.is_verified ? 'Verified' : '';
                 const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
-                userDiv.setAttribute('aria-label', `${userType}, Bio: ${user.bio || 'No bio'}`);
+                userDiv.setAttribute('aria-label', `${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || 'No bio'}`);
                 userDiv.innerHTML = `
                     <h3>${displayNameHighlighted}</h3>
                     <p class="meta">@${usernameHighlighted}</p>
