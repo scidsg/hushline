@@ -29,4 +29,6 @@ def decrypt_field(
 ) -> str | None:
     if data is None:
         return None
-    return current_app.config["VAULT"].decrypt(data.encode(), domain=domain, aad=aad).decode()
+    return current_app.config["VAULT"].decrypt(
+        data.encode(), domain=domain, aad=aad, ttl=ttl
+    ).decode()
