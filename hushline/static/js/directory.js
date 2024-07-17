@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Only include the "Verified" badge if the "all" tab is active
                 if (activeTab === 'all' && user.is_verified) {
-                    badgeContainer += '<p class="badge">⭐️ Verified Account</p>';
+                    badgeContainer += '<p class="badge">⭐️ Verified</p>';
                 }
 
                 console.log(user, 'user')
