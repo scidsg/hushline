@@ -82,7 +82,7 @@ h2 {
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
 h2+p:not(.instr):not(.message):not(.badge):not(.landing-message) {
     margin-top: .5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 h1+p+p,
