@@ -1005,11 +1005,18 @@ p.helper {
 }
 
 #searchIcon {
-    margin-bottom: 0px;
+    position: absolute;
+    left: 12px;
+    margin: 0;
+}
+
+#searchIcon img {
+    width: 20px;
 }
 
 #searchInput {
     width: 100%;
+    padding-left: 42px;
     padding-right: 2.5rem;
     box-sizing: border-box;
     margin-bottom: 0;
@@ -1021,13 +1028,14 @@ p.helper {
     right: 1rem;
     color: #666;
     font-size: 24px;
-    padding: 0;
     min-width: 0px;
     min-height: 0px;
+    margin: 0px;
     box-shadow: none;
     background: transparent;
     visibility: hidden; /* Hide the icon initially */
     cursor: pointer;
+    padding: 0px 2px;
 }
 
 .empty-message {
