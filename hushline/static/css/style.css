@@ -1016,12 +1016,12 @@ p.helper {
     align-items: center;
     gap: 8px;
     width: fit-content;
-    margin-top: 1rem;
 }
 
 #searchIcon {
     position: absolute;
     left: 12px;
+    top: 48%;
     margin: 0;
 }
 
