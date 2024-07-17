@@ -30,6 +30,7 @@
     {% if not logged_in %}
         <p class="meta dirMeta">⭐️ Verified accounts are offered to journalists, businesses, and other public figures and have manually verified their identities with a member of our staff. <a href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer">Learn more about our verification process</a>.</p>
     {% endif %}
+    
     <div class="user-list">
         {% for user in users %}
             {% if user.is_verified and user.show_in_directory %}
