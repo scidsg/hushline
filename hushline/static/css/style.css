@@ -777,6 +777,19 @@ img.upgrade {
 /* Dropdown Button */
 .dropbtn {
   cursor: pointer;
+  background: none;
+  padding: 0;
+  min-height: 0px;
+  min-width: 0px;
+  box-shadow: none;
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+.dropbtn:focus-within {
+    outline: none;
+    border: 2px solid var(--color-text);
 }
 
  .dropdown a {
@@ -999,12 +1012,26 @@ p.helper {
 
 .search-box {
     position: relative;
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: fit-content;
+    margin-top: 1rem;
+}
+
+#searchIcon {
+    position: absolute;
+    left: 12px;
+    margin: 0;
+}
+
+#searchIcon img {
+    width: 20px;
 }
 
 #searchInput {
     width: 100%;
+    padding-left: 42px;
     padding-right: 2.5rem;
     box-sizing: border-box;
     margin-bottom: 0;
@@ -1019,6 +1046,12 @@ p.helper {
     transform: translateY(-50%);
     color: #666;
     font-size: 24px;
+    min-width: 0px;
+    min-height: 0px;
+    margin: 0px;
+    box-shadow: none;
+    background: transparent;
+    padding: 0px 2px;
     visibility: hidden; /* Hide the icon initially */
     cursor: pointer;
 }

@@ -6,20 +6,27 @@
 <p class="helper">👋 Welcome to Hush Line! Find users who've opted into being listed below.</p>
 {% endif %}
 <div class="directory-tabs">
-    <ul class="tab-list">
-        <li>
-            <button class="tab active" data-tab="verified" type="button">Verified</button>
+    <ul class="tab-list" role="tablist">
+        <li role="presentation">
+            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true" aria-controls="verified" id="verified-tab" type="button">Verified</button>
         </li>
-        <li>
-            <button class="tab" data-tab="all" type="button">All</button>
+        <li role="presentation">
+            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all" id="all-tab" type="button">All</button>
         </li>
     </ul>
 </div>
 <div class="search-box">
+    <label
+        id="searchIcon"
+        for="searchInput"
+        aria-label="Search users"
+    >
+        <img src="../static/img/app/icon-search.png" alt="">
+    </label>
     <input type="text" id="searchInput" placeholder="Search users...">
-    <span id="clearIcon" style="cursor: pointer;">&times;</span>
+    <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="Clear search field">&times;</button>
 </div>
-<div id="verified" class="tab-content active">
+<div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
     {% if not logged_in %}
     <p class="meta dirMeta">⭐️ Verified accounts are offered to journalists, businesses, and other public figures and
         have manually verified their identities with a member of our staff. <a
@@ -29,7 +36,7 @@
     <div class="user-list">
         {% for user in users %}
         {% if user.is_verified and user.show_in_directory %}
-        <div class="user">
+        <article class="user">
             <h3>{{ user.display_name or user.primary_username }}</h3>
             {% if user.primary_username %}
             <p class="meta">@{{ user.primary_username }}</p>
@@ -50,7 +57,7 @@
                     data-bio="{{ user.bio }}">Report Account</a>
                 {% endif %}
             </div>
-        </div>
+        </article>
         {% endif %}
         {% else %}
         <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
@@ -61,7 +68,7 @@
     <div class="user-list">
         {% for user in users %}
         {% if user.show_in_directory %}
-        <div class="user">
+        <article class="user">
             <h3>{{ user.display_name or user.primary_username }}</h3>
             {% if user.primary_username %}
             <p class="meta">@{{ user.primary_username }}</p>
@@ -87,7 +94,7 @@
                     data-bio="{{ user.bio }}">Report Account</a>
                 {% endif %}
             </div>
-        </div>
+        </article>
         {% endif %}
         {% else %}
         <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>

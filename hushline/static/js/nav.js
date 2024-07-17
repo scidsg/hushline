@@ -23,12 +23,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 dropdownContent.classList.toggle('show');
                 dropdownContent.style.animation = dropdownContent.classList.contains('show') ? 'fadeInSlideDown 0.3s ease forwards' : 'fadeOutSlideUp 0.3s ease forwards';
                 dropdownIcon.classList.toggle('rotate-icon');
+                const expanded = this.getAttribute('aria-expanded') === 'true' || false;
+                this.setAttribute('aria-expanded', !expanded);
+                dropdownContent.hidden = expanded;
             });
 
             window.addEventListener('click', function(event) {
                 if (!dropdownToggle.contains(event.target) && dropdownContent.classList.contains('show')) {
                     dropdownContent.classList.remove('show');
                     dropdownIcon.classList.remove('rotate-icon');
+                    this.setAttribute('aria-expanded', 'false');
+                    dropdownContent.hidden = true;
                 }
             });
         }
