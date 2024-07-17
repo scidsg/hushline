@@ -82,7 +82,7 @@ h2 {
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
 h2+p:not(.instr):not(.message):not(.badge):not(.landing-message) {
     margin-top: .5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 h1+p+p,
@@ -984,7 +984,7 @@ a.dropbtn:hover {
 }
 
 .user p.bio {
-    margin: .625rem 0 .0125rem 0;
+    margin: 0 0 .0125rem 0;
 }
 
 textarea#bio {
@@ -1016,12 +1016,12 @@ p.helper {
     align-items: center;
     gap: 8px;
     width: fit-content;
-    margin-top: 1rem;
 }
 
 #searchIcon {
     position: absolute;
     left: 12px;
+    top: 48%;
     margin: 0;
 }
 
