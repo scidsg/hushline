@@ -149,6 +149,8 @@ p.instr {
 .badgeContainer {
     display: flex;
     gap: .25rem;
+    margin-bottom: 1rem;
+    align-items: center;
 }
 
 p.badge {
@@ -162,7 +164,17 @@ p.badge {
     margin-top: 0;
     font-family: var(--font-sans-bold);
     line-height: 1;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+    word-break: keep-all;
+}
+
+.badge:last-of-type {
+    margin-right: .25rem;
+}
+
+.meta {
+    font-size: .8125rem;
+    line-height: 1;
 }
 
 .metric p {

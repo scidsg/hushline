@@ -4,11 +4,12 @@
 {% block content %}
 <h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
 <div class="badgeContainer">
-    {% if user.is_verified %}
-    <p class="badge">⭐️ Verified</p>
-    {% endif %}
     {% if user.is_admin %}
-    <p class="badge">⚙️ Admin</p>
+    <p class="badge">⚙️&nbsp;Admin</p>
+    {% endif %}
+    {% if user.is_verified %}
+    <p class="badge">⭐️&nbsp;Verified</p>
+    <a class="meta" href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer" aria-label="Learn more about verified accounts.">Learn more</a>
     {% endif %}
 </div>
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
