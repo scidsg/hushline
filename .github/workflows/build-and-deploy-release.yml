@@ -43,12 +43,6 @@ jobs:
 
       - name: Trigger deployment on DigitalOcean App Platform
         run: |
-          doctl apps create-deployment $DIGITALOCEAN_APP_ID --force-rebuild
-        env:
-          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
-
-      - name: Wait for deployment to finish
-        run: |
-          doctl apps wait $DIGITALOCEAN_APP_ID
+          doctl apps create-deployment $DIGITALOCEAN_APP_ID --force-rebuild --wait
         env:
           DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
