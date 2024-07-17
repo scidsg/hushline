@@ -2,18 +2,18 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-    <h2>Login</h2>
-    <form method="POST" action="/login">
-        {{ form.hidden_tag() }}
-        <div>
-            {{ form.username.label(for="username") }}
-            {{ form.username(id="username", required=True) }}
-        </div>
-        <div>
-            {{ form.password.label(for="password") }}
-            {{ form.password(id="password", required=True) }}
-        </div>
-        <button type="submit">Login</button>
-    </form>
-    <p>Don't have an account? <a href="/register">Register here</a></p>
+<h2>Login</h2>
+<form method="POST" action="/login">
+    {{ form.hidden_tag() }}
+    <div>
+        {{ form.username.label(for="username") }}
+        {{ form.username(id="username", required=True) }}
+    </div>
+    <div>
+        {{ form.password.label(for="password") }}
+        {{ form.password(id="password", required=True) }}
+    </div>
+    <button type="submit">Login</button>
+</form>
+<p>Don't have an account? <a href="/register">Register here</a></p>
 {% endblock %}

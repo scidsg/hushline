@@ -2,35 +2,35 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-    <h2>Register</h2>
-    <form method="POST" action="/register">
-        {{ form.hidden_tag() }}
-        <div>
-            {{ form.username.label(for="username") }}
-            {{ form.username(id="username") }}
-            {% if form.username.errors %}
-                <span class="error">{{ form.username.errors[0] }}</span>
-            {% endif %}
-        </div>
-        <div>
-            {{ form.password.label(for="password") }}
-            {{ form.password(id="password") }}
-            {% if form.password.errors %}
-                {% for error in form.password.errors %}
-                    <span class="error">{{ error }}</li>
-                {% endfor %}
-            {% endif %}
-        </div>
-        {% if require_invite_code %}
-        <div>
-            {{ form.invite_code.label }}
-            {{ form.invite_code(size=32) }}
-            {% for error in form.invite_code.errors %}
-                <span>{{ error }}</span>
-            {% endfor %}
-        </div>
+<h2>Register</h2>
+<form method="POST" action="/register">
+    {{ form.hidden_tag() }}
+    <div>
+        {{ form.username.label(for="username") }}
+        {{ form.username(id="username") }}
+        {% if form.username.errors %}
+        <span class="error">{{ form.username.errors[0] }}</span>
         {% endif %}
-        <button type="submit">Register</button>
-    </form>
-    <p>Already have an account? <a href="/login">Login here</a></p>
+    </div>
+    <div>
+        {{ form.password.label(for="password") }}
+        {{ form.password(id="password") }}
+        {% if form.password.errors %}
+        {% for error in form.password.errors %}
+        <span class="error">{{ error }}</li>
+            {% endfor %}
+            {% endif %}
+    </div>
+    {% if require_invite_code %}
+    <div>
+        {{ form.invite_code.label }}
+        {{ form.invite_code(size=32) }}
+        {% for error in form.invite_code.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <button type="submit">Register</button>
+</form>
+<p>Already have an account? <a href="/login">Login here</a></p>
 {% endblock %}
