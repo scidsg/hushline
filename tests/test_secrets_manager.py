@@ -39,12 +39,29 @@ def test_distinct_derived_keys_per_distinct_inputs(domain: bytes, aad: bytes, si
 
 @pytest.mark.parametrize("data", [token_bytes(32) for _ in range(16)])
 def test_encryption_correctness(data: bytes) -> None:
-    ciphertext = vault.encrypt(data, domain=b"test")
+    domain = b"test"
+    aad = b"tester"
+    ciphertext = vault.encrypt(data, domain=domain, aad=aad)
     assert data not in ciphertext
-    assert data == vault.decrypt(ciphertext, domain=b"test")
+    assert data == vault.decrypt(ciphertext, domain=domain, aad=aad)
+
     try:
-        vault.decrypt(ciphertext, domain=b"wrong-domain")
+        vault.decrypt(ciphertext, domain=b"wrong-domain", aad=aad)
     except InvalidToken:
         assert True
     else:
-        pytest.fail("Encryption succeeded with the wrong key.")
+        pytest.fail("Decryption succeeded with the wrong domain.")
+
+    try:
+        vault.decrypt(ciphertext, domain=domain, aad=b"wrong-aad")
+    except InvalidToken:
+        assert True
+    else:
+        pytest.fail("Decryption succeeded with the wrong authenticated associated data.")
+
+    try:
+        vault.decrypt(token_bytes(len(ciphertext)), domain=domain, aad=aad)
+    except InvalidToken:
+        assert True
+    else:
+        pytest.fail("Decryption succeeded with an arbitrary ciphertext.")
