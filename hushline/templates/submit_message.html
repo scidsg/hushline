@@ -31,7 +31,7 @@
         target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
 {% endif %}
 {% endif %}
-<form method="POST" action="/submit_message/{{ username }}" id="messageForm">
+<form method="POST" action="{{ url_for('submit_message', username=username) }}" id="messageForm">
     {{ form.hidden_tag() }}
     <label for="contact_method">Contact Method (Optional)</label>
     <input type="text" id="contact_method" name="contact_method"
