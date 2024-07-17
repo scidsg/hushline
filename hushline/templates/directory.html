@@ -3,7 +3,7 @@
 {% block content %}
 <h2>User Directory</h2>
 {% if not logged_in %}
-    <p class="helper">👋 Welcome to Hush Line! Find users who've opted into being listed below.</p>
+<p class="helper">👋 Welcome to Hush Line! Find users who've opted into being listed below.</p>
 {% endif %}
 <div class="directory-tabs">
     <ul class="tab-list" role="tablist">
@@ -28,7 +28,10 @@
 </div>
 <div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
     {% if not logged_in %}
-        <p class="meta dirMeta">⭐️ Verified accounts are offered to journalists, businesses, and other public figures and have manually verified their identities with a member of our staff. <a href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer">Learn more about our verification process</a>.</p>
+    <p class="meta dirMeta">⭐️ Verified accounts are offered to journalists, businesses, and other public figures and
+        have manually verified their identities with a member of our staff. <a
+            href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
+            target="_blank" rel="noopener noreferrer">Learn more about our verification process</a>.</p>
     {% endif %}
     
     <div class="user-list">
@@ -56,7 +59,7 @@
                 </article>
             {% endif %}
         {% else %}
-            <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
+        <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
         {% endfor %}
     </div>
 </div>
@@ -91,7 +94,7 @@
                 </article>
             {% endif %}
         {% else %}
-            <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
+        <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
         {% endfor %}
     </div>
 </div>

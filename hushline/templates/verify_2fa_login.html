@@ -2,17 +2,17 @@
 {% block title %}Enter 2FA Code{% endblock %}
 
 {% block content %}
-    <h2>Enter your 2FA Code</h2>
-    <p>🔑 Enter the six-digit code from your authenticator app.</p>
-    <form method="POST" action="{{ url_for('verify_2fa_login') }}">
-        {{ form.hidden_tag() }}
-        <div>
-            {{ form.verification_code.label }}
-            {{ form.verification_code(size=6) }}
-            {% if form.verification_code.errors %}
-                <div class="error">{{ form.verification_code.errors[0] }}</div>
-            {% endif %}
-        </div>
-        <button type="submit">Verify</button>
-    </form>
+<h2>Enter your 2FA Code</h2>
+<p>🔑 Enter the six-digit code from your authenticator app.</p>
+<form method="POST" action="{{ url_for('verify_2fa_login') }}">
+    {{ form.hidden_tag() }}
+    <div>
+        {{ form.verification_code.label }}
+        {{ form.verification_code(size=6) }}
+        {% if form.verification_code.errors %}
+        <div class="error">{{ form.verification_code.errors[0] }}</div>
+        {% endif %}
+    </div>
+    <button type="submit">Verify</button>
+</form>
 {% endblock %}
