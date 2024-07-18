@@ -64,9 +64,9 @@ class SecretsManager:
     def _prepare_key_derivation_object(self, admin_secret: bytearray) -> None:
         salt = self._summon_device_salt()
         hashed_secret_with_metadata = bytearray(
-            argon2
-            .using(salt=bytes(salt), digest_size=self._KDF_BLOCKSIZE, memory_cost=self._memory_cost)
-            .hash(bytes(admin_secret)),
+            argon2.using(
+                salt=bytes(salt), digest_size=self._KDF_BLOCKSIZE, memory_cost=self._memory_cost
+            ).hash(bytes(admin_secret)),
             encoding="utf-8",
         )
         hashed_secret = truncated_b64decode(hashed_secret_with_metadata.split(b"$")[-1])
