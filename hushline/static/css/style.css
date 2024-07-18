@@ -1021,7 +1021,7 @@ p.helper {
 #searchIcon {
     position: absolute;
     left: 12px;
-    top: 48%;
+    top: 47%;
     margin: 0;
 }
 
@@ -1036,6 +1036,7 @@ p.helper {
     box-sizing: border-box;
     margin-bottom: 0;
     min-width: 320px;
+    margin-top: 1rem;
 }
 
 #clearIcon {
