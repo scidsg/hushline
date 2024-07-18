@@ -149,7 +149,7 @@ p.instr {
 .badgeContainer {
     display: flex;
     gap: .25rem;
-    margin-bottom: 1rem;
+    margin-bottom: .75rem;
     align-items: center;
 }
 
@@ -1003,7 +1003,7 @@ textarea#bio {
 }
 
 p.helper {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.325rem;
     margin-top: .5rem
 }
 
