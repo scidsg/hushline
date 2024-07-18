@@ -683,7 +683,6 @@ img.upgrade {
     overflow-x: auto;
     display: flex;
     overflow-y: hidden;
-    gap: 10px;
     -ms-overflow-style: none;
     scrollbar-width: none;
     border-bottom: var(--border);
