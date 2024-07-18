@@ -23,11 +23,11 @@ def _production_app_secrets_insertion(app: Flask) -> None:
 
 
 def _development_app_secrets_insertion(app: Flask) -> None:
-    encryption_key = os.environ.get("ENCRYPTION_KEY", "")
-    if not encryption_key:
-        raise ValueError("Encryption key not found. Please check your .env file.")
+    admin_secret = os.environ.get("ADMIN_SECRET", "")
+    if not admin_secret:
+        raise ValueError("Admin secret not found. Please check your .env file.")
 
-    app.config["VAULT"] = SecretsManager(bytearray(urlsafe_b64decode(encryption_key)))
+    app.config["VAULT"] = SecretsManager(bytearray(urlsafe_b64decode(admin_secret)))
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 
@@ -37,7 +37,8 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
-    if os.environ.get("IS_RUNNING_PRODUCTION", "False").strip().lower() == "true":
+    ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
+    if ADMIN_INPUT_SOURCE == "interactive":
         _production_app_secrets_insertion(app)
     else:
         _development_app_secrets_insertion(app)
