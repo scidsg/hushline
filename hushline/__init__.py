@@ -15,14 +15,14 @@ from .db import db
 from .model import User
 
 
-def _production_app_secrets_insertion(app: Flask) -> None:
+def _interactive_encryption_seed(app: Flask) -> None:
     app.config["VAULT"] = SecretsManager(
         bytearray(getpass.getpass("admin secret: "), encoding="utf-8")
     )
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 
-def _development_app_secrets_insertion(app: Flask) -> None:
+def _environment_encryption_seed(app: Flask) -> None:
     admin_secret = os.environ.get("ADMIN_SECRET", "")
     if not admin_secret:
         raise ValueError("Admin secret not found. Please check your .env file.")
@@ -39,9 +39,9 @@ def create_app() -> Flask:
 
     ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
     if ADMIN_INPUT_SOURCE == "interactive":
-        _production_app_secrets_insertion(app)
+        _interactive_encryption_seed(app)
     else:
-        _development_app_secrets_insertion(app)
+        _environment_encryption_seed(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     # if it's a Postgres URI, replace the scheme with `postgresql+psycopg`
     # because we're using the psycopg driver
