@@ -22,7 +22,7 @@ def truncated_b64decode(value: bytearray) -> bytearray:
 
 
 class SecretsManager:
-    __slots__ = ("_secret_salt_filename", "_secret_salt_length", "_memory_cost", "_kdf")
+    __slots__ = ("_kdf", "_memory_cost", "_secret_salt_filename", "_secret_salt_length")
 
     _APP_SECRETS_DIRECTORY: Path = Path("hushline/crypto/_app_secrets")
     _KDF_BLOCKSIZE: int = shake_256().block_size
@@ -65,7 +65,7 @@ class SecretsManager:
         salt = self._summon_device_salt()
         hashed_secret_with_metadata = bytearray(
             argon2.using(
-                salt=bytes(salt), digest_size=self._KDF_BLOCKSIZE, memory_cost=self._memory_cost
+                salt=bytes(salt), memory_cost=self._memory_cost, digest_size=self._KDF_BLOCKSIZE
             ).hash(canonical_pack(b"app_admin_secret", bytes(admin_secret))),
             encoding="utf-8",
         )
