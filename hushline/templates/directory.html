@@ -8,20 +8,18 @@
 <div class="directory-tabs">
     <ul class="tab-list" role="tablist">
         <li role="presentation">
-            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true" aria-controls="verified" id="verified-tab" type="button">Verified</button>
+            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
+                aria-controls="verified" id="verified-tab" type="button">Verified</button>
         </li>
         <li role="presentation">
-            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all" id="all-tab" type="button">All</button>
+            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
+                id="all-tab" type="button">All</button>
         </li>
     </ul>
 </div>
 <div class="search-box">
-    <label
-        id="searchIcon"
-        for="searchInput"
-        aria-label="Search users"
-    >
-        <img src="../static/img/app/icon-search.png" alt="">
+    <label id="searchIcon" for="searchInput" aria-label="Search users">
+        <img src="{{ url_for('static', filename='img/app/icon-search.png') }}" alt="">
     </label>
     <input type="text" id="searchInput" placeholder="Search users...">
     <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="Clear search field">&times;</button>
