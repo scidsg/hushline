@@ -8,7 +8,7 @@ from hashlib import shake_256
 from pathlib import Path
 from secrets import token_bytes
 
-from aiootp.generics.canon import canonical_pack, fullblock_ljust
+from aiootp.generics.canon import canonical_pack
 from cryptography.fernet import Fernet, InvalidToken
 from passlib.hash import argon2
 
@@ -66,12 +66,18 @@ class SecretsManager:
         hashed_secret_with_metadata = bytearray(
             argon2.using(
                 salt=bytes(salt), digest_size=self._KDF_BLOCKSIZE, memory_cost=self._memory_cost
-            ).hash(bytes(admin_secret)),
+            ).hash(canonical_pack(b"app_admin_secret", bytes(admin_secret))),
             encoding="utf-8",
         )
         hashed_secret = truncated_b64decode(hashed_secret_with_metadata.split(b"$")[-1])
         self._kdf = shake_256(hashed_secret)
-        self._kdf.update(fullblock_ljust(hashed_secret_with_metadata, self._KDF_BLOCKSIZE))
+        self._kdf.update(
+            canonical_pack(
+                b"app_admin_secret_commitment",
+                hashed_secret_with_metadata,
+                blocksize=self._KDF_BLOCKSIZE,
+            )
+        )
         salt.clear()
         admin_secret.clear()
         hashed_secret.clear()
