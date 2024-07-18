@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Get the path prefix
+    // If window.location.pathname is /tips/directory, then prefix is /tips
+    // If it's /directory, then prefix is /
+    const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
+
     const tabs = document.querySelectorAll('.tab');
     const contents = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
@@ -22,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadData() {
-        fetch('/directory/users.json')
+        fetch(`${pathPrefix}/directory/users.json`)
             .then(response => response.json())
             .then(data => {
                 userData = data;
@@ -32,8 +37,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function checkIfSessionUser() {
-        const response = await fetch('/directory/get-session-user.json');
-        const {logged_in} = await response.json();
+        const response = await fetch(`${pathPrefix}/directory/get-session-user.json`);
+        const { logged_in } = await response.json();
         isSessionUser = logged_in;
     }
 
@@ -49,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function highlightMatch(text, query) {
         if (!query) return text; // If no query, return the text unmodified
         const regex = new RegExp(`(${query})`, 'gi'); // Case-insensitive matching
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
+        return text.replace(regex, '<mark class="search-highlight">$1</mark>');
     }
 
 
@@ -60,9 +65,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Encode the message content to ensure line breaks and other special characters are correctly handled
         const encodedMessage = encodeURIComponent(messageContent);
-        
+
         // Redirect to the message submission form for the admin with the pre-filled content
-        const submissionUrl = `/submit_message/admin?prefill=${encodedMessage}`;
+        const submissionUrl = `${pathPrefix}/submit_message/admin?prefill=${encodedMessage}`;
         window.location.href = submissionUrl;
     }
 
@@ -85,20 +90,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Only include the "Verified" badge if the "all" tab is active
                 if (activeTab === 'all' && user.is_verified) {
-                    badgeContainer += '<p class="badge">⭐️ Verified Account</p>';
+                    badgeContainer += '<p class="badge">⭐️ Verified</p>';
                 }
 
-                console.log(user, 'user')
-                const userDiv = document.createElement('div');
+                const userDiv = document.createElement('article');
                 userDiv.className = 'user';
+                const isVerified = user.is_verified ? 'Verified' : '';
+                const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+                userDiv.setAttribute('aria-label', `${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || 'No bio'}`);
                 userDiv.innerHTML = `
                     <h3>${displayNameHighlighted}</h3>
                     <p class="meta">@${usernameHighlighted}</p>
                     <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
-                        <a href="/submit_message/${user.primary_username}">Send a Message</a>
-                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username }" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
+                        <a href="${pathPrefix}/submit_message/${user.primary_username}">Send a Message</a>
+                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
                 userListContainer.appendChild(userDiv);
@@ -117,20 +124,61 @@ document.addEventListener('DOMContentLoaded', function () {
         clearIcon.style.visibility = query.length ? 'visible' : 'hidden';
     }
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function () {
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
+    function activateTab(event) {    
+        const selectedTab = event.target;
+        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
 
-            tab.classList.add('active');
-            const activeContent = document.getElementById(tab.getAttribute('data-tab'));
-            activeContent.classList.add('active');
-
-            handleSearchInput(); // Filter again when tab changes
-            updatePlaceholder();
+        // Deselect all tabs and hide all panels
+        tabs.forEach(tab => {
+            tab.setAttribute('aria-selected', 'false');
+            tab.classList.remove('active');
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = true;
         });
+
+        // Select the clicked tab and show the corresponding panel
+        selectedTab.setAttribute('aria-selected', 'true');
+        selectedTab.classList.add('active');
+        targetPanel.hidden = false;
+
+        handleSearchInput(); // Filter again when tab changes
+        updatePlaceholder();
+        
+    }
+
+    function handleKeydown(event) {
+        const { key } = event;
+        const currentTab = event.target;
+        let newTab;
+
+        switch (key) {
+            case 'ArrowLeft':
+                newTab = currentTab.parentElement.previousElementSibling?.querySelector('.tab');
+                break;
+            case 'ArrowRight':
+                newTab = currentTab.parentElement.nextElementSibling?.querySelector('.tab');
+                break;
+            case 'Home':
+                newTab = tabs[0];
+                break;
+            case 'End':
+                newTab = tabs[tabs.length - 1];
+                break;
+            default:
+                return;
+        }
+
+        if (newTab) {
+            newTab.focus();
+            newTab.click();
+            event.preventDefault();
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', activateTab);
+        tab.addEventListener('keydown', handleKeydown);
     });
-    
+
     searchInput.addEventListener('input', handleSearchInput);
     clearIcon.addEventListener('click', function () {
         searchInput.value = '';
@@ -141,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     function createReportEventListeners(selector) {
-        document.querySelector(selector).addEventListener('click', function(event) {
+        document.querySelector(selector).addEventListener('click', function (event) {
             if (event.target.classList.contains('report-link')) {
                 event.preventDefault();
                 const link = event.target;

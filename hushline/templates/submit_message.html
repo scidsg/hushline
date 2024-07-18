@@ -4,33 +4,42 @@
 {% block content %}
 <h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
 <div class="badgeContainer">
-    {% if user.is_verified %}
-    <p class="badge">⭐️ Verified</p>
-    {% endif %}
     {% if user.is_admin %}
-    <p class="badge">⚙️ Admin</p>
+    <p class="badge">⚙️&nbsp;Admin</p>
+    {% endif %}
+    {% if user.is_verified %}
+    <p class="badge">⭐️&nbsp;Verified</p>
+    <a class="meta" href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer" aria-label="Learn more about verified accounts.">Learn more</a>
     {% endif %}
 </div>
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
-    <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles, your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is critical!</p>
-    {% if user.pgp_key %}
-        <p class="helper">🔐 Your message will be encrypted and only readable by you.</p>
-    {% else %}
-        <p class="helper">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information, please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">add a public PGP key</a>.</p>
-    {% endif %}
+<p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles,
+    your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is
+    critical!</p>
+{% if user.pgp_key %}
+<p class="helper">🔐 Your message will be encrypted and only readable by you.</p>
 {% else %}
-    {% if user.pgp_key %}
-        <p class="helper">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
-    {% else %}
-        <p class="helper">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username }} to add a public PGP key. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
-    {% endif %}
+<p class="helper">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information,
+    please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank"
+        rel="noopener noreferrer">add a public PGP key</a>.</p>
 {% endif %}
-<form method="POST" action="/submit_message/{{ username }}" id="messageForm">
+{% else %}
+{% if user.pgp_key %}
+<p class="helper">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
+{% else %}
+<p class="helper">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username
+    }} to add a public PGP key. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+        target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
+{% endif %}
+{% endif %}
+<form method="POST" action="{{ url_for('submit_message', username=username) }}" id="messageForm">
     {{ form.hidden_tag() }}
     <label for="contact_method">Contact Method (Optional)</label>
-    <input type="text" id="contact_method" name="contact_method" value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}">
+    <input type="text" id="contact_method" name="contact_method"
+        value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}">
     <label for="content">Message</label>
-    <textarea id="content" maxlength="10000" name="content" required="" spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
+    <textarea id="content" maxlength="10000" name="content" required=""
+        spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->

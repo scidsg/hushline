@@ -2,32 +2,33 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
-    {% if messages %}
-        <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
-        {% for message in messages %}
-            <div class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content }}">
-                {% if not is_secondary %}
-                    {% if message.secondary_user_id %}
-                        {% set sender_info = secondary_usernames[message.secondary_user_id] %}
-                        <p class="message-label">📥 {{ sender_info.display_name or sender_info.username }}</p>
-                    {% elif secondary_usernames|length > 0 %}
-                        <p class="message-label">📥 {{ user.display_name or user.primary_username }}</p>
-                    {% endif %}
-                {% endif %}
-                <p class="decrypted-content">{{ message.content }}</p>
-                <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
-                <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
-                    <button type="submit" class="btn btn-danger" id="deleteMessageButton">Delete</button>
-                </form>
-            </div>
-        {% endfor %}
-    {% else %}
-        <div class="emptyState">
-            <img class="empty" src="{{ url_for('static', filename='img/app/empty.png') }}" alt="Empty Inbox">
-            <h1>Nothing to see here...</h1>
-            <p>No messages yet.</p>
-        </div>
+{% if messages %}
+<h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
+{% for message in messages %}
+<article class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content }}"
+            aria-label="Message with {{message.user.primary_username or message.user.display_name}}">
+    {% if not is_secondary %}
+    {% if message.secondary_user_id %}
+    {% set sender_info = secondary_usernames[message.secondary_user_id] %}
+    <p class="message-label">📥 {{ sender_info.display_name or sender_info.username }}</p>
+    {% elif secondary_usernames|length > 0 %}
+    <p class="message-label">📥 {{ user.display_name or user.primary_username }}</p>
     {% endif %}
+    {% endif %}
+    <p class="decrypted-content">{{ message.content }}</p>
+    <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
+    <form action="{{ url_for('delete_message', message_id=message.id) }}" method="POST">
+        <button type="submit" class="btn btn-danger" id="deleteMessageButton">Delete</button>
+    </form>
+</article>
+{% endfor %}
+{% else %}
+<div class="emptyState">
+    <img class="empty" src="{{ url_for('static', filename='img/app/empty.png') }}" alt="Empty Inbox">
+    <h1>Nothing to see here...</h1>
+    <p>No messages yet.</p>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

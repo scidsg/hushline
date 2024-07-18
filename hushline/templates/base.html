@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="theme-color" content="#7D25C1">
@@ -14,24 +15,30 @@
     <meta name="twitter:description" content="A lightweight, secure, and anonymous tip line platform.">
     <meta name="twitter:image" content="https://hushline.app/design-system/images/social/social.png">
     <title>{% block title %}{% endblock %} - Hushline</title>
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/favicon/apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-16x16.png') }}" sizes="16x16">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-32x32.png') }}" sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-192x192.png') }}" sizes="192x192">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-512x512.png') }}" sizes="512x512">
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="{{ url_for('static', filename='img/favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-16x16.png') }}"
+        sizes="16x16">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-32x32.png') }}"
+        sizes="32x32">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-192x192.png') }}"
+        sizes="192x192">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-512x512.png') }}"
+        sizes="512x512">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon/favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
 
     {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash-messages">
-          {% for message in messages %}
-            <div class="flash-message">{{ message }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
+    {% if messages %}
+    <div class="flash-messages" role="alert">
+        {% for message in messages %}
+          <div class="flash-message">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% endwith %}
 
     <header>
@@ -42,21 +49,24 @@
                 <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
                 <ul>
                     <li><a href="{{ url_for('directory') }}">Directory</a></li>
-                    {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or ('2fa_verified' in session and session['2fa_verified'])) %}
-                        <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
-                        <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
-                        <li class="dropdown">
-                            <a href="#" class="dropbtn">@{{ session['username'] }} <img class="dropdown-icon" src="{{ url_for('static', filename='img/app/dropdown.png') }}" alt="Dropdown"></a>
-                            <div class="dropdown-content">
-                                <ul>
-                                    <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
-                                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
-                                </ul>
-                            </div>
-                        </li>
+                    {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or
+                    ('2fa_verified' in session and session['2fa_verified'])) %}
+                    <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
+                    <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
+                    <li class="dropdown">
+                        <button type="button" aria-expanded="false" aria-controls="dropdown-content" class="dropbtn">
+                            @{{ session['username'] }} <img class="dropdown-icon" src="/static/img/app/dropdown.png" alt="Dropdown">
+                        </button>
+                         <div id="dropdown-content" class="dropdown-content" hidden>
+                            <ul>
+                                <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
+                                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                            </ul>
+                        </div> 
+                    </li>
                     {% else %}
-                        <li><a href="{{ url_for('login') }}">Login</a></li>
-                        <li><a href="{{ url_for('register') }}">Register</a></li>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
                     {% endif %}
                 </ul>
                 <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
@@ -76,8 +86,10 @@
 
     <footer>
         <p>
-            <a href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy Policy</a> |
-            <a href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+            <a href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md" target="_blank"
+                rel="noopener noreferrer">Privacy Policy</a> |
+            <a href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md" target="_blank"
+                rel="noopener noreferrer">Terms of Service</a>
         </p>
     </footer>
     {% block scripts %}
@@ -85,4 +97,5 @@
     <script src="{{ url_for('static', filename='js/nav.js') }}"></script>
 
 </body>
+
 </html>
