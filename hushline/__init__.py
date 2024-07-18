@@ -37,11 +37,6 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
-    ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
-    if ADMIN_INPUT_SOURCE == "interactive":
-        _interactive_encryption_seed(app)
-    else:
-        _environment_encryption_seed(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     # if it's a Postgres URI, replace the scheme with `postgresql+psycopg`
     # because we're using the psycopg driver
@@ -60,6 +55,12 @@ def create_app() -> Flask:
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
+
+    ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
+    if ADMIN_INPUT_SOURCE == "interactive":
+        _interactive_encryption_seed(app)
+    else:
+        _environment_encryption_seed(app)
 
     routes.init_app(app)
     for module in [admin, settings]:
