@@ -17,7 +17,7 @@ __all__ = ["InvalidToken", "SecretsManager"]
 
 def truncated_b64decode(value: bytearray) -> bytearray:
     if bool(remainder := len(value) % 4):
-        value.extend((4 - remainder) * b"=")
+        value = value + (4 - remainder) * b"="
     return bytearray(b64decode(value))
 
 
