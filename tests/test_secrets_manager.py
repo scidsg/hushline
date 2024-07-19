@@ -20,6 +20,7 @@ def test_device_salt_is_static_once_created() -> None:
 def test_truncated_b64decode_with_variable_length_encoded_inputs(size: int) -> None:
     value = size * b"a"
     encoded_value = b64encode(value).replace(b"=", b"")
+    assert value == truncated_b64decode(encoded_value)
     assert value == truncated_b64decode(bytearray(encoded_value))
 
 

@@ -15,7 +15,7 @@ from passlib.hash import argon2
 __all__ = ["InvalidToken", "SecretsManager"]
 
 
-def truncated_b64decode(value: bytearray) -> bytearray:
+def truncated_b64decode(value: bytes | bytearray) -> bytearray:
     if bool(remainder := len(value) % 4):
         value = value + (4 - remainder) * b"="
     return bytearray(b64decode(value))
