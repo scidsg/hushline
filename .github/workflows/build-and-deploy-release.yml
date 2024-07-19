@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Install doctl and authenticate
         run: |
-          sudo snap install doctl
+          sudo snap install doctl jq
           doctl auth init -t $DIGITALOCEAN_TOKEN
         env:
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
