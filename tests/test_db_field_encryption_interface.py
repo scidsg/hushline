@@ -1,7 +1,7 @@
 import pytest
 from conftest import Flask
 
-from hushline.crypto.db_row_encryption import decrypt_field, encrypt_field
+from hushline.crypto.db_field_encryption import decrypt_field, encrypt_field
 
 
 @pytest.mark.parametrize("data_size_multiple", [0, 1, 32])
