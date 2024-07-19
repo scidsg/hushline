@@ -720,7 +720,6 @@ img.upgrade {
   margin: 0;
   box-sizing: content-box;
   outline: none;
-  margin-bottom: -1px;
 }
 
 .tab:focus-within {
@@ -733,7 +732,8 @@ img.upgrade {
 
 /* Create an active/current tablink class */
 .tab.active {
-    box-shadow: 0 -3px 0 inset var(--color-brand);
+    box-shadow: 0 -2px 0 inset var(--color-brand);
+    border-bottom: 1px solid var(--color-brand);
 }
 
 .tab.active  {
