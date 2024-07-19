@@ -713,13 +713,14 @@ img.upgrade {
   font-family: var(--font-sans);
   white-space: nowrap;
   border-radius: 0px;
-  border: 0px;
+  border: 1px solid transparent;
   background-color: transparent;
   color: var(--color-text);
   box-shadow: none;
   margin: 0;
   box-sizing: content-box;
   outline: none;
+  margin-bottom: -1px;
 }
 
 .tab:focus-within {
