@@ -24,6 +24,7 @@ def test_declared_row_value_types_are_handled_correctly(
 
         if isinstance(plaintext, bytes):
             plaintext = plaintext.decode()
+        assert isinstance(plaintext, str)
         assert isinstance(ciphertext, str)
         assert plaintext == decrypt_field(ciphertext, domain=domain, aad=aad)
         assert plaintext == decrypt_field(ciphertext.encode(), domain=domain, aad=aad)
