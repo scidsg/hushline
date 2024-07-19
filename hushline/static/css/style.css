@@ -395,6 +395,14 @@ header nav a:hover {
     text-decoration: underline;
 }
 
+header nav .dropdown {
+    display: flex;
+}
+
+button.dropbtn {
+    font-size: .875rem;
+}
+
 .container {
     max-width: 960px;
     min-width: 480px;
