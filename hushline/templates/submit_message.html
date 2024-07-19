@@ -3,6 +3,7 @@
 
 {% block content %}
 <h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
+{% if user.is_admin or user.is_verified %}
 <div class="badgeContainer">
     {% if user.is_admin %}
     <p class="badge">⚙️&nbsp;Admin</p>
@@ -12,6 +13,7 @@
     <a class="meta" href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer" aria-label="Learn more about verified accounts.">Learn more</a>
     {% endif %}
 </div>
+{% endif %}
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
 <p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles,
     your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is
