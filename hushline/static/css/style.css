@@ -1138,6 +1138,7 @@ p.helper {
         border-radius: .25rem;
         outline: var(--border);
         min-width: 140px;
+        align-items: start;
     }
 
     header nav .dropbtn {
