@@ -13,6 +13,7 @@ run: migrate ## Run the app
 
 .PHONY: lint
 lint: ## Lint the code
+	ruff format --check && \
 	ruff check && \
 	mypy .
 
