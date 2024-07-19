@@ -18,6 +18,7 @@ lint: ## Lint the code
 
 .PHONY: fix
 fix: ## Format the code
+	ruff format && \
 	ruff check --fix
 
 .PHONY: migrate
