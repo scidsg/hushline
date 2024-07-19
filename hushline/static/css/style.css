@@ -701,10 +701,6 @@ img.upgrade {
     display: flex;
 }
 
-.tab-list li:first-of-type {
-    margin-left: -1px;
-}
-
 .tab-list::-webkit-scrollbar {
     display: none;
 }
@@ -717,7 +713,7 @@ img.upgrade {
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   white-space: nowrap;
-  border-radius: 0px;
+  border-radius: 0em;
   border: 1px solid transparent;
   background-color: transparent;
   color: var(--color-text);
