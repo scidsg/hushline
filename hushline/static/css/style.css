@@ -701,6 +701,10 @@ img.upgrade {
     display: flex;
 }
 
+.tab-list li:first-of-type {
+    margin-left: -1px;
+}
+
 .tab-list::-webkit-scrollbar {
     display: none;
 }
