@@ -80,7 +80,7 @@ h2 {
 }
 
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
-h2+p:not(.instr):not(.message):not(.badge):not(.landing-message) {
+h2+p:not(.instr):not(.message):not(.badge):not(.landing-message):not(.helper) {
     margin-top: .5rem;
     margin-bottom: 1rem;
 }
@@ -1020,6 +1020,10 @@ textarea#bio {
 p.helper {
     margin-bottom: 1.325rem;
     margin-top: .5rem
+}
+
+h2 + p.helper:not(h2 + .badgeContainer + p.helper) {
+    margin-top: .125rem;
 }
 
 .user-actions {
