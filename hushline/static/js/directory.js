@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // If window.location.pathname is /tips/directory, then prefix is /tips
     // If it's /directory, then prefix is /
     const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
-    
     const tabs = document.querySelectorAll('.tab');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
