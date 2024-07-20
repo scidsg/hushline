@@ -43,7 +43,7 @@ jobs:
 
       - name: Trigger deployment on DigitalOcean App Platform
         run: |
-          app_id=$(doctl apps list --format "ID,Spec.Name" --output json| jq '.[] | select(.spec.name == "hushline-prod") | .id' -r)
+          app_id=$(doctl apps list --output json| jq '.[] | select(.spec.name == "hushline-prod") | .id' -r)
           doctl apps create-deployment $app_id --force-rebuild --wait
         env:
           DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
