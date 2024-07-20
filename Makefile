@@ -25,6 +25,14 @@ migrate:
 	. ./dev_env.sh && \
 	poetry run flask db upgrade
 
+.PHONY: revision
+revision:
+ifndef message
+	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
+endif 
+	. ./dev_env.sh && \
+	poetry run flask db revision -m "$(message)"
+
 .PHONY: test
 test: ## Run the test suite
 	. ./dev_env.sh && \
