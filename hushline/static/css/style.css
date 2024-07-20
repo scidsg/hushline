@@ -721,6 +721,7 @@ img.upgrade {
   margin: 0;
   box-sizing: content-box;
   outline: none;
+  border-bottom: 1px solid transparent;
 }
 
 .tab:focus-within {
