@@ -36,13 +36,14 @@ jobs:
     steps:
       - name: Install doctl and authenticate
         run: |
-          sudo snap install doctl
+          sudo snap install doctl jq
           doctl auth init -t $DIGITALOCEAN_TOKEN
         env:
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
       - name: Trigger deployment on DigitalOcean App Platform
         run: |
-          doctl apps create-deployment $DIGITALOCEAN_APP_ID --force-rebuild --wait
+          app_id=$(doctl apps list --output json| jq '.[] | select(.spec.name == "hushline-prod") | .id' -r)
+          doctl apps create-deployment $app_id --force-rebuild --wait
         env:
           DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
