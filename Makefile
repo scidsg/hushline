@@ -21,12 +21,12 @@ fix: ## Format the code
 	ruff check --fix
 
 .PHONY: migrate
-migrate:
+migrate: ## Apply migrations
 	. ./dev_env.sh && \
 	poetry run flask db upgrade
 
 .PHONY: revision
-revision:
+revision:  ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif 
