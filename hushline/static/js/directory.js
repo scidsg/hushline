@@ -3,9 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // If window.location.pathname is /tips/directory, then prefix is /tips
     // If it's /directory, then prefix is /
     const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
-
     const tabs = document.querySelectorAll('.tab');
-    const contents = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
@@ -88,8 +86,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     badgeContainer += '<p class="badge">⚙️ Admin</p>';
                 }
 
-                // Only include the "Verified" badge if the "all" tab is active
+                // Include the "Verified" badge if the "all" tab is active
                 if (activeTab === 'all' && user.is_verified) {
+                    badgeContainer += '<p class="badge">⭐️ Verified</p>';
+                }
+
+                // Include the "Verified" badge if the "verified" tab is active
+                if (activeTab === 'verified' && user.is_verified) {
                     badgeContainer += '<p class="badge">⭐️ Verified</p>';
                 }
 
@@ -124,59 +127,13 @@ document.addEventListener('DOMContentLoaded', function () {
         clearIcon.style.visibility = query.length ? 'visible' : 'hidden';
     }
 
-    function activateTab(event) {    
-        const selectedTab = event.target;
-        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
-
-        // Deselect all tabs and hide all panels
-        tabs.forEach(tab => {
-            tab.setAttribute('aria-selected', 'false');
-            tab.classList.remove('active');
-            document.getElementById(tab.getAttribute('aria-controls')).hidden = true;
-        });
-
-        // Select the clicked tab and show the corresponding panel
-        selectedTab.setAttribute('aria-selected', 'true');
-        selectedTab.classList.add('active');
-        targetPanel.hidden = false;
-
-        handleSearchInput(); // Filter again when tab changes
-        updatePlaceholder();
-        
-    }
-
-    function handleKeydown(event) {
-        const { key } = event;
-        const currentTab = event.target;
-        let newTab;
-
-        switch (key) {
-            case 'ArrowLeft':
-                newTab = currentTab.parentElement.previousElementSibling?.querySelector('.tab');
-                break;
-            case 'ArrowRight':
-                newTab = currentTab.parentElement.nextElementSibling?.querySelector('.tab');
-                break;
-            case 'Home':
-                newTab = tabs[0];
-                break;
-            case 'End':
-                newTab = tabs[tabs.length - 1];
-                break;
-            default:
-                return;
-        }
-
-        if (newTab) {
-            newTab.focus();
-            newTab.click();
-            event.preventDefault();
-        }
-    }
-
     tabs.forEach(tab => {
-        tab.addEventListener('click', activateTab);
-        tab.addEventListener('keydown', handleKeydown);
+        tab.addEventListener('click', function() {
+            setTimeout(function() {
+                handleSearchInput(); // Filter again when tab changes
+                updatePlaceholder();
+            })
+        });
     });
 
     searchInput.addEventListener('input', handleSearchInput);
