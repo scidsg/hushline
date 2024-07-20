@@ -1103,6 +1103,15 @@ h2 + p.helper:not(h2 + .badgeContainer + p.helper) {
     font-weight: bold;
 }
 
+fieldset {
+    padding: 0;
+    border: none;
+}
+
+fieldset:disabled {
+    display: none;
+}
+
 @media only screen and (max-width: 768px) {
     header {
         padding-left: 1rem;
