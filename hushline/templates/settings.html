@@ -16,7 +16,7 @@
         </li>
         <li role="presentation">
             <button type="button" class="tab" data-tab="email" role="tab" aria-selected="false" aria-controls="email" id="email-tab">
-                Email
+                Email &amp; Encryption
             </button>
         </li>
         <li role="presentation">
@@ -155,7 +155,10 @@
             <button type="submit">Update Settings</button>
         </form>
         <!-- PGP Key Section -->
-        <h3>Public PGP Key</h3>
+        <h3>Message Encryption</h3>
+        {% if not user.pgp_key %}
+        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" rel="noopener noreferrer" target="_blank">Start with our docs.</a></p>
+        {% endif %}
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
             <label for="pgp_key">Public PGP Key</label>
