@@ -69,8 +69,13 @@ class SecretsManager:
             ).hash(canonical_pack(b"app_admin_secret", bytes(admin_secret))),
             encoding="utf-8",
         )
+        # Use the raw, uniform, pseudo-random hash portion of the argon2id output, which is
+        # exactly a block-size number of bytes, to initialize a keyed shake_256 object.
+        # Reference: https://eprint.iacr.org/2018/449.pdf
         hashed_secret = truncated_b64decode(hashed_secret_with_metadata.split(b"$")[-1])
         self._kdf = shake_256(hashed_secret)
+
+        # Commit to the original encoded argon2id output, pad it to a block-size multiple.
         self._kdf.update(
             canonical_pack(
                 b"app_admin_secret_commitment",
