@@ -80,7 +80,7 @@ h2 {
 }
 
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
-h2+p:not(.instr):not(.message):not(.badge):not(.landing-message) {
+h2+p:not(.instr):not(.message):not(.badge):not(.landing-message):not(.helper) {
     margin-top: .5rem;
     margin-bottom: 1rem;
 }
@@ -379,6 +379,7 @@ header nav ul {
     gap: 1.125rem;
     margin: 0;
     padding: 0;
+    align-items: center;
 }
 
 header nav li {
@@ -712,14 +713,15 @@ img.upgrade {
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   white-space: nowrap;
-  border-radius: 0px;
-  border: 0px;
+  border-radius: 0em;
+  border: 1px solid transparent;
   background-color: transparent;
   color: var(--color-text);
   box-shadow: none;
   margin: 0;
   box-sizing: content-box;
   outline: none;
+  border-bottom: 1px solid transparent;
 }
 
 .tab:focus-within {
@@ -732,7 +734,8 @@ img.upgrade {
 
 /* Create an active/current tablink class */
 .tab.active {
-    box-shadow: 0 -3px 0 inset var(--color-brand);
+    box-shadow: 0 -2px 0 inset var(--color-brand);
+    border-bottom: 1px solid var(--color-brand);
 }
 
 .tab.active  {
@@ -789,18 +792,19 @@ img.upgrade {
 .dropbtn {
   cursor: pointer;
   background: none;
-  padding: 0;
+  padding: .25rem 0;
   min-height: 0px;
   min-width: 0px;
   box-shadow: none;
   margin: 0;
   color: var(--color-text);
   font-family: var(--font-sans);
+  border: 1px solid transparent;
 }
 
 .dropbtn:focus-within {
     outline: none;
-    border: 2px solid var(--color-text);
+    border: 1px solid var(--color-brand);
 }
 
  .dropdown a {
@@ -841,6 +845,10 @@ a.dropbtn:hover {
     display: flex;
     flex-direction: column;
     gap: 0;
+}
+
+.dropdown-content li {
+    width: 100%;
 }
 
 /* Change color of dropdown links on hover */
@@ -1015,6 +1023,10 @@ p.helper {
     margin-top: .5rem
 }
 
+h2 + p.helper:not(h2 + .badgeContainer + p.helper) {
+    margin-top: .125rem;
+}
+
 .user-actions {
     display: flex;
     gap: .625rem;
@@ -1131,6 +1143,7 @@ p.helper {
         border-radius: .25rem;
         outline: var(--border);
         min-width: 140px;
+        align-items: start;
     }
 
     header nav .dropbtn {
