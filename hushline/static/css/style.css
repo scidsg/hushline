@@ -1023,6 +1023,10 @@ p.helper {
     margin-top: .5rem
 }
 
+p.section-intro {
+    margin-bottom: .75rem;
+}
+
 h2 + p.helper:not(h2 + .badgeContainer + p.helper) {
     margin-top: .125rem;
 }
