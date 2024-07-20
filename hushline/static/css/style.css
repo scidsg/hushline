@@ -153,6 +153,9 @@ p.instr {
     align-items: center;
 }
 
+.badgeContainer:empty { margin: 0; }
+
+
 p.badge {
     background-color: white;
     color: var(--color-brand);
