@@ -35,7 +35,7 @@
     {% if messages %}
     <div class="flash-messages" role="alert">
         {% for message in messages %}
-          <div class="flash-message">{{ message }}</div>
+        <div class="flash-message">{{ message }}</div>
         {% endfor %}
     </div>
     {% endif %}
@@ -55,14 +55,15 @@
                     <li><a href="{{ url_for('submit_message', username=session.username) }}">Submit Message</a></li>
                     <li class="dropdown">
                         <button type="button" aria-expanded="false" aria-controls="dropdown-content" class="dropbtn">
-                            @{{ session['username'] }} <img class="dropdown-icon" src="/static/img/app/dropdown.png" alt="Dropdown">
+                            @{{ session['username'] }} <img class="dropdown-icon"
+                                src="{{ url_for('static', filename='img/app/dropdown.png') }}" alt="Dropdown">
                         </button>
-                         <div id="dropdown-content" class="dropdown-content" hidden>
+                        <div id="dropdown-content" class="dropdown-content" hidden>
                             <ul>
                                 <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
                                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
                             </ul>
-                        </div> 
+                        </div>
                     </li>
                     {% else %}
                     <li><a href="{{ url_for('login') }}">Login</a></li>
