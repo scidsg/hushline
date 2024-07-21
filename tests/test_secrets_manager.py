@@ -1,4 +1,5 @@
 from base64 import b64encode
+from collections import deque
 from secrets import token_bytes
 
 import pytest
@@ -51,10 +52,12 @@ def test_truncated_b64decode_with_variable_length_encoded_inputs(size: int) -> N
 
 
 @pytest.mark.parametrize("size", [16, 24, 32])
-@pytest.mark.parametrize("aad", [b"timestamp", b"user_agent"])
+@pytest.mark.parametrize("aad", [deque([b"timestamp"]), deque([b"user_agent"])])
 @pytest.mark.parametrize("domain", [b"password_hash", b"totp_secret"])
-def test_distinct_derived_keys_per_distinct_inputs(domain: bytes, aad: bytes, size: int) -> None:
-    key = vault._derive_key(domain=domain, aad=aad, size=size)
+def test_distinct_derived_keys_per_distinct_inputs(
+    domain: bytes, aad: deque[bytes | bytearray], size: int
+) -> None:
+    key = vault._derive_key(domain=domain, aad=aad.copy(), size=size)
     assert len(key) == size
     assert isinstance(key, bytearray)
     bytes_key = bytes(key)
@@ -67,27 +70,27 @@ def test_distinct_derived_keys_per_distinct_inputs(domain: bytes, aad: bytes, si
 @pytest.mark.parametrize("data", [token_bytes(32) for _ in range(16)])
 def test_encryption_correctness(data: bytes) -> None:
     domain = b"test"
-    aad = b"tester"
-    ciphertext = vault.encrypt(data, domain=domain, aad=aad)
+    aad = deque([b"tester"])
+    ciphertext = vault.encrypt(data, domain=domain, aad=aad.copy())
     assert data not in ciphertext
-    assert data == vault.decrypt(ciphertext, domain=domain, aad=aad)
+    assert data == vault.decrypt(ciphertext, domain=domain, aad=aad.copy())
 
     try:
-        vault.decrypt(ciphertext, domain=b"wrong-domain", aad=aad)
+        vault.decrypt(ciphertext, domain=b"wrong-domain", aad=aad.copy())
     except InvalidToken:
         assert True
     else:
         pytest.fail("Decryption succeeded with the wrong domain.")
 
     try:
-        vault.decrypt(ciphertext, domain=domain, aad=b"wrong-aad")
+        vault.decrypt(ciphertext, domain=domain, aad=deque([b"wrong-aad"]))
     except InvalidToken:
         assert True
     else:
         pytest.fail("Decryption succeeded with the wrong authenticated associated data.")
 
     try:
-        vault.decrypt(token_bytes(len(ciphertext)), domain=domain, aad=aad)
+        vault.decrypt(token_bytes(len(ciphertext)), domain=domain, aad=aad.copy())
     except InvalidToken:
         assert True
     else:

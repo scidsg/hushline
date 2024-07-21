@@ -3,6 +3,7 @@ A class definition to simplify the careful handling of cryptographic secrets.
 """
 
 from base64 import b64decode, urlsafe_b64encode
+from collections import deque
 from hashlib import shake_256
 
 from aiootp.generics.canon import canonical_pack
@@ -57,11 +58,11 @@ class SecretsManager:
         hashed_secret_with_metadata.clear()
 
     def _derive_key(
-        self, *, domain: bytes | bytearray, aad: bytes | bytearray = b"", size: int = 32
+        self, *, domain: bytes | bytearray, aad: deque[bytes | bytearray], size: int = 32
     ) -> bytearray:
         kdf = self._kdf.copy()
         size_as_bytes = size.to_bytes(8, "big")
-        kdf.update(canonical_pack(domain, aad, size_as_bytes, blocksize=self._KDF_BLOCKSIZE))
+        kdf.update(canonical_pack(domain, *aad, size_as_bytes, blocksize=self._KDF_BLOCKSIZE))
         return bytearray(kdf.digest(size))
 
     def encrypt(
@@ -69,12 +70,17 @@ class SecretsManager:
         data: bytes | bytearray,
         *,
         domain: bytes | bytearray,
-        aad: bytes | bytearray = b"",
+        aad: deque[bytes | bytearray] | None = None,
     ) -> bytes:
+        if aad is None:
+            aad = deque()
+
+        aad.appendleft(b"fernet_cipher")
         key = bytearray(urlsafe_b64encode(self._derive_key(domain=domain, aad=aad, size=32)))
         try:
             return Fernet(key).encrypt(data)
         finally:
+            aad.clear()
             key.clear()
 
     def decrypt(
@@ -82,11 +88,16 @@ class SecretsManager:
         data: bytes | bytearray,
         *,
         domain: bytes | bytearray,
-        aad: bytes | bytearray = b"",
+        aad: deque[bytes | bytearray] | None = None,
         ttl: int | None = None,
     ) -> bytes:
+        if aad is None:
+            aad = deque()
+
+        aad.appendleft(b"fernet_cipher")
         key = bytearray(urlsafe_b64encode(self._derive_key(domain=domain, aad=aad, size=32)))
         try:
             return Fernet(key).decrypt(data, ttl=ttl)
         finally:
+            aad.clear()
             key.clear()
