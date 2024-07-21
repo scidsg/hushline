@@ -75,12 +75,17 @@ h1 {
 }
 
 h2 {
-    margin-bottom: .75rem;
+    margin-bottom: 1rem;
     font-size: var(--font-size-2);
 }
 
 h2.submit {
     margin-bottom: 0;
+}
+
+h2 + p {
+    margin-top: 0;
+
 }
 
 h3 {
@@ -97,7 +102,7 @@ a {
 
 p {
     word-break: break-word;
-    margin: 1.125rem 0;
+    margin: 1.25rem 0;
 }
 
 p.instr {
@@ -395,7 +400,8 @@ p.instr {
 }
 
 p.instr {
-    margin: .5rem 0;
+    margin-bottom: 0;
+    margin-top: 1.25rem;
 }
 
 .formBody p.badge {
