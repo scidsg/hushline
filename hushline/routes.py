@@ -416,11 +416,17 @@ def init_app(app: Flask) -> None:
             .order_by(User.is_admin.desc(), User.display_name.asc())
             .all()
         )
+    
+    def get_dynamic_users(count=50, offset=0, is_verified_only = 'false') -> list[User]:
+        if is_verified_only == 'true':
+            return User.query.filter_by(show_in_directory=True, is_verified=True).order_by(User.is_admin.desc(), User.display_name.asc()).limit(count).offset(offset).all()
+        return User.query.filter_by(show_in_directory=True).order_by(User.is_admin.desc(), User.display_name.asc()).limit(count).offset(offset).all()
+
 
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in)
+        return render_template("directory.html", users=get_dynamic_users(), logged_in=logged_in)
 
     @app.route('/directory/get-session-user.json')
     def session_user() -> dict[str, bool]:
@@ -429,17 +435,27 @@ def init_app(app: Flask) -> None:
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, str]]:
-        return [
-            {
-                "primary_username": user.primary_username,
-                "display_name": user.display_name or user.primary_username,
-                "bio": user.bio,
-                "is_admin": user.is_admin,
-                "is_verified": user.is_verified,
-            }
-            for user in get_directory_users()
-        ]
+        count = request.args.get('count')
+        offset = request.args.get('offset')
+        is_verified_only = request.args.get('is_verified_only')
+        users = get_dynamic_users(count=count, offset=offset, is_verified_only=is_verified_only)
+        totalUserCount = User.query.filter_by(show_in_directory=True).count() / 2
+        return {
+            "pagination_pages": totalUserCount,
+            "users": [
+                {
+                    "primary_username": user.primary_username,
+                    "display_name": user.display_name or user.primary_username,
+                    "bio": user.bio,
+                    "is_admin": user.is_admin,
+                    "is_verified": user.is_verified,
+                }
+                for user in users
+            ]
+        }
+            
 
+    
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}

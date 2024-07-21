@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
 
+    function userLoaderQueryParams(count = 50, offset = 0, is_verified_only = 'false') {
+        return `count=${count}&offset=${offset}&is_verified_only=${is_verified_only}`;
+    }
+
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
         searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`;
@@ -25,10 +29,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadData() {
-        fetch(`${pathPrefix}/directory/users.json`)
+        fetch(`${pathPrefix}/directory/users.json?${userLoaderQueryParams()}`)
             .then(response => response.json())
             .then(data => {
-                userData = data;
+                userData = data.users;
                 handleSearchInput(); // Initial display after data is loaded
             })
             .catch(error => console.error('Failed to load user data:', error));
