@@ -79,8 +79,10 @@ def create_app() -> Flask:
         ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
         if ADMIN_INPUT_SOURCE == "interactive":
             _interactive_encryption_seed(app)
-        else:
+        elif ADMIN_INPUT_SOURCE == "environment":
             _environment_encryption_seed(app)
+        else:
+            raise ValueError(f"{ADMIN_INPUT_SOURCE=} is an unsupported input source.")
 
         app.config["SECRET_KEY"] = _summon_db_secret(
             name=InfrastructureAdmin._FLASK_COOKIE_SECRET_KEY_NAME
