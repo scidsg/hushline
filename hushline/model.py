@@ -15,6 +15,37 @@ else:
     Model = db.Model
 
 
+class InfrastructureAdmin(Model):
+    __tablename__ = "infrastructure_admin"
+
+    _APP_ADMIN_SECRET_SALT_NAME: str = "app_admin_secret_salt"
+    _FLASK_COOKIE_SECRET_KEY_NAME: str = "flask_cookie_secret_key"
+
+    name = db.Column(db.String(255), primary_key=True)
+    _value = db.Column(db.LargeBinary(255), nullable=False)
+
+    def __init__(self, name: str, value: bytes | bytearray) -> None:
+        super().__init__()
+        self.name = name
+        # hack: outputting bytearray but receiving bytes breaks mypy
+        setattr(self, "value", value)
+
+    @property
+    def value(self) -> bytearray:
+        vault = current_app.config.get("VAULT", None)
+        if self.name == self._APP_ADMIN_SECRET_SALT_NAME:
+            return bytearray(self._value)
+        return bytearray(vault.decrypt(self._value, domain=self.name.encode()))
+
+    @value.setter
+    def value(self, secret: bytes) -> None:
+        vault = current_app.config.get("VAULT", None)
+        if self.name == self._APP_ADMIN_SECRET_SALT_NAME:
+            self._value = bytes(secret)
+        else:
+            self._value = vault.encrypt(bytes(secret), domain=self.name.encode())
+
+
 class User(Model):
     __tablename__ = "users"
 

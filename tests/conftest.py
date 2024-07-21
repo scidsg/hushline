@@ -11,7 +11,7 @@ from hushline import create_app, db
 from hushline.crypto.secrets_manager import SecretsManager
 
 TEST_ADMIN_SECRET: bytearray = bytearray(secrets.token_bytes(32))
-vault = SecretsManager(TEST_ADMIN_SECRET.copy())
+vault = SecretsManager(TEST_ADMIN_SECRET.copy(), salt=bytearray(secrets.token_bytes(32)))
 
 
 @pytest.fixture()

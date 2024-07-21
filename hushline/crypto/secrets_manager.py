@@ -2,11 +2,8 @@
 A class definition to simplify the careful handling of cryptographic secrets.
 """
 
-import warnings
 from base64 import b64decode, urlsafe_b64encode
 from hashlib import shake_256
-from pathlib import Path
-from secrets import token_bytes
 
 from aiootp.generics.canon import canonical_pack
 from cryptography.fernet import Fernet, InvalidToken
@@ -22,47 +19,18 @@ def truncated_b64decode(value: bytes | bytearray) -> bytearray:
 
 
 class SecretsManager:
-    __slots__ = ("_kdf", "_memory_cost", "_secret_salt_filename", "_secret_salt_length")
+    __slots__ = ("_kdf", "_memory_cost")
 
-    _APP_SECRETS_DIRECTORY: Path = Path("hushline/crypto/_app_secrets")
     _KDF_BLOCKSIZE: int = shake_256().block_size
     _MEMORY_COST_IN_KiB: int = 128 * 1024
-    _SECRET_SALT_FILENAME: str = "_device_salt.txt"
-    _SECRET_SALT_LENGTH: int = 32
 
     def __init__(
-        self,
-        admin_secret: bytearray,
-        *,
-        memory_cost: int | None = None,
-        secret_salt_filename: str | None = None,
-        secret_salt_length: int | None = None,
+        self, admin_secret: bytearray, *, salt: bytearray, memory_cost: int | None = None
     ) -> None:
-        self._APP_SECRETS_DIRECTORY.mkdir(parents=True, exist_ok=True)
         self._memory_cost = self._MEMORY_COST_IN_KiB if memory_cost is None else memory_cost
-        self._secret_salt_filename = (
-            self._SECRET_SALT_FILENAME if secret_salt_filename is None else secret_salt_filename
-        )
-        self._secret_salt_length = (
-            self._SECRET_SALT_LENGTH if secret_salt_length is None else secret_salt_length
-        )
-        self._prepare_key_derivation_object(admin_secret)
+        self._prepare_key_derivation_object(admin_secret, salt=salt)
 
-    def _summon_device_salt(self) -> bytearray:
-        salt_path = self._APP_SECRETS_DIRECTORY / self._secret_salt_filename
-
-        if not salt_path.is_file():
-            salt_path.write_bytes(salt := token_bytes(self._secret_salt_length))
-        else:
-            salt_path.chmod(0o600)
-            if len(salt := salt_path.read_bytes()) != self._secret_salt_length:
-                warnings.warn("The secret salt length doesn't match its declaration.", stacklevel=2)
-
-        salt_path.chmod(0o000)
-        return bytearray(salt)
-
-    def _prepare_key_derivation_object(self, admin_secret: bytearray) -> None:
-        salt = self._summon_device_salt()
+    def _prepare_key_derivation_object(self, admin_secret: bytearray, *, salt: bytearray) -> None:
         hashed_secret_with_metadata = bytearray(
             argon2.using(
                 salt=bytes(salt), memory_cost=self._memory_cost, digest_size=self._KDF_BLOCKSIZE

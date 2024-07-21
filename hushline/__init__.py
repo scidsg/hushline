@@ -1,8 +1,10 @@
 import getpass
 import logging
 import os
+import warnings
 from base64 import urlsafe_b64decode
 from datetime import timedelta
+from secrets import token_bytes
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
@@ -12,14 +14,27 @@ from werkzeug.wrappers.response import Response
 from . import admin, routes, settings
 from .crypto import SecretsManager
 from .db import db
-from .model import User
+from .model import InfrastructureAdmin, User
+
+
+def _summon_db_secret(*, name: str, length: int = 32) -> bytearray:
+    if (entry := InfrastructureAdmin.query.get(name)) is None:
+        secret = bytearray(token_bytes(length))
+        db.session.add(InfrastructureAdmin(name=name, value=secret))
+        db.session.commit()
+    else:
+        secret = entry.value
+        if len(secret) != length:
+            warnings.warn("The secret's length doesn't match its declaration.", stacklevel=2)
+
+    return secret
 
 
 def _interactive_encryption_seed(app: Flask) -> None:
     app.config["VAULT"] = SecretsManager(
-        bytearray(getpass.getpass("admin secret: "), encoding="utf-8")
+        bytearray(getpass.getpass("admin secret: "), encoding="utf-8"),
+        salt=_summon_db_secret(name=InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME),
     )
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 
 def _environment_encryption_seed(app: Flask) -> None:
@@ -27,8 +42,10 @@ def _environment_encryption_seed(app: Flask) -> None:
     if not admin_secret:
         raise ValueError("Admin secret not found. Please check your .env file.")
 
-    app.config["VAULT"] = SecretsManager(bytearray(urlsafe_b64decode(admin_secret)))
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    app.config["VAULT"] = SecretsManager(
+        bytearray(urlsafe_b64decode(admin_secret)),
+        salt=_summon_db_secret(name=InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME),
+    )
 
 
 def create_app() -> Flask:
@@ -56,11 +73,18 @@ def create_app() -> Flask:
     db.init_app(app)
     Migrate(app, db)
 
-    ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
-    if ADMIN_INPUT_SOURCE == "interactive":
-        _interactive_encryption_seed(app)
-    else:
-        _environment_encryption_seed(app)
+    with app.app_context():
+        db.create_all()
+
+        ADMIN_INPUT_SOURCE = os.environ.get("ADMIN_INPUT_SOURCE", "environment").strip().lower()
+        if ADMIN_INPUT_SOURCE == "interactive":
+            _interactive_encryption_seed(app)
+        else:
+            _environment_encryption_seed(app)
+
+        app.config["SECRET_KEY"] = _summon_db_secret(
+            name=InfrastructureAdmin._FLASK_COOKIE_SECRET_KEY_NAME
+        ).hex()
 
     routes.init_app(app)
     for module in [admin, settings]:

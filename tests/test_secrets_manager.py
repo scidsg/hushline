@@ -2,18 +2,44 @@ from base64 import b64encode
 from secrets import token_bytes
 
 import pytest
-from conftest import vault
+from conftest import Flask, vault
 
+from hushline import _summon_db_secret
 from hushline.crypto.secrets_manager import InvalidToken, truncated_b64decode
+from hushline.model import InfrastructureAdmin
 
+_APP_ADMIN_SECRET_SALT_NAME: str = InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME
+_FLASK_COOKIE_SECRET_KEY_NAME: str = InfrastructureAdmin._FLASK_COOKIE_SECRET_KEY_NAME
 DERIVED_KEYS_PER_DISTINCT_INPUTS: dict = {}
 
 
-def test_device_salt_is_static_once_created() -> None:
-    salt = vault._summon_device_salt()
-    assert isinstance(salt, bytearray)
-    assert len(salt) == vault._secret_salt_length
-    assert salt == vault._summon_device_salt()
+class MockInfrastructureAdminEntry:
+    name: str = ""
+    _value: bytes = b""
+    value: bytearray = bytearray()
+
+
+@pytest.mark.parametrize("name", [_APP_ADMIN_SECRET_SALT_NAME, _FLASK_COOKIE_SECRET_KEY_NAME])
+def test_admin_db_secrets_are_static_once_created(static_app: Flask, name: str) -> None:
+    with static_app.app_context():
+        vault = static_app.config["VAULT"]
+        secret = _summon_db_secret(name=name)
+        assert isinstance(secret, bytearray)
+        assert len(secret) == 32
+        assert secret == _summon_db_secret(name=name)
+
+        if (entry := InfrastructureAdmin.query.get(name)) is None:
+            db_value = MockInfrastructureAdminEntry()._value
+        else:
+            db_value = entry._value
+
+        if name == _APP_ADMIN_SECRET_SALT_NAME:
+            assert db_value == secret
+        else:
+            assert db_value != secret
+            assert isinstance(db_value, bytes)
+            assert len(db_value) > 32
+            assert vault.decrypt(db_value, domain=name.encode()) == secret
 
 
 @pytest.mark.parametrize("size", list(range(33)))
