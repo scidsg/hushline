@@ -79,10 +79,6 @@ h2 {
     font-size: var(--font-size-2);
 }
 
-h2.submit {
-    margin-bottom: 0;
-}
-
 h1+p:not(.instr):not(.message):not(.badge):not(.landing-message),
 h2+p:not(.instr):not(.message):not(.badge):not(.landing-message):not(.helper) {
     margin-top: .5rem;
@@ -123,6 +119,12 @@ h2+p.badge+p.instr {
     margin-top: .5rem;
 }
 
+h2#admin {}
+
+p.instr+p {
+    margin-bottom: 1.5rem;
+}
+
 a {
     color: var(--color-brand);
 }
@@ -140,7 +142,8 @@ p.instr {
     font-style: italic;
     font-size: var(--font-size-smaller);
     color: var(--color-text-light);
-    margin: .5rem 0;
+    margin-bottom: 1rem;
+    margin-top: 0;
 }
 
 .badgeContainer {
@@ -152,9 +155,6 @@ p.instr {
 
 .badgeContainer:empty { margin: 0; }
 
-h2.submit + .badgeContainer {
-    margin-bottom: 0;
-}
 
 p.badge {
     background-color: white;
@@ -437,18 +437,13 @@ p.meta {
     line-height: 1.4;
 }
 
-.dirMeta,
-p.instr {
+.dirMeta {
     margin: 1rem 0;
     background-color: rgb(255, 249, 234);
     border-radius: .25rem;
     padding: .9125rem 1rem;
     border: 1px solid rgba(232, 212, 180, .8);
     color: #545454;
-}
-
-p.instr {
-    margin-bottom: 0;
 }
 
 .formBody p.badge {
@@ -1027,7 +1022,8 @@ textarea#bio {
 }
 
 p.helper {
-    margin: 1rem 0;
+    margin-bottom: 1.325rem;
+    margin-top: .5rem
 }
 
 p.section-intro {
