@@ -38,7 +38,7 @@ class InfrastructureAdmin(Model):
         return bytearray(vault.decrypt(self._value, domain=self.name.encode()))
 
     @value.setter
-    def value(self, secret: bytes) -> None:
+    def value(self, secret: bytes | bytearray) -> None:
         vault = current_app.config.get("VAULT", None)
         if self.name == self._APP_ADMIN_SECRET_SALT_NAME:
             self._value = bytes(secret)
