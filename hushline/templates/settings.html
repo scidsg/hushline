@@ -78,7 +78,7 @@
             <div class="form-group">
                 <div class="label-with-wordcount">
                     <label for="bio">Bio (up to 250 characters):</label>
-                    <span><span class="bio-count">0</span>/250</span>
+                    <span class="meta"><span class="bio-count">0</span>/250</span>
                 </div>
                 <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
             </div>
@@ -141,23 +141,28 @@
 
     <div id="email" class="tab-content" role="tabpanel" aria-labelledby="email-tab" hidden>
         <!-- SMTP Settings Section -->
-        <h3>Email Delivery Settings</h3>
+        <h3>Message Forwarding</h3>
+        {% if not user.pgp_key %}
+        <p class="info">👇 <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP key</a> below to enable message forwarding.</p>
+        {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
-            {{ smtp_settings_form.smtp_username.label }}
-            {{ smtp_settings_form.smtp_username }}
-            {{ smtp_settings_form.smtp_server.label }}
-            {{ smtp_settings_form.smtp_server }}
-            {{ smtp_settings_form.smtp_port.label }}
-            {{ smtp_settings_form.smtp_port }}
-            {{ smtp_settings_form.smtp_password.label }}
-            {{ smtp_settings_form.smtp_password }}
-            <button type="submit">Update Settings</button>
+            <fieldset {% if not user.pgp_key %}disabled{% endif %}>
+                {{ smtp_settings_form.smtp_username.label }}
+                {{ smtp_settings_form.smtp_username }}
+                {{ smtp_settings_form.smtp_server.label }}
+                {{ smtp_settings_form.smtp_server }}
+                {{ smtp_settings_form.smtp_port.label }}
+                {{ smtp_settings_form.smtp_port }}
+                {{ smtp_settings_form.smtp_password.label }}
+                {{ smtp_settings_form.smtp_password }}
+                <button type="submit">Update Settings</button>
+            </fieldset>
         </form>
         <!-- PGP Key Section -->
         <h3>Message Encryption</h3>
         {% if not user.pgp_key %}
-        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" rel="noopener noreferrer" target="_blank">Start with our docs.</a></p>
+        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope" rel="noopener noreferrer" target="_blank" aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
