@@ -430,7 +430,7 @@ def init_app(app: Flask) -> None:
         return {"logged_in": logged_in}
 
     @app.route("/directory/users.json")
-    def directory_users() -> list[dict[str, str]]:
+    def directory_users() -> dict[str, int | list[dict[str, str]]]:
         count = request.args.get('count')
         offset = request.args.get('offset')
         users = get_directory_users(count=count, offset=offset)
