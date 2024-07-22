@@ -58,7 +58,7 @@ main {
 }
 
 form {
-    margin: .5rem 0;
+    margin: .75rem 0;
 }
 
 h1,
@@ -79,12 +79,18 @@ h1 {
 }
 
 h2 {
-    margin-bottom: 1rem;
     font-size: var(--font-size-2);
 }
 
 h2.submit {
     margin-bottom: .25rem;
+}
+h2 + p {
+    margin-top: .25rem;
+}
+
+h2.submit + p {
+    margin-top: 1rem;
 }
 
 h3 {
@@ -396,7 +402,7 @@ p.instr {
 
 p.instr {
     margin-bottom: .5rem;
-    margin-top: 1.25rem;
+    margin-top: 1rem;
 }
 
 .formBody p.badge {
@@ -963,10 +969,6 @@ textarea#bio {
 
 .directory-tabs .tab-list {
     margin-bottom: 0;
-}
-
-p.section-intro {
-    margin-bottom: .75rem;
 }
 
 .user-actions {
