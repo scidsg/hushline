@@ -961,6 +961,10 @@ a.dropbtn:hover {
 .user .meta {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
+    margin: .25rem 0;
+}
+
+.formBody .user .meta {
     margin: .125rem 0;
 }
 
