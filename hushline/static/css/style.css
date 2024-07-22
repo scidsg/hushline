@@ -124,6 +124,7 @@ a {
 p {
     word-break: break-word;
     margin: 1rem 0;
+    line-height: 1.5;
 }
 
 p.instr {
@@ -403,7 +404,7 @@ label {
 p.meta {
     font-size: var(--font-size-small);
     color: var(--color-text-light);
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .dirMeta,
@@ -644,8 +645,6 @@ img.upgrade {
 .promo p {
     font-size: var(--font-size-base);
     max-width: 80%;
-    line-height: 145%;
-
 }
 
 .formBody .promo .primaryBtn {
