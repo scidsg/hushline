@@ -21,9 +21,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function stylePagination(pagnationCount) {
+    function stylePagination(paginationCount) {
+        if(paginationCount < 1) return null
         let paginationMarkUp = ""
-        for (let i = 0; i < pagnationCount; i++) {
+        for (let i = 0; i < paginationCount; i++) {
             paginationMarkUp += `<li><a href="/directory${i > 0 ? `?page=${i + 1}` : ''}" class="pagination__item ${i === offset - 1 ? 'active' : ''}">${i + 1}</a></li>`
         }
         document.querySelector('.pagination').innerHTML = paginationMarkUp;
