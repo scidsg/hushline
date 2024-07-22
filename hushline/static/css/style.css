@@ -93,6 +93,11 @@ h2.submit + p {
     margin-top: 1rem;
 }
 
+h2.submit ~ .instr {
+    margin-bottom: .5rem;
+    margin-top: .5rem
+}
+
 h3 {
     font-size: var(--font-size-3);
 }
