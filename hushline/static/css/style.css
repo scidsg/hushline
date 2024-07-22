@@ -9,6 +9,7 @@
   --border: 1px solid var(--color-border);
 
   --font-mono: 'IBM Plex Mono', monospace;
+  --font-mono-medium: 'IBM Plex Mono Medium', monospace;
   --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
   --font-sans-bold: 'Atkinson Bold', Helvetica, Arial, sans-serif;
 
@@ -39,6 +40,12 @@
     font-family: "IBM Plex Mono";
     src: url("../fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
         url("../fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono Medium";
+    src: url("../fonts/mono/IBMPlexMono-Medium.woff") format("woff"),
+        url("../fonts/mono/IBMPlexMono-Medium.woff2") format("woff2");
 }
 
 body {
@@ -1056,8 +1063,7 @@ textarea#bio {
 }
 
 .meta .search-highlight {
-    font-family: var(--font-mono);
-    font-weight: bold;
+    font-family: var(--font-mono-medium);
 }
 
 fieldset {
