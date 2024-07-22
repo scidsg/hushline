@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // If it's /directory, then prefix is /
     const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
     const tabs = document.querySelectorAll('.tab');
+    const tabPanels = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
@@ -14,15 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`;
     }
 
-    function searchUsers() {
-        const query = searchInput.value.trim().toLowerCase();
-        const tab = document.querySelector('.tab.active').getAttribute('data-tab');
-        const filteredUsers = userData.filter(user => {
-            const userText = `${user.primary_username} ${user.display_name || ''} ${user.bio || ''}`.toLowerCase();
-            return userText.includes(query) && (tab === 'all' || (user.is_verified && tab === 'verified'));
-        });
-        updateUsersList(filteredUsers);
-    }
 
     function loadData() {
         fetch(`${pathPrefix}/directory/users.json`)
@@ -127,14 +119,6 @@ document.addEventListener('DOMContentLoaded', function () {
         clearIcon.style.visibility = query.length ? 'visible' : 'hidden';
     }
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            setTimeout(function() {
-                handleSearchInput(); // Filter again when tab changes
-                updatePlaceholder();
-            })
-        });
-    });
 
     searchInput.addEventListener('input', handleSearchInput);
     clearIcon.addEventListener('click', function () {
@@ -143,6 +127,17 @@ document.addEventListener('DOMContentLoaded', function () {
         handleSearchInput();
     });
 
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            window.activateTab(e, tabs, tabPanels);
+            handleSearchInput(); // Filter again when tab changes
+            updatePlaceholder();
+        });
+        tab.addEventListener('keydown', function(e) {
+            window.handleKeydown(e)
+        });
+    });
 
 
     function createReportEventListeners(selector) {
