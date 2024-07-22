@@ -57,6 +57,10 @@ main {
     width: 100%;
 }
 
+form {
+    margin: .5rem 0;
+}
+
 h1,
 h2,
 h3,
@@ -83,11 +87,6 @@ h2.submit {
     margin-bottom: .25rem;
 }
 
-h2 + p {
-    margin-top: 0;
-
-}
-
 h3 {
     font-size: var(--font-size-3);
 }
@@ -102,7 +101,7 @@ a {
 
 p {
     word-break: break-word;
-    margin: 1.25rem 0;
+    margin: 1rem 0;
 }
 
 p.instr {
@@ -116,10 +115,6 @@ p.instr {
     gap: .25rem;
     margin: .5rem 0;
     align-items: center;
-}
-
-h2.submit + .badgeContainer {
-    margin-bottom: 0;
 }
 
 .badgeContainer:empty { margin: 0; }
@@ -400,7 +395,7 @@ p.instr {
 }
 
 p.instr {
-    margin-bottom: 0;
+    margin-bottom: .5rem;
     margin-top: 1.25rem;
 }
 
