@@ -1210,6 +1210,29 @@ fieldset:disabled {
     margin-bottom: 0;
 }
 
+.pagination {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 1rem 0;
+    list-style-type: none;
+    padding: 0;
+}
+
+.pagination:empty {
+    margin: 0;
+}
+
+.pagination a {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.pagination a.active {
+    font-family: var(--font-sans-bold);
+    color: var(--color-brand)
+}
+
 button[name="update_directory_visibility"] {
     visibility: hidden;
     display: none;

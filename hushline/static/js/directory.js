@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
-    let pagnationCount = 0;
-    const countPerPage = 2;
+    const usersPerPage = 1; // change this value for testing purposes
     
-
+    const searchParams = new URLSearchParams(window.location.search);
+    const offset = searchParams?.get('page') || 0;
 
 
     function updatePlaceholder() {
@@ -24,21 +24,27 @@ document.addEventListener('DOMContentLoaded', function () {
     function stylePagination(pagnationCount) {
         let paginationMarkUp = ""
         for (let i = 0; i < pagnationCount; i++) {
-            paginationMarkUp += `<button class="pagination__item ${i === 0 ? 'active' : ''}" data-offset="${i * countPerPage}">${i + 1}</button>`
+            paginationMarkUp += `<li><a href="/directory${i > 0 ? `?page=${i + 1}` : ''}" class="pagination__item ${i === offset - 1 ? 'active' : ''}">${i + 1}</a></li>`
         }
         document.querySelector('.pagination').innerHTML = paginationMarkUp;
+        if(offset === 0) {
+            document.querySelector('.pagination__item:first-of-type').classList.add('active')
+        }
     }
 
 
-    function loadData(count = countPerPage, offset = 0, is_verified_only = 'false') {
-        const query = `count=${count}&offset=${offset}&is_verified_only=${is_verified_only}`
+    function loadData(is_verified_only = 'false') {
+        const offsetLogic = offset > 0 ? offset - 1 : 0
+        const query = `count=${usersPerPage}&offset=${offsetLogic * usersPerPage}&is_verified_only=${is_verified_only}`
         fetch(`${pathPrefix}/directory/users.json?${query}`)
             .then(response => response.json())
             .then(data => {
                 userData = data.users;
                 totalUserCount = data.pages;
-                stylePagination(totalUserCount / countPerPage)
+                stylePagination(totalUserCount / usersPerPage)
                 handleSearchInput(); // Initial display after data is loaded
+                
+                userData.filter((user) => user.is_verified).length === 0 ? tabs[1].click() : null
             })
             .catch(error => console.error('Failed to load user data:', error));
     }
