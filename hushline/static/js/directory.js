@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
-    const usersPerPage = 1; // change this value for testing purposes
+    const usersPerPage = 50; // change this value for testing purposes
     
     const searchParams = new URLSearchParams(window.location.search);
     const offset = searchParams?.get('page') || 0;
