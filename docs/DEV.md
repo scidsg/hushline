@@ -77,3 +77,11 @@ Format the code:
 ```sh
 poetry run make fix
 ```
+
+### Making DB changes
+
+Create a new revision:
+
+```sh
+poetry run make revision name="my db changes"
+``` 
