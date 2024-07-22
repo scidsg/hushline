@@ -745,7 +745,7 @@ img.upgrade {
     min-height: 0;
     min-width: 0;
     padding: .25rem .75rem;
-    margin-top: 1rem;
+    margin-top: 0;
     margin-bottom: 0;
 }
 
@@ -888,6 +888,10 @@ a.dropbtn:hover {
     box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
+.admin-highlights .metric p {
+    margin: .25rem 0;
+}
+
 .highlight {
     background-color: #c6ffff;
     padding: .125rem .25rem;
@@ -956,7 +960,7 @@ a.dropbtn:hover {
 .user .meta {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
-    margin: .25rem 0;
+    margin: .125rem 0;
 }
 
 .user h3 {
