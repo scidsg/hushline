@@ -98,6 +98,10 @@ h2.submit ~ .instr {
     margin-top: .5rem
 }
 
+h2.submit ~ .bio {
+    margin: .75rem 0 1rem 0;
+}
+
 h3 {
     font-size: var(--font-size-3);
 }
