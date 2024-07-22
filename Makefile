@@ -6,6 +6,10 @@ help: ## Print the help message
 		sort | \
 		column -s ':' -t
 
+.PHONY: install
+install:
+	poetry install
+
 .PHONY: run
 run: migrate ## Run the app
 	. ./dev_env.sh && \
@@ -13,12 +17,12 @@ run: migrate ## Run the app
 
 .PHONY: lint
 lint: ## Lint the code
-	ruff check && \
-	mypy .
+	poetry run ruff check && \
+	poetry run mypy .
 
 .PHONY: fix
 fix: ## Format the code
-	ruff check --fix
+	poetry run ruff check --fix
 
 .PHONY: migrate
 migrate: ## Apply migrations
