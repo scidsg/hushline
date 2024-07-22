@@ -43,32 +43,10 @@ function navController() {
 }
 
 
-function tabController() {
-    const tabs = document.querySelectorAll('.tab');
 
-    if(!tabs) return; // Exit if no tabs found
-
-    function activateTab(event) {    
-        const selectedTab = event.target;
-        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
-
-        // Deselect all tabs and hide all panels
-        tabs.forEach(tab => {
-            tab.setAttribute('aria-selected', 'false');
-            tab.classList.remove('active');
-            const panel = document.getElementById(tab.getAttribute('aria-controls'));
-            panel.hidden = true;
-            panel.style.display = 'none';
-        });
-
-         // Select the clicked tab and show the corresponding panel
-         selectedTab.setAttribute('aria-selected', 'true');
-         selectedTab.classList.add('active');
-         targetPanel.hidden = false;
-         targetPanel.style.display = 'block';
-    }
-
-    function handleKeydown(event) {
+document.addEventListener('DOMContentLoaded', function() {
+    navController();
+    window.handleKeydown = function (event) {
         const { key } = event;
         const currentTab = event.target;
         let newTab;
@@ -97,13 +75,30 @@ function tabController() {
         }
     }
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', activateTab);
-        tab.addEventListener('keydown', handleKeydown);
-    });
-}
+    window.activateTab = function (event, tabs, tabPanels) {    
+        const selectedTab = event.target;
+        const targetPanel = document.getElementById(selectedTab.getAttribute('aria-controls'));
 
-document.addEventListener('DOMContentLoaded', function() {
-    navController();
-    tabController();
+        tabPanels.forEach(panel => {
+            panel.hidden = true;
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        });
+
+        // Deselect all tabs and hide all panels
+        tabs.forEach(tab => {
+            tab.setAttribute('aria-selected', 'false');
+            tab.classList.remove('active');
+            const panel = document.getElementById(tab.getAttribute('aria-controls'));
+            panel.hidden = true;
+            panel.style.display = 'none';
+        });
+
+         // Select the clicked tab and show the corresponding panel
+         selectedTab.setAttribute('aria-selected', 'true');
+         selectedTab.classList.add('active');
+         targetPanel.hidden = false;
+         targetPanel.style.display = 'block';
+         targetPanel.classList.add('active');
+    }
 });
