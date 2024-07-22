@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Generator
 
 from flask import current_app
 from flask_sqlalchemy.model import Model
-from passlib.hash import scrypt
+from passlib.hash import argon2
 from sqlalchemy.exc import NoResultFound
 
 from .crypto import decrypt_field, encrypt_field
@@ -95,7 +95,7 @@ class User(Model):
 
     @password_hash.setter
     def password_hash(self, plaintext_password: str) -> None:
-        """Hash plaintext password using scrypt and store it."""
+        """Hash plaintext password using argon2 and store it."""
         domain = b"user_password_hash"
         vault = current_app.config["VAULT"]
         self._password_revision_number += 1
@@ -115,7 +115,7 @@ class User(Model):
             # Reference:
             # https://blog.ircmaxell.com/2015/03/security-issue-combining-bcrypt-with.html
             pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
-            self._password_hash = scrypt.hash(pre_hashed_password.hex())
+            self._password_hash = argon2.hash(pre_hashed_password.hex())
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
@@ -125,7 +125,7 @@ class User(Model):
             aad.append(self._password_revision_number.to_bytes(8, "big"))
             aad.append(bytearray(plaintext_password, encoding="utf-8"))
             pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
-        return scrypt.verify(pre_hashed_password.hex(), self.password_hash)
+        return argon2.verify(pre_hashed_password.hex(), self.password_hash)
 
     @property
     def totp_secret(self) -> str | None:
