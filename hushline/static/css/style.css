@@ -407,6 +407,11 @@ p.meta {
     line-height: 1.5;
 }
 
+h3 + p.meta {
+    margin-top: .75rem;
+
+}
+
 .dirMeta,
 p.instr {
     margin: 1rem 0;
