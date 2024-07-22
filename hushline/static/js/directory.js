@@ -34,9 +34,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function loadData(is_verified_only = 'false') {
+    function loadData() {
         const offsetLogic = offset > 0 ? offset - 1 : 0
-        const query = `count=${usersPerPage}&offset=${offsetLogic * usersPerPage}&is_verified_only=${is_verified_only}`
+        const query = `count=${usersPerPage}&offset=${offsetLogic * usersPerPage}`
         fetch(`${pathPrefix}/directory/users.json?${query}`)
             .then(response => response.json())
             .then(data => {
