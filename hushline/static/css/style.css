@@ -400,9 +400,8 @@ p.instr {
     color: #545454;
 }
 
-p.instr {
-    margin-bottom: .5rem;
-    margin-top: 1rem;
+h2.submit + p.instr {
+    margin: .75rem 0 .5rem 0;
 }
 
 .formBody p.badge {
