@@ -439,9 +439,9 @@ def init_app(app: Flask) -> None:
         offset = request.args.get('offset')
         is_verified_only = request.args.get('is_verified_only')
         users = get_dynamic_users(count=count, offset=offset, is_verified_only=is_verified_only)
-        totalUserCount = User.query.filter_by(show_in_directory=True).count() / 2
+        totalUserCount = User.query.filter_by(show_in_directory=True).count()
         return {
-            "pagination_pages": totalUserCount,
+            "pages": totalUserCount,
             "users": [
                 {
                     "primary_username": user.primary_username,

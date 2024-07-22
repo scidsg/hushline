@@ -9,10 +9,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
+    let pagnationCount = 0;
+    const countPerPage = 2;
+    
 
-    function userLoaderQueryParams(count = 50, offset = 0, is_verified_only = 'false') {
-        return `count=${count}&offset=${offset}&is_verified_only=${is_verified_only}`;
-    }
+
 
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
@@ -20,11 +21,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function loadData() {
-        fetch(`${pathPrefix}/directory/users.json?${userLoaderQueryParams()}`)
+    function stylePagination(pagnationCount) {
+        let paginationMarkUp = ""
+        for (let i = 0; i < pagnationCount; i++) {
+            paginationMarkUp += `<button class="pagination__item ${i === 0 ? 'active' : ''}" data-offset="${i * countPerPage}">${i + 1}</button>`
+        }
+        document.querySelector('.pagination').innerHTML = paginationMarkUp;
+    }
+
+
+    function loadData(count = countPerPage, offset = 0, is_verified_only = 'false') {
+        const query = `count=${count}&offset=${offset}&is_verified_only=${is_verified_only}`
+        fetch(`${pathPrefix}/directory/users.json?${query}`)
             .then(response => response.json())
             .then(data => {
                 userData = data.users;
+                totalUserCount = data.pages;
+                stylePagination(totalUserCount / countPerPage)
                 handleSearchInput(); // Initial display after data is loaded
             })
             .catch(error => console.error('Failed to load user data:', error));
