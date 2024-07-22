@@ -254,8 +254,9 @@ def init_app(app: Flask) -> None:
 
             # Create new user instance
             new_user = User(primary_username=username)
-            new_user.password_hash = password  # This triggers the password_hash setter
             db.session.add(new_user)
+            db.session.commit()  # The user needs a user.id to hash the password
+            new_user.password_hash = password  # This triggers the password_hash setter
             db.session.commit()
 
             flash("👍 Registration successful! Please log in.", "success")

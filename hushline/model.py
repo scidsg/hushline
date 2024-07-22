@@ -1,10 +1,13 @@
 import secrets
+from collections import deque
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator
 
 from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
+from sqlalchemy.exc import NoResultFound
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -50,8 +53,10 @@ class User(Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
+    _hidden_aad_secret = db.Column("_aad_secret", db.LargeBinary(255), nullable=False)
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80))
+    _password_revision_number = db.Column(db.Integer, nullable=False)
     _password_hash = db.Column("password_hash", db.String(512))
     _totp_secret = db.Column("totp_secret", db.String(255))
     _email = db.Column("email", db.String(255))
@@ -70,72 +75,129 @@ class User(Model):
     )
 
     @property
-    def password_hash(self) -> str:
+    def _aad_secret(self) -> bytearray:
+        domain = b"user_aad_secret"
+        aad = deque([self.__tablename__.encode()])
+        vault = current_app.config["VAULT"]
+        return bytearray(vault.decrypt(self._hidden_aad_secret, domain=domain, aad=aad))
+
+    @_aad_secret.setter
+    def _aad_secret(self, value: bytes) -> None:
+        domain = b"user_aad_secret"
+        aad = deque([self.__tablename__.encode()])
+        vault = current_app.config["VAULT"]
+        self._hidden_aad_secret = vault.encrypt(value, domain=domain, aad=aad)
+
+    @property
+    def password_hash(self) -> str | None:
         """Return the hashed password."""
         return self._password_hash
 
     @password_hash.setter
     def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using scrypt and store it."""
-        self._password_hash = scrypt.hash(plaintext_password)
+        domain = b"user_password_hash"
+        vault = current_app.config["VAULT"]
+        self._password_revision_number += 1
+        with temp_user_aad(self) as aad:
+            aad.append(self._password_revision_number.to_bytes(8, "big"))
+            aad.append(bytearray(plaintext_password, encoding="utf-8"))
+            # General Warnings & Guidelines:
+            # https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+            #
+            # This pre-hash isn't vulnerable to password shucking due to the high-entropy and/or
+            # user-specific `aad` components, the admin secret, & the other domain separators.
+            # Reference:
+            # https://www.youtube.com/watch?v=OQD3qDYMyYQ
+            #
+            # This 32-byte pre-hash is also hex-normalized, which avoids implementation-specific
+            # hazards in some password hashing algorithms over raw bytes, & too long passwords.
+            # Reference:
+            # https://blog.ircmaxell.com/2015/03/security-issue-combining-bcrypt-with.html
+            pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
+            self._password_hash = scrypt.hash(pre_hashed_password.hex())
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
-        return scrypt.verify(plaintext_password, self._password_hash)
+        domain = b"user_password_hash"
+        vault = current_app.config["VAULT"]
+        with temp_user_aad(self) as aad:
+            aad.append(self._password_revision_number.to_bytes(8, "big"))
+            aad.append(bytearray(plaintext_password, encoding="utf-8"))
+            pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
+        return scrypt.verify(pre_hashed_password.hex(), self.password_hash)
 
     @property
     def totp_secret(self) -> str | None:
-        return decrypt_field(self._totp_secret, domain=b"totp_secret")
+        domain = b"totp_secret"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._totp_secret, domain=domain, aad=aad)
 
     @totp_secret.setter
     def totp_secret(self, value: str) -> None:
-        if value is None:
-            self._totp_secret = None
-        else:
-            self._totp_secret = encrypt_field(value, domain=b"totp_secret")
+        domain = b"totp_secret"
+        with temp_user_aad(self) as aad:
+            self._totp_secret = encrypt_field(value, domain=domain, aad=aad)
 
     @property
     def email(self) -> str | None:
-        return decrypt_field(self._email, domain=b"user_email_address")
+        domain = b"user_email_address"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._email, domain=domain, aad=aad)
 
     @email.setter
     def email(self, value: str) -> None:
-        self._email = encrypt_field(value, domain=b"user_email_address")
+        domain = b"user_email_address"
+        with temp_user_aad(self) as aad:
+            self._email = encrypt_field(value, domain=domain, aad=aad)
 
     @property
     def smtp_server(self) -> str | None:
-        return decrypt_field(self._smtp_server, domain=b"smtp_server")
+        domain = b"smtp_server"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._smtp_server, domain=domain, aad=aad)
 
     @smtp_server.setter
     def smtp_server(self, value: str) -> None:
-        self._smtp_server = encrypt_field(value, domain=b"smtp_server")
+        domain = b"smtp_server"
+        with temp_user_aad(self) as aad:
+            self._smtp_server = encrypt_field(value, domain=domain, aad=aad)
 
     @property
     def smtp_username(self) -> str | None:
-        return decrypt_field(self._smtp_username, domain=b"smtp_username")
+        domain = b"smtp_username"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._smtp_username, domain=domain, aad=aad)
 
     @smtp_username.setter
     def smtp_username(self, value: str) -> None:
-        self._smtp_username = encrypt_field(value, domain=b"smtp_username")
+        domain = b"smtp_username"
+        with temp_user_aad(self) as aad:
+            self._smtp_username = encrypt_field(value, domain=domain, aad=aad)
 
     @property
     def smtp_password(self) -> str | None:
-        return decrypt_field(self._smtp_password, domain=b"smtp_password")
+        domain = b"smtp_password"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._smtp_password, domain=domain, aad=aad)
 
     @smtp_password.setter
     def smtp_password(self, value: str) -> None:
-        self._smtp_password = encrypt_field(value, domain=b"smtp_password")
+        domain = b"smtp_password"
+        with temp_user_aad(self) as aad:
+            self._smtp_password = encrypt_field(value, domain=domain, aad=aad)
 
     @property
     def pgp_key(self) -> str | None:
-        return decrypt_field(self._pgp_key, domain=b"user_pgp_key")
+        domain = b"user_pgp_key"
+        with temp_user_aad(self) as aad:
+            return decrypt_field(self._pgp_key, domain=domain, aad=aad)
 
     @pgp_key.setter
     def pgp_key(self, value: str) -> None:
-        if value is None:
-            self._pgp_key = None
-        else:
-            self._pgp_key = encrypt_field(value, domain=b"user_pgp_key")
+        domain = b"user_pgp_key"
+        with temp_user_aad(self) as aad:
+            self._pgp_key = encrypt_field(value, domain=domain, aad=aad)
 
     def update_display_name(self, new_display_name: str) -> None:
         """Update the user's display name and remove verification status if the user is verified."""
@@ -171,6 +233,24 @@ class User(Model):
     def __init__(self, primary_username: str) -> None:
         super().__init__()
         self.primary_username = primary_username
+        if self.query.filter_by(primary_username=primary_username).first() is None:
+            self._password_revision_number = 0
+            # hack: outputting bytearray but receiving bytes breaks mypy
+            setattr(self, "_aad_secret", secrets.token_bytes(32))
+
+
+@contextmanager
+def temp_user_aad(user: User) -> Generator[deque[bytes | bytearray], None, None]:
+    table_name = user.__tablename__.encode()
+    user_id = user.id.to_bytes(16, "big")
+    aad = deque([table_name, user_id, secret := user._aad_secret])
+    try:
+        yield aad
+    finally:
+        secret.clear()
+        while aad:
+            if isinstance(item := aad.pop(), bytearray):
+                item.clear()
 
 
 class AuthenticationLog(Model):
@@ -215,6 +295,7 @@ class SecondaryUsername(Model):
 
 class Message(Model):
     id = db.Column(db.Integer, primary_key=True)
+    _hidden_aad_secret = db.Column("_aad_secret", db.LargeBinary(255), nullable=False)
     _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
@@ -225,16 +306,54 @@ class Message(Model):
 
     def __init__(self, content: str, user_id: int) -> None:
         super().__init__()
-        self.content = content
         self.user_id = user_id
+        # hack: outputting bytearray but receiving bytes breaks mypy
+        setattr(self, "_aad_secret", secrets.token_bytes(32))
+        self.content = content
+
+    @property
+    def _aad_secret(self) -> bytearray:
+        domain = b"message_aad_secret"
+        aad = deque([self.user_id.to_bytes(16, "big")])
+        vault = current_app.config["VAULT"]
+        return bytearray(vault.decrypt(self._hidden_aad_secret, domain=domain, aad=aad))
+
+    @_aad_secret.setter
+    def _aad_secret(self, value: bytes) -> None:
+        domain = b"message_aad_secret"
+        aad = deque([self.user_id.to_bytes(16, "big")])
+        vault = current_app.config["VAULT"]
+        self._hidden_aad_secret = vault.encrypt(value, domain=domain, aad=aad)
 
     @property
     def content(self) -> str | None:
-        return decrypt_field(self._content, domain=b"message_content")
+        domain = b"user_message_content"
+        with temp_message_aad(self) as aad:
+            return decrypt_field(self._content, domain=domain, aad=aad)
 
     @content.setter
     def content(self, value: str) -> None:
-        self._content = encrypt_field(value, domain=b"message_content")
+        domain = b"user_message_content"
+        with temp_message_aad(self) as aad:
+            self._content = encrypt_field(value, domain=domain, aad=aad)
+
+
+@contextmanager
+def temp_message_aad(message: Message) -> Generator[deque[bytes | bytearray], None, None]:
+    user = User.query.get(message.user_id)
+    if user is None:
+        raise NoResultFound(f"The user.id: {message.user_id=} was not found.")
+    user_id = user.id.to_bytes(16, "big")
+    user_secret = user._aad_secret
+    aad = deque([user_id, user_secret, secret := message._aad_secret])
+    try:
+        yield aad
+    finally:
+        secret.clear()
+        user_secret.clear()
+        while aad:
+            if isinstance(item := aad.pop(), bytearray):
+                item.clear()
 
 
 class InviteCode(Model):
