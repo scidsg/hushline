@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.tab');
+    const tabPanels = document.querySelectorAll('.tab-content');
     const bioCountEl = document.querySelector('.bio-count');
     // Deletion account confirmation logic
     document.getElementById('deleteAccountButton')?.addEventListener('click', function(event) {
@@ -17,5 +19,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('bio').addEventListener('keyup', function(e) {
         bioCountEl.textContent = e.target.value.length;
+    });
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            window.activateTab(e, tabs, tabPanels);
+        });
+        tab.addEventListener('keydown', function(e) {
+            window.handleKeydown(e)
+        });
     });
 });
