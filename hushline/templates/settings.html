@@ -143,7 +143,7 @@
         <!-- SMTP Settings Section -->
         <h3>Email Delivery Settings</h3>
         {% if not user.pgp_key %}
-        <p class="info"><a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP key</a> below to enable email forwarding.</p>
+        <p class="info">👇 <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP key</a> below to enable email forwarding.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
@@ -162,7 +162,7 @@
         <!-- PGP Key Section -->
         <h3>Message Encryption</h3>
         {% if not user.pgp_key %}
-        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope" rel="noopener noreferrer" target="_blank">Start with our docs.</a></p>
+        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope" rel="noopener noreferrer" target="_blank" aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
