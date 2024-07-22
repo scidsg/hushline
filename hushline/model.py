@@ -100,8 +100,10 @@ class User(Model):
         vault = current_app.config["VAULT"]
         self._password_revision_number += 1
         with temp_user_aad(self) as aad:
-            aad.append(self._password_revision_number.to_bytes(8, "big"))
-            aad.append(bytearray(plaintext_password, encoding="utf-8"))
+            aad.append(byte_order := b"big")
+            aad.append(encoding := b"utf-8")
+            aad.append(self._password_revision_number.to_bytes(16, byte_order.decode()))
+            aad.append(bytearray(plaintext_password, encoding=encoding.decode()))
             # General Warnings & Guidelines:
             # https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
             #
@@ -122,8 +124,10 @@ class User(Model):
         domain = b"user_password_hash"
         vault = current_app.config["VAULT"]
         with temp_user_aad(self) as aad:
-            aad.append(self._password_revision_number.to_bytes(8, "big"))
-            aad.append(bytearray(plaintext_password, encoding="utf-8"))
+            aad.append(byte_order := b"big")
+            aad.append(encoding := b"utf-8")
+            aad.append(self._password_revision_number.to_bytes(16, byte_order.decode()))
+            aad.append(bytearray(plaintext_password, encoding=encoding.decode()))
             pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
         return argon2.verify(pre_hashed_password.hex(), self.password_hash)
 
