@@ -547,7 +547,8 @@ a.logoutLink {
 .message.encrypted p {
     font-family: var(--font-mono);
     font-size: calc(var(--font-size-smaller) * 1.0625);
-    white-space: break-spaces
+    white-space: break-spaces;
+    margin-top: .25rem;
 }
 
 footer {
