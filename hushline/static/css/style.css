@@ -22,6 +22,7 @@
   --font-size-2: 1.75rem;
   --font-size-3: 1.5rem;
   --font-size-4: 1.125rem;
+
 }
 
 @font-face {
@@ -1066,6 +1067,12 @@ textarea#bio {
     font-family: var(--font-sans-bold);
 }
 
+.highlight {
+    background-color: var(--color-highlight);
+    border-radius: .125rem;
+    font-family: var(--font-sans-bold);
+}
+
 .meta .search-highlight {
     font-family: var(--font-mono-medium);
 }
@@ -1077,6 +1084,14 @@ fieldset {
 
 fieldset:disabled {
     display: none;
+}
+
+p.section-intro:first-of-type {
+    margin: .75rem 0 1rem 0;
+}
+
+p.section-intro:not(:first-of-type) {
+    margin: 0 0 1rem 0;
 }
 
 @media only screen and (max-width: 768px) {
