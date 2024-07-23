@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import timedelta
-from importlib.metadata import version
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
@@ -11,8 +10,7 @@ from werkzeug.wrappers.response import Response
 from . import admin, routes, settings
 from .db import db
 from .model import User
-
-__version__ = version("hushline")
+from .version import __version__
 
 
 def create_app() -> Flask:
