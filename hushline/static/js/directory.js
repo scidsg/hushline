@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
+    const usersPerPage = 50; // change this value for testing purposes
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const offset = searchParams?.get('page') || 0;
+
 
     function updatePlaceholder() {
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
@@ -16,12 +21,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
+    function stylePagination(paginationCount) {
+        if(paginationCount < 1) return null
+        let paginationMarkUp = ""
+        for (let i = 0; i < paginationCount; i++) {
+            paginationMarkUp += `<li><a href="/directory${i > 0 ? `?page=${i + 1}` : ''}" class="pagination__item ${i === offset - 1 ? 'active' : ''}">${i + 1}</a></li>`
+        }
+        document.querySelector('.pagination').innerHTML = paginationMarkUp;
+        if(offset === 0) {
+            document.querySelector('.pagination__item:first-of-type').classList.add('active')
+        }
+    }
+
+
     function loadData() {
-        fetch(`${pathPrefix}/directory/users.json`)
+        const offsetLogic = offset > 0 ? offset - 1 : 0
+        const query = `count=${usersPerPage}&offset=${offsetLogic * usersPerPage}`
+        fetch(`${pathPrefix}/directory/users.json?${query}`)
             .then(response => response.json())
             .then(data => {
-                userData = data;
+                userData = data.users;
+                totalUserCount = data.pages;
+                stylePagination(totalUserCount / usersPerPage)
                 handleSearchInput(); // Initial display after data is loaded
+                
+                userData.filter((user) => user.is_verified).length === 0 ? tabs[1].click() : null
             })
             .catch(error => console.error('Failed to load user data:', error));
     }

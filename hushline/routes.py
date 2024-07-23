@@ -409,11 +409,13 @@ def init_app(app: Flask) -> None:
 
         # Sorts only by display name or username
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
-
-    def get_directory_users() -> list[User]:
+    def get_directory_users(count=50, offset=0) -> list[User]:
         return (
-            User.query.filter_by(show_in_directory=True)
+            User.query
+            .filter_by(show_in_directory=True)
             .order_by(User.is_admin.desc(), User.display_name.asc())
+            .limit(count)
+            .offset(offset)
             .all()
         )
 
@@ -428,18 +430,24 @@ def init_app(app: Flask) -> None:
         return {"logged_in": logged_in}
 
     @app.route("/directory/users.json")
-    def directory_users() -> list[dict[str, str]]:
-        return [
-            {
+    def directory_users() -> dict[str, int | list[dict[str, str]]]:
+        count = request.args.get('count')
+        offset = request.args.get('offset')
+        users = get_directory_users(count=count, offset=offset)
+        totalUserCount = User.query.filter_by(show_in_directory=True).count()
+        return {
+            "pages": totalUserCount,
+            "users": [
+                {
                 "primary_username": user.primary_username,
                 "display_name": user.display_name or user.primary_username,
                 "bio": user.bio,
                 "is_admin": user.is_admin,
                 "is_verified": user.is_verified,
-            }
-            for user in get_directory_users()
-        ]
-
+                }
+                for user in users
+            ]
+        }
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}
