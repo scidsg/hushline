@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Hush Line Personal Server{% endblock %}
+
+{% block content %}
+<h1>👋</h1>
+<h1>Welcome to Hush Line Personal Server</h1>
+
+<p>Congratulations on getting your Hush Line Personal Server!</p>
+
+<p>You can access this server using its IP address on the local network that it's connected to, or from anywhere on the
+    internet using Tor Browser at the following URL:</p>
+
+<pre>http://{{ config.ONION_HOSTNAME }}</pre>
+
+<p>To start, <a href="{{ url_for('register') }}">register an account</a>. Then share the onion URL publicly so that
+    sources can contact you anonymously.</p>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

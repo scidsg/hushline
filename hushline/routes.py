@@ -440,6 +440,13 @@ def init_app(app: Flask) -> None:
             for user in get_directory_users()
         ]
 
+    @app.route("/info")
+    def personal_server_info() -> Response | str:
+        if app.config["IS_PERSONAL_SERVER"]:
+            return render_template("personal_server_info.html")
+
+        return Response(status=404)
+
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}
