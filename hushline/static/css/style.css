@@ -125,7 +125,7 @@ a {
 p {
     word-break: break-word;
     margin: 1rem 0;
-    line-height: 1.5;
+    line-height: 1.40625;
 }
 
 p.instr {
@@ -405,7 +405,7 @@ label {
 p.meta {
     font-size: var(--font-size-small);
     color: var(--color-text-light);
-    line-height: 1.5;
+    line-height: 1.40625;
 }
 
 h3 + p.meta {
