@@ -26,13 +26,6 @@ You also need Rust to install some of the Python dependencies. Install [rustup](
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Using pipx, install Python packages required for linting and static type checking:
-
-```sh
-pipx install ruff
-pipx install mypy
-```
-
 ### Getting started
 
 Clone the Hush Line code:
@@ -45,25 +38,25 @@ cd hushline
 Install Poetry dependencies:
 
 ```sh
-poetry install
+make install
 ```
 
 Run the database migrations:
 
 ```sh
-poetry run make migrate
+make migrate
 ```
 
 Run the app in debug mode:
 
 ```sh
-poetry run make run
+make run
 ```
 
 Run the tests:
 
 ```sh
-poetry run make test
+make test
 ```
 
 Run the linters:
@@ -77,3 +70,11 @@ Format the code:
 ```sh
 poetry run make fix
 ```
+
+### Making DB changes
+
+Create a new revision:
+
+```sh
+make revision name="my db changes"
+``` 
