@@ -10,6 +10,7 @@ from werkzeug.wrappers.response import Response
 from . import admin, routes, settings
 from .db import db
 from .model import User
+from .version import __version__
 
 
 def create_app() -> Flask:
@@ -18,6 +19,7 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
+    app.config["VERSION"] = __version__
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
