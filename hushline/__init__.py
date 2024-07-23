@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import timedelta
+from importlib.metadata import version
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
@@ -11,6 +12,8 @@ from . import admin, routes, settings
 from .db import db
 from .model import User
 
+__version__ = version("hushline")
+
 
 def create_app() -> Flask:
     app = Flask(__name__)
@@ -18,6 +21,7 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
+    app.config["VERSION"] = __version__
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
