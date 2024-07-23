@@ -177,7 +177,6 @@ def create_blueprint() -> Blueprint:
             # Handle Change Password Form Submission
             if change_password_form.validate_on_submit():
                 if user.check_password(change_password_form.old_password.data):
-                    # Hash the new password using scrypt and update the user object
                     user.password_hash = change_password_form.new_password.data
                     db.session.commit()
                     flash("👍 Password changed successfully.")
