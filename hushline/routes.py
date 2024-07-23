@@ -422,7 +422,7 @@ def init_app(app: Flask) -> None:
         logged_in = "user_id" in session
         return render_template("directory.html", users=get_directory_users(), logged_in=logged_in)
 
-    @app.route('/directory/get-session-user.json')
+    @app.route("/directory/get-session-user.json")
     def session_user() -> dict[str, bool]:
         logged_in = "user_id" in session
         return {"logged_in": logged_in}
@@ -439,6 +439,13 @@ def init_app(app: Flask) -> None:
             }
             for user in get_directory_users()
         ]
+
+    @app.route("/info")
+    def personal_server_info() -> Response | str:
+        if app.config["IS_PERSONAL_SERVER"]:
+            return render_template("personal_server_info.html")
+
+        return Response(status=404)
 
     @app.route("/health.json")
     def health() -> dict[str, str]:
