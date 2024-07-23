@@ -17,11 +17,13 @@ run: migrate ## Run the app
 
 .PHONY: lint
 lint: ## Lint the code
+	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
 
 .PHONY: fix
 fix: ## Format the code
+	poetry run ruff format && \
 	poetry run ruff check --fix
 
 .PHONY: migrate
@@ -33,7 +35,7 @@ migrate: ## Apply migrations
 revision:  ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
-endif 
+endif
 	. ./dev_env.sh && \
 	poetry run flask db revision -m "$(message)"
 
