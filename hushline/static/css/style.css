@@ -9,6 +9,7 @@
   --border: 1px solid var(--color-border);
 
   --font-mono: 'IBM Plex Mono', monospace;
+  --font-mono-medium: 'IBM Plex Mono Medium', monospace;
   --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
   --font-sans-bold: 'Atkinson Bold', Helvetica, Arial, sans-serif;
 
@@ -39,6 +40,12 @@
     font-family: "IBM Plex Mono";
     src: url("../fonts/mono/IBMPlexMono-Regular.woff") format("woff"),
         url("../fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono Medium";
+    src: url("../fonts/mono/IBMPlexMono-Medium.woff") format("woff"),
+        url("../fonts/mono/IBMPlexMono-Medium.woff2") format("woff2");
 }
 
 body {
@@ -117,6 +124,7 @@ a {
 p {
     word-break: break-word;
     margin: 1rem 0;
+    line-height: 1.5;
 }
 
 p.instr {
@@ -396,7 +404,12 @@ label {
 p.meta {
     font-size: var(--font-size-small);
     color: var(--color-text-light);
-    line-height: 1.4;
+    line-height: 1.5;
+}
+
+h3 + p.meta {
+    margin-top: .75rem;
+
 }
 
 .dirMeta,
@@ -547,7 +560,8 @@ a.logoutLink {
 .message.encrypted p {
     font-family: var(--font-mono);
     font-size: calc(var(--font-size-smaller) * 1.0625);
-    white-space: break-spaces
+    white-space: break-spaces;
+    margin-top: .25rem;
 }
 
 footer {
@@ -636,8 +650,6 @@ img.upgrade {
 .promo p {
     font-size: var(--font-size-base);
     max-width: 80%;
-    line-height: 145%;
-
 }
 
 .formBody .promo .primaryBtn {
@@ -745,7 +757,7 @@ img.upgrade {
     min-height: 0;
     min-width: 0;
     padding: .25rem .75rem;
-    margin-top: 1rem;
+    margin-top: 0;
     margin-bottom: 0;
 }
 
@@ -888,6 +900,10 @@ a.dropbtn:hover {
     box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
+.admin-highlights .metric p {
+    margin: .25rem 0;
+}
+
 .highlight {
     background-color: #c6ffff;
     padding: .125rem .25rem;
@@ -957,6 +973,10 @@ a.dropbtn:hover {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
     margin: .25rem 0;
+}
+
+.formBody .user .meta {
+    margin: .125rem 0;
 }
 
 .user h3 {
@@ -1047,8 +1067,7 @@ textarea#bio {
 }
 
 .meta .search-highlight {
-    font-family: var(--font-mono);
-    font-weight: bold;
+    font-family: var(--font-mono-medium);
 }
 
 fieldset {
