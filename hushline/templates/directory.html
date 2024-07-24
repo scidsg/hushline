@@ -11,11 +11,11 @@
         <ul class="tab-list" role="tablist">
             <li role="presentation">
                 <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
-                    aria-controls="verified" id="verified-tab" type="button">Verified</button>
+                    aria-controls="verified" id="verified-tab">Verified</button>
             </li>
             <li role="presentation">
                 <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
-                    id="all-tab" type="button">All</button>
+                    id="all-tab">All</button>
             </li>
         </ul>
     </div>
@@ -31,7 +31,7 @@
 <div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
     {% if not logged_in %}
     <p class="meta dirMeta">⭐️ Verified accounts are offered to individuals who have
-        have manually verified their identities with a member of our staff. <a
+        manually verified their identities with a member of our staff. <a
             href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
             target="_blank" rel="noopener noreferrer">Learn more about verification</a>.</p>
     {% endif %}
@@ -72,7 +72,7 @@
     </div>
 </div>
 {% endif %}
-<div id="all" {% if is_personal_server %}class="tab-content active" role="tabpanel" aria-labelledby="all-users-tab"{% endif %}>
+<div id="all" class="tab-content {% if is_personal_server %}active{% endif %}" role="tabpanel" aria-labelledby="all-users-tab">
     <div class="user-list">
         {% for user in users %}
         {% if user.show_in_directory %}
