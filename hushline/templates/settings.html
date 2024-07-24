@@ -180,7 +180,7 @@
     <div id="advanced" class="tab-content" role="tabpanel" aria-labelledby="advanced-tab" hidden>
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
-        <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+        <p class="meta">⚠️ Deleting your account is a permanent action that cannot be undone!</p>
         <form method="POST" action="{{ url_for('settings.delete_account') }}">
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>
