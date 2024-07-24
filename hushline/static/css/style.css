@@ -1261,3 +1261,29 @@ button[name="update_directory_visibility"] {
         width: 100%;
     }
 }
+
+
+.pagination {
+    display: flex;
+    list-style-type: none;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    margin-top: 2rem;
+}
+
+.pagination:empty {
+    display: none;
+    margin-top: 0px;
+}
+
+.pagination a {
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.pagination a.active {
+    font-family: var(--font-sans-bold);
+    color: var(--color-brand)
+}
