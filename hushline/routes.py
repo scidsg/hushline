@@ -421,7 +421,7 @@ def init_app(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         is_personal_server = app.config["IS_PERSONAL_SERVER"]
-        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in, 
+        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in,
                                is_personal_server=is_personal_server)
 
     @app.route("/directory/get-session-user.json")
