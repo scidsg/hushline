@@ -125,8 +125,19 @@ a {
 
 p {
     word-break: break-word;
-    margin: 1rem 0;
+    margin: .5rem 0;
     line-height: var(--line-height-base);
+}
+
+code {
+  line-break: anywhere;
+  padding: .5rem;
+  font-size: var(--font-size-smaller);
+  border: var(--border);
+  font-family: var(--font-mono);
+  background-color: white;
+  border-radius: .25rem;
+  margin: .5rem 0;
 }
 
 p.instr {
