@@ -443,7 +443,7 @@ def init_app(app: Flask) -> None:
             for user in get_directory_users()
         ]
 
-    def get_ip_address():
+    def get_ip_address() -> str:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.connect(("1.1.1.1", 1))
@@ -455,8 +455,8 @@ def init_app(app: Flask) -> None:
         return ip_address
 
     @app.route("/info")
-    def personal_server_info() -> Response | str:
-        if app.config["IS_PERSONAL_SERVER"]:
+    def personal_server_info() -> Response:
+        if app.config.get("IS_PERSONAL_SERVER"):
             ip_address = get_ip_address()
             return render_template(
                 "personal_server_info.html",
