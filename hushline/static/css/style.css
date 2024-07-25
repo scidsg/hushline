@@ -23,7 +23,7 @@
   --font-size-3: 1.5rem;
   --font-size-4: 1.125rem;
 
-  --line-height-base: 1.40625;
+  --line-height-base: 1.5;
 }
 
 @font-face {
@@ -79,7 +79,7 @@ h6 {
     margin: 0 0 .5rem 0;
     font-family: var(--font-sans-bold);
     font-weight: normal;
-    line-height: 1.1;
+    line-height: 1.2;
 }
 
 h1 {
@@ -570,7 +570,7 @@ footer {
     position: fixed;
     bottom: 0;
     left: 0;
-    font-size: var(--font-size-small);
+    font-size: var(--font-size-smaller);
     padding: .625rem 1rem;
     background-color: #fbf3ff;
     border-radius: 0 .25rem 0 0;
