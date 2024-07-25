@@ -13,6 +13,8 @@ from flask import (
     request,
     session,
     url_for,
+    Response,
+    make_response,
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
@@ -458,12 +460,11 @@ def init_app(app: Flask) -> None:
     def personal_server_info() -> Response:
         if app.config.get("IS_PERSONAL_SERVER"):
             ip_address = get_ip_address()
-            response = make_response(render_template(
+            return make_response(render_template(
                 "personal_server_info.html",
                 is_personal_server=True,
                 ip_address=ip_address
             ))
-            return response
         return Response(status=404)
 
     @app.route("/health.json")
