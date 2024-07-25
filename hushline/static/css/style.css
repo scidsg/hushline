@@ -139,6 +139,7 @@ pre {
   background-color: white;
   border-radius: .25rem;
   margin: .5rem 0;
+  white-space: break-spaces;
 }
 
 p.instr {

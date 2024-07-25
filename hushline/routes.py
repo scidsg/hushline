@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import socket
 from datetime import datetime, timedelta
 
 import pyotp
@@ -442,11 +443,23 @@ def init_app(app: Flask) -> None:
             for user in get_directory_users()
         ]
 
+    def get_ip_address():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Doesn't have to be reachable, just needs to be a valid IP address
+            s.connect(("1.1.1.1", 1))
+            ip_address = s.getsockname()[0]
+        except Exception:
+            ip_address = "127.0.0.1"
+        finally:
+            s.close()
+        return ip_address
+
     @app.route("/info")
     def personal_server_info() -> Response | str:
         if app.config["IS_PERSONAL_SERVER"]:
-            return render_template("personal_server_info.html", is_personal_server=True)
-
+            ip_address = get_ip_address()
+            return render_template("personal_server_info.html", is_personal_server=True, ip_address=ip_address)
         return Response(status=404)
 
     @app.route("/health.json")
