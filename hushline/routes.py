@@ -446,7 +446,6 @@ def init_app(app: Flask) -> None:
     def get_ip_address():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            # Doesn't have to be reachable, just needs to be a valid IP address
             s.connect(("1.1.1.1", 1))
             ip_address = s.getsockname()[0]
         except Exception:
@@ -459,8 +458,11 @@ def init_app(app: Flask) -> None:
     def personal_server_info() -> Response | str:
         if app.config["IS_PERSONAL_SERVER"]:
             ip_address = get_ip_address()
-            return render_template("personal_server_info.html", is_personal_server=True,
-                                   ip_address=ip_address)
+            return render_template(
+                "personal_server_info.html",
+                is_personal_server=True,
+                ip_address=ip_address
+            )
         return Response(status=404)
 
     @app.route("/health.json")
