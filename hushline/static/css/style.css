@@ -129,7 +129,8 @@ p {
     line-height: var(--line-height-base);
 }
 
-code {
+code,
+pre {
   line-break: anywhere;
   padding: .5rem;
   font-size: var(--font-size-smaller);
