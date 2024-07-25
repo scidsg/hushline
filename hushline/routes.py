@@ -8,13 +8,12 @@ import pyotp
 from flask import (
     Flask,
     flash,
+    make_response,
     redirect,
     render_template,
     request,
     session,
     url_for,
-    Response,
-    make_response,
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
