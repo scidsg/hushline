@@ -117,6 +117,7 @@ def init_app(app: Flask) -> None:
             messages=messages,
             is_secondary=False,
             secondary_usernames=secondary_users_dict,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"]
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
@@ -194,6 +195,7 @@ def init_app(app: Flask) -> None:
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"]
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
@@ -263,7 +265,8 @@ def init_app(app: Flask) -> None:
             flash("👍 Registration successful! Please log in.", "success")
             return redirect(url_for("login"))
 
-        return render_template("register.html", form=form, require_invite_code=require_invite_code)
+        return render_template("register.html", form=form, require_invite_code=require_invite_code,
+                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
@@ -295,7 +298,8 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox", username=user.primary_username))
 
             flash("⛔️ Invalid username or password")
-        return render_template("login.html", form=form)
+        return render_template("login.html", form=form,
+                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
@@ -368,7 +372,8 @@ def init_app(app: Flask) -> None:
             flash("⛔️ Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
 
-        return render_template("verify_2fa_login.html", form=form)
+        return render_template("verify_2fa_login.html", form=form,
+                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
 
     @app.route("/logout")
     @require_2fa
