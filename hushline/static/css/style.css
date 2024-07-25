@@ -1108,18 +1108,16 @@ p.section-intro:not(:first-of-type) {
 }
 
 @media only screen and (max-width: 768px) {
-    header {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }   
-}
-
-@media only screen and (max-width: 640px) {
 
     .container {
         min-width: initial;
         padding: 2rem 1.25rem;
     }
+
+    header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    } 
 
     header nav ul {
         display: none;
