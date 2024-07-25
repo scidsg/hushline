@@ -18,7 +18,7 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
 
     # Validate response
     assert response.status_code == 200
-    assert "Registration successful! Please log in." in response.text
+    assert "🎉 Registration successful!" in response.text
 
     # Verify user is added to the database
     user = User.query.filter_by(primary_username="test_user").first()

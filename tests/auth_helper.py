@@ -20,7 +20,7 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
 
     # Validate response
     assert response.status_code == 200
-    assert b"Registration successful! Please log in." in response.data
+    assert b"🎉 Registration successful!" in response.data
 
     # Verify user is added to the database
     user = User.query.filter_by(primary_username=username).first()
