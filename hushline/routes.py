@@ -262,7 +262,7 @@ def init_app(app: Flask) -> None:
             db.session.add(new_user)
             db.session.commit()
 
-            flash("🎉 Registration successful!", "success")
+            flash("Registration successful!", "success")
             return redirect(url_for("login"))
 
         return render_template("register.html", form=form, require_invite_code=require_invite_code,
