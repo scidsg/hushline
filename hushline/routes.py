@@ -445,7 +445,7 @@ def init_app(app: Flask) -> None:
     @app.route("/info")
     def personal_server_info() -> Response | str:
         if app.config["IS_PERSONAL_SERVER"]:
-            return render_template("personal_server_info.html")
+            return render_template("personal_server_info.html", is_personal_server=True)
 
         return Response(status=404)
 
