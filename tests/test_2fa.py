@@ -11,13 +11,13 @@ from flask.testing import FlaskClient
 LoginData: TypeAlias = dict[str, str]
 
 @pytest.fixture()
-def nonce(len: int = 7) -> str:
+def nonce(len: int = 15) -> str:
   return ''.join(random.choices(string.ascii_lowercase +  # noqa: S311
                              string.digits, k=len))
 
 @pytest.fixture()
 def login_data(nonce: str) -> LoginData:
-  return {"username": "test_user" + nonce, "password": "SecurePassword123!"}
+  return {"username": "test_user_" + nonce, "password": "SecurePassword123!"}
 
 def test_enable_2fa(client: FlaskClient) -> None:
     user, totp_secret = register_user_2fa(client, "test_user", "SecurePassword123!")
