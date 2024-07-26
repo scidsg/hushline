@@ -32,18 +32,18 @@ def _summon_db_secret(*, name: str, length: int = 32) -> bytearray:
 
 def _interactive_encryption_seed(app: Flask) -> None:
     app.config["VAULT"] = SecretsManager(
-        bytearray(getpass.getpass("admin secret: "), encoding="utf-8"),
+        admin_secret=bytearray(getpass.getpass("admin secret: "), encoding="utf-8"),
         salt=_summon_db_secret(name=InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME),
     )
 
 
 def _environment_encryption_seed(app: Flask) -> None:
-    admin_secret = os.environ.get("ADMIN_SECRET", "")
+    admin_secret = bytearray(urlsafe_b64decode(os.environ.get("ADMIN_SECRET", "")))
     if not admin_secret:
         raise ValueError("Admin secret not found. Please check your .env file.")
 
     app.config["VAULT"] = SecretsManager(
-        bytearray(urlsafe_b64decode(admin_secret)),
+        admin_secret=admin_secret,
         salt=_summon_db_secret(name=InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME),
     )
 
