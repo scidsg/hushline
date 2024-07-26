@@ -246,12 +246,13 @@ class User(Model):
 @contextmanager
 def temp_user_aad(user: User) -> Generator[deque[bytes | bytearray], None, None]:
     table_name = user.__tablename__.encode()
-    user_id = user.id.to_bytes(16, "big")
-    aad = deque([table_name, user_id, secret := user._aad_secret])
+    user_id = user.id.to_bytes(16, byte_order := "big")
+    user_secret = user._aad_secret
+    aad = deque([table_name, byte_order.encode(), user_id, user_secret])
     try:
         yield aad
     finally:
-        secret.clear()
+        user_secret.clear()
         while aad:
             if isinstance(item := aad.pop(), bytearray):
                 item.clear()
@@ -318,14 +319,16 @@ class Message(Model):
     @property
     def _aad_secret(self) -> bytearray:
         domain = b"message_aad_secret"
-        aad = deque([self.user_id.to_bytes(16, "big")])
+        user_id = self.user_id.to_bytes(16, byte_order := "big")
+        aad = deque([byte_order.encode(), user_id])
         vault = current_app.config["VAULT"]
         return bytearray(vault.decrypt(self._hidden_aad_secret, domain=domain, aad=aad))
 
     @_aad_secret.setter
     def _aad_secret(self, value: bytes) -> None:
         domain = b"message_aad_secret"
-        aad = deque([self.user_id.to_bytes(16, "big")])
+        user_id = self.user_id.to_bytes(16, byte_order := "big")
+        aad = deque([byte_order.encode(), user_id])
         vault = current_app.config["VAULT"]
         self._hidden_aad_secret = vault.encrypt(value, domain=domain, aad=aad)
 
@@ -347,14 +350,15 @@ def temp_message_aad(message: Message) -> Generator[deque[bytes | bytearray], No
     user = User.query.get(message.user_id)
     if user is None:
         raise NoResultFound(f"The user.id: {message.user_id=} was not found.")
-    user_id = user.id.to_bytes(16, "big")
+    user_id = user.id.to_bytes(16, byte_order := "big")
     user_secret = user._aad_secret
-    aad = deque([user_id, user_secret, secret := message._aad_secret])
+    message_secret = message._aad_secret
+    aad = deque([byte_order.encode(), user_id, user_secret, message_secret])
     try:
         yield aad
     finally:
-        secret.clear()
         user_secret.clear()
+        message_secret.clear()
         while aad:
             if isinstance(item := aad.pop(), bytearray):
                 item.clear()
