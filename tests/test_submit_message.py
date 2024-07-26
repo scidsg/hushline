@@ -11,7 +11,7 @@ os.environ["IS_PERSONAL_SERVER"] = "true"
 
 
 @pytest.fixture()
-def client():
+def client() -> FlaskClient:
     from hushline import create_app  # Import your create_app function
 
     app = create_app()
