@@ -25,7 +25,7 @@ class InfrastructureAdmin(Model):
     _FLASK_COOKIE_SECRET_KEY_NAME: str = "flask_cookie_secret_key"
 
     name = db.Column(db.String(255), primary_key=True)
-    _value = db.Column(db.LargeBinary(255), nullable=False)
+    _value = db.Column("value", db.LargeBinary(255), nullable=False)
 
     def __init__(self, name: str, value: bytes | bytearray) -> None:
         super().__init__()
