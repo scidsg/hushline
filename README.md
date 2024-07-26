@@ -4,7 +4,7 @@
 
 [More project information...](https://github.com/scidsg/project-info/tree/main/hush-line)
 
-![repo](https://github.com/user-attachments/assets/eb1cfb02-6959-43bc-b782-6cf31c257f85)
+![repo](https://github.com/user-attachments/assets/4631b1aa-5c0a-45c2-b200-d263478b1758)
 
 ## Contribution Guidelines
 
