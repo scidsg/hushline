@@ -112,6 +112,10 @@ h2.submit~p+.instr {
     margin-top: .25rem
 }
 
+h2.submit~p.bio+.instr {
+    margin-top: 0;
+}
+
 h2.submit~.bio {
     margin: .75rem 0 1rem 0;
 }
@@ -162,6 +166,10 @@ p.instr {
 
 .badgeContainer:empty {
     margin: 0;
+}
+
+h2.submit~.badgeContainer+p {
+    margin-top: .5rem;
 }
 
 p.badge {
