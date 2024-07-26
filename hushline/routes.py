@@ -198,18 +198,18 @@ def init_app(app: Flask) -> None:
                         user.email, "New Message", content_to_save, user, sender_email
                     )
                     flash_message = (
-                        "Message submitted and email sent successfully."
+                        "👍 Message submitted successfully."
                         if email_sent
-                        else "Message submitted, but failed to send email."
+                        else "👍 Message submitted successfully."
                     )
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
                     flash(
-                        "Message submitted, but an error occurred while sending email.", "warning"
+                        "👍 Message submitted successfully.", "warning"
                     )
             else:
-                flash("Message submitted successfully.")
+                flash("👍 Message submitted successfully.")
 
             return redirect(url_for("submit_message", username=username))
 
