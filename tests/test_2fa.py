@@ -1,16 +1,36 @@
+import random
 import secrets
+import string
+from typing import TypeAlias
 
 import pyotp
+import pytest
 from auth_helper import register_user_2fa
 from flask.testing import FlaskClient
+
+LoginData: TypeAlias = dict[str, str]
+
+
+@pytest.fixture()
+def nonce(length: int = 15) -> str:
+    return "".join(
+        random.choices(  # noqa: S311
+            string.ascii_lowercase + string.digits,
+            k=length,
+        )
+    )
+
+
+@pytest.fixture()
+def login_data(nonce: str) -> LoginData:
+    return {"username": "test_user_" + nonce, "password": "SecurePassword123!"}
 
 
 def test_enable_2fa(client: FlaskClient) -> None:
     user, totp_secret = register_user_2fa(client, "test_user", "SecurePassword123!")
 
 
-def test_valid_2fa_should_login(client: FlaskClient) -> None:
-    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+def test_valid_2fa_should_login(client: FlaskClient, login_data: LoginData) -> None:
     user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
 
     # Logging in should now require 2FA
@@ -28,8 +48,7 @@ def test_valid_2fa_should_login(client: FlaskClient) -> None:
     assert valid_2fa_response.status_code == 200
 
 
-def test_invalid_2fa_should_not_login(client: FlaskClient) -> None:
-    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+def test_invalid_2fa_should_not_login(client: FlaskClient, login_data: LoginData) -> None:
     user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
 
     # Start logging in
@@ -54,8 +73,7 @@ def test_invalid_2fa_should_not_login(client: FlaskClient) -> None:
     assert "Invalid 2FA code" in invalid_2fa_response.text
 
 
-def test_reuse_of_2fa_code_should_fail(client: FlaskClient) -> None:
-    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+def test_reuse_of_2fa_code_should_fail(client: FlaskClient, login_data: LoginData) -> None:
     user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
 
     # Make sure we have a valid verification code
@@ -85,8 +103,7 @@ def test_reuse_of_2fa_code_should_fail(client: FlaskClient) -> None:
     assert valid_2fa_response.status_code == 429
 
 
-def test_limit_invalid_2fa_guesses(client: FlaskClient) -> None:
-    login_data = {"username": "test_user", "password": "SecurePassword123!"}
+def test_limit_invalid_2fa_guesses(client: FlaskClient, login_data: LoginData) -> None:
     user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
 
     # Make sure we have a valid verification code
