@@ -2,18 +2,22 @@
 {% block title %}Hush Line Personal Server{% endblock %}
 
 {% block content %}
-<h1>👋</h1>
-<h1>Welcome to Hush Line Personal Server</h1>
+<h1>Welcome to Hush Line</h1>
 
-<p>Congratulations on getting your Hush Line Personal Server!</p>
+<p>👋 The Hush Line Personal Server is an anonymous whistleblowing platform intended for lawyers, journalists, educators, and business leaders to offer a safe and private way to receive messages from their communities.</p>
 
-<p>You can access this server using its IP address on the local network that it's connected to, or from anywhere on the
-    internet using Tor Browser at the following URL:</p>
+<p>You can access the platform using <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a> with the following URL:</p>
 
 <pre>http://{{ config.ONION_HOSTNAME }}</pre>
 
+<p>Or, you can access the service from the network the device is connected to using the address:</p>
+
+<pre>https://{{ ip_address }}</pre>
+
 <p>To start, <a href="{{ url_for('register') }}">register an account</a>. Then share the onion URL publicly so that
     sources can contact you anonymously.</p>
+
+<p>Learn more at <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">https://hushline.app</a>.</p>
 
 {% endblock %}
 
