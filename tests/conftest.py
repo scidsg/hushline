@@ -24,6 +24,7 @@ def app(_config: None) -> Generator[Flask, None, None]:
     os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     os.environ["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    os.environ["IS_PERSONAL_SERVER"] = "True"
 
     app = create_app()
     app.config["TESTING"] = True
