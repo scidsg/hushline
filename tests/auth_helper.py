@@ -8,12 +8,23 @@ from flask.testing import FlaskClient
 from hushline.model import AuthenticationLog, User
 
 
+def extract_csrf_token(response_data: str) -> str:
+    """Extract CSRF token from HTML response data."""
+    soup = bs4.BeautifulSoup(response_data, "html.parser")
+    csrf_token = soup.find("input", {"name": "csrf_token"})["value"]
+    return csrf_token
+
+
 def register_user(client: FlaskClient, username: str, password: str) -> User:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
+    # Get CSRF token from the registration page
+    response = client.get("/register")
+    csrf_token = extract_csrf_token(response.data.decode())
+
     # User registration data
-    user_data = {"username": username, "password": password}
+    user_data = {"username": username, "password": password, "csrf_token": csrf_token}
 
     # Post request to register a new user
     response = client.post("/register", data=user_data, follow_redirects=True)
@@ -83,8 +94,12 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
 
 
 def login_user(client: FlaskClient, username: str, password: str) -> User | None:
+    # Get CSRF token from the login page
+    response = client.get("/login")
+    csrf_token = extract_csrf_token(response.data.decode())
+
     # Login data should match the registration data
-    login_data = {"username": username, "password": password}
+    login_data = {"username": username, "password": password, "csrf_token": csrf_token}
 
     # Attempt to log in with the registered user
     response = client.post("/login", data=login_data, follow_redirects=True)
