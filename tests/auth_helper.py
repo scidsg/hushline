@@ -11,8 +11,7 @@ from hushline.model import AuthenticationLog, User
 def extract_csrf_token(response_data: str) -> str:
     """Extract CSRF token from HTML response data."""
     soup = bs4.BeautifulSoup(response_data, "html.parser")
-    csrf_token = soup.find("input", {"name": "csrf_token"})["value"]
-    return csrf_token
+    return soup.find("input", {"name": "csrf_token"})["value"]
 
 
 def register_user(client: FlaskClient, username: str, password: str) -> User:
