@@ -1,12 +1,14 @@
 import logging
 import os
 import re
+import socket
 from datetime import datetime, timedelta
 
 import pyotp
 from flask import (
     Flask,
     flash,
+    make_response,
     redirect,
     render_template,
     request,
@@ -89,7 +91,7 @@ def init_app(app: Flask) -> None:
     def inbox() -> Response | str:
         # Redirect if not logged in
         if "user_id" not in session:
-            flash("Please log in to access your inbox.")
+            flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
         logged_in_user_id = session["user_id"]
@@ -115,6 +117,7 @@ def init_app(app: Flask) -> None:
             messages=messages,
             is_secondary=False,
             secondary_usernames=secondary_users_dict,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
@@ -122,7 +125,7 @@ def init_app(app: Flask) -> None:
         form = MessageForm()
         user = User.query.filter_by(primary_username=username).first()
         if not user:
-            flash("User not found.")
+            flash("🫥 User not found.")
             return redirect(url_for("index"))
 
         if form.validate_on_submit():
@@ -141,12 +144,12 @@ def init_app(app: Flask) -> None:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
                     if not encrypted_content:
-                        flash("Failed to encrypt message with PGP key.", "error")
+                        flash("⛔️ Failed to encrypt message.", "error")
                         return redirect(url_for("submit_message", username=username))
                     content_to_save = encrypted_content
                 except Exception as e:
                     app.logger.error("Encryption failed: %s", str(e), exc_info=True)
-                    flash("Failed to encrypt message due to an error.", "error")
+                    flash("⛔️ Failed to encrypt message.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
                 content_to_save = full_content
@@ -169,18 +172,16 @@ def init_app(app: Flask) -> None:
                         user.email, "New Message", content_to_save, user, sender_email
                     )
                     flash_message = (
-                        "Message submitted and email sent successfully."
+                        "👍 Message submitted successfully."
                         if email_sent
-                        else "Message submitted, but failed to send email."
+                        else "👍 Message submitted successfully."
                     )
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash(
-                        "Message submitted, but an error occurred while sending email.", "warning"
-                    )
+                    flash("👍 Message submitted successfully.", "warning")
             else:
-                flash("Message submitted successfully.")
+                flash("👍 Message submitted successfully.")
 
             return redirect(url_for("submit_message", username=username))
 
@@ -192,6 +193,7 @@ def init_app(app: Flask) -> None:
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
@@ -259,10 +261,15 @@ def init_app(app: Flask) -> None:
             new_user.password_hash = password  # This triggers the password_hash setter
             db.session.commit()
 
-            flash("👍 Registration successful! Please log in.", "success")
+            flash("Registration successful!", "success")
             return redirect(url_for("login"))
 
-        return render_template("register.html", form=form, require_invite_code=require_invite_code)
+        return render_template(
+            "register.html",
+            form=form,
+            require_invite_code=require_invite_code,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
+        )
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
@@ -294,7 +301,9 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox", username=user.primary_username))
 
             flash("⛔️ Invalid username or password")
-        return render_template("login.html", form=form)
+        return render_template(
+            "login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+        )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
@@ -367,7 +376,9 @@ def init_app(app: Flask) -> None:
             flash("⛔️ Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
 
-        return render_template("verify_2fa_login.html", form=form)
+        return render_template(
+            "verify_2fa_login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+        )
 
     @app.route("/logout")
     @require_2fa
@@ -392,9 +403,9 @@ def init_app(app: Flask) -> None:
             if user:
                 user.show_in_directory = "show_in_directory" in request.form
             db.session.commit()
-            flash("Directory visibility updated.")
+            flash("👍 Directory visibility updated.")
         else:
-            flash("You need to be logged in to update settings.")
+            flash("⛔️ You need to be logged in to update settings.")
         return redirect(url_for("settings.index"))
 
     def sort_users_by_display_name(users: list[User], admin_first: bool = True) -> list[User]:
@@ -421,7 +432,13 @@ def init_app(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in)
+        is_personal_server = app.config["IS_PERSONAL_SERVER"]
+        return render_template(
+            "directory.html",
+            users=get_directory_users(),
+            logged_in=logged_in,
+            is_personal_server=is_personal_server,
+        )
 
     @app.route("/directory/get-session-user.json")
     def session_user() -> dict[str, bool]:
@@ -441,11 +458,26 @@ def init_app(app: Flask) -> None:
             for user in get_directory_users()
         ]
 
-    @app.route("/info")
-    def personal_server_info() -> Response | str:
-        if app.config["IS_PERSONAL_SERVER"]:
-            return render_template("personal_server_info.html")
+    def get_ip_address() -> str:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("1.1.1.1", 1))
+            ip_address = s.getsockname()[0]
+        except Exception:
+            ip_address = "127.0.0.1"
+        finally:
+            s.close()
+        return ip_address
 
+    @app.route("/info")
+    def personal_server_info() -> Response:
+        if app.config.get("IS_PERSONAL_SERVER"):
+            ip_address = get_ip_address()
+            return make_response(
+                render_template(
+                    "personal_server_info.html", is_personal_server=True, ip_address=ip_address
+                )
+            )
         return Response(status=404)
 
     @app.route("/health.json")

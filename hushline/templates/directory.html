@@ -2,22 +2,24 @@
 {% block title %}Directory{% endblock %}
 {% block content %}
 <h2>User Directory</h2>
-{% if not logged_in %}
-<p class="helper section-intro">👋 Hush Line connects whistleblowers with lawyers, journalists, business leaders, 
-    and more. <mark class="highlight">We advise speaking to a legal professional before taking any confidential information from your workplace.</mark></p>
+{% if not is_personal_server %}
+    {% if not logged_in %}
+    <p class="helper section-intro">👋 Hush Line connects whistleblowers with lawyers, journalists, business leaders, 
+        and more. <mark class="highlight">We advise speaking to a legal professional before taking any confidential information from your workplace.</mark></p>
+    {% endif %}
+    <div class="directory-tabs">
+        <ul class="tab-list" role="tablist">
+            <li role="presentation">
+                <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
+                    aria-controls="verified" id="verified-tab">Verified</button>
+            </li>
+            <li role="presentation">
+                <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
+                    id="all-tab">All</button>
+            </li>
+        </ul>
+    </div>
 {% endif %}
-<div class="directory-tabs">
-    <ul class="tab-list" role="tablist">
-        <li role="presentation">
-            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
-                aria-controls="verified" id="verified-tab" type="button">Verified</button>
-        </li>
-        <li role="presentation">
-            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
-                id="all-tab" type="button">All</button>
-        </li>
-    </ul>
-</div>
 <div class="search-box">
     <label id="searchIcon" for="searchInput" aria-label="Search users">
         <img src="{{ url_for('static', filename='img/app/icon-search.png') }}" alt="">
@@ -25,10 +27,11 @@
     <input type="text" id="searchInput" placeholder="Search users...">
     <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="Clear search field">&times;</button>
 </div>
+{% if not is_personal_server %}
 <div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
     {% if not logged_in %}
     <p class="meta dirMeta">⭐️ Verified accounts are offered to individuals who have
-        have manually verified their identities with a member of our staff. <a
+        manually verified their identities with a member of our staff. <a
             href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
             target="_blank" rel="noopener noreferrer">Learn more about verification</a>.</p>
     {% endif %}
@@ -68,7 +71,8 @@
         {% endfor %}
     </div>
 </div>
-<div id="all" class="tab-content">
+{% endif %}
+<div id="all" class="tab-content {% if is_personal_server %}active{% endif %}" role="tabpanel" aria-labelledby="all-users-tab">
     <div class="user-list">
         {% for user in users %}
         {% if user.show_in_directory %}
@@ -107,5 +111,9 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% if is_personal_server %}
+<script src="{{ url_for('static', filename='js/directory_personal_server.js') }}"></script>
+{% else %}
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+{% endif %}
 {% endblock %}
