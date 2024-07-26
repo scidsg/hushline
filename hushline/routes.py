@@ -122,6 +122,19 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
+    def verify_hcaptcha(hcaptcha_response: str) -> bool:
+        hcaptcha_secret = os.getenv("HCAPTCHA_SECRET_KEY")
+        verify_url = "https://hcaptcha.com/siteverify"
+        data = {"secret": hcaptcha_secret, "response": hcaptcha_response}
+
+        try:
+            response = requests.post(verify_url, data=data, timeout=5)
+            result = response.json()
+            return result.get("success", False)
+        except requests.RequestException as e:
+            app.logger.error("hCaptcha verification error: %s", str(e), exc_info=True)
+            return False
+
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str) -> Union[Response, str]:
         form = MessageForm()
@@ -130,30 +143,15 @@ def init_app(app: Flask) -> None:
             flash("User not found.")
             return redirect(url_for("index"))
 
-        is_personal_server = os.getenv('IS_PERSONAL_SERVER', 'false').lower() == 'true'
+        is_personal_server = os.getenv("IS_PERSONAL_SERVER", "false").lower() == "true"
         app.logger.debug(f"IS_PERSONAL_SERVER: {is_personal_server}")
 
         if form.validate_on_submit():
             if not is_personal_server:
-                hcaptcha_response = request.form.get('h-captcha-response')
-                if not hcaptcha_response:
-                    flash('hCaptcha verification is required.', 'error')
-                    return redirect(url_for('submit_message', username=username))
-
-                hcaptcha_secret = os.getenv('HCAPTCHA_SECRET_KEY')
-
-                verify_url = 'https://hcaptcha.com/siteverify'
-                data = {
-                    'secret': hcaptcha_secret,
-                    'response': hcaptcha_response
-                }
-
-                response = requests.post(verify_url, data=data)
-                result = response.json()
-
-                if not result.get('success'):
-                    flash('hCaptcha verification failed. Please try again.', 'error')
-                    return redirect(url_for('submit_message', username=username))
+                hcaptcha_response = request.form.get("h-captcha-response")
+                if not hcaptcha_response or not verify_hcaptcha(hcaptcha_response):
+                    flash("hCaptcha verification failed. Please try again.", "error")
+                    return redirect(url_for("submit_message", username=username))
 
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
@@ -184,13 +182,15 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if (
-                user.email
-                and user.smtp_server
-                and user.smtp_port
-                and user.smtp_username
-                and user.smtp_password
-                and content_to_save
+            if all(
+                [
+                    user.email,
+                    user.smtp_server,
+                    user.smtp_port,
+                    user.smtp_username,
+                    user.smtp_password,
+                    content_to_save,
+                ]
             ):
                 try:
                     sender_email = user.smtp_username
@@ -221,7 +221,7 @@ def init_app(app: Flask) -> None:
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
-            is_personal_server=is_personal_server
+            is_personal_server=is_personal_server,
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
