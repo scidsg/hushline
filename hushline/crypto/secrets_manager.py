@@ -5,6 +5,7 @@ A class definition to simplify the careful handling of cryptographic secrets.
 from base64 import b64decode, urlsafe_b64encode
 from collections import deque
 from hashlib import shake_256
+from typing import Literal
 
 from aiootp.generics.canon import canonical_pack
 from cryptography.fernet import Fernet, InvalidToken
@@ -62,8 +63,9 @@ class SecretsManager:
         self, *, domain: bytes | bytearray, aad: deque[bytes | bytearray], size: int = 32
     ) -> bytearray:
         kdf = self._kdf.copy()
-        size_as_bytes = size.to_bytes(8, "big")
-        kdf.update(canonical_pack(domain, *aad, size_as_bytes, blocksize=self._KDF_BLOCKSIZE))
+        byte_order: Literal["little", "big"] = "big"
+        encoded_size = (byte_order.encode(), size.to_bytes(8, byte_order))
+        kdf.update(canonical_pack(domain, *aad, *encoded_size, blocksize=self._KDF_BLOCKSIZE))
         return bytearray(kdf.digest(size))
 
     def encrypt(
