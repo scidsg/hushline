@@ -205,9 +205,7 @@ def init_app(app: Flask) -> None:
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash(
-                        "👍 Message submitted successfully.", "warning"
-                    )
+                    flash("👍 Message submitted successfully.", "warning")
             else:
                 flash("👍 Message submitted successfully.")
 
