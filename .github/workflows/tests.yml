@@ -3,14 +3,6 @@ name: Run Tests
 
 on:
   push:
-# These following lines will be uncommented when there are
-# no more changes expected / needed on this PR branch.
-#
-#    branches:
-#      - main
-#  pull_request:
-#    branches:
-#      - main
 
 jobs:
  run-lint-and-tests:

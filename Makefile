@@ -6,6 +6,10 @@ help: ## Print the help message
 		sort | \
 		column -s ':' -t
 
+.PHONY: install
+install:
+	poetry install
+
 .PHONY: run
 run: migrate ## Run the app
 	. ./dev_env.sh && \
@@ -13,19 +17,27 @@ run: migrate ## Run the app
 
 .PHONY: lint
 lint: ## Lint the code
-	ruff format --check && \
-	ruff check && \
-	mypy .
+	poetry run ruff format --check && \
+	poetry run ruff check && \
+	poetry run mypy .
 
 .PHONY: fix
 fix: ## Format the code
-	ruff format && \
-	ruff check --fix
+	poetry run ruff format && \
+	poetry run ruff check --fix
 
 .PHONY: migrate
-migrate:
+migrate: ## Apply migrations
 	. ./dev_env.sh && \
 	poetry run flask db upgrade
+
+.PHONY: revision
+revision:  ## Create a new migration
+ifndef message
+	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
+endif
+	. ./dev_env.sh && \
+	poetry run flask db revision -m "$(message)"
 
 .PHONY: test
 test: ## Run the test suite

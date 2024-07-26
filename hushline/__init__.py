@@ -15,6 +15,7 @@ from . import admin, routes, settings
 from .crypto import SecretsManager
 from .db import db
 from .model import InfrastructureAdmin, User
+from .version import __version__
 
 
 def _summon_db_secret(*, name: str, length: int = 32) -> bytearray:
@@ -54,6 +55,7 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
+    app.config["VERSION"] = __version__
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     # if it's a Postgres URI, replace the scheme with `postgresql+psycopg`
     # because we're using the psycopg driver
@@ -68,6 +70,7 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
+    app.config["IS_PERSONAL_SERVER"] = os.environ.get("IS_PERSONAL_SERVER", False)
 
     # Run migrations
     db.init_app(app)

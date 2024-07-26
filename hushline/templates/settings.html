@@ -16,7 +16,7 @@
         </li>
         <li role="presentation">
             <button type="button" class="tab" data-tab="email" role="tab" aria-selected="false" aria-controls="email" id="email-tab">
-                Email
+                Email &amp; Encryption
             </button>
         </li>
         <li role="presentation">
@@ -44,7 +44,7 @@
 
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
-        <p>⚠️ Changing your display name will result in losing your verification status.</p>
+        <p class="meta">⚠️ Changing your display name will result in losing your verification status.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ display_name_form.hidden_tag() }}
@@ -78,7 +78,7 @@
             <div class="form-group">
                 <div class="label-with-wordcount">
                     <label for="bio">Bio (up to 250 characters):</label>
-                    <span><span class="bio-count">0</span>/250</span>
+                    <span class="meta"><span class="bio-count">0</span>/250</span>
                 </div>
                 <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
             </div>
@@ -90,7 +90,7 @@
         <!-- Change Username Section -->
         <h3>Change Username</h3>
         {% if user.is_verified %}
-        <p>⚠️ Changing your username will result in losing your verification status.</p>
+        <p class="meta">⚠️ Changing your username will result in losing your verification status.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ change_username_form.hidden_tag() }}
@@ -141,21 +141,29 @@
 
     <div id="email" class="tab-content" role="tabpanel" aria-labelledby="email-tab" hidden>
         <!-- SMTP Settings Section -->
-        <h3>Email Delivery Settings</h3>
+        <h3>Message Forwarding</h3>
+        {% if not user.pgp_key %}
+        <p class="info">👇 <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP key</a> below to enable message forwarding.</p>
+        {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
-            {{ smtp_settings_form.smtp_username.label }}
-            {{ smtp_settings_form.smtp_username }}
-            {{ smtp_settings_form.smtp_server.label }}
-            {{ smtp_settings_form.smtp_server }}
-            {{ smtp_settings_form.smtp_port.label }}
-            {{ smtp_settings_form.smtp_port }}
-            {{ smtp_settings_form.smtp_password.label }}
-            {{ smtp_settings_form.smtp_password }}
-            <button type="submit">Update Settings</button>
+            <fieldset {% if not user.pgp_key %}disabled{% endif %}>
+                {{ smtp_settings_form.smtp_username.label }}
+                {{ smtp_settings_form.smtp_username }}
+                {{ smtp_settings_form.smtp_server.label }}
+                {{ smtp_settings_form.smtp_server }}
+                {{ smtp_settings_form.smtp_port.label }}
+                {{ smtp_settings_form.smtp_port }}
+                {{ smtp_settings_form.smtp_password.label }}
+                {{ smtp_settings_form.smtp_password }}
+                <button type="submit">Update Settings</button>
+            </fieldset>
         </form>
         <!-- PGP Key Section -->
-        <h3>Public PGP Key</h3>
+        <h3>Message Encryption</h3>
+        {% if not user.pgp_key %}
+        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope" rel="noopener noreferrer" target="_blank" aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
+        {% endif %}
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
             <label for="pgp_key">Public PGP Key</label>
@@ -172,7 +180,7 @@
     <div id="advanced" class="tab-content" role="tabpanel" aria-labelledby="advanced-tab" hidden>
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
-        <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+        <p class="meta">⚠️ Deleting your account is a permanent action that cannot be undone!</p>
         <form method="POST" action="{{ url_for('settings.delete_account') }}">
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>
