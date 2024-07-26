@@ -1,25 +1,7 @@
-import os
-from typing import Generator
-
-import pytest
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
 from hushline.model import Message
-
-# Set the IS_PERSONAL_SERVER environment variable for the tests
-os.environ["IS_PERSONAL_SERVER"] = "true"
-
-
-@pytest.fixture()
-def client() -> Generator[FlaskClient, None, None]:
-    from hushline import create_app  # Import your create_app function
-
-    app = create_app()
-    app.config["TESTING"] = True
-    client = app.test_client()
-    with app.app_context():
-        yield client
 
 
 def test_submit_message_page_loads(client: FlaskClient) -> None:
