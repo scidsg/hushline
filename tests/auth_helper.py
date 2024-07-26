@@ -16,6 +16,7 @@ def extract_csrf_token(response_data: str) -> str:
         raise ValueError("CSRF token not found")
     return token["value"]
 
+
 def register_user(client: FlaskClient, username: str, password: str) -> User:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
