@@ -228,7 +228,7 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
-            is_personal_server=current_app.config["IS_PERSONAL_SERVER"]
+            is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])

@@ -117,7 +117,7 @@ def init_app(app: Flask) -> None:
             messages=messages,
             is_secondary=False,
             secondary_usernames=secondary_users_dict,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"]
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
@@ -179,9 +179,7 @@ def init_app(app: Flask) -> None:
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash(
-                        "👍 Message submitted successfully.", "warning"
-                    )
+                    flash("👍 Message submitted successfully.", "warning")
             else:
                 flash("👍 Message submitted successfully.")
 
@@ -195,7 +193,7 @@ def init_app(app: Flask) -> None:
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"]
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
@@ -265,8 +263,12 @@ def init_app(app: Flask) -> None:
             flash("Registration successful!", "success")
             return redirect(url_for("login"))
 
-        return render_template("register.html", form=form, require_invite_code=require_invite_code,
-                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
+        return render_template(
+            "register.html",
+            form=form,
+            require_invite_code=require_invite_code,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
+        )
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
@@ -298,8 +300,9 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox", username=user.primary_username))
 
             flash("⛔️ Invalid username or password")
-        return render_template("login.html", form=form,
-                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
+        return render_template(
+            "login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+        )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
@@ -372,8 +375,9 @@ def init_app(app: Flask) -> None:
             flash("⛔️ Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
 
-        return render_template("verify_2fa_login.html", form=form,
-                               is_personal_server=app.config["IS_PERSONAL_SERVER"])
+        return render_template(
+            "verify_2fa_login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+        )
 
     @app.route("/logout")
     @require_2fa
@@ -428,8 +432,12 @@ def init_app(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         is_personal_server = app.config["IS_PERSONAL_SERVER"]
-        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in,
-                               is_personal_server=is_personal_server)
+        return render_template(
+            "directory.html",
+            users=get_directory_users(),
+            logged_in=logged_in,
+            is_personal_server=is_personal_server,
+        )
 
     @app.route("/directory/get-session-user.json")
     def session_user() -> dict[str, bool]:
@@ -464,11 +472,11 @@ def init_app(app: Flask) -> None:
     def personal_server_info() -> Response:
         if app.config.get("IS_PERSONAL_SERVER"):
             ip_address = get_ip_address()
-            return make_response(render_template(
-                "personal_server_info.html",
-                is_personal_server=True,
-                ip_address=ip_address
-            ))
+            return make_response(
+                render_template(
+                    "personal_server_info.html", is_personal_server=True, ip_address=ip_address
+                )
+            )
         return Response(status=404)
 
     @app.route("/health.json")
