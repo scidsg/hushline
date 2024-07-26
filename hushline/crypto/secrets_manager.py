@@ -22,6 +22,7 @@ def truncated_b64decode(value: bytes | bytearray) -> bytearray:
 class SecretsManager:
     __slots__ = ("_kdf", "_memory_cost")
 
+    _APP_NAME: bytes = b"hushline"  # name to be changed if used in other apps
     _KDF_BLOCKSIZE: int = shake_256().block_size
     _MEMORY_COST_IN_KiB: int = 128 * 1024
 
@@ -35,7 +36,7 @@ class SecretsManager:
         hashed_secret_with_metadata = bytearray(
             argon2.using(
                 salt=bytes(salt), memory_cost=self._memory_cost, digest_size=self._KDF_BLOCKSIZE
-            ).hash(canonical_pack(b"app_admin_secret", bytes(admin_secret))),
+            ).hash(canonical_pack(self._APP_NAME, b"app_admin_secret", bytes(admin_secret))),
             encoding="utf-8",
         )
         # Use the raw, uniform, pseudo-random hash portion of the argon2id output, which is

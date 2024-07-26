@@ -96,7 +96,7 @@ class User(Model):
     @password_hash.setter
     def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using argon2 and store it."""
-        domain = b"user_password_hash"
+        domain = b"argon2id_user_password_hash"
         vault = current_app.config["VAULT"]
         self._password_revision_number += 1
         with temp_user_aad(self) as aad:
@@ -121,7 +121,7 @@ class User(Model):
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
-        domain = b"user_password_hash"
+        domain = b"argon2id_user_password_hash"
         vault = current_app.config["VAULT"]
         with temp_user_aad(self) as aad:
             aad.append(byte_order := b"big")
