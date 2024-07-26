@@ -3,8 +3,10 @@ import os
 import re
 import socket
 from datetime import datetime, timedelta
+from typing import Union
 
 import pyotp
+import requests
 from flask import (
     Flask,
     flash,
@@ -121,14 +123,38 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str) -> Response | str:
+    def submit_message(username: str) -> Union[Response, str]:
         form = MessageForm()
         user = User.query.filter_by(primary_username=username).first()
         if not user:
-            flash("🫥 User not found.")
+            flash("User not found.")
             return redirect(url_for("index"))
 
+        is_personal_server = os.getenv('IS_PERSONAL_SERVER', 'false').lower() == 'true'
+        app.logger.debug(f"IS_PERSONAL_SERVER: {is_personal_server}")
+
         if form.validate_on_submit():
+            if not is_personal_server:
+                hcaptcha_response = request.form.get('h-captcha-response')
+                if not hcaptcha_response:
+                    flash('hCaptcha verification is required.', 'error')
+                    return redirect(url_for('submit_message', username=username))
+
+                hcaptcha_secret = os.getenv('HCAPTCHA_SECRET_KEY')
+
+                verify_url = 'https://hcaptcha.com/siteverify'
+                data = {
+                    'secret': hcaptcha_secret,
+                    'response': hcaptcha_response
+                }
+
+                response = requests.post(verify_url, data=data)
+                result = response.json()
+
+                if not result.get('success'):
+                    flash('hCaptcha verification failed. Please try again.', 'error')
+                    return redirect(url_for('submit_message', username=username))
+
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
             full_content = (
@@ -144,12 +170,12 @@ def init_app(app: Flask) -> None:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
                     if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message.", "error")
+                        flash("Failed to encrypt message with PGP key.", "error")
                         return redirect(url_for("submit_message", username=username))
                     content_to_save = encrypted_content
                 except Exception as e:
                     app.logger.error("Encryption failed: %s", str(e), exc_info=True)
-                    flash("⛔️ Failed to encrypt message.", "error")
+                    flash("Failed to encrypt message due to an error.", "error")
                     return redirect(url_for("submit_message", username=username))
             else:
                 content_to_save = full_content
@@ -172,16 +198,18 @@ def init_app(app: Flask) -> None:
                         user.email, "New Message", content_to_save, user, sender_email
                     )
                     flash_message = (
-                        "👍 Message submitted successfully."
+                        "Message submitted and email sent successfully."
                         if email_sent
-                        else "👍 Message submitted successfully."
+                        else "Message submitted, but failed to send email."
                     )
                     flash(flash_message)
                 except Exception as e:
                     app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash("👍 Message submitted successfully.", "warning")
+                    flash(
+                        "Message submitted, but an error occurred while sending email.", "warning"
+                    )
             else:
-                flash("👍 Message submitted successfully.")
+                flash("Message submitted successfully.")
 
             return redirect(url_for("submit_message", username=username))
 
@@ -193,7 +221,7 @@ def init_app(app: Flask) -> None:
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
+            is_personal_server=is_personal_server
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])

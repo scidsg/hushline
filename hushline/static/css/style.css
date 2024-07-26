@@ -1132,6 +1132,10 @@ p.section-intro:not(:first-of-type) {
     margin: 0 0 1rem 0;
 }
 
+.h-captcha {
+    margin: 1rem 0 .5rem 0;
+}
+
 @media only screen and (max-width: 768px) {
 
     .container {

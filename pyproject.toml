@@ -17,6 +17,7 @@ passlib = "^1.7.4"
 pyotp = "^2.9.0"
 pysequoia = "^0.1.23"
 qrcode = "^7.4.2"
+requests = "^2.32.3"
 ruff = "^0.4.7"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
 types-pkg-resources = "^0.1.3"
