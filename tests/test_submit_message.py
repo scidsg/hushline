@@ -1,4 +1,5 @@
 import os
+from typing import Generator
 
 import pytest
 from auth_helper import login_user, register_user
@@ -11,7 +12,7 @@ os.environ["IS_PERSONAL_SERVER"] = "true"
 
 
 @pytest.fixture()
-def client() -> FlaskClient:
+def client() -> Generator[FlaskClient, None, None]:
     from hushline import create_app  # Import your create_app function
 
     app = create_app()
