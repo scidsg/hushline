@@ -417,15 +417,68 @@ def init_app(app: Flask) -> None:
             .all()
         )
 
+    def usersPerPage() -> int:
+        return 50
+
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        return render_template("directory.html", users=get_directory_users(), logged_in=logged_in)
+        isViewAllRoute = request.args.get('viewing') == 'all'
+        page = int(request.args.get('page', 0))
+        offset = page  * usersPerPage() - usersPerPage()
+        return render_template(
+            "directory.html",
+            users=get_dynamic_users(offset=offset, is_not_verified_only=isViewAllRoute),
+            logged_in=logged_in,
+            isViewAllRoute=isViewAllRoute,
+            usersPerPage=usersPerPage()
+        )
 
     @app.route("/directory/get-session-user.json")
     def session_user() -> dict[str, bool]:
         logged_in = "user_id" in session
         return {"logged_in": logged_in}
+
+    def get_dynamic_users(
+            count:int=usersPerPage(),
+            offset:int=0,
+            is_not_verified_only:bool = False
+        ) -> list[User]:
+        if is_not_verified_only:
+            return (
+                User.query.filter_by(show_in_directory=True)
+                .order_by(User.is_admin.desc(), User.display_name.asc())
+                .limit(count)
+                .offset(offset)
+                .all()
+            )
+        return (
+            User.query.filter_by(show_in_directory=True, is_verified=True)
+            .order_by(User.is_admin.desc(), User.display_name.asc())
+            .limit(count)
+            .offset(offset)
+            .all()
+        )
+
+    @app.route("/directory/pagination-users.json")
+    def pagination_users() -> list[dict[str, str]]:
+        count = request.args.get('count')
+        offset = request.args.get('offset')
+        is_not_verified_only = request.args.get('is_verified_only')
+        return [
+            {
+                "primary_username": user.primary_username,
+                "display_name": user.display_name or user.primary_username,
+                "bio": user.bio,
+                "is_admin": user.is_admin,
+                "is_verified": user.is_verified,
+            }
+            for user in get_dynamic_users(
+                count=int(str(count)),
+                offset=int(str(offset)),
+                is_not_verified_only=bool(is_not_verified_only)
+            )
+        ]
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, str]]:

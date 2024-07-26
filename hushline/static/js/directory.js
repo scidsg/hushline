@@ -4,26 +4,57 @@ document.addEventListener('DOMContentLoaded', function () {
     // If it's /directory, then prefix is /
     const pathPrefix = window.location.pathname.split('/').slice(0, -1).join('/');
     const tabs = document.querySelectorAll('.tab');
-    const tabPanels = document.querySelectorAll('.tab-content');
     const searchInput = document.getElementById('searchInput');
     const clearIcon = document.getElementById('clearIcon');
     let userData = []; // Will hold the user data loaded from JSON
     let isSessionUser = false
+    const totalusers = {};
+    const usersPerPage = parseInt(document.querySelector('.directory-tabs').getAttribute('data-per-page') || 50);
+    const searchParams = new URLSearchParams(window.location.search);
+    const offset = searchParams?.get('page') || 0;
+    const isAllPage = searchParams?.get('viewing') === 'all';
+    const isVerifiedPage = searchParams?.get('viewing') === 'verified';
 
-    function updatePlaceholder() {
-        const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
-        searchInput.placeholder = `Search ${activeTab === 'verified' ? 'verified ' : ''}users...`;
+    function decoratePagination() { 
+        const verifiedUserPagination = Math.ceil(totalusers.verified / usersPerPage);
+        const allUserPagination = Math.ceil(totalusers.all / usersPerPage);
+        let verifiedPaginationItems = '';
+        let allPaginationItems = '';
+    
+        
+        for (let i = 1; i <= verifiedUserPagination; i++) {
+            verifiedPaginationItems += `<li><a href="/directory${i === 1 ? '' :`?page=${i}`}" class="${i  == offset ? 'active' : ''}">${i}</a></li>`;
+        }
+
+        for (let i = 1; i <= allUserPagination; i++) {
+            allPaginationItems += `<li><a href="/directory?viewing=all${i === 1 ? '' :`&page=${i}`}" class="${i  == offset ? 'active' : ''}">${i}</a></li>`;
+        }
+        
+        if(verifiedUserPagination > 1) {
+            document.querySelector('.pagination.verified').innerHTML = verifiedPaginationItems;
+            if(offset === 0 && isVerifiedPage) {
+                document.querySelector('.pagination.verified li:first-of-type a').classList.add('active')
+            }
+        }
+        
+        if(allUserPagination > 1) {
+            document.querySelector('.pagination.all').innerHTML = allPaginationItems;
+            if(offset === 0 && isAllPage) {
+                document.querySelector('.pagination li:first-of-type a').classList.add('active')
+            }
+        }
     }
 
-
-    function loadData() {
+    function loadTotalUsers() {
         fetch(`${pathPrefix}/directory/users.json`)
             .then(response => response.json())
             .then(data => {
                 userData = data;
-                handleSearchInput(); // Initial display after data is loaded
+                totalusers.all = data.length;
+                totalusers.verified = data.filter(user => user.is_verified).length;
+                decoratePagination();
             })
-            .catch(error => console.error('Failed to load user data:', error));
+            .catch(error => console.error('Failed to load total users:', error));
     }
 
     async function checkIfSessionUser() {
@@ -65,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const userListContainer = document.querySelector('.tab-content.active .user-list');
         const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
         userListContainer.innerHTML = '';
-
         if (users.length > 0) {
             users.forEach(user => {
                 const displayNameHighlighted = highlightMatch(user.display_name || user.primary_username, query);
@@ -130,15 +160,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tabs.forEach(tab => {
         tab.addEventListener('click', function(e) {
-            window.activateTab(e, tabs, tabPanels);
-            handleSearchInput(); // Filter again when tab changes
-            updatePlaceholder();
+            if(tab.getAttribute('data-tab') === 'all') {
+                window.location.href = `${pathPrefix}/directory?viewing=all`;
+            } else {
+                window.location.href = `${pathPrefix}/directory`;
+            }
         });
         tab.addEventListener('keydown', function(e) {
             window.handleKeydown(e)
         });
     });
-
 
     function createReportEventListeners(selector) {
         document.querySelector(selector).addEventListener('click', function (event) {
@@ -152,6 +183,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     checkIfSessionUser()
-    updatePlaceholder(); // Initialize placeholder text
-    loadData();
+    loadTotalUsers();
 });
