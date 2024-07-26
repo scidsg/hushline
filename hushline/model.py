@@ -100,8 +100,7 @@ class User(Model):
         vault = current_app.config["VAULT"]
         self._password_revision_number += 1
         with temp_user_aad(self) as aad:
-            aad.append(byte_order := b"big")
-            aad.append(encoding := b"utf-8")
+            aad.extend([byte_order := b"big", encoding := b"utf-8"])
             aad.append(self._password_revision_number.to_bytes(16, byte_order.decode()))
             aad.append(bytearray(plaintext_password, encoding=encoding.decode()))
             # General Warnings & Guidelines:
@@ -124,8 +123,7 @@ class User(Model):
         domain = b"argon2id_user_password_hash"
         vault = current_app.config["VAULT"]
         with temp_user_aad(self) as aad:
-            aad.append(byte_order := b"big")
-            aad.append(encoding := b"utf-8")
+            aad.extend([byte_order := b"big", encoding := b"utf-8"])
             aad.append(self._password_revision_number.to_bytes(16, byte_order.decode()))
             aad.append(bytearray(plaintext_password, encoding=encoding.decode()))
             pre_hashed_password = vault._derive_key(domain=domain, aad=aad)
