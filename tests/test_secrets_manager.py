@@ -30,6 +30,7 @@ def test_admin_db_secrets_are_static_once_created(static_app: Flask, name: str) 
         assert secret == _summon_db_secret(name=name)
 
         if (entry := InfrastructureAdmin.query.get(name)) is None:
+            # hack: mypy gets upset because the query could return `None`
             db_value = MockInfrastructureAdminEntry()._value
         else:
             db_value = entry._value
