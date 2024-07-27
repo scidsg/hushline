@@ -41,7 +41,9 @@ def test_admin_db_secrets_are_static_once_created(static_app: Flask, name: str) 
             assert db_value != secret
             assert isinstance(db_value, bytes)
             assert len(db_value) > 32
-            assert vault.decrypt(db_value, domain=name.encode()) == secret
+
+            aad = deque([InfrastructureAdmin.__tablename__.encode()])
+            assert vault.decrypt(db_value, domain=name.encode(), aad=aad) == secret
 
 
 @pytest.mark.parametrize("size", list(range(33)))
