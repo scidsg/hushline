@@ -263,6 +263,10 @@
         border: var(--border);
     }
 
+    footer {
+        background-color: var(--color-brand-bg);
+    }
+
     @media screen and (max-width: 768px) {
         .dropdown-content a:hover {
             background-color: white;
@@ -488,6 +492,10 @@
     .flash-messages {
         background-color: var(--color-dark-bg-alt);
         border: var(--border-dark)
+    }
+
+    img.qr {
+        filter: invert(.8);
     }
 
     @media screen and (max-width: 768px) {
