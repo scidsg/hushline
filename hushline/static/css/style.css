@@ -474,7 +474,7 @@
     }
 
     .toggle-ui input[type="checkbox"]:checked~label .toggle {
-        background: var(--color-brand-bg);
+        background: var(--color-brand-dark);
     }
 
     footer {
