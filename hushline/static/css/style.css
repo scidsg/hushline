@@ -1,6 +1,7 @@
 :root {
     --color-border: rgba(0, 0, 0, .18);
     --color-border-dark: #7D7D7D;
+    --color-border-dark-1: #555;
     --color-brand: #7D25C1;
     --color-brand-dark: #ecdafa;
     --color-text: #333;
@@ -17,6 +18,7 @@
 
     --border: 1px solid var(--color-border);
     --border-dark: 1px solid var(--color-border-dark);
+    --border-dark-1: 1px solid var(--color-border-dark-1);
 
     --font-mono: 'IBM Plex Mono', monospace;
     --font-mono-medium: 'IBM Plex Mono Medium', monospace;
@@ -309,7 +311,7 @@
     }
 
     .container {
-        border: var(--border);
+        border: var(--border-dark-1);
         background-color: var(--color-dark-bg-alt);
         box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     }
@@ -849,7 +851,6 @@ button.dropbtn {
     width: 100%;
     display: flex;
     flex-direction: column;
-    border: var(--border);
     padding: 2.5rem 2rem;
     box-sizing: border-box;
     border-radius: .5rem;
