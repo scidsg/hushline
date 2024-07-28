@@ -511,8 +511,8 @@
     }
 
     .flash-messages {
-        background-color: var(--color-dark-bg-alt);
-        border: var(--border-dark)
+        background-color: var(--color-dark-bg-alt-1);
+        border: var(--border-dark-1)
     }
 
     img.qr {
