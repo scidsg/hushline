@@ -338,7 +338,7 @@
     p.dirMeta.meta,
     p.instr {
         background-color: var(--color-dark-bg-alt-1);
-        border: 1px solid rgba(232, 212, 180, .2);
+        border: var(--border-dark-1);
         color: var(--color-text-dark-alt-2);
     }
 
