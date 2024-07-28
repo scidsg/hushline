@@ -14,7 +14,7 @@
     --color-brand-bg: #fbf3ff;
     --color-dark-bg: #111;
     --color-dark-bg-alt: #333;
-    --color-dark-bg-alt-1: #555;
+    --color-dark-bg-alt-1: #414141;
 
     --border: 1px solid var(--color-border);
     --border-dark: 1px solid var(--color-border-dark);
@@ -269,6 +269,24 @@
         background-color: var(--color-brand-bg);
     }
 
+    .admin-highlights .metric {
+        border: var(--border);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .metric p:nth-child(1n) {
+        color: var(--color-text-light);
+    }
+
+    .metric p:nth-child(2n) {
+        color: #333;
+    }
+
+    .error {
+        color: darkred;
+    }
+
+
     @media screen and (max-width: 768px) {
         .dropdown-content a:hover {
             background-color: white;
@@ -366,8 +384,9 @@
     }
 
     .user {
-        border: var(--border-dark);
+        border: var(--border-dark-1);
         box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+        background-color: var(--color-dark-bg-alt-1);
     }
 
     p.instr {
@@ -419,7 +438,7 @@
     }
 
     p.badge {
-        background-color: var(--color-dark-bg-alt);
+        background-color: var(--color-dark-bg-alt-1);
         color: var(--color-brand-dark);
         border: 1px solid var(--color-brand-dark);
     }
@@ -501,7 +520,25 @@
     }
 
     .emptyState img {
-        opacity: .65;
+        opacity: .75;
+        filter: saturate(0.65);
+    }
+
+    .admin-highlights .metric {
+        border: var(--border-dark);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .metric p:nth-child(1n) {
+        color: var(--color-text-dark-alt);
+    }
+
+    .metric p:nth-child(2n) {
+        color: var(--color-text-dark);
+    }
+
+    .error {
+        color: lightpink;
     }
 
     @media screen and (max-width: 768px) {
@@ -649,12 +686,10 @@ p.badge {
 
 .metric p:nth-child(1n) {
     font-size: var(--font-size-small);
-    color: var(--color-text-light);
 }
 
 .metric p:nth-child(2n) {
     font-size: 2rem;
-    color: #333;
     margin: .5rem 0 .125rem 0;
 }
 
@@ -666,7 +701,6 @@ p.badge {
     margin-top: -8px;
     font-size: var(--font-size-small);
     margin-bottom: 1rem;
-    color: darkred;
     display: flex;
 }
 
@@ -1297,12 +1331,10 @@ a.dropbtn:hover {
     flex-direction: column;
     flex: 1 1 0px;
     align-items: center;
-    border: var(--border);
     justify-content: center;
     padding: 1rem;
     border-radius: .25rem;
     text-align: center;
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
 }
 
 .admin-highlights .metric p {
