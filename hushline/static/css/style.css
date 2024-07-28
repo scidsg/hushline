@@ -500,6 +500,10 @@
         filter: invert(.8);
     }
 
+    .emptyState img {
+        opacity: .65;
+    }
+
     @media screen and (max-width: 768px) {
         .dropdown-content a:hover {
             background-color: var(--color-dark-bg-alt);
