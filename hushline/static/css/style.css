@@ -443,6 +443,10 @@
         border: 1px solid var(--color-brand-dark);
     }
 
+    h2.submit+.badgeContainer p.badge {
+        background-color: var(--color-dark-bg-alt);
+    }
+
     .search-highlight {
         background-color: var(--color-highlight-dark);
         color: var(--color-text-dark);
