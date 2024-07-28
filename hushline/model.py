@@ -347,8 +347,7 @@ class Message(Model):
 
 @contextmanager
 def temp_message_aad(message: Message) -> Generator[deque[bytes | bytearray], None, None]:
-    user = User.query.get(message.user_id)
-    if user is None:
+    if (user := User.query.get(message.user_id)) is None:
         raise NoResultFound(f"The user.id: {message.user_id=} was not found.")
     user_id = user.id.to_bytes(16, byte_order := "big")
     user_secret = user._aad_secret
