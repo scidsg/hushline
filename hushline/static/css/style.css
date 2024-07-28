@@ -12,9 +12,9 @@
     --color-highlight: rgba(125, 37, 193, .1);
     --color-highlight-dark: rgba(220, 198, 237, 0.2);
     --color-brand-bg: #fbf3ff;
-    --color-dark-bg: #111;
+    --color-dark-bg: #222;
     --color-dark-bg-alt: #333;
-    --color-dark-bg-alt-1: #414141;
+    --color-dark-bg-alt-1: #444;
 
     --border: 1px solid var(--color-border);
     --border-dark: 1px solid var(--color-border-dark);
