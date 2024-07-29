@@ -4,12 +4,8 @@
 
 [More project information...](https://github.com/scidsg/project-info/tree/main/hush-line)
 
-![repo](https://github.com/user-attachments/assets/4631b1aa-5c0a-45c2-b200-d263478b1758)
+![repo](https://github.com/user-attachments/assets/747872a9-f162-4deb-8aea-59f00e71178e)
 
 ## Contribution Guidelines
 
-❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you follow these guidelines:
-
-### Code of Conduct
-
-By contributing to Hush Line, you agree to our [Code of Conduct](https://github.com/scidsg/business-resources/blob/main/Policies%20%26%20Procedures/Code%20of%20Conduct.md).
+❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you agree to and follow our [Code of Conduct](https://github.com/scidsg/business-resources/blob/main/Policies%20%26%20Procedures/Code%20of%20Conduct.md).

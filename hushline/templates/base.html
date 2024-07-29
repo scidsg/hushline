@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="theme-color" content="#7D25C1">
+    <meta name="theme-color" content="#7D25C1" id="theme-color" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta property="og:title" content="Hush Line" />
     <meta property="og:description" content="A lightweight, secure, and anonymous tip line platform." />
@@ -49,7 +49,7 @@
                 <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
                 <ul>
                     {% if is_personal_server %}
-                        <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
+                    <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
                     {% endif %}
                     <li><a href="{{ url_for('directory') }}">Directory</a></li>
                     {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or
@@ -94,8 +94,8 @@
                 rel="noopener noreferrer">Privacy Policy</a> |
             <a href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md" target="_blank"
                 rel="noopener noreferrer">Terms of Service</a> |
-            <a href="https://github.com/scidsg/hushline" target="_blank"
-            rel="noopener noreferrer">v{{ config.VERSION }}</a>
+            <a href="https://github.com/scidsg/hushline" target="_blank" rel="noopener noreferrer">v{{ config.VERSION
+                }}</a>
         </p>
     </footer>
     {% block scripts %}
