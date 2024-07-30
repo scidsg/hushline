@@ -15,7 +15,6 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from passlib.hash import scrypt
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length
@@ -177,9 +176,8 @@ def create_blueprint() -> Blueprint:
 
             # Handle Change Password Form Submission
             if change_password_form.validate_on_submit():
-                if scrypt.verify(change_password_form.old_password.data, user.password_hash):
-                    # Hash the new password using scrypt and update the user object
-                    user.password_hash = scrypt.hash(change_password_form.new_password.data)
+                if user.check_password(change_password_form.old_password.data):
+                    user.password_hash = change_password_form.new_password.data
                     db.session.commit()
                     flash("👍 Password changed successfully.")
                 else:
