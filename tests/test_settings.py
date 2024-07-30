@@ -1,3 +1,5 @@
+from secrets import token_urlsafe
+
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
@@ -95,8 +97,8 @@ def test_change_username(client: FlaskClient) -> None:
 def test_change_password(client: FlaskClient) -> None:
     # Register and log in a user
     username = "test_change_password"
-    original_password = "SecureTestPass123!"
-    new_password = "NewSecureTestPass123!"
+    original_password = f"{token_urlsafe(16)}!"
+    new_password = f"{token_urlsafe(16)}!!!"
     user = register_user(client, username, original_password)
     assert user is not None, "User registration failed"
 
