@@ -3,22 +3,24 @@
 {% block content %}
 <h2>User Directory</h2>
 {% if not is_personal_server %}
-    {% if not logged_in %}
-    <p class="helper section-intro">👋 Hush Line connects whistleblowers with lawyers, journalists, business leaders, 
-        and more. <mark class="highlight">We advise speaking to a legal professional before taking any confidential information from your workplace.</mark></p>
-    {% endif %}
-    <div class="directory-tabs">
-        <ul class="tab-list" role="tablist">
-            <li role="presentation">
-                <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
-                    aria-controls="verified" id="verified-tab">Verified</button>
-            </li>
-            <li role="presentation">
-                <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
-                    id="all-tab">All</button>
-            </li>
-        </ul>
-    </div>
+{% if not logged_in %}
+<p class="helper section-intro">👋 Hush Line connects anonymous whistleblowers with lawyers, journalists, business
+    leaders, and more. We advise speaking to a legal professional before taking any confidential information from your
+    workplace.
+</p>
+{% endif %}
+<div class="directory-tabs">
+    <ul class="tab-list" role="tablist">
+        <li role="presentation">
+            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
+                aria-controls="verified" id="verified-tab">Verified</button>
+        </li>
+        <li role="presentation">
+            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
+                id="all-tab">All</button>
+        </li>
+    </ul>
+</div>
 {% endif %}
 <div class="search-box">
     <label id="searchIcon" for="searchInput" aria-label="Search users">
@@ -72,7 +74,8 @@
     </div>
 </div>
 {% endif %}
-<div id="all" class="tab-content {% if is_personal_server %}active{% endif %}" role="tabpanel" aria-labelledby="all-users-tab">
+<div id="all" class="tab-content {% if is_personal_server %}active{% endif %}" role="tabpanel"
+    aria-labelledby="all-users-tab">
     <div class="user-list">
         {% for user in users %}
         {% if user.show_in_directory %}

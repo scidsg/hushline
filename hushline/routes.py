@@ -423,11 +423,8 @@ def init_app(app: Flask) -> None:
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     def get_directory_users() -> list[User]:
-        return (
-            User.query.filter_by(show_in_directory=True)
-            .order_by(User.is_admin.desc(), User.display_name.asc())
-            .all()
-        )
+        users = User.query.filter_by(show_in_directory=True).all()
+        return sort_users_by_display_name(users)
 
     @app.route("/directory")
     def directory() -> Response | str:
