@@ -3,7 +3,6 @@ import os
 import re
 import socket
 from datetime import datetime, timedelta
-from typing import Sequence
 
 import pyotp
 from flask import (
@@ -309,7 +308,7 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:  # noqa: PLR0911
         # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
             flash("You need to log in first.")
@@ -324,7 +323,10 @@ def init_app(app: Flask) -> None:
         form = TwoFactorForm()
 
         if form.validate_on_submit():
-            totp = pyotp.TOTP(str(user.totp_secret))
+            if not user.totp_secret:
+                flash("⛔️ 2FA is not enabled.")
+                return redirect(url_for("login"))
+            totp = pyotp.TOTP(user.totp_secret)
             timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
 
@@ -429,12 +431,9 @@ def init_app(app: Flask) -> None:
         # Sorts only by display name or username
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
-    def get_directory_users() -> Sequence[User]:
-        users = db.session.scalars(
-            select(User)
-            .filter_by(show_in_directory=True)
-        ).all()
-        return sort_users_by_display_name(users)
+    def get_directory_users() -> list[User]:
+        users = db.session.scalars(select(User).filter_by(show_in_directory=True)).all()
+        return sort_users_by_display_name(list(users))
 
     @app.route("/directory")
     def directory() -> Response | str:
