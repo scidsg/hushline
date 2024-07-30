@@ -226,6 +226,7 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
+            is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
@@ -254,33 +255,24 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("login"))
 
         change_password_form = ChangePasswordForm(request.form)
-        if change_password_form.validate_on_submit():
-            # Verify the old password
-            if user.check_password(change_password_form.old_password.data):
-                # Set the new password
-                user.password_hash = change_password_form.new_password.data
-                db.session.commit()
-                session.clear()  # Clears the session, logging the user out
-                flash(
-                    "👍 Password successfully changed. Please log in again.",
-                    "success",
-                )
-                return redirect(
-                    url_for("login")
-                )  # Redirect to the login page for re-authentication
+        if not change_password_form.validate_on_submit():
+            flash("New password is invalid.")
+            return redirect(url_for("settings.index"))
 
+        # Verify the old password
+        if not user.check_password(change_password_form.old_password.data):
             flash("Incorrect old password.", "error")
+            return redirect(url_for("settings.index"))
 
-        # Render the settings page with all forms
-        return render_template(
-            "settings.html",
-            change_password_form=change_password_form,
-            change_username_form=ChangeUsernameForm(),
-            smtp_settings_form=SMTPSettingsForm(),
-            pgp_key_form=PGPKeyForm(),
-            display_name_form=DisplayNameForm(),
-            user=user,
+        # Set the new password
+        user.password_hash = change_password_form.new_password.data
+        db.session.commit()
+        session.clear()  # Clears the session, logging the user out
+        flash(
+            "👍 Password successfully changed. Please log in again.",
+            "success",
         )
+        return redirect(url_for("login"))  # Redirect to the login page for re-authentication
 
     @bp.route("/change-username", methods=["POST"])
     @require_2fa

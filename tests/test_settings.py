@@ -1,3 +1,5 @@
+from secrets import token_urlsafe
+
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
@@ -90,6 +92,59 @@ def test_change_username(client: FlaskClient) -> None:
     assert (
         b"Username changed successfully" in response.data
     ), "Success message not found in response"
+
+
+def test_change_password(client: FlaskClient) -> None:
+    # Register a new user
+    username = "test_change_password"
+    original_password = f"{token_urlsafe(16)}!"
+    new_password = f"{token_urlsafe(16)}!!!"
+    user = register_user(client, username, original_password)
+    assert user is not None, "User registration failed"
+    assert len(original_password_hash := user.password_hash) > 32
+    assert original_password_hash.startswith("$scrypt$")
+    assert original_password not in original_password_hash
+
+    # Log in the registered user
+    logged_in_user = login_user(client, username, original_password)
+    if logged_in_user is not None:
+        assert user.id == logged_in_user.id
+
+    # Submit POST request to change the username & verify update was successful
+    response = client.post(
+        "/settings/change-password",
+        data={
+            "old_password": original_password,
+            "new_password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, "Failed to update password"
+    assert "login" in response.request.url
+    assert user is not None, "User registration failed"
+    assert len(new_password_hash := user.password_hash) > 32
+    assert new_password_hash.startswith("$scrypt$")
+    assert original_password_hash not in new_password_hash
+    assert original_password not in new_password_hash
+    assert new_password not in new_password_hash
+    assert (
+        b"Password successfully changed. Please log in again." in response.data
+    ), "Success message not found in response"
+
+    # Attempt to log in with the registered user's old password
+    response = client.post(
+        "/login", data={"username": username, "password": original_password}, follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert "login" in response.request.url
+    assert b"Invalid username or password" in response.data, "Success message not found in response"
+
+    # Attempt to log in with the registered user's new password
+    response = client.post(
+        "/login", data={"username": username, "password": new_password}, follow_redirects=True
+    )
+    assert "inbox" in response.request.url
+    assert response.status_code == 200
 
 
 def test_add_pgp_key(client: FlaskClient) -> None:

@@ -1,26 +1,41 @@
 :root {
-  --color-border: rgba(0,0,0,.18);
-  --color-brand: #7D25C1;
-  --color-text: #333;
-  --color-text-light: #595959;
-  --color-highlight: rgba(125,37,193,.1);
-  --color-brand-bg: #fbf3ff;
+    --color-border: rgba(0, 0, 0, .18);
+    --color-border-dark: #7D7D7D;
+    --color-border-dark-1: #555;
+    --color-brand: #7D25C1;
+    --color-brand-dark: #ecdafa;
+    --color-text: #333;
+    --color-text-dark-alt-2: #e4e4e4;
+    --color-text-dark-alt: #C2C2C2;
+    --color-text-dark: #dadada;
+    --color-text-light: #595959;
+    --color-highlight: rgba(125, 37, 193, .1);
+    --color-highlight-dark: rgba(220, 198, 237, 0.2);
+    --color-brand-bg: #fbf3ff;
+    --color-dark-bg: #222;
+    --color-dark-bg-alt: #333;
+    --color-dark-bg-alt-1: #444;
 
-  --border: 1px solid var(--color-border);
+    --border: 1px solid var(--color-border);
+    --border-dark: 1px solid var(--color-border-dark);
+    --border-dark-1: 1px solid var(--color-border-dark-1);
 
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
-  --font-sans-bold: 'Atkinson Bold', Helvetica, Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-mono-medium: 'IBM Plex Mono Medium', monospace;
+    --font-sans: 'Atkinson Hyperlegible', Helvetica, Arial, sans-serif;
+    --font-sans-bold: 'Atkinson Bold', Helvetica, Arial, sans-serif;
 
-  --font-size-base: 1rem;
-  --font-size-small: .875rem;
-  --font-size-smaller: .8125rem;
-  --font-size-smallest: .75rem;
+    --font-size-base: 1rem;
+    --font-size-small: .875rem;
+    --font-size-smaller: .8125rem;
+    --font-size-smallest: .75rem;
 
-  --font-size-1: 1.75rem;
-  --font-size-2: 1.75rem;
-  --font-size-3: 1.5rem;
-  --font-size-4: 1.125rem;
+    --font-size-1: 1.75rem;
+    --font-size-2: 1.75rem;
+    --font-size-3: 1.5rem;
+    --font-size-4: 1.125rem;
+
+    --line-height-base: 1.40625;
 }
 
 @font-face {
@@ -41,8 +56,504 @@
         url("../fonts/mono/IBMPlexMono-Regular.woff2") format("woff2");
 }
 
+@font-face {
+    font-family: "IBM Plex Mono Medium";
+    src: url("../fonts/mono/IBMPlexMono-Medium.woff") format("woff"),
+        url("../fonts/mono/IBMPlexMono-Medium.woff2") format("woff2");
+}
+
+/* Light Mode */
+@media (prefers-color-scheme: light) {
+    body {
+        background-color: var(--color-brand-bg);
+    }
+
+    a {
+        color: var(--color-brand);
+    }
+
+    p.meta {
+        color: var(--color-text-light);
+    }
+
+    header {
+        background-color: white;
+    }
+
+    header nav a {
+        color: #333;
+    }
+
+    .mobileNav {
+        background-image: url('../img/app/icon-menu.png');
+    }
+
+    .container {
+        border: var(--border);
+        background-color: white;
+        box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .dirMeta,
+    p.instr {
+        background-color: rgb(255, 249, 234);
+        border: 1px solid rgba(232, 212, 180, .8);
+        color: #545454;
+    }
+
+    input,
+    textarea {
+        border: var(--border);
+    }
+
+    code,
+    pre {
+        border: var(--border);
+        background-color: white;
+    }
+
+    .tab-list {
+        border-bottom: var(--border);
+    }
+
+    .tab {
+        border: 1px solid transparent;
+        background-color: transparent;
+        color: var(--color-text);
+        box-shadow: none;
+        outline: none;
+        border-bottom: 1px solid transparent;
+    }
+
+    .tab:focus-within {
+        outline: none;
+    }
+
+    /* Change background color of tabs on hover */
+    .tab:hover {
+        background-color: #fbf3ff;
+    }
+
+    /* Create an active/current tablink class */
+    .tab.active {
+        box-shadow: 0 -2px 0 inset var(--color-brand);
+        border-bottom: 1px solid var(--color-brand);
+    }
+
+    .user {
+        border: var(--border);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    p.instr {
+        color: var(--color-text-light);
+    }
+
+    input:focus,
+    input[type="submit"]:focus,
+    textarea:focus,
+    button:focus {
+        outline: 4px double var(--color-brand);
+        border: 1px solid var(--color-brand);
+        box-shadow: none;
+    }
+
+    input[type="submit"],
+    button,
+    .btn {
+        border: 0px;
+        background-color: var(--color-brand);
+        color: white;
+    }
+
+    .formBody input[type="submit"],
+    .formBody button,
+    .btn {
+        background-color: white;
+        color: var(--color-brand);
+        border: 1px solid var(--color-brand);
+        box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, .25);
+    }
+
+    .formBody input[type="submit"]:hover,
+    .formBody button:hover,
+    .btn:hover {
+        box-shadow: none;
+    }
+
+    .formBody input[type="submit"]:active,
+    .formBody button:active,
+    .btn:active {
+        box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, .25);
+    }
+
+    .btn-danger,
+    .formBody .btn-danger {
+        color: darkred;
+        border-color: darkred;
+    }
+
+    p.badge {
+        background-color: white;
+        color: var(--color-brand);
+        border: 1px solid var(--color-brand);
+    }
+
+    .search-highlight {
+        background-color: var(--color-highlight);
+    }
+
+    .highlight {
+        background-color: var(--color-highlight);
+    }
+
+    header nav ul.show {
+        background-color: white;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        outline: var(--border);
+    }
+
+    .message {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
+        background-color: white;
+    }
+
+    .dropbtn {
+        background: none;
+        box-shadow: none;
+        color: var(--color-text);
+        border: 1px solid transparent;
+    }
+
+    .dropdown-content {
+        background-color: white;
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
+        border: var(--border);
+        opacity: 0;
+    }
+
+    .dropdown-content a {
+        color: #333;
+    }
+
+    .dropdown-content a:hover {
+        background-color: #dfffff;
+    }
+
+    .toggle {
+        background: var(--color-text-light);
+    }
+
+    .toggle__ball {
+        background: white;
+    }
+
+    .toggle-ui input[type="checkbox"]:checked~label .toggle {
+        background: var(--color-brand);
+    }
+
+    .flash-messages {
+        background-color: white;
+        border: var(--border);
+        box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .message .message-label,
+    .message.encrypted .message-label {
+        background-color: rgba(0, 0, 0, 0.04);
+        border: var(--border);
+    }
+
+    footer {
+        background-color: var(--color-brand-bg);
+    }
+
+    .admin-highlights .metric {
+        border: var(--border);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .metric p:nth-child(1n) {
+        color: var(--color-text-light);
+    }
+
+    .metric p:nth-child(2n) {
+        color: #333;
+    }
+
+    .error {
+        color: darkred;
+    }
+
+
+    @media screen and (max-width: 768px) {
+        .dropdown-content a:hover {
+            background-color: white;
+        }
+    }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: var(--color-dark-bg);
+        color: var(--color-text-dark);
+    }
+
+    a {
+        color: var(--color-brand-dark);
+    }
+
+    p.meta {
+        color: var(--color-text-dark-alt);
+    }
+
+    header {
+        background-color: var(--color-dark-bg-alt);
+        color: var(--color-text-dark);
+    }
+
+    header nav a {
+        color: var(--color-text-dark);
+    }
+
+    header nav ul.show {
+        background-color: var(--color-dark-bg-alt);
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        outline: var(--border-dark);
+    }
+
+    .mobileNav {
+        background-image: url('../img/app/icon-menu-light.png');
+    }
+
+    .container {
+        border: var(--border-dark-1);
+        background-color: var(--color-dark-bg-alt);
+        box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .dirMeta,
+    p.dirMeta.meta,
+    p.instr {
+        background-color: var(--color-dark-bg-alt-1);
+        border: var(--border-dark-1);
+        color: var(--color-text-dark-alt-2);
+    }
+
+    input,
+    textarea {
+        border: var(--border-dark);
+        background-color: var(--color-dark-bg-alt);
+        color: var(--color-text-dark);
+    }
+
+    code,
+    pre {
+        border: var(--border);
+        background-color: var(--color-dark-bg);
+    }
+
+    .tab-list {
+        border-bottom: var(--border-dark);
+    }
+
+    .tab {
+        border: 1px solid transparent;
+        background-color: transparent;
+        color: var(--color-text-dark);
+        box-shadow: none;
+        outline: none;
+        border-bottom: 1px solid transparent;
+    }
+
+    .tab:focus-within {
+        outline: none;
+    }
+
+    /* Change background color of tabs on hover */
+    .tab:hover {
+        background-color: rgba(255, 255, 255, .1);
+    }
+
+    /* Create an active/current tablink class */
+    .tab.active {
+        box-shadow: 0 -2px 0 inset var(--color-brand-dark);
+        border-bottom: 1px solid var(--color-brand-dark);
+    }
+
+    .user {
+        border: var(--border-dark-1);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+        background-color: var(--color-dark-bg-alt-1);
+    }
+
+    p.instr {
+        color: var(--color-text-dark);
+    }
+
+    input:focus,
+    input[type="submit"]:focus,
+    textarea:focus,
+    button:focus {
+        outline: 4px double var(--color-brand-dark);
+        border: 1px solid var(--color-brand-dark);
+        box-shadow: none;
+    }
+
+    input[type="submit"],
+    button,
+    .btn {
+        border: 0px;
+        background-color: var(--color-brand-dark);
+        color: var(--color-text);
+    }
+
+    .formBody input[type="submit"],
+    .formBody button,
+    .btn {
+        background-color: var(--color-dark);
+        color: var(--color-brand-dark);
+        border: 1px solid var(--color-brand-dark);
+        box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, .25);
+    }
+
+    .formBody input[type="submit"]:hover,
+    .formBody button:hover,
+    .btn:hover {
+        box-shadow: none;
+    }
+
+    .formBody input[type="submit"]:active,
+    .formBody button:active,
+    .btn:active {
+        box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, .25);
+    }
+
+    .btn-danger,
+    .formBody .btn-danger {
+        color: lightpink;
+        border-color: lightpink;
+    }
+
+    p.badge {
+        background-color: var(--color-dark-bg-alt-1);
+        color: var(--color-brand-dark);
+        border: 1px solid var(--color-brand-dark);
+    }
+
+    h2.submit+.badgeContainer p.badge {
+        background-color: var(--color-dark-bg-alt);
+    }
+
+    .search-highlight {
+        background-color: var(--color-highlight-dark);
+        color: var(--color-text-dark);
+    }
+
+    .highlight {
+        background-color: var(--color-highlight-dark);
+        color: var(--color-text-dark);
+    }
+
+    .message {
+        border: var(--border-dark);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
+        background-color: var(--color-dark-bg-alt);
+    }
+
+    .dropbtn {
+        background: none;
+        box-shadow: none;
+        color: var(--color-text-dark);
+        border: 1px solid transparent;
+    }
+
+    .dropbtn:focus-within {
+        outline: none;
+        border: 1px solid var(--color-brand-light);
+    }
+
+    .dropdown-content {
+        background-color: var(--color-dark-bg-alt);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
+        border: var(--border-dark);
+        opacity: 0;
+    }
+
+    .dropdown-content a {
+        color: var(--color-text-dark);
+    }
+
+    .dropdown-content a:hover {
+        background-color: rgba(255, 255, 255, .1);
+    }
+
+    .dropdown-icon {
+        filter: invert(1);
+    }
+
+    .toggle {
+        background: var(--color-text-dark-alt);
+    }
+
+    .toggle__ball {
+        background: #333;
+    }
+
+    .toggle-ui input[type="checkbox"]:checked~label .toggle {
+        background: var(--color-brand-dark);
+    }
+
+    footer {
+        background-color: var(--color-dark-bg);
+    }
+
+    .dropdown-content a:hover {
+        background-color: var(--color-dark-bg-alt-1);
+    }
+
+    .flash-messages {
+        background-color: var(--color-dark-bg-alt-1);
+        border: var(--border-dark-1)
+    }
+
+    img.qr {
+        filter: invert(.8);
+    }
+
+    .emptyState img {
+        opacity: .75;
+        filter: saturate(0.65);
+    }
+
+    .admin-highlights .metric {
+        border: var(--border-dark);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
+
+    .metric p:nth-child(1n) {
+        color: var(--color-text-dark-alt);
+    }
+
+    .metric p:nth-child(2n) {
+        color: var(--color-text-dark);
+    }
+
+    .error {
+        color: lightpink;
+    }
+
+    @media screen and (max-width: 768px) {
+        .dropdown-content a:hover {
+            background-color: var(--color-dark-bg-alt);
+        }
+    }
+
+}
+
 body {
-    background-color: var(--color-brand-bg);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -70,7 +581,7 @@ h6 {
     margin: 0 0 .5rem 0;
     font-family: var(--font-sans-bold);
     font-weight: normal;
-    line-height: 1.1;
+    line-height: 1.2;
 }
 
 h1 {
@@ -85,20 +596,29 @@ h2 {
 h2.submit {
     margin-bottom: .25rem;
 }
-h2 + p {
+
+h2+p {
     margin-top: .25rem;
 }
 
-h2.submit + p {
+h2.submit+p {
     margin-top: 1rem;
 }
 
-h2.submit ~ .instr {
+h2.submit~.instr {
+    margin: 1rem 0;
+}
+
+h2.submit~p+.instr {
     margin-bottom: .75rem;
     margin-top: .25rem
 }
 
-h2.submit ~ .bio {
+h2.submit~p.bio+.instr {
+    margin-top: 0;
+}
+
+h2.submit~.bio {
     margin: .75rem 0 1rem 0;
 }
 
@@ -110,19 +630,26 @@ h4 {
     font-size: var(--font-size-4);
 }
 
-a {
-    color: var(--color-brand);
-}
-
 p {
     word-break: break-word;
-    margin: 1rem 0;
+    margin: .5rem 0;
+    line-height: var(--line-height-base);
+}
+
+code,
+pre {
+    line-break: anywhere;
+    padding: .5rem;
+    font-size: var(--font-size-smaller);
+    font-family: var(--font-mono);
+    border-radius: .25rem;
+    margin: .5rem 0;
+    white-space: break-spaces;
 }
 
 p.instr {
     font-style: italic;
     font-size: var(--font-size-smaller);
-    color: var(--color-text-light);
 }
 
 .badgeContainer {
@@ -132,12 +659,15 @@ p.instr {
     align-items: center;
 }
 
-.badgeContainer:empty { margin: 0; }
+.badgeContainer:empty {
+    margin: 0;
+}
+
+h2.submit~.badgeContainer+p {
+    margin-top: .5rem;
+}
 
 p.badge {
-    background-color: white;
-    color: var(--color-brand);
-    border: 1px solid var(--color-brand);
     border-radius: .25rem;
     width: fit-content;
     font-size: var(--font-size-smallest);
@@ -160,12 +690,10 @@ p.badge {
 
 .metric p:nth-child(1n) {
     font-size: var(--font-size-small);
-    color: var(--color-text-light);
 }
 
 .metric p:nth-child(2n) {
     font-size: 2rem;
-    color: #333;
     margin: .5rem 0 .125rem 0;
 }
 
@@ -177,7 +705,6 @@ p.badge {
     margin-top: -8px;
     font-size: var(--font-size-small);
     margin-bottom: 1rem;
-    color: darkred;
     display: flex;
 }
 
@@ -207,11 +734,8 @@ img.empty {
     top: 1rem;
     right: 50%;
     transform: translateX(50%) translateY(0%);
-    background-color: white;
-    border: var(--border);
     padding: 1.25rem 2rem;
     border-radius: .25rem;
-    box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     width: max-content;
     max-width: 78vw;
     text-align: center;
@@ -225,7 +749,6 @@ img.empty {
     font-family: var(--font-mono);
     font-size: var(--font-size-smallest);
     margin-bottom: 1.25rem;
-    background-color: rgba(0, 0, 0, 0.04);
     width: fit-content;
     padding: .25rem .425rem;
     border-radius: .25rem;
@@ -256,7 +779,7 @@ img.empty {
     99% {
         transform: translateX(50%) translateY(0%);
         opacity: 0;
-        visibility: hidden; 
+        visibility: hidden;
     }
 
     100% {
@@ -267,12 +790,9 @@ img.empty {
 }
 
 .message {
-    border: 1px solid rgba(0, 0, 0, 0.1);
     padding: 1.125rem;
     border-radius: .25rem;
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     margin: .5rem 0;
-    background-color: white;
 }
 
 .message:last-of-type {
@@ -318,7 +838,6 @@ header {
     top: 0;
     right: 0;
     width: 100%;
-    background-color: white;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -354,7 +873,6 @@ header nav li {
 
 header nav a {
     text-decoration: none;
-    color: #333;
 }
 
 header nav a:hover {
@@ -375,12 +893,9 @@ button.dropbtn {
     width: 100%;
     display: flex;
     flex-direction: column;
-    border: var(--border);
     padding: 2.5rem 2rem;
     box-sizing: border-box;
-    background-color: white;
     border-radius: .5rem;
-    box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
 }
 
 header nav .mobileNav {
@@ -395,21 +910,22 @@ label {
 
 p.meta {
     font-size: var(--font-size-small);
-    color: var(--color-text-light);
-    line-height: 1.4;
+    line-height: var(--line-height-base)
+}
+
+h3+p.meta {
+    margin-top: .75rem;
+
 }
 
 .dirMeta,
 p.instr {
     margin: 1rem 0;
-    background-color: rgb(255, 249, 234);
     border-radius: .25rem;
     padding: .9125rem 1rem;
-    border: 1px solid rgba(232, 212, 180, .8);
-    color: #545454;
 }
 
-h2.submit + p.instr {
+h2.submit+p.instr {
     margin: .75rem 0 .5rem 0;
 }
 
@@ -427,7 +943,6 @@ textarea {
     font-size: var(--font-size-base);
     margin-bottom: 1rem;
     border-radius: .25rem;
-    border: var(--border);
     box-sizing: border-box;
     font-family: var(--font-sans);
 }
@@ -436,15 +951,6 @@ textarea#pgp_key {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
     padding: 1rem;
-}
-
-input:focus,
-input[type="submit"]:focus,
-textarea:focus,
-button:focus {
-    outline: 4px double var(--color-brand);
-    border: 1px solid var(--color-brand);
-    box-shadow: none;
 }
 
 input+button {
@@ -459,9 +965,6 @@ button,
     font-size: 1rem;
     font-family: var(--font-sans-bold);
     border-radius: 50vw;
-    border: 0px;
-    background-color: var(--color-brand);
-    color: white;
     padding: .725rem 1rem;
     margin: .5rem 0;
     line-height: 1;
@@ -481,13 +984,9 @@ header .btn {
 .formBody input[type="submit"],
 .formBody button,
 .btn {
-    background-color: white;
-    color: var(--color-brand);
-    border: 1px solid var(--color-brand);
     border-radius: 50vw;
     font-family: var(--font-sans-bold);
     text-decoration: none;
-    box-shadow: 0px 2px 0px 0px rgba(125,37,193,.25);
 }
 
 .formBody input[type="submit"]:hover,
@@ -500,18 +999,10 @@ header .btn {
 .formBody input[type="submit"]:active,
 .formBody button:active,
 .btn:active {
-    box-shadow: inset 0px 2px 0px 0px rgba(125,37,193,.25);
     text-decoration: none;
 }
 
-.btn-danger,
-.formBody .btn-danger {
-    color: darkred;
-    border-color: darkred;
-}
-
 .mobileNav {
-    background-image: url('../img/app/icon-menu.png');
     background-size: contain;
     width: 2.5rem;
     height: 2.5rem;
@@ -532,7 +1023,7 @@ button,
 .btn {
     cursor: pointer;
     text-decoration: none;
-    box-shadow: 0px 2px 0px 0px rgba(125,37,193,.25);
+    box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, .25);
 }
 
 textarea {
@@ -555,9 +1046,8 @@ footer {
     position: fixed;
     bottom: 0;
     left: 0;
-    font-size: var(--font-size-small);
+    font-size: var(--font-size-smaller);
     padding: .625rem 1rem;
-    background-color: #fbf3ff;
     border-radius: 0 .25rem 0 0;
 }
 
@@ -637,8 +1127,6 @@ img.upgrade {
 .promo p {
     font-size: var(--font-size-base);
     max-width: 80%;
-    line-height: 145%;
-
 }
 
 .formBody .promo .primaryBtn {
@@ -656,7 +1144,6 @@ img.upgrade {
     overflow-y: hidden;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    border-bottom: var(--border);
 }
 
 .tab-list li {
@@ -668,42 +1155,21 @@ img.upgrade {
 }
 
 /* Tab button styling */
-.tab  {
-  min-height: 0px;
-  min-width: auto;
-  padding: 1rem .625rem;
-  font-size: var(--font-size-base);
-  font-family: var(--font-sans);
-  white-space: nowrap;
-  border-radius: 0em;
-  border: 1px solid transparent;
-  background-color: transparent;
-  color: var(--color-text);
-  box-shadow: none;
-  margin: 0;
-  box-sizing: content-box;
-  outline: none;
-  border-bottom: 1px solid transparent;
+.tab {
+    min-height: 0px;
+    min-width: auto;
+    padding: 1rem .625rem;
+    font-size: var(--font-size-base);
+    font-family: var(--font-sans);
+    white-space: nowrap;
+    border-radius: 0em;
+    margin: 0;
+    box-sizing: content-box;
 }
 
-.tab:focus-within {
-  outline: none;
-}
-/* Change background color of tabs on hover */
-.tab:hover {
-    background-color: #fbf3ff;
-}
-
-/* Create an active/current tablink class */
 .tab.active {
-    box-shadow: 0 -2px 0 inset var(--color-brand);
-    border-bottom: 1px solid var(--color-brand);
+    font-family: var(--font-sans-bold);
 }
-
-.tab.active  {
-  font-family: var(--font-sans-bold);
-}
-
 
 /* Style the tab content (and hide it by default) */
 .tab-content {
@@ -717,19 +1183,19 @@ img.upgrade {
 }
 
 .admin-only {
-    display: none; /* Hide admin elements by default */
+    display: none;
+    /* Hide admin elements by default */
 }
 
 .is-admin .admin-only {
-    display: block; /* Show admin elements when inside an .is-admin container */
+    display: block;
+    /* Show admin elements when inside an .is-admin container */
 }
 
 .user {
-    border: var(--border);
     border-radius: .25rem;
     padding: 1rem;
     margin-bottom: .75rem;
-    box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
 .user .tableActions {
@@ -752,28 +1218,20 @@ img.upgrade {
 
 /* Dropdown Button */
 .dropbtn {
-  cursor: pointer;
-  background: none;
-  padding: .25rem 0;
-  min-height: 0px;
-  min-width: 0px;
-  box-shadow: none;
-  margin: 0;
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  border: 1px solid transparent;
+    cursor: pointer;
+    padding: .25rem 0;
+    min-height: 0px;
+    min-width: 0px;
+    box-shadow: none;
+    margin: 0;
+    font-family: var(--font-sans);
 }
 
-.dropbtn:focus-within {
-    outline: none;
-    border: 1px solid var(--color-brand);
-}
-
- .dropdown a {
+.dropdown a {
     font-size: .875rem;
 }
 
- .dropdown ul a {
+.dropdown ul a {
     margin-left: 0;
 }
 
@@ -783,24 +1241,20 @@ a.dropbtn:hover {
 
 /* Dropdown content (hidden by default) */
 .dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: white;
-  width: fit-content;
-  box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.2);
-  z-index: 1;
-  border-radius: .25rem;
-  top:  3.5rem;
-  border: var(--border);
-  opacity: 0;
+    display: none;
+    position: absolute;
+    width: fit-content;
+    z-index: 1;
+    border-radius: .25rem;
+    top: 3.5rem;
+    opacity: 0;
 }
 
 /* Links inside the dropdown */
 .dropdown-content a {
-  color: #333;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
 }
 
 .dropdown-content ul {
@@ -813,56 +1267,56 @@ a.dropbtn:hover {
     width: 100%;
 }
 
-/* Change color of dropdown links on hover */
-.dropdown-content a:hover {background-color: #dfffff;}
-
 /* Style the dropdown button */
 .dropbtn {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
 }
 
 /* Style the dropdown icon */
 .dropdown-icon {
-  width: .5rem;
-  margin-left: .325rem;
-  transition: transform 0.3s ease;
+    width: .5rem;
+    margin-left: .325rem;
+    transition: transform 0.3s ease;
 }
 
 /* Fade-in and slide-down animation */
 @keyframes fadeInSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-.5rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(-.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Fade-out and slide-up animation */
 @keyframes fadeOutSlideUp {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-.5rem);
-  }
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-.5rem);
+    }
 }
 
 /* Apply the animation to the dropdown content when it's shown */
 .dropdown-content.show {
-  display: block;
-  animation: fadeInSlideDown 0.3s ease forwards;
+    display: block;
+    animation: fadeInSlideDown 0.3s ease forwards;
 }
 
 .rotate-icon {
-  transform: rotate(180deg);
-  transition: transform 0.3s ease; /* Smooth rotation transition */
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+    /* Smooth rotation transition */
 }
 
 .navGroup {
@@ -881,12 +1335,10 @@ a.dropbtn:hover {
     flex-direction: column;
     flex: 1 1 0px;
     align-items: center;
-    border: var(--border);
     justify-content: center;
     padding: 1rem;
     border-radius: .25rem;
     text-align: center;
-    box-shadow: 0px 4px 8px -4px rgba(0,0,0,0.15);
 }
 
 .admin-highlights .metric p {
@@ -961,6 +1413,10 @@ a.dropbtn:hover {
 .user .meta {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
+    margin: .25rem 0;
+}
+
+.formBody .user .meta {
     margin: .125rem 0;
 }
 
@@ -1032,7 +1488,8 @@ textarea#bio {
     box-shadow: none;
     background: transparent;
     padding: 0px 2px;
-    visibility: hidden; /* Hide the icon initially */
+    visibility: hidden;
+    /* Hide the icon initially */
     cursor: pointer;
 }
 
@@ -1046,14 +1503,17 @@ textarea#bio {
 }
 
 .search-highlight {
-    background-color: var(--color-highlight);
+    border-radius: .125rem;
+    font-family: var(--font-sans-bold);
+}
+
+.highlight {
     border-radius: .125rem;
     font-family: var(--font-sans-bold);
 }
 
 .meta .search-highlight {
-    font-family: var(--font-mono);
-    font-weight: bold;
+    font-family: var(--font-mono-medium);
 }
 
 fieldset {
@@ -1065,18 +1525,24 @@ fieldset:disabled {
     display: none;
 }
 
-@media only screen and (max-width: 768px) {
-    header {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }   
+p.section-intro:first-of-type {
+    margin: .75rem 0 1rem 0;
 }
 
-@media only screen and (max-width: 640px) {
+p.section-intro:not(:first-of-type) {
+    margin: 0 0 1rem 0;
+}
+
+@media only screen and (max-width: 768px) {
 
     .container {
         min-width: initial;
         padding: 2rem 1.25rem;
+    }
+
+    header {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
 
     header nav ul {
@@ -1100,14 +1566,11 @@ fieldset:disabled {
         flex-direction: column;
         position: absolute;
         top: 3.5rem;
-        background-color: white;
         width: fit-content;
-        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
         padding: 1rem;
         box-sizing: border-box;
         z-index: 100;
         border-radius: .25rem;
-        outline: var(--border);
         min-width: 140px;
         align-items: start;
     }
@@ -1129,10 +1592,6 @@ fieldset:disabled {
     .dropdown-content ul {
         display: flex;
         gap: 1.125rem;
-    }
-
-    .dropdown-content a:hover {
-        background-color: white;
     }
 
     header nav .dropdown-content a {
@@ -1169,7 +1628,6 @@ fieldset:disabled {
     width: 50px;
     height: 18px;
     padding: 3px 0px;
-    background: var(--color-text-light);
     position: relative;
     border-radius: 100px;
     overflow: hidden;
@@ -1180,21 +1638,16 @@ fieldset:disabled {
     width: 18px;
     position: absolute;
     left: 4px;
-    background: white;
     border-radius: 100%;
     transition: transform 0.2s;
 }
 
-.toggle-ui input[type="checkbox"]:checked ~ label .toggle {
-    background: var(--color-brand);
-}
-
-.toggle-ui input[type="checkbox"]:checked ~ label .toggle__ball {
+.toggle-ui input[type="checkbox"]:checked~label .toggle__ball {
     transform: translateX(24px);
 }
 
-.toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
-    outline: 2px solid  var(--color-brand);
+.toggle-ui input[type="checkbox"]:focus-visible~label .toggle {
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
 }
 

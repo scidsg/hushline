@@ -5,46 +5,44 @@
 <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list" role="tablist">
         <li role="presentation">
-            <button type="button" class="tab active" data-tab="profile" role="tab" aria-selected="true" aria-controls="profile" id="profile-tab">
+            <button type="button" class="tab active" data-tab="profile" role="tab" aria-selected="true"
+                aria-controls="profile" id="profile-tab">
                 Profile
             </button>
         </li>
         <li role="presentation">
-            <button type="button" class="tab" data-tab="auth" role="tab" aria-selected="false" aria-controls="auth" id="auth-tab">
+            <button type="button" class="tab" data-tab="auth" role="tab" aria-selected="false" aria-controls="auth"
+                id="auth-tab">
                 Authentication
             </button>
         </li>
         <li role="presentation">
-            <button type="button" class="tab" data-tab="email" role="tab" aria-selected="false" aria-controls="email" id="email-tab">
+            <button type="button" class="tab" data-tab="email" role="tab" aria-selected="false" aria-controls="email"
+                id="email-tab">
                 Email &amp; Encryption
             </button>
         </li>
         <li role="presentation">
-            <button type="button" class="tab" data-tab="advanced" role="tab" aria-selected="false" aria-controls="advanced" id="advanced-tab">
+            <button type="button" class="tab" data-tab="advanced" role="tab" aria-selected="false"
+                aria-controls="advanced" id="advanced-tab">
                 Advanced
             </button>
         </li>
         {% if user.is_admin %}
-            <li role="presentation">
-                <button type="button" class="tab admin-only" data-tab="admin" role="tab" aria-selected="false" aria-controls="admin" id="admin-tab">
-                    Admin
-                </button>
-            </li>
+        <li role="presentation">
+            <button type="button" class="tab admin-only" data-tab="admin" role="tab" aria-selected="false"
+                aria-controls="admin" id="admin-tab">
+                Admin
+            </button>
+        </li>
         {% endif %}
     </ul>
 </div>
 <div class="formBody">
     <div id="profile" class="tab-content active" role="tabpanel" aria-labelledby="profile-tab">
-        <div class="form-list">
-            <div class="text-only">
-                <h3>Large Organizations</h3>
-                <p>⭐️ Single-tenant plans are available. Please contact us for more information.</p>
-            </div>
-        </div>
-
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
-        <p>⚠️ Changing your display name will result in losing your verification status.</p>
+        <p class="meta">⚠️ Changing your display name will result in losing your verification status.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ display_name_form.hidden_tag() }}
@@ -90,7 +88,7 @@
         <!-- Change Username Section -->
         <h3>Change Username</h3>
         {% if user.is_verified %}
-        <p>⚠️ Changing your username will result in losing your verification status.</p>
+        <p class="meta">⚠️ Changing your username will result in losing your verification status.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.index') }}">
             {{ change_username_form.hidden_tag() }}
@@ -143,7 +141,9 @@
         <!-- SMTP Settings Section -->
         <h3>Message Forwarding</h3>
         {% if not user.pgp_key %}
-        <p class="info">👇 <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP key</a> below to enable message forwarding.</p>
+        <p class="info">👇 <a
+                href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP
+                key</a> below to enable message forwarding.</p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ smtp_settings_form.hidden_tag() }}
@@ -162,7 +162,9 @@
         <!-- PGP Key Section -->
         <h3>Message Encryption</h3>
         {% if not user.pgp_key %}
-        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope" rel="noopener noreferrer" target="_blank" aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
+        <p>🤔 Need help? <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope"
+                rel="noopener noreferrer" target="_blank"
+                aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
             {{ pgp_key_form.hidden_tag() }}
@@ -180,7 +182,7 @@
     <div id="advanced" class="tab-content" role="tabpanel" aria-labelledby="advanced-tab" hidden>
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
-        <p>⚠️ Deleting your account is a permanent action that cannot be undone!</p>
+        <p class="meta">⚠️ Deleting your account is a permanent action that cannot be undone!</p>
         <form method="POST" action="{{ url_for('settings.delete_account') }}">
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>
