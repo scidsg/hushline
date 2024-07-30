@@ -21,7 +21,7 @@ def encrypt_field(data: bytes | str | None) -> str | None:
         # If data is a string, encode it to bytes
         data = data.encode()
 
-    return fernet.encrypt(data).decode()
+    return fernet.encrypt_at_time(data, current_time=0).decode()
 
 
 def decrypt_field(data: str | None) -> str | None:
