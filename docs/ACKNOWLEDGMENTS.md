@@ -16,6 +16,7 @@
 - Dr. Martin Shelton, Subject Matter Expert, Journalism
 - Micah Lee, Engineering
 - Ritik Shah, DevSecOps
+- Ricchi Machado, Cryptography & Privacy Software Engineering
 - Sam Schlinkert, Documentation, Engineering
 - Saptak Sengupta, Accessibility, Engineering
 - Scott Jenson, Content Design
