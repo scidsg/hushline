@@ -99,25 +99,19 @@ def init_app(app: Flask) -> None:
         logged_in_user_id = session["user_id"]
         requested_username = request.args.get("username")
         logged_in_user = db.session.get(User, logged_in_user_id)
-        if logged_in_user:
-            logged_in_username = logged_in_user.primary_username
-
-        if requested_username and requested_username != logged_in_username:
+        if not logged_in_user or requested_username != logged_in_user.primary_username:
             return redirect(url_for("inbox"))
 
-        primary_user = logged_in_user
-        if primary_user:
+        if logged_in_user:
             messages = db.session.scalars(
-                select(Message).filter_by(user_id=primary_user.id).order_by(Message.id.desc())
+                select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
             ).all()
-            secondary_users_dict = {su.id: su for su in list(primary_user.secondary_usernames)}
+            secondary_users_dict = {su.id: su for su in list(logged_in_user.secondary_usernames)}
 
         return render_template(
             "inbox.html",
-            user=primary_user,
-            secondary_username=None,
+            user=logged_in_user,
             messages=messages,
-            is_secondary=False,
             secondary_usernames=secondary_users_dict,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
