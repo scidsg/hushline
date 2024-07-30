@@ -1,6 +1,6 @@
 import base64
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pyotp
 import qrcode
@@ -225,7 +225,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings.html",
-            now=datetime.utcnow(),
+            now=datetime.now(UTC),
             user=user,
             secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view

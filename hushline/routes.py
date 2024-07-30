@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import socket
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pyotp
 from flask import (
@@ -231,7 +231,9 @@ def init_app(app: Flask) -> None:
                 invite_code = db.session.scalars(
                     select(InviteCode).filter_by(code=invite_code_input).limit(1)
                 ).first()
-                if not invite_code or invite_code.expiration_date < datetime.utcnow():
+                if not invite_code or invite_code.expiration_date.replace(
+                    tzinfo=UTC
+                ) < datetime.now(UTC):
                     flash("⛔️ Invalid or expired invite code.", "error")
                     return (
                         render_template(
