@@ -21,6 +21,8 @@ def encrypt_field(data: bytes | str | None) -> str | None:
         # If data is a string, encode it to bytes
         data = data.encode()
 
+    # We explicitly set the current time to 0 to avoid storing timestamps
+    # that could be used to de-anonymize user-activity per the threat model.
     return fernet.encrypt_at_time(data, current_time=0).decode()
 
 
