@@ -1,33 +1,9 @@
-import os
+"""
+A module with a focus on providing support for PGP functionalities.
+"""
 
-from cryptography.fernet import Fernet
 from flask import current_app
 from pysequoia import Cert, encrypt
-
-encryption_key = os.environ.get("ENCRYPTION_KEY")
-
-if encryption_key is None:
-    raise ValueError("Encryption key not found. Please check your .env file.")
-
-fernet = Fernet(encryption_key)
-
-
-def encrypt_field(data: bytes | str | None) -> str | None:
-    if data is None:
-        return None
-
-    # Check if data is already a bytes object
-    if not isinstance(data, bytes):
-        # If data is a string, encode it to bytes
-        data = data.encode()
-
-    return fernet.encrypt(data).decode()
-
-
-def decrypt_field(data: str | None) -> str | None:
-    if data is None:
-        return None
-    return fernet.decrypt(data.encode()).decode()
 
 
 def is_valid_pgp_key(key: str) -> bool:
