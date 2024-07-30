@@ -92,6 +92,53 @@ def test_change_username(client: FlaskClient) -> None:
     ), "Success message not found in response"
 
 
+def test_change_password(client: FlaskClient) -> None:
+    # Register and log in a user
+    username = "test_change_password"
+    original_password = "SecureTestPass123!"
+    new_password = "NewSecureTestPass123!"
+    user = register_user(client, username, original_password)
+    assert user is not None, "User registration failed"
+
+    login_user(client, username, original_password)
+    # Submit POST request to change the username
+    response = client.post(
+        "/settings/change-password",
+        data={
+            "old_password": original_password,
+            "new_password": new_password,
+        },
+        follow_redirects=True,
+    )
+
+    # Verify update was successful
+    assert response.status_code == 200, "Failed to update password"
+
+    # Optional: Check for success message in response
+    assert (
+        b"Password successfully changed. Please log in again." in response.data
+    ), "Success message not found in response"
+
+    # Attempt to log in with the registered user
+    response = client.post(
+        "/login", data={"username": username, "password": original_password}, follow_redirects=True
+    )
+
+    # Validate login response
+    assert response.status_code == 200
+    assert (
+        b"Invalid username or password." in response.data
+    ), "Success message not found in response"
+
+    response = client.post(
+        "/login", data={"username": username, "password": new_password}, follow_redirects=True
+    )
+
+    print(response.data)
+    # Validate login response
+    assert response.status_code == 302
+
+
 def test_add_pgp_key(client: FlaskClient) -> None:
     # Setup and login
     user = register_user(client, "user_with_pgp", "SecureTestPass123!")
