@@ -121,7 +121,6 @@ def test_change_password(client: FlaskClient) -> None:
     )
     assert response.status_code == 200, "Failed to update password"
     assert "login" in response.request.url
-    assert user is not None, "User registration failed"
     assert len(new_password_hash := user.password_hash) > 32
     assert new_password_hash.startswith("$scrypt$")
     assert original_password_hash not in new_password_hash
@@ -137,14 +136,18 @@ def test_change_password(client: FlaskClient) -> None:
     )
     assert response.status_code == 200
     assert "login" in response.request.url
-    assert b"Invalid username or password" in response.data, "Success message not found in response"
+    assert b"Invalid username or password" in response.data, "Failure message not found in response"
 
     # Attempt to log in with the registered user's new password
     response = client.post(
         "/login", data={"username": username, "password": new_password}, follow_redirects=True
     )
-    assert "inbox" in response.request.url
     assert response.status_code == 200
+    assert "inbox" in response.request.url
+    assert b"Empty Inbox" in response.data, "Inbox message not found in response"
+    assert (
+        b"Invalid username or password" not in response.data
+    ), "Failure message was found in response"
 
 
 def test_add_pgp_key(client: FlaskClient) -> None:
