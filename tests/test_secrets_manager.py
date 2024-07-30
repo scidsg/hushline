@@ -6,7 +6,7 @@ import pytest
 from conftest import Flask, vault
 
 from hushline import _summon_db_secret
-from hushline.crypto.secrets_manager import InvalidToken, truncated_b64decode
+from hushline.crypto.secrets_manager import InvalidTag, truncated_b64decode
 from hushline.model import InfrastructureAdmin
 
 _APP_ADMIN_SECRET_SALT_NAME: str = InfrastructureAdmin._APP_ADMIN_SECRET_SALT_NAME
@@ -80,21 +80,21 @@ def test_encryption_correctness(data: bytes) -> None:
 
     try:
         vault.decrypt(ciphertext, domain=b"wrong-domain", aad=aad.copy())
-    except InvalidToken:
+    except InvalidTag:
         assert True
     else:
         pytest.fail("Decryption succeeded with the wrong domain.")
 
     try:
         vault.decrypt(ciphertext, domain=domain, aad=deque([b"wrong-aad"]))
-    except InvalidToken:
+    except InvalidTag:
         assert True
     else:
         pytest.fail("Decryption succeeded with the wrong authenticated associated data.")
 
     try:
         vault.decrypt(token_bytes(len(ciphertext)), domain=domain, aad=aad.copy())
-    except InvalidToken:
+    except InvalidTag:
         assert True
     else:
         pytest.fail("Decryption succeeded with an arbitrary ciphertext.")

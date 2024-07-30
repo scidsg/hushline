@@ -13,7 +13,7 @@ def encrypt_field(
     *,
     domain: bytes | bytearray,
     aad: deque[bytes | bytearray] | None = None,
-) -> str | None:
+) -> bytes | None:
     if aad is None:
         aad = deque()
 
@@ -25,25 +25,22 @@ def encrypt_field(
         return None
 
     aad.appendleft(b"database_field")
-    return current_app.config["VAULT"].encrypt(data, domain=domain, aad=aad).decode()
+    return current_app.config["VAULT"].encrypt(data, domain=domain, aad=aad)
 
 
 def decrypt_field(
-    data: bytes | str | None,
+    data: bytes | None,
     *,
     domain: bytes | bytearray,
     aad: deque[bytes | bytearray] | None = None,
-    ttl: int | None = None,
 ) -> str | None:
     if aad is None:
         aad = deque()
 
-    if isinstance(data, str):
-        data = data.encode()
-    elif data is None:
+    if data is None:
         # the interface must consistently clear `aad` before returning, as `SecretsManager` does
         aad.clear()
         return None
 
     aad.appendleft(b"database_field")
-    return current_app.config["VAULT"].decrypt(data, domain=domain, aad=aad, ttl=ttl).decode()
+    return current_app.config["VAULT"].decrypt(data, domain=domain, aad=aad).decode()

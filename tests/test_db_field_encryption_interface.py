@@ -35,9 +35,8 @@ def test_declared_field_value_types_are_handled_correctly(
         if isinstance(plaintext, bytes):
             plaintext = plaintext.decode()
         assert isinstance(plaintext, str)
-        assert isinstance(ciphertext, str)
+        assert isinstance(ciphertext, bytes)
         assert plaintext == decrypt_field(ciphertext, domain=domain, aad=new_aad())
-        assert plaintext == decrypt_field(ciphertext.encode(), domain=domain, aad=new_aad())
 
 
 @pytest.mark.parametrize("aad", [deque([token_bytes(16), bytearray(token_bytes(16))])])
@@ -49,7 +48,9 @@ def test_aad_deque_is_cleared_but_aad_items_are_not_mutated(
     aad: deque[bytes | bytearray],
     static_app: Flask,
 ) -> None:
-    def wrap_in_test(func: Callable[..., str | None], data: bytes | str | None) -> str | None:
+    def wrap_in_test(
+        func: Callable[..., bytes | str | None], data: bytes | str | None
+    ) -> bytes | str | None:
         aad_copy = aad.copy()
         assert aad_copy
         result = func(data, domain=domain, aad=aad_copy)
@@ -75,10 +76,7 @@ def test_aad_deque_is_cleared_but_aad_items_are_not_mutated(
         if isinstance(data, bytes):
             data = data.decode()
         assert isinstance(data, str)
-        assert isinstance(ciphertext, str)
-
-        # str ciphertext data
-        assert data == wrap_in_test(decrypt_field, data=ciphertext)
+        assert isinstance(ciphertext, bytes)
 
         # bytes ciphertext data
-        assert data == wrap_in_test(decrypt_field, data=ciphertext.encode())
+        assert data == wrap_in_test(decrypt_field, data=ciphertext)

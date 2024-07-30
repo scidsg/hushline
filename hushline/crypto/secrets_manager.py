@@ -2,16 +2,18 @@
 A class definition to simplify the careful handling of cryptographic secrets.
 """
 
-from base64 import b64decode, urlsafe_b64encode
+from base64 import b64decode
 from collections import deque
 from hashlib import shake_256
+from secrets import token_bytes
 from typing import Literal
 
 from aiootp.generics.canon import canonical_pack
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from passlib.hash import argon2
 
-__all__ = ["InvalidToken", "SecretsManager"]
+__all__ = ["InvalidTag", "SecretsManager"]
 
 
 def truncated_b64decode(value: bytes | bytearray) -> bytearray:
@@ -78,10 +80,13 @@ class SecretsManager:
         if aad is None:
             aad = deque()
 
-        aad.appendleft(b"fernet_cipher")
-        key = bytearray(urlsafe_b64encode(self._derive_key(domain=domain, aad=aad, size=32)))
+        aad.appendleft(salt := token_bytes(32))
+        aad.appendleft(b"chacha20_poly1305_cipher_with_derived_inputs_kna_salt256")
+        key = bytearray(self._derive_key(domain=domain, aad=aad, size=76))
         try:
-            return Fernet(key).encrypt(data)
+            return salt + ChaCha20Poly1305(key[44:]).encrypt(
+                data=data, nonce=key[:12], associated_data=key[12:44]
+            )
         finally:
             aad.clear()
             key.clear()
@@ -92,15 +97,17 @@ class SecretsManager:
         *,
         domain: bytes | bytearray,
         aad: deque[bytes | bytearray] | None = None,
-        ttl: int | None = None,
     ) -> bytes:
         if aad is None:
             aad = deque()
 
-        aad.appendleft(b"fernet_cipher")
-        key = bytearray(urlsafe_b64encode(self._derive_key(domain=domain, aad=aad, size=32)))
+        aad.appendleft(data[:32])
+        aad.appendleft(b"chacha20_poly1305_cipher_with_derived_inputs_kna_salt256")
+        key = bytearray(self._derive_key(domain=domain, aad=aad, size=76))
         try:
-            return Fernet(key).decrypt(data, ttl=ttl)
+            return ChaCha20Poly1305(key[44:]).decrypt(
+                data=data[32:], nonce=key[:12], associated_data=key[12:44]
+            )
         finally:
             aad.clear()
             key.clear()

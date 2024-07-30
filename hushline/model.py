@@ -59,14 +59,14 @@ class User(Model):
     primary_username = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80))
     _password_revision_number = db.Column(db.Integer, nullable=False)
-    _password_hash = db.Column("password_hash", db.String(512))
-    _totp_secret = db.Column("totp_secret", db.String(255))
+    _password_hash = db.Column("password_hash", db.String(255))
+    _totp_secret = db.Column("totp_secret", db.LargeBinary(255))
     _email = db.Column("email", db.String(255))
-    _smtp_server = db.Column("smtp_server", db.String(255))
+    _smtp_server = db.Column("smtp_server", db.LargeBinary(255))
     smtp_port = db.Column(db.Integer)
-    _smtp_username = db.Column("smtp_username", db.String(255))
-    _smtp_password = db.Column("smtp_password", db.String(255))
-    _pgp_key = db.Column("pgp_key", db.Text)
+    _smtp_username = db.Column("smtp_username", db.LargeBinary(255))
+    _smtp_password = db.Column("smtp_password", db.LargeBinary(255))
+    _pgp_key = db.Column("pgp_key", db.LargeBinary)
     is_verified = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     show_in_directory = db.Column(db.Boolean, default=False)
@@ -301,7 +301,7 @@ class SecondaryUsername(Model):
 class Message(Model):
     id = db.Column(db.Integer, primary_key=True)
     _hidden_aad_secret = db.Column("_aad_secret", db.LargeBinary(255), nullable=False)
-    _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
+    _content = db.Column("content", db.LargeBinary, nullable=False)  # Encrypted content stored here
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", backref=db.backref("messages", lazy=True))
     secondary_user_id = db.Column(
