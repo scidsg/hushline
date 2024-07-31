@@ -110,6 +110,20 @@ def test_change_password(client: FlaskClient) -> None:
     assert logged_in_user is not None
     assert user.id == logged_in_user.id
 
+    # Submit POST request to verify new password must be distinct from the previous
+    response = client.post(
+        "/settings/change-password",
+        data={
+            "old_password": original_password,
+            "new_password": original_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "settings" in response.request.url
+    assert b"Incorrect old password" in response.data
+    assert b"Password successfully changed" not in response.data
+
     # Submit POST request to change the username & verify update was successful
     response = client.post(
         "/settings/change-password",

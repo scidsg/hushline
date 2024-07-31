@@ -21,7 +21,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .forms import ComplexPassword, TwoFactorForm
+from .forms import ComplexPassword, TwoFactorForm, is_valid_password_swap
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
 
@@ -176,7 +176,11 @@ def create_blueprint() -> Blueprint:
 
             # Handle Change Password Form Submission
             if change_password_form.validate_on_submit():
-                if user.check_password(change_password_form.old_password.data):
+                if is_valid_password_swap(
+                    check_password=user.check_password,
+                    old_password=change_password_form.old_password.data,
+                    new_password=change_password_form.new_password.data,
+                ):
                     user.password_hash = change_password_form.new_password.data
                     db.session.commit()
                     flash("👍 Password changed successfully.")
@@ -260,7 +264,11 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("settings.index"))
 
         # Verify the old password
-        if user.check_password(change_password_form.old_password.data):
+        if is_valid_password_swap(
+            check_password=user.check_password,
+            old_password=change_password_form.old_password.data,
+            new_password=change_password_form.new_password.data,
+        ):
             # Set the new password
             user.password_hash = change_password_form.new_password.data
             db.session.commit()

@@ -1,4 +1,6 @@
 import re
+from hmac import compare_digest as bytes_are_equal
+from typing import Callable
 
 from flask_wtf import FlaskForm
 from wtforms import Field, Form, StringField
@@ -23,6 +25,16 @@ class ComplexPassword:
             and re.search("[^A-Za-z0-9]", password)
         ):
             raise ValidationError(self.message)
+
+
+def is_valid_password_swap(
+    *, check_password: Callable[[str], bool], old_password: str, new_password: str
+) -> bool:
+    # since the passwords can be of different lengths, the equality test must occur *iif*
+    # the correctness test passes, since timing differences leak length information
+    if check_password(old_password):
+        return not bytes_are_equal(old_password.encode(), new_password.encode())
+    return False
 
 
 class TwoFactorForm(FlaskForm):
