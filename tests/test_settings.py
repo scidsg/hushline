@@ -121,7 +121,7 @@ def test_change_password(client: FlaskClient) -> None:
     )
     assert response.status_code == 200
     assert "settings" in response.request.url
-    assert b"Incorrect old password" in response.data
+    assert b"New password is invalid" in response.data
     assert b"Password successfully changed" not in response.data
 
     # Submit POST request to change the username & verify update was successful

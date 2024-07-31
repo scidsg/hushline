@@ -7,6 +7,10 @@ from wtforms import Field, Form, StringField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 
+class WrongPassword(ValueError):
+    pass
+
+
 class ComplexPassword:
     def __init__(self, message: str | None = None) -> None:
         if not message:
@@ -34,7 +38,7 @@ def is_valid_password_swap(
     # the correctness test passes, since timing differences leak length information
     if check_password(old_password):
         return not bytes_are_equal(old_password.encode(), new_password.encode())
-    return False
+    raise WrongPassword
 
 
 class TwoFactorForm(FlaskForm):
