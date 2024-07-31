@@ -260,19 +260,18 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("settings.index"))
 
         # Verify the old password
-        if not user.check_password(change_password_form.old_password.data):
-            flash("Incorrect old password.", "error")
-            return redirect(url_for("settings.index"))
-
-        # Set the new password
-        user.password_hash = change_password_form.new_password.data
-        db.session.commit()
-        session.clear()  # Clears the session, logging the user out
-        flash(
-            "👍 Password successfully changed. Please log in again.",
-            "success",
-        )
-        return redirect(url_for("login"))  # Redirect to the login page for re-authentication
+        if user.check_password(change_password_form.old_password.data):
+            # Set the new password
+            user.password_hash = change_password_form.new_password.data
+            db.session.commit()
+            session.clear()  # Clears the session, logging the user out
+            flash(
+                "👍 Password successfully changed. Please log in again.",
+                "success",
+            )
+            return redirect(url_for("login"))  # Redirect to the login page for re-authentication
+        flash("Incorrect old password.", "error")
+        return redirect(url_for("settings.index"))
 
     @bp.route("/change-username", methods=["POST"])
     @require_2fa
