@@ -183,9 +183,10 @@ def create_blueprint() -> Blueprint:
                 ):
                     user.password_hash = change_password_form.new_password.data
                     db.session.commit()
-                    flash("👍 Password changed successfully.")
-                else:
-                    flash("⛔️ Incorrect old password.")
+                    flash("👍 Password successfully changed. Please log in again.", "success")
+                    # Redirect to the login page for re-authentication
+                    return redirect(url_for("login"))
+                flash("⛔️ Incorrect old password.", "error")
                 return redirect(url_for("settings"))
 
             # Check if user is admin and add admin-specific data
@@ -260,7 +261,7 @@ def create_blueprint() -> Blueprint:
 
         change_password_form = ChangePasswordForm(request.form)
         if not change_password_form.validate_on_submit():
-            flash("New password is invalid.")
+            flash("⛔️ New password is invalid.", "error")
             return redirect(url_for("settings.index"))
 
         # Verify the old password
@@ -273,12 +274,10 @@ def create_blueprint() -> Blueprint:
             user.password_hash = change_password_form.new_password.data
             db.session.commit()
             session.clear()  # Clears the session, logging the user out
-            flash(
-                "👍 Password successfully changed. Please log in again.",
-                "success",
-            )
-            return redirect(url_for("login"))  # Redirect to the login page for re-authentication
-        flash("Incorrect old password.", "error")
+            flash("👍 Password successfully changed. Please log in again.", "success")
+            # Redirect to the login page for re-authentication
+            return redirect(url_for("login"))
+        flash("⛔️ Incorrect old password.", "error")
         return redirect(url_for("settings.index"))
 
     @bp.route("/change-username", methods=["POST"])
