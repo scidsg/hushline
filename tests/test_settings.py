@@ -107,8 +107,8 @@ def test_change_password(client: FlaskClient) -> None:
 
     # Log in the registered user
     logged_in_user = login_user(client, username, original_password)
-    if logged_in_user is not None:
-        assert user.id == logged_in_user.id
+    assert logged_in_user is not None
+    assert user.id == logged_in_user.id
 
     # Submit POST request to change the username & verify update was successful
     response = client.post(
