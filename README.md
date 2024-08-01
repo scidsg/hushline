@@ -9,7 +9,7 @@ Hush Line meets users where they are by offering a variety of products that meet
 - **Single-tenant instances** are for customers who want an easy-to-use platform just for their organization.
 - Users, with their own unique needs, can freely install the platform wherever they choose.
 
-![repo](https://github.com/user-attachments/assets/8037026e-c77f-4a5a-8cb6-6ae57cd4552d)
+![repo](https://github.com/user-attachments/assets/120b3150-fb12-44b5-93b1-6e06e73344d4)
 
 ## Contribution Guidelines
 
