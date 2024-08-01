@@ -5,9 +5,9 @@
 Hush Line meets users where they are by offering a variety of products that meet your security needs:
 
 - **Hush Line managed service** is for anyone who needs an effortless tip line. Just create an account. Tor-ready.
-- **Personal Server** is a custom-designed hardware device that runs a Tor-only version of the Hush Line platform.
-- **Single-tenant instances** are for customers who want an easy-to-use platform just for their organization.
-- Users, with their own unique needs, can freely install the platform wherever they choose.
+- **Personal Server** is a custom-designed hardware device that runs a Tor-only version of the Hush Line platform for when owning and controlling your infrastructure is critical.
+- **Single-tenant instances** are for customers who want an easy-to-use managed platform just for their organization.
+- Users, with their own unique needs, **can freely install** the platform wherever they choose.
 
 ![repo](https://github.com/user-attachments/assets/6fd68744-368e-4124-b266-bbdd52eb558f)
 
