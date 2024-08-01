@@ -88,7 +88,7 @@ def create_blueprint() -> Blueprint:
             show_in_directory=user.show_in_directory
         )
         secondary_usernames = db.session.scalars(
-            select(SecondaryUsername).filter_by(user_id=user.id)
+            db.select(SecondaryUsername).filter_by(user_id=user.id)
         ).all()
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
@@ -119,20 +119,20 @@ def create_blueprint() -> Blueprint:
 
         # Check if user is admin and add admin-specific data
         if user.is_admin:
-            user_count = db.session.scalar(func.count(User.id))
+            user_count = db.session.scalar(db.func.count(User.id))
             two_fa_count = db.session.scalar(
-                select(func.count(User.id).filter(User._totp_secret.isnot(None)))
+                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
             )
             pgp_key_count = db.session.scalar(
-                select(
-                    func.count(User.id)
+                db.select(
+                    db.func.count(User.id)
                     .filter(User._pgp_key.isnot(None))
                     .filter(User._pgp_key != "")
                 )
             )
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(db.session.scalars(select(User)).all())  # Fetch all users for admin
+            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
 
         # Handle form submissions
         if request.method == "POST":
@@ -151,7 +151,7 @@ def create_blueprint() -> Blueprint:
             if "change_username" in request.form and change_username_form.validate_on_submit():
                 new_username = change_username_form.new_username.data
                 existing_user = db.session.scalars(
-                    select(User).filter_by(primary_username=new_username).limit(1)
+                    db.select(User).filter_by(primary_username=new_username).limit(1)
                 ).first()
                 if existing_user:
                     flash("💔 This username is already taken.")
@@ -197,13 +197,13 @@ def create_blueprint() -> Blueprint:
             # Check if user is admin and add admin-specific data
             is_admin = user.is_admin
             if is_admin:
-                user_count = db.session.scalar(func.count(User.id))
+                user_count = db.session.scalar(db.func.count(User.id))
                 two_fa_count = db.session.scalar(
-                    select(func.count(User.id).filter(User._totp_secret.isnot(None)))
+                    db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
                 )
                 pgp_key_count = db.session.scalar(
-                    select(
-                        func.count(User.id)
+                    db.select(
+                        db.func.count(User.id)
                         .filter(User._pgp_key.isnot(None))
                         .filter(User._pgp_key != "")
                     )
@@ -315,7 +315,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".settings"))
 
         existing_user = db.session.scalars(
-            select(User).filter_by(primary_username=new_username)
+            db.select(User).filter_by(primary_username=new_username)
         ).first()
         if existing_user:
             flash("This username is already taken.", "error")

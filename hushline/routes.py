@@ -16,7 +16,6 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from sqlalchemy import func, select
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -103,7 +102,7 @@ def init_app(app: Flask) -> None:
 
         if logged_in_user:
             messages = db.session.scalars(
-                select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
+                db.select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
             ).all()
             secondary_users_dict = {su.id: su for su in list(logged_in_user.secondary_usernames)}
 
@@ -119,7 +118,7 @@ def init_app(app: Flask) -> None:
     def submit_message(username: str) -> Response | str:
         form = MessageForm()
         user = db.session.scalars(
-            select(User).filter_by(primary_username=username).limit(1)
+            db.select(User).filter_by(primary_username=username).limit(1)
         ).first()
         if not user:
             flash("🫥 User not found.")
@@ -229,7 +228,7 @@ def init_app(app: Flask) -> None:
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
                 invite_code = db.session.scalars(
-                    select(InviteCode).filter_by(code=invite_code_input).limit(1)
+                    db.select(InviteCode).filter_by(code=invite_code_input).limit(1)
                 ).first()
                 if not invite_code or invite_code.expiration_date.replace(
                     tzinfo=UTC
@@ -245,7 +244,7 @@ def init_app(app: Flask) -> None:
                     )
 
             if db.session.scalars(
-                select(User).filter_by(primary_username=username).limit(1)
+                db.select(User).filter_by(primary_username=username).limit(1)
             ).first():
                 flash("💔 Username already taken.", "error")
                 return (
@@ -281,7 +280,7 @@ def init_app(app: Flask) -> None:
             password = form.password.data
 
             user = db.session.scalars(
-                select(User).filter_by(primary_username=username).limit(1)
+                db.select(User).filter_by(primary_username=username).limit(1)
             ).first()
 
             if user and user.check_password(password):
@@ -337,7 +336,7 @@ def init_app(app: Flask) -> None:
 
             # If the most recent successful login was made with the same OTP code, reject this one
             last_login = db.session.scalars(
-                select(AuthenticationLog)
+                db.select(AuthenticationLog)
                 .filter_by(user_id=user.id, successful=True)
                 .order_by(AuthenticationLog.timestamp.desc())
                 .limit(1)
@@ -354,8 +353,8 @@ def init_app(app: Flask) -> None:
 
             # If there were 5 failed logins in the last 30 seconds, don't allow another one
             failed_logins = db.session.scalar(
-                select(
-                    func.count(AuthenticationLog.id)
+                db.select(
+                    db.func.count(AuthenticationLog.id)
                     .filter(AuthenticationLog.user_id == user.id)
                     .filter(AuthenticationLog.successful == db.false())
                     .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
@@ -434,7 +433,7 @@ def init_app(app: Flask) -> None:
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     def get_directory_users() -> list[User]:
-        users = db.session.scalars(select(User).filter_by(show_in_directory=True)).all()
+        users = db.session.scalars(db.select(User).filter_by(show_in_directory=True)).all()
         return sort_users_by_display_name(list(users))
 
     @app.route("/directory")
