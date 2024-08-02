@@ -1,10 +1,15 @@
 # 🤫 Hush Line
 
-[Hush Line](https://hushline.app) is a free and open-source, anonymous-tip-line-as-a-service for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line; by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
+[Hush Line](https://hushline.app) is the first open-source whistleblowing suite for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or for executives and Board rooms for anonymous employee reporting.
 
-[More project information...](https://github.com/scidsg/project-info/tree/main/hush-line)
+Hush Line meets users where they are by offering a variety of products that meet your security needs:
 
-![repo](https://github.com/user-attachments/assets/747872a9-f162-4deb-8aea-59f00e71178e)
+- **Hush Line managed service** is for anyone who needs an effortless tip line. Just create an account. Tor-ready.
+- **Personal Server** is a custom-designed hardware device that runs a Tor-only version of the Hush Line platform for when owning and controlling your infrastructure is critical.
+- **Single-tenant instances** are for customers who want an easy-to-use managed platform just for their organization.
+- Users with their own unique needs **can freely install** the platform wherever they choose.
+
+![repo](https://github.com/user-attachments/assets/d4b28fa4-794e-434e-adca-6f80b3c943cb)
 
 ## Contribution Guidelines
 
