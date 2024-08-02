@@ -104,7 +104,7 @@ def init_app(app: Flask) -> None:
             messages = db.session.scalars(
                 db.select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
             ).all()
-            secondary_users_dict = {su.id: su for su in list(logged_in_user.secondary_usernames)}
+            secondary_users_dict = {su.id: su for su in logged_in_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
@@ -453,7 +453,7 @@ def init_app(app: Flask) -> None:
         return {"logged_in": logged_in}
 
     @app.route("/directory/users.json")
-    def directory_users() -> list[dict[str, str]]:
+    def directory_users() -> list[dict[str, str | bool | None]]:
         return [
             {
                 "primary_username": user.primary_username,
