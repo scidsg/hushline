@@ -35,7 +35,7 @@ First, we'll pin the extension to our toolbar. Click on the puzzle piece icon, t
 
 #### Generate your key
 
-In the Setup dashboard, click on the "Generate key" button. Add a name for your key, your email address, and a strong password. Before clicking "Generate," click on the "Advanced" button. In the Algorithm picklist, choose "ECC - Curve25519". This algorithm is more efficient that traditional RSA encryption while providing a similar level of security. Now, generate your key!
+In the Setup dashboard, click on the "Generate key" button. Add a name for your key, your email address, and a strong password. Before clicking "Generate," click on the "Advanced" button. In the Algorithm picklist, choose "ECC - Curve25519". This algorithm is more efficient than traditional RSA encryption while providing a similar level of security. Now, generate your key!
 
 ![step4](https://github.com/user-attachments/assets/1af3e7f4-041c-4090-80bb-c4c5df4df0c9)
 
