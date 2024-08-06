@@ -21,7 +21,7 @@ from wtforms.validators import DataRequired, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .forms import ComplexPassword, TwoFactorForm
+from .forms import ComplexPassword, TwoFactorForm, WrongPassword, is_valid_password_swap
 from .model import Message, SecondaryUsername, User
 from .utils import require_2fa
 
@@ -176,12 +176,20 @@ def create_blueprint() -> Blueprint:
 
             # Handle Change Password Form Submission
             if change_password_form.validate_on_submit():
-                if user.check_password(change_password_form.old_password.data):
-                    user.password_hash = change_password_form.new_password.data
-                    db.session.commit()
-                    flash("👍 Password changed successfully.")
-                else:
-                    flash("⛔️ Incorrect old password.")
+                try:
+                    if is_valid_password_swap(
+                        check_password=user.check_password,
+                        old_password=change_password_form.old_password.data,
+                        new_password=change_password_form.new_password.data,
+                    ):
+                        user.password_hash = change_password_form.new_password.data
+                        db.session.commit()
+                        flash("👍 Password successfully changed. Please log in again.", "success")
+                        # Redirect to the login page for re-authentication
+                        return redirect(url_for("login"))
+                    flash("⛔️ New password is invalid.", "error")
+                except WrongPassword:
+                    flash("⛔️ Incorrect old password.", "error")
                 return redirect(url_for("settings"))
 
             # Check if user is admin and add admin-specific data
@@ -254,25 +262,25 @@ def create_blueprint() -> Blueprint:
             flash("User not found.", "error")
             return redirect(url_for("login"))
 
-        change_password_form = ChangePasswordForm(request.form)
-        if not change_password_form.validate_on_submit():
-            flash("New password is invalid.")
-            return redirect(url_for("settings.index"))
-
-        # Verify the old password
-        if not user.check_password(change_password_form.old_password.data):
-            flash("Incorrect old password.", "error")
-            return redirect(url_for("settings.index"))
-
-        # Set the new password
-        user.password_hash = change_password_form.new_password.data
-        db.session.commit()
-        session.clear()  # Clears the session, logging the user out
-        flash(
-            "👍 Password successfully changed. Please log in again.",
-            "success",
-        )
-        return redirect(url_for("login"))  # Redirect to the login page for re-authentication
+        # Validate the password swap
+        try:
+            change_password_form = ChangePasswordForm(request.form)
+            if change_password_form.validate_on_submit() and is_valid_password_swap(
+                check_password=user.check_password,
+                old_password=change_password_form.old_password.data,
+                new_password=change_password_form.new_password.data,
+            ):
+                # Set the new password
+                user.password_hash = change_password_form.new_password.data
+                db.session.commit()
+                session.clear()  # Clears the session, logging the user out
+                flash("👍 Password successfully changed. Please log in again.", "success")
+                # Redirect to the login page for re-authentication
+                return redirect(url_for("login"))
+            flash("⛔️ New password is invalid.", "error")
+        except WrongPassword:
+            flash("⛔️ Incorrect old password.", "error")
+        return redirect(url_for("settings.index"))
 
     @bp.route("/change-username", methods=["POST"])
     @require_2fa
