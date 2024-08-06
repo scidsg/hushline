@@ -5,6 +5,7 @@ import bs4
 import pyotp
 from flask.testing import FlaskClient
 
+from hushline.db import db
 from hushline.model import AuthenticationLog, User
 
 
@@ -23,7 +24,7 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     assert b"Registration successful!" in response.data
 
     # Verify user is added to the database
-    user = User.query.filter_by(primary_username=username).first()
+    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
     assert user is not None
     assert user.primary_username == username
 
@@ -38,7 +39,7 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     assert response.status_code == 200
 
     # Verify user is added to the database
-    user = User.query.filter_by(primary_username=username).first()
+    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
     assert user is not None
     assert user.primary_username == username
 
@@ -76,7 +77,7 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     assert "Enter your 2FA Code" in login_response.text
 
     # Modify the timestamps on the AuthenticationLog entries to allow for 2FA verification
-    for log in AuthenticationLog.query.all():
+    for log in db.session.scalars(db.select(AuthenticationLog)).all():
         log.timestamp = datetime.now() - timedelta(minutes=5)
 
     return (user, totp_secret)
@@ -97,4 +98,4 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
     ), f"Inbox link should be present for the user {username}"
 
     # Return the logged-in user
-    return User.query.filter_by(primary_username=username).first()
+    return db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()

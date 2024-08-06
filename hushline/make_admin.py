@@ -9,11 +9,13 @@ from hushline.model import SecondaryUsername, User
 
 def toggle_admin(username: str) -> None:
     # First, try to find a primary user
-    user = User.query.filter_by(primary_username=username).first()
+    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
 
     # If not found, try to find a secondary user
     if not user:
-        secondary_username = SecondaryUsername.query.filter_by(username=username).first()
+        secondary_username = db.session.scalars(
+            db.select(SecondaryUsername).filter_by(username=username).limit(1)
+        ).first()
         if secondary_username:
             user = secondary_username.primary_user
         else:

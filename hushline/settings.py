@@ -1,6 +1,6 @@
 import base64
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pyotp
 import qrcode
@@ -79,7 +79,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             flash("🫥 User not found.")
             return redirect(url_for("login"))
@@ -87,7 +87,9 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm(
             show_in_directory=user.show_in_directory
         )
-        secondary_usernames = SecondaryUsername.query.filter_by(user_id=user.id).all()
+        secondary_usernames = db.session.scalars(
+            db.select(SecondaryUsername).filter_by(user_id=user.id)
+        ).all()
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
         smtp_settings_form = SMTPSettingsForm()
@@ -117,14 +119,20 @@ def create_blueprint() -> Blueprint:
 
         # Check if user is admin and add admin-specific data
         if user.is_admin:
-            user_count = User.query.count()
-            two_fa_count = User.query.filter(User._totp_secret.isnot(None)).count()
-            pgp_key_count = (
-                User.query.filter(User._pgp_key.isnot(None)).filter(User._pgp_key != "").count()
+            user_count = db.session.scalar(db.func.count(User.id))
+            two_fa_count = db.session.scalar(
+                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+            )
+            pgp_key_count = db.session.scalar(
+                db.select(
+                    db.func.count(User.id)
+                    .filter(User._pgp_key.isnot(None))
+                    .filter(User._pgp_key != "")
+                )
             )
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = User.query.all()  # Fetch all users for admin
+            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
 
         # Handle form submissions
         if request.method == "POST":
@@ -142,7 +150,9 @@ def create_blueprint() -> Blueprint:
             # Handle Change Username Form Submission
             if "change_username" in request.form and change_username_form.validate_on_submit():
                 new_username = change_username_form.new_username.data
-                existing_user = User.query.filter_by(primary_username=new_username).first()
+                existing_user = db.session.scalars(
+                    db.select(User).filter_by(primary_username=new_username).limit(1)
+                ).first()
                 if existing_user:
                     flash("💔 This username is already taken.")
                 else:
@@ -187,10 +197,16 @@ def create_blueprint() -> Blueprint:
             # Check if user is admin and add admin-specific data
             is_admin = user.is_admin
             if is_admin:
-                user_count = User.query.count()
-                two_fa_count = User.query.filter(User._totp_secret.isnot(None)).count()
-                pgp_key_count = (
-                    User.query.filter(User._pgp_key.isnot(None)).filter(User._pgp_key != "").count()
+                user_count = db.session.scalar(db.func.count(User.id))
+                two_fa_count = db.session.scalar(
+                    db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+                )
+                pgp_key_count = db.session.scalar(
+                    db.select(
+                        db.func.count(User.id)
+                        .filter(User._pgp_key.isnot(None))
+                        .filter(User._pgp_key != "")
+                    )
                 )
                 two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
                 pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
@@ -209,7 +225,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings.html",
-            now=datetime.utcnow(),
+            now=datetime.now(UTC),
             user=user,
             secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view
@@ -235,7 +251,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.query(User).get(user_id)
+        user = db.session.get(User, user_id)
         if user and user.totp_secret:
             return redirect(url_for(".disable_2fa"))
 
@@ -249,7 +265,7 @@ def create_blueprint() -> Blueprint:
             flash("Session expired, please log in again.", "info")
             return redirect(url_for("login"))
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             flash("User not found.", "error")
             return redirect(url_for("login"))
@@ -289,7 +305,7 @@ def create_blueprint() -> Blueprint:
 
         new_username = new_username.strip()
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             flash("User not found.", "error")
             return redirect(url_for("login"))
@@ -298,7 +314,9 @@ def create_blueprint() -> Blueprint:
             flash("New username is the same as the current username.", "info")
             return redirect(url_for(".settings"))
 
-        existing_user = User.query.filter_by(primary_username=new_username).first()
+        existing_user = db.session.scalars(
+            db.select(User).filter_by(primary_username=new_username)
+        ).first()
         if existing_user:
             flash("This username is already taken.", "error")
             return redirect(url_for(".settings"))
@@ -331,7 +349,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         form = TwoFactorForm()
 
         if form.validate_on_submit():
@@ -381,7 +399,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.query(User).get(user_id)
+        user = db.session.get(User, user_id)
         if user:
             user.totp_secret = None
         db.session.commit()
@@ -395,7 +413,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/show-qr-code")
     @require_2fa
     def show_qr_code() -> Response | str:
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user or not user.totp_secret:
             return redirect(url_for(".enable_2fa"))
 
@@ -421,19 +439,23 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/verify-2fa-setup", methods=["POST"])
     def verify_2fa_setup() -> Response | str:
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user:
             return redirect(url_for("login"))
 
+        if not user.totp_secret:
+            flash("⛔️ 2FA setup failed. Please try again.")
+            return redirect(url_for("show_qr_code"))
+
         verification_code = request.form["verification_code"]
         totp = pyotp.TOTP(user.totp_secret)
-        if totp.verify(verification_code):
-            flash("👍 2FA setup successful. Please log in again.")
-            session.pop("is_setting_up_2fa", None)
-            return redirect(url_for("logout"))
+        if not totp.verify(verification_code):
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return redirect(url_for("show_qr_code"))
 
-        flash("⛔️ Invalid 2FA code. Please try again.")
-        return redirect(url_for("show_qr_code"))
+        flash("👍 2FA setup successful. Please log in again.")
+        session.pop("is_setting_up_2fa", None)
+        return redirect(url_for("logout"))
 
     @bp.route("/update_pgp_key", methods=["GET", "POST"])
     @require_2fa
@@ -443,7 +465,7 @@ def create_blueprint() -> Blueprint:
             flash("⛔️ User not authenticated.")
             return redirect(url_for("login"))
 
-        user = db.session.query(User).get(user_id)
+        user = db.session.get(User, user_id)
         form = PGPKeyForm()
         if form.validate_on_submit():
             pgp_key = form.pgp_key.data
@@ -473,7 +495,7 @@ def create_blueprint() -> Blueprint:
         if not user_id:
             return redirect(url_for("login"))
 
-        user = db.session.query(User).get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             flash("⛔️ User not found")
             return redirect(url_for(".index"))
@@ -523,13 +545,13 @@ def create_blueprint() -> Blueprint:
             flash("Please log in to continue.")
             return redirect(url_for("login"))
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if user:
             # Explicitly delete messages for the user
-            Message.query.filter_by(user_id=user.id).delete()
+            db.session.execute(db.delete(Message).filter_by(user_id=user.id))
 
             # Explicitly delete secondary users if necessary
-            SecondaryUsername.query.filter_by(user_id=user.id).delete()
+            db.session.execute(db.delete(SecondaryUsername).filter_by(user_id=user.id))
 
             # Now delete the user
             db.session.delete(user)

@@ -21,7 +21,9 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
     assert "Registration successful!" in response.text
 
     # Verify user is added to the database
-    user = User.query.filter_by(primary_username="test_user").first()
+    user = db.session.scalars(
+        db.select(User).filter_by(primary_username="test_user").limit(1)
+    ).first()
     assert user is not None
     assert user.primary_username == "test_user"
 
@@ -50,7 +52,9 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     assert "Registration successful!" in response.text
 
     # Verify user is added to the database
-    user = User.query.filter_by(primary_username="newuser").first()
+    user = db.session.scalars(
+        db.select(User).filter_by(primary_username="newuser").limit(1)
+    ).first()
     assert user is not None
     assert user.primary_username == "newuser"
 
