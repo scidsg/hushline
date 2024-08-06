@@ -51,6 +51,23 @@ Select the "Email & Encryption" tab in your Hush Line settings, and paste your k
 
 ![step6](https://github.com/user-attachments/assets/59b99f80-0be1-4cfd-a1ec-aa4a3a816d12)
 
+### Step 5: Authorize the Hush Line domain
+
+With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list. 
+
+![step10](https://github.com/user-attachments/assets/b5fc8852-7b14-4bd0-8b12-ef92eba983ca)
+
+### Step 6: Send and read a message!
+
+Let's send a test message! In the header, click "Submit Message." Enter some text and click "Send Message." If you haven't disabled JavaScript, you'll see it encrypted in the browser before it submits. Go to "Inbox" to see the message in the app. You may have to enter the password you set when creating your key in Mailvelope.
+
+![step9](https://github.com/user-attachments/assets/04066bc1-8d75-4898-ad9f-0a60efae3ce2)
+
+<br>
+
+--------------
+
+<br>
 
 ## Message Forwarding
 
