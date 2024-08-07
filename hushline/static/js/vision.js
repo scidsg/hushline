@@ -14,14 +14,15 @@ async function handleFilesSelect(evt) {
     }
 }
 
+// More at https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#output-encoding-for-html-contexts
 function escapeHTML(str) {
     return str.replace(/[&<>"']/g, function (m) {
         return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
+            '&': '&amp;',  // Escape ampersand
+            '<': '&lt;',   // Escape less than
+            '>': '&gt;',   // Escape greater than
+            '"': '&quot;', // Escape double quote
+            "'": '&#x27;'  // Escape single quote (also could use &apos;)
         }[m];
     });
 }
