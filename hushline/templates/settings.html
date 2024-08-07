@@ -155,7 +155,7 @@
                     </div>
                 </label>
             </div>
-            <fieldset id="forwarding_enabled_fields" {% if not email_forwarding_form.forwarding_enabled.data %}hidden{% endif %}>
+            <fieldset id="forwarding_enabled_fields">
             {{ email_forwarding_form.email_address.label }}
             {{ email_forwarding_form.email_address }}
             <div class="checkbox-group toggle-ui">
@@ -167,7 +167,7 @@
                     </div>
                 </label>
             </div>
-            <fieldset id="custom_smtp_settings_fields" {% if not email_forwarding_form.custom_smtp_settings.data %}hidden{% endif %}>
+            <fieldset id="custom_smtp_settings_fields">
                 {{ email_forwarding_form.smtp_settings.smtp_username.label }}
                 {{ email_forwarding_form.smtp_settings.smtp_username }}
                 {{ email_forwarding_form.smtp_settings.smtp_server.label }}
