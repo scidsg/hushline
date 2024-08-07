@@ -140,7 +140,8 @@
         border-bottom: 1px solid var(--color-brand);
     }
 
-    .user {
+    .user,
+    #results>div {
         border: var(--border);
         box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
     }
@@ -383,7 +384,8 @@
         border-bottom: 1px solid var(--color-brand-dark);
     }
 
-    .user {
+    .user,
+    #results>div {
         border: var(--border-dark-1);
         box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
         background-color: var(--color-dark-bg-alt-1);
@@ -1198,6 +1200,10 @@ img.upgrade {
     margin-bottom: .75rem;
 }
 
+#results>div {
+    border-radius: .25rem;
+}
+
 .user .tableActions {
     display: flex;
     gap: .5rem;
@@ -1531,6 +1537,28 @@ p.section-intro:first-of-type {
 
 p.section-intro:not(:first-of-type) {
     margin: 0 0 1rem 0;
+}
+
+#results>div {
+    margin-bottom: 1rem;
+    padding: 1.5rem 1rem;
+}
+
+.file-name {
+    font-family: var(--font-sans-bold);
+    margin-top: 0;
+}
+
+.file-name+p {
+    margin-bottom: 0;
+}
+
+.file-name~.bold {
+    font-family: var(--font-sans-bold);
+}
+
+input[type="file"] {
+    margin-top: 1rem;
 }
 
 @media only screen and (max-width: 768px) {

@@ -454,6 +454,10 @@ def init_app(app: Flask) -> None:
             for user in get_directory_users()
         ]
 
+    @app.route("/vision", methods=["GET"])
+    def vision() -> str:
+        return render_template("vision.html")
+
     def get_ip_address() -> str:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
