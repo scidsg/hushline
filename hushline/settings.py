@@ -16,8 +16,8 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
-from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length
+from wtforms import BooleanField, FormField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms.validators import DataRequired, Email, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
@@ -43,10 +43,17 @@ class ChangeUsernameForm(FlaskForm):
 
 
 class SMTPSettingsForm(FlaskForm):
-    smtp_server = StringField("SMTP Server", validators=[DataRequired()])
-    smtp_port = IntegerField("SMTP Port", validators=[DataRequired()])
-    smtp_username = StringField("SMTP Username", validators=[DataRequired()])
-    smtp_password = PasswordField("SMTP Password", validators=[DataRequired()])
+    smtp_server = StringField("SMTP Server")
+    smtp_port = IntegerField("SMTP Port")
+    smtp_username = StringField("SMTP Username")
+    smtp_password = PasswordField("SMTP Password")
+
+
+class EmailForwardingForm(FlaskForm):
+    forwarding_enabled = BooleanField("Enable Forwarding")
+    email_address = StringField("Email Address")
+    custom_smtp_settings = BooleanField("Custom SMTP Settings")
+    smtp_settings = FormField(SMTPSettingsForm)
 
 
 class PGPKeyForm(FlaskForm):
@@ -92,10 +99,11 @@ def create_blueprint() -> Blueprint:
         ).all()
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
-        smtp_settings_form = SMTPSettingsForm()
+        email_forwarding_form = EmailForwardingForm()
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+        email_forwarding_form = EmailForwardingForm()
 
         # Check if the bio update form was submitted
         if request.method == "POST" and "update_bio" in request.form:
@@ -166,34 +174,6 @@ def create_blueprint() -> Blueprint:
                     )
                 return redirect(url_for(".index"))
 
-            # Handle SMTP Settings Form Submission
-            if smtp_settings_form.validate_on_submit():
-                user.email = smtp_settings_form.smtp_username.data
-                user.smtp_server = smtp_settings_form.smtp_server.data
-                user.smtp_port = smtp_settings_form.smtp_port.data
-                user.smtp_username = smtp_settings_form.smtp_username.data
-                user.smtp_password = smtp_settings_form.smtp_password.data
-                db.session.commit()
-                flash("👍 SMTP settings updated successfully.")
-                return redirect(url_for("settings"))
-
-            # Handle PGP Key Form Submission
-            if pgp_key_form.validate_on_submit():
-                user.pgp_key = pgp_key_form.pgp_key.data
-                db.session.commit()
-                flash("👍 PGP key updated successfully.")
-                return redirect(url_for("settings"))
-
-            # Handle Change Password Form Submission
-            if change_password_form.validate_on_submit():
-                if user.check_password(change_password_form.old_password.data):
-                    user.password_hash = change_password_form.new_password.data
-                    db.session.commit()
-                    flash("👍 Password changed successfully.")
-                else:
-                    flash("⛔️ Incorrect old password.")
-                return redirect(url_for("settings"))
-
             # Check if user is admin and add admin-specific data
             is_admin = user.is_admin
             if is_admin:
@@ -216,9 +196,12 @@ def create_blueprint() -> Blueprint:
                 ) = None
 
         # Prepopulate form fields
-        smtp_settings_form.smtp_server.data = user.smtp_server
-        smtp_settings_form.smtp_port.data = user.smtp_port
-        smtp_settings_form.smtp_username.data = user.smtp_username
+        email_forwarding_form.forwarding_enabled.data = user.email is not None
+        email_forwarding_form.email_address.data = user.email
+        email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
+        email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
+        email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
+        email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
         pgp_key_form.pgp_key.data = user.pgp_key
         display_name_form.display_name.data = user.display_name or user.primary_username
         directory_visibility_form.show_in_directory.data = user.show_in_directory
@@ -229,7 +212,7 @@ def create_blueprint() -> Blueprint:
             user=user,
             secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view
-            smtp_settings_form=smtp_settings_form,
+            email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
             pgp_key_form=pgp_key_form,
@@ -503,27 +486,31 @@ def create_blueprint() -> Blueprint:
         # Initialize forms
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
-        smtp_settings_form = SMTPSettingsForm()
+        email_forwarding_form = EmailForwardingForm()
         pgp_key_form = PGPKeyForm()
 
         # Handling SMTP settings form submission
-        if smtp_settings_form.validate_on_submit():
+        if email_forwarding_form.validate_on_submit():
             # Updating SMTP settings from form data
-            user.email = smtp_settings_form.smtp_username.data
-            user.smtp_server = smtp_settings_form.smtp_server.data
-            user.smtp_port = smtp_settings_form.smtp_port.data
-            user.smtp_username = smtp_settings_form.smtp_username.data
-            user.smtp_password = smtp_settings_form.smtp_password.data
+            forwarding_enabled = email_forwarding_form.forwarding_enabled.data
+            custom_smtp_settings = forwarding_enabled and email_forwarding_form.custom_smtp_settings
+            user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
+            user.smtp_server = email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
+            user.smtp_port = email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
+            user.smtp_username = email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
+            user.smtp_password = email_forwarding_form.smtp_settings.smtp_password.data if custom_smtp_settings else None
 
             db.session.commit()
             flash("👍 SMTP settings updated successfully")
             return redirect(url_for(".index"))
 
         # Prepopulate SMTP settings form fields
-        smtp_settings_form.email.data = user.email
-        smtp_settings_form.smtp_server.data = user.smtp_server
-        smtp_settings_form.smtp_port.data = user.smtp_port
-        smtp_settings_form.smtp_username.data = user.smtp_username
+        email_forwarding_form.forwarding_enabled.data = user.email is not None
+        email_forwarding_form.email_address.data = user.email
+        email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
+        email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
+        email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
+        email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
         # Note: Password fields are typically not prepopulated for security reasons
 
         pgp_key_form.pgp_key.data = user.pgp_key
@@ -531,7 +518,7 @@ def create_blueprint() -> Blueprint:
         return render_template(
             "settings.html",
             user=user,
-            smtp_settings_form=smtp_settings_form,
+            email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
             pgp_key_form=pgp_key_form,
