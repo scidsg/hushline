@@ -14,6 +14,18 @@ async function handleFilesSelect(evt) {
     }
 }
 
+function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, function (m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m];
+    });
+}
+
 async function processFile(file, resultsContainer) {
     const reader = new FileReader();
     reader.onload = async function (e) {
@@ -22,7 +34,7 @@ async function processFile(file, resultsContainer) {
         imgElement.style.display = 'none';
 
         const resultDiv = document.createElement('div');
-        resultDiv.innerHTML = `<strong>Processing ${file.name}...</strong>`;
+        resultDiv.textContent = `Processing ${file.name}...`; // Safe text content
         resultsContainer.appendChild(resultDiv);
 
         // Append the image to the DOM before setting onload to ensure it loads correctly
@@ -34,14 +46,14 @@ async function processFile(file, resultsContainer) {
                 'eng',
                 {
                     logger: info => {
-                        resultDiv.innerHTML = `<p class="file-name">${file.name}</p><p class="meta">Progress: ${Math.round(info.progress * 100)}%</p>`;
+                        resultDiv.innerHTML = `<p class="file-name">${escapeHTML(file.name)}</p><p class="meta">Progress: ${Math.round(info.progress * 100)}%</p>`;
                     }
                 }
             ).then(({ data: { text } }) => {
-                resultDiv.innerHTML = `<p class="file-name">${file.name}</p><p><span class="bold">Detected Text:</span><br>${text}</p>`;
+                resultDiv.innerHTML = `<p class="file-name">${escapeHTML(file.name)}</p><p><span class="bold">Detected Text:</span><br>${escapeHTML(text)}</p>`;
                 document.body.removeChild(imgElement); // Remove image after processing
             }).catch(err => {
-                resultDiv.innerHTML = `<p class="file-name">${file.name}</p><p><span class="bold">Error:</span><br>${err.message}</p>`;
+                resultDiv.innerHTML = `<p class="file-name">${escapeHTML(file.name)}</p><p><span class="bold">Error:</span><br>${escapeHTML(err.message)}</p>`;
                 document.body.removeChild(imgElement); // Remove image even if there is an error
             });
         };
