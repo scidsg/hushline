@@ -18,7 +18,7 @@ from flask import (
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, FormField, IntegerField, PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Email, Length
+from wtforms.validators import DataRequired, Length, Optional
 
 from .crypto import is_valid_pgp_key
 from .db import db
@@ -46,17 +46,44 @@ class ChangeUsernameForm(FlaskForm):
 class SMTPSettingsForm(FlaskForm):
     class Meta:
         csrf = False
-    smtp_server = StringField("SMTP Server")
-    smtp_port = IntegerField("SMTP Port")
-    smtp_username = StringField("SMTP Username")
-    smtp_password = PasswordField("SMTP Password")
+
+    smtp_server = StringField("SMTP Server", validators=[Optional(), Length(max=255)])
+    smtp_port = IntegerField("SMTP Port", validators=[Optional()])
+    smtp_username = StringField("SMTP Username", validators=[Optional(), Length(max=255)])
+    smtp_password = PasswordField("SMTP Password", validators=[Optional(), Length(max=255)])
 
 
 class EmailForwardingForm(FlaskForm):
-    forwarding_enabled = BooleanField("Enable Forwarding", validators=[DataRequired()])
-    email_address = StringField("Email Address")
-    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[DataRequired()])
+    forwarding_enabled = BooleanField("Enable Forwarding", validators=[Optional()])
+    email_address = StringField("Email Address", validators=[Optional(), Length(max=255)])
+    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[Optional()])
     smtp_settings = FormField(SMTPSettingsForm)
+
+    def validate(self, extra_validators=None) -> bool:
+        if not FlaskForm.validate(self, extra_validators):
+            return False
+
+        rv = True
+        if self.forwarding_enabled.data:
+            if not self.email_address.data:
+                self.email_address.errors.append(
+                    "Email address must be specified when forwarding is enabled."
+                )
+                rv = False
+            if self.custom_smtp_settings.data:
+                smtp_fields = [
+                    self.smtp_settings.smtp_server,
+                    self.smtp_settings.smtp_port,
+                    self.smtp_settings.smtp_username,
+                    self.smtp_settings.smtp_password,
+                ]
+                unset_smtp_fields = [field for field in smtp_fields if not field.data]
+                for field in unset_smtp_fields:
+                    field.errors.append(
+                        f"{field.label} is required if custom SMTP settings are enabled."
+                    )
+                    rv = False
+        return rv
 
 
 class PGPProtonForm(FlaskForm):
@@ -471,20 +498,36 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form = EmailForwardingForm()
 
         # Handling SMTP settings form submission
-        if email_forwarding_form.validate_on_submit():
-            # Updating SMTP settings from form data
-            forwarding_enabled = email_forwarding_form.forwarding_enabled.data
-            custom_smtp_settings = forwarding_enabled and email_forwarding_form.custom_smtp_settings
-            user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
-            user.smtp_server = email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
-            user.smtp_port = email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
-            user.smtp_username = email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
-            user.smtp_password = email_forwarding_form.smtp_settings.smtp_password.data if custom_smtp_settings else None
-
-            db.session.commit()
-            flash("👍 SMTP settings updated successfully")
+        if not email_forwarding_form.validate_on_submit():
+            flash(' '.join([ ' '.join(errors) for errors in email_forwarding_form.errors.values()]))
             return redirect(url_for(".index"))
+        # Updating SMTP settings from form data
+        forwarding_enabled = email_forwarding_form.forwarding_enabled.data
+        custom_smtp_settings = (
+            forwarding_enabled and email_forwarding_form.custom_smtp_settings.data
+        )
+        user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
+        user.smtp_server = (
+            email_forwarding_form.smtp_settings.smtp_server.data
+            if custom_smtp_settings
+            else None
+        )
+        user.smtp_port = (
+            email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
+        )
+        user.smtp_username = (
+            email_forwarding_form.smtp_settings.smtp_username.data
+            if custom_smtp_settings
+            else None
+        )
+        user.smtp_password = (
+            email_forwarding_form.smtp_settings.smtp_password.data
+            if custom_smtp_settings
+            else None
+        )
 
+        db.session.commit()
+        flash("👍 SMTP settings updated successfully")
         return redirect(url_for(".index"))
 
     @bp.route("/delete-account", methods=["POST"])
