@@ -139,25 +139,46 @@
 
     <div id="email" class="tab-content" role="tabpanel" aria-labelledby="email-tab" hidden>
         <!-- SMTP Settings Section -->
-        <h3>Message Forwarding</h3>
+        <h3>Email Forwarding</h3>
         {% if not user.pgp_key %}
-        <p class="info">👇 <a
-                href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP
-                key</a> below to enable message forwarding.</p>
+        <p class="info">Add a PGP key to enable email forwarding. <a
+                href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Here's how.</a></p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
-            {{ smtp_settings_form.hidden_tag() }}
-            <fieldset {% if not user.pgp_key %}disabled{% endif %}>
-                {{ smtp_settings_form.smtp_username.label }}
-                {{ smtp_settings_form.smtp_username }}
-                {{ smtp_settings_form.smtp_server.label }}
-                {{ smtp_settings_form.smtp_server }}
-                {{ smtp_settings_form.smtp_port.label }}
-                {{ smtp_settings_form.smtp_port }}
-                {{ smtp_settings_form.smtp_password.label }}
-                {{ smtp_settings_form.smtp_password }}
-                <button type="submit">Update Settings</button>
+            {{ email_forwarding_form.hidden_tag() }}
+            <div class="checkbox-group toggle-ui">
+                {{ email_forwarding_form.forwarding_enabled }}
+                <label for="forwarding_enabled" class="toggle-label">
+                    {{ email_forwarding_form.forwarding_enabled.label }}
+                    <div class="toggle">
+                        <div class="toggle__ball"></div>
+                    </div>
+                </label>
+            </div>
+            <fieldset id="forwarding_enabled_fields" {% if not email_forwarding_form.forwarding_enabled.data %}hidden{% endif %}>
+            {{ email_forwarding_form.email_address.label }}
+            {{ email_forwarding_form.email_address }}
+            <div class="checkbox-group toggle-ui">
+                {{ email_forwarding_form.custom_smtp_settings }}
+                <label for="custom_smtp_settings" class="toggle-label">
+                    {{ email_forwarding_form.custom_smtp_settings.label }}
+                    <div class="toggle">
+                        <div class="toggle__ball"></div>
+                    </div>
+                </label>
+            </div>
+            <fieldset id="custom_smtp_settings_fields" {% if not email_forwarding_form.custom_smtp_settings.data %}hidden{% endif %}>
+                {{ email_forwarding_form.smtp_settings.smtp_username.label }}
+                {{ email_forwarding_form.smtp_settings.smtp_username }}
+                {{ email_forwarding_form.smtp_settings.smtp_server.label }}
+                {{ email_forwarding_form.smtp_settings.smtp_server }}
+                {{ email_forwarding_form.smtp_settings.smtp_port.label }}
+                {{ email_forwarding_form.smtp_settings.smtp_port }}
+                {{ email_forwarding_form.smtp_settings.smtp_password.label }}
+                {{ email_forwarding_form.smtp_settings.smtp_password }}
             </fieldset>
+            </fieldset>
+            <button type="submit">Update Email Forwarding</button>
         </form>
         <!-- PGP Key Section -->
         <h3>Message Encryption</h3>
