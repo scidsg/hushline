@@ -1,8 +1,8 @@
 import base64
 import io
 import re
-from datetime import datetime
 from datetime import UTC, datetime
+from typing import Optional
 
 import pyotp
 import qrcode
@@ -19,7 +19,8 @@ from flask import (
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, FormField, IntegerField, PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length, Optional
+from wtforms.validators import DataRequired, Length
+from wtforms.validators import Optional as OptionalField
 
 from .crypto import is_valid_pgp_key
 from .db import db
@@ -48,16 +49,16 @@ class SMTPSettingsForm(FlaskForm):
     class Meta:
         csrf = False
 
-    smtp_server = StringField("SMTP Server", validators=[Optional(), Length(max=255)])
-    smtp_port = IntegerField("SMTP Port", validators=[Optional()])
-    smtp_username = StringField("SMTP Username", validators=[Optional(), Length(max=255)])
-    smtp_password = PasswordField("SMTP Password", validators=[Optional(), Length(max=255)])
+    smtp_server = StringField("SMTP Server", validators=[OptionalField(), Length(max=255)])
+    smtp_port = IntegerField("SMTP Port", validators=[OptionalField()])
+    smtp_username = StringField("SMTP Username", validators=[OptionalField(), Length(max=255)])
+    smtp_password = PasswordField("SMTP Password", validators=[OptionalField(), Length(max=255)])
 
 
 class EmailForwardingForm(FlaskForm):
-    forwarding_enabled = BooleanField("Enable Forwarding", validators=[Optional()])
-    email_address = StringField("Email Address", validators=[Optional(), Length(max=255)])
-    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[Optional()])
+    forwarding_enabled = BooleanField("Enable Forwarding", validators=[OptionalField()])
+    email_address = StringField("Email Address", validators=[OptionalField(), Length(max=255)])
+    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[OptionalField()])
     smtp_settings = FormField(SMTPSettingsForm)
 
     def validate(self, extra_validators: list | None = None) -> bool:
@@ -528,11 +529,7 @@ def create_blueprint() -> Blueprint:
             flash("⛔️ User not found")
             return redirect(url_for(".index"))
 
-        # Initialize forms
-        change_password_form = ChangePasswordForm()
-        change_username_form = ChangeUsernameForm()
         email_forwarding_form = EmailForwardingForm()
-        pgp_key_form = PGPKeyForm()
 
         # Handling SMTP settings form submission
         if not email_forwarding_form.validate_on_submit():
@@ -545,22 +542,16 @@ def create_blueprint() -> Blueprint:
         )
         user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
         user.smtp_server = (
-            email_forwarding_form.smtp_settings.smtp_server.data
-            if custom_smtp_settings
-            else None
+            email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
         )
         user.smtp_port = (
             email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
         )
         user.smtp_username = (
-            email_forwarding_form.smtp_settings.smtp_username.data
-            if custom_smtp_settings
-            else None
+            email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
         )
         user.smtp_password = (
-            email_forwarding_form.smtp_settings.smtp_password.data
-            if custom_smtp_settings
-            else None
+            email_forwarding_form.smtp_settings.smtp_password.data if custom_smtp_settings else None
         )
 
         db.session.commit()
