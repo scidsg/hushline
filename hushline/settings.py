@@ -44,6 +44,8 @@ class ChangeUsernameForm(FlaskForm):
 
 
 class SMTPSettingsForm(FlaskForm):
+    class Meta:
+        csrf = False
     smtp_server = StringField("SMTP Server")
     smtp_port = IntegerField("SMTP Port")
     smtp_username = StringField("SMTP Username")
@@ -51,9 +53,9 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class EmailForwardingForm(FlaskForm):
-    forwarding_enabled = BooleanField("Enable Forwarding")
+    forwarding_enabled = BooleanField("Enable Forwarding", validators=[DataRequired()])
     email_address = StringField("Email Address")
-    custom_smtp_settings = BooleanField("Custom SMTP Settings")
+    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[DataRequired()])
     smtp_settings = FormField(SMTPSettingsForm)
 
 
