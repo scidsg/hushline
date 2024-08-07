@@ -247,6 +247,9 @@ def test_update_smtp_settings(client: FlaskClient) -> None:
     updated_user = User.query.filter_by(primary_username="user_smtp_settings").first()
     assert updated_user is not None, "User was not found after update attempt"
     assert (
+        updated_user.email == new_smtp_settings["email_address"]
+    ), "Email address was not updated correctly"
+    assert (
         updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     ), "SMTP server was not updated correctly"
     assert (
