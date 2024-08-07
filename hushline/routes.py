@@ -455,7 +455,7 @@ def init_app(app: Flask) -> None:
         ]
 
     @app.route("/vision", methods=["GET"])
-    def vision() -> Response:
+    def vision() -> str:
         return render_template("vision.html")
 
     def get_ip_address() -> str:
