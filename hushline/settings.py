@@ -1,5 +1,7 @@
 import base64
 import io
+import re
+from datetime import datetime
 from datetime import UTC, datetime
 
 import pyotp
@@ -58,7 +60,7 @@ class EmailForwardingForm(FlaskForm):
     custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[Optional()])
     smtp_settings = FormField(SMTPSettingsForm)
 
-    def validate(self, extra_validators=None) -> bool:
+    def validate(self, extra_validators: list | None = None) -> bool:
         if not FlaskForm.validate(self, extra_validators):
             return False
 
@@ -74,15 +76,29 @@ class EmailForwardingForm(FlaskForm):
                     self.smtp_settings.smtp_server,
                     self.smtp_settings.smtp_port,
                     self.smtp_settings.smtp_username,
-                    self.smtp_settings.smtp_password,
                 ]
                 unset_smtp_fields = [field for field in smtp_fields if not field.data]
+
+                def remove_tags(text: str) -> str:
+                    return re.sub("<[^<]+?>", "", text)
+
                 for field in unset_smtp_fields:
                     field.errors.append(
-                        f"{field.label} is required if custom SMTP settings are enabled."
+                        f"{remove_tags(field.label())} is"
+                        " required if custom SMTP settings are enabled."
                     )
                     rv = False
         return rv
+
+    def flattened_errors(self, input: Optional[dict | list] = None) -> list[str]:
+        errors = input if input else self.errors
+        if isinstance(errors, list):
+            return errors
+        ret = []
+        if isinstance(errors, dict):
+            for error in errors.values():
+                ret.extend(self.flattened_errors(error))
+        return ret
 
 
 class PGPKeyForm(FlaskForm):
@@ -520,7 +536,7 @@ def create_blueprint() -> Blueprint:
 
         # Handling SMTP settings form submission
         if not email_forwarding_form.validate_on_submit():
-            flash(' '.join([ ' '.join(errors) for errors in email_forwarding_form.errors.values()]))
+            flash(" ".join(email_forwarding_form.flattened_errors()))
             return redirect(url_for(".index"))
         # Updating SMTP settings from form data
         forwarding_enabled = email_forwarding_form.forwarding_enabled.data
