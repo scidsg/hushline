@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // time out to let animation finish
         setTimeout(() => {
             var fieldset = document.querySelector("fieldset[id='forwarding_enabled_fields']");
-            fieldset.hidden = !fieldset.hidden;
+            fieldset.hidden = !e.target.checked;
         }, 200)
     });
     
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // time out to let animation finish
         setTimeout(() => {
             var fieldset = document.querySelector("fieldset[id='custom_smtp_settings_fields']");
-            fieldset.hidden = !fieldset.hidden;
+            fieldset.hidden = !e.target.checked;
         }, 200)
     });
 });
