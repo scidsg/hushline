@@ -66,4 +66,20 @@ document.addEventListener('DOMContentLoaded', function () {
             window.handleKeydown(e);
         });
     });
+    
+    document.querySelector("input[id='forwarding_enabled']").addEventListener('change', function(e) {
+        // time out to let animation finish
+        setTimeout(() => {
+            var fieldset = document.querySelector("fieldset[id='forwarding_enabled_fields']");
+            fieldset.hidden = !fieldset.hidden;
+        }, 200)
+    });
+    
+    document.querySelector("input[id='custom_smtp_settings']").addEventListener('change', function(e) {
+        // time out to let animation finish
+        setTimeout(() => {
+            var fieldset = document.querySelector("fieldset[id='custom_smtp_settings_fields']");
+            fieldset.hidden = !fieldset.hidden;
+        }, 200)
+    });
 });
