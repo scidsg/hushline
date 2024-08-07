@@ -22,7 +22,7 @@ Hush Line is open-source software licensed under the [AGPL-3.0 license](https://
 **5. Privacy and Security**
 
 - **Anonymity:** We prioritize user anonymity and have implemented features to protect your identity.
-- **Data Collection:** We collect minimal data and do not store messages on our servers.
+- **Data Collection:** We collect minimal data and store messages encrypted at rest on our servers. Users of the platform may delete messages at any time. For more information about the information we collect, [see our database model](https://github.com/scidsg/hushline/blob/main/hushline/model.py). 
 
 **6. Contributions**
 
