@@ -224,10 +224,13 @@ def test_update_smtp_settings(client: FlaskClient) -> None:
 
     # Define new SMTP settings
     new_smtp_settings = {
-        "smtp_server": "smtp.example.com",
-        "smtp_port": 587,
-        "smtp_username": "user@example.com",
-        "smtp_password": "securepassword123",
+        "forwarding_enabled": True,
+        "email_address": "primary@example.com",
+        "custom_smtp_settings": True,
+        "smtp_settings-smtp_server": "smtp.example.com",
+        "smtp_settings-smtp_port": 587,
+        "smtp_settings-smtp_username": "user@example.com",
+        "smtp_settings-smtp_password": "securepassword123",
     }
 
     # Submit POST request to update SMTP settings
@@ -244,16 +247,16 @@ def test_update_smtp_settings(client: FlaskClient) -> None:
     updated_user = User.query.filter_by(primary_username="user_smtp_settings").first()
     assert updated_user is not None, "User was not found after update attempt"
     assert (
-        updated_user.smtp_server == new_smtp_settings["smtp_server"]
+        updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     ), "SMTP server was not updated correctly"
     assert (
-        updated_user.smtp_port == new_smtp_settings["smtp_port"]
+        updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
     ), "SMTP port was not updated correctly"
     assert (
-        updated_user.smtp_username == new_smtp_settings["smtp_username"]
+        updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
     ), "SMTP username was not updated correctly"
     assert (
-        updated_user.smtp_password == new_smtp_settings["smtp_password"]
+        updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
     ), "SMTP password was not updated correctly"
 
     # Optional: Check for success message in response
