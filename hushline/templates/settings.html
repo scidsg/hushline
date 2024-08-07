@@ -147,7 +147,7 @@
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
             {{ email_forwarding_form.hidden_tag() }}
             <div class="checkbox-group toggle-ui">
-                {{ email_forwarding_form.forwarding_enabled }}
+                {{ email_forwarding_form.forwarding_enabled() }}
                 <label for="forwarding_enabled" class="toggle-label">
                     {{ email_forwarding_form.forwarding_enabled.label }}
                     <div class="toggle">
@@ -159,7 +159,7 @@
             {{ email_forwarding_form.email_address.label }}
             {{ email_forwarding_form.email_address }}
             <div class="checkbox-group toggle-ui">
-                {{ email_forwarding_form.custom_smtp_settings }}
+                {{ email_forwarding_form.custom_smtp_settings() }}
                 <label for="custom_smtp_settings" class="toggle-label">
                     {{ email_forwarding_form.custom_smtp_settings.label }}
                     <div class="toggle">
