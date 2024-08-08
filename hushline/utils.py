@@ -1,4 +1,5 @@
 import smtplib
+from dataclasses import dataclass
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from functools import wraps
@@ -38,10 +39,23 @@ def admin_authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     return decorated_function
 
 
-def send_email(to_email: str, subject: str, body: str, user: User, sender_email: str) -> bool:
+@dataclass
+class SMTPConfig:
+    username: str
+    server: str
+    port: int
+    password: str
+
+    def validate(self) -> bool:
+        return all([self.username, self.server, self.port, self.password])
+
+
+def send_email(
+    to_email: str, subject: str, body: str, sender_email: str, smtp_config: SMTPConfig
+) -> bool:
     current_app.logger.debug(
-        f"SMTP settings being used: Server: {user.smtp_server}, "
-        f"Port: {user.smtp_port}, Username: {user.smtp_username}"
+        f"SMTP settings being used: Server: {smtp_config.server}, "
+        f"Port: {smtp_config.port}, Username: {smtp_config.username}"
     )
 
     message = MIMEMultipart()
@@ -55,19 +69,14 @@ def send_email(to_email: str, subject: str, body: str, user: User, sender_email:
         body = body.decode("utf-8")
 
     message.attach(MIMEText(body, "plain"))
-    if (
-        user.smtp_server is None
-        or user.smtp_port is None
-        or user.smtp_username is None
-        or user.smtp_password is None
-    ):
+    if not smtp_config.validate():
         current_app.logger.error("SMTP server or port is not set.")
         return False
 
     try:
-        with smtplib.SMTP(user.smtp_server, user.smtp_port) as server:
+        with smtplib.SMTP(smtp_config.server, smtp_config.port) as server:
             server.starttls()
-            server.login(user.smtp_username, user.smtp_password)
+            server.login(smtp_config.username, smtp_config.password)
             server.send_message(message)
         return True
     except Exception as e:
