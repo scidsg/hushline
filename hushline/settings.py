@@ -1,6 +1,8 @@
 import base64
 import io
+import re
 from datetime import datetime
+from typing import Optional
 
 import pyotp
 import qrcode
@@ -16,8 +18,17 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
-from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms import (
+    BooleanField,
+    Field,
+    FormField,
+    IntegerField,
+    PasswordField,
+    StringField,
+    TextAreaField,
+)
 from wtforms.validators import DataRequired, Length
+from wtforms.validators import Optional as OptionalField
 
 from .crypto import is_valid_pgp_key
 from .db import db
@@ -43,10 +54,60 @@ class ChangeUsernameForm(FlaskForm):
 
 
 class SMTPSettingsForm(FlaskForm):
-    smtp_server = StringField("SMTP Server", validators=[DataRequired()])
-    smtp_port = IntegerField("SMTP Port", validators=[DataRequired()])
-    smtp_username = StringField("SMTP Username", validators=[DataRequired()])
-    smtp_password = PasswordField("SMTP Password", validators=[DataRequired()])
+    class Meta:
+        csrf = False
+
+    smtp_server = StringField("SMTP Server", validators=[OptionalField(), Length(max=255)])
+    smtp_port = IntegerField("SMTP Port", validators=[OptionalField()])
+    smtp_username = StringField("SMTP Username", validators=[OptionalField(), Length(max=255)])
+    smtp_password = PasswordField("SMTP Password", validators=[OptionalField(), Length(max=255)])
+
+
+class EmailForwardingForm(FlaskForm):
+    forwarding_enabled = BooleanField("Enable Forwarding", validators=[OptionalField()])
+    email_address = StringField("Email Address", validators=[OptionalField(), Length(max=255)])
+    custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[OptionalField()])
+    smtp_settings = FormField(SMTPSettingsForm)
+
+    def validate(self, extra_validators: list | None = None) -> bool:
+        if not FlaskForm.validate(self, extra_validators):
+            return False
+
+        rv = True
+        if self.forwarding_enabled.data:
+            if not self.email_address.data:
+                self.email_address.errors.append(
+                    "Email address must be specified when forwarding is enabled."
+                )
+                rv = False
+            if self.custom_smtp_settings.data:
+                smtp_fields = [
+                    self.smtp_settings.smtp_server,
+                    self.smtp_settings.smtp_port,
+                    self.smtp_settings.smtp_username,
+                ]
+                unset_smtp_fields = [field for field in smtp_fields if not field.data]
+
+                def remove_tags(text: str) -> str:
+                    return re.sub("<[^<]+?>", "", text)
+
+                for field in unset_smtp_fields:
+                    field.errors.append(
+                        f"{remove_tags(field.label())} is"
+                        " required if custom SMTP settings are enabled."
+                    )
+                    rv = False
+        return rv
+
+    def flattened_errors(self, input: Optional[dict | list] = None) -> list[str]:
+        errors = input if input else self.errors
+        if isinstance(errors, list):
+            return errors
+        ret = []
+        if isinstance(errors, dict):
+            for error in errors.values():
+                ret.extend(self.flattened_errors(error))
+        return ret
 
 
 class PGPKeyForm(FlaskForm):
@@ -69,12 +130,28 @@ class ProfileForm(FlaskForm):
     )
 
 
+def setInputDisabled(inputField: Field, disabled: bool = True) -> None:
+    """
+    disable the given input
+
+    Args:
+        inputField(Input): the WTForms input to disable
+        disabled(bool): if true set the disabled attribute of the input
+    """
+    if inputField.render_kw is None:
+        inputField.render_kw = {}
+    if disabled:
+        inputField.render_kw["disabled"] = "disabled"
+    else:
+        inputField.render_kw.pop("disabled")
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
     @bp.route("/", methods=["GET", "POST"])
     @require_2fa
-    def index() -> str | Response:  # noqa: PLR0911, PLR0912
+    def index() -> str | Response:  # noqa: PLR0911
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -90,10 +167,11 @@ def create_blueprint() -> Blueprint:
         secondary_usernames = SecondaryUsername.query.filter_by(user_id=user.id).all()
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
-        smtp_settings_form = SMTPSettingsForm()
+        email_forwarding_form = EmailForwardingForm()
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+        email_forwarding_form = EmailForwardingForm()
 
         # Check if the bio update form was submitted
         if request.method == "POST" and "update_bio" in request.form:
@@ -156,34 +234,6 @@ def create_blueprint() -> Blueprint:
                     )
                 return redirect(url_for(".index"))
 
-            # Handle SMTP Settings Form Submission
-            if smtp_settings_form.validate_on_submit():
-                user.email = smtp_settings_form.smtp_username.data
-                user.smtp_server = smtp_settings_form.smtp_server.data
-                user.smtp_port = smtp_settings_form.smtp_port.data
-                user.smtp_username = smtp_settings_form.smtp_username.data
-                user.smtp_password = smtp_settings_form.smtp_password.data
-                db.session.commit()
-                flash("👍 SMTP settings updated successfully.")
-                return redirect(url_for("settings"))
-
-            # Handle PGP Key Form Submission
-            if pgp_key_form.validate_on_submit():
-                user.pgp_key = pgp_key_form.pgp_key.data
-                db.session.commit()
-                flash("👍 PGP key updated successfully.")
-                return redirect(url_for("settings"))
-
-            # Handle Change Password Form Submission
-            if change_password_form.validate_on_submit():
-                if user.check_password(change_password_form.old_password.data):
-                    user.password_hash = change_password_form.new_password.data
-                    db.session.commit()
-                    flash("👍 Password changed successfully.")
-                else:
-                    flash("⛔️ Incorrect old password.")
-                return redirect(url_for("settings"))
-
             # Check if user is admin and add admin-specific data
             is_admin = user.is_admin
             if is_admin:
@@ -200,9 +250,14 @@ def create_blueprint() -> Blueprint:
                 ) = None
 
         # Prepopulate form fields
-        smtp_settings_form.smtp_server.data = user.smtp_server
-        smtp_settings_form.smtp_port.data = user.smtp_port
-        smtp_settings_form.smtp_username.data = user.smtp_username
+        email_forwarding_form.forwarding_enabled.data = user.email is not None
+        if not user.pgp_key:
+            setInputDisabled(email_forwarding_form.forwarding_enabled)
+        email_forwarding_form.email_address.data = user.email
+        email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
+        email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
+        email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
+        email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
         pgp_key_form.pgp_key.data = user.pgp_key
         display_name_form.display_name.data = user.display_name or user.primary_username
         directory_visibility_form.show_in_directory.data = user.show_in_directory
@@ -213,7 +268,7 @@ def create_blueprint() -> Blueprint:
             user=user,
             secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view
-            smtp_settings_form=smtp_settings_form,
+            email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
             pgp_key_form=pgp_key_form,
@@ -452,6 +507,7 @@ def create_blueprint() -> Blueprint:
                 # If the field is empty, remove the PGP key
                 if user:
                     user.pgp_key = None
+                    user.email = None  # remove the forwarding email if the PGP key is removed
             elif is_valid_pgp_key(pgp_key):
                 # If the field is not empty and the key is valid, update the PGP key
                 if user:
@@ -478,42 +534,37 @@ def create_blueprint() -> Blueprint:
             flash("⛔️ User not found")
             return redirect(url_for(".index"))
 
-        # Initialize forms
-        change_password_form = ChangePasswordForm()
-        change_username_form = ChangeUsernameForm()
-        smtp_settings_form = SMTPSettingsForm()
-        pgp_key_form = PGPKeyForm()
+        email_forwarding_form = EmailForwardingForm()
 
         # Handling SMTP settings form submission
-        if smtp_settings_form.validate_on_submit():
-            # Updating SMTP settings from form data
-            user.email = smtp_settings_form.smtp_username.data
-            user.smtp_server = smtp_settings_form.smtp_server.data
-            user.smtp_port = smtp_settings_form.smtp_port.data
-            user.smtp_username = smtp_settings_form.smtp_username.data
-            user.smtp_password = smtp_settings_form.smtp_password.data
-
-            db.session.commit()
-            flash("👍 SMTP settings updated successfully")
+        if not email_forwarding_form.validate_on_submit():
+            flash(" ".join(email_forwarding_form.flattened_errors()))
             return redirect(url_for(".index"))
-
-        # Prepopulate SMTP settings form fields
-        smtp_settings_form.email.data = user.email
-        smtp_settings_form.smtp_server.data = user.smtp_server
-        smtp_settings_form.smtp_port.data = user.smtp_port
-        smtp_settings_form.smtp_username.data = user.smtp_username
-        # Note: Password fields are typically not prepopulated for security reasons
-
-        pgp_key_form.pgp_key.data = user.pgp_key
-
-        return render_template(
-            "settings.html",
-            user=user,
-            smtp_settings_form=smtp_settings_form,
-            change_password_form=change_password_form,
-            change_username_form=change_username_form,
-            pgp_key_form=pgp_key_form,
+        if email_forwarding_form.email_address.data and not user.pgp_key:
+            flash("Email forwarding requires a configured PGP key")
+            return redirect(url_for(".index"))
+        # Updating SMTP settings from form data
+        forwarding_enabled = email_forwarding_form.forwarding_enabled.data
+        custom_smtp_settings = (
+            forwarding_enabled and email_forwarding_form.custom_smtp_settings.data
         )
+        user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
+        user.smtp_server = (
+            email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
+        )
+        user.smtp_port = (
+            email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
+        )
+        user.smtp_username = (
+            email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
+        )
+        user.smtp_password = (
+            email_forwarding_form.smtp_settings.smtp_password.data if custom_smtp_settings else None
+        )
+
+        db.session.commit()
+        flash("👍 SMTP settings updated successfully")
+        return redirect(url_for(".index"))
 
     @bp.route("/delete-account", methods=["POST"])
     @require_2fa
