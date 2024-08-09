@@ -82,6 +82,8 @@ ignore = [
     "PLR0915",
     # https://docs.astral.sh/ruff/rules/too-many-return-statements/
     "PLR0911",
+    # https://docs.astral.sh/ruff/rules/too-many-branches/
+    "PLR0912",
 ]
 
 [tool.ruff.lint.per-file-ignores]
