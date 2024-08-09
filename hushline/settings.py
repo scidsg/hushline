@@ -18,7 +18,15 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
-from wtforms import BooleanField, FormField, IntegerField, PasswordField, StringField, TextAreaField
+from wtforms import (
+    BooleanField,
+    Field,
+    FormField,
+    IntegerField,
+    PasswordField,
+    StringField,
+    TextAreaField,
+)
 from wtforms.validators import DataRequired, Length
 from wtforms.validators import Optional as OptionalField
 
@@ -120,6 +128,22 @@ class ProfileForm(FlaskForm):
         validators=[Length(max=250)],
         render_kw={"placeholder": "Write something about yourself up to 250 characters."},
     )
+
+
+def setInputDisabled(inputField: Field, disabled: bool = True) -> None:
+    """
+    disable the given input
+
+    Args:
+        inputField(Input): the WTForms input to disable
+        disabled(bool): if true set the disabled attribute of the input
+    """
+    if inputField.render_kw is None:
+        inputField.render_kw = {}
+    if disabled:
+        inputField.render_kw["disabled"] = "disabled"
+    else:
+        inputField.render_kw.pop("disabled")
 
 
 def create_blueprint() -> Blueprint:
@@ -243,6 +267,8 @@ def create_blueprint() -> Blueprint:
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
+        if not user.pgp_key:
+            setInputDisabled(email_forwarding_form.forwarding_enabled)
         email_forwarding_form.email_address.data = user.email
         email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
         email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
@@ -503,6 +529,7 @@ def create_blueprint() -> Blueprint:
                 # If the field is empty, remove the PGP key
                 if user:
                     user.pgp_key = None
+                    user.email = None  # remove the forwarding email if the PGP key is removed
             elif is_valid_pgp_key(pgp_key):
                 # If the field is not empty and the key is valid, update the PGP key
                 if user:
@@ -534,6 +561,9 @@ def create_blueprint() -> Blueprint:
         # Handling SMTP settings form submission
         if not email_forwarding_form.validate_on_submit():
             flash(" ".join(email_forwarding_form.flattened_errors()))
+            return redirect(url_for(".index"))
+        if email_forwarding_form.email_address.data and not user.pgp_key:
+            flash("Email forwarding requires a configured PGP key")
             return redirect(url_for(".index"))
         # Updating SMTP settings from form data
         forwarding_enabled = email_forwarding_form.forwarding_enabled.data
