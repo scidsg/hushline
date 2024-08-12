@@ -242,10 +242,50 @@ def test_update_smtp_settings(client: FlaskClient) -> None:
 
     # Check successful update
     assert response.status_code == 200, "Failed to update SMTP settings"
-
+    assert (
+        b"Email forwarding requires a configured PGP key" in response.data
+    ), "Expected email forwarding to require PGP key"
     # Fetch updated user info from the database to confirm changes
     updated_user = User.query.filter_by(primary_username="user_smtp_settings").first()
     assert updated_user is not None, "User was not found after update attempt"
+    assert updated_user.email is None, f"Email address should not be set, was {updated_user.email}"
+    assert (
+        updated_user.smtp_server is None
+    ), f"SMTP server should not be set, was {updated_user.smtp_server}"
+    assert (
+        updated_user.smtp_port is None
+    ), f"SMTP port should not be set, was {updated_user.smtp_port}"
+    assert (
+        updated_user.smtp_username is None
+    ), f"SMTP username should not be set, was {updated_user.smtp_username}"
+    assert (
+        updated_user.smtp_password is None
+    ), f"SMTP password should not be set, was {updated_user.smtp_password}"
+
+    # Load the PGP key from a file
+    with open("tests/test_pgp_key.txt") as file:
+        new_pgp_key = file.read()
+
+    # Submit POST request to add the PGP key
+    response = client.post(
+        "/settings/update_pgp_key",
+        data={"pgp_key": new_pgp_key},
+        follow_redirects=True,
+    )
+
+    # Check successful update
+    assert response.status_code == 200, "Failed to update PGP key"
+
+    # Submit POST request to update SMTP settings
+    response = client.post(
+        "/settings/update_smtp_settings",  # Adjust to your app's correct endpoint
+        data=new_smtp_settings,
+        follow_redirects=True,
+    )
+
+    # Check successful update
+    assert response.status_code == 200, "Failed to update SMTP settings"
+    updated_user = User.query.filter_by(primary_username="user_smtp_settings").first()
     assert (
         updated_user.email == new_smtp_settings["email_address"]
     ), "Email address was not updated correctly"
