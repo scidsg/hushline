@@ -6,6 +6,7 @@ import re
 import secrets
 import socket
 from datetime import datetime, timedelta
+from typing import Union
 
 import pyotp
 from flask import (
@@ -124,7 +125,7 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    def generate_captcha():
+    def generate_captcha() -> str:
         width, height = 140, 80
         captcha_text = "".join(
             secrets.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(5)
@@ -166,7 +167,7 @@ def init_app(app: Flask) -> None:
         return base64.b64encode(image_io.getvalue()).decode("ascii")
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str):
+    def submit_message(username: str) -> Union[Response, str]:
         form = MessageForm()  # Assume MessageForm is defined elsewhere
         user = User.query.filter_by(
             primary_username=username
