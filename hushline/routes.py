@@ -1,12 +1,13 @@
+import base64
+import io
 import logging
 import os
 import re
+import secrets
 import socket
 from datetime import datetime, timedelta
-from typing import Union
 
 import pyotp
-import requests
 from flask import (
     Flask,
     flash,
@@ -18,6 +19,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
+from PIL import Image, ImageDraw, ImageFont
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -122,35 +124,62 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    def verify_hcaptcha(hcaptcha_response: str) -> bool:
-        hcaptcha_secret = os.getenv("HCAPTCHA_SECRET_KEY")
-        verify_url = "https://hcaptcha.com/siteverify"
-        data = {"secret": hcaptcha_secret, "response": hcaptcha_response}
+    def generate_captcha():
+        width, height = 140, 80
+        captcha_text = ''.join(secrets.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for _ in range(5))
+        session['captcha_text'] = captcha_text
 
-        try:
-            response = requests.post(verify_url, data=data, timeout=5)
-            result = response.json()
-            return result.get("success", False)
-        except requests.RequestException as e:
-            app.logger.error("hCaptcha verification error: %s", str(e), exc_info=True)
-            return False
+        # Create a blank image with white background
+        image = Image.new('RGB', (width, height), (255, 255, 255))
+        draw = ImageDraw.Draw(image)
+
+        # Load the custom font from the static folder with a specified size
+        font_path = os.path.join(app.root_path, 'static/fonts/sans/AtkinsonHyperlegible-Regular.ttf')
+        font_size = 24  # Adjust this size as needed
+        font = ImageFont.truetype(font_path, font_size)
+
+        # Get text bounding box
+        bbox = draw.textbbox((0, 0), captcha_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
+        # Position the text in the center
+        position = ((width - text_width) // 2, (height - text_height) // 2)
+        draw.text(position, captcha_text, font=font, fill=(0, 0, 0))  # Black text
+
+        # Optionally add some noise or lines to make it harder for bots
+        for _ in range(5):
+            start_point = (secrets.randbelow(width), secrets.randbelow(height))
+            end_point = (secrets.randbelow(width), secrets.randbelow(height))
+            draw.line([start_point, end_point], fill=(0, 0, 0), width=2)
+
+        # Save the image to a byte buffer
+        image_io = io.BytesIO()
+        image.save(image_io, format='PNG')
+        image_io.seek(0)
+
+        # Convert image to base64 and return it
+        return base64.b64encode(image_io.getvalue()).decode('ascii')
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str) -> Union[Response, str]:
-        form = MessageForm()
-        user = User.query.filter_by(primary_username=username).first()
+    def submit_message(username: str):
+        form = MessageForm()  # Assume MessageForm is defined elsewhere
+        user = User.query.filter_by(
+            primary_username=username
+        ).first()  # Assuming User model is defined elsewhere
+
         if not user:
             flash("User not found.")
             return redirect(url_for("index"))
 
-        is_personal_server = os.getenv("IS_PERSONAL_SERVER", "false").lower() == "true"
         if form.validate_on_submit():
-            if not is_personal_server:
-                hcaptcha_response = request.form.get("h-captcha-response")
-                if not hcaptcha_response or not verify_hcaptcha(hcaptcha_response):
-                    flash("hCaptcha verification failed. Please try again.", "error")
-                    return redirect(url_for("submit_message", username=username))
+            # CAPTCHA validation
+            captcha_input = request.form.get("captcha")
+            if captcha_input.lower() != session.get("captcha_text", "").lower():
+                flash("Invalid CAPTCHA, please try again.", "error")
+                return redirect(url_for("submit_message", username=username))
 
+            # Process the message content
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
             full_content = (
@@ -164,7 +193,9 @@ def init_app(app: Flask) -> None:
                 )
             elif user.pgp_key:
                 try:
-                    encrypted_content = encrypt_message(full_content, user.pgp_key)
+                    encrypted_content = encrypt_message(
+                        full_content, user.pgp_key
+                    )  # Assuming encrypt_message is defined elsewhere
                     if not encrypted_content:
                         flash("Failed to encrypt message with PGP key.", "error")
                         return redirect(url_for("submit_message", username=username))
@@ -176,7 +207,9 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(content=content_to_save, user_id=user.id)
+            new_message = Message(
+                content=content_to_save, user_id=user.id
+            )  # Assuming Message model is defined elsewhere
             db.session.add(new_message)
             db.session.commit()
 
@@ -194,7 +227,7 @@ def init_app(app: Flask) -> None:
                     sender_email = user.smtp_username
                     email_sent = send_email(
                         user.email, "New Message", content_to_save, user, sender_email
-                    )
+                    )  # Assuming send_email is defined elsewhere
                     flash_message = (
                         "👍 Message submitted successfully."
                         if email_sent
@@ -209,15 +242,17 @@ def init_app(app: Flask) -> None:
 
             return redirect(url_for("submit_message", username=username))
 
+        captcha_image = generate_captcha()
+
         return render_template(
             "submit_message.html",
             form=form,
             user=user,
             username=username,
+            captcha_image=captcha_image,
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
-            is_personal_server=is_personal_server,
         )
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])

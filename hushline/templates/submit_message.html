@@ -55,18 +55,17 @@
             target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
     {% endif %}
     {% endif %}
-    {% if not is_personal_server %}
-    <div class="h-captcha" data-sitekey="fd8a6594-774a-452a-aa28-1da0e0d43ed8"></div>
-    {% endif %}
+    <div class="captchaContainer">
+        <img src="data:image/png;base64,{{ captcha_image }}" alt="CAPTCHA">
+        <label for="captcha">Enter CAPTCHA</label>
+        <input type="text" id="captcha" name="captcha" required>
+    </div>
     <button type="submit" id="submitBtn">Send Message</button>
 </form>
 {% endblock %}
 
 {% block scripts %}
-{% if not is_personal_server %}
 <script src="{{ url_for('static', filename='vendor/openpgp-5.11.1.min.js') }}"></script>
-{% endif %}
-<script src="{{ url_for('static', filename='vendor/hcaptcha-api.js') }}"></script>
 <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
 <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
 {% endblock %}

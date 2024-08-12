@@ -1561,6 +1561,14 @@ input[type="file"] {
     margin-top: 1rem;
 }
 
+input#captcha {
+    max-width: 240px;
+}
+
+.captchaContainer img {
+    margin: .5rem 0;
+}
+
 @media only screen and (max-width: 768px) {
 
     .container {
