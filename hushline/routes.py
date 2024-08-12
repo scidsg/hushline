@@ -3,6 +3,7 @@ import os
 import re
 import socket
 from datetime import datetime, timedelta
+from typing import Union
 
 import pyotp
 from flask import (
