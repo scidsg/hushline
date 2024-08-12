@@ -36,7 +36,9 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
-    app.config["IS_PERSONAL_SERVER"] = os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
+    app.config["IS_PERSONAL_SERVER"] = (
+        os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
+    )
 
     # Run migrations
     db.init_app(app)
