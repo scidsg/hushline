@@ -121,6 +121,19 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
+    def verify_hcaptcha(hcaptcha_response: str) -> bool:
+        hcaptcha_secret = os.getenv("HCAPTCHA_SECRET_KEY")
+        verify_url = "https://hcaptcha.com/siteverify"
+        data = {"secret": hcaptcha_secret, "response": hcaptcha_response}
+
+        try:
+            response = requests.post(verify_url, data=data, timeout=5)
+            result = response.json()
+            return result.get("success", False)
+        except requests.RequestException as e:
+            app.logger.error("hCaptcha verification error: %s", str(e), exc_info=True)
+            return False
+
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str) -> Union[Response, str]:
         form = MessageForm()
