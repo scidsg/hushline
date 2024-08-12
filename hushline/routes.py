@@ -126,15 +126,19 @@ def init_app(app: Flask) -> None:
 
     def generate_captcha():
         width, height = 140, 80
-        captcha_text = ''.join(secrets.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') for _ in range(5))
-        session['captcha_text'] = captcha_text
+        captcha_text = "".join(
+            secrets.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(5)
+        )
+        session["captcha_text"] = captcha_text
 
         # Create a blank image with white background
-        image = Image.new('RGB', (width, height), (255, 255, 255))
+        image = Image.new("RGB", (width, height), (255, 255, 255))
         draw = ImageDraw.Draw(image)
 
         # Load the custom font from the static folder with a specified size
-        font_path = os.path.join(app.root_path, 'static/fonts/sans/AtkinsonHyperlegible-Regular.ttf')
+        font_path = os.path.join(
+            app.root_path, "static/fonts/sans/AtkinsonHyperlegible-Regular.ttf"
+        )
         font_size = 24  # Adjust this size as needed
         font = ImageFont.truetype(font_path, font_size)
 
@@ -155,11 +159,11 @@ def init_app(app: Flask) -> None:
 
         # Save the image to a byte buffer
         image_io = io.BytesIO()
-        image.save(image_io, format='PNG')
+        image.save(image_io, format="PNG")
         image_io.seek(0)
 
         # Convert image to base64 and return it
-        return base64.b64encode(image_io.getvalue()).decode('ascii')
+        return base64.b64encode(image_io.getvalue()).decode("ascii")
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str):
