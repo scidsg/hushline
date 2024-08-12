@@ -54,7 +54,9 @@
                     <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
                     {% endif %}
                     <li><a href="{{ url_for('directory') }}">Directory</a></li>
+                    {% if not is_personal_server %}
                     <li><a href="{{ url_for('vision') }}">Vision</a></li>
+                    {% endif %}
                     {% if 'user_id' in session and (('2fa_required' not in session or not session['2fa_required']) or
                     ('2fa_verified' in session and session['2fa_verified'])) %}
                     <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
