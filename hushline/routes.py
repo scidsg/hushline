@@ -179,7 +179,7 @@ def init_app(app: Flask) -> None:
 
         if request.method == "POST" and form.validate_on_submit():
             # CAPTCHA validation
-            captcha_input = request.form.get("captcha", "").lower()
+            captcha_input = str(request.form.get("captcha", "")).lower()
             if captcha_input != session.get("captcha_text", "").lower():
                 flash("Invalid CAPTCHA, please try again.", "error")
                 return render_template(
