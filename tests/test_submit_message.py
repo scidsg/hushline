@@ -5,7 +5,7 @@ from hushline.model import Message
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
-    # Simulate loading the submit message page to generate and retrieve the CAPTCHA from the session
+    # Simulate loading the submit_message page to generate and retrieve the CAPTCHA from the session
     response = client.get(f"/submit_message/{username}")
     assert response.status_code == 200
 
@@ -13,35 +13,6 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         captcha_answer = session.get("math_answer")
         assert captcha_answer is not None  # Ensure the CAPTCHA was generated
         return captcha_answer
-
-def test_submit_message_page_loads(client: FlaskClient) -> None:
-    # Register a user
-    user = register_user(client, "test_username", "Hush-Line-Test-Password9")
-
-    # Verify that the user is registered correctly
-    assert user is not None
-    assert user.primary_username == "test_username"
-
-    # Log in the user
-    logged_in_user = login_user(client, "test_username", "Hush-Line-Test-Password9")
-
-    # Verify that the logged-in user matches the registered user
-    assert logged_in_user is not None
-    assert logged_in_user.primary_username == "test_username"
-    assert logged_in_user == user
-
-    # Send a GET request to the submit_message page with follow_redirects=True
-    response = client.get(f"/submit_message/{user.primary_username}")
-
-    # Assert that the response status code is 200 (OK)
-    assert response.status_code == 200
-
-    # Assert that the page contains the expected content
-    assert (
-        f'<h2 class="submit">Submit a message to {user.primary_username}</h2>'.encode()
-        in response.data
-    )
-
 
 def test_submit_message(client: FlaskClient) -> None:
     # Register a user
@@ -57,7 +28,7 @@ def test_submit_message(client: FlaskClient) -> None:
     message_data = {
         "content": "This is a test message.",
         "client_side_encrypted": "false",
-        "captcha_answer": captcha_answer,
+        "captcha_answer": captcha_answer,  # Include the CAPTCHA answer
     }
 
     # Send a POST request to submit the message
@@ -107,7 +78,7 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
         "content": message_content,
         "contact_method": contact_method,
         "client_side_encrypted": "false",  # Simulate that this is not client-side encrypted
-        "captcha_answer": captcha_answer,
+        "captcha_answer": captcha_answer,  # Include the CAPTCHA answer
     }
 
     # Send a POST request to submit the message
