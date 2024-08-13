@@ -10,7 +10,8 @@
     {% endif %}
     {% if user.is_verified %}
     <p class="badge">⭐️&nbsp;Verified</p>
-    <a class="meta" href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts" target="_blank" rel="noopener noreferrer" aria-label="Learn more about verified accounts.">Learn more</a>
+    <a class="meta" href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
+        target="_blank" rel="noopener noreferrer" aria-label="Learn more about verified accounts.">Learn more</a>
     {% endif %}
 </div>
 {% endif %}
@@ -34,23 +35,29 @@
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->
     <input type="hidden" name="client_side_encrypted" id="clientSideEncrypted" value="false">
-    {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
-{% if user.pgp_key %}
-<p class="helper meta">🔐 Your message will be encrypted and only readable by you.</p>
-{% else %}
-<p class="helper meta">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive information,
-    please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank"
-        rel="noopener noreferrer">add a public PGP key</a>.</p>
-{% endif %}
-{% else %}
-{% if user.pgp_key %}
-<p class="helper meta">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
-{% else %}
-<p class="helper meta">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{ display_name_or_username
-    }} to add a public PGP key. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
-        target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
-{% endif %}
-{% endif %}
+    {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id)
+    %}
+    {% if user.pgp_key %}
+    <p class="helper meta">🔐 Your message will be encrypted and only readable by you.</p>
+    {% else %}
+    <p class="helper meta">⚠️ Your messages will NOT be encrypted. If you expect messages to contain sensitive
+        information,
+        please <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md" target="_blank"
+            rel="noopener noreferrer">add a public PGP key</a>.</p>
+    {% endif %}
+    {% else %}
+    {% if user.pgp_key %}
+    <p class="helper meta">🔐 Your message will be encrypted and only readable by {{ display_name_or_username }}.</p>
+    {% else %}
+    <p class="helper meta">⚠️ Your message will NOT be encrypted. If this message is sensitive, ask {{
+        display_name_or_username
+        }} to add a public PGP key. <a href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+            target="_blank" rel="noopener noreferrer">Here's how they can do it</a>.</p>
+    {% endif %}
+    {% endif %}
+    <img id="captcha" src="{{ url_for('generate_captcha') }}" alt="CAPTCHA">
+    <label for="captcha">Enter CAPTCHA</label>
+    <input type="text" id="captcha" name="captcha" required="">
     <button type="submit" id="submitBtn">Send Message</button>
 </form>
 {% endblock %}
