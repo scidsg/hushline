@@ -135,10 +135,11 @@ def init_app(app: Flask) -> None:
             num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
             num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
             math_problem = f"{num1} + {num2} ="
-            session["math_answer"] = num1 + num2  # Store the answer in session
+            session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
         if form.validate_on_submit():
-            if not validate_captcha(request.form.get("captcha_answer")):
+            captcha_answer = request.form.get("captcha_answer", "")
+            if not validate_captcha(captcha_answer):
                 return redirect(url_for("submit_message", username=username))
 
             content = form.content.data
@@ -149,9 +150,7 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if client_side_encrypted:
-                content_to_save = (
-                    content  # Assume content is already encrypted and includes contact method
-                )
+                content_to_save = content  # Assume content is already encrypted and includes contact method
             elif user.pgp_key:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
@@ -210,9 +209,7 @@ def init_app(app: Flask) -> None:
         )
 
     def validate_captcha(captcha_answer: str) -> bool:
-        try:
-            captcha_answer = int(captcha_answer)
-        except ValueError:
+        if not captcha_answer.isdigit():
             flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
             return False
 
