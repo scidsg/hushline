@@ -14,6 +14,7 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         assert captcha_answer is not None  # Ensure the CAPTCHA was generated
         return captcha_answer
 
+
 def test_submit_message(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user", "Hush-Line-Test-Password9")
