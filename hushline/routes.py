@@ -168,7 +168,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str) -> Union[Response, str]:
-        form = MessageForm()  # Assume MessageForm is defined elsewhere
+        form = MessageForm()  # Assuming MessageForm is defined elsewhere
         user = User.query.filter_by(
             primary_username=username
         ).first()  # Assuming User model is defined elsewhere
@@ -177,12 +177,20 @@ def init_app(app: Flask) -> None:
             flash("User not found.")
             return redirect(url_for("index"))
 
-        if form.validate_on_submit():
+        if request.method == "POST" and form.validate_on_submit():
             # CAPTCHA validation
-            captcha_input = request.form.get("captcha")
-            if captcha_input.lower() != session.get("captcha_text", "").lower():
+            captcha_input = request.form.get("captcha", "").lower()
+            if captcha_input != session.get("captcha_text", "").lower():
                 flash("Invalid CAPTCHA, please try again.", "error")
-                return redirect(url_for("submit_message", username=username))
+                return render_template(
+                    "submit_message.html",
+                    form=form,
+                    user=user,
+                    captcha_image=generate_captcha(),  # Regenerate CAPTCHA image
+                    display_name_or_username=user.display_name or user.primary_username,
+                    current_user_id=session.get("user_id"),
+                    public_key=user.pgp_key,
+                )
 
             # Process the message content
             content = form.content.data
@@ -203,12 +211,28 @@ def init_app(app: Flask) -> None:
                     )  # Assuming encrypt_message is defined elsewhere
                     if not encrypted_content:
                         flash("Failed to encrypt message with PGP key.", "error")
-                        return redirect(url_for("submit_message", username=username))
+                        return render_template(
+                            "submit_message.html",
+                            form=form,
+                            user=user,
+                            captcha_image=generate_captcha(),  # Regenerate CAPTCHA image
+                            display_name_or_username=user.display_name or user.primary_username,
+                            current_user_id=session.get("user_id"),
+                            public_key=user.pgp_key,
+                        )
                     content_to_save = encrypted_content
                 except Exception as e:
                     app.logger.error("Encryption failed: %s", str(e), exc_info=True)
                     flash("Failed to encrypt message due to an error.", "error")
-                    return redirect(url_for("submit_message", username=username))
+                    return render_template(
+                        "submit_message.html",
+                        form=form,
+                        user=user,
+                        captcha_image=generate_captcha(),  # Regenerate CAPTCHA image
+                        display_name_or_username=user.display_name or user.primary_username,
+                        current_user_id=session.get("user_id"),
+                        public_key=user.pgp_key,
+                    )
             else:
                 content_to_save = full_content
 
@@ -247,13 +271,13 @@ def init_app(app: Flask) -> None:
 
             return redirect(url_for("submit_message", username=username))
 
-        captcha_image = generate_captcha()
+        # If GET request or form submission fails
+        captcha_image = generate_captcha()  # Generate CAPTCHA image for GET request or re-render
 
         return render_template(
             "submit_message.html",
             form=form,
             user=user,
-            username=username,
             captcha_image=captcha_image,
             display_name_or_username=user.display_name or user.primary_username,
             current_user_id=session.get("user_id"),
