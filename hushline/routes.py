@@ -125,6 +125,7 @@ def init_app(app: Flask) -> None:
     def submit_message(username: str) -> Response | str:
         form = MessageForm()
         user = User.query.filter_by(primary_username=username).first()
+
         if not user:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
@@ -133,21 +134,11 @@ def init_app(app: Flask) -> None:
             # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
             num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
             num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
-            math_problem = rf"{num1} + {num2} ="
-            session['math_answer'] = num1 + num2  # Store the answer in session
+            math_problem = f"{num1} + {num2} ="
+            session["math_answer"] = num1 + num2  # Store the answer in session
 
         if form.validate_on_submit():
-            # Retrieve and check the math CAPTCHA
-            captcha_answer = request.form.get("captcha_answer")
-
-            try:
-                captcha_answer = int(captcha_answer)  # Convert input to integer
-            except ValueError:
-                flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
-                return redirect(url_for("submit_message", username=username))
-
-            if captcha_answer != session.get('math_answer'):
-                flash("Incorrect CAPTCHA. Please try again.", "error")
+            if not validate_captcha(request.form.get("captcha_answer")):
                 return redirect(url_for("submit_message", username=username))
 
             content = form.content.data
@@ -158,7 +149,9 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if client_side_encrypted:
-                content_to_save = content  # Assume content is already encrypted and includes contact method
+                content_to_save = (
+                    content  # Assume content is already encrypted and includes contact method
+                )
             elif user.pgp_key:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
@@ -213,8 +206,21 @@ def init_app(app: Flask) -> None:
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
-            math_problem=math_problem,  # Pass the math problem to the template
+            math_problem=math_problem,
         )
+
+    def validate_captcha(captcha_answer: str) -> bool:
+        try:
+            captcha_answer = int(captcha_answer)
+        except ValueError:
+            flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
+            return False
+
+        if captcha_answer != session.get("math_answer"):
+            flash("Incorrect CAPTCHA. Please try again.", "error")
+            return False
+
+        return True
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @require_2fa
