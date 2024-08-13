@@ -1561,6 +1561,25 @@ input[type="file"] {
     margin-top: 1rem;
 }
 
+.captcha {
+    margin: 1rem 0;
+}
+
+.captcha_container {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.captcha label {
+    margin: 0;
+}
+
+input#captcha_answer {
+    max-width: 50px;
+    margin: 0;
+}
+
 @media only screen and (max-width: 768px) {
 
     .container {
