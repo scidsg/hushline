@@ -1,11 +1,11 @@
 import logging
 import os
-import random
 import re
 import socket
 import string
 from datetime import datetime, timedelta
 from io import BytesIO
+from secrets import choice, randbelow
 
 import pyotp
 from flask import (
@@ -125,17 +125,19 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    @app.route('/captcha')
-    def generate_captcha():
-        # Generate a random string of 5 alphanumeric characters
-        captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-        session['captcha'] = captcha_text
+    @app.route("/captcha")
+    def generate_captcha() -> Response:
+        # Generate a random string of 5 alphanumeric characters using secrets.choice
+        captcha_text = "".join(choice(string.ascii_uppercase + string.digits) for _ in range(5))
+        session["captcha"] = captcha_text
 
         # Create an image with white background
-        image = Image.new('RGB', (150, 50), color=(255, 255, 255))
+        image = Image.new("RGB", (150, 50), color=(255, 255, 255))
 
         # Load the custom font with a larger size
-        font_path = os.path.join(app.root_path, 'static', 'fonts', 'sans', 'AtkinsonHyperlegible-Regular.ttf')
+        font_path = os.path.join(
+            app.root_path, "static", "fonts", "sans", "AtkinsonHyperlegible-Regular.ttf"
+        )
         font = ImageFont.truetype(font_path, 36)
 
         draw = ImageDraw.Draw(image)
@@ -143,12 +145,12 @@ def init_app(app: Flask) -> None:
         # Draw the text
         draw.text((10, 5), captcha_text, font=font, fill=(0, 0, 0))
 
-        # Draw random lines
+        # Draw random lines using secrets.randbelow
         for _ in range(5):
-            x1 = random.randint(0, 150)
-            y1 = random.randint(0, 50)
-            x2 = random.randint(0, 150)
-            y2 = random.randint(0, 50)
+            x1 = randbelow(150)
+            y1 = randbelow(50)
+            x2 = randbelow(150)
+            y2 = randbelow(50)
             draw.line(((x1, y1), (x2, y2)), fill=(0, 0, 0), width=1)
 
         # Save image to a byte buffer
@@ -156,7 +158,7 @@ def init_app(app: Flask) -> None:
         image.save(buffer, format="PNG")
         buffer.seek(0)
 
-        return send_file(buffer, mimetype='image/png')
+        return send_file(buffer, mimetype="image/png")
 
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str) -> Response | str:
@@ -168,7 +170,7 @@ def init_app(app: Flask) -> None:
 
         if form.validate_on_submit():
             captcha_input = request.form.get("captcha")
-            if captcha_input != session.get('captcha'):
+            if captcha_input != session.get("captcha"):
                 flash("Invalid CAPTCHA. Please try again.", "error")
                 return redirect(url_for("submit_message", username=username))
 
@@ -180,7 +182,9 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if client_side_encrypted:
-                content_to_save = content  # Assume content is already encrypted and includes contact method
+                content_to_save = (
+                    content  # Assume content is already encrypted and includes contact method
+                )
             elif user.pgp_key:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
