@@ -150,7 +150,9 @@ def init_app(app: Flask) -> None:
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
             if client_side_encrypted:
-                content_to_save = content  # Assume content is already encrypted and includes contact method
+                content_to_save = (
+                    content  # Assume content is already encrypted and includes contact method
+                )
             elif user.pgp_key:
                 try:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
