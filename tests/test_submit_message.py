@@ -4,6 +4,16 @@ from flask.testing import FlaskClient
 from hushline.model import Message
 
 
+def get_captcha_from_session(client: FlaskClient, username: str) -> str:
+    # Simulate loading the submit message page to generate and retrieve the CAPTCHA from the session
+    response = client.get(f"/submit_message/{username}")
+    assert response.status_code == 200
+
+    with client.session_transaction() as session:
+        captcha_answer = session.get("math_answer")
+        assert captcha_answer is not None  # Ensure the CAPTCHA was generated
+        return captcha_answer
+
 def test_submit_message_page_loads(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_username", "Hush-Line-Test-Password9")
@@ -40,10 +50,14 @@ def test_submit_message(client: FlaskClient) -> None:
     # Log in the user
     login_user(client, "test_user", "Hush-Line-Test-Password9")
 
+    # Get the CAPTCHA answer from the session
+    captcha_answer = get_captcha_from_session(client, user.primary_username)
+
     # Prepare the message data
     message_data = {
         "content": "This is a test message.",
         "client_side_encrypted": "false",
+        "captcha_answer": captcha_answer,
     }
 
     # Send a POST request to submit the message
@@ -83,6 +97,9 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
     login_success = login_user(client, "test_user_concat", "Secure-Test-Pass123")
     assert login_success
 
+    # Get the CAPTCHA answer from the session
+    captcha_answer = get_captcha_from_session(client, user.primary_username)
+
     # Prepare the message and contact method data
     message_content = "This is a test message."
     contact_method = "email@example.com"
@@ -90,6 +107,7 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
         "content": message_content,
         "contact_method": contact_method,
         "client_side_encrypted": "false",  # Simulate that this is not client-side encrypted
+        "captcha_answer": captcha_answer,
     }
 
     # Send a POST request to submit the message
