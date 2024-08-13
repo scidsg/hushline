@@ -1565,6 +1565,10 @@ img#captcha {
     margin: .5rem 0;
 }
 
+input#captcha {
+    max-width: 240px;
+}
+
 @media only screen and (max-width: 768px) {
 
     .container {
