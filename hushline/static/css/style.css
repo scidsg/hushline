@@ -116,7 +116,8 @@
         border-bottom: var(--border);
     }
 
-    .tab {
+    .tab,
+    .subtab {
         border: 1px solid transparent;
         background-color: transparent;
         color: var(--color-text);
@@ -125,17 +126,20 @@
         border-bottom: 1px solid transparent;
     }
 
-    .tab:focus-within {
+    .tab:focus-within,
+    .subtab:focus-within {
         outline: none;
     }
 
     /* Change background color of tabs on hover */
-    .tab:hover {
+    .tab:hover,
+    .subtab:hover {
         background-color: #fbf3ff;
     }
 
     /* Create an active/current tablink class */
-    .tab.active {
+    .tab.active,
+    .subtab.active {
         box-shadow: 0 -2px 0 inset var(--color-brand);
         border-bottom: 1px solid var(--color-brand);
     }
@@ -360,7 +364,8 @@
         border-bottom: var(--border-dark);
     }
 
-    .tab {
+    .tab,
+    .subtab {
         border: 1px solid transparent;
         background-color: transparent;
         color: var(--color-text-dark);
@@ -369,17 +374,20 @@
         border-bottom: 1px solid transparent;
     }
 
-    .tab:focus-within {
+    .tab:focus-within,
+    .subtab:focus-within {
         outline: none;
     }
 
     /* Change background color of tabs on hover */
-    .tab:hover {
+    .tab:hover,
+    .subtab:hover {
         background-color: rgba(255, 255, 255, .1);
     }
 
     /* Create an active/current tablink class */
-    .tab.active {
+    .tab.active,
+    .subtab.active {
         box-shadow: 0 -2px 0 inset var(--color-brand-dark);
         border-bottom: 1px solid var(--color-brand-dark);
     }
@@ -1157,7 +1165,8 @@ img.upgrade {
 }
 
 /* Tab button styling */
-.tab {
+.tab,
+.subtab {
     min-height: 0px;
     min-width: auto;
     padding: 1rem .625rem;
@@ -1169,18 +1178,21 @@ img.upgrade {
     box-sizing: content-box;
 }
 
-.tab.active {
+.tab.active,
+.subtab.active {
     font-family: var(--font-sans-bold);
 }
 
 /* Style the tab content (and hide it by default) */
-.tab-content {
+.tab-content,
+.subtab-content {
     display: none;
     border-top: none;
 }
 
 /* Style the active content */
-.tab-content.active {
+.tab-content.active,
+.subtab-content.active {
     display: block;
 }
 
