@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import secrets
 import socket
 from datetime import UTC, datetime, timedelta
 
@@ -124,7 +125,18 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
+        if request.method == "GET":
+            # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
+            num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+            num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+            math_problem = f"{num1} + {num2} ="
+            session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+
         if form.validate_on_submit():
+            captcha_answer = request.form.get("captcha_answer", "")
+            if not validate_captcha(captcha_answer):
+                return redirect(url_for("submit_message", username=username))
+
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
             full_content = (
@@ -190,7 +202,19 @@ def init_app(app: Flask) -> None:
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
+            math_problem=math_problem,
         )
+
+    def validate_captcha(captcha_answer: str) -> bool:
+        if not captcha_answer.isdigit():
+            flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
+            return False
+
+        if captcha_answer != session.get("math_answer"):
+            flash("Incorrect CAPTCHA. Please try again.", "error")
+            return False
+
+        return True
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @require_2fa
