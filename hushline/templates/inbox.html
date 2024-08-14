@@ -7,13 +7,11 @@
 {% for message in messages %}
 <article class="message{% if 'BEGIN PGP MESSAGE' in message.content %} encrypted{% endif %}" data-encrypted-content="{{ message.content }}"
             aria-label="Message with {{message.user.primary_username or message.user.display_name}}">
-    {% if not is_secondary %}
     {% if message.secondary_user_id %}
     {% set sender_info = secondary_usernames[message.secondary_user_id] %}
     <p class="message-label">📥 {{ sender_info.display_name or sender_info.username }}</p>
     {% elif secondary_usernames|length > 0 %}
     <p class="message-label">📥 {{ user.display_name or user.primary_username }}</p>
-    {% endif %}
     {% endif %}
     <p class="decrypted-content">{{ message.content }}</p>
     <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>

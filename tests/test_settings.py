@@ -3,6 +3,7 @@ from secrets import token_urlsafe
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
+from hushline.db import db
 from hushline.model import User
 
 
@@ -44,7 +45,9 @@ def test_change_display_name(client: FlaskClient) -> None:
     assert response.status_code == 200, "Failed to update display name"
 
     # Fetch updated user info from the database to confirm change
-    updated_user = User.query.filter_by(primary_username="testuser_settings").first()
+    updated_user = db.session.scalars(
+        db.select(User).filter_by(primary_username="testuser_settings").limit(1)
+    ).first()
     assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.display_name == new_display_name, "Display name was not updated correctly"
 
@@ -78,7 +81,9 @@ def test_change_username(client: FlaskClient) -> None:
     assert response.status_code == 200, "Failed to update username"
 
     # Fetch updated user info from the database to confirm change
-    updated_user = User.query.filter_by(primary_username=new_username).first()
+    updated_user = db.session.scalars(
+        db.select(User).filter_by(primary_username=new_username).limit(1)
+    ).first()
     assert updated_user is not None, "Username was not updated correctly in the database"
     assert (
         updated_user.primary_username == new_username
@@ -169,7 +174,9 @@ def test_add_pgp_key(client: FlaskClient) -> None:
 
     # Check successful update
     assert response.status_code == 200, "Failed to update PGP key"
-    updated_user = User.query.filter_by(primary_username="user_with_pgp").first()
+    updated_user = db.session.scalars(
+        db.select(User).filter_by(primary_username="user_with_pgp").limit(1)
+    ).first()
     assert updated_user is not None, "User was not found after update attempt"
     assert updated_user.pgp_key == new_pgp_key, "PGP key was not updated correctly"
 
