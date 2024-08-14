@@ -3,7 +3,7 @@ import os
 import re
 import secrets
 import socket
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pyotp
 from flask import (
@@ -77,7 +77,7 @@ def init_app(app: Flask) -> None:
     @app.route("/")
     def index() -> Response:
         if "user_id" in session:
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
             if user:
                 return redirect(url_for("inbox", username=user.primary_username))
 
@@ -97,26 +97,20 @@ def init_app(app: Flask) -> None:
 
         logged_in_user_id = session["user_id"]
         requested_username = request.args.get("username")
-        logged_in_user = User.query.get(logged_in_user_id)
-        if logged_in_user:
-            logged_in_username = logged_in_user.primary_username
-
-        if requested_username and requested_username != logged_in_username:
+        logged_in_user = db.session.get(User, logged_in_user_id)
+        if not logged_in_user or requested_username != logged_in_user.primary_username:
             return redirect(url_for("inbox"))
 
-        primary_user = User.query.get(logged_in_user_id)
-        if primary_user:
-            messages = (
-                Message.query.filter_by(user_id=primary_user.id).order_by(Message.id.desc()).all()
-            )
-            secondary_users_dict = {su.id: su for su in primary_user.secondary_usernames}
+        if logged_in_user:
+            messages = db.session.scalars(
+                db.select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
+            ).all()
+            secondary_users_dict = {su.id: su for su in logged_in_user.secondary_usernames}
 
         return render_template(
             "inbox.html",
-            user=primary_user,
-            secondary_username=None,
+            user=logged_in_user,
             messages=messages,
-            is_secondary=False,
             secondary_usernames=secondary_users_dict,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
@@ -124,8 +118,9 @@ def init_app(app: Flask) -> None:
     @app.route("/submit_message/<username>", methods=["GET", "POST"])
     def submit_message(username: str) -> Response | str:
         form = MessageForm()
-        user = User.query.filter_by(primary_username=username).first()
-
+        user = db.session.scalars(
+            db.select(User).filter_by(primary_username=username).limit(1)
+        ).first()
         if not user:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
@@ -228,12 +223,12 @@ def init_app(app: Flask) -> None:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
 
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
 
-        message = Message.query.get(message_id)
+        message = db.session.get(Message, message_id)
         if message and message.user_id == user.id:
             db.session.delete(message)
             db.session.commit()
@@ -256,8 +251,12 @@ def init_app(app: Flask) -> None:
 
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
-                invite_code = InviteCode.query.filter_by(code=invite_code_input).first()
-                if not invite_code or invite_code.expiration_date < datetime.utcnow():
+                invite_code = db.session.scalars(
+                    db.select(InviteCode).filter_by(code=invite_code_input).limit(1)
+                ).first()
+                if not invite_code or invite_code.expiration_date.replace(
+                    tzinfo=UTC
+                ) < datetime.now(UTC):
                     flash("⛔️ Invalid or expired invite code.", "error")
                     return (
                         render_template(
@@ -268,7 +267,9 @@ def init_app(app: Flask) -> None:
                         400,
                     )
 
-            if User.query.filter_by(primary_username=username).first():
+            if db.session.scalars(
+                db.select(User).filter_by(primary_username=username).limit(1)
+            ).first():
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(
@@ -302,7 +303,9 @@ def init_app(app: Flask) -> None:
             username = form.username.data.strip()
             password = form.password.data
 
-            user = User.query.filter_by(primary_username=username).first()
+            user = db.session.scalars(
+                db.select(User).filter_by(primary_username=username).limit(1)
+            ).first()
 
             if user and user.check_password(password):
                 session.permanent = True
@@ -330,13 +333,13 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:  # noqa: PLR0911
         # Redirect to login if user is not authenticated or 2FA is not required
         if "user_id" not in session or not session.get("2fa_required", False):
             flash("You need to log in first.")
             return redirect(url_for("login"))
 
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user:
             flash("🫥 User not found. Please login again.")
             session.clear()  # Clearing the session for security
@@ -345,6 +348,9 @@ def init_app(app: Flask) -> None:
         form = TwoFactorForm()
 
         if form.validate_on_submit():
+            if not user.totp_secret:
+                flash("⛔️ 2FA is not enabled.")
+                return redirect(url_for("login"))
             totp = pyotp.TOTP(user.totp_secret)
             timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
@@ -353,11 +359,12 @@ def init_app(app: Flask) -> None:
             rate_limit = False
 
             # If the most recent successful login was made with the same OTP code, reject this one
-            last_login = (
-                AuthenticationLog.query.filter_by(user_id=user.id, successful=True)
+            last_login = db.session.scalars(
+                db.select(AuthenticationLog)
+                .filter_by(user_id=user.id, successful=True)
                 .order_by(AuthenticationLog.timestamp.desc())
-                .first()
-            )
+                .limit(1)
+            ).first()
             if (
                 last_login
                 and last_login.timecode == timecode
@@ -369,12 +376,15 @@ def init_app(app: Flask) -> None:
                 rate_limit = True
 
             # If there were 5 failed logins in the last 30 seconds, don't allow another one
-            failed_logins = (
-                AuthenticationLog.query.filter_by(user_id=user.id, successful=False)
-                .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
-                .count()
+            failed_logins = db.session.scalar(
+                db.select(
+                    db.func.count(AuthenticationLog.id)
+                    .filter(AuthenticationLog.user_id == user.id)
+                    .filter(AuthenticationLog.successful == db.false())
+                    .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
+                )
             )
-            if failed_logins >= 5:  # noqa: PLR2004
+            if failed_logins is not None and failed_logins >= 5:  # noqa: PLR2004
                 rate_limit = True
 
             if rate_limit:
@@ -423,7 +433,7 @@ def init_app(app: Flask) -> None:
     @app.route("/settings/update_directory_visibility", methods=["POST"])
     def update_directory_visibility() -> Response:
         if "user_id" in session:
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
             if user:
                 user.show_in_directory = "show_in_directory" in request.form
             db.session.commit()
@@ -447,8 +457,8 @@ def init_app(app: Flask) -> None:
         return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
 
     def get_directory_users() -> list[User]:
-        users = User.query.filter_by(show_in_directory=True).all()
-        return sort_users_by_display_name(users)
+        users = db.session.scalars(db.select(User).filter_by(show_in_directory=True)).all()
+        return sort_users_by_display_name(list(users))
 
     @app.route("/directory")
     def directory() -> Response | str:
@@ -467,7 +477,7 @@ def init_app(app: Flask) -> None:
         return {"logged_in": logged_in}
 
     @app.route("/directory/users.json")
-    def directory_users() -> list[dict[str, str]]:
+    def directory_users() -> list[dict[str, str | bool | None]]:
         return [
             {
                 "primary_username": user.primary_username,

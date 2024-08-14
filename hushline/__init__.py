@@ -56,7 +56,7 @@ def create_app() -> Flask:
     @app.context_processor
     def inject_user() -> dict[str, Any]:
         if "user_id" in session:
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
             return {"user": user}
         return {}
 

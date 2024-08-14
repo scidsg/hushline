@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, session, url_for
+from flask import Blueprint, abort, flash, redirect, session, url_for
 from werkzeug.wrappers.response import Response
 
 from .db import db
@@ -16,7 +16,9 @@ def create_blueprint() -> Blueprint:
             flash("Unauthorized access.", "error")
             return redirect(url_for("settings.index"))
 
-        user = User.query.get_or_404(user_id)
+        user = db.session.get(User, user_id)
+        if user is None:
+            abort(404)
         user.is_verified = not user.is_verified
         db.session.commit()
         flash("✅ User verification status toggled.", "success")
@@ -29,7 +31,9 @@ def create_blueprint() -> Blueprint:
             flash("Unauthorized access.", "error")
             return redirect(url_for("settings.index"))
 
-        user = User.query.get_or_404(user_id)
+        user = db.session.get(User, user_id)
+        if user is None:
+            abort(404)
         user.is_admin = not user.is_admin
         db.session.commit()
         flash("✅ User admin status toggled.", "success")

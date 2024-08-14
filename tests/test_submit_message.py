@@ -1,6 +1,7 @@
 from auth_helper import login_user, register_user
 from flask.testing import FlaskClient
 
+from hushline.db import db
 from hushline.model import Message
 
 
@@ -46,7 +47,7 @@ def test_submit_message(client: FlaskClient) -> None:
     assert b"Message submitted successfully." in response.data
 
     # Verify that the message is saved in the database
-    message = Message.query.filter_by(user_id=user.id).first()
+    message = db.session.scalars(db.select(Message).filter_by(user_id=user.id).limit(1)).first()
     assert message is not None
     assert message.content == "This is a test message."
 
@@ -94,7 +95,7 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
     assert b"Message submitted successfully." in response.data
 
     # Verify that the message is saved in the database
-    message = Message.query.filter_by(user_id=user.id).first()
+    message = db.session.scalars(db.select(Message).filter_by(user_id=user.id).limit(1)).first()
     assert message is not None
 
     # Check if the message content includes the concatenated contact method

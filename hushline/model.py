@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Set
 
 from flask import current_app
 from flask_sqlalchemy.model import Model
@@ -14,28 +14,30 @@ if TYPE_CHECKING:
 else:
     Model = db.Model
 
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 
 class User(Model):
     __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
-    primary_username = db.Column(db.String(80), unique=True, nullable=False)
-    display_name = db.Column(db.String(80))
-    _password_hash = db.Column("password_hash", db.String(512))
-    _totp_secret = db.Column("totp_secret", db.String(255))
-    _email = db.Column("email", db.String(255))
-    _smtp_server = db.Column("smtp_server", db.String(255))
-    smtp_port = db.Column(db.Integer)
-    _smtp_username = db.Column("smtp_username", db.String(255))
-    _smtp_password = db.Column("smtp_password", db.String(255))
-    _pgp_key = db.Column("pgp_key", db.Text)
-    is_verified = db.Column(db.Boolean, default=False)
-    is_admin = db.Column(db.Boolean, default=False)
-    show_in_directory = db.Column(db.Boolean, default=False)
-    bio = db.Column(db.Text, nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    primary_username: Mapped[str] = mapped_column(db.String(80), unique=True)
+    display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
+    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512))
+    _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.String(255))
+    _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
+    _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
+    smtp_port: Mapped[Optional[int]]
+    _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.String(255))
+    _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.String(255))
+    _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
+    is_verified: Mapped[bool] = mapped_column(default=False)
+    is_admin: Mapped[bool] = mapped_column(default=False)
+    show_in_directory: Mapped[bool] = mapped_column(default=False)
+    bio: Mapped[Optional[str]] = mapped_column(db.Text)
     # Corrected the relationship and backref here
-    secondary_usernames = db.relationship(
-        "SecondaryUsername", backref=db.backref("primary_user", lazy=True)
+    secondary_usernames: Mapped[Set["SecondaryUsername"]] = relationship(
+        backref=db.backref("primary_user", lazy=True)
     )
 
     @property
@@ -145,13 +147,13 @@ class User(Model):
 class AuthenticationLog(Model):
     __tablename__ = "authentication_logs"
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    user = db.relationship("User", backref=db.backref("authentication_logs", lazy=True))
-    successful = db.Column(db.Boolean, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
-    otp_code = db.Column(db.String(6), nullable=True)
-    timecode = db.Column(db.Integer, nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(backref=db.backref("authentication_logs", lazy=True))
+    successful: Mapped[bool]
+    timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
+    otp_code: Mapped[Optional[str]] = mapped_column(db.String(6))
+    timecode: Mapped[Optional[int]]
 
     # Open question: should we store the IP address and user agent?
     # It's useful for auditing, but it's identifable
@@ -175,22 +177,26 @@ class AuthenticationLog(Model):
 class SecondaryUsername(Model):
     __tablename__ = "secondary_usernames"
 
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(db.String(80), unique=True)
     # This foreign key points to the 'user' table's 'id' field
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    display_name = db.Column(db.String(80), nullable=True)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
 
 
 class Message(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    _content = db.Column("content", db.Text, nullable=False)  # Encrypted content stored here
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    user = db.relationship("User", backref=db.backref("messages", lazy=True))
-    secondary_user_id = db.Column(
-        db.Integer, db.ForeignKey("secondary_usernames.id"), nullable=True
+    id: Mapped[int] = mapped_column(primary_key=True)
+    _content: Mapped[Optional[str]] = mapped_column(
+        "content", db.Text
+    )  # Encrypted content stored here
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
+    secondary_user_id: Mapped[Optional[int]] = mapped_column(
+        db.ForeignKey("secondary_usernames.id")
     )
-    secondary_username = db.relationship("SecondaryUsername", backref="messages")
+    secondary_username: Mapped[Set["SecondaryUsername"]] = relationship(
+        "SecondaryUsername", backref="messages"
+    )
 
     def __init__(self, content: str, user_id: int) -> None:
         super().__init__()
@@ -207,9 +213,9 @@ class Message(Model):
 
 
 class InviteCode(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(255), unique=True, nullable=False)
-    expiration_date = db.Column(db.DateTime, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(db.String(255), unique=True)
+    expiration_date: Mapped[datetime]
 
     def __init__(self) -> None:
         super().__init__()
