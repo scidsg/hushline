@@ -44,7 +44,9 @@ def create_app() -> Flask:
 
     # Configure server-side session store with Redis
     app.config["SESSION_TYPE"] = "redis"
-    app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"))
+    app.config["SESSION_REDIS"] = redis.from_url(
+        os.environ.get("REDIS_URL", "redis://localhost:6379")
+    )
     app.config["SESSION_PERMANENT"] = False
     app.config["SESSION_USE_SIGNER"] = True
 
