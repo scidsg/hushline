@@ -77,9 +77,9 @@ def init_app(app: Flask) -> None:
     @app.route("/")
     def index() -> Response:
         if "user_id" in session:
-            user = db.session.get(User, session["user_id"])
+            user = db.session.get(User, session.get("user_id"))
             if user:
-                return redirect(url_for("inbox", username=user.primary_username))
+                return redirect(url_for("inbox"))
 
             flash("🫥 User not found. Please log in again.")
             session.pop("user_id", None)  # Clear the invalid user_id from session
@@ -90,26 +90,19 @@ def init_app(app: Flask) -> None:
     @app.route("/inbox")
     @require_2fa
     def inbox() -> Response | str:
-        # Redirect if not logged in
-        if "user_id" not in session:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
             flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
-        logged_in_user_id = session["user_id"]
-        requested_username = request.args.get("username")
-        logged_in_user = db.session.get(User, logged_in_user_id)
-        if not logged_in_user or requested_username != logged_in_user.primary_username:
-            return redirect(url_for("inbox"))
-
-        if logged_in_user:
-            messages = db.session.scalars(
-                db.select(Message).filter_by(user_id=logged_in_user.id).order_by(Message.id.desc())
-            ).all()
-            secondary_users_dict = {su.id: su for su in logged_in_user.secondary_usernames}
+        messages = db.session.scalars(
+            db.select(Message).filter_by(user_id=user.id).order_by(Message.id.desc())
+        ).all()
+        secondary_users_dict = {su.id: su for su in user.secondary_usernames}
 
         return render_template(
             "inbox.html",
-            user=logged_in_user,
+            user=user,
             messages=messages,
             secondary_usernames=secondary_users_dict,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
@@ -223,7 +216,7 @@ def init_app(app: Flask) -> None:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
 
-        user = db.session.get(User, session["user_id"])
+        user = db.session.get(User, session.get("user_id"))
         if not user:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
@@ -233,17 +226,17 @@ def init_app(app: Flask) -> None:
             db.session.delete(message)
             db.session.commit()
             flash("🗑️ Message deleted successfully.")
-            return redirect(url_for("inbox", username=user.primary_username))
+            return redirect(url_for("inbox"))
 
         flash("⛔️ Message not found or unauthorized access.")
-        return redirect(url_for("inbox", username=user.primary_username))
+        return redirect(url_for("inbox"))
 
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
-        user = db.session.get(User, session["user_id"])
+        user = db.session.get(User, session.get("user_id"))
         if user:
             flash("👉 You are already logged in.")
-            return redirect(url_for("inbox", username=user.primary_username))
+            return redirect(url_for("inbox"))
 
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
         form = RegistrationForm()
@@ -303,10 +296,10 @@ def init_app(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
-        user = db.session.get(User, session["user_id"])
+        user = db.session.get(User, session.get("user_id"))
         if user:
             flash("👉 You are already logged in.")
-            return redirect(url_for("inbox", username=user.primary_username))
+            return redirect(url_for("inbox"))
 
         form = LoginForm()
         if request.method == "POST" and form.validate_on_submit():
@@ -335,7 +328,7 @@ def init_app(app: Flask) -> None:
                 db.session.commit()
 
                 session["2fa_verified"] = True
-                return redirect(url_for("inbox", username=user.primary_username))
+                return redirect(url_for("inbox"))
 
             flash("⛔️ Invalid username or password")
         return render_template(
@@ -349,7 +342,7 @@ def init_app(app: Flask) -> None:
             flash("You need to log in first.")
             return redirect(url_for("login"))
 
-        user = db.session.get(User, session["user_id"])
+        user = db.session.get(User, session.get("user_id"))
         if not user:
             flash("🫥 User not found. Please login again.")
             session.clear()  # Clearing the session for security
@@ -410,7 +403,7 @@ def init_app(app: Flask) -> None:
                 db.session.commit()
 
                 session["2fa_verified"] = True  # Set 2FA verification flag
-                return redirect(url_for("inbox", username=user.primary_username))
+                return redirect(url_for("inbox"))
 
             # Failed login
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
@@ -443,7 +436,7 @@ def init_app(app: Flask) -> None:
     @app.route("/settings/update_directory_visibility", methods=["POST"])
     def update_directory_visibility() -> Response:
         if "user_id" in session:
-            user = db.session.get(User, session["user_id"])
+            user = db.session.get(User, session.get("user_id"))
             if user:
                 user.show_in_directory = "show_in_directory" in request.form
             db.session.commit()
