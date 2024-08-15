@@ -188,7 +188,7 @@
             <p class="meta">🔒 Do you use Proton Mail? We can automatically retrieve your PGP key from Proton's key
                 server.
             </p>
-            <form method="POST" action="{{ url_for('settings.update_pgp_key') }}" class="formBody">
+            <form method="POST" action="{{ url_for('settings.update_pgp_key_proton') }}" class="formBody">
                 {{ pgp_key_form.hidden_tag() }}
                 <label for="proton_email">Proton Mail Email Address</label>
                 <input type="email" name="proton_email" id="proton_email" required>

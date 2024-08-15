@@ -1,3 +1,4 @@
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -21,6 +22,11 @@ def require_2fa(f: Callable[..., Any]) -> Callable[..., Any]:
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def is_valid_email(email: str) -> bool:
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return re.match(pattern, email) is not None
 
 
 def send_email(to_email: str, subject: str, body: str, user: User, sender_email: str) -> bool:
