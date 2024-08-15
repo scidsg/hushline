@@ -240,6 +240,11 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
+        user = db.session.get(User, session["user_id"])
+        if user:
+            flash("👉 You are already logged in.")
+            return redirect(url_for("inbox", username=user.primary_username))
+
         require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
         form = RegistrationForm()
         if not require_invite_code:
