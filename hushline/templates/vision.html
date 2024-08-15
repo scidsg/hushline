@@ -6,7 +6,11 @@
 <p>📸 Do you have a trove of photos and need help detecting text to understand what's there? Try our entirely
     browser-based vision assistant! No photo data is ever sent to our severs. Currently English-only.
 </p>
-<input type="file" id="fileInput" accept="image/*" multiple>
+<div class="fileContainer">
+    <label for="fileInput" class="custom-file-label">Add Images</label>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+</div>
+
 <div id="results"></div>
 {% endblock %}
 
