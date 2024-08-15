@@ -303,6 +303,11 @@ def init_app(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
+        user = db.session.get(User, session["user_id"])
+        if user:
+            flash("👉 You are already logged in.")
+            return redirect(url_for("inbox", username=user.primary_username))
+
         form = LoginForm()
         if request.method == "POST" and form.validate_on_submit():
             username = form.username.data.strip()
