@@ -3,8 +3,10 @@ import os
 from datetime import timedelta
 from typing import Any
 
+import redis
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
+from flask_session import Session
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
@@ -40,6 +42,15 @@ def create_app() -> Flask:
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
     )
 
+    # Configure server-side session store with Redis
+    app.config["SESSION_TYPE"] = "redis"
+    app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"))
+    app.config["SESSION_PERMANENT"] = False
+    app.config["SESSION_USE_SIGNER"] = True
+
+    # Initialize the server-side session
+    Session(app)
+
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
@@ -57,7 +68,7 @@ def create_app() -> Flask:
     def inject_user() -> dict[str, Any]:
         if "user_id" in session:
             user = db.session.get(User, session["user_id"])
-            return {"user": user}
+            return {"user": user, "is_admin": user.is_admin}
         return {}
 
     # Add Onion-Location header to all responses
