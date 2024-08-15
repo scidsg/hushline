@@ -153,7 +153,8 @@
     input:focus,
     input[type="submit"]:focus,
     textarea:focus,
-    button:focus {
+    button:focus,
+    input[type="file"]::file-selector-button:focus {
         outline: 4px double var(--color-brand);
         border: 1px solid var(--color-brand);
         box-shadow: none;
@@ -170,8 +171,7 @@
 
     .formBody input[type="submit"],
     .formBody button,
-    .btn,
-    input[type="file"]::file-selector-button {
+    .btn {
         background-color: white;
         color: var(--color-brand);
         border: 1px solid var(--color-brand);
@@ -291,6 +291,10 @@
         color: darkred;
     }
 
+    input[type="file"] {
+        border: var(--border);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    }
 
     @media screen and (max-width: 768px) {
         .dropdown-content a:hover {
@@ -411,8 +415,7 @@
 
     input[type="submit"],
     button,
-    .btn,
-    input[type="file"]::file-selector-button {
+    .btn {
         border: 0px;
         background-color: var(--color-brand-dark);
         color: var(--color-text);
@@ -420,8 +423,7 @@
 
     .formBody input[type="submit"],
     .formBody button,
-    .btn,
-    input[type="file"]::file-selector-button {
+    .btn {
         background-color: var(--color-dark);
         color: var(--color-brand-dark);
         border: 1px solid var(--color-brand-dark);
@@ -437,7 +439,8 @@
 
     .formBody input[type="submit"]:active,
     .formBody button:active,
-    .btn:active {
+    .btn:active,
+    input[type="file"]::file-selector-button:active {
         box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, .25);
     }
 
@@ -553,6 +556,11 @@
 
     .error {
         color: lightpink;
+    }
+
+    input[type="file"] {
+        border: var(--border-dark);
+        box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
     }
 
     @media screen and (max-width: 768px) {
@@ -983,6 +991,7 @@ input[type="file"]::file-selector-button {
 
 input[type="file"]::file-selector-button {
     margin: 0 .5rem 0 0;
+    border: 0;
 }
 
 header .btn {
@@ -1579,8 +1588,8 @@ p.section-intro:not(:first-of-type) {
 }
 
 input[type="file"] {
-    border: none;
-    padding: 0 0 .125rem 0;
+    padding: .75rem;
+    border-radius: .25rem;
 }
 
 .captcha {
