@@ -70,7 +70,8 @@ def create_app() -> Flask:
     def inject_user() -> dict[str, Any]:
         if "user_id" in session:
             user = db.session.get(User, session["user_id"])
-            return {"user": user, "is_admin": user.is_admin}
+            if user is not None:  # Check if user is not None
+                return {"user": user, "is_admin": user.is_admin}
         return {}
 
     # Add Onion-Location header to all responses
