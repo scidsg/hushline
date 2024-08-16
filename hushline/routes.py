@@ -234,7 +234,7 @@ def init_app(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
         user = db.session.get(User, session.get("user_id"))
-        if user:
+        if user and session.get("is_authenticated", False):
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
