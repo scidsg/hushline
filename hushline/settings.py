@@ -408,33 +408,6 @@ def create_blueprint() -> Blueprint:
     def confirm_disable_2fa() -> Response | str:
         return render_template("confirm_disable_2fa.html")
 
-    @bp.route("/show-qr-code")
-    @authentication_required
-    def show_qr_code() -> Response | str:
-        user = db.session.get(User, session["user_id"])
-        if not user or not user.totp_secret:
-            return redirect(url_for(".enable_2fa"))
-
-        form = TwoFactorForm()
-
-        totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
-            name=user.primary_username, issuer_name="Hush Line"
-        )
-        img = qrcode.make(totp_uri)
-
-        # Convert QR code to a data URI
-        buffered = io.BytesIO()
-        img.save(buffered)
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        qr_code_img = f"data:image/png;base64,{img_str}"
-
-        return render_template(
-            "show_qr_code.html",
-            form=form,
-            qr_code_img=qr_code_img,
-            user_secret=user.totp_secret,
-        )
-
     @bp.route("/verify-2fa-setup", methods=["POST"])
     @authentication_required
     def verify_2fa_setup() -> Response | str:
