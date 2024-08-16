@@ -346,11 +346,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/enable-2fa", methods=["GET", "POST"])
     @authentication_required
     def enable_2fa() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, session.get("user_id"))
         form = TwoFactorForm()
 
         if form.validate_on_submit():
