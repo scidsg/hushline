@@ -1,21 +1,17 @@
-from flask import Blueprint, abort, flash, redirect, session, url_for
+from flask import Blueprint, abort, flash, redirect, url_for
 from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import User
-from .utils import require_2fa
+from .utils import admin_authentication_required
 
 
 def create_blueprint() -> Blueprint:
     bp = Blueprint("admin", __file__, url_prefix="/admin")
 
     @bp.route("/toggle_verified/<int:user_id>", methods=["POST"])
-    @require_2fa
+    @admin_authentication_required
     def toggle_verified(user_id: int) -> Response:
-        if not session.get("is_admin", False):
-            flash("Unauthorized access.", "error")
-            return redirect(url_for("settings.index"))
-
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)
@@ -25,12 +21,8 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("settings.index"))
 
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
-    @require_2fa
+    @admin_authentication_required
     def toggle_admin(user_id: int) -> Response:
-        if not session.get("is_admin", False):
-            flash("Unauthorized access.", "error")
-            return redirect(url_for("settings.index"))
-
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)

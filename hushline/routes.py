@@ -25,7 +25,7 @@ from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, User
-from .utils import require_2fa, send_email
+from .utils import authentication_required, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -88,7 +88,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("directory"))
 
     @app.route("/inbox")
-    @require_2fa
+    @authentication_required
     def inbox() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
         if not user:
@@ -210,7 +210,7 @@ def init_app(app: Flask) -> None:
         return True
 
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
-    @require_2fa
+    @authentication_required
     def delete_message(message_id: int) -> Response:
         if "user_id" not in session:
             flash("🔑 Please log in to continue.")
@@ -296,13 +296,12 @@ def init_app(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
-        user = db.session.get(User, session.get("user_id"))
-        if user:
+        if "user_id" in session and session.get("is_authenticated", False):
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
         form = LoginForm()
-        if request.method == "POST" and form.validate_on_submit():
+        if form.validate_on_submit():
             username = form.username.data.strip()
             password = form.password.data
 
@@ -315,11 +314,10 @@ def init_app(app: Flask) -> None:
                 session["user_id"] = user.id
                 session["username"] = user.primary_username
                 session["is_authenticated"] = True
-                session["2fa_required"] = user.totp_secret is not None
-                session["2fa_verified"] = False
-                session["is_admin"] = user.is_admin
 
+                # 2FA enabled?
                 if user.totp_secret:
+                    session["is_authenticated"] = False
                     return redirect(url_for("verify_2fa_login"))
 
                 # Successful login
@@ -327,7 +325,6 @@ def init_app(app: Flask) -> None:
                 db.session.add(auth_log)
                 db.session.commit()
 
-                session["2fa_verified"] = True
                 return redirect(url_for("inbox"))
 
             flash("⛔️ Invalid username or password")
@@ -337,16 +334,15 @@ def init_app(app: Flask) -> None:
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:  # noqa: PLR0911
-        # Redirect to login if user is not authenticated or 2FA is not required
-        if "user_id" not in session or not session.get("2fa_required", False):
-            flash("You need to log in first.")
-            return redirect(url_for("login"))
-
+        # Redirect to login if the login process has not started yet
         user = db.session.get(User, session.get("user_id"))
         if not user:
-            flash("🫥 User not found. Please login again.")
-            session.clear()  # Clearing the session for security
+            session.clear()
             return redirect(url_for("login"))
+
+        # Redirect to inbox if already authenticated
+        if session.get("is_authenticated", False):
+            return redirect(url_for("inbox"))
 
         form = TwoFactorForm()
 
@@ -354,6 +350,7 @@ def init_app(app: Flask) -> None:
             if not user.totp_secret:
                 flash("⛔️ 2FA is not enabled.")
                 return redirect(url_for("login"))
+
             totp = pyotp.TOTP(user.totp_secret)
             timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
@@ -402,7 +399,7 @@ def init_app(app: Flask) -> None:
                 db.session.add(auth_log)
                 db.session.commit()
 
-                session["2fa_verified"] = True  # Set 2FA verification flag
+                session["is_authenticated"] = True
                 return redirect(url_for("inbox"))
 
             # Failed login
@@ -418,11 +415,11 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/logout")
-    @require_2fa
+    @authentication_required
     def logout() -> Response:
         # Explicitly remove specific session keys related to user authentication
         session.pop("user_id", None)
-        session.pop("2fa_verified", None)
+        session.pop("is_authenticated", None)
 
         # Clear the entire session to ensure no leftover data
         session.clear()
@@ -434,6 +431,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("index"))
 
     @app.route("/settings/update_directory_visibility", methods=["POST"])
+    @authentication_required
     def update_directory_visibility() -> Response:
         if "user_id" in session:
             user = db.session.get(User, session.get("user_id"))
