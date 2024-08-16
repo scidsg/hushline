@@ -14,9 +14,12 @@ from .db import db
 def authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
-        if "user_id" not in session or not session.get("is_authenticated", False):
+        if "user_id" not in session:
             flash("👉 Please complete authentication.")
             return redirect(url_for("login"))
+
+        if not session.get("is_authenticated", False):
+            return redirect(url_for("verify_2fa_login"))
 
         return f(*args, **kwargs)
 
