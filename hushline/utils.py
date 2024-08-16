@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from functools import wraps
 from typing import Any, Callable
 
-from flask import current_app, flash, redirect, session, url_for
+from flask import abort, current_app, flash, redirect, session, url_for
 
 from hushline.model import User
 
@@ -25,15 +25,11 @@ def authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
 
 def admin_authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
+    @authentication_required
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
-        if "user_id" not in session or not session.get("is_authenticated", False):
-            return redirect(url_for("login"))
-
         user = db.session.query(User).get(session["user_id"])
         if not user or not user.is_admin:
-            flash("Unauthorized access.", "error")
-            return redirect(url_for("index"))
-
+            abort(403)
         return f(*args, **kwargs)
 
     return decorated_function
