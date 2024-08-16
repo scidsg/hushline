@@ -24,7 +24,7 @@ from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, TwoFactorForm
 from .model import Message, SecondaryUsername, User
-from .utils import is_valid_email, require_2fa
+from .utils import authentication_required, is_valid_email
 
 
 class ChangePasswordForm(FlaskForm):
@@ -78,7 +78,7 @@ def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
     @bp.route("/", methods=["GET", "POST"])
-    @require_2fa
+    @authentication_required
     def index() -> str | Response:  # noqa: PLR0911, PLR0912
         user_id = session.get("user_id")
         if not user_id:
@@ -251,6 +251,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
+    @authentication_required
     def toggle_2fa() -> Response:
         user_id = session.get("user_id")
         if not user_id:
@@ -263,7 +264,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for(".enable_2fa"))
 
     @bp.route("/change-password", methods=["POST"])
-    @require_2fa
+    @authentication_required
     def change_password() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
@@ -295,66 +296,10 @@ def create_blueprint() -> Blueprint:
         )
         return redirect(url_for("login"))  # Redirect to the login page for re-authentication
 
-    @bp.route("/change-username", methods=["POST"])
-    @require_2fa
-    def change_username() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            flash("Please log in to continue.", "info")
-            return redirect(url_for("login"))
-
-        new_username = request.form.get("new_username")
-        if not new_username:
-            flash("No new username provided.", "error")
-            return redirect(url_for(".settings"))
-
-        new_username = new_username.strip()
-
-        user = db.session.get(User, user_id)
-        if not user:
-            flash("User not found.", "error")
-            return redirect(url_for("login"))
-
-        if user.primary_username == new_username:
-            flash("New username is the same as the current username.", "info")
-            return redirect(url_for(".settings"))
-
-        existing_user = db.session.scalars(
-            db.select(User).filter_by(primary_username=new_username)
-        ).first()
-        if existing_user:
-            flash("This username is already taken.", "error")
-            return redirect(url_for(".settings"))
-
-        # Log before updating
-        current_app.logger.debug(
-            f"Updating username for user ID {user_id}: {user.primary_username} to {new_username}"
-        )
-
-        # Directly update the user's primary username
-        user.primary_username = new_username
-        try:
-            db.session.commit()
-            session["username"] = new_username
-            flash("Username successfully changed.", "success")
-            current_app.logger.debug(
-                f"Username successfully updated for user ID {user_id} to {new_username}"
-            )
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error updating username for user ID {user_id}: {e}")
-            flash("An error occurred while updating the username.", "error")
-
-        return redirect(url_for(".settings"))
-
     @bp.route("/enable-2fa", methods=["GET", "POST"])
-    @require_2fa
+    @authentication_required
     def enable_2fa() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, session.get("user_id"))
         form = TwoFactorForm()
 
         if form.validate_on_submit():
@@ -398,7 +343,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/disable-2fa", methods=["POST"])
-    @require_2fa
+    @authentication_required
     def disable_2fa() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
@@ -412,37 +357,12 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for(".index"))
 
     @bp.route("/confirm-disable-2fa", methods=["GET"])
+    @authentication_required
     def confirm_disable_2fa() -> Response | str:
         return render_template("confirm_disable_2fa.html")
 
-    @bp.route("/show-qr-code")
-    @require_2fa
-    def show_qr_code() -> Response | str:
-        user = db.session.get(User, session["user_id"])
-        if not user or not user.totp_secret:
-            return redirect(url_for(".enable_2fa"))
-
-        form = TwoFactorForm()
-
-        totp_uri = pyotp.totp.TOTP(user.totp_secret).provisioning_uri(
-            name=user.primary_username, issuer_name="Hush Line"
-        )
-        img = qrcode.make(totp_uri)
-
-        # Convert QR code to a data URI
-        buffered = io.BytesIO()
-        img.save(buffered)
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        qr_code_img = f"data:image/png;base64,{img_str}"
-
-        return render_template(
-            "show_qr_code.html",
-            form=form,
-            qr_code_img=qr_code_img,
-            user_secret=user.totp_secret,
-        )
-
     @bp.route("/verify-2fa-setup", methods=["POST"])
+    @authentication_required
     def verify_2fa_setup() -> Response | str:
         user = db.session.get(User, session["user_id"])
         if not user:
@@ -463,7 +383,7 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("logout"))
 
     @bp.route("/update_pgp_key_proton", methods=["POST"])
-    @require_2fa
+    @authentication_required
     def update_pgp_key_proton() -> Response | str:  # noqa: PLR0911
         user_id = session.get("user_id")
         if not user_id:
@@ -508,7 +428,7 @@ def create_blueprint() -> Blueprint:
         return render_template("settings.html", form=form)
 
     @bp.route("/update_pgp_key", methods=["GET", "POST"])
-    @require_2fa
+    @authentication_required
     def update_pgp_key() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
@@ -540,7 +460,7 @@ def create_blueprint() -> Blueprint:
         return render_template("settings.html", form=form)
 
     @bp.route("/update_smtp_settings", methods=["GET", "POST"])
-    @require_2fa
+    @authentication_required
     def update_smtp_settings() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
@@ -589,7 +509,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/delete-account", methods=["POST"])
-    @require_2fa
+    @authentication_required
     def delete_account() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
