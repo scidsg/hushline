@@ -8,16 +8,32 @@ from flask import current_app, flash, redirect, session, url_for
 
 from hushline.model import User
 
+from .db import db
 
-def require_2fa(f: Callable[..., Any]) -> Callable[..., Any]:
+
+def authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if "user_id" not in session or not session.get("is_authenticated", False):
             flash("👉 Please complete authentication.")
             return redirect(url_for("login"))
-        if session.get("2fa_required", False) and not session.get("2fa_verified", False):
-            flash("👉 2FA verification required.")
-            return redirect(url_for("verify_2fa_login"))
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def admin_authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(f)
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
+        if "user_id" not in session or not session.get("is_authenticated", False):
+            return redirect(url_for("login"))
+
+        user = db.session.query(User).get(session["user_id"])
+        if not user or not user.is_admin:
+            flash("Unauthorized access.", "error")
+            return redirect(url_for("index"))
+
         return f(*args, **kwargs)
 
     return decorated_function
