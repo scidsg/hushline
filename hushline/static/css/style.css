@@ -1531,6 +1531,15 @@ fieldset:disabled {
     display: none;
 }
 
+fieldset .toggle-ui {
+    margin-top: 1rem;
+}
+
+.checkbox-group .toggle-ui {
+    display: flex;
+    align-items: center;
+}
+
 p.section-intro:first-of-type {
     margin: .75rem 0 1rem 0;
 }
@@ -1657,6 +1666,7 @@ input#captcha_answer {
 .toggle-ui {
     position: relative;
     overflow: hidden;
+    margin-bottom: 1rem;
 }
 
 .toggle-ui label {
@@ -1664,6 +1674,15 @@ input#captcha_answer {
     flex-direction: row-reverse;
     align-items: center;
     gap: .5rem;
+    margin-bottom: 0;
+}
+
+.toggle-ui .toggle {
+    order: 1;
+}
+
+.toggle-label {
+    margin-bottom: 1rem;
 }
 
 .toggle-ui input[type="checkbox"] {
