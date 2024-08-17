@@ -50,7 +50,7 @@ class User(Model):
         backref=db.backref("primary_user", lazy=True)
     )
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
-        db.String, default=SMTPEncryption.StartTLS.value
+        db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
 
     @property

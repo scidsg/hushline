@@ -325,7 +325,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
         updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
     ), "SMTP password was not updated correctly"
     assert (
-        updated_user.smtp_encryption == new_smtp_settings["smtp_settings-smtp_encryption"]
+        updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
     ), "SMTP encryption was not updated correctly"
 
     # Optional: Check for success message in response
@@ -387,7 +387,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
         updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
     ), "SMTP password was not updated correctly"
     assert (
-        updated_user.smtp_encryption == new_smtp_settings["smtp_settings-smtp_encryption"]
+        updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
     ), "SMTP encryption was not updated correctly"
 
     # Optional: Check for success message in response
