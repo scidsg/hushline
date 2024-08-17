@@ -2,6 +2,7 @@ import base64
 import io
 import re
 from datetime import UTC, datetime
+from smtplib import SMTPException
 from typing import Optional
 
 import pyotp
@@ -25,6 +26,7 @@ from wtforms import (
     FormField,
     IntegerField,
     PasswordField,
+    SelectField,
     StringField,
     TextAreaField,
 )
@@ -34,8 +36,13 @@ from wtforms.validators import Optional as OptionalField
 from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, TwoFactorForm
+<<<<<<< HEAD
 from .model import Message, SecondaryUsername, User
 from .utils import authentication_required
+=======
+from .model import Message, SecondaryUsername, SMTPEncryption, User
+from .utils import create_smtp_config, require_2fa
+>>>>>>> 132816a (add smtp encryption method (StartTLS, SSL))
 
 
 class ChangePasswordForm(FlaskForm):
@@ -62,6 +69,9 @@ class SMTPSettingsForm(FlaskForm):
     smtp_port = IntegerField("SMTP Port", validators=[OptionalField()])
     smtp_username = StringField("SMTP Username", validators=[OptionalField(), Length(max=255)])
     smtp_password = PasswordField("SMTP Password", validators=[OptionalField(), Length(max=255)])
+    smtp_encryption = SelectField(
+        "SMTP Encryption Protocol", choices=[proto.value for proto in SMTPEncryption]
+    )
 
 
 class EmailForwardingForm(FlaskForm):
@@ -286,6 +296,7 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
         email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
         email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
+        email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption
         email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
         pgp_key_form.pgp_key.data = user.pgp_key
         display_name_form.display_name.data = user.display_name or user.primary_username
@@ -552,6 +563,23 @@ def create_blueprint() -> Blueprint:
         custom_smtp_settings = (
             forwarding_enabled and email_forwarding_form.custom_smtp_settings.data
         )
+        if custom_smtp_settings:
+            try:
+                smtp_config = create_smtp_config(
+                    email_forwarding_form.smtp_settings.smtp_username.data,
+                    email_forwarding_form.smtp_settings.smtp_server.data,
+                    email_forwarding_form.smtp_settings.smtp_port.data,
+                    email_forwarding_form.smtp_settings.smtp_password.data
+                    or user.smtp_password
+                    or "",
+                    SMTPEncryption[email_forwarding_form.smtp_settings.smtp_encryption.data],
+                )
+                with smtp_config.smtp_login():
+                    pass
+            except (SMTPException, TimeoutError, ValueError) as e:
+                current_app.logger.debug(e)
+                flash("Unable to validate SMTP connection settings")
+                return redirect(url_for(".index"))
         user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
         user.smtp_server = (
             email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
@@ -562,8 +590,16 @@ def create_blueprint() -> Blueprint:
         user.smtp_username = (
             email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
         )
+        # Since passwords aren't pre-populated in the form, don't unset it if not provided
         user.smtp_password = (
-            email_forwarding_form.smtp_settings.smtp_password.data if custom_smtp_settings else None
+            email_forwarding_form.smtp_settings.smtp_password.data
+            if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_password.data
+            else user.smtp_password
+        )
+        user.smtp_encryption = (
+            email_forwarding_form.smtp_settings.smtp_encryption.data
+            if custom_smtp_settings
+            else SMTPEncryption.default()
         )
 
         db.session.commit()
