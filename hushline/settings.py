@@ -377,7 +377,7 @@ def create_blueprint() -> Blueprint:
         session.pop("is_setting_up_2fa", None)
         return redirect(url_for("logout"))
 
-    @bp.route("/update_pgp_key", methods=["GET", "POST"])
+    @bp.route("/update-pgp-key", methods=["POST"])
     @authentication_required
     def update_pgp_key() -> Response | str:
         user_id = session.get("user_id")
@@ -406,9 +406,10 @@ def create_blueprint() -> Blueprint:
             db.session.commit()
             flash("👍 PGP key updated successfully.")
             return redirect(url_for(".index"))
-        return render_template("settings.html", form=form)
 
-    @bp.route("/update_smtp_settings", methods=["GET", "POST"])
+        return redirect(url_for(".index"))
+
+    @bp.route("/update-smtp-settings", methods=["POST"])
     @authentication_required
     def update_smtp_settings() -> Response | str:
         user_id = session.get("user_id")
@@ -421,10 +422,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".index"))
 
         # Initialize forms
-        change_password_form = ChangePasswordForm()
-        change_username_form = ChangeUsernameForm()
         smtp_settings_form = SMTPSettingsForm()
-        pgp_key_form = PGPKeyForm()
 
         # Handling SMTP settings form submission
         if smtp_settings_form.validate_on_submit():
@@ -439,23 +437,7 @@ def create_blueprint() -> Blueprint:
             flash("👍 SMTP settings updated successfully")
             return redirect(url_for(".index"))
 
-        # Prepopulate SMTP settings form fields
-        smtp_settings_form.email.data = user.email
-        smtp_settings_form.smtp_server.data = user.smtp_server
-        smtp_settings_form.smtp_port.data = user.smtp_port
-        smtp_settings_form.smtp_username.data = user.smtp_username
-        # Note: Password fields are typically not prepopulated for security reasons
-
-        pgp_key_form.pgp_key.data = user.pgp_key
-
-        return render_template(
-            "settings.html",
-            user=user,
-            smtp_settings_form=smtp_settings_form,
-            change_password_form=change_password_form,
-            change_username_form=change_username_form,
-            pgp_key_form=pgp_key_form,
-        )
+        return redirect(url_for(".index"))
 
     @bp.route("/delete-account", methods=["POST"])
     @authentication_required

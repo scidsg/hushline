@@ -167,7 +167,7 @@ def test_add_pgp_key(client: FlaskClient) -> None:
 
     # Submit POST request to add the PGP key
     response = client.post(
-        "/settings/update_pgp_key",
+        "/settings/update-pgp-key",
         data={"pgp_key": new_pgp_key},
         follow_redirects=True,
     )
@@ -196,7 +196,7 @@ def test_add_invalid_pgp_key(client: FlaskClient) -> None:
 
     # Submit POST request to add the invalid PGP key
     response = client.post(
-        "/settings/update_pgp_key",  # Adjust to your app's correct endpoint
+        "/settings/update-pgp-key",
         data={"pgp_key": invalid_pgp_key},
         follow_redirects=True,
     )
@@ -232,7 +232,7 @@ def test_update_smtp_settings(client: FlaskClient) -> None:
 
     # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update_smtp_settings",  # Adjust to your app's correct endpoint
+        "/settings/update-smtp-settings",
         data=new_smtp_settings,
         follow_redirects=True,
     )
