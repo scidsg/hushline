@@ -63,7 +63,7 @@ class PGPProtonForm(FlaskForm):
 
 
 class PGPKeyForm(FlaskForm):
-    pgp_key = TextAreaField("PGP Key", validators=[Length(max=100000)])
+    pgp_key = TextAreaField("Or, Add Your Public PGP Key Manually", validators=[Length(max=100000)])
 
 
 class DisplayNameForm(FlaskForm):
