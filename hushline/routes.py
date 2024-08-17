@@ -24,8 +24,8 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
-from .model import AuthenticationLog, InviteCode, Message, User
-from .utils import SMTPConfig, require_2fa, send_email
+from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
+from .utils import SMTPConfig, create_smtp_config, require_2fa, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -173,15 +173,20 @@ def init_app(app: Flask) -> None:
                         if app.config["NOTIFICATIONS_ADDRESS"]
                         else user.smtp_username
                     )
-                    smtp_config = SMTPConfig(
+                    smtp_config: SMTPConfig = create_smtp_config(
                         app.config["SMTP_USERNAME"],
                         app.config["SMTP_SERVER"],
                         app.config["SMTP_PORT"],
                         app.config["SMTP_PASSWORD"],
+                        SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
                     )
                     if user.smtp_server:
-                        smtp_config = SMTPConfig(
-                            user.smtp_username, user.smtp_server, user.smtp_port, user.smtp_password
+                        smtp_config = create_smtp_config(
+                            user.smtp_username,
+                            user.smtp_server,
+                            user.smtp_port,
+                            user.smtp_password,
+                            SMTPEncryption[user.smtp_encryption],
                         )
 
                     email_sent = send_email(

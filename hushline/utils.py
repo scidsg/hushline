@@ -1,11 +1,14 @@
 import smtplib
+from contextlib import contextmanager
 from dataclasses import dataclass
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 from flask import current_app, flash, redirect, session, url_for
+
+from hushline.model import SMTPEncryption
 
 
 def require_2fa(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -32,6 +35,39 @@ class SMTPConfig:
     def validate(self) -> bool:
         return all([self.username, self.server, self.port, self.password])
 
+    @contextmanager
+    def smtp_login(self, *, timeout: int = 1) -> Generator[smtplib.SMTP, None, None]:
+        raise NotImplementedError
+
+
+def create_smtp_config(
+    username: str, server: str, port: int, password: str, encryption: SMTPEncryption
+) -> SMTPConfig:
+    match encryption:
+        case SMTPEncryption.SSL:
+            return SSL_SMTPConfig(username, server, port, password)
+        case SMTPEncryption.StartTLS:
+            return StartTLS_SMTPConfig(username, server, port, password)
+        case _:
+            raise ValueError(f"Invalid SMTP encryption protocol: {encryption.value}")
+
+
+class SSL_SMTPConfig(SMTPConfig):
+    @contextmanager
+    def smtp_login(self, *, timeout: int = 1) -> Generator[smtplib.SMTP, None, None]:
+        with smtplib.SMTP_SSL(self.server, self.port, timeout=timeout) as server:
+            server.login(self.username, self.password)
+            yield server
+
+
+class StartTLS_SMTPConfig(SMTPConfig):
+    @contextmanager
+    def smtp_login(self, *, timeout: int = 1) -> Generator[smtplib.SMTP, None, None]:
+        with smtplib.SMTP(self.server, self.port, timeout=timeout) as server:
+            server.starttls()
+            server.login(self.username, self.password)
+            yield server
+
 
 def send_email(
     to_email: str, subject: str, body: str, sender_email: str, smtp_config: SMTPConfig
@@ -57,11 +93,9 @@ def send_email(
         return False
 
     try:
-        with smtplib.SMTP(smtp_config.server, smtp_config.port) as server:
-            server.starttls()
-            server.login(smtp_config.username, smtp_config.password)
+        with smtp_config.smtp_login() as server:
             server.send_message(message)
         return True
-    except Exception as e:
+    except smtplib.SMTPException as e:
         current_app.logger.error(f"Error sending email: {str(e)}")
         return False

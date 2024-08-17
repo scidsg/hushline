@@ -99,3 +99,17 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
 
     # Return the logged-in user
     return db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
+
+
+def configure_pgp(client: FlaskClient) -> None:
+    # Load the PGP key from a file
+    with open("tests/test_pgp_key.txt") as file:
+        new_pgp_key = file.read()
+
+    # Submit POST request to add the PGP key
+    response = client.post(
+        "/settings/update_pgp_key",
+        data={"pgp_key": new_pgp_key},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, "Error configuring PGP key"
