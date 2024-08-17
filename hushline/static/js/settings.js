@@ -2,6 +2,42 @@ document.addEventListener('DOMContentLoaded', function () {
     const tabs = document.querySelectorAll('.tab');
     const tabPanels = document.querySelectorAll('.tab-content');
     const bioCountEl = document.querySelector('.bio-count');
+
+    // Restore the active tab on page load
+    function restoreActiveTab() {
+        const activeTab = localStorage.getItem('activeTab');
+        if (activeTab) {
+            // Deactivate all tabs and hide all tab contents
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+            tabPanels.forEach(panel => {
+                panel.classList.remove('active');
+                panel.setAttribute('hidden', 'true');
+            });
+
+            // Activate the stored tab and show the corresponding content
+            const activeTabElement = document.getElementById(`${activeTab}-tab`);
+            const activePanelElement = document.getElementById(activeTab);
+
+            if (activeTabElement && activePanelElement) {
+                activeTabElement.classList.add('active');
+                activeTabElement.setAttribute('aria-selected', 'true');
+                activePanelElement.classList.add('active');
+                activePanelElement.removeAttribute('hidden');
+            }
+        }
+    }
+
+    // Save the active tab to localStorage
+    function setActiveTab(tabName) {
+        localStorage.setItem('activeTab', tabName);
+    }
+
+    // Initialize the page with the restored tab
+    restoreActiveTab();
+
     // Deletion account confirmation logic
     document.getElementById('deleteAccountButton')?.addEventListener('click', function (event) {
         const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
@@ -14,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // time out to let animation finish
         setTimeout(() => {
             document.querySelector("button[name='update_directory_visibility']").click();
-        }, 200)
+        }, 200);
     });
 
     document.getElementById('bio').addEventListener('keyup', function (e) {
@@ -24,39 +60,10 @@ document.addEventListener('DOMContentLoaded', function () {
     tabs.forEach(tab => {
         tab.addEventListener('click', function (e) {
             window.activateTab(e, tabs, tabPanels);
+            setActiveTab(this.getAttribute('data-tab'));
         });
         tab.addEventListener('keydown', function (e) {
-            window.handleKeydown(e)
+            window.handleKeydown(e);
         });
     });
-
-    // PGP subtabs
-    const pgpProtonTab = document.querySelector('.subtab-pgp-proton');
-    const pgpProtonTabContent = document.getElementById('pgp-proton');
-    const pgpPublicKeyTab = document.querySelector('.subtab-pgp-public-key');
-    const pgpPublicKeyTabContent = document.getElementById('pgp-public-key');
-
-    pgpProtonTab.addEventListener('click', function (e) {
-        pgpProtonTab.classList.add('active');
-        pgpProtonTabContent.classList.add('active');
-        pgpProtonTabContent.hidden = false;
-
-        pgpPublicKeyTab.classList.remove('active');
-        pgpPublicKeyTabContent.classList.remove('active');
-        pgpPublicKeyTabContent.hidden = true;
-    });
-    pgpPublicKeyTab.addEventListener('click', function (e) {
-        pgpPublicKeyTab.classList.add('active');
-        pgpPublicKeyTabContent.classList.add('active');
-        pgpPublicKeyTabContent.hidden = false;
-
-        pgpProtonTab.classList.remove('active');
-        pgpProtonTabContent.classList.remove('active');
-        pgpProtonTabContent.hidden = true;
-    });
-
-    // If there's a PGP key set, show the public key tab
-    if (document.getElementById('pgp_key').value != "") {
-        pgpPublicKeyTab.click();
-    }
 });
