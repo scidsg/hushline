@@ -98,6 +98,7 @@ def create_blueprint() -> Blueprint:
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
         smtp_settings_form = SMTPSettingsForm()
+        pgp_proton_form = PGPProtonForm()
         pgp_key_form = PGPKeyForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
@@ -237,6 +238,7 @@ def create_blueprint() -> Blueprint:
             smtp_settings_form=smtp_settings_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
+            pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
             display_name_form=display_name_form,
             # Admin-specific data passed to the template
@@ -414,7 +416,7 @@ def create_blueprint() -> Blueprint:
                         flash("⛔️ No PGP key found for the email address.")
                         return redirect(url_for(".index"))
                 else:
-                    flash("⛔️ Error fetching PGP key from Proton Mail.")
+                    flash("⛔️ This isn't a Proton Mail email address.")
                     return redirect(url_for(".index"))
             else:
                 # If the PGP key is invalid

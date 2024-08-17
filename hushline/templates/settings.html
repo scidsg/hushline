@@ -189,9 +189,9 @@
                 server.
             </p>
             <form method="POST" action="{{ url_for('settings.update_pgp_key_proton') }}" class="formBody">
-                {{ pgp_key_form.hidden_tag() }}
+                {{ pgp_proton_form.hidden_tag() }}
                 <label for="proton_email">Proton Mail Email Address</label>
-                <input type="email" name="proton_email" id="proton_email" required>
+                <input type="email" name="email" id="proton_email" required>
                 <button type="submit">Search Proton's Key Server</button>
             </form>
         </div>
