@@ -179,7 +179,7 @@ def init_app(app: Flask) -> None:
                             user.smtp_server,
                             user.smtp_port,
                             user.smtp_password,
-                            SMTPEncryption[user.smtp_encryption],
+                            user.smtp_encryption,
                         )
 
                     email_sent = send_email(
