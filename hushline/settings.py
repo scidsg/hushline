@@ -36,13 +36,8 @@ from wtforms.validators import Optional as OptionalField
 from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, TwoFactorForm
-<<<<<<< HEAD
-from .model import Message, SecondaryUsername, User
-from .utils import authentication_required
-=======
 from .model import Message, SecondaryUsername, SMTPEncryption, User
-from .utils import create_smtp_config, require_2fa
->>>>>>> 132816a (add smtp encryption method (StartTLS, SSL))
+from .utils import authentication_required, create_smtp_config
 
 
 class ChangePasswordForm(FlaskForm):
