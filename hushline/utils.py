@@ -32,7 +32,7 @@ def admin_authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
     @authentication_required
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
-        user = db.session.query(User).get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user or not user.is_admin:
             abort(403)
         return f(*args, **kwargs)
