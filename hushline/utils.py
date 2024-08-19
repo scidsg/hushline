@@ -8,11 +8,9 @@ from typing import Any, Callable, Generator
 
 from flask import abort, current_app, flash, redirect, session, url_for
 
-from hushline.model import User
+from hushline.model import SMTPEncryption, User
 
 from .db import db
-
-from hushline.model import SMTPEncryption
 
 
 def authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:

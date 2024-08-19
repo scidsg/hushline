@@ -294,7 +294,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
 
     # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update_smtp_settings",  # Adjust to your app's correct endpoint
+        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -356,7 +356,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
 
     # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update_smtp_settings",  # Adjust to your app's correct endpoint
+        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
         data=new_smtp_settings,
         follow_redirects=True,
     )

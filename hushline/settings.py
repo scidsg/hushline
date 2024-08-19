@@ -169,7 +169,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/", methods=["GET", "POST"])
     @authentication_required
-    def index() -> str | Response:  # noqa: PLR0912
+    def index() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -191,7 +191,6 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form = EmailForwardingForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
-        email_forwarding_form = EmailForwardingForm()
 
         # Check if the bio update form was submitted
         if request.method == "POST" and "update_bio" in request.form:

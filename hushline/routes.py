@@ -25,7 +25,7 @@ from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
-from .utils import authentication_required, SMTPConfig, create_smtp_config, send_email
+from .utils import SMTPConfig, authentication_required, create_smtp_config, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -246,8 +246,11 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
-        user = db.session.get(User, session.get("user_id"))
-        if user and session.get("is_authenticated", False):
+        if (
+            session.get("is_authenticated", False)
+            and (user_id := session.get("user_id", False))
+            and db.session.get(User, user_id)
+        ):
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 

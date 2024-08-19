@@ -108,7 +108,7 @@ def configure_pgp(client: FlaskClient) -> None:
 
     # Submit POST request to add the PGP key
     response = client.post(
-        "/settings/update_pgp_key",
+        "/settings/update-pgp-key",
         data={"pgp_key": new_pgp_key},
         follow_redirects=True,
     )
