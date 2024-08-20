@@ -1505,6 +1505,22 @@ textarea#bio {
     margin: 0;
 }
 
+img.searchIcon {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    top: 21px;
+    left: 12px;
+}
+
+label.search {
+    position: relative;
+}
+
+label.search+input {
+    padding-left: 2.5rem;
+}
+
 #searchIcon img {
     width: 20px;
 }

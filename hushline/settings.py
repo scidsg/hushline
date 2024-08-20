@@ -51,11 +51,19 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class PGPProtonForm(FlaskForm):
-    email = StringField("Proton Email Address", validators=[DataRequired()])
+    email = StringField(
+        "",
+        validators=[DataRequired()],
+        render_kw={
+            "placeholder": "Search Proton email...",
+            "id": "proton_email",
+            "required": True,
+        },
+    )
 
 
 class PGPKeyForm(FlaskForm):
-    pgp_key = TextAreaField("PGP Key", validators=[Length(max=100000)])
+    pgp_key = TextAreaField("Or, Add Your Public PGP Key Manually", validators=[Length(max=100000)])
 
 
 class DisplayNameForm(FlaskForm):
