@@ -1,8 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Send a Message{% endblock %}
+{% block title %}{% if (not require_pgp) or (require_pgp and user.pgp_key) %}Send a Message to {{
+display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% endif %}{% endblock %}
 
 {% block content %}
-<h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
+<h2 class="submit">
+    {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
+    Submit a message to {{ display_name_or_username }}
+    {% else %}
+    {{ display_name_or_username }}
+    {% endif %}
+</h2>
 {% if user.is_admin or user.is_verified %}
 <div class="badgeContainer">
     {% if user.is_admin %}
@@ -23,6 +30,7 @@
     your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is
     critical!</p>
 {% endif %}
+{% if (not require_pgp) or (require_pgp and user.pgp_key) %}
 <form method="POST" action="{{ url_for('submit_message', username=username) }}" id="messageForm">
     {{ form.hidden_tag() }}
 
@@ -71,6 +79,10 @@
     </div>
     <button type="submit" id="submitBtn">Send Message</button>
 </form>
+{% else %}
+<p class="meta">You can't send encrypted messages to this user through Hush Line. Find secure contact
+    information for them in their profile above.</p>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

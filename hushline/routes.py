@@ -203,6 +203,7 @@ def init_app(app: Flask) -> None:
             current_user_id=session.get("user_id"),
             public_key=user.pgp_key,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
+            require_pgp=app.config["REQUIRE_PGP"],
             math_problem=math_problem,
         )
 
