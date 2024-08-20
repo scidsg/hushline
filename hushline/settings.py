@@ -29,7 +29,7 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Email, Length
 from wtforms.validators import Optional as OptionalField
 
 from .crypto import is_valid_pgp_key
@@ -198,6 +198,7 @@ def create_blueprint() -> Blueprint:
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
         pgp_proton_form = PGPProtonForm()
+        pgp_key_form = PGPKeyForm()
         email_forwarding_form = EmailForwardingForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
