@@ -102,8 +102,10 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
         border: var(--border);
+        background-color: white;
     }
 
     code,
@@ -158,7 +160,8 @@
     input[type="submit"]:focus,
     textarea:focus,
     button:focus,
-    input[type="file"]::file-selector-button:focus {
+    input[type="file"]::file-selector-button:focus,
+    select:focus {
         outline: 4px double var(--color-brand);
         border: 1px solid var(--color-brand);
         box-shadow: none;
@@ -192,7 +195,8 @@
     .formBody input[type="submit"]:active,
     .formBody button:active,
     .btn:active,
-    input[type="file"]::file-selector-button:active {
+    input[type="file"]::file-selector-button:active,
+    select:active {
         box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, .25);
     }
 
@@ -356,7 +360,8 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
         border: var(--border-dark);
         background-color: var(--color-dark-bg-alt);
         color: var(--color-text-dark);
@@ -415,7 +420,8 @@
     input[type="submit"]:focus,
     textarea:focus,
     button:focus,
-    input[type="file"]::file-selector-button:focus {
+    input[type="file"]::file-selector-button:focus,
+    select:focus {
         outline: 4px double var(--color-brand-dark);
         border: 1px solid var(--color-brand-dark);
         box-shadow: none;
@@ -960,7 +966,8 @@ h2.submit+p.instr {
 }
 
 input,
-textarea {
+textarea,
+select {
     display: flex;
     flex-direction: column;
     max-width: 640px;
@@ -1427,10 +1434,7 @@ a.dropbtn:hover {
 
 .checkbox-group {
     display: flex;
-}
-
-.checkbox-group label {
-    order: 1;
+    margin-bottom: .75rem;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -1721,8 +1725,17 @@ input#captcha_answer {
 .toggle-ui label {
     display: flex;
     flex-direction: row-reverse;
-    align-items: center;
+    align-content: center;
     gap: .5rem;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+}
+
+.toggle-label label {
+    margin-bottom: 0;
 }
 
 .toggle-ui input[type="checkbox"] {

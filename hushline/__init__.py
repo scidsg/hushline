@@ -39,6 +39,12 @@ def create_app() -> Flask:
     app.config["IS_PERSONAL_SERVER"] = (
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
     )
+    app.config["NOTIFICATIONS_ADDRESS"] = os.environ.get("NOTIFICATIONS_ADDRESS", None)
+    app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME", None)
+    app.config["SMTP_SERVER"] = os.environ.get("SMTP_SERVER", None)
+    app.config["SMTP_PORT"] = int(os.environ.get("SMTP_PORT", 0))
+    app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
+    app.config["SMTP_ENCRYPTION"] = os.environ.get("SMTP_ENCRYPTION", "StartTLS")
 
     # Run migrations
     db.init_app(app)

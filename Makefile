@@ -42,4 +42,4 @@ endif
 .PHONY: test
 test: ## Run the test suite
 	. ./dev_env.sh && \
-	poetry run pytest -vv tests
+	poetry run pytest -vv tests/$(test)
