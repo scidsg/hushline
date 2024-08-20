@@ -2,7 +2,6 @@ import base64
 import io
 import re
 from datetime import UTC, datetime
-from smtplib import SMTPException
 from typing import Optional
 
 import pyotp
@@ -576,7 +575,7 @@ def create_blueprint() -> Blueprint:
                 )
                 with smtp_config.smtp_login():
                     pass
-            except (SMTPException, TimeoutError, ValueError) as e:
+            except Exception as e:
                 current_app.logger.debug(e)
                 flash("⛔️ Unable to validate SMTP connection settings")
                 return redirect(url_for(".index"))
