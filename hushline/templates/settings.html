@@ -38,13 +38,13 @@
         {% endif %}
     </ul>
 </div>
-<div class="formBody">
+<div>
     <div id="profile" class="tab-content active" role="tabpanel" aria-labelledby="profile-tab">
         <h3>Update Display Name</h3>
         {% if user.is_verified %}
         <p class="meta">⚠️ Changing your display name will result in losing your verification status.</p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings.index') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
             {{ display_name_form.hidden_tag() }}
             <label for="display_name">Display Name</label>
             {{ display_name_form.display_name(id='display_name') }}
@@ -57,7 +57,7 @@
         </form>
 
         <h3>Public User Directory</h3>
-        <form method="POST" action="{{ url_for('settings.index') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
             {{ directory_visibility_form.hidden_tag() }}
             <div class="checkbox-group toggle-ui">
                 {{ directory_visibility_form.show_in_directory() }}
@@ -72,7 +72,7 @@
         </form>
 
         <h3>Add Your Bio</h3>
-        <form method="POST" action="{{ url_for('settings.index') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
             <div class="form-group">
                 <div class="label-with-wordcount">
                     <label for="bio">Bio (up to 250 characters):</label>
@@ -90,7 +90,7 @@
         {% if user.is_verified %}
         <p class="meta">⚠️ Changing your username will result in losing your verification status.</p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings.index') }}">
+        <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
             {{ change_username_form.hidden_tag() }}
             <label for="new_username">Username</label>
             {{ change_username_form.new_username(id='new_username', value=session['username']) }}
@@ -106,18 +106,18 @@
         <h3>Two-Factor Authentication</h3>
         {% if user.totp_secret %}
         <!-- If 2FA is enabled, show the Disable 2FA button -->
-        <form method="GET" action="{{ url_for('settings.confirm_disable_2fa') }}">
+        <form method="GET" action="{{ url_for('settings.confirm_disable_2fa') }}" class="formBody">
             <button type="submit">Disable 2FA</button>
         </form>
         {% else %}
         <!-- If 2FA is disabled, show the Enable 2FA button -->
-        <form method="POST" action="{{ url_for('settings.toggle_2fa') }}">
+        <form method="POST" action="{{ url_for('settings.toggle_2fa') }}" class="formBody">
             <button type="submit">Enable 2FA</button>
         </form>
         {% endif %}
         <!-- Change Password Section in settings.html -->
         <h3>Change Password</h3>
-        <form method="POST" action="{{ url_for('settings.change_password') }}">
+        <form method="POST" action="{{ url_for('settings.change_password') }}" class="formBody">
             {{ change_password_form.hidden_tag() }}
             <label for="old_password">Old Password</label>
             {{ change_password_form.old_password(id='old_password') }}
@@ -145,7 +145,7 @@
                 href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Add a PGP
                 key</a> below to enable message forwarding.</p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}">
+        <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}" class="formBody">
             {{ smtp_settings_form.hidden_tag() }}
             <fieldset {% if not user.pgp_key %}disabled{% endif %}>
                 {{ smtp_settings_form.smtp_username.label }}
@@ -166,9 +166,20 @@
                 rel="noopener noreferrer" target="_blank"
                 aria-label="Need help setting up message encryption? Start with our docs.">Start with our docs.</a></p>
         {% endif %}
-        <form method="POST" action="{{ url_for('settings.update_pgp_key') }}">
+        <p>🔒 Do you use Proton Mail? We can automatically retrieve your PGP key from Proton's key
+            server.
+        </p>
+        <form method="POST" action="{{ url_for('settings.update_pgp_key_proton') }}" class="formBody">
+            {{ pgp_proton_form.hidden_tag() }}
+            <label class="search" for="proton_email">
+                <img class="searchIcon" src="/static/img/app/icon-search.png" alt="">
+            </label>
+            <input type="email" name="email" id="proton_email" placeholder="Search Proton email..." required>
+            <button type="submit">Search Proton</button>
+        </form>
+        <form method="POST" action="{{ url_for('settings.update_pgp_key') }}" class="formBody">
             {{ pgp_key_form.hidden_tag() }}
-            <label for="pgp_key">Public PGP Key</label>
+            <label for="pgp_key">Or, Add Your Public PGP Key Manually</label>
             {{ pgp_key_form.pgp_key(id='pgp_key') }}
             {% if pgp_key_form.pgp_key.errors %}
             {% for error in pgp_key_form.pgp_key.errors %}
@@ -183,7 +194,7 @@
         <!-- Account Deletion Section -->
         <h3>Delete Account</h3>
         <p class="meta">⚠️ Deleting your account is a permanent action that cannot be undone!</p>
-        <form method="POST" action="{{ url_for('settings.delete_account') }}">
+        <form method="POST" action="{{ url_for('settings.delete_account') }}" class="formBody">
             <button type="submit" class="btn-danger" id="deleteAccountButton">Delete Account</button>
         </form>
     </div>
@@ -215,10 +226,10 @@
             <p class="meta">Verified: {{ "✅ Yes" if user.is_verified else "👎 No" }}</p>
             <p class="meta">Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}</p>
             <div class="tableActions">
-                <form action="{{ url_for('admin.toggle_verified', user_id=user.id) }}" method="POST">
+                <form action="{{ url_for('admin.toggle_verified', user_id=user.id) }}" method="POST" class="formBody">
                     <button type="submit">Toggle Verified</button>
                 </form>
-                <form action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" method="POST">
+                <form action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" method="POST" class="formBody">
                     <button type="submit">Toggle Admin</button>
                 </form>
             </div>
