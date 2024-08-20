@@ -102,8 +102,10 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
         border: var(--border);
+        background-color: white;
     }
 
     code,
@@ -116,7 +118,8 @@
         border-bottom: var(--border);
     }
 
-    .tab {
+    .tab,
+    .subtab {
         border: 1px solid transparent;
         background-color: transparent;
         color: var(--color-text);
@@ -125,17 +128,20 @@
         border-bottom: 1px solid transparent;
     }
 
-    .tab:focus-within {
+    .tab:focus-within,
+    .subtab:focus-within {
         outline: none;
     }
 
     /* Change background color of tabs on hover */
-    .tab:hover {
+    .tab:hover,
+    .subtab:hover {
         background-color: #fbf3ff;
     }
 
     /* Create an active/current tablink class */
-    .tab.active {
+    .tab.active,
+    .subtab.active {
         box-shadow: 0 -2px 0 inset var(--color-brand);
         border-bottom: 1px solid var(--color-brand);
     }
@@ -154,7 +160,8 @@
     input[type="submit"]:focus,
     textarea:focus,
     button:focus,
-    input[type="file"]::file-selector-button:focus {
+    input[type="file"]::file-selector-button:focus,
+    select:focus {
         outline: 4px double var(--color-brand);
         border: 1px solid var(--color-brand);
         box-shadow: none;
@@ -188,7 +195,8 @@
     .formBody input[type="submit"]:active,
     .formBody button:active,
     .btn:active,
-    input[type="file"]::file-selector-button:active {
+    input[type="file"]::file-selector-button:active,
+    select:active {
         box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, .25);
     }
 
@@ -361,7 +369,8 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
         border: var(--border-dark);
         background-color: var(--color-dark-bg-alt);
         color: var(--color-text-dark);
@@ -377,7 +386,8 @@
         border-bottom: var(--border-dark);
     }
 
-    .tab {
+    .tab,
+    .subtab {
         border: 1px solid transparent;
         background-color: transparent;
         color: var(--color-text-dark);
@@ -386,17 +396,20 @@
         border-bottom: 1px solid transparent;
     }
 
-    .tab:focus-within {
+    .tab:focus-within,
+    .subtab:focus-within {
         outline: none;
     }
 
     /* Change background color of tabs on hover */
-    .tab:hover {
+    .tab:hover,
+    .subtab:hover {
         background-color: rgba(255, 255, 255, .1);
     }
 
     /* Create an active/current tablink class */
-    .tab.active {
+    .tab.active,
+    .subtab.active {
         box-shadow: 0 -2px 0 inset var(--color-brand-dark);
         border-bottom: 1px solid var(--color-brand-dark);
     }
@@ -416,7 +429,8 @@
     input[type="submit"]:focus,
     textarea:focus,
     button:focus,
-    input[type="file"]::file-selector-button:focus {
+    input[type="file"]::file-selector-button:focus,
+    select:focus {
         outline: 4px double var(--color-brand-dark);
         border: 1px solid var(--color-brand-dark);
         box-shadow: none;
@@ -970,7 +984,8 @@ h2.submit+p.instr {
 }
 
 input,
-textarea {
+textarea,
+select {
     display: flex;
     flex-direction: column;
     max-width: 640px;
@@ -1201,7 +1216,8 @@ img.upgrade {
 }
 
 /* Tab button styling */
-.tab {
+.tab,
+.subtab {
     min-height: 0px;
     min-width: auto;
     padding: 1rem .625rem;
@@ -1213,18 +1229,21 @@ img.upgrade {
     box-sizing: content-box;
 }
 
-.tab.active {
+.tab.active,
+.subtab.active {
     font-family: var(--font-sans-bold);
 }
 
 /* Style the tab content (and hide it by default) */
-.tab-content {
+.tab-content,
+.subtab-content {
     display: none;
     border-top: none;
 }
 
 /* Style the active content */
-.tab-content.active {
+.tab-content.active,
+.subtab-content.active {
     display: block;
 }
 
@@ -1433,10 +1452,7 @@ a.dropbtn:hover {
 
 .checkbox-group {
     display: flex;
-}
-
-.checkbox-group label {
-    order: 1;
+    margin-bottom: .75rem;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -1509,6 +1525,22 @@ textarea#bio {
     left: 12px;
     top: 47%;
     margin: 0;
+}
+
+img.searchIcon {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    top: 21px;
+    left: 12px;
+}
+
+label.search {
+    position: relative;
+}
+
+label.search+input {
+    padding-left: 2.5rem;
 }
 
 #searchIcon img {
@@ -1726,8 +1758,17 @@ input#captcha_answer {
 .toggle-ui label {
     display: flex;
     flex-direction: row-reverse;
-    align-items: center;
+    align-content: center;
     gap: .5rem;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+}
+
+.toggle-label label {
+    margin-bottom: 0;
 }
 
 .toggle-ui input[type="checkbox"] {

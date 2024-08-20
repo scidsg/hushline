@@ -24,8 +24,8 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .crypto import encrypt_message
 from .db import db
 from .forms import ComplexPassword
-from .model import AuthenticationLog, InviteCode, Message, User
-from .utils import authentication_required, send_email
+from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
+from .utils import SMTPConfig, authentication_required, create_smtp_config, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -159,19 +159,27 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if (
-                user.email
-                and user.smtp_server
-                and user.smtp_port
-                and user.smtp_username
-                and user.smtp_password
-                and content_to_save
-            ):
+            if user.email and content_to_save:
                 try:
-                    sender_email = user.smtp_username
-                    email_sent = send_email(
-                        user.email, "New Message", content_to_save, user, sender_email
+                    smtp_config: SMTPConfig = create_smtp_config(
+                        app.config["SMTP_USERNAME"],
+                        app.config["SMTP_SERVER"],
+                        app.config["SMTP_PORT"],
+                        app.config["SMTP_PASSWORD"],
+                        app.config["NOTIFICATIONS_ADDRESS"],
+                        encryption=SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
                     )
+                    if user.smtp_server:
+                        smtp_config = create_smtp_config(
+                            user.smtp_username,
+                            user.smtp_server,
+                            user.smtp_port,
+                            user.smtp_password,
+                            user.smtp_sender,
+                            encryption=user.smtp_encryption,
+                        )
+
+                    email_sent = send_email(user.email, "New Message", content_to_save, smtp_config)
                     flash_message = (
                         "👍 Message submitted successfully."
                         if email_sent
@@ -233,8 +241,11 @@ def init_app(app: Flask) -> None:
 
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
-        user = db.session.get(User, session.get("user_id"))
-        if user and session.get("is_authenticated", False):
+        if (
+            session.get("is_authenticated", False)
+            and (user_id := session.get("user_id", False))
+            and db.session.get(User, user_id)
+        ):
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
@@ -333,7 +344,7 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:  # noqa: PLR0911
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if the login process has not started yet
         user = db.session.get(User, session.get("user_id"))
         if not user:

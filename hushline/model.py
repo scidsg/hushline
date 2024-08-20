@@ -1,3 +1,4 @@
+import enum
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Optional, Set
@@ -15,6 +16,15 @@ else:
     Model = db.Model
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+class SMTPEncryption(enum.Enum):
+    SSL = "SSL"
+    StartTLS = "StartTLS"
+
+    @classmethod
+    def default(cls) -> "SMTPEncryption":
+        return cls.StartTLS
 
 
 class User(Model):
@@ -39,6 +49,10 @@ class User(Model):
     secondary_usernames: Mapped[Set["SecondaryUsername"]] = relationship(
         backref=db.backref("primary_user", lazy=True)
     )
+    smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
+        db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
+    )
+    smtp_sender: Mapped[Optional[str]]
 
     @property
     def password_hash(self) -> str:

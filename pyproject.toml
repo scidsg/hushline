@@ -19,8 +19,11 @@ pysequoia = "^0.1.23"
 qrcode = "^7.4.2"
 ruff = "^0.4.7"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
-types-pkg-resources = "^0.1.3"
 gunicorn = "^22.0.0"
+requests = "^2.32.3"
+types-requests = "^2.32.0.20240712"
+types-setuptools = "^71.1.0.20240813"
+email-validator = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
@@ -77,6 +80,10 @@ select = [
 ignore = [
     # https://docs.astral.sh/ruff/rules/too-many-statements/
     "PLR0915",
+    # https://docs.astral.sh/ruff/rules/too-many-return-statements/
+    "PLR0911",
+    # https://docs.astral.sh/ruff/rules/too-many-branches/
+    "PLR0912",
 ]
 
 [tool.ruff.lint.per-file-ignores]
