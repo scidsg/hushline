@@ -402,35 +402,36 @@ def create_blueprint() -> Blueprint:
 
         user = db.session.get(User, user_id)
         form = PGPProtonForm()
-        if form.validate_on_submit():
-            email = form.email.data
 
-            # Try to fetch the PGP key from ProtonMail
-            try:
-                r = requests.get(
-                    f"https://mail-api.proton.me/pks/lookup?op=get&search={email}", timeout=5
-                )
-            except requests.exceptions.RequestException as e:
-                current_app.logger.error(f"Error fetching PGP key from Proton Mail: {e}")
-                flash("⛔️ Error fetching PGP key from Proton Mail.")
-                return redirect(url_for(".index"))
-            if r.status_code == 200:  # noqa: PLR2004
-                pgp_key = r.text
-                if is_valid_pgp_key(pgp_key):
-                    if user:
-                        user.pgp_key = pgp_key
-                else:
-                    flash("⛔️ No PGP key found for the email address.")
-                    return redirect(url_for(".index"))
-            else:
-                flash("⛔️ This isn't a Proton Mail email address.")
-                return redirect(url_for(".index"))
-
-            db.session.commit()
-            flash("👍 PGP key updated successfully.")
+        if not form.validate_on_submit():
+            flash("⛔️ Invalid email address.")
             return redirect(url_for(".index"))
 
-        flash("⛔️ Invalid email address.")
+        email = form.email.data
+
+        # Try to fetch the PGP key from ProtonMail
+        try:
+            r = requests.get(
+                f"https://mail-api.proton.me/pks/lookup?op=get&search={email}", timeout=5
+            )
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Error fetching PGP key from Proton Mail: {e}")
+            flash("⛔️ Error fetching PGP key from Proton Mail.")
+            return redirect(url_for(".index"))
+        if r.status_code == 200:  # noqa: PLR2004
+            pgp_key = r.text
+            if is_valid_pgp_key(pgp_key):
+                if user:
+                    user.pgp_key = pgp_key
+            else:
+                flash("⛔️ No PGP key found for the email address.")
+                return redirect(url_for(".index"))
+        else:
+            flash("⛔️ This isn't a Proton Mail email address.")
+            return redirect(url_for(".index"))
+
+        db.session.commit()
+        flash("👍 PGP key updated successfully.")
         return redirect(url_for(".index"))
 
     @bp.route("/update-pgp-key", methods=["POST"])
