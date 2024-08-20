@@ -126,6 +126,10 @@ def init_app(app: Flask) -> None:
             session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
         if form.validate_on_submit():
+            if not user.pgp_key and app.config["REQUIRE_PGP"]:
+                flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
+                return redirect(url_for("submit_message", username=username))
+
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
                 return redirect(url_for("submit_message", username=username))
