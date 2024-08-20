@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from flask import Flask
 from flask.testing import FlaskClient
 
 from hushline.db import db
@@ -106,3 +107,31 @@ def test_profile_submit_message_with_contact_method(client: FlaskClient) -> None
     response = client.get(f"/inbox?username={user.primary_username}", follow_redirects=True)
     assert response.status_code == 200
     assert expected_content.encode() in response.data
+
+
+def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
+    # Require PGP
+    app.config["REQUIRE_PGP"] = True
+
+    # Register a user (with no PGP key)
+    user = register_user(client, "test_user", "Hush-Line-Test-Password9")
+
+    # Load the profile page
+    response = client.get(f"/profile/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should not be displayed, and the PGP warning should be shown
+    assert b'id="messageForm"' not in response.data
+    assert b"You can't send encrypted messages to this user through Hush Line" in response.data
+
+    # Add a PGP key to the user
+    user.pgp_key = "test_pgp_key"
+    db.session.commit()
+
+    # Load the profile page again
+    response = client.get(f"/profile/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should be displayed now
+    assert b'id="messageForm"' in response.data
+    assert b"You can't send encrypted messages to this user through Hush Line" not in response.data
