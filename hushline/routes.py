@@ -161,17 +161,13 @@ def init_app(app: Flask) -> None:
 
             if user.email and content_to_save:
                 try:
-                    sender_email = (
-                        app.config["NOTIFICATIONS_ADDRESS"]
-                        if app.config["NOTIFICATIONS_ADDRESS"]
-                        else user.smtp_username
-                    )
                     smtp_config: SMTPConfig = create_smtp_config(
                         app.config["SMTP_USERNAME"],
                         app.config["SMTP_SERVER"],
                         app.config["SMTP_PORT"],
                         app.config["SMTP_PASSWORD"],
-                        SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
+                        app.config["NOTIFICATIONS_ADDRESS"],
+                        encryption=SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
                     )
                     if user.smtp_server:
                         smtp_config = create_smtp_config(
@@ -179,12 +175,11 @@ def init_app(app: Flask) -> None:
                             user.smtp_server,
                             user.smtp_port,
                             user.smtp_password,
-                            user.smtp_encryption,
+                            user.smtp_sender,
+                            encryption=user.smtp_encryption,
                         )
 
-                    email_sent = send_email(
-                        user.email, "New Message", content_to_save, sender_email, smtp_config
-                    )
+                    email_sent = send_email(user.email, "New Message", content_to_save, smtp_config)
                     flash_message = (
                         "👍 Message submitted successfully."
                         if email_sent

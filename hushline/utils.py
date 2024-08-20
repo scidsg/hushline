@@ -46,23 +46,24 @@ class SMTPConfig:
     server: str
     port: int
     password: str
+    sender: str
 
     def validate(self) -> bool:
-        return all([self.username, self.server, self.port, self.password])
+        return all([self.username, self.server, self.port, self.password, self.sender])
 
     @contextmanager
     def smtp_login(self, *, timeout: int = 1) -> Generator[smtplib.SMTP, None, None]:
         raise NotImplementedError
 
 
-def create_smtp_config(
-    username: str, server: str, port: int, password: str, encryption: SMTPEncryption
+def create_smtp_config(  # noqa PLR0913
+    username: str, server: str, port: int, password: str, sender: str, *, encryption: SMTPEncryption
 ) -> SMTPConfig:
     match encryption:
         case SMTPEncryption.SSL:
-            return SSL_SMTPConfig(username, server, port, password)
+            return SSL_SMTPConfig(username, server, port, password, sender)
         case SMTPEncryption.StartTLS:
-            return StartTLS_SMTPConfig(username, server, port, password)
+            return StartTLS_SMTPConfig(username, server, port, password, sender)
         case _:
             raise ValueError(f"Invalid SMTP encryption protocol: {encryption.value}")
 
@@ -84,16 +85,14 @@ class StartTLS_SMTPConfig(SMTPConfig):
             yield server
 
 
-def send_email(
-    to_email: str, subject: str, body: str, sender_email: str, smtp_config: SMTPConfig
-) -> bool:
+def send_email(to_email: str, subject: str, body: str, smtp_config: SMTPConfig) -> bool:
     current_app.logger.debug(
         f"SMTP settings being used: Server: {smtp_config.server}, "
         f"Port: {smtp_config.port}, Username: {smtp_config.username}"
     )
 
     message = MIMEMultipart()
-    message["From"] = sender_email
+    message["From"] = smtp_config.sender
     message["To"] = to_email
     message["Subject"] = subject
 

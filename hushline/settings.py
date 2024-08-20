@@ -67,6 +67,7 @@ class SMTPSettingsForm(FlaskForm):
     smtp_encryption = SelectField(
         "SMTP Encryption Protocol", choices=[proto.value for proto in SMTPEncryption]
     )
+    smtp_sender = StringField("SMTP Sender Address", validators=[Length(max=255)])
 
 
 class EmailForwardingForm(FlaskForm):
@@ -91,6 +92,7 @@ class EmailForwardingForm(FlaskForm):
                     self.smtp_settings.smtp_server,
                     self.smtp_settings.smtp_port,
                     self.smtp_settings.smtp_username,
+                    self.smtp_settings.smtp_sender,
                 ]
                 unset_smtp_fields = [field for field in smtp_fields if not field.data]
 
@@ -290,8 +292,9 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
         email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
         email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
-        email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption
         email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
+        email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption.value
+        email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
         pgp_key_form.pgp_key.data = user.pgp_key
         display_name_form.display_name.data = user.display_name or user.primary_username
         directory_visibility_form.show_in_directory.data = user.show_in_directory
@@ -550,7 +553,7 @@ def create_blueprint() -> Blueprint:
             flash(" ".join(email_forwarding_form.flattened_errors()))
             return redirect(url_for(".index"))
         if email_forwarding_form.email_address.data and not user.pgp_key:
-            flash("Email forwarding requires a configured PGP key")
+            flash("⛔️ Email forwarding requires a configured PGP key")
             return redirect(url_for(".index"))
         # Updating SMTP settings from form data
         forwarding_enabled = email_forwarding_form.forwarding_enabled.data
@@ -566,13 +569,16 @@ def create_blueprint() -> Blueprint:
                     email_forwarding_form.smtp_settings.smtp_password.data
                     or user.smtp_password
                     or "",
-                    SMTPEncryption[email_forwarding_form.smtp_settings.smtp_encryption.data],
+                    email_forwarding_form.smtp_settings.smtp_sender.data,
+                    encryption=SMTPEncryption[
+                        email_forwarding_form.smtp_settings.smtp_encryption.data
+                    ],
                 )
                 with smtp_config.smtp_login():
                     pass
             except (SMTPException, TimeoutError, ValueError) as e:
                 current_app.logger.debug(e)
-                flash("Unable to validate SMTP connection settings")
+                flash("⛔️ Unable to validate SMTP connection settings")
                 return redirect(url_for(".index"))
         user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
         user.smtp_server = (
@@ -589,6 +595,11 @@ def create_blueprint() -> Blueprint:
             email_forwarding_form.smtp_settings.smtp_password.data
             if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_password.data
             else user.smtp_password
+        )
+        user.smtp_sender = (
+            email_forwarding_form.smtp_settings.smtp_sender.data
+            if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_sender.data
+            else user.smtp_sender
         )
         user.smtp_encryption = (
             email_forwarding_form.smtp_settings.smtp_encryption.data

@@ -171,6 +171,8 @@
                     </label>
                 </div>
                 <fieldset id="custom_smtp_settings_fields">
+                    {{ email_forwarding_form.smtp_settings.smtp_sender.label }}
+                    {{ email_forwarding_form.smtp_settings.smtp_sender }}
                     {{ email_forwarding_form.smtp_settings.smtp_username.label }}
                     {{ email_forwarding_form.smtp_settings.smtp_username }}
                     {{ email_forwarding_form.smtp_settings.smtp_server.label }}

@@ -29,7 +29,9 @@ def upgrade():
             server_default=SMTPEncryption.StartTLS.value,
         ),
     )
+    op.add_column("users", sa.Column("smtp_sender", sa.String(), nullable=True))
 
 
 def downgrade():
     op.drop_column("users", "smtp_encryption")
+    op.drop_column("users", "smtp_sender")

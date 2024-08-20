@@ -236,6 +236,7 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> No
         "smtp_settings-smtp_username": "user@example.com",
         "smtp_settings-smtp_password": "securepassword123",
         "smtp_settings-smtp_encryption": "StartTLS",
+        "smtp_settings-smtp_sender": "sender@example.com",
     }
 
     # Submit POST request to update SMTP settings
@@ -290,6 +291,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
         "smtp_settings-smtp_username": "user@example.com",
         "smtp_settings-smtp_password": "securepassword123",
         "smtp_settings-smtp_encryption": "StartTLS",
+        "smtp_settings-smtp_sender": "sender@example.com",
     }
 
     # Submit POST request to update SMTP settings
@@ -327,6 +329,9 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
     assert (
         updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
     ), "SMTP encryption was not updated correctly"
+    assert (
+        updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
+    ), "SMTP sender was not updated correctly"
 
     # Optional: Check for success message in response
     assert b"SMTP settings updated successfully" in response.data, "Success message not found"
@@ -352,6 +357,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
         "smtp_settings-smtp_username": "user@example.com",
         "smtp_settings-smtp_password": "securepassword123",
         "smtp_settings-smtp_encryption": "SSL",
+        "smtp_settings-smtp_sender": "sender@example.com",
     }
 
     # Submit POST request to update SMTP settings
@@ -389,6 +395,9 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
     assert (
         updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
     ), "SMTP encryption was not updated correctly"
+    assert (
+        updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
+    ), "SMTP sender was not updated correctly"
 
     # Optional: Check for success message in response
     assert b"SMTP settings updated successfully" in response.data, "Success message not found"

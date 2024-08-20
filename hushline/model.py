@@ -52,6 +52,7 @@ class User(Model):
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
+    smtp_sender: Mapped[Optional[str]]
 
     @property
     def password_hash(self) -> str:
