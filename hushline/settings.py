@@ -87,7 +87,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/", methods=["GET", "POST"])
     @authentication_required
-    def index() -> str | Response:  # noqa: PLR0911, PLR0912
+    def index() -> str | Response:  # noqa: PLR0912
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -401,6 +401,10 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("login"))
 
         user = db.session.get(User, user_id)
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
         form = PGPProtonForm()
 
         if not form.validate_on_submit():
@@ -421,8 +425,7 @@ def create_blueprint() -> Blueprint:
         if r.status_code == 200:  # noqa: PLR2004
             pgp_key = r.text
             if is_valid_pgp_key(pgp_key):
-                if user:
-                    user.pgp_key = pgp_key
+                user.pgp_key = pgp_key
             else:
                 flash("⛔️ No PGP key found for the email address.")
                 return redirect(url_for(".index"))

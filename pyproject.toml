@@ -80,6 +80,8 @@ select = [
 ignore = [
     # https://docs.astral.sh/ruff/rules/too-many-statements/
     "PLR0915",
+    # https://docs.astral.sh/ruff/rules/too-many-return-statements/
+    "PLR0911",
 ]
 
 [tool.ruff.lint.per-file-ignores]
