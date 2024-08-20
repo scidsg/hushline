@@ -86,12 +86,12 @@ class EmailForwardingForm(FlaskForm):
                     "Email address must be specified when forwarding is enabled."
                 )
                 rv = False
-            if self.custom_smtp_settings.data:
+            if self.custom_smtp_settings.data or current_app.config["NOTIFICATIONS_ADDRESS"]:
                 smtp_fields = [
+                    self.smtp_settings.smtp_sender,
+                    self.smtp_settings.smtp_username,
                     self.smtp_settings.smtp_server,
                     self.smtp_settings.smtp_port,
-                    self.smtp_settings.smtp_username,
-                    self.smtp_settings.smtp_sender,
                 ]
                 unset_smtp_fields = [field for field in smtp_fields if not field.data]
 
@@ -149,7 +149,18 @@ class ProfileForm(FlaskForm):
     )
 
 
-def setInputDisabled(inputField: Field, disabled: bool = True) -> None:
+def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
+    if input_field.render_kw is None:
+        input_field.render_kw = {}
+    input_field.render_kw[attribute] = value
+
+
+def unset_field_attribute(input_field: Field, attribute: str) -> None:
+    if input_field.render_kw is not None:
+        input_field.render_kw.pop(attribute)
+
+
+def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
     """
     disable the given input
 
@@ -157,12 +168,10 @@ def setInputDisabled(inputField: Field, disabled: bool = True) -> None:
         inputField(Input): the WTForms input to disable
         disabled(bool): if true set the disabled attribute of the input
     """
-    if inputField.render_kw is None:
-        inputField.render_kw = {}
     if disabled:
-        inputField.render_kw["disabled"] = "disabled"
+        set_field_attribute(input_field, "disabled", "disabled")
     else:
-        inputField.render_kw.pop("disabled")
+        unset_field_attribute(input_field, "disabled")
 
 
 def create_blueprint() -> Blueprint:
@@ -286,7 +295,7 @@ def create_blueprint() -> Blueprint:
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
         if not user.pgp_key:
-            setInputDisabled(email_forwarding_form.forwarding_enabled)
+            set_input_disabled(email_forwarding_form.forwarding_enabled)
         email_forwarding_form.email_address.data = user.email
         email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
         email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
@@ -319,6 +328,7 @@ def create_blueprint() -> Blueprint:
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
             is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
+            default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
@@ -546,18 +556,19 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".index"))
 
         email_forwarding_form = EmailForwardingForm()
+        default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS", False))
 
         # Handling SMTP settings form submission
         if not email_forwarding_form.validate_on_submit():
-            flash(" ".join(email_forwarding_form.flattened_errors()))
+            flash(email_forwarding_form.flattened_errors().pop(0))
             return redirect(url_for(".index"))
         if email_forwarding_form.email_address.data and not user.pgp_key:
             flash("⛔️ Email forwarding requires a configured PGP key")
             return redirect(url_for(".index"))
         # Updating SMTP settings from form data
         forwarding_enabled = email_forwarding_form.forwarding_enabled.data
-        custom_smtp_settings = (
-            forwarding_enabled and email_forwarding_form.custom_smtp_settings.data
+        custom_smtp_settings = forwarding_enabled and (
+            email_forwarding_form.custom_smtp_settings.data or not default_forwarding_enabled
         )
         if custom_smtp_settings:
             try:
@@ -598,7 +609,7 @@ def create_blueprint() -> Blueprint:
         user.smtp_sender = (
             email_forwarding_form.smtp_settings.smtp_sender.data
             if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_sender.data
-            else user.smtp_sender
+            else None
         )
         user.smtp_encryption = (
             email_forwarding_form.smtp_settings.smtp_encryption.data
