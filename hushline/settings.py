@@ -446,18 +446,20 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("login"))
 
         user = db.session.get(User, user_id)
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
         form = PGPKeyForm()
         if form.validate_on_submit():
             pgp_key = form.pgp_key.data
 
             if pgp_key.strip() == "":
                 # If the field is empty, remove the PGP key
-                if user:
-                    user.pgp_key = None
+                user.pgp_key = None
             elif is_valid_pgp_key(pgp_key):
                 # If the field is not empty and the key is valid, update the PGP key
-                if user:
-                    user.pgp_key = pgp_key
+                user.pgp_key = pgp_key
             else:
                 # If the PGP key is invalid
                 flash("⛔️ Invalid PGP key format or import failed.")
