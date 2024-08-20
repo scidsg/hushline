@@ -333,7 +333,7 @@ def init_app(app: Flask) -> None:
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
-    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:  # noqa: PLR0911
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if the login process has not started yet
         user = db.session.get(User, session.get("user_id"))
         if not user:
