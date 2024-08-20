@@ -108,8 +108,8 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    @app.route("/submit_message/<username>", methods=["GET", "POST"])
-    def submit_message(username: str) -> Response | str:
+    @app.route("/profile/<username>", methods=["GET", "POST"])
+    def profile(username: str) -> Response | str:
         form = MessageForm()
         user = db.session.scalars(
             db.select(User).filter_by(primary_username=username).limit(1)
@@ -128,11 +128,11 @@ def init_app(app: Flask) -> None:
         if form.validate_on_submit():
             if not user.pgp_key and app.config["REQUIRE_PGP"]:
                 flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
-                return redirect(url_for("submit_message", username=username))
+                return redirect(url_for("profile", username=username))
 
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
-                return redirect(url_for("submit_message", username=username))
+                return redirect(url_for("profile", username=username))
 
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
@@ -150,12 +150,12 @@ def init_app(app: Flask) -> None:
                     encrypted_content = encrypt_message(full_content, user.pgp_key)
                     if not encrypted_content:
                         flash("⛔️ Failed to encrypt message.", "error")
-                        return redirect(url_for("submit_message", username=username))
+                        return redirect(url_for("profile", username=username))
                     content_to_save = encrypted_content
                 except Exception as e:
                     app.logger.error("Encryption failed: %s", str(e), exc_info=True)
                     flash("⛔️ Failed to encrypt message.", "error")
-                    return redirect(url_for("submit_message", username=username))
+                    return redirect(url_for("profile", username=username))
             else:
                 content_to_save = full_content
 
@@ -196,10 +196,10 @@ def init_app(app: Flask) -> None:
             else:
                 flash("👍 Message submitted successfully.")
 
-            return redirect(url_for("submit_message", username=username))
+            return redirect(url_for("profile", username=username))
 
         return render_template(
-            "submit_message.html",
+            "profile.html",
             form=form,
             user=user,
             username=username,

@@ -59,7 +59,7 @@
             <p class="bio">{{ user.bio }}</p>
             {% endif %}
             <div class="user-actions">
-                <a href="{{ url_for('submit_message', username=user.primary_username) }}">Send a Message</a>
+                <a href="{{ url_for('profile', username=user.primary_username) }}">Send a Message</a>
                 {% if logged_in %}
                 <a href="#" class="report-link" data-username="{{ user.primary_username }}"
                     data-display-name="{{ user.display_name or user.primary_username }}"
@@ -98,7 +98,7 @@
             <p class="bio">{{ user.bio }}</p>
             {% endif %}
             <div class="user-actions">
-                <a href="{{ url_for('submit_message', username=user.primary_username) }}">Send a Message</a>
+                <a href="{{ url_for('profile', username=user.primary_username) }}">Send a Message</a>
                 {% if logged_in %}
                 <a href="#" class="report-link" data-username="{{ user.primary_username }}"
                     data-display-name="{{ user.display_name or user.primary_username }}"

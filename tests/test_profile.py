@@ -6,8 +6,8 @@ from hushline.model import Message
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
-    # Simulate loading the submit_message page to generate and retrieve the CAPTCHA from the session
-    response = client.get(f"/submit_message/{username}")
+    # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
+    response = client.get(f"/profile/{username}")
     assert response.status_code == 200
 
     with client.session_transaction() as session:
@@ -16,7 +16,7 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         return captcha_answer
 
 
-def test_submit_message(client: FlaskClient) -> None:
+def test_profile_submit_message(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user", "Hush-Line-Test-Password9")
 
@@ -35,7 +35,7 @@ def test_submit_message(client: FlaskClient) -> None:
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/submit_message/{user.primary_username}",
+        f"/profile/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
@@ -61,7 +61,7 @@ def test_submit_message(client: FlaskClient) -> None:
     assert b"This is a test message." in response.data
 
 
-def test_submit_message_with_contact_method(client: FlaskClient) -> None:
+def test_profile_submit_message_with_contact_method(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
     assert user is not None
@@ -85,7 +85,7 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/submit_message/{user.primary_username}",
+        f"/profile/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
