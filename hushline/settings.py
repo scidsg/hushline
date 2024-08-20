@@ -18,13 +18,13 @@ from flask import (
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, IntegerField, PasswordField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Email, Length
 
 from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, TwoFactorForm
 from .model import Message, SecondaryUsername, User
-from .utils import authentication_required, is_valid_email
+from .utils import authentication_required
 
 
 class ChangePasswordForm(FlaskForm):
@@ -53,7 +53,7 @@ class SMTPSettingsForm(FlaskForm):
 class PGPProtonForm(FlaskForm):
     email = StringField(
         "",
-        validators=[DataRequired()],
+        validators=[DataRequired(), Email()],
         render_kw={
             "placeholder": "Search Proton email...",
             "id": "proton_email",
@@ -394,7 +394,7 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/update_pgp_key_proton", methods=["POST"])
     @authentication_required
-    def update_pgp_key_proton() -> Response | str:  # noqa: PLR0911
+    def update_pgp_key_proton() -> Response | str:
         user_id = session.get("user_id")
         if not user_id:
             flash("⛔️ User not authenticated.")
@@ -405,36 +405,32 @@ def create_blueprint() -> Blueprint:
         if form.validate_on_submit():
             email = form.email.data
 
-            if is_valid_email(email):
-                # Try to fetch the PGP key from ProtonMail
-                try:
-                    r = requests.get(
-                        f"https://mail-api.proton.me/pks/lookup?op=get&search={email}", timeout=5
-                    )
-                except requests.exceptions.RequestException as e:
-                    current_app.logger.error(f"Error fetching PGP key from Proton Mail: {e}")
-                    flash("⛔️ Error fetching PGP key from Proton Mail.")
-                    return redirect(url_for(".index"))
-                if r.status_code == 200:  # noqa: PLR2004
-                    pgp_key = r.text
-                    if is_valid_pgp_key(pgp_key):
-                        if user:
-                            user.pgp_key = pgp_key
-                    else:
-                        flash("⛔️ No PGP key found for the email address.")
-                        return redirect(url_for(".index"))
+            # Try to fetch the PGP key from ProtonMail
+            try:
+                r = requests.get(
+                    f"https://mail-api.proton.me/pks/lookup?op=get&search={email}", timeout=5
+                )
+            except requests.exceptions.RequestException as e:
+                current_app.logger.error(f"Error fetching PGP key from Proton Mail: {e}")
+                flash("⛔️ Error fetching PGP key from Proton Mail.")
+                return redirect(url_for(".index"))
+            if r.status_code == 200:  # noqa: PLR2004
+                pgp_key = r.text
+                if is_valid_pgp_key(pgp_key):
+                    if user:
+                        user.pgp_key = pgp_key
                 else:
-                    flash("⛔️ This isn't a Proton Mail email address.")
+                    flash("⛔️ No PGP key found for the email address.")
                     return redirect(url_for(".index"))
             else:
-                # If the PGP key is invalid
-                flash("⛔️ Invalid email address.")
+                flash("⛔️ This isn't a Proton Mail email address.")
                 return redirect(url_for(".index"))
 
             db.session.commit()
             flash("👍 PGP key updated successfully.")
             return redirect(url_for(".index"))
 
+        flash("⛔️ Invalid email address.")
         return redirect(url_for(".index"))
 
     @bp.route("/update-pgp-key", methods=["POST"])
