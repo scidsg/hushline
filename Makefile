@@ -37,7 +37,7 @@ ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
 	. ./dev_env.sh && \
-	poetry run flask db revision -m "$(message)"
+	poetry run flask db revision -m "$(message)" --autogenerate
 
 .PHONY: test
 test: ## Run the test suite
