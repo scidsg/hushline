@@ -1006,6 +1006,7 @@ textarea#pgp_key {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
     padding: 1rem;
+    margin-bottom: .75rem;
 }
 
 input+button {
@@ -1551,13 +1552,13 @@ label.search+input {
 
 #email #searchInput {
     margin-top: 0;
-    margin-bottom: .5rem;
+    margin-bottom: .75rem;
 }
 
 #email #searchIcon {
     position: absolute;
     left: 12px;
-    top: 24%;
+    top: 22%;
     margin: 0;
 }
 
