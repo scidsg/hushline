@@ -1006,6 +1006,7 @@ textarea#pgp_key {
     font-family: var(--font-mono);
     font-size: var(--font-size-smaller);
     padding: 1rem;
+    margin-bottom: .75rem;
 }
 
 input+button {
@@ -1531,18 +1532,6 @@ textarea#bio {
     margin: 0;
 }
 
-img.searchIcon {
-    width: 20px;
-    height: 20px;
-    position: absolute;
-    top: 12px;
-    left: 12px;
-}
-
-label.search {
-    position: relative;
-}
-
 label.search+input {
     padding-left: 2.5rem;
 }
@@ -1559,6 +1548,18 @@ label.search+input {
     margin-bottom: 0;
     min-width: 320px;
     margin-top: 1rem;
+}
+
+#email #searchInput {
+    margin-top: 0;
+    margin-bottom: .75rem;
+}
+
+#email #searchIcon {
+    position: absolute;
+    left: 12px;
+    top: 22%;
+    margin: 0;
 }
 
 #clearIcon {
