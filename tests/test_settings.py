@@ -402,6 +402,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
     # Optional: Check for success message in response
     assert b"SMTP settings updated successfully" in response.data, "Success message not found"
 
+
 @patch("hushline.utils.smtplib.SMTP")
 def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskClient) -> None:
     # Register and log in a user
@@ -437,24 +438,14 @@ def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskC
     assert (
         updated_user.email == new_smtp_settings["email_address"]
     ), "Email address was not updated correctly"
-    assert (
-        updated_user.smtp_server == None
-    ), "SMTP server was not updated correctly"
-    assert (
-        updated_user.smtp_port == None
-    ), "SMTP port was not updated correctly"
-    assert (
-        updated_user.smtp_username == None
-    ), "SMTP username was not updated correctly"
-    assert (
-        updated_user.smtp_password == None
-    ), "SMTP password was not updated correctly"
+    assert updated_user.smtp_server is None, "SMTP server was not updated correctly"
+    assert updated_user.smtp_port is None, "SMTP port was not updated correctly"
+    assert updated_user.smtp_username is None, "SMTP username was not updated correctly"
+    assert updated_user.smtp_password is None, "SMTP password was not updated correctly"
     assert (
         updated_user.smtp_encryption.value == SMTPEncryption.default().value
     ), "SMTP encryption was not updated correctly"
-    assert (
-        updated_user.smtp_sender == None
-    ), "SMTP sender was not updated correctly"
+    assert updated_user.smtp_sender is None, "SMTP sender was not updated correctly"
 
     # Optional: Check for success message in response
     assert b"SMTP settings updated successfully" in response.data, "Success message not found"
