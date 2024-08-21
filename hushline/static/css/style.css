@@ -794,6 +794,10 @@ img.empty {
     animation: fadeInDown 0.5s ease forwards, fadeOutUp 0.5s ease 5s forwards;
 }
 
+.flash-message {
+    line-height: 1.3;
+}
+
 .message .message-label,
 .message.encrypted .message-label {
     font-family: var(--font-mono);
@@ -1665,7 +1669,7 @@ input#captcha_answer {
     position: fixed;
     top: 0;
     width: 100%;
-    z-index: 100;
+    z-index: 9;
     text-align: center;
     font-size: var(--font-size-base);
     font-size: .9125rem;
