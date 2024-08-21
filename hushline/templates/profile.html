@@ -26,9 +26,17 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
 <p class="bio">{{ user.bio }}</p>
 {% endif %}
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
-<p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles,
+<p class="instr">
+    {% if require_pgp and not user.pgp_key %}
+    <b>Only visible to you:</b> In order to protect your sources, you need to add a PGP key to your account before
+    anyone can send you tips. Without a PGP key, your profile can still be listed in the Hush Line directory. Make sure
+    to include a secure way to contact you, such as a Signal username, in your profile.
+    {% else %}
+    <b>Only visible to you:</b> This is your public tip line. Share the address on your social media profiles,
     your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is
-    critical!</p>
+    critical!
+    {% endif %}
+</p>
 {% endif %}
 {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
 <form method="POST" action="{{ url_for('profile', username=username) }}" id="messageForm">
