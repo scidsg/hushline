@@ -1803,3 +1803,15 @@ button[name="update_directory_visibility"] {
         width: 100%;
     }
 }
+
+.form-group-pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.input-pair {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}

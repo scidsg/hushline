@@ -142,10 +142,30 @@ class DirectoryVisibilityForm(FlaskForm):
 
 
 class ProfileForm(FlaskForm):
-    bio = TextAreaField(
-        "Bio",
-        validators=[Length(max=250)],
-        render_kw={"placeholder": "Write something about yourself up to 250 characters."},
+    bio = TextAreaField("Bio", validators=[Length(max=250)])
+    extra_field_label1 = StringField(
+        "Extra Field Label 1", validators=[OptionalField(), Length(max=50)]
+    )
+    extra_field_value1 = StringField(
+        "Extra Field Value 1", validators=[OptionalField(), Length(max=4096)]
+    )
+    extra_field_label2 = StringField(
+        "Extra Field Label 2", validators=[OptionalField(), Length(max=50)]
+    )
+    extra_field_value2 = StringField(
+        "Extra Field Value 2", validators=[OptionalField(), Length(max=4096)]
+    )
+    extra_field_label3 = StringField(
+        "Extra Field Label 3", validators=[OptionalField(), Length(max=50)]
+    )
+    extra_field_value3 = StringField(
+        "Extra Field Value 3", validators=[OptionalField(), Length(max=4096)]
+    )
+    extra_field_label4 = StringField(
+        "Extra Field Label 4", validators=[OptionalField(), Length(max=50)]
+    )
+    extra_field_value4 = StringField(
+        "Extra Field Value 4", validators=[OptionalField(), Length(max=4096)]
     )
 
 
@@ -202,10 +222,23 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form = EmailForwardingForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+        profile_form = ProfileForm()
 
         # Check if the bio update form was submitted
-        if request.method == "POST" and "update_bio" in request.form:
+        if (
+            request.method == "POST"
+            and "update_bio" in request.form
+            and profile_form.validate_on_submit()
+        ):
             user.bio = request.form["bio"]
+            user.extra_field_label1 = request.form["extra_field_label1"].strip()
+            user.extra_field_value1 = request.form["extra_field_value1"].strip()
+            user.extra_field_label2 = request.form["extra_field_label2"].strip()
+            user.extra_field_value2 = request.form["extra_field_value2"].strip()
+            user.extra_field_label3 = request.form["extra_field_label3"].strip()
+            user.extra_field_value3 = request.form["extra_field_value3"].strip()
+            user.extra_field_label4 = request.form["extra_field_label4"].strip()
+            user.extra_field_value4 = request.form["extra_field_value4"].strip()
             db.session.commit()
             flash("👍 Bio updated successfully.")
             return redirect(url_for("settings.index"))
@@ -320,6 +353,7 @@ def create_blueprint() -> Blueprint:
             pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
             display_name_form=display_name_form,
+            profile_form=profile_form,
             # Admin-specific data passed to the template
             is_admin=user.is_admin,
             user_count=user_count,
