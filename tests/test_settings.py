@@ -5,7 +5,7 @@ from auth_helper import configure_pgp, login_user, register_user
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import User
+from hushline.model import SMTPEncryption, User
 
 
 def test_settings_page_loads(client: FlaskClient) -> None:
@@ -397,6 +397,63 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
     ), "SMTP encryption was not updated correctly"
     assert (
         updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
+    ), "SMTP sender was not updated correctly"
+
+    # Optional: Check for success message in response
+    assert b"SMTP settings updated successfully" in response.data, "Success message not found"
+
+@patch("hushline.utils.smtplib.SMTP")
+def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskClient) -> None:
+    # Register and log in a user
+    user = register_user(client, "user_default_forwarding", "SecureTestPass123!")
+    assert user is not None, "User registration failed"
+
+    login_user(client, "user_default_forwarding", "SecureTestPass123!")
+
+    configure_pgp(client)
+
+    # Define new SMTP settings
+    new_smtp_settings = {
+        "forwarding_enabled": True,
+        "email_address": "primary@example.com",
+        "smtp_settings-smtp_encryption": "StartTLS",
+    }
+
+    # Submit POST request to update SMTP settings
+    response = client.post(
+        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
+        data=new_smtp_settings,
+        follow_redirects=True,
+    )
+
+    SMTP.assert_not_called()
+    SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
+    SMTP.return_value.__enter__.return_value.login.assert_not_called()
+    # Check successful update
+    assert response.status_code == 200, "Failed to update SMTP settings"
+    updated_user = db.session.scalars(
+        db.select(User).filter_by(primary_username="user_default_forwarding")
+    ).one()
+    assert (
+        updated_user.email == new_smtp_settings["email_address"]
+    ), "Email address was not updated correctly"
+    assert (
+        updated_user.smtp_server == None
+    ), "SMTP server was not updated correctly"
+    assert (
+        updated_user.smtp_port == None
+    ), "SMTP port was not updated correctly"
+    assert (
+        updated_user.smtp_username == None
+    ), "SMTP username was not updated correctly"
+    assert (
+        updated_user.smtp_password == None
+    ), "SMTP password was not updated correctly"
+    assert (
+        updated_user.smtp_encryption.value == SMTPEncryption.default().value
+    ), "SMTP encryption was not updated correctly"
+    assert (
+        updated_user.smtp_sender == None
     ), "SMTP sender was not updated correctly"
 
     # Optional: Check for success message in response
