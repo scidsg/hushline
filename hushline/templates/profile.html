@@ -86,7 +86,7 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
 {% endblock %}
 
 {% block scripts %}
-{% if require_pgp and not user.pgp_key %}
+{% if not require_pgp or (require_pgp and user.pgp_key) %}
 <script src="{{ url_for('static', filename='vendor/openpgp-5.11.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
 <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
