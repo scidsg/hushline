@@ -25,6 +25,32 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
 {% if user.bio %}
 <p class="bio">{{ user.bio }}</p>
 {% endif %}
+
+{% if (user.extra_field_label1 and user.extra_field_value1) or (user.extra_field_label2 and user.extra_field_value2) or
+(user.extra_field_label3 and user.extra_field_value3) or (user.extra_field_label4 and user.extra_field_value4) %}
+<div class="extra-fields">
+    {% for label, value in [
+    (user.extra_field_label1, user.extra_field_value1),
+    (user.extra_field_label2, user.extra_field_value2),
+    (user.extra_field_label3, user.extra_field_value3),
+    (user.extra_field_label4, user.extra_field_value4)
+    ] %}
+    {% if label and value %}
+    <p class="extra-field">
+        <span class="extra-field-label">{{ label }}</span>
+        <span class="extra-field-value">
+            {% if value.startswith('https://') %}
+            <a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value }}</a>
+            {% else %}
+            {{ value }}
+            {% endif %}
+        </span>
+    </p>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
 <p class="instr">
     {% if require_pgp and not user.pgp_key %}
@@ -88,7 +114,7 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
     <button type="submit" id="submitBtn">Send Message</button>
 </form>
 {% else %}
-<p class="meta">You can't send encrypted messages to this user through Hush Line. Find secure contact
+<p class="meta pgp-required-info">You can't send encrypted messages to this user through Hush Line. Find secure contact
     information for them in their profile above.</p>
 {% endif %}
 {% endblock %}

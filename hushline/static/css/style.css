@@ -1815,3 +1815,19 @@ button[name="update_directory_visibility"] {
     justify-content: space-between;
     gap: 1rem;
 }
+
+.extra-fields {
+    padding: 0 1rem;
+}
+
+.extra-fields .extra-field-label {
+    display: inline-block;
+    width: 100px;
+    text-align: right;
+    margin-right: 1rem;
+    font-weight: bold;
+}
+
+.pgp-required-info {
+    margin-top: 3rem;
+}
