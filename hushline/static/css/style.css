@@ -1681,6 +1681,14 @@ input#captcha_answer {
     margin-top: 2.25rem;
 }
 
+#email .forwarding {
+    margin-bottom: 0;
+}
+
+#email .forwarding+.meta {
+    margin-bottom: 1rem;
+}
+
 @media only screen and (max-width: 768px) {
 
     .container {

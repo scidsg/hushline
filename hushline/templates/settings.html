@@ -140,18 +140,15 @@
     <div id="email" class="tab-content" role="tabpanel" aria-labelledby="email-tab" hidden>
         <!-- SMTP Settings Section -->
         <h3>Email Forwarding</h3>
-        {% if not is_personal_server and default_forwarding_enabled %}
-        <p class="meta">✊ Email forwarding is powered by <a href="https://riseup.net" target="_blank"
-                rel="noopener noreferrer">Riseup.net</a>.</p>
-        {% endif %}
         {% if not user.pgp_key %}
         <p class="info">Add a PGP key to enable email forwarding. <a
                 href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md#2-mailvelope">Here's
                 how.</a></p>
         {% endif %}
         <form method="POST" action="{{ url_for('settings.update_smtp_settings') }}" class="formBody">
+            {% if user.pgp_key %}
             {{ email_forwarding_form.hidden_tag() }}
-            <div class="checkbox-group toggle-ui">
+            <div class="checkbox-group toggle-ui forwarding">
                 {{ email_forwarding_form.forwarding_enabled() }}
                 <label for="forwarding_enabled" class="toggle-label">
                     {{ email_forwarding_form.forwarding_enabled.label }}
@@ -160,6 +157,10 @@
                     </div>
                 </label>
             </div>
+            {% if not is_personal_server and default_forwarding_enabled %}
+            <p class="meta">✊ Email forwarding is powered by <a href="https://riseup.net" target="_blank"
+                    rel="noopener noreferrer">Riseup.net</a>.</p>
+            {% endif %}
             <fieldset id="forwarding_enabled_fields">
                 {{ email_forwarding_form.email_address.label }}
                 {{ email_forwarding_form.email_address }}
@@ -190,6 +191,7 @@
                 </fieldset>
                 <button type="submit">Update Email Forwarding</button>
             </fieldset>
+            {% endif %}
         </form>
         <!-- PGP Key Section -->
         <h3>Message Encryption</h3>
