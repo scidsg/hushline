@@ -88,28 +88,52 @@
 
             <div class="form-group-pairs">
                 <div class="input-pair">
-                    <input type="text" name="extra_field_label1" id="extra_field_label1" placeholder="Signal"
-                        value="{{ user.extra_field_label1 or '' }}">
-                    <input type="text" name="extra_field_value1" id="extra_field_value1" placeholder="signaluser.123"
-                        value="{{ user.extra_field_value1 or '' }}">
+                    <div class="extra-fields">
+                        <label for="extra_field_label1" class="extra-field-label">Label</label>
+                        <input type="text" name="extra_field_label1" id="extra_field_label1" placeholder="Signal"
+                            value="{{ user.extra_field_label1 or '' }}">
+                    </div>
+                    <div class="extra-fields">
+                        <label for="extra_field_value1" class="extra-field-label">Content</label>
+                        <input type="text" name="extra_field_value1" id="extra_field_value1"
+                            placeholder="signaluser.123" value="{{ user.extra_field_value1 or '' }}">
+                    </div>
                 </div>
                 <div class="input-pair">
-                    <input type="text" name="extra_field_label2" id="extra_field_label2" placeholder="Label"
-                        value="{{ user.extra_field_label2 or '' }}">
-                    <input type="text" name="extra_field_value2" id="extra_field_value2" placeholder="Value"
-                        value="{{ user.extra_field_value2 or '' }}">
+                    <div class="extra-fields">
+                        <label for="extra_field_label2" class="extra-field-label">Label</label>
+                        <input type="text" name="extra_field_label2" id="extra_field_label2" placeholder="Label"
+                            value="{{ user.extra_field_label2 or '' }}">
+                    </div>
+                    <div class="extra-fields">
+                        <label for="extra_field_value2" class="extra-field-label">Content</label>
+                        <input type="text" name="extra_field_value2" id="extra_field_value2" placeholder="Value"
+                            value="{{ user.extra_field_value2 or '' }}">
+                    </div>
                 </div>
                 <div class="input-pair">
-                    <input type="text" name="extra_field_label3" id="extra_field_label3" placeholder="Label"
-                        value="{{ user.extra_field_label3 or '' }}">
-                    <input type="text" name="extra_field_value3" id="extra_field_value3" placeholder="Value"
-                        value="{{ user.extra_field_value3 or '' }}">
+                    <div class="extra-fields">
+                        <label for="extra_field_label3" class="extra-field-label">Label</label>
+                        <input type="text" name="extra_field_label3" id="extra_field_label3" placeholder="Label"
+                            value="{{ user.extra_field_label3 or '' }}">
+                    </div>
+                    <div class="extra-fields">
+                        <label for="extra_field_value3" class="extra-field-label">Content</label>
+                        <input type="text" name="extra_field_value3" id="extra_field_value3" placeholder="Value"
+                            value="{{ user.extra_field_value3 or '' }}">
+                    </div>
                 </div>
                 <div class="input-pair">
-                    <input type="text" name="extra_field_label4" id="extra_field_label4" placeholder="Label"
-                        value="{{ user.extra_field_label4 or '' }}">
-                    <input type="text" name="extra_field_value4" id="extra_field_value4" placeholder="Value"
-                        value="{{ user.extra_field_value4 or '' }}">
+                    <div class="extra-fields">
+                        <label for="extra_field_label4" class="extra-field-label">Label</label>
+                        <input type="text" name="extra_field_label4" id="extra_field_label4" placeholder="Label"
+                            value="{{ user.extra_field_label4 or '' }}">
+                    </div>
+                    <div class="extra-fields">
+                        <label for="extra_field_value4" class="extra-field-label">Content</label>
+                        <input type="text" name="extra_field_value4" id="extra_field_value4" placeholder="Value"
+                            value="{{ user.extra_field_value4 or '' }}">
+                    </div>
                 </div>
             </div>
             <button type="submit" name="update_bio">Update Bio</button>

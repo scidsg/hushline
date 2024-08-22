@@ -1862,6 +1862,10 @@ button[name="update_directory_visibility"] {
     gap: 1rem;
 }
 
+.input-pair .extra-fields label {
+    display: inline;
+}
+
 .extra-fields {
     padding: 0 1rem;
 }
