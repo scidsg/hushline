@@ -17,27 +17,45 @@ We'll use Mailvelope, an open-source, cross-browser extension that allows you to
 
 ### Option 1: Proton
 
-#### Step 1: Sign up for Proton
+#### Step 1: Sign up for Hush Line & Proton 
 
-Go to proton.me and sign up for an account if you don't have one already.
+Go to hushline.app and proton.me and sign up for your accounts if you haven't already.
+
+![step1](https://github.com/user-attachments/assets/0832d37e-a7d3-4394-9761-3b25a41550e4)
 
 #### Step 2: Import Your Key
 
-In your Hush Line settings, navigate to the `Email & Encryption` tab. You'll notice that email forwarding is disabled until you add an encryption key. 
+In your Hush Line settings, navigate to the Email & Encryption tab. You'll notice that email forwarding is disabled until you add an encryption key.
 
-In the `Message Encryption` section you'll see a Proton key search input. Add the email address you just created to import your key.
+In the `Message Encryption` section, you'll see a Proton key search input. To import your key, add the email address you just created. 
+
+![step2](https://github.com/user-attachments/assets/1925c5b9-48ad-4572-bd24-205b54bb3e27)
 
 #### Step 3: Mail Forwarding
 
 Now that you've added your PGP key from Proton you can add a forwarding address. Add your Proton email address.
 
+![step3](https://github.com/user-attachments/assets/193cddb2-d472-40c1-8c40-79c7733a18e1)
+
 #### Step 4: Send a Message
 
-Click on `Submit Message` in the Hush Line global navigation. Enter a message into your form and when you submit it you'll see it encrypt in your browser before it sends - this ensures your message is end-to-end encrypted!
+Click on `Submit Message` in the Hush Line global navigation. Enter a message into your form, and when you submit it, you'll see it encrypted in your browser before it sends - this ensures your message is end-to-end encrypted!
 
-#### Step 5: Check Your Email!
+![step4](https://github.com/user-attachments/assets/50c81fb7-b40e-4579-b480-1ebe084975e8)
 
-Go back to your Proton account and if necessary refresh your inbox. You should see an email from `notifications@hushline.app` appear. Click on it, and you'll see your automatically decrypted message! If you go back to Hush Line and click `Inbox` you'll see the same message, but it'll be encrypted and unreadable since your key to decrypt the message only exists on Proton.
+#### Step 5: Check Your Email
+
+Go back to your Proton account and, if necessary, refresh your Inbox. You should see an email from `notifications@hushline.app appear`. Click on it, and you'll see your automatically decrypted message! If you go back to Hush Line and click `Inbox`, you'll see the same message, but it'll be encrypted and unreadable since your key to decrypt the message only exists on Proton.
+
+![step5](https://github.com/user-attachments/assets/3a7ad652-825f-4f1d-bf3e-8175e8f96e8e)
+
+🎉 Congratulations! You're ready to start receiving anonymous, encrypted messages!
+
+<br>
+
+----------
+
+<br>
 
 ### Option 2: Mailvelope & Gmail
 
