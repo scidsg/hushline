@@ -1961,3 +1961,14 @@ p.bio+.extra-fields {
 #messageForm {
     position: relative;
 }
+
+@media(max-width: 640px) {
+    .extra-fields {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .extra-field {
+        width: 100%;
+    }
+}
