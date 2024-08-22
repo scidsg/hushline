@@ -1878,20 +1878,33 @@ button[name="update_directory_visibility"] {
     gap: 1rem;
 }
 
-.input-pair .extra-fields label {
-    display: inline;
+.input-pair label {
+    display: inline-block;
+}
+
+.input-pair input {
+    display: inline-block;
 }
 
 .extra-fields {
-    padding: 0 1rem;
+    display: flex;
 }
 
 .extra-fields .extra-field-label {
     display: inline-block;
-    width: 100px;
-    text-align: right;
-    margin-right: 1rem;
-    font-weight: bold;
+    margin-right: 0.5rem;
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.extra-fields .extra-field-value {
+    display: inline-block;
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pgp-disabled-overlay {
