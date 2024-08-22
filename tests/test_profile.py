@@ -135,3 +135,33 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
     # The message form should be displayed now
     assert b'id="messageForm"' in response.data
     assert b"You can't send encrypted messages to this user through Hush Line" not in response.data
+
+
+def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
+    # Register a user
+    user = register_user(client, "test_user", "Hush-Line-Test-Password9")
+    user.extra_field_label1 = "Signal username"
+    user.extra_field_value1 = "singleusername.666"
+    user.extra_field_label2 = "Arbitrary Link"
+    user.extra_field_value2 = "https://scidsg.org/"
+    user.extra_field_label3 = "xss should fail"
+    user.extra_field_value3 = "<script>alert('xss')</script>"
+    db.session.commit()
+
+    # Load the profile page
+    response = client.get(f"/profile/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should not be displayed, and the PGP warning should be shown
+    assert b"Signal username" in response.data
+    assert b"singleusername.666" in response.data
+    assert b"Arbitrary Link" in response.data
+    # URLs should turn into links
+    assert (
+        b'<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer">https://scidsg.org/</a>'
+        in response.data
+    )
+    assert b"xss should fail" in response.data
+    # XSS should be escaped
+    assert b"<script>alert('xss')</script>" not in response.data
+    assert b"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in response.data
