@@ -15,6 +15,7 @@
     --color-dark-bg: #222;
     --color-dark-bg-alt: #333;
     --color-dark-bg-alt-1: #444;
+    --color-dark-bg-alt-transparent: rgba(51, 51, 51, .7);
 
     --border: 1px solid var(--color-border);
     --border-dark: 1px solid var(--color-border-dark);
@@ -318,6 +319,14 @@
             background-color: white;
         }
     }
+
+    .pgp-disabled-overlay {
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .pgp-disabled-overlay p {
+        color: black;
+    }
 }
 
 /* Dark Mode */
@@ -601,6 +610,13 @@
         }
     }
 
+    .pgp-disabled-overlay {
+        background-color: var(--color-dark-bg-alt-transparent);
+    }
+
+    .pgp-disabled-overlay p {
+        color: white;
+    }
 }
 
 body {
@@ -1878,6 +1894,26 @@ button[name="update_directory_visibility"] {
     font-weight: bold;
 }
 
-.pgp-required-info {
-    margin-top: 3rem;
+.pgp-disabled-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.pgp-disabled-overlay p {
+    font-size: 1.5rem;
+    opacity: 1;
+    text-align: center;
+    margin: 20px;
+}
+
+#messageForm {
+    position: relative;
 }
