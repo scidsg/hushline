@@ -2,18 +2,12 @@
 
 Hush Line is a free and open-source, whistleblowing platform for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
-## Contents
-
-1. Email Encryption
-   - [Option 1: Proton _(Recommended)_](#option-1-proton)
-   - [Option 2: Mailvelope and Gmail](#option-2-mailvelope--gmail)
-2. [Message Forwarding](#message-forwarding)
-
-## Email Encryption
-
 We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised. 
 
-We'll use Mailvelope, an open-source, cross-browser extension that allows you to decrypt messages directly in the app.
+## Contents
+
+[Option 1: Proton _(Recommended)_](#option-1-proton)<br>
+[Option 2: Mailvelope](#option-2-mailvelope)
 
 ### Option 1: Proton
 
@@ -49,7 +43,7 @@ Go back to your Proton account and, if necessary, refresh your Inbox. You should
 
 ![step5](https://github.com/user-attachments/assets/3a7ad652-825f-4f1d-bf3e-8175e8f96e8e)
 
-🎉 Congratulations! You're ready to start receiving anonymous, encrypted messages!
+🎉 Congratulations, you're ready to start receiving encrypted and anonymous Hush Line messages!
 
 <br>
 
@@ -57,89 +51,37 @@ Go back to your Proton account and, if necessary, refresh your Inbox. You should
 
 <br>
 
-### Option 2: Mailvelope & Gmail
+### Option 2: Mailvelope
 
-#### Step 1: Get the extension
+#### Step 1: Get the Extension
 
-Mailvelope is available in Firefox and Chrome and we'll use Firefox as our example. First, click on the menu icon with three horizontal lines in the top right of your browser. Then select "Add-ons and themes".
+To set up Mailvelope for Chrome or Firefox, follow the instructions found here: https://mailvelope.com/en/help
 
-![step1](https://github.com/user-attachments/assets/b8a64098-9c89-4c64-a7bc-bda3bf6e884f)
-
-#### Step 2: Search for Mailvelope
-
-In the search bar at the top of the screen, enter `Mailvelope` and select the correct result.
-
-![step2](https://github.com/user-attachments/assets/615b2516-18f5-4946-8fdb-7dc07272bfe7)
-
-#### Step 3: Create a key
-
-#### Pin the extension
-
-First, we'll pin the extension to our toolbar. Click on the puzzle piece icon, then the settings gear icon for Mailvelope. Select "Pin to Toolbar." When the icon appears, click it, then select "Let's start!".
-
-![step3](https://github.com/user-attachments/assets/ce1eac41-b4ad-4048-b5a2-765fbb5cb36c)
-
-##### Generate your key
+#### Step 2: Create a key
 
 In the Setup dashboard, click on the "Generate key" button. Add a name for your key, your email address, and a strong password. Before clicking "Generate," click on the "Advanced" button. In the Algorithm picklist, choose "ECC - Curve25519". This algorithm is more efficient than traditional RSA encryption while providing a similar level of security. Now, generate your key!
 
-![step4](https://github.com/user-attachments/assets/1af3e7f4-041c-4090-80bb-c4c5df4df0c9)
-
-##### Copy the key
-
 Once your key is created, click on it from the dashboard, then select "Export" in the "Public" tab and "Copy to clipboard."
 
-![step5](https://github.com/user-attachments/assets/78a6f52b-9cc2-43e7-9cde-61f87c1e88f4)
+![step1 1](https://github.com/user-attachments/assets/b2156d39-0b8c-43b0-ac52-e34e8ea32fe5)
 
-### Step 4: Add your key to Hush Line
+#### Step 3: Add your key to Hush Line
 
-Select the "Email & Encryption" tab in your Hush Line settings, and paste your key into the Public PGP Key textarea. Now, when you go to your message submission page, you'll see a new encryption indicator at the bottom of the form! 
+Select the `Email & Encryption` tab in your Hush Line settings, and paste your key into the Public PGP Key textarea.
 
-![step6](https://github.com/user-attachments/assets/59b99f80-0be1-4cfd-a1ec-aa4a3a816d12)
+![step1 2](https://github.com/user-attachments/assets/07f9731e-00c5-41b4-a661-fb2159e99922)
 
-#### Step 5: Authorize the Hush Line domain
+#### Step 4: Authorize the Hush Line domain
 
 With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list. 
 
-![step10](https://github.com/user-attachments/assets/b5fc8852-7b14-4bd0-8b12-ef92eba983ca)
+![step1 4](https://github.com/user-attachments/assets/f8c89923-f951-4381-a1fb-dae541c180e5)
 
-#### Step 6: Send and read a message!
+#### Step 5: Send and read a message!
 
 Let's send a test message! In the header, click "Submit Message." Enter some text and click "Send Message." If you haven't disabled JavaScript, you'll see it encrypted in the browser before it submits. Go to "Inbox" to see the message in the app. You may have to enter the password you set when creating your key in Mailvelope.
 
-![step9](https://github.com/user-attachments/assets/04066bc1-8d75-4898-ad9f-0a60efae3ce2)
+![step1 3](https://github.com/user-attachments/assets/1cd81ba0-4c54-49e4-8352-2008436984fd)
 
-<br>
 
---------------
-
-<br>
-
-## Message Forwarding
-
-### SMTP Settings
-
-You'll need SMTP information from your mail provider so Hush Line can email your message. We'll use Gmail because it is highly reliable. If you still need an account, create one. It's a good practice to maintain an email address separate from your personal account.
-
-```
-SMTP Username: [your Google email address]
-SMTP Server: smtp.gmail.com
-SMTP Port: 587
-SMTP Password: [app-specific password (see below)]
-```
-
-### Step 1: Create an app password
-
-#### Create an app password
-
-You'll need to [enable 2-step authentication for your Google account](https://support.google.com/accounts/answer/185839?hl=en&co=GENIE.Platform%3DDesktop). Then, click "Manage your Google Account" from your Google user menu. In the search bar at the top, enter "app passwords." In the App Passwords screen, enter "Hush Line" in the name, and click "Create." Use this password for your SMTP settings. 
-
-![step7](https://github.com/user-attachments/assets/f08328a6-e12b-4986-a287-996312cbc1f3)
-
-#### Update SMTP information in Hush Line
-
-Now, enter your SMTP information in your Hush Line settings "Email & Encryption" tab.
-
-![step8](https://github.com/user-attachments/assets/218ef288-0380-4e2d-b21d-80e0cff4b0df)
-
-🎉 Congratulations, you're now ready to continue with Hush Line!
+🎉 Congratulations, you're ready to start receiving encrypted and anonymous Hush Line messages!
