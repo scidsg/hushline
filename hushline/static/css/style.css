@@ -694,6 +694,7 @@ h3 {
 
 h4 {
     font-size: var(--font-size-4);
+    margin-top: 1.5rem;
 }
 
 p {
@@ -1870,12 +1871,21 @@ button[name="update_directory_visibility"] {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    margin-top: 1rem;
 }
 
 .input-pair {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
+}
+
+.input-pair input {
+    margin-bottom: 0;
+}
+
+.form-group-pairs+button {
+    margin-top: 1.25rem;
 }
 
 .input-pair label {
