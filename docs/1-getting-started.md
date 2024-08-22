@@ -29,7 +29,7 @@ In your Hush Line settings, navigate to the Email & Encryption tab. You'll not
 
 In the `Message Encryption` section, you'll see a Proton key search input. To import your key, add the email address you just created. 
 
-![step2](https://github.com/user-attachments/assets/1925c5b9-48ad-4572-bd24-205b54bb3e27)
+![step2](https://github.com/user-attachments/assets/acac2953-3689-48c0-9e5b-bb7ded61496b)
 
 #### Step 3: Mail Forwarding
 
