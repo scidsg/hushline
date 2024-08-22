@@ -45,7 +45,7 @@ Click on `Submit Message` in the Hush Line global navigation. Enter a message 
 
 #### Step 5: Check Your Email
 
-Go back to your Proton account and, if necessary, refresh your Inbox. You should see an email from `notifications@hushline.app appear`. Click on it, and you'll see your automatically decrypted message! If you go back to Hush Line and click `Inbox`, you'll see the same message, but it'll be encrypted and unreadable since your key to decrypt the message only exists on Proton.
+Go back to your Proton account and, if necessary, refresh your Inbox. You should see an email from `notifications@hushline.app` appear. Click on it, and you'll see your automatically decrypted message! If you go back to Hush Line and click `Inbox`, you'll see the same message, but it'll be encrypted and unreadable since your key to decrypt the message only exists on Proton.
 
 ![step5](https://github.com/user-attachments/assets/3a7ad652-825f-4f1d-bf3e-8175e8f96e8e)
 
