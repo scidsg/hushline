@@ -1928,7 +1928,9 @@ p.bio+.extra-fields {
     font-family: var(--font-sans-bold);
     font-size: var(--font-size-small);
     margin-bottom: .25rem;
-    width: 72px;
+    max-width: 72px;
+    width: 100%;
+    min-width: 64px;
 }
 
 .extra-fields .extra-field-value {
