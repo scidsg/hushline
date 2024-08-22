@@ -1896,22 +1896,43 @@ button[name="update_directory_visibility"] {
     display: inline-block;
 }
 
+p.bio+.extra-fields {
+    margin-top: 0;
+}
+
 .extra-fields {
     display: flex;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-smaller);
+    flex-direction: row;
+    margin-top: .5rem;
+    margin-bottom: 1rem;
+    gap: .25rem 1rem;
+}
+
+.extra-field {
+    margin: 0;
+    flex: 1;
+    flex-direction: row;
+    display: flex;
+    width: 45%;
 }
 
 .extra-fields .extra-field-label {
     display: inline-block;
     margin-right: 0.5rem;
-    width: 200px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-family: var(--font-sans-bold);
+    font-size: var(--font-size-small);
+    margin-bottom: .25rem;
+    width: 72px;
 }
 
 .extra-fields .extra-field-value {
     display: inline-block;
-    width: 200px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
