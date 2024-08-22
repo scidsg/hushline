@@ -1904,7 +1904,7 @@ p.bio+.extra-fields {
     display: flex;
     flex-wrap: wrap;
     font-family: var(--font-mono);
-    font-size: var(--font-size-smaller);
+    font-size: calc(var(--font-size-smaller)*.9625);
     flex-direction: row;
     margin-top: .5rem;
     margin-bottom: 1rem;
