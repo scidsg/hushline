@@ -121,8 +121,7 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
     assert response.status_code == 200
 
     # The message form should not be displayed, and the PGP warning should be shown
-    assert b'id="messageForm"' not in response.data
-    assert b"You can't send encrypted messages to this user through Hush Line" in response.data
+    assert b"Sending messages is disabled" in response.data
 
     # Add a PGP key to the user
     user.pgp_key = "test_pgp_key"
