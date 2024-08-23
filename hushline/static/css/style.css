@@ -672,7 +672,7 @@ h2.submit+p {
 }
 
 h2.submit~.instr {
-    margin: 1rem 0;
+    margin: .25rem 0 1rem 0;
 }
 
 h2.submit~p+.instr {
@@ -758,10 +758,6 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not(:has(+ .badgeContain
 
 .badgeContainer:empty {
     margin: 0;
-}
-
-h2.submit~.badgeContainer+p {
-    margin-top: .5rem;
 }
 
 p.badge {
