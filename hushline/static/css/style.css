@@ -1897,7 +1897,7 @@ button[name="update_directory_visibility"] {
 }
 
 p.bio+.extra-fields {
-    margin-top: .25rem;
+    margin-top: 0;
 }
 
 .extra-fields {
