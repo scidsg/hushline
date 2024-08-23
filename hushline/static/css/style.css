@@ -726,6 +726,36 @@ p.instr {
     align-items: center;
 }
 
+.badgeContainer {
+    margin-bottom: 1.25rem;
+}
+
+.user .badgeContainer {
+    margin-bottom: 1rem;
+}
+
+.user .badgeContainer:not(:empty)+.user-actions {
+    margin-top: .125rem;
+}
+
+.user .user-actions {
+    margin-top: .75rem;
+}
+
+h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not(:has(+ .badgeContainer)):not(:has(+ .instr)) {
+    margin-bottom: 1rem;
+}
+
+.bio,
+.extra-fields {
+    margin-top: 0;
+}
+
+.badgeContainer:has(+ .bio),
+.badgeContainer:has(+ .extra-fields) {
+    margin-bottom: .5rem;
+}
+
 .badgeContainer:empty {
     margin: 0;
 }
@@ -1520,10 +1550,6 @@ textarea#bio {
     height: 175px;
 }
 
-.user-actions a {
-    margin: .5rem 0 0 0;
-}
-
 .directory-tabs .tab-list {
     margin-bottom: 0;
 }
@@ -1907,7 +1933,7 @@ p.bio+.extra-fields {
     font-size: calc(var(--font-size-smaller)*.9625);
     flex-direction: row;
     margin-top: .5rem;
-    margin-bottom: 1rem;
+    margin-bottom: .75rem;
     gap: .25rem 2rem;
 }
 
@@ -1962,6 +1988,9 @@ p.bio+.extra-fields {
 
 #messageForm {
     position: relative;
+    border-top: var(--border);
+    padding-top: 1.5rem;
+    margin-top: .5rem;
 }
 
 @media(max-width: 640px) {
