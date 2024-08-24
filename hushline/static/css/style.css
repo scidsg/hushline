@@ -1682,7 +1682,7 @@ p.section-intro:not(:first-of-type) {
 }
 
 input[type="file"] {
-    padding: .75rem;
+    padding: 1rem .75rem;
     border-radius: .25rem;
 }
 
