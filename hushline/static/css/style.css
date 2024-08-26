@@ -327,6 +327,10 @@
     .pgp-disabled-overlay p {
         color: black;
     }
+
+    .pgp-disabled-overlay {
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, .7);
+    }
 }
 
 /* Dark Mode */
@@ -616,6 +620,10 @@
 
     .pgp-disabled-overlay p {
         color: white;
+    }
+
+    .pgp-disabled-overlay {
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, .15);
     }
 }
 
