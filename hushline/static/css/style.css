@@ -1938,7 +1938,7 @@ p.bio+.extra-fields {
     flex: 1;
     flex-direction: row;
     display: flex;
-    width: 45%;
+    width: 48%;
 }
 
 .extra-fields .extra-field-label {
