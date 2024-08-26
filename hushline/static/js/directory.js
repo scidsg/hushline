@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const encodedMessage = encodeURIComponent(messageContent);
 
         // Redirect to the message submission form for the admin with the pre-filled content
-        const submissionUrl = `${pathPrefix}/submit_message/admin?prefill=${encodedMessage}`;
+        const submissionUrl = `${pathPrefix}/to/admin?prefill=${encodedMessage}`;
         window.location.href = submissionUrl;
     }
 
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ''}
                     <div class="user-actions">
-                        <a href="${pathPrefix}/submit_message/${user.primary_username}">Send a Message</a>
+                        <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
                         ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
@@ -129,12 +129,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     tabs.forEach(tab => {
-        tab.addEventListener('click', function(e) {
+        tab.addEventListener('click', function (e) {
             window.activateTab(e, tabs, tabPanels);
             handleSearchInput(); // Filter again when tab changes
             updatePlaceholder();
         });
-        tab.addEventListener('keydown', function(e) {
+        tab.addEventListener('keydown', function (e) {
             window.handleKeydown(e)
         });
     });

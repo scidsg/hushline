@@ -1,8 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Send a Message{% endblock %}
+{% block title %}{% if (not require_pgp) or (require_pgp and user.pgp_key) %}Send a Message to {{
+display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% endif %}{% endblock %}
 
 {% block content %}
-<h2 class="submit">Submit a message to {{ display_name_or_username }}</h2>
+<h2 class="submit">
+    {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
+    Submit a message to {{ display_name_or_username }}
+    {% else %}
+    {{ display_name_or_username }}
+    {% endif %}
+</h2>
 {% if user.is_admin or user.is_verified %}
 <div class="badgeContainer">
     {% if user.is_admin %}
@@ -18,22 +25,62 @@
 {% if user.bio %}
 <p class="bio">{{ user.bio }}</p>
 {% endif %}
+
+{% if (user.extra_field_label1 and user.extra_field_value1) or (user.extra_field_label2 and user.extra_field_value2) or
+(user.extra_field_label3 and user.extra_field_value3) or (user.extra_field_label4 and user.extra_field_value4) %}
+<div class="extra-fields">
+    {% for label, value in [
+    (user.extra_field_label1, user.extra_field_value1),
+    (user.extra_field_label2, user.extra_field_value2),
+    (user.extra_field_label3, user.extra_field_value3),
+    (user.extra_field_label4, user.extra_field_value4)
+    ] %}
+    {% if label and value %}
+    <p class="extra-field">
+        <span class="extra-field-label">{{ label }}</span>
+        <span class="extra-field-value">
+            {% if value.startswith('https://') %}
+            <a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value }}</a>
+            {% else %}
+            {{ value }}
+            {% endif %}
+        </span>
+    </p>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
+
 {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
-<p class="instr">Only visible to you: This is your public tip line. Share the address on your social media profiles,
+<p class="instr">
+    {% if pgp_required_but_not_set %}
+    <b>Only visible to you:</b> In order to protect your sources, you need to add a PGP key to your account before
+    anyone can send you tips. Without a PGP key, your profile can still be listed in the Hush Line directory. Make sure
+    to include a secure way to contact you, such as a Signal username, in your profile.
+    {% else %}
+    <b>Only visible to you:</b> This is your public tip line. Share the address on your social media profiles,
     your website, or email signature. Ensuring that someone submitting a message trusts this form belongs to you is
-    critical!</p>
+    critical!
+    {% endif %}
+</p>
 {% endif %}
 <form method="POST" action="{{ url_for('submit_message', username=username) }}" id="messageForm">
+    {% if not pgp_required_but_not_set %}
     {{ form.hidden_tag() }}
+    {% endif %}
 
     <label for="contact_method">Contact Method (Optional)</label>
     <input type="text" id="contact_method" name="contact_method"
-        value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}">
+        value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}" {% if
+        pgp_required_but_not_set %}disabled="disabled" {% endif %}>
 
     <label for="content">Message</label>
-    <textarea id="content" maxlength="10000" name="content" required=""
-        spellcheck="true">{{ form.content.data if form.content.data is not none else '' }}</textarea>
+    <textarea id="content" maxlength="10000" name="content" required="" spellcheck="true" {% if pgp_required_but_not_set
+        %}disabled="disabled" {% endif %}>{{ form.content.data if form.content.data is not none else '' }}</textarea>
 
+    {% if not pgp_required_but_not_set %}
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
     <!-- Hidden field to indicate if the message was encrypted client-side -->
@@ -66,15 +113,27 @@
             <label for="captcha_answer">{{ math_problem
                 }}</label>
             <input type="text" id="captcha_answer" name="captcha_answer" required="" aria-label="Solve {{ math_problem
-            }} to submit your message">
+                }} to submit your message">
         </div>
     </div>
-    <button type="submit" id="submitBtn">Send Message</button>
+    {% endif %}
+    <button type="submit" id="submitBtn" {% if pgp_required_but_not_set %}disabled="disabled" {% endif %}>Send
+        Message</button>
+
+    {% if pgp_required_but_not_set %}
+    <div class="pgp-disabled-overlay">
+        <p>
+            🔒<br />
+            Sending messages is disabled until {{ display_name_or_username }} adds a PGP key.</p>
+    </div>
+    {% endif %}
 </form>
 {% endblock %}
 
 {% block scripts %}
+{% if not pgp_required_but_not_set %}
 <script src="{{ url_for('static', filename='vendor/openpgp-5.11.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
 <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
+{% endif %}
 {% endblock %}

@@ -73,12 +73,68 @@
 
         <h3>Add Your Bio</h3>
         <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
+            {{ profile_form.hidden_tag() }}
             <div class="form-group">
                 <div class="label-with-wordcount">
                     <label for="bio">Bio (up to 250 characters):</label>
                     <span class="meta"><span class="bio-count">0</span>/250</span>
                 </div>
                 <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.bio or '' }}</textarea>
+            </div>
+
+            <h4>Extra Fields</h4>
+            <p class="info">Add links to social media, your Signal username, your pronouns, or anything else you want on
+                your profile.</p>
+
+            <div class="form-group-pairs">
+                <div class="input-pair">
+                    <div>
+                        <label for="extra_field_label1">Label</label>
+                        <input type="text" name="extra_field_label1" id="extra_field_label1" placeholder="Signal"
+                            value="{{ user.extra_field_label1 or '' }}">
+                    </div>
+                    <div>
+                        <label for="extra_field_value1">Content</label>
+                        <input type="text" name="extra_field_value1" id="extra_field_value1"
+                            placeholder="signaluser.123" value="{{ user.extra_field_value1 or '' }}">
+                    </div>
+                </div>
+                <div class="input-pair">
+                    <div>
+                        <label for="extra_field_label2">Label</label>
+                        <input type="text" name="extra_field_label2" id="extra_field_label2"
+                            value="{{ user.extra_field_label2 or '' }}">
+                    </div>
+                    <div>
+                        <label for="extra_field_value2">Content</label>
+                        <input type="text" name="extra_field_value2" id="extra_field_value2"
+                            value="{{ user.extra_field_value2 or '' }}">
+                    </div>
+                </div>
+                <div class="input-pair">
+                    <div>
+                        <label for="extra_field_label3">Label</label>
+                        <input type="text" name="extra_field_label3" id="extra_field_label3"
+                            value="{{ user.extra_field_label3 or '' }}">
+                    </div>
+                    <div>
+                        <label for="extra_field_value3">Content</label>
+                        <input type="text" name="extra_field_value3" id="extra_field_value3"
+                            value="{{ user.extra_field_value3 or '' }}">
+                    </div>
+                </div>
+                <div class="input-pair">
+                    <div>
+                        <label for="extra_field_label4">Label</label>
+                        <input type="text" name="extra_field_label4" id="extra_field_label4"
+                            value="{{ user.extra_field_label4 or '' }}">
+                    </div>
+                    <div>
+                        <label for="extra_field_value4">Content</label>
+                        <input type="text" name="extra_field_value4" id="extra_field_value4"
+                            value="{{ user.extra_field_value4 or '' }}">
+                    </div>
+                </div>
             </div>
             <button type="submit" name="update_bio">Update Bio</button>
         </form>
