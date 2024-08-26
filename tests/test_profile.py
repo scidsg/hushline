@@ -8,7 +8,7 @@ from hushline.model import Message
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
     # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
-    response = client.get(f"/profile/{username}")
+    response = client.get(f"/to/{username}")
     assert response.status_code == 200
 
     with client.session_transaction() as session:
@@ -36,7 +36,7 @@ def test_profile_submit_message(client: FlaskClient) -> None:
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/profile/{user.primary_username}",
+        f"/to/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
@@ -86,7 +86,7 @@ def test_profile_submit_message_with_contact_method(client: FlaskClient) -> None
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/profile/{user.primary_username}",
+        f"/to/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
@@ -117,7 +117,7 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
     user = register_user(client, "test_user", "Hush-Line-Test-Password9")
 
     # Load the profile page
-    response = client.get(f"/profile/{user.primary_username}")
+    response = client.get(f"/to/{user.primary_username}")
     assert response.status_code == 200
 
     # The message form should not be displayed, and the PGP warning should be shown
@@ -128,7 +128,7 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
     db.session.commit()
 
     # Load the profile page again
-    response = client.get(f"/profile/{user.primary_username}")
+    response = client.get(f"/to/{user.primary_username}")
     assert response.status_code == 200
 
     # The message form should be displayed now
@@ -148,7 +148,7 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     db.session.commit()
 
     # Load the profile page
-    response = client.get(f"/profile/{user.primary_username}")
+    response = client.get(f"/to/{user.primary_username}")
     assert response.status_code == 200
 
     # The message form should not be displayed, and the PGP warning should be shown
