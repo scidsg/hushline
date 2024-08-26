@@ -1975,7 +1975,6 @@ p.bio+.extra-fields {
 }
 
 .pgp-disabled-overlay p {
-    font-size: 1.5rem;
     opacity: 1;
     text-align: center;
     margin: 20px;
