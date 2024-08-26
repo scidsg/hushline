@@ -331,6 +331,10 @@
     .pgp-disabled-overlay {
         box-shadow: 0 -1px 0 rgba(255, 255, 255, .7);
     }
+
+    #messageForm {
+        border-top: var(--border);
+    }
 }
 
 /* Dark Mode */
@@ -624,6 +628,10 @@
 
     .pgp-disabled-overlay {
         box-shadow: 0 -1px 0 rgba(255, 255, 255, .15);
+    }
+
+    #messageForm {
+        border-top: var(--border-dark);
     }
 }
 
@@ -2000,7 +2008,6 @@ p.bio+.extra-fields {
 
 #messageForm {
     position: relative;
-    border-top: var(--border);
     padding-top: 1.5rem;
     margin-top: .5rem;
 }
