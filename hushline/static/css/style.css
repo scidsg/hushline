@@ -940,7 +940,6 @@ header {
     align-items: center;
     padding: .75rem 1.25rem;
     box-sizing: border-box;
-    border-radius: .25rem;
     z-index: 9;
     min-height: 65px;
 }
@@ -1717,7 +1716,7 @@ input#captcha_answer {
 
 .banner+header,
 .banner+header+main {
-    margin-top: 2.25rem;
+    margin-top: 36.5333px;
 }
 
 #email .forwarding {
