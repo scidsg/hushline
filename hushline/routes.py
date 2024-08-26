@@ -21,7 +21,7 @@ from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
-from .crypto import encrypt_message
+from .crypto import decrypt_field, encrypt_field, encrypt_message
 from .db import db
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
@@ -118,6 +118,14 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
+        # If the encrypted message is stored in the session, use it to populate the form
+        if "submit_contact_method" in session:
+            form.contact_method.data = decrypt_field(session["submit_contact_method"])
+            session.pop("submit_contact_method", None)
+        if "submit_content" in session:
+            form.content.data = decrypt_field(session["submit_content"])
+            session.pop("submit_content", None)
+
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
         num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
         num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
@@ -154,6 +162,10 @@ def init_app(app: Flask) -> None:
 
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
+                # Encrypt the message and store it in the session
+                session["submit_contact_method"] = encrypt_field(form.contact_method.data)
+                session["submit_content"] = encrypt_field(form.content.data)
+
                 return redirect(url_for("profile", username=username))
 
             content = form.content.data
