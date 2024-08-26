@@ -108,7 +108,7 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    @app.route("/profile/<username>", methods=["GET", "POST"])
+    @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str:
         form = MessageForm()
         user = db.session.scalars(
