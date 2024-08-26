@@ -120,10 +120,16 @@ def init_app(app: Flask) -> None:
 
         # If the encrypted message is stored in the session, use it to populate the form
         if "submit_contact_method" in session:
-            form.contact_method.data = decrypt_field(session["submit_contact_method"])
+            try:
+                form.contact_method.data = decrypt_field(session["submit_contact_method"])
+            except Exception:
+                app.logger.error("Error decrypting contact method", exc_info=True)
             session.pop("submit_contact_method", None)
         if "submit_content" in session:
-            form.content.data = decrypt_field(session["submit_content"])
+            try:
+                form.content.data = decrypt_field(session["submit_content"])
+            except Exception:
+                app.logger.error("Error decrypting content", exc_info=True)
             session.pop("submit_content", None)
 
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
