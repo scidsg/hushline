@@ -108,7 +108,7 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
-    @app.route("/to/<username>", methods=["GET", "POST"])
+    @app.route("/to/<username>", methods=["GET"])
     def profile(username: str) -> Response | str:
         form = MessageForm()
         user = db.session.scalars(
@@ -118,12 +118,34 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
-        if request.method == "GET":
-            # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
-            num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
-            num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
-            math_problem = f"{num1} + {num2} ="
-            session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+        # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
+        num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+        num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+        math_problem = f"{num1} + {num2} ="
+        session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+
+        return render_template(
+            "profile.html",
+            form=form,
+            user=user,
+            username=username,
+            display_name_or_username=user.display_name or user.primary_username,
+            current_user_id=session.get("user_id"),
+            public_key=user.pgp_key,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
+            require_pgp=app.config["REQUIRE_PGP"],
+            math_problem=math_problem,
+        )
+
+    @app.route("/to/<username>", methods=["POST"])
+    def submit_message(username: str) -> Response | str:
+        form = MessageForm()
+        user = db.session.scalars(
+            db.select(User).filter_by(primary_username=username).limit(1)
+        ).first()
+        if not user:
+            flash("🫥 User not found.")
+            return redirect(url_for("index"))
 
         if form.validate_on_submit():
             if not user.pgp_key and app.config["REQUIRE_PGP"]:
@@ -196,24 +218,11 @@ def init_app(app: Flask) -> None:
             else:
                 flash("👍 Message submitted successfully.")
 
-            return redirect(url_for("profile", username=username))
-
-        return render_template(
-            "profile.html",
-            form=form,
-            user=user,
-            username=username,
-            display_name_or_username=user.display_name or user.primary_username,
-            current_user_id=session.get("user_id"),
-            public_key=user.pgp_key,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
-            require_pgp=app.config["REQUIRE_PGP"],
-            math_problem=math_problem,
-        )
+        return redirect(url_for("profile", username=username))
 
     # Redirect from the old route, /submit_message/<username>, to the new route, /to/<username>
     @app.route("/submit_message/<username>", methods=["GET"])
-    def submit_message(username: str) -> Response:
+    def redirect_submit_message(username: str) -> Response:
         return redirect(url_for("profile", username=username), 301)
 
     def validate_captcha(captcha_answer: str) -> bool:

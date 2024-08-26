@@ -66,7 +66,7 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
     {% endif %}
 </p>
 {% endif %}
-<form method="POST" action="{{ url_for('profile', username=username) }}" id="messageForm">
+<form method="POST" action="{{ url_for('submit_message', username=username) }}" id="messageForm">
     {% if not pgp_required_but_not_set %}
     {{ form.hidden_tag() }}
     {% endif %}
