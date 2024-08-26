@@ -18,7 +18,7 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table("users", schema=None) as batch_op:
+    with op.batch_alter_table("users") as batch_op:
         batch_op.add_column(sa.Column("extra_field_label1", sa.String(), nullable=True))
         batch_op.add_column(sa.Column("extra_field_value1", sa.String(), nullable=True))
         batch_op.add_column(sa.Column("extra_field_label2", sa.String(), nullable=True))
