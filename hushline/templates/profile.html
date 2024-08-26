@@ -37,7 +37,7 @@ display_name_or_username }}{% else %}Profile: {{ display_name_or_username }}{% e
     ] %}
     {% if label and value %}
     <p class="extra-field">
-        <span class="extra-field-label">{{ label }}:</span>
+        <span class="extra-field-label">{{ label }}</span>
         <span class="extra-field-value">
             {% if value.startswith('https://') %}
             <a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value }}</a>
