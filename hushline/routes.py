@@ -211,6 +211,11 @@ def init_app(app: Flask) -> None:
             math_problem=math_problem,
         )
 
+    # Redirect from the old route, /submit_message/<username>, to the new route, /to/<username>
+    @app.route("/submit_message/<username>", methods=["GET"])
+    def submit_message(username: str) -> Response:
+        return redirect(url_for("profile", username=username), 301)
+
     def validate_captcha(captcha_answer: str) -> bool:
         if not captcha_answer.isdigit():
             flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
