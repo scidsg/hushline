@@ -45,6 +45,7 @@ def create_app() -> Flask:
     app.config["SMTP_PORT"] = int(os.environ.get("SMTP_PORT", 0))
     app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
     app.config["SMTP_ENCRYPTION"] = os.environ.get("SMTP_ENCRYPTION", "StartTLS")
+    app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
 
     # Run migrations
     db.init_app(app)

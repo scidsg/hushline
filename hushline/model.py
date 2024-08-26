@@ -53,6 +53,14 @@ class User(Model):
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
     smtp_sender: Mapped[Optional[str]]
+    extra_field_label1: Mapped[Optional[str]]
+    extra_field_value1: Mapped[Optional[str]]
+    extra_field_label2: Mapped[Optional[str]]
+    extra_field_value2: Mapped[Optional[str]]
+    extra_field_label3: Mapped[Optional[str]]
+    extra_field_value3: Mapped[Optional[str]]
+    extra_field_label4: Mapped[Optional[str]]
+    extra_field_value4: Mapped[Optional[str]]
 
     @property
     def password_hash(self) -> str:

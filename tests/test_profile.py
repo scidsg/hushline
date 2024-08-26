@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from flask import Flask
 from flask.testing import FlaskClient
 
 from hushline.db import db
@@ -6,8 +7,8 @@ from hushline.model import Message
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
-    # Simulate loading the submit_message page to generate and retrieve the CAPTCHA from the session
-    response = client.get(f"/submit_message/{username}")
+    # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
+    response = client.get(f"/to/{username}")
     assert response.status_code == 200
 
     with client.session_transaction() as session:
@@ -16,7 +17,7 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         return captcha_answer
 
 
-def test_submit_message(client: FlaskClient) -> None:
+def test_profile_submit_message(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user", "Hush-Line-Test-Password9")
 
@@ -35,7 +36,7 @@ def test_submit_message(client: FlaskClient) -> None:
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/submit_message/{user.primary_username}",
+        f"/to/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
@@ -61,7 +62,7 @@ def test_submit_message(client: FlaskClient) -> None:
     assert b"This is a test message." in response.data
 
 
-def test_submit_message_with_contact_method(client: FlaskClient) -> None:
+def test_profile_submit_message_with_contact_method(client: FlaskClient) -> None:
     # Register a user
     user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
     assert user is not None
@@ -85,7 +86,7 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
 
     # Send a POST request to submit the message
     response = client.post(
-        f"/submit_message/{user.primary_username}",
+        f"/to/{user.primary_username}",
         data=message_data,
         follow_redirects=True,
     )
@@ -106,3 +107,60 @@ def test_submit_message_with_contact_method(client: FlaskClient) -> None:
     response = client.get(f"/inbox?username={user.primary_username}", follow_redirects=True)
     assert response.status_code == 200
     assert expected_content.encode() in response.data
+
+
+def test_profile_pgp_required(client: FlaskClient, app: Flask) -> None:
+    # Require PGP
+    app.config["REQUIRE_PGP"] = True
+
+    # Register a user (with no PGP key)
+    user = register_user(client, "test_user", "Hush-Line-Test-Password9")
+
+    # Load the profile page
+    response = client.get(f"/to/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should not be displayed, and the PGP warning should be shown
+    assert b"Sending messages is disabled" in response.data
+
+    # Add a PGP key to the user
+    user.pgp_key = "test_pgp_key"
+    db.session.commit()
+
+    # Load the profile page again
+    response = client.get(f"/to/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should be displayed now
+    assert b'id="messageForm"' in response.data
+    assert b"You can't send encrypted messages to this user through Hush Line" not in response.data
+
+
+def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
+    # Register a user
+    user = register_user(client, "test_user", "Hush-Line-Test-Password9")
+    user.extra_field_label1 = "Signal username"
+    user.extra_field_value1 = "singleusername.666"
+    user.extra_field_label2 = "Arbitrary Link"
+    user.extra_field_value2 = "https://scidsg.org/"
+    user.extra_field_label3 = "xss should fail"
+    user.extra_field_value3 = "<script>alert('xss')</script>"
+    db.session.commit()
+
+    # Load the profile page
+    response = client.get(f"/to/{user.primary_username}")
+    assert response.status_code == 200
+
+    # The message form should not be displayed, and the PGP warning should be shown
+    assert b"Signal username" in response.data
+    assert b"singleusername.666" in response.data
+    assert b"Arbitrary Link" in response.data
+    # URLs should turn into links
+    assert (
+        b'<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer">https://scidsg.org/</a>'
+        in response.data
+    )
+    assert b"xss should fail" in response.data
+    # XSS should be escaped
+    assert b"<script>alert('xss')</script>" not in response.data
+    assert b"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in response.data

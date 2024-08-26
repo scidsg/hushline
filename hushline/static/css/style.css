@@ -15,6 +15,7 @@
     --color-dark-bg: #222;
     --color-dark-bg-alt: #333;
     --color-dark-bg-alt-1: #444;
+    --color-dark-bg-alt-transparent: rgba(51, 51, 51, .7);
 
     --border: 1px solid var(--color-border);
     --border-dark: 1px solid var(--color-border-dark);
@@ -318,6 +319,14 @@
             background-color: white;
         }
     }
+
+    .pgp-disabled-overlay {
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .pgp-disabled-overlay p {
+        color: black;
+    }
 }
 
 /* Dark Mode */
@@ -601,6 +610,13 @@
         }
     }
 
+    .pgp-disabled-overlay {
+        background-color: var(--color-dark-bg-alt-transparent);
+    }
+
+    .pgp-disabled-overlay p {
+        color: white;
+    }
 }
 
 body {
@@ -656,7 +672,7 @@ h2.submit+p {
 }
 
 h2.submit~.instr {
-    margin: 1rem 0;
+    margin: .25rem 0 1rem 0;
 }
 
 h2.submit~p+.instr {
@@ -678,6 +694,7 @@ h3 {
 
 h4 {
     font-size: var(--font-size-4);
+    margin-top: 1.5rem;
 }
 
 p {
@@ -709,12 +726,38 @@ p.instr {
     align-items: center;
 }
 
-.badgeContainer:empty {
-    margin: 0;
+.badgeContainer {
+    margin-bottom: 1.25rem;
 }
 
-h2.submit~.badgeContainer+p {
-    margin-top: .5rem;
+.user .badgeContainer {
+    margin-bottom: 1rem;
+}
+
+.user .badgeContainer:not(:empty)+.user-actions {
+    margin-top: .125rem;
+}
+
+.user .user-actions {
+    margin-top: .75rem;
+}
+
+h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not(:has(+ .badgeContainer)):not(:has(+ .instr)) {
+    margin-bottom: 1rem;
+}
+
+.bio,
+.extra-fields {
+    margin-top: 0;
+}
+
+.badgeContainer:has(+ .bio),
+.badgeContainer:has(+ .extra-fields) {
+    margin-bottom: .5rem;
+}
+
+.badgeContainer:empty {
+    margin: 0;
 }
 
 p.badge {
@@ -1502,10 +1545,6 @@ textarea#bio {
     height: 175px;
 }
 
-.user-actions a {
-    margin: .5rem 0 0 0;
-}
-
 .directory-tabs .tab-list {
     margin-bottom: 0;
 }
@@ -1642,7 +1681,7 @@ p.section-intro:not(:first-of-type) {
 }
 
 input[type="file"] {
-    padding: .75rem;
+    padding: 1rem .75rem;
     border-radius: .25rem;
 }
 
@@ -1845,6 +1884,116 @@ button[name="update_directory_visibility"] {
     }
 
     .search-box {
+        width: 100%;
+    }
+}
+
+.form-group-pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.input-pair {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.input-pair input {
+    margin-bottom: 0;
+}
+
+.form-group-pairs+button {
+    margin-top: 1.25rem;
+}
+
+.input-pair label {
+    display: inline-block;
+}
+
+.input-pair input {
+    display: inline-block;
+}
+
+p.bio+.extra-fields {
+    margin-top: 0;
+}
+
+.extra-fields {
+    display: flex;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: calc(var(--font-size-smaller)*.9625);
+    flex-direction: row;
+    margin-top: .5rem;
+    margin-bottom: .75rem;
+    gap: .25rem 2rem;
+}
+
+.extra-field {
+    margin: 0;
+    flex: 1;
+    flex-direction: row;
+    display: flex;
+    width: 48%;
+}
+
+.extra-fields .extra-field-label {
+    display: inline-block;
+    margin-right: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-sans-bold);
+    font-size: var(--font-size-small);
+    margin-bottom: .25rem;
+    max-width: 68px;
+    width: 100%;
+    min-width: 54px;
+}
+
+.extra-fields .extra-field-value {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pgp-disabled-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.pgp-disabled-overlay p {
+    opacity: 1;
+    text-align: center;
+    margin: 20px;
+}
+
+#messageForm {
+    position: relative;
+    border-top: var(--border);
+    padding-top: 1.5rem;
+    margin-top: .5rem;
+}
+
+@media(max-width: 640px) {
+    .extra-fields {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .extra-field {
         width: 100%;
     }
 }
