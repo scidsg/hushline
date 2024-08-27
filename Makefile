@@ -9,6 +9,8 @@ help: ## Print the help message
 .PHONY: install
 install:
 	poetry install
+	npm install
+
 
 .PHONY: run
 run: migrate ## Run the app
@@ -20,11 +22,13 @@ lint: ## Lint the code
 	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
+	npx prettier . --check
 
 .PHONY: fix
 fix: ## Format the code
 	poetry run ruff format && \
 	poetry run ruff check --fix
+	npx prettier . --write
 
 .PHONY: migrate
 migrate: ## Apply migrations
