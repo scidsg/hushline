@@ -2,7 +2,7 @@
 
 Hush Line is a free and open-source, whistleblowing platform for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
 
-We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised. 
+We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised.
 
 ## Contents
 
@@ -11,7 +11,7 @@ We strongly encourage all Hush Line operators to add a PGP key to ensure message
 
 ### Option 1: Proton
 
-#### Step 1: Sign up for Hush Line & Proton 
+#### Step 1: Sign up for Hush Line & Proton
 
 Go to hushline.app and proton.me and sign up for your accounts if you haven't already.
 
@@ -21,7 +21,7 @@ Go to hushline.app and proton.me and sign up for your accounts if you haven't al
 
 In your Hush Line settings, navigate to the Email & Encryption tab. You'll notice that email forwarding is disabled until you add an encryption key.
 
-In the `Message Encryption` section, you'll see a Proton key search input. To import your key, add the email address you just created. 
+In the `Message Encryption` section, you'll see a Proton key search input. To import your key, add the email address you just created.
 
 ![step2](https://github.com/user-attachments/assets/74df8729-1aea-4925-871b-fd829af3e79f)
 
@@ -47,7 +47,7 @@ Go back to your Proton account and, if necessary, refresh your Inbox. You should
 
 <br>
 
-----------
+---
 
 <br>
 
@@ -73,7 +73,7 @@ Select the `Email & Encryption` tab in your Hush Line settings, and paste your k
 
 #### Step 4: Authorize the Hush Line domain
 
-With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list. 
+With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list.
 
 ![step2 4](https://github.com/user-attachments/assets/dd5dadbb-5afe-4ac3-a4f2-126f289ce6dc)
 
@@ -82,6 +82,5 @@ With Hush Line open, click the Mailvelope icon and select "Authorize this domain
 Let's send a test message! In the header, click "Profile." Enter some text and click "Send Message." If you haven't disabled JavaScript, you'll see it encrypted in the browser before it submits. Go to "Inbox" to see the message in the app. You may have to enter the password you set when creating your key in Mailvelope.
 
 ![step1 3](https://github.com/user-attachments/assets/1cd81ba0-4c54-49e4-8352-2008436984fd)
-
 
 🎉 Congratulations, you're ready to start receiving encrypted and anonymous Hush Line messages!
