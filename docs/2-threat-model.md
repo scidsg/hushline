@@ -10,22 +10,22 @@ Hush Line is a secure communication platform designed with a strong focus on pri
 
 ## Users
 
-| User Type | Goal |
-|-|-|
-| Submitter | Individual who sends a message. |
-| Receiver | Individual or organization representative who reads messages. |
-| Verifier | Staff member who verifies account owners (journalists, public figures, businesses). |
-| Service Provider | Individual or organization who provides Hush Line services. |
-| Server Admin | Individual who maintains the server operating Hush Line. |
+| User Type        | Goal                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| Submitter        | Individual who sends a message.                                                     |
+| Receiver         | Individual or organization representative who reads messages.                       |
+| Verifier         | Staff member who verifies account owners (journalists, public figures, businesses). |
+| Service Provider | Individual or organization who provides Hush Line services.                         |
+| Server Admin     | Individual who maintains the server operating Hush Line.                            |
 
 ## Adversaries
 
-| User Type | Goal |
-|-|-|
+| User Type        | Goal                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers). |
-| Active Observer | Targets specific connections. |
-| Passive Attacker | Scans the internet for vulnerabilities to take advantage of. |
-| Active Attacker | Seeks persistence, exploitation of known vulnerabilities, and seizure of physical equipment. |
+| Active Observer  | Targets specific connections.                                                                                                        |
+| Passive Attacker | Scans the internet for vulnerabilities to take advantage of.                                                                         |
+| Active Attacker  | Seeks persistence, exploitation of known vulnerabilities, and seizure of physical equipment.                                         |
 
 ## Assumptions
 

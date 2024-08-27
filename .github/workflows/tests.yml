@@ -8,30 +8,29 @@ on:
       - main
 
 jobs:
- run-lint-and-tests:
+  run-lint-and-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
       - uses: actions/checkout@v4
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pipx install poetry
 
-      - name: Cache Python dependencies
-        uses: actions/cache@v3
+      - uses: actions/setup-python@v4
         with:
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-            ${{ runner.os }}-poetry-
-          path: |
-            ~/.cache/pypoetry
+          python-version: "3.12"
+          cache: "poetry"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
 
       - name: Install Python dependencies
         run: poetry install
+
+      - name: Install Node dependencies
+        run: npm install
 
       - name: Lint
         run: poetry run make lint

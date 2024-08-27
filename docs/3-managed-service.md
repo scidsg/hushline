@@ -47,6 +47,7 @@ To ensure your account is recognized as authentic, users belonging to the catego
 
 1. **Send a Message:** Use the contact form in the app to reach out to us. Include your name or organization's name and a preferred method of contact (email or phone number). We'll get back to you to schedule a verification meeting.
 2. **Prepare Your Documents:** To verify your identity or your authority to represent an organization, please include the relevant documents for your role:
+
    - **A Valid ID:** Government-issued identification that shows your full name and photo.
    - **Proof of Employment or Association:** A letter from your employer or organization confirming your role or a recent pay stub.
    - **An Active Profile:** A link to your profile on your employer's or organization's official website, verifying your position or role.
@@ -57,15 +58,15 @@ To ensure your account is recognized as authentic, users belonging to the catego
 
 3. **Prepare Your Account:** Verified accounts are required to use their public name or official organization name. For example:
 
-| Category                        | Example                                         |
-|---------------------------------|-------------------------------------------------|
-| Individuals				 	  | Art Vandelay
-| Organizations                   | Vandelay Industries                             |
-| Departments within an organization | Vandelay Industries, HR Dept.                |
-| Journalists                     | Art Vandelay, The Daily Worker                  |
-| Independent Journalists         | Art Vandelay, Ind.                              |
-| Politicians                     | Sen. Art Vandelay, D-CA, 🇺🇸                     |
-|                                 | Gob Bluth, PM, 🇨🇦                               |
+| Category                           | Example                        |
+| ---------------------------------- | ------------------------------ |
+| Individuals                        | Art Vandelay                   |
+| Organizations                      | Vandelay Industries            |
+| Departments within an organization | Vandelay Industries, HR Dept.  |
+| Journalists                        | Art Vandelay, The Daily Worker |
+| Independent Journalists            | Art Vandelay, Ind.             |
+| Politicians                        | Sen. Art Vandelay, D-CA, 🇺🇸    |
+|                                    | Gob Bluth, PM, 🇨🇦              |
 
 Once your Display Name matches the format above, we'll promptly verify your account!
 

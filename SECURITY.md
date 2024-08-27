@@ -17,6 +17,7 @@ At Hush Line, developed by Science & Design, Inc., we prioritize the security of
 ## Tor Onion Service
 
 - Hush Line offers a Tor onion service, allowing users to access the application with enhanced privacy and security.
+
 ## Security Headers
 
 Hush Line implements a series of HTTP security headers to protect our users and their data. These headers help mitigate various types of attacks and ensure secure communication between clients and our servers. Below are the security headers we use and their purposes:

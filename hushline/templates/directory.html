@@ -1,122 +1,185 @@
 {% extends "base.html" %}
 {% block title %}Directory{% endblock %}
 {% block content %}
-<h2>User Directory</h2>
-{% if not is_personal_server %}
-{% if not logged_in %}
-<p class="helper section-intro">👋 Hush Line connects whistleblowers with lawyers, journalists, business
-    leaders, and more. We advise speaking to a legal professional before taking any confidential information from your
-    workplace.
-</p>
-{% endif %}
-<div class="directory-tabs">
-    <ul class="tab-list" role="tablist">
-        <li role="presentation">
-            <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
-                aria-controls="verified" id="verified-tab">Verified</button>
-        </li>
-        <li role="presentation">
-            <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
-                id="all-tab">All</button>
-        </li>
-    </ul>
-</div>
-{% endif %}
-<div class="search-box">
-    <label id="searchIcon" for="searchInput" aria-label="Search users">
-        <img src="{{ url_for('static', filename='img/app/icon-search.png') }}" alt="">
-    </label>
-    <input type="text" id="searchInput" placeholder="Search users...">
-    <button id="clearIcon" type="button" style="cursor: pointer;" aria-label="Clear search field">&times;</button>
-</div>
-{% if not is_personal_server %}
-<div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
+  <h2>User Directory</h2>
+  {% if not is_personal_server %}
     {% if not logged_in %}
-    <p class="meta dirMeta">⭐️ Verified accounts are offered to individuals who have
-        manually verified their identities with a member of our staff. <a
-            href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
-            target="_blank" rel="noopener noreferrer">Learn more about verification</a>.</p>
+      <p class="helper section-intro">
+        👋 Hush Line connects whistleblowers with lawyers, journalists, business
+        leaders, and more. We advise speaking to a legal professional before
+        taking any confidential information from your workplace.
+      </p>
     {% endif %}
-    <div class="user-list">
-        {% for user in users %}
-        {% if user.is_verified and user.show_in_directory %}
-        <article class="user">
-            <h3>{{ user.display_name or user.primary_username }}</h3>
-            {% if user.primary_username %}
-            <p class="meta">@{{ user.primary_username }}</p>
-            {% endif %}
-            {% if user.is_verified or user.is_admin %}
-            <div class="badgeContainer">
-                {% if user.is_admin %}
-                <p class="badge">⚙️ Admin</p>
-                {% endif %}
-                {% if user.is_verified %}
-                <p class="badge">⭐️ Verified</p>
-                {% endif %}
-            </div>
-            {% endif %}
-            {% if user.bio %}
-            <p class="bio">{{ user.bio }}</p>
-            {% endif %}
-            <div class="user-actions">
-                <a href="{{ url_for('profile', username=user.primary_username) }}">View Profile</a>
-                {% if logged_in %}
-                <a href="#" class="report-link" data-username="{{ user.primary_username }}"
-                    data-display-name="{{ user.display_name or user.primary_username }}"
-                    data-bio="{{ user.bio }}">Report Account</a>
-                {% endif %}
-            </div>
-        </article>
-        {% endif %}
-        {% else %}
-        <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
-        {% endfor %}
+    <div class="directory-tabs">
+      <ul class="tab-list" role="tablist">
+        <li role="presentation">
+          <button
+            type="button"
+            class="tab active"
+            data-tab="verified"
+            role="tab"
+            aria-selected="true"
+            aria-controls="verified"
+            id="verified-tab"
+          >
+            Verified
+          </button>
+        </li>
+        <li role="presentation">
+          <button
+            type="button"
+            class="tab"
+            data-tab="all"
+            role="tab"
+            aria-selected="false"
+            aria-controls="all"
+            id="all-tab"
+          >
+            All
+          </button>
+        </li>
+      </ul>
     </div>
-</div>
-{% endif %}
-<div id="all" class="tab-content {% if is_personal_server %}active{% endif %}" role="tabpanel"
-    aria-labelledby="all-users-tab">
-    <div class="user-list">
+  {% endif %}
+  <div class="search-box">
+    <label id="searchIcon" for="searchInput" aria-label="Search users">
+      <img
+        src="{{ url_for('static', filename='img/app/icon-search.png') }}"
+        alt=""
+      />
+    </label>
+    <input type="text" id="searchInput" placeholder="Search users..." />
+    <button
+      id="clearIcon"
+      type="button"
+      style="cursor: pointer;"
+      aria-label="Clear search field"
+    >
+      &times;
+    </button>
+  </div>
+  {% if not is_personal_server %}
+    <div
+      id="verified"
+      class="tab-content active"
+      role="tabpanel"
+      aria-labelledby="verified-tab"
+    >
+      {% if not logged_in %}
+        <p class="meta dirMeta">
+          ⭐️ Verified accounts are offered to individuals who have manually
+          verified their identities with a member of our staff.
+          <a
+            href="https://github.com/scidsg/hushline/blob/main/docs/3-managed-service.md#verified-accounts"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Learn more about verification</a
+          >.
+        </p>
+      {% endif %}
+      <div class="user-list">
         {% for user in users %}
+          {% if user.is_verified and user.show_in_directory %}
+            <article class="user">
+              <h3>{{ user.display_name or user.primary_username }}</h3>
+              {% if user.primary_username %}
+                <p class="meta">@{{ user.primary_username }}</p>
+              {% endif %}
+              {% if user.is_verified or user.is_admin %}
+                <div class="badgeContainer">
+                  {% if user.is_admin %}
+                    <p class="badge">⚙️ Admin</p>
+                  {% endif %}
+                  {% if user.is_verified %}
+                    <p class="badge">⭐️ Verified</p>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if user.bio %}
+                <p class="bio">{{ user.bio }}</p>
+              {% endif %}
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('profile', username=user.primary_username) }}"
+                  >View Profile</a
+                >
+                {% if logged_in %}
+                  <a
+                    href="#"
+                    class="report-link"
+                    data-username="{{ user.primary_username }}"
+                    data-display-name="{{ user.display_name or user.primary_username }}"
+                    data-bio="{{ user.bio }}"
+                    >Report Account</a
+                  >
+                {% endif %}
+              </div>
+            </article>
+          {% endif %}
+        {% else %}
+          <p class="empty-message">
+            <span class="emoji-message">🙈</span><br />Nothing to see here...
+          </p>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  <div
+    id="all"
+    class="tab-content {% if is_personal_server %}active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="all-users-tab"
+  >
+    <div class="user-list">
+      {% for user in users %}
         {% if user.show_in_directory %}
-        <article class="user">
+          <article class="user">
             <h3>{{ user.display_name or user.primary_username }}</h3>
             {% if user.primary_username %}
-            <p class="meta">@{{ user.primary_username }}</p>
+              <p class="meta">@{{ user.primary_username }}</p>
             {% endif %}
             {% if user.is_verified or user.is_admin %}
-            <div class="badgeContainer">
+              <div class="badgeContainer">
                 {% if user.is_admin %}
-                <p class="badge">⚙️ Admin</p>
+                  <p class="badge">⚙️ Admin</p>
                 {% endif %}
                 {% if user.is_verified %}
-                <p class="badge">⭐️ Verified</p>
+                  <p class="badge">⭐️ Verified</p>
                 {% endif %}
-            </div>
+              </div>
             {% endif %}
             {% if user.bio %}
-            <p class="bio">{{ user.bio }}</p>
+              <p class="bio">{{ user.bio }}</p>
             {% endif %}
             <div class="user-actions">
-                <a href="{{ url_for('profile', username=user.primary_username) }}">View Profile</a>
-                {% if logged_in %}
-                <a href="#" class="report-link" data-username="{{ user.primary_username }}"
-                    data-display-name="{{ user.display_name or user.primary_username }}"
-                    data-bio="{{ user.bio }}">Report Account</a>
-                {% endif %}
+              <a href="{{ url_for('profile', username=user.primary_username) }}"
+                >View Profile</a
+              >
+              {% if logged_in %}
+                <a
+                  href="#"
+                  class="report-link"
+                  data-username="{{ user.primary_username }}"
+                  data-display-name="{{ user.display_name or user.primary_username }}"
+                  data-bio="{{ user.bio }}"
+                  >Report Account</a
+                >
+              {% endif %}
             </div>
-        </article>
+          </article>
         {% endif %}
-        {% else %}
-        <p class="empty-message"><span class="emoji-message">🙈</span><br>Nothing to see here...</p>
-        {% endfor %}
+      {% else %}
+        <p class="empty-message">
+          <span class="emoji-message">🙈</span><br />Nothing to see here...
+        </p>
+      {% endfor %}
     </div>
-</div>
+  </div>
 {% endblock %}
 {% block scripts %}
-{% if is_personal_server %}
-<script src="{{ url_for('static', filename='js/directory_personal_server.js') }}"></script>
-{% else %}
-<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
-{% endif %}
+  {% if is_personal_server %}
+    <script src="{{ url_for('static', filename='js/directory_personal_server.js') }}"></script>
+  {% else %}
+    <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+  {% endif %}
 {% endblock %}
