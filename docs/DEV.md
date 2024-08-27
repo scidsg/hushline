@@ -77,4 +77,4 @@ Create a new revision:
 
 ```sh
 make revision name="my db changes"
-``` 
+```

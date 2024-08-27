@@ -4,7 +4,7 @@ name: Deploy/Destroy Branch Dev Environment
 on:
   pull_request:
     types: [labeled, closed]
-    
+
 env:
   TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_DEV_TF_TOKEN }}
   GITHUB_TOKEN: ${{ github.token }}
@@ -76,7 +76,7 @@ jobs:
                        ]
                      }'
           fi
-  
+
       - name: Plan test infrastrucutre
         uses: dflook/terraform-plan@v1.43.0
         with:
@@ -86,7 +86,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
- 
+
       - name: Apply test infrastrucutre
         uses: dflook/terraform-apply@v1.43.0
         with:
@@ -113,7 +113,7 @@ jobs:
               repo: context.repo.repo,
               body: ':rocket: App successfully deployed to ${{ steps.tf-outputs.outputs.app_live_url }}!'
             })
- 
+
   destroy:
     if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'destroy') || github.event.action == 'closed' }}
     runs-on: ubuntu-latest
@@ -125,7 +125,7 @@ jobs:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
           ref: ${{ env.HUSHLINE_INFRA_REF }}
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
- 
+
       - name: destroy worspace
         uses: dflook/terraform-destroy-workspace@v1.43.0
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
@@ -137,7 +137,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
- 
+
       - name: retry destroy worspace
         uses: dflook/terraform-destroy-workspace@v1.43.0
         if: ${{ steps.first_try.outputs.failure-reason == 'destroy-failed' }}
@@ -155,7 +155,7 @@ jobs:
           github_token: ${{ github.token }}
           labels: |
             deploy
- 
+
       - name: remove destroy label
         uses: actions-ecosystem/action-remove-labels@v1.3.0
         if: contains(github.event.pull_request.labels.*.name, 'destroy')

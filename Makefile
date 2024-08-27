@@ -22,13 +22,13 @@ lint: ## Lint the code
 	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
-	npx prettier  --check hushline/templates/
+	npx prettier --check .
 
 .PHONY: fix
 fix: ## Format the code
 	poetry run ruff format && \
 	poetry run ruff check --fix
-	npx prettier --write hushline/templates/
+	npx prettier --write .
 
 .PHONY: migrate
 migrate: ## Apply migrations
