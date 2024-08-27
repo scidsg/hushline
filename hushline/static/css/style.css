@@ -327,6 +327,14 @@
     .pgp-disabled-overlay p {
         color: black;
     }
+
+    .pgp-disabled-overlay {
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, .7);
+    }
+
+    #messageForm {
+        border-top: var(--border);
+    }
 }
 
 /* Dark Mode */
@@ -616,6 +624,14 @@
 
     .pgp-disabled-overlay p {
         color: white;
+    }
+
+    .pgp-disabled-overlay {
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, .15);
+    }
+
+    #messageForm {
+        border-top: var(--border-dark);
     }
 }
 
@@ -1157,6 +1173,7 @@ footer {
     font-size: var(--font-size-smaller);
     padding: .625rem 1rem;
     border-radius: 0 .25rem 0 0;
+    z-index: 11;
 }
 
 footer p {
@@ -1712,11 +1729,20 @@ input#captcha_answer {
     text-align: center;
     font-size: var(--font-size-base);
     font-size: .9125rem;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.banner p {
+    line-height: 1.5;
+    padding: .125rem 0;
 }
 
 .banner+header,
 .banner+header+main {
-    margin-top: 36.5333px;
+    margin-top: 40px;
 }
 
 #email .forwarding {
@@ -1982,7 +2008,6 @@ p.bio+.extra-fields {
 
 #messageForm {
     position: relative;
-    border-top: var(--border);
     padding-top: 1.5rem;
     margin-top: .5rem;
 }
