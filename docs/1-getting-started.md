@@ -9,7 +9,7 @@ Hush Line is a free and open-source, whistleblowing platform for organizations o
 
 ## Email Encryption
 
-We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised. 
+We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised.
 
 We'll use Mailvelope, an open-source, cross-browser extension that allows you to decrypt messages directly in the app.
 
@@ -47,13 +47,13 @@ Once your key is created, click on it from the dashboard, then select "Export" i
 
 ### Step 4: Add your key to Hush Line
 
-Select the "Email & Encryption" tab in your Hush Line settings, and paste your key into the Public PGP Key textarea. Now, when you go to your message submission page, you'll see a new encryption indicator at the bottom of the form! 
+Select the "Email & Encryption" tab in your Hush Line settings, and paste your key into the Public PGP Key textarea. Now, when you go to your message submission page, you'll see a new encryption indicator at the bottom of the form!
 
 ![step6](https://github.com/user-attachments/assets/59b99f80-0be1-4cfd-a1ec-aa4a3a816d12)
 
 ### Step 5: Authorize the Hush Line domain
 
-With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list. 
+With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list.
 
 ![step10](https://github.com/user-attachments/assets/b5fc8852-7b14-4bd0-8b12-ef92eba983ca)
 
@@ -65,7 +65,7 @@ Let's send a test message! In the header, click "Submit Message." Enter some tex
 
 <br>
 
---------------
+---
 
 <br>
 
@@ -86,7 +86,7 @@ SMTP Password: [app-specific password (see below)]
 
 #### Create an app password
 
-You'll need to [enable 2-step authentication for your Google account](https://support.google.com/accounts/answer/185839?hl=en&co=GENIE.Platform%3DDesktop). Then, click "Manage your Google Account" from your Google user menu. In the search bar at the top, enter "app passwords." In the App Passwords screen, enter "Hush Line" in the name, and click "Create." Use this password for your SMTP settings. 
+You'll need to [enable 2-step authentication for your Google account](https://support.google.com/accounts/answer/185839?hl=en&co=GENIE.Platform%3DDesktop). Then, click "Manage your Google Account" from your Google user menu. In the search bar at the top, enter "app passwords." In the App Passwords screen, enter "Hush Line" in the name, and click "Create." Use this password for your SMTP settings.
 
 ![step7](https://github.com/user-attachments/assets/f08328a6-e12b-4986-a287-996312cbc1f3)
 
