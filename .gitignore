@@ -12,3 +12,4 @@ hushline/static/data/users_directory.json
 volumes/app
 volumes/redis
 volumes/postgres
+/node_modules
