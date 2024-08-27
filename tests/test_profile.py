@@ -157,8 +157,8 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     assert b"Arbitrary Link" in response.data
     # URLs should turn into links
     assert (
-        b'<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer">https://scidsg.org/</a>'
-        in response.data
+        '<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer"'
+        "\n                  >https://scidsg.org/</a\n                >" in response.text
     )
     assert b"xss should fail" in response.data
     # XSS should be escaped
