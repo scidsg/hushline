@@ -1,20 +1,44 @@
 import os
+from base64 import b64encode
+from hashlib import shake_256
 
 from cryptography.fernet import Fernet
 from flask import current_app
 from pysequoia import Cert, encrypt
+
+
+def get_encryption_key(scope: bytes | str | None = None) -> Fernet:
+    encryption_key = os.environ.get("ENCRYPTION_KEY")
+    if encryption_key is None:
+        raise ValueError("Encryption key not found. Please check your .env file.")
+
+    # If a scope is provided, we will use it to derive a unique encryption key
+    if scope is not None:
+        if isinstance(scope, str):
+            scope_bytes = scope.encode()
+        elif isinstance(scope, bytes):
+            scope_bytes = scope
+
+        # Use SHAKE-256 to derive a unique encryption key based on the scope
+        shake = shake_256()
+        shake.update(encryption_key.encode())
+        shake.update(scope_bytes)
+        encryption_key = b64encode(shake.digest(32)).decode()
+
+    return Fernet(encryption_key)
+
 
 encryption_key = os.environ.get("ENCRYPTION_KEY")
 
 if encryption_key is None:
     raise ValueError("Encryption key not found. Please check your .env file.")
 
-fernet = Fernet(encryption_key)
 
-
-def encrypt_field(data: bytes | str | None) -> str | None:
+def encrypt_field(data: bytes | str | None, scope: bytes | str | None = None) -> str | None:
     if data is None:
         return None
+
+    fernet = get_encryption_key(scope)
 
     # Check if data is already a bytes object
     if not isinstance(data, bytes):
@@ -26,9 +50,11 @@ def encrypt_field(data: bytes | str | None) -> str | None:
     return fernet.encrypt_at_time(data, current_time=0).decode()
 
 
-def decrypt_field(data: str | None) -> str | None:
+def decrypt_field(data: str | None, scope: bytes | str | None = None) -> str | None:
     if data is None:
         return None
+
+    fernet = get_encryption_key(scope)
     return fernet.decrypt(data.encode()).decode()
 
 

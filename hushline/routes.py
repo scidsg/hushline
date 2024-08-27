@@ -121,13 +121,15 @@ def init_app(app: Flask) -> None:
         # If the encrypted message is stored in the session, use it to populate the form
         if "submit_contact_method" in session:
             try:
-                form.contact_method.data = decrypt_field(session["submit_contact_method"])
+                form.contact_method.data = decrypt_field(
+                    session["submit_contact_method"], "submit_message"
+                )
             except Exception:
                 app.logger.error("Error decrypting contact method", exc_info=True)
             session.pop("submit_contact_method", None)
         if "submit_content" in session:
             try:
-                form.content.data = decrypt_field(session["submit_content"])
+                form.content.data = decrypt_field(session["submit_content"], "submit_message")
             except Exception:
                 app.logger.error("Error decrypting content", exc_info=True)
             session.pop("submit_content", None)
@@ -169,8 +171,10 @@ def init_app(app: Flask) -> None:
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
                 # Encrypt the message and store it in the session
-                session["submit_contact_method"] = encrypt_field(form.contact_method.data)
-                session["submit_content"] = encrypt_field(form.content.data)
+                session["submit_contact_method"] = encrypt_field(
+                    form.contact_method.data, "submit_message"
+                )
+                session["submit_content"] = encrypt_field(form.content.data, "submit_message")
 
                 return redirect(url_for("profile", username=username))
 
