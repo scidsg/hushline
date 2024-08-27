@@ -717,6 +717,10 @@ h4 {
   margin-top: 1.5rem;
 }
 
+.user h4 {
+    margin-top: 0;
+}
+
 p {
   word-break: break-word;
   margin: 0.5rem 0;
