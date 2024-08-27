@@ -1,119 +1,192 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <meta name="theme-color" content="#7D25C1" id="theme-color" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta property="og:title" content="Hush Line" />
-    <meta property="og:description"
-        content="An open-source whistleblowing platform for organizations and individuals." />
+    <meta
+      property="og:description"
+      content="An open-source whistleblowing platform for organizations and individuals."
+    />
     <meta property="og:url" content="https://hushline.app" />
-    <meta property="og:image" content="https://hushline.app/assets/img/social/social.png" />
+    <meta
+      property="og:image"
+      content="https://hushline.app/assets/img/social/social.png"
+    />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@scidsg">
-    <meta name="twitter:title" content="Hush Line">
-    <meta name="twitter:description"
-        content="An open-source whistleblowing platform for organizations and individuals.">
-    <meta name="twitter:image" content="https://hushline.app/assets/img/social/social.png">
+    <meta name="twitter:site" content="@scidsg" />
+    <meta name="twitter:title" content="Hush Line" />
+    <meta
+      name="twitter:description"
+      content="An open-source whistleblowing platform for organizations and individuals."
+    />
+    <meta
+      name="twitter:image"
+      content="https://hushline.app/assets/img/social/social.png"
+    />
     <title>{% block title %}{% endblock %} - Hush Line</title>
-    <link rel="apple-touch-icon" sizes="180x180"
-        href="{{ url_for('static', filename='img/favicon/apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-16x16.png') }}"
-        sizes="16x16">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/favicon-32x32.png') }}"
-        sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-192x192.png') }}"
-        sizes="192x192">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon/android-chrome-512x512.png') }}"
-        sizes="512x512">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon/favicon.ico') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="{{ url_for('static', filename='img/favicon/apple-touch-icon.png') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='img/favicon/favicon-16x16.png') }}"
+      sizes="16x16"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='img/favicon/favicon-32x32.png') }}"
+      sizes="32x32"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='img/favicon/android-chrome-192x192.png') }}"
+      sizes="192x192"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='img/favicon/android-chrome-512x512.png') }}"
+      sizes="512x512"
+    />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='img/favicon/favicon.ico') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
 
-<body>
-
+  <body>
     {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <div class="flash-messages" role="alert">
-        {% for message in messages %}
-        <div class="flash-message">{{ message }}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
+      {% if messages %}
+        <div class="flash-messages" role="alert">
+          {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endwith %}
 
     {% if not is_personal_server %}
-    <div class="banner">
-        <p>🧅 Use <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer"
-                aria-label="Use Tor Browser for increased anonymity. This link opens a new browser tab.">Tor
-                Browser</a> for increased anonymity.</p>
-    </div>
+      <div class="banner">
+        <p>
+          🧅 Use
+          <a
+            href="https://www.torproject.org/download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Use Tor Browser for increased anonymity. This link opens a new browser tab."
+            >Tor Browser</a
+          >
+          for increased anonymity.
+        </p>
+      </div>
     {% endif %}
 
     <header>
-        <!-- Navigation bar, logo, etc. -->
-        <h1>🤫 Hush Line</h1>
-        <nav>
-            <div class="navGroup">
-                <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
-                <ul>
-                    {% if is_personal_server %}
-                    <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
-                    {% endif %}
-                    <li><a href="{{ url_for('directory') }}">Directory</a></li>
-                    {% if not is_personal_server %}
-                    <li><a href="{{ url_for('vision') }}">Vision</a></li>
-                    {% endif %}
-                    {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
-                    <li><a href="{{ url_for('inbox', username=session.username) }}">Inbox</a></li>
-                    <li><a href="{{ url_for('profile', username=session.username) }}">Profile</a></li>
-                    <li class="dropdown">
-                        <button type="button" aria-expanded="false" aria-controls="dropdown-content" class="dropbtn">
-                            @{{ session['username'] }} <img class="dropdown-icon"
-                                src="{{ url_for('static', filename='img/app/dropdown.png') }}" alt="Dropdown">
-                        </button>
-                        <div id="dropdown-content" class="dropdown-content" hidden>
-                            <ul>
-                                <li><a href="{{ url_for('settings.index') }}">Settings</a></li>
-                                <li><a href="{{ url_for('logout') }}">Logout</a></li>
-                            </ul>
-                        </div>
+      <!-- Navigation bar, logo, etc. -->
+      <h1>🤫 Hush Line</h1>
+      <nav>
+        <div class="navGroup">
+          <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
+          <ul>
+            {% if is_personal_server %}
+              <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('directory') }}">Directory</a></li>
+            {% if not is_personal_server %}
+              <li><a href="{{ url_for('vision') }}">Vision</a></li>
+            {% endif %}
+            {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
+              <li>
+                <a href="{{ url_for('inbox', username=session.username) }}"
+                  >Inbox</a
+                >
+              </li>
+              <li>
+                <a href="{{ url_for('profile', username=session.username) }}"
+                  >Profile</a
+                >
+              </li>
+              <li class="dropdown">
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="dropdown-content"
+                  class="dropbtn"
+                >
+                  @{{ session['username'] }}
+                  <img
+                    class="dropdown-icon"
+                    src="{{ url_for('static', filename='img/app/dropdown.png') }}"
+                    alt="Dropdown"
+                  />
+                </button>
+                <div id="dropdown-content" class="dropdown-content" hidden>
+                  <ul>
+                    <li>
+                      <a href="{{ url_for('settings.index') }}">Settings</a>
                     </li>
-                    {% else %}
-                    <li><a href="{{ url_for('login') }}">Login</a></li>
-                    <li><a href="{{ url_for('register') }}">Register</a></li>
-                    {% endif %}
-                </ul>
-                <a class="btn" href="https://opencollective.com/scidsg/"><span class="emoji">❤️</span> Donate</a>
-            </div>
-        </nav>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                  </ul>
+                </div>
+              </li>
+            {% else %}
+              <li><a href="{{ url_for('login') }}">Login</a></li>
+              <li><a href="{{ url_for('register') }}">Register</a></li>
+            {% endif %}
+          </ul>
+          <a class="btn" href="https://opencollective.com/scidsg/"
+            ><span class="emoji">❤️</span> Donate</a
+          >
+        </div>
+      </nav>
     </header>
 
-
-
     <main>
-        <div class="container">
-            {% block content %}
-            <!-- This block will be filled with page-specific content -->
-            {% endblock %}
-        </div>
+      <div class="container">
+        {% block content %}
+          <!-- This block will be filled with page-specific content -->
+        {% endblock %}
+      </div>
     </main>
 
     <footer>
-        <p>
-            <a href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md" target="_blank"
-                rel="noopener noreferrer">Privacy Policy</a> |
-            <a href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md" target="_blank"
-                rel="noopener noreferrer">Terms of Service</a> |
-            <a href="https://github.com/scidsg/hushline" target="_blank" rel="noopener noreferrer">v{{ config.VERSION
-                }}</a>
-        </p>
+      <p>
+        <a
+          href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Privacy Policy</a
+        >
+        |
+        <a
+          href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Terms of Service</a
+        >
+        |
+        <a
+          href="https://github.com/scidsg/hushline"
+          target="_blank"
+          rel="noopener noreferrer"
+          >v{{ config.VERSION }}</a
+        >
+      </p>
     </footer>
     {% block scripts %}
     {% endblock %}
     <script src="{{ url_for('static', filename='js/global.js') }}"></script>
-
-</body>
-
+  </body>
 </html>

@@ -2,35 +2,37 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-<h2>Register</h2>
-<form method="POST" action="{{ url_for('register') }}">
+  <h2>Register</h2>
+  <form method="POST" action="{{ url_for('register') }}">
     {{ form.hidden_tag() }}
     <div>
-        {{ form.username.label(for="username") }}
-        {{ form.username(id="username") }}
-        {% if form.username.errors %}
+      {{ form.username.label(for="username") }}
+      {{ form.username(id="username") }}
+      {% if form.username.errors %}
         <span class="error">{{ form.username.errors[0] }}</span>
-        {% endif %}
+      {% endif %}
     </div>
     <div>
-        {{ form.password.label(for="password") }}
-        {{ form.password(id="password") }}
-        {% if form.password.errors %}
+      {{ form.password.label(for="password") }}
+      {{ form.password(id="password") }}
+      {% if form.password.errors %}
         {% for error in form.password.errors %}
-        <span class="error">{{ error }}</span>
-            {% endfor %}
-            {% endif %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      {% endif %}
     </div>
     {% if require_invite_code %}
-    <div>
+      <div>
         {{ form.invite_code.label }}
         {{ form.invite_code(size=32) }}
         {% for error in form.invite_code.errors %}
-        <span>{{ error }}</span>
+          <span>{{ error }}</span>
         {% endfor %}
-    </div>
+      </div>
     {% endif %}
     <button type="submit">Register</button>
-</form>
-<p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+  </form>
+  <p>
+    Already have an account? <a href="{{ url_for('login') }}">Login here</a>
+  </p>
 {% endblock %}

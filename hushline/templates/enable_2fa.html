@@ -2,23 +2,27 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-<h2>Enable Two-Factor Authentication</h2>
-<p>Scan the QR code with your 2FA app or enter the text code below to enable 2FA.</p>
+  <h2>Enable Two-Factor Authentication</h2>
+  <p>
+    Scan the QR code with your 2FA app or enter the text code below to enable
+    2FA.
+  </p>
 
-<img class="qr" src="{{ qr_code_img }}" alt="QR Code">
-<p>
+  <img class="qr" src="{{ qr_code_img }}" alt="QR Code" />
+  <p>
     <span class="bold">Text Code:</span>
     <span class="totp-secret mono">{{ text_code }}</span>
-</p>
+  </p>
 
-<form method="POST" action="{{ url_for('settings.enable_2fa') }}">
+  <form method="POST" action="{{ url_for('settings.enable_2fa') }}">
     {{ form.hidden_tag() }}
-    {{ form.verification_code.label }} {{ form.verification_code(size=6) }}
+    {{ form.verification_code.label }}
+    {{ form.verification_code(size=6) }}
     {% if form.verification_code.errors %}
-    {% for error in form.verification_code.errors %}
-    <span style="color: red;">{{ error }}</span>
-    {% endfor %}
+      {% for error in form.verification_code.errors %}
+        <span style="color: red;">{{ error }}</span>
+      {% endfor %}
     {% endif %}
     <button type="submit">Verify and Enable</button>
-</form>
+  </form>
 {% endblock %}
