@@ -1,5 +1,5 @@
 import os
-from base64 import b64encode
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from hashlib import shake_256
 
 from cryptography.fernet import Fernet
@@ -19,11 +19,13 @@ def get_encryption_key(scope: bytes | str | None = None) -> Fernet:
         elif isinstance(scope, bytes):
             scope_bytes = scope
 
+        encryption_key_bytes = urlsafe_b64decode(encryption_key)
+
         # Use SHAKE-256 to derive a unique encryption key based on the scope
         shake = shake_256()
-        shake.update(encryption_key.encode())
+        shake.update(encryption_key_bytes)
         shake.update(scope_bytes)
-        encryption_key = b64encode(shake.digest(32)).decode()
+        encryption_key = urlsafe_b64encode(shake.digest(32)).decode()
 
     return Fernet(encryption_key)
 
