@@ -627,7 +627,8 @@
     }
 
     .pgp-disabled-overlay {
-        box-shadow: 0 -1px 0 rgba(255, 255, 255, .15);
+        box-shadow: 0 -1px 0 rgba(51, 51, 51, .7);
+
     }
 
     #messageForm {
