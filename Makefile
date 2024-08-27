@@ -22,13 +22,13 @@ lint: ## Lint the code
 	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
-	npx prettier --plugin=prettier-plugin-jinja-template --parser=jinja-template --check hushline/templates/
+	npx prettier  --check hushline/templates/
 
 .PHONY: fix
 fix: ## Format the code
 	poetry run ruff format && \
 	poetry run ruff check --fix
-	npx prettier --plugin=prettier-plugin-jinja-template --parser=jinja-template --write hushline/templates/
+	npx prettier --write hushline/templates/
 
 .PHONY: migrate
 migrate: ## Apply migrations
