@@ -967,7 +967,7 @@ header {
   align-items: center;
   padding: 0.75rem 1.25rem;
   box-sizing: border-box;
-  z-index: 9;
+  z-index: 11;
   min-height: 65px;
 }
 
@@ -1735,7 +1735,7 @@ input#captcha_answer {
   position: fixed;
   top: 0;
   width: 100%;
-  z-index: 9;
+  z-index: 11;
   text-align: center;
   font-size: var(--font-size-base);
   font-size: 0.9125rem;
