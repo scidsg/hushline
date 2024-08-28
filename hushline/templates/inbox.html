@@ -6,7 +6,7 @@
     <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
     {% for message in messages %}
       <article
-        class="message{% if 'BEGIN PGP MESSAGE' in message.content %}encrypted{% endif %}"
+        class="message {% if 'BEGIN PGP MESSAGE' in message.content %}encrypted{% endif %}"
         data-encrypted-content="{{ message.content }}"
         aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
       >
