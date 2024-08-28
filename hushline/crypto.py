@@ -43,7 +43,14 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
             r=8,
             p=1,
         )
-        new_encryption_key_bytes = kdf.derive(encryption_key_bytes + scope_bytes)
+
+        # Concatenate the encryption key with the scope
+        items = (encryption_key_bytes, scope_bytes)
+        result = len(items).to_bytes(8, "big")
+        result += b"".join(len(item).to_bytes(8, "big") + item for item in items)
+
+        # Derive the new key
+        new_encryption_key_bytes = kdf.derive(result)
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
     return Fernet(encryption_key)
