@@ -6,6 +6,12 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app
 from pysequoia import Cert, encrypt
 
+# https://cryptography.io/en/latest/hazmat/primitives/key-derivation-functions/#scrypt
+SCRYPT_LENGTH = 32  # The desired length of the derived key in bytes.
+SCRYPT_N = 2**14  # CPU/Memory cost parameter. It must be larger than 1 and be a power of 2.
+SCRYPT_R = 8  # Block size parameter.
+SCRYPT_P = 1  # Parallelization parameter.
+
 
 def generate_salt() -> str:
     """
@@ -38,10 +44,10 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         # Use Scrypt to derive a unique encryption key based on the scope
         kdf = Scrypt(
             salt=salt_bytes,
-            length=32,
-            n=2**14,
-            r=8,
-            p=1,
+            length=SCRYPT_LENGTH,
+            n=SCRYPT_N,
+            r=SCRYPT_R,
+            p=SCRYPT_P,
         )
 
         # Concatenate the encryption key with the scope
