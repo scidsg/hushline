@@ -61,6 +61,10 @@ class User(Model):
     extra_field_value3: Mapped[Optional[str]]
     extra_field_label4: Mapped[Optional[str]]
     extra_field_value4: Mapped[Optional[str]]
+    extra_field_verified1 = db.Column(db.Boolean, default=False)
+    extra_field_verified2 = db.Column(db.Boolean, default=False)
+    extra_field_verified3 = db.Column(db.Boolean, default=False)
+    extra_field_verified4 = db.Column(db.Boolean, default=False)
 
     @property
     def password_hash(self) -> str:

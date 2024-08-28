@@ -224,57 +224,55 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm()
         profile_form = ProfileForm()
 
-        # Check if the bio update form was submitted
-        if (
-            request.method == "POST"
-            and "update_bio" in request.form
-            and profile_form.validate_on_submit()
-        ):
-            user.bio = request.form["bio"]
-            user.extra_field_label1 = profile_form.extra_field_label1.data.strip()
-            user.extra_field_value1 = profile_form.extra_field_value1.data.strip()
-            user.extra_field_label2 = profile_form.extra_field_label2.data.strip()
-            user.extra_field_value2 = profile_form.extra_field_value2.data.strip()
-            user.extra_field_label3 = profile_form.extra_field_label3.data.strip()
-            user.extra_field_value3 = profile_form.extra_field_value3.data.strip()
-            user.extra_field_label4 = profile_form.extra_field_label4.data.strip()
-            user.extra_field_value4 = profile_form.extra_field_value4.data.strip()
-            db.session.commit()
-            flash("👍 Bio updated successfully.")
-            return redirect(url_for("settings.index"))
-
-        if request.method == "POST" and (
-            directory_visibility_form.validate_on_submit()
-            and "update_directory_visibility" in request.form
-        ):
-            user.show_in_directory = directory_visibility_form.show_in_directory.data
-            db.session.commit()
-            flash("👍 Directory visibility updated successfully.")
-            return redirect(url_for("settings.index"))
-
-        # Additional admin-specific data initialization
-        user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
-        all_users = []
-
-        # Check if user is admin and add admin-specific data
-        if user.is_admin:
-            user_count = db.session.scalar(db.func.count(User.id))
-            two_fa_count = db.session.scalar(
-                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
-            )
-            pgp_key_count = db.session.scalar(
-                db.select(
-                    db.func.count(User.id)
-                    .filter(User._pgp_key.isnot(None))
-                    .filter(User._pgp_key != "")
-                )
-            )
-            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
-
         # Handle form submissions
         if request.method == "POST":
+            # Update bio and custom fields
+            if "update_bio" in request.form and profile_form.validate_on_submit():
+                user.bio = request.form["bio"].strip()
+                user.extra_field_label1 = profile_form.extra_field_label1.data.strip()
+                user.extra_field_value1 = profile_form.extra_field_value1.data.strip()
+                user.extra_field_label2 = profile_form.extra_field_label2.data.strip()
+                user.extra_field_value2 = profile_form.extra_field_value2.data.strip()
+                user.extra_field_label3 = profile_form.extra_field_label3.data.strip()
+                user.extra_field_value3 = profile_form.extra_field_value3.data.strip()
+                user.extra_field_label4 = profile_form.extra_field_label4.data.strip()
+                user.extra_field_value4 = profile_form.extra_field_value4.data.strip()
+
+                # Trigger the rel=me verification for each URL field
+                for i in range(1, 5):
+                    url_to_verify = getattr(user, f"extra_field_value{i}", "").strip()
+                    if url_to_verify:
+                        try:
+                            response = requests.get(url_to_verify, timeout=5)
+                            response.raise_for_status()
+                            profile_url = f"https://tips.hushline.app/to/{user.primary_username}"
+                            if re.search(
+                                rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>',
+                                response.text,
+                            ):
+                                setattr(user, f"extra_field_verified{i}", True)
+                            else:
+                                setattr(user, f"extra_field_verified{i}", False)
+                        except requests.exceptions.RequestException as e:
+                            current_app.logger.error(f"Error fetching URL for field {i}: {e}")
+                            setattr(user, f"extra_field_verified{i}", False)
+
+                db.session.commit()
+
+                # Display flash message after successful update
+                flash("👍 Bio and fields updated successfully.")
+                return redirect(url_for("settings.index"))
+
+            # Update directory visibility
+            if (
+                "update_directory_visibility" in request.form
+                and directory_visibility_form.validate_on_submit()
+            ):
+                user.show_in_directory = directory_visibility_form.show_in_directory.data
+                db.session.commit()
+                flash("👍 Directory visibility updated successfully.")
+                return redirect(url_for("settings.index"))
+
             # Handle Display Name Form Submission
             if "update_display_name" in request.form and display_name_form.validate_on_submit():
                 user.update_display_name(display_name_form.display_name.data.strip())
@@ -305,26 +303,26 @@ def create_blueprint() -> Blueprint:
                     )
                 return redirect(url_for(".index"))
 
-            # Check if user is admin and add admin-specific data
-            is_admin = user.is_admin
-            if is_admin:
-                user_count = db.session.scalar(db.func.count(User.id))
-                two_fa_count = db.session.scalar(
-                    db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+        # Additional admin-specific data initialization
+        user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+        all_users = []
+
+        # Check if user is admin and add admin-specific data
+        if user.is_admin:
+            user_count = db.session.scalar(db.func.count(User.id))
+            two_fa_count = db.session.scalar(
+                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+            )
+            pgp_key_count = db.session.scalar(
+                db.select(
+                    db.func.count(User.id)
+                    .filter(User._pgp_key.isnot(None))
+                    .filter(User._pgp_key != "")
                 )
-                pgp_key_count = db.session.scalar(
-                    db.select(
-                        db.func.count(User.id)
-                        .filter(User._pgp_key.isnot(None))
-                        .filter(User._pgp_key != "")
-                    )
-                )
-                two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-                pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            else:
-                user_count = two_fa_count = pgp_key_count = two_fa_percentage = (
-                    pgp_key_percentage
-                ) = None
+            )
+            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
+            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
+            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
@@ -682,5 +680,43 @@ def create_blueprint() -> Blueprint:
 
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
+
+    @bp.route("/verify-rel-me/<int:field_index>", methods=["POST"])
+    @authentication_required
+    def verify_rel_me(field_index: int) -> Response:
+        user_id = session.get("user_id")
+        if not user_id:
+            return redirect(url_for("login"))
+
+        user = db.session.get(User, user_id)
+        if not user:
+            flash("User not found.")
+            return redirect(url_for("login"))
+
+        # Get the URL from the corresponding field
+        url_to_verify = request.form.get(f"extra_field_value{field_index}", "").strip()
+        if not url_to_verify:
+            flash(f"No URL provided for field {field_index}.")
+            return redirect(url_for(".index"))
+
+        try:
+            response = requests.get(url_to_verify, timeout=5)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Error fetching URL: {e}")
+            flash(f"Failed to fetch the URL for field {field_index}.")
+            return redirect(url_for(".index"))
+
+        # Check for rel="me" link pointing to the user's profile URL
+        profile_url = f"https://hushline.app/user/{user.primary_username}"  # Adjust as necessary
+        if re.search(rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>', response.text):
+            flash(f"✅ Field {field_index} URL is verified.")
+            setattr(user, f"extra_field_verified{field_index}", True)
+        else:
+            flash(f"❌ Field {field_index} URL verification failed.")
+            setattr(user, f"extra_field_verified{field_index}", False)
+
+        db.session.commit()
+        return redirect(url_for(".index"))
 
     return bp

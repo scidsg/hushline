@@ -170,8 +170,12 @@
                 placeholder="signaluser.123"
                 value="{{ user.extra_field_value1 or '' }}"
               />
+              {% if user.extra_field_verified1 %}
+                <span class="icon verifiedURL" title="Verified"></span>
+              {% endif %}
             </div>
           </div>
+
           <div class="input-pair">
             <div>
               <label for="extra_field_label2">Label</label>
@@ -190,8 +194,12 @@
                 id="extra_field_value2"
                 value="{{ user.extra_field_value2 or '' }}"
               />
+              {% if user.extra_field_verified2 %}
+                <span class="icon verifiedURL" title="Verified"></span>
+              {% endif %}
             </div>
           </div>
+
           <div class="input-pair">
             <div>
               <label for="extra_field_label3">Label</label>
@@ -210,8 +218,12 @@
                 id="extra_field_value3"
                 value="{{ user.extra_field_value3 or '' }}"
               />
+              {% if user.extra_field_verified3 %}
+                <span class="icon verifiedURL" title="Verified"></span>
+              {% endif %}
             </div>
           </div>
+
           <div class="input-pair">
             <div>
               <label for="extra_field_label4">Label</label>
@@ -230,6 +242,9 @@
                 id="extra_field_value4"
                 value="{{ user.extra_field_value4 or '' }}"
               />
+              {% if user.extra_field_verified4 %}
+                <span class="icon verifiedURL" title="Verified"></span>
+              {% endif %}
             </div>
           </div>
         </div>

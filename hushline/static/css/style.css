@@ -339,6 +339,10 @@
   #messageForm {
     border-top: var(--border);
   }
+
+  .icon.verifiedURL {
+    background-image: url("../img/app/icon-verified-lm.png");
+  }
 }
 
 /* Dark Mode */
@@ -636,6 +640,10 @@
 
   #messageForm {
     border-top: var(--border-dark);
+  }
+
+  .icon.verifiedURL {
+    background-image: url("../img/app/icon-verified-dm.png");
   }
 }
 
@@ -1763,6 +1771,21 @@ input#captcha_answer {
   margin-bottom: 1rem;
 }
 
+.icon.verifiedURL {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  background-size: contain;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.extra-field-value .icon.verifiedURL + a,
+.extra-field-value .icon.verifiedURL + span {
+  padding-left: 1.5rem;
+}
+
 @media only screen and (max-width: 768px) {
   .container {
     min-width: initial;
@@ -1934,10 +1957,23 @@ button[name="update_directory_visibility"] {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  position: relative;
 }
 
 .input-pair input {
   margin-bottom: 0;
+}
+
+.input-pair div:last-child {
+  position: relative;
+}
+
+.input-pair input + .icon.verifiedURL {
+  position: absolute;
+  right: 0%;
+  top: 55%;
+  transform: translateY(0%);
+  left: calc(100% - 20px - 8px);
 }
 
 .form-group-pairs + button {
@@ -1994,6 +2030,7 @@ p.bio + .extra-fields {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
 }
 
 .pgp-disabled-overlay {
