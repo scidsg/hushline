@@ -194,17 +194,6 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
-# Predefined safe URLs
-SAFE_URLS = [
-    "https://tips.hushline.app/",
-]
-
-
-def is_safe_url(url: str) -> bool:
-    """Check if the URL is part of the predefined safe URLs."""
-    return any(url.startswith(safe_url) for safe_url in SAFE_URLS)
-
-
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -707,21 +696,16 @@ def create_blueprint() -> Blueprint:
         url_to_verify = request.form.get(f"extra_field_value{field_index}", "").strip()
         if not url_to_verify:
             flash(f"No URL provided for field {field_index}.")
+            setattr(user, f"extra_field_verified{field_index}", False)
+            db.session.commit()
             return redirect(url_for(".index"))
 
         # Check if the URL is part of the predefined safe URLs
         if not is_safe_url(url_to_verify):
             flash("The URL provided is not safe or is not within the allowed domains.")
-            return redirect(url_for(".index"))
-
-        # Manual or additional checks can be done here without making a network request
-        profile_url = f"https://hushline.app/user/{user.primary_username}"
-        if url_to_verify == profile_url:
-            flash(f"✅ Field {field_index} URL is verified.")
-            setattr(user, f"extra_field_verified{field_index}", True)
-        else:
-            flash(f"❌ Field {field_index} URL verification failed.")
             setattr(user, f"extra_field_verified{field_index}", False)
+            db.session.commit()
+            return redirect(url_for(".index"))
 
         db.session.commit()
         return redirect(url_for(".index"))
