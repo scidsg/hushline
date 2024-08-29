@@ -198,13 +198,20 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 def is_safe_url(url: str) -> bool:
     """Validates if the provided URL is safe and within the expected domains."""
     parsed_url = urlparse(url)
+
+    # Only allow http and https schemes
     if parsed_url.scheme not in ["http", "https"]:
         return False
 
-    # Allow only the specific domain without wildcards for better security
+    # Allow only specific domains and restrict to specific paths if necessary
     allowed_domains = ["hushline.app"]
     if parsed_url.netloc not in allowed_domains:
         return False
+
+    # Ensure the path is within a specific structure, e.g., starts with /user/
+    if not re.match(r"^/user/[a-zA-Z0-9_-]+/?$", parsed_url.path):
+        return False
+
     return True
 
 
