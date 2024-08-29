@@ -198,11 +198,11 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 def is_safe_url(url: str) -> bool:
     """Validates if the provided URL is safe and within the expected domains."""
     parsed_url = urlparse(url)
-    # Only allow http and https schemes
     if parsed_url.scheme not in ["http", "https"]:
         return False
-    # Allow only specific domains
-    allowed_domains = ["*.hushline.app"]
+
+    # Allow only the specific domain without wildcards for better security
+    allowed_domains = ["hushline.app"]
     if parsed_url.netloc not in allowed_domains:
         return False
     return True
@@ -707,7 +707,6 @@ def create_blueprint() -> Blueprint:
             flash("User not found.")
             return redirect(url_for("login"))
 
-        # Get the URL from the corresponding field
         url_to_verify = request.form.get(f"extra_field_value{field_index}", "").strip()
         if not url_to_verify:
             flash(f"No URL provided for field {field_index}.")
@@ -721,12 +720,22 @@ def create_blueprint() -> Blueprint:
         try:
             response = requests.get(url_to_verify, timeout=5)
             response.raise_for_status()
+
+            # Ensure content type is HTML
+            if "text/html" not in response.headers.get("Content-Type", ""):
+                flash("The URL provided does not return an HTML page.")
+                return redirect(url_for(".index"))
+
+            # Prevent SSRF via redirect
+            if response.url != url_to_verify:
+                flash("The URL provided redirects to a different domain.")
+                return redirect(url_for(".index"))
+
         except requests.exceptions.RequestException as e:
             current_app.logger.error(f"Error fetching URL: {e}")
             flash(f"Failed to fetch the URL for field {field_index}.")
             return redirect(url_for(".index"))
 
-        # Check for rel="me" link pointing to the user's profile URL
         profile_url = f"https://hushline.app/user/{user.primary_username}"  # Adjust as necessary
         if re.search(rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>', response.text):
             flash(f"✅ Field {field_index} URL is verified.")
