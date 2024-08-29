@@ -3,6 +3,7 @@ import io
 import re
 from datetime import UTC, datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 import pyotp
 import qrcode
@@ -192,6 +193,19 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         set_field_attribute(input_field, "disabled", "disabled")
     else:
         unset_field_attribute(input_field, "disabled")
+
+
+def is_safe_url(url):
+    """Validates if the provided URL is safe and within the expected domains."""
+    parsed_url = urlparse(url)
+    # Only allow http and https schemes
+    if parsed_url.scheme not in ["http", "https"]:
+        return False
+    # Allow only specific domains
+    allowed_domains = ["*.hushline.app"]
+    if parsed_url.netloc not in allowed_domains:
+        return False
+    return True
 
 
 def create_blueprint() -> Blueprint:
@@ -697,6 +711,11 @@ def create_blueprint() -> Blueprint:
         url_to_verify = request.form.get(f"extra_field_value{field_index}", "").strip()
         if not url_to_verify:
             flash(f"No URL provided for field {field_index}.")
+            return redirect(url_for(".index"))
+
+        # Check if the URL is safe
+        if not is_safe_url(url_to_verify):
+            flash("The URL provided is not safe or is not within the allowed domains.")
             return redirect(url_for(".index"))
 
         try:

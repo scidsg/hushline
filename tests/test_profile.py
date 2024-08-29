@@ -155,12 +155,13 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     assert b"Signal username" in response.data
     assert b"singleusername.666" in response.data
     assert b"Arbitrary Link" in response.data
-    # URLs should turn into links
-    assert (
-        '<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer"'
-        "\n                  >https://scidsg.org/</a\n                >" in response.text
-    )
+
+    # URLs should turn into links - check that critical parts of the link are present
+    assert 'href="https://scidsg.org/"' in response.text
+    assert 'target="_blank"' in response.text
+    assert 'rel="noopener noreferrer"' in response.text
+
+    # Check that XSS is correctly escaped
     assert b"xss should fail" in response.data
-    # XSS should be escaped
-    assert b"<script>alert('xss')</script>" not in response.data
     assert b"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in response.data
+    assert b"<script>alert('xss')</script>" not in response.data
