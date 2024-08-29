@@ -1971,8 +1971,7 @@ button[name="update_directory_visibility"] {
 .input-pair input + .icon.verifiedURL {
   position: absolute;
   right: 0%;
-  top: 55%;
-  transform: translateY(0%);
+  top: 42px;
   left: calc(100% - 20px - 8px);
 }
 
