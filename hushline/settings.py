@@ -203,12 +203,12 @@ def is_safe_url(url: str) -> bool:
     if parsed_url.scheme not in ["http", "https"]:
         return False
 
-    # Allow only specific domains and restrict to specific paths if necessary
+    # Allow only specific domains
     allowed_domains = ["hushline.app"]
     if parsed_url.netloc not in allowed_domains:
         return False
 
-    # Ensure the path is within a specific structure, e.g., starts with /user/
+    # Optionally, restrict the URL path if necessary
     if not re.match(r"^/user/[a-zA-Z0-9_-]+/?$", parsed_url.path):
         return False
 
@@ -725,15 +725,24 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".index"))
 
         try:
-            response = requests.get(url_to_verify, timeout=5)
+            # Perform a HEAD request to check the URL without fetching content
+            head_response = requests.head(url_to_verify, timeout=5, allow_redirects=True)
+            head_response.raise_for_status()
+
+            # Ensure the final URL after redirects is still within allowed domains
+            if not is_safe_url(head_response.url):
+                flash("The URL provided redirects to an unsafe domain.")
+                return redirect(url_for(".index"))
+
+            # Perform the actual GET request
+            response = requests.get(head_response.url, timeout=5)
             response.raise_for_status()
 
-            # Ensure content type is HTML
+            # Ensure the response is HTML and check for unexpected redirects
             if "text/html" not in response.headers.get("Content-Type", ""):
                 flash("The URL provided does not return an HTML page.")
                 return redirect(url_for(".index"))
 
-            # Prevent SSRF via redirect
             if response.url != url_to_verify:
                 flash("The URL provided redirects to a different domain.")
                 return redirect(url_for(".index"))
@@ -743,7 +752,7 @@ def create_blueprint() -> Blueprint:
             flash(f"Failed to fetch the URL for field {field_index}.")
             return redirect(url_for(".index"))
 
-        profile_url = f"https://hushline.app/user/{user.primary_username}"  # Adjust as necessary
+        profile_url = f"https://tips.hushline.app/to/{user.primary_username}"
         if re.search(rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>', response.text):
             flash(f"✅ Field {field_index} URL is verified.")
             setattr(user, f"extra_field_verified{field_index}", True)
