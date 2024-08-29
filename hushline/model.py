@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional, Set
 from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
+from sqlalchemy import Index
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -33,7 +34,7 @@ class User(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     primary_username: Mapped[str] = mapped_column(db.String(80), unique=True)
     display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
-    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512))
+    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512), nullable=True)
     _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.String(255))
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
@@ -41,9 +42,9 @@ class User(Model):
     _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.String(255))
     _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.String(255))
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
-    is_verified: Mapped[bool] = mapped_column(default=False)
-    is_admin: Mapped[bool] = mapped_column(default=False)
-    show_in_directory: Mapped[bool] = mapped_column(default=False)
+    is_verified: Mapped[bool] = mapped_column(default=False, nullable=True)
+    is_admin: Mapped[bool] = mapped_column(default=False, nullable=True)
+    show_in_directory: Mapped[bool] = mapped_column(default=False, nullable=True)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
     # Corrected the relationship and backref here
     secondary_usernames: Mapped[Set["SecondaryUsername"]] = relationship(
@@ -177,6 +178,15 @@ class AuthenticationLog(Model):
     otp_code: Mapped[Optional[str]] = mapped_column(db.String(6))
     timecode: Mapped[Optional[int]]
 
+    __table_args__ = (
+        Index(
+            "idx_authentication_logs_user_id_timestamp_successful",
+            "user_id",
+            "timestamp",
+            "successful",
+        ),
+    )
+
     # Open question: should we store the IP address and user agent?
     # It's useful for auditing, but it's identifable
     # ip_address = db.Column(db.String(45), nullable=False)
@@ -209,7 +219,7 @@ class SecondaryUsername(Model):
 class Message(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[Optional[str]] = mapped_column(
-        "content", db.Text
+        "content", db.Text, nullable=False
     )  # Encrypted content stored here
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
