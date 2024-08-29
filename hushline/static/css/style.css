@@ -867,7 +867,7 @@ img.empty {
   max-width: 78vw;
   text-align: center;
   opacity: 0;
-  z-index: 10;
+  z-index: 12;
   animation:
     fadeInDown 0.5s ease forwards,
     fadeOutUp 0.5s ease 5s forwards;
