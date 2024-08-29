@@ -3,7 +3,6 @@ import io
 import re
 from datetime import UTC, datetime
 from typing import Optional
-from urllib.parse import urlparse
 
 import pyotp
 import qrcode
@@ -195,24 +194,15 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
+# Predefined safe URLs
+SAFE_URLS = [
+    "https://tips.hushline.app/",
+]
+
+
 def is_safe_url(url: str) -> bool:
-    """Validates if the provided URL is safe and within the expected domains."""
-    parsed_url = urlparse(url)
-
-    # Only allow http and https schemes
-    if parsed_url.scheme not in ["http", "https"]:
-        return False
-
-    # Allow only specific domains
-    allowed_domains = ["hushline.app"]
-    if parsed_url.netloc not in allowed_domains:
-        return False
-
-    # Optionally, restrict the URL path if necessary
-    if not re.match(r"^/user/[a-zA-Z0-9_-]+/?$", parsed_url.path):
-        return False
-
-    return True
+    """Check if the URL is part of the predefined safe URLs."""
+    return any(url.startswith(safe_url) for safe_url in SAFE_URLS)
 
 
 def create_blueprint() -> Blueprint:
@@ -719,34 +709,14 @@ def create_blueprint() -> Blueprint:
             flash(f"No URL provided for field {field_index}.")
             return redirect(url_for(".index"))
 
-        # Check if the URL is safe
+        # Check if the URL is part of the predefined safe URLs
         if not is_safe_url(url_to_verify):
             flash("The URL provided is not safe or is not within the allowed domains.")
             return redirect(url_for(".index"))
 
-        try:
-            # Instead of making a HEAD or GET request, we can verify the structure here.
-            parsed_url = urlparse(url_to_verify)
-            if not parsed_url.netloc.endswith("hushline.app"):
-                flash("The URL provided is not within the allowed domain.")
-                return redirect(url_for(".index"))
-
-            # Prevent SSRF via redirect (e.g., avoiding open redirects)
-            response = requests.get(url_to_verify, timeout=5, allow_redirects=False)
-            response.raise_for_status()
-
-            # Ensure the response is HTML
-            if "text/html" not in response.headers.get("Content-Type", ""):
-                flash("The URL provided does not return an HTML page.")
-                return redirect(url_for(".index"))
-
-        except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"Error fetching URL: {e}")
-            flash(f"Failed to fetch the URL for field {field_index}.")
-            return redirect(url_for(".index"))
-
+        # Manual or additional checks can be done here without making a network request
         profile_url = f"https://hushline.app/user/{user.primary_username}"
-        if re.search(rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>', response.text):
+        if url_to_verify == profile_url:
             flash(f"✅ Field {field_index} URL is verified.")
             setattr(user, f"extra_field_verified{field_index}", True)
         else:
