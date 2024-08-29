@@ -725,26 +725,19 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".index"))
 
         try:
-            # Perform a HEAD request to check the URL without fetching content
-            head_response = requests.head(url_to_verify, timeout=5, allow_redirects=True)
-            head_response.raise_for_status()
-
-            # Ensure the final URL after redirects is still within allowed domains
-            if not is_safe_url(head_response.url):
-                flash("The URL provided redirects to an unsafe domain.")
+            # Instead of making a HEAD or GET request, we can verify the structure here.
+            parsed_url = urlparse(url_to_verify)
+            if not parsed_url.netloc.endswith("hushline.app"):
+                flash("The URL provided is not within the allowed domain.")
                 return redirect(url_for(".index"))
 
-            # Perform the actual GET request
-            response = requests.get(head_response.url, timeout=5)
+            # Prevent SSRF via redirect (e.g., avoiding open redirects)
+            response = requests.get(url_to_verify, timeout=5, allow_redirects=False)
             response.raise_for_status()
 
-            # Ensure the response is HTML and check for unexpected redirects
+            # Ensure the response is HTML
             if "text/html" not in response.headers.get("Content-Type", ""):
                 flash("The URL provided does not return an HTML page.")
-                return redirect(url_for(".index"))
-
-            if response.url != url_to_verify:
-                flash("The URL provided redirects to a different domain.")
                 return redirect(url_for(".index"))
 
         except requests.exceptions.RequestException as e:
@@ -752,7 +745,7 @@ def create_blueprint() -> Blueprint:
             flash(f"Failed to fetch the URL for field {field_index}.")
             return redirect(url_for(".index"))
 
-        profile_url = f"https://tips.hushline.app/to/{user.primary_username}"
+        profile_url = f"https://hushline.app/user/{user.primary_username}"
         if re.search(rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>', response.text):
             flash(f"✅ Field {field_index} URL is verified.")
             setattr(user, f"extra_field_verified{field_index}", True)
