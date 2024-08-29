@@ -1955,13 +1955,24 @@ button[name="update_directory_visibility"] {
 
 .input-pair {
   display: flex;
-  justify-content: space-between;
   gap: 1rem;
+  position: relative;
+  width: 100%;
+}
+
+.input-pair > div {
+  flex: 1;
   position: relative;
 }
 
 .input-pair input {
+  flex: 1; /* Make all inputs take equal space */
   margin-bottom: 0;
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+.input-pair input:has(+ .verifiedURL) {
+  padding-right: 2.125rem; /* Add padding only when the input has a verifiedURL next to it */
 }
 
 .input-pair div:last-child {
