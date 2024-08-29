@@ -63,24 +63,24 @@ In the Setup dashboard, click on the "Generate key" button. Add a name for your 
 
 Once your key is created, click on it from the dashboard, then select "Export" in the "Public" tab and "Copy to clipboard."
 
-![step2 2](https://github.com/user-attachments/assets/f151eeb2-c567-4733-b90a-2fded08f9a55)
-
-#### Step 3: Add your key to Hush Line
-
 Select the `Email & Encryption` tab in your Hush Line settings, and paste your key into the Public PGP Key textarea.
 
-![step2 3](https://github.com/user-attachments/assets/6f4b6c60-a331-4405-a094-46596bea330b)
+![step2](https://github.com/user-attachments/assets/f151eeb2-c567-4733-b90a-2fded08f9a55)
 
-#### Step 4: Authorize the Hush Line domain
+#### Step 3: Authorize the Hush Line domain
 
 With Hush Line open, click the Mailvelope icon and select "Authorize this domain." Click "Ok" when the dialog opens. You'll be able to see `tips.hushline.app` in the authorized domains list.
 
-![step2 4](https://github.com/user-attachments/assets/dd5dadbb-5afe-4ac3-a4f2-126f289ce6dc)
+![step3](https://github.com/user-attachments/assets/dd5dadbb-5afe-4ac3-a4f2-126f289ce6dc)
 
-#### Step 5: Send and read a message!
+#### Step 4: Send and read a message!
 
-Let's send a test message! In the header, click "Profile." Enter some text and click "Send Message." If you haven't disabled JavaScript, you'll see it encrypted in the browser before it submits. Go to "Inbox" to see the message in the app. You may have to enter the password you set when creating your key in Mailvelope.
+Let's send a test message! In the header, click "Profile." Enter some text and click "Send Message." If you haven't disabled JavaScript, you'll see it encrypted in the browser before it submits.
 
-![step1 3](https://github.com/user-attachments/assets/1cd81ba0-4c54-49e4-8352-2008436984fd)
+![step4](https://github.com/user-attachments/assets/6f4b6c60-a331-4405-a094-46596bea330b)
+
+Go to "Inbox" to see the message in the app. You may have to enter the password you set when creating your key in Mailvelope.
+
+![step4_2](https://github.com/user-attachments/assets/1cd81ba0-4c54-49e4-8352-2008436984fd)
 
 🎉 Congratulations, you're ready to start receiving encrypted and anonymous Hush Line messages!
