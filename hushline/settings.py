@@ -700,13 +700,6 @@ def create_blueprint() -> Blueprint:
             db.session.commit()
             return redirect(url_for(".index"))
 
-        # Check if the URL is part of the predefined safe URLs
-        if not is_safe_url(url_to_verify):
-            flash("The URL provided is not safe or is not within the allowed domains.")
-            setattr(user, f"extra_field_verified{field_index}", False)
-            db.session.commit()
-            return redirect(url_for(".index"))
-
         db.session.commit()
         return redirect(url_for(".index"))
 
