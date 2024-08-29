@@ -195,7 +195,7 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
-def is_safe_url(url):
+def is_safe_url(url: str) -> bool:
     """Validates if the provided URL is safe and within the expected domains."""
     parsed_url = urlparse(url)
     # Only allow http and https schemes
