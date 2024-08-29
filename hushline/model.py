@@ -53,6 +53,8 @@ class User(Model):
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
     smtp_sender: Mapped[Optional[str]]
+
+    # Extra fields
     extra_field_label1: Mapped[Optional[str]]
     extra_field_value1: Mapped[Optional[str]]
     extra_field_label2: Mapped[Optional[str]]
@@ -61,6 +63,10 @@ class User(Model):
     extra_field_value3: Mapped[Optional[str]]
     extra_field_label4: Mapped[Optional[str]]
     extra_field_value4: Mapped[Optional[str]]
+
+    # Tier
+    tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
+    tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
 
     @property
     def password_hash(self) -> str:
@@ -246,3 +252,19 @@ class InviteCode(Model):
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"
+
+
+# Paid tiers
+class Tier(Model):
+    __tablename__ = "tiers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(255), unique=True)
+    monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
+    annual_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
+
+    def __init__(self, name: str, monthly_amount: int, annual_amount: int) -> None:
+        super().__init__()
+        self.name = name
+        self.monthly_amount = monthly_amount
+        self.annual_amount = annual_amount
