@@ -279,19 +279,22 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                async def perform_verification() -> None:
+                async def perform_verification():
                     async with aiohttp.ClientSession() as session:
                         tasks = []
                         for i in range(1, 5):
-                            label = getattr(profile_form, f"extra_field_label{i}", None)
-                            if isinstance(label, Field):
-                                setattr(user, f"extra_field_label{i}", label.data)
-                            value = getattr(profile_form, f"extra_field_value{i}", None)
-                            if isinstance(value, Field):
-                                setattr(user, f"extra_field_value{i}", value.data)
+                            label = getattr(profile_form, f"extra_field_label{i}", "").data
+                            setattr(user, f"extra_field_label{i}", label)
+                            value = getattr(profile_form, f"extra_field_value{i}", "").data
+                            setattr(user, f"extra_field_value{i}", value)
+
+                            # If the value is empty, reset the verification status
+                            if not value.strip():
+                                setattr(user, f"extra_field_verified{i}", False)
+                                continue
 
                             # Verify the URL only if it starts with "https://"
-                            url_to_verify = value.data.strip() if isinstance(value, Field) else ""
+                            url_to_verify = value.strip()
                             if url_to_verify.startswith("https://"):
                                 profile_url = (
                                     f"https://tips.hushline.app/to/{user.primary_username}"
