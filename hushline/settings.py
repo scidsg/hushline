@@ -251,18 +251,16 @@ def create_blueprint() -> Blueprint:
             # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
-                user.extra_field_label1 = profile_form.extra_field_label1.data
-                user.extra_field_value1 = profile_form.extra_field_value1.data
-                user.extra_field_label2 = profile_form.extra_field_label2.data
-                user.extra_field_value2 = profile_form.extra_field_value2.data
-                user.extra_field_label3 = profile_form.extra_field_label3.data
-                user.extra_field_value3 = profile_form.extra_field_value3.data
-                user.extra_field_label4 = profile_form.extra_field_label4.data
-                user.extra_field_value4 = profile_form.extra_field_value4.data
 
-                # Trigger the rel=me verification for each URL field
+                # Loop through extra fields and update dynamically
                 for i in range(1, 5):
-                    url_to_verify = getattr(user, f"extra_field_value{i}", "")
+                    label = getattr(profile_form, f"extra_field_label{i}", "").data
+                    setattr(user, f"extra_field_label{i}", label)
+                    value = getattr(profile_form, f"extra_field_value{i}", "").data
+                    setattr(user, f"extra_field_value{i}", value)
+
+                    # Trigger the rel=me verification for each URL field
+                    url_to_verify = value.strip()  # Assuming 'value' contains the URL
                     if url_to_verify:
                         try:
                             response = requests.get(url_to_verify, timeout=5)
