@@ -279,13 +279,21 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                async def perform_verification():
+                async def perform_verification() -> None:
                     async with aiohttp.ClientSession() as session:
                         tasks = []
                         for i in range(1, 5):
-                            label = getattr(profile_form, f"extra_field_label{i}", "").data
+                            label_field = getattr(profile_form, f"extra_field_label{i}", "")
+                            value_field = getattr(profile_form, f"extra_field_value{i}", "")
+
+                            label = (
+                                label_field.data if hasattr(label_field, "data") else label_field
+                            )
                             setattr(user, f"extra_field_label{i}", label)
-                            value = getattr(profile_form, f"extra_field_value{i}", "").data
+
+                            value = (
+                                value_field.data if hasattr(value_field, "data") else value_field
+                            )
                             setattr(user, f"extra_field_value{i}", value)
 
                             # If the value is empty, reset the verification status
