@@ -17,7 +17,7 @@ def generate_salt() -> str:
     """
     Generate a random salt for use in encryption key derivation.
     """
-    return urlsafe_b64encode(os.urandom(16)).decode()
+    return urlsafe_b64encode(os.urandom(32)).decode()
 
 
 def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
