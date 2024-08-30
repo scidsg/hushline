@@ -51,11 +51,5 @@ def downgrade():
     with op.batch_alter_table("message", schema=None) as batch_op:
         batch_op.alter_column("content", existing_type=sa.TEXT(), nullable=False)
 
-    with op.batch_alter_table("authentication_logs", schema=None) as batch_op:
-        batch_op.create_index(
-            "idx_authentication_logs_user_id_timestamp_successful",
-            ["user_id", "timestamp", "successful"],
-            unique=False,
-        )
 
     # ### end Alembic commands ###
