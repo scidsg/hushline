@@ -3,7 +3,7 @@ import base64
 import io
 import re
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Optional
 
 import aiohttp
 import pyotp
@@ -143,7 +143,7 @@ class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 
 
-def strip_whitespace(value: Optional[Any]) -> Optional[str]:
+def strip_whitespace(value):
     if value is not None and hasattr(value, "strip"):
         return value.strip()
     return value
@@ -206,11 +206,11 @@ def unset_field_attribute(input_field: Field, attribute: str) -> None:
 
 def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
     """
-    Disable the given input.
+    disable the given input
 
     Args:
-        inputField (Field): The WTForms input to disable.
-        disabled (bool): If true, set the disabled attribute of the input.
+        inputField(Input): the WTForms input to disable
+        disabled(bool): if true set the disabled attribute of the input
     """
     if disabled:
         set_field_attribute(input_field, "disabled", "disabled")
@@ -218,11 +218,10 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
-async def verify_url(
-    session: aiohttp.ClientSession, user: User, i: int, url_to_verify: str, profile_url: str
-) -> None:
+# Define the async function for URL verification
+async def verify_url(session, user, i, url_to_verify, profile_url):
     try:
-        async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
+        async with session.get(url_to_verify, timeout=5) as response:
             response.raise_for_status()
             if re.search(
                 rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>',
@@ -272,20 +271,17 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                async def perform_verification() -> None:
+                async def perform_verification():
                     async with aiohttp.ClientSession() as session:
                         tasks = []
                         for i in range(1, 5):
-                            label = getattr(profile_form, f"extra_field_label{i}", "")
-                            if isinstance(label, Field):
-                                setattr(user, f"extra_field_label{i}", label.data)
-
-                            value = getattr(profile_form, f"extra_field_value{i}", "")
-                            if isinstance(value, Field):
-                                setattr(user, f"extra_field_value{i}", value.data)
+                            label = getattr(profile_form, f"extra_field_label{i}", "").data
+                            setattr(user, f"extra_field_label{i}", label)
+                            value = getattr(profile_form, f"extra_field_value{i}", "").data
+                            setattr(user, f"extra_field_value{i}", value)
 
                             # Verify the URL only if it starts with "https://"
-                            url_to_verify = value.strip() if isinstance(value, str) else ""
+                            url_to_verify = value.strip()
                             if url_to_verify.startswith("https://"):
                                 profile_url = (
                                     f"https://tips.hushline.app/to/{user.primary_username}"
