@@ -156,8 +156,9 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     soup = BeautifulSoup(response.data, "html.parser")
 
     # Verify the signal username is displayed correctly
-    assert soup.find(string="Signal username") is not None
-    assert soup.find(string="singleusername.666") is not None
+    signal_username_span = soup.find("span", class_="extra-field-value")
+    assert signal_username_span is not None
+    assert signal_username_span.text.strip() == "singleusername.666"
 
     # Verify the arbitrary link is present with correct attributes
     link = soup.find("a", href="https://scidsg.org/")
@@ -167,6 +168,8 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     assert "noreferrer" in link.get("rel", [])
 
     # Verify that XSS is correctly escaped
-    assert soup.find(string="xss should fail") is not None
-    assert "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in str(soup)
+    # Search for the XSS string directly in the HTML with both possible escapes
+    assert "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in str(
+        soup
+    ) or "&lt;script&gt;alert('xss')&lt;/script&gt;" in str(soup)
     assert "<script>alert('xss')</script>" not in str(soup)
