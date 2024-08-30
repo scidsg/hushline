@@ -141,31 +141,53 @@ class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 
 
+def strip_whitespace(value):
+    if value is not None and hasattr(value, "strip"):
+        return value.strip()
+    return value
+
+
 class ProfileForm(FlaskForm):
-    bio = TextAreaField("Bio", validators=[Length(max=250)])
+    bio = TextAreaField("Bio", filters=[strip_whitespace], validators=[Length(max=250)])
     extra_field_label1 = StringField(
-        "Extra Field Label 1", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 1",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value1 = StringField(
-        "Extra Field Value 1", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 1",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label2 = StringField(
-        "Extra Field Label 2", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 2",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value2 = StringField(
-        "Extra Field Value 2", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 2",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label3 = StringField(
-        "Extra Field Label 3", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 3",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value3 = StringField(
-        "Extra Field Value 3", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 3",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label4 = StringField(
-        "Extra Field Label 4", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 4",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value4 = StringField(
-        "Extra Field Value 4", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 4",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
 
 
@@ -228,19 +250,19 @@ def create_blueprint() -> Blueprint:
         if request.method == "POST":
             # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
-                user.bio = request.form["bio"].strip()
-                user.extra_field_label1 = profile_form.extra_field_label1.data.strip()
-                user.extra_field_value1 = profile_form.extra_field_value1.data.strip()
-                user.extra_field_label2 = profile_form.extra_field_label2.data.strip()
-                user.extra_field_value2 = profile_form.extra_field_value2.data.strip()
-                user.extra_field_label3 = profile_form.extra_field_label3.data.strip()
-                user.extra_field_value3 = profile_form.extra_field_value3.data.strip()
-                user.extra_field_label4 = profile_form.extra_field_label4.data.strip()
-                user.extra_field_value4 = profile_form.extra_field_value4.data.strip()
+                user.bio = profile_form.bio.data
+                user.extra_field_label1 = profile_form.extra_field_label1.data
+                user.extra_field_value1 = profile_form.extra_field_value1.data
+                user.extra_field_label2 = profile_form.extra_field_label2.data
+                user.extra_field_value2 = profile_form.extra_field_value2.data
+                user.extra_field_label3 = profile_form.extra_field_label3.data
+                user.extra_field_value3 = profile_form.extra_field_value3.data
+                user.extra_field_label4 = profile_form.extra_field_label4.data
+                user.extra_field_value4 = profile_form.extra_field_value4.data
 
                 # Trigger the rel=me verification for each URL field
                 for i in range(1, 5):
-                    url_to_verify = getattr(user, f"extra_field_value{i}", "").strip()
+                    url_to_verify = getattr(user, f"extra_field_value{i}", "")
                     if url_to_verify:
                         try:
                             response = requests.get(url_to_verify, timeout=5)
@@ -258,8 +280,6 @@ def create_blueprint() -> Blueprint:
                             setattr(user, f"extra_field_verified{i}", False)
 
                 db.session.commit()
-
-                # Display flash message after successful update
                 flash("👍 Bio and fields updated successfully.")
                 return redirect(url_for("settings.index"))
 
