@@ -715,26 +715,4 @@ def create_blueprint() -> Blueprint:
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
 
-    @bp.route("/verify-rel-me/<int:field_index>", methods=["POST"])
-    @authentication_required
-    def verify_rel_me(field_index: int) -> Response:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
-        if not user:
-            flash("User not found.")
-            return redirect(url_for("login"))
-
-        url_to_verify = request.form.get(f"extra_field_value{field_index}", "").strip()
-        if not url_to_verify:
-            flash(f"No URL provided for field {field_index}.")
-            setattr(user, f"extra_field_verified{field_index}", False)
-            db.session.commit()
-            return redirect(url_for(".index"))
-
-        db.session.commit()
-        return redirect(url_for(".index"))
-
     return bp
