@@ -9,6 +9,7 @@ import aiohttp
 import pyotp
 import qrcode
 import requests
+from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
     current_app,
@@ -225,13 +226,18 @@ async def verify_url(
     try:
         async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
             response.raise_for_status()
-            if re.search(
-                rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>',
-                await response.text(),
-            ):
-                setattr(user, f"extra_field_verified{i}", True)
-            else:
-                setattr(user, f"extra_field_verified{i}", False)
+            html_content = await response.text()
+
+            soup = BeautifulSoup(html_content, "html.parser")
+            verified = False
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                rel = link.get("rel", [])
+                if href == profile_url and "me" in rel:
+                    verified = True
+                    break
+
+            setattr(user, f"extra_field_verified{i}", verified)
     except aiohttp.ClientError as e:
         current_app.logger.error(f"Error fetching URL for field {i}: {e}")
         setattr(user, f"extra_field_verified{i}", False)
