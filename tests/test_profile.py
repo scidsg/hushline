@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from bs4 import BeautifulSoup
 from flask import Flask
 from flask.testing import FlaskClient
 
@@ -151,17 +152,21 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     response = client.get(f"/to/{user.primary_username}")
     assert response.status_code == 200
 
-    # The message form should not be displayed, and the PGP warning should be shown
-    assert b"Signal username" in response.data
-    assert b"singleusername.666" in response.data
-    assert b"Arbitrary Link" in response.data
+    # Check the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.data, "html.parser")
 
-    # URLs should turn into links - check that critical parts of the link are present
-    assert 'href="https://scidsg.org/"' in response.text
-    assert 'target="_blank"' in response.text
-    assert 'rel="noopener noreferrer"' in response.text
+    # Verify the signal username is displayed correctly
+    assert soup.find(string="Signal username") is not None
+    assert soup.find(string="singleusername.666") is not None
 
-    # Check that XSS is correctly escaped
-    assert b"xss should fail" in response.data
-    assert b"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in response.data
-    assert b"<script>alert('xss')</script>" not in response.data
+    # Verify the arbitrary link is present with correct attributes
+    link = soup.find("a", href="https://scidsg.org/")
+    assert link is not None
+    assert link.get("target") == "_blank"
+    assert "noopener" in link.get("rel", [])
+    assert "noreferrer" in link.get("rel", [])
+
+    # Verify that XSS is correctly escaped
+    assert soup.find(string="xss should fail") is not None
+    assert "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in str(soup)
+    assert "<script>alert('xss')</script>" not in str(soup)
