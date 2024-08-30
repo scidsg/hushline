@@ -280,8 +280,9 @@ def create_blueprint() -> Blueprint:
                             value = getattr(profile_form, f"extra_field_value{i}", "").data
                             setattr(user, f"extra_field_value{i}", value)
 
+                            # Verify the URL only if it starts with "https://"
                             url_to_verify = value.strip()
-                            if url_to_verify:
+                            if url_to_verify.startswith("https://"):
                                 profile_url = (
                                     f"https://tips.hushline.app/to/{user.primary_username}"
                                 )
