@@ -1,9 +1,11 @@
+import asyncio
 import base64
 import io
 import re
 from datetime import UTC, datetime
 from typing import Optional
 
+import aiohttp
 import pyotp
 import qrcode
 import requests
@@ -216,6 +218,23 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
+# Define the async function for URL verification
+async def verify_url(session, user, i, url_to_verify, profile_url):
+    try:
+        async with session.get(url_to_verify, timeout=5) as response:
+            response.raise_for_status()
+            if re.search(
+                rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>',
+                await response.text(),
+            ):
+                setattr(user, f"extra_field_verified{i}", True)
+            else:
+                setattr(user, f"extra_field_verified{i}", False)
+    except aiohttp.ClientError as e:
+        current_app.logger.error(f"Error fetching URL for field {i}: {e}")
+        setattr(user, f"extra_field_verified{i}", False)
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -252,30 +271,27 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                # Loop through extra fields and update dynamically
-                for i in range(1, 5):
-                    label = getattr(profile_form, f"extra_field_label{i}", "").data
-                    setattr(user, f"extra_field_label{i}", label)
-                    value = getattr(profile_form, f"extra_field_value{i}", "").data
-                    setattr(user, f"extra_field_value{i}", value)
+                async def perform_verification():
+                    async with aiohttp.ClientSession() as session:
+                        tasks = []
+                        for i in range(1, 5):
+                            label = getattr(profile_form, f"extra_field_label{i}", "").data
+                            setattr(user, f"extra_field_label{i}", label)
+                            value = getattr(profile_form, f"extra_field_value{i}", "").data
+                            setattr(user, f"extra_field_value{i}", value)
 
-                    # Trigger the rel=me verification for each URL field
-                    url_to_verify = value.strip()  # Assuming 'value' contains the URL
-                    if url_to_verify:
-                        try:
-                            response = requests.get(url_to_verify, timeout=5)
-                            response.raise_for_status()
-                            profile_url = f"https://tips.hushline.app/to/{user.primary_username}"
-                            if re.search(
-                                rf'<a[^>]+href="{re.escape(profile_url)}"[^>]*rel="me"[^>]*>',
-                                response.text,
-                            ):
-                                setattr(user, f"extra_field_verified{i}", True)
-                            else:
-                                setattr(user, f"extra_field_verified{i}", False)
-                        except requests.exceptions.RequestException as e:
-                            current_app.logger.error(f"Error fetching URL for field {i}: {e}")
-                            setattr(user, f"extra_field_verified{i}", False)
+                            url_to_verify = value.strip()
+                            if url_to_verify:
+                                profile_url = (
+                                    f"https://tips.hushline.app/to/{user.primary_username}"
+                                )
+                                task = verify_url(session, user, i, url_to_verify, profile_url)
+                                tasks.append(task)
+
+                        await asyncio.gather(*tasks)
+
+                # Run the async verification function
+                asyncio.run(perform_verification())
 
                 db.session.commit()
                 flash("👍 Bio and fields updated successfully.")
