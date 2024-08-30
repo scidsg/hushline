@@ -34,7 +34,7 @@ class User(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     primary_username: Mapped[str] = mapped_column(db.String(80), unique=True)
     display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
-    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512), nullable=True)
+    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512))
     _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.String(255))
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
@@ -42,9 +42,9 @@ class User(Model):
     _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.String(255))
     _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.String(255))
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
-    is_verified: Mapped[bool] = mapped_column(default=False, nullable=True)
-    is_admin: Mapped[bool] = mapped_column(default=False, nullable=True)
-    show_in_directory: Mapped[bool] = mapped_column(default=False, nullable=True)
+    is_verified: Mapped[bool] = mapped_column(default=False)
+    is_admin: Mapped[bool] = mapped_column(default=False)
+    show_in_directory: Mapped[bool] = mapped_column(default=False)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
     # Corrected the relationship and backref here
     secondary_usernames: Mapped[Set["SecondaryUsername"]] = relationship(
@@ -218,9 +218,7 @@ class SecondaryUsername(Model):
 
 class Message(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
-    _content: Mapped[Optional[str]] = mapped_column(
-        "content", db.Text, nullable=False
-    )  # Encrypted content stored here
+    _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
     secondary_user_id: Mapped[Optional[int]] = mapped_column(
@@ -241,7 +239,11 @@ class Message(Model):
 
     @content.setter
     def content(self, value: str) -> None:
-        self._content = encrypt_field(value)
+        val = encrypt_field(value)
+        if val is not None:
+            self._content = val
+        else:
+            self._content = ""
 
 
 class InviteCode(Model):
