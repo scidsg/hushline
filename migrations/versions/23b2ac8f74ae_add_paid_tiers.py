@@ -1,8 +1,8 @@
 """add paid tiers
 
-Revision ID: b8ae711d5620
-Revises: 166a3402c391
-Create Date: 2024-08-29 09:08:57.627560
+Revision ID: 23b2ac8f74ae
+Revises: 62551ed63cbf
+Create Date: 2024-08-30 10:37:14.377473
 
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "b8ae711d5620"
-down_revision = "166a3402c391"
+revision = "23b2ac8f74ae"
+down_revision = "62551ed63cbf"
 branch_labels = None
 depends_on = None
 
