@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional, Set
 from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
+from sqlalchemy import Index
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -177,6 +178,15 @@ class AuthenticationLog(Model):
     otp_code: Mapped[Optional[str]] = mapped_column(db.String(6))
     timecode: Mapped[Optional[int]]
 
+    __table_args__ = (
+        Index(
+            "idx_authentication_logs_user_id_timestamp_successful",
+            "user_id",
+            "timestamp",
+            "successful",
+        ),
+    )
+
     # Open question: should we store the IP address and user agent?
     # It's useful for auditing, but it's identifable
     # ip_address = db.Column(db.String(45), nullable=False)
@@ -208,9 +218,7 @@ class SecondaryUsername(Model):
 
 class Message(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
-    _content: Mapped[Optional[str]] = mapped_column(
-        "content", db.Text
-    )  # Encrypted content stored here
+    _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
     secondary_user_id: Mapped[Optional[int]] = mapped_column(
@@ -231,7 +239,11 @@ class Message(Model):
 
     @content.setter
     def content(self, value: str) -> None:
-        self._content = encrypt_field(value)
+        val = encrypt_field(value)
+        if val is not None:
+            self._content = val
+        else:
+            self._content = ""
 
 
 class InviteCode(Model):
