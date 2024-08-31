@@ -307,10 +307,13 @@ def create_blueprint() -> Blueprint:
                                 profile_url = (
                                     f"https://tips.hushline.app/to/{user.primary_username}"
                                 )
+                                # Schedule async task for verification
                                 task = verify_url(session, user, i, url_to_verify, profile_url)
                                 tasks.append(task)
 
-                        await asyncio.gather(*tasks)
+                        # Run all the tasks concurrently
+                        if tasks:  # Only gather if there are tasks to run
+                            await asyncio.gather(*tasks)
 
                 # Run the async verification function
                 asyncio.run(perform_verification())
