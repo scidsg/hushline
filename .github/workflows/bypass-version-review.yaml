@@ -24,7 +24,7 @@ jobs:
 
       - name: Check for hushline/version.py
         run: |
-          if git diff --name-only ${{ github.base_ref }} ${{ github.head_ref }} | grep -q '^hushline/version.py$'; then
+          if git diff --name-only main ${{ github.head_ref }} | grep -q '^hushline/version.py$'; then
             echo "hushline/version.py detected and user is an admin, bypassing review requirement"
             gh pr merge ${{ github.event.pull_request.number }} --auto --squash
           else
