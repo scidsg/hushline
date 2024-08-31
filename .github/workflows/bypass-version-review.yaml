@@ -8,8 +8,9 @@ jobs:
   bypass-version-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if author is an admin
-        id: check-admin
+      - name: Set up GitHub CLI Authentication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           AUTHOR=$(gh pr view ${{ github.event.pull_request.number }} --json author --jq '.author.login')
           ADMIN_CHECK=$(gh api orgs/${{ github.repository_owner }}/members/$AUTHOR --silent --jq '.role')
