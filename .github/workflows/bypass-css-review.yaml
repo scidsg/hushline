@@ -13,7 +13,7 @@ jobs:
 
       - name: Set up GitHub CLI Authentication
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
         run: |
           AUTHOR=$(gh pr view ${{ github.event.pull_request.number }} --json author --jq '.author.login')
           ADMIN_CHECK=$(gh api user/memberships/orgs/scidsg --jq '.role')
@@ -30,4 +30,4 @@ jobs:
           else
             echo "No CSS files detected or user is not an admin, continuing with normal review process"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
