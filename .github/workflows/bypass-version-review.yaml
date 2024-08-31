@@ -8,6 +8,9 @@ jobs:
   bypass-version-review:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up GitHub CLI Authentication
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
