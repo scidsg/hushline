@@ -16,9 +16,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           AUTHOR=$(gh pr view ${{ github.event.pull_request.number }} --json author --jq '.author.login')
-          ADMIN_CHECK=$(gh api orgs/${{ github.repository_owner }}/members/$AUTHOR --jq '.role')
+          ADMIN_CHECK=$(gh api user/memberships/orgs/scidsg --jq '.role')
           if [ "$ADMIN_CHECK" != "admin" ]; then
-            echo "User is not an admin. Exiting."
+            echo "User is not an admin or is not a public member of the organization. Exiting."
             exit 1
           fi
 
