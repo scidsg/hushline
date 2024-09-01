@@ -22,12 +22,13 @@ jobs:
             exit 1
           fi
 
-      - name: Check for CSS files
+      - name: Check for CSS files and merge if conditions are met
         run: |
           if git diff --name-only main ${{ github.head_ref }} | grep -q '\.css$'; then
             echo "CSS files detected and user is an admin, bypassing review requirement"
             gh pr merge ${{ github.event.pull_request.number }} --auto --squash
           else
             echo "No CSS files detected or user is not an admin, continuing with normal review process"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
