@@ -22,11 +22,11 @@ jobs:
             exit 1
           fi
 
-      - name: Check for hushline/version.py and merge if conditions are met
+      - name: Check for hushline/version.py and approve if conditions are met
         run: |
           if git diff --name-only main ${{ github.head_ref }} | grep -q '^hushline/version.py$'; then
-            echo "hushline/version.py detected and user is an admin, bypassing review requirement"
-            gh pr merge ${{ github.event.pull_request.number }} --auto --squash
+            echo "hushline/version.py detected and user is an admin, approving PR"
+            gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: hushline/version.py changes detected and user is an admin."
           else
             echo "No matching files detected or user is not an admin, continuing with normal review process"
           fi
