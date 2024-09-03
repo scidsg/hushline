@@ -331,7 +331,7 @@ def create_blueprint() -> Blueprint:
         if business_tier:
             price_usd = business_tier.monthly_amount / 100
             if price_usd % 1 == 0:
-                business_tier_display_price = int(price_usd)
+                business_tier_display_price = str(int(price_usd))
             else:
                 business_tier_display_price = f"{price_usd:.2f}"
 

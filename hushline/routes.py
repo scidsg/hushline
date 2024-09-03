@@ -549,3 +549,7 @@ def init_app(app: Flask) -> None:
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.route("/premium", methods=["GET"])
+    def premium() -> str:
+        return render_template("premium.html")

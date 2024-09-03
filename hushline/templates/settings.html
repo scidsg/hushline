@@ -86,12 +86,8 @@
         <p class="info">
           🚀 Need more features? Upgrade to Business for ${{ business_tier_display_price }}/mo.
         </p>
-        <form
-          method="POST"
-          action="#"
-          class="formBody"
-        >
-          <button type="submit">Upgrade</button>
+        <form method="GET" action="{{ url_for('premium') }}">
+          <button>Upgrade</button>
         </form>
       </div>
       {% endif %}
