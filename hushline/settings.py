@@ -287,14 +287,10 @@ def create_blueprint() -> Blueprint:
                         label_field = getattr(profile_form, f"extra_field_label{i}", "")
                         value_field = getattr(profile_form, f"extra_field_value{i}", "")
 
-                        label = (
-                            label_field.data if hasattr(label_field, "data") else label_field
-                        )
+                        label = label_field.data if hasattr(label_field, "data") else label_field
                         setattr(user, f"extra_field_label{i}", label)
 
-                        value = (
-                            value_field.data if hasattr(value_field, "data") else value_field
-                        )
+                        value = value_field.data if hasattr(value_field, "data") else value_field
                         setattr(user, f"extra_field_value{i}", value)
 
                         # If the value is empty, reset the verification status
@@ -305,7 +301,6 @@ def create_blueprint() -> Blueprint:
                         # Verify the URL only if it starts with "https://"
                         url_to_verify = value.strip()
                         if url_to_verify.startswith("https://"):
-
                             task = verify_url(client_session, user, i, url_to_verify, profile_url)
                             tasks.append(task)
 
