@@ -36,10 +36,10 @@ jobs:
         run: |
           FILES=$(git diff --name-only main $GITHUB_HEAD_REF)
 
-          # Fail if any non-matching files are found
+          # Check for non-matching files
           if echo "$FILES" | grep -v -qE '(\.css$|^hushline/version.py$)'; then
             echo "PR contains files other than .css or hushline/version.py. Exiting without approval."
-            exit 1
+            exit 0  # Exit without failure
           fi
 
           # Proceed to approve if only matching files are present
