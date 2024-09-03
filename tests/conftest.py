@@ -8,6 +8,7 @@ from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
 from hushline import create_app, db
+from hushline.model import Tier
 
 # TODO once we refactor `fernet` to not be global, move this into the `config` fixture.
 # this needs to be imported before importing `hushline`
@@ -33,6 +34,13 @@ def app(_config: None) -> Generator[Flask, None, None]:
 
     with app.app_context():
         db.create_all()
+
+        # Create the default tiers
+        # (this happens in the migrations, but migrations don't run in the tests)
+        db.session.add(Tier(name="Free", monthly_amount=0))
+        db.session.add(Tier(name="Business", monthly_amount=2000))
+        db.session.commit()
+
         yield app
         db.drop_all()
 
