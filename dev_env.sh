@@ -5,3 +5,6 @@ export SQLALCHEMY_DATABASE_URI=sqlite:///hushline.db
 export REGISTRATION_CODES_REQUIRED=False
 export SESSION_COOKIE_NAME=session
 export NOTIFICATIONS_ADDRESS=notifications@hushline.app
+export STRIPE_PUBLISHABLE_KEY=pk_test_51OhDeALcBPqjxU07I70UA6JYGDPUmkxEwZW0lvGyNXGlJ4QPfWIBFZJau7XOb3QDzDWrVutBVkz9SNrSjq2vRawm00TwfyFuma
+# set this one manually:
+# export STRIPE_SECRET_KEY=

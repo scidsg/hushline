@@ -24,6 +24,7 @@ requests = "^2.32.3"
 types-requests = "^2.32.0.20240712"
 types-setuptools = "^71.1.0.20240813"
 email-validator = "^2.2.0"
+stripe = "^10.9.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"

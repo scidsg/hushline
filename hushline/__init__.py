@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 from typing import Any
 
+import stripe
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
@@ -46,10 +47,16 @@ def create_app() -> Flask:
     app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
     app.config["SMTP_ENCRYPTION"] = os.environ.get("SMTP_ENCRYPTION", "StartTLS")
     app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
+    app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", None)
+    app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY", None)
 
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
+
+    # Configure Stripe
+    if app.config["STRIPE_SECRET_KEY"]:
+        stripe.api_key = app.config["STRIPE_SECRET_KEY"]
 
     routes.init_app(app)
     for module in [admin, settings]:
