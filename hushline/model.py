@@ -274,10 +274,8 @@ class Tier(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(db.String(255), unique=True)
     monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
-    annual_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
 
-    def __init__(self, name: str, monthly_amount: int, annual_amount: int) -> None:
+    def __init__(self, name: str, monthly_amount: int) -> None:
         super().__init__()
         self.name = name
         self.monthly_amount = monthly_amount
-        self.annual_amount = annual_amount

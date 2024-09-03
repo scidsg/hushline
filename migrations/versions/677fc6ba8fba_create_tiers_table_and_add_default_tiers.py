@@ -1,8 +1,8 @@
-"""add paid tiers
+"""create tiers table and add default tiers
 
-Revision ID: 23b2ac8f74ae
+Revision ID: 677fc6ba8fba
 Revises: 62551ed63cbf
-Create Date: 2024-08-30 10:37:14.377473
+Create Date: 2024-09-03 09:40:51.321787
 
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "23b2ac8f74ae"
+revision = "677fc6ba8fba"
 down_revision = "62551ed63cbf"
 branch_labels = None
 depends_on = None
@@ -24,7 +24,6 @@ def upgrade():
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("monthly_amount", sa.Integer(), nullable=False),
-        sa.Column("annual_amount", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )
@@ -36,13 +35,12 @@ def upgrade():
         sa.column("id", sa.Integer),
         sa.column("name", sa.String),
         sa.column("monthly_amount", sa.Integer),
-        sa.column("annual_amount", sa.Integer),
     )
     op.bulk_insert(
         tiers_table,
         [
-            {"id": 1, "name": "Free", "monthly_amount": 0, "annual_amount": 0},
-            {"id": 2, "name": "Business", "monthly_amount": 20000, "annual_amount": 192000},
+            {"id": 1, "name": "Free", "monthly_amount": 0},
+            {"id": 2, "name": "Business", "monthly_amount": 2000},
         ],
     )
 
