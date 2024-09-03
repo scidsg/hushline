@@ -81,15 +81,16 @@
       aria-labelledby="profile-tab"
     >
       {% if user.tier_id == 1 %}
-      <div class="upgrade">
-        <h3>Upgrade to Business</h3>
-        <p class="info">
-          🚀 Need more features? Upgrade to Business for ${{ business_tier_display_price }}/mo.
-        </p>
-        <form method="GET" action="{{ url_for('premium') }}">
-          <button>Upgrade</button>
-        </form>
-      </div>
+        <div class="upgrade">
+          <h3>Upgrade to Business</h3>
+          <p class="info">
+            🚀 Need more features? Upgrade to Business for
+            ${{ business_tier_display_price }}/mo.
+          </p>
+          <form method="GET" action="{{ url_for('premium') }}">
+            <button>Upgrade</button>
+          </form>
+        </div>
       {% endif %}
 
       <h3>Update Display Name</h3>
@@ -524,7 +525,7 @@
             name="monthly_price"
             id="monthly_price"
             value="{{ business_tier_display_price }}"
-            >
+          />
           <button type="submit">Update</button>
         </form>
         <h3>All Users</h3>
