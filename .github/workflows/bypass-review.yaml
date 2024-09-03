@@ -34,10 +34,9 @@ jobs:
 
       - name: Check for specific files and approve if conditions are met
         run: |
-          FILES=$(git diff --name-only main $GITHUB_HEAD_REF)
+          git diff --name-only origin/main $GITHUB_HEAD_REF > file_list.txt
 
-          # Check for non-matching files
-          if echo "$FILES" | grep -v -qE '(\.css$|^hushline/version.py$)'; then
+          if grep -v -qE '(\.css$|^hushline/version.py$)' file_list.txt; then
             echo "PR contains files other than .css or hushline/version.py. Exiting without approval."
             exit 0  # Exit without failure
           fi
