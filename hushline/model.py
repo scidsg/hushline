@@ -171,6 +171,7 @@ class User(Model):
     def __init__(self, primary_username: str) -> None:
         super().__init__()
         self.primary_username = primary_username
+        self.tier_id = 1  # Default to the free tier
 
 
 class AuthenticationLog(Model):
