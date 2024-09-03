@@ -35,23 +35,15 @@ jobs:
       - name: Check for specific files and approve if conditions are met
         run: |
           FILES=$(git diff --name-only main $GITHUB_HEAD_REF)
-          if echo "$FILES" | grep -qvE '(\.css$|^hushline/version.py$)'; then
+
+          # Fail if any non-matching files are found
+          if echo "$FILES" | grep -v -qE '(\.css$|^hushline/version.py$)'; then
             echo "PR contains files other than .css or hushline/version.py. Exiting without approval."
-            exit 0
+            exit 1
           fi
 
-          # Check if only .css files or only hushline/version.py is present
-          if echo "$FILES" | grep -qE '\.css$' && ! echo "$FILES" | grep -qE '^hushline/version.py$'; then
-            echo "Only .css files detected and user is an admin, approving PR"
-            gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only .css files detected and user is an admin."
-          elif echo "$FILES" | grep -qE '^hushline/version.py$' && ! echo "$FILES" | grep -qE '\.css$'; then
-            echo "Only hushline/version.py detected and user is an admin, approving PR"
-            gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only hushline/version.py detected and user is an admin."
-          elif echo "$FILES" | grep -qE '(\.css$|^hushline/version.py$)'; then
-            echo "Both .css files and hushline/version.py detected and user is an admin, approving PR"
-            gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Both .css files and hushline/version.py detected and user is an admin."
-          else
-            echo "No matching files detected or user is not an admin, continuing with normal review process"
-          fi
+          # Proceed to approve if only matching files are present
+          echo "Only .css files and/or hushline/version.py detected and user is an admin, approving PR"
+          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only specific files detected and user is an admin."
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
