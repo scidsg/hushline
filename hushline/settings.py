@@ -304,10 +304,8 @@ def create_blueprint() -> Blueprint:
                             # Verify the URL only if it starts with "https://"
                             url_to_verify = value.strip()
                             if url_to_verify.startswith("https://"):
-                                profile_url = (
-                                    f"https://tips.hushline.app/to/{user.primary_username}"
-                                )
-                                # Schedule async task for verification
+                                profile_url = f"{current_app.config['HUSHLINE_TIPS_URL']}/to/{user.primary_username}"
+
                                 task = verify_url(session, user, i, url_to_verify, profile_url)
                                 tasks.append(task)
 
