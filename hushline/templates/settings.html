@@ -80,6 +80,22 @@
       role="tabpanel"
       aria-labelledby="profile-tab"
     >
+      {% if user.tier_id == 1 %}
+      <div class="upgrade">
+        <h3>Upgrade to Business</h3>
+        <p class="info">
+          🚀 Need more features? Upgrade to Business for ${{ business_tier_display_price }}/mo.
+        </p>
+        <form
+          method="POST"
+          action="#"
+          class="formBody"
+        >
+          <button type="submit">Upgrade</button>
+        </form>
+      </div>
+      {% endif %}
+
       <h3>Update Display Name</h3>
       {% if user.is_verified %}
         <p class="meta">
@@ -499,6 +515,22 @@
             <p>{{ pgp_key_percentage | round(2) }}%</p>
           </div>
         </div>
+        <h3>Business Tier</h3>
+        <form
+          action="{{ url_for('admin.update_tier', tier_id=2) }}"
+          method="POST"
+          class="formBody"
+        >
+          <label for="monthly_price">Monthly Price $</label>
+          <input
+            type="number"
+            step="0.01"
+            name="monthly_price"
+            id="monthly_price"
+            value="{{ business_tier_display_price }}"
+            >
+          <button type="submit">Update</button>
+        </form>
         <h3>All Users</h3>
         {% if all_users %}
           {% for user in all_users %}
