@@ -246,9 +246,9 @@ async def verify_url(
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
-    @bp.route("/", methods=["GET", "POST"])
     @authentication_required
-    def index() -> str | Response:
+    @bp.route("/", methods=["GET", "POST"])
+    async def index() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -279,43 +279,34 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                async def perform_verification() -> None:
-                    async with aiohttp.ClientSession() as session:
-                        tasks = []
-                        for i in range(1, 5):
-                            label_field = getattr(profile_form, f"extra_field_label{i}", "")
-                            value_field = getattr(profile_form, f"extra_field_value{i}", "")
+                base_url = current_app.config["HUSHLINE_TIPS_URL"]
+                profile_url = f"{base_url}/to/{user.primary_username}"
+                async with aiohttp.ClientSession() as client_session:
+                    tasks = []
+                    for i in range(1, 5):
+                        label_field = getattr(profile_form, f"extra_field_label{i}", "")
+                        value_field = getattr(profile_form, f"extra_field_value{i}", "")
 
-                            label = (
-                                label_field.data if hasattr(label_field, "data") else label_field
-                            )
-                            setattr(user, f"extra_field_label{i}", label)
+                        label = label_field.data if hasattr(label_field, "data") else label_field
+                        setattr(user, f"extra_field_label{i}", label)
 
-                            value = (
-                                value_field.data if hasattr(value_field, "data") else value_field
-                            )
-                            setattr(user, f"extra_field_value{i}", value)
+                        value = value_field.data if hasattr(value_field, "data") else value_field
+                        setattr(user, f"extra_field_value{i}", value)
 
-                            # If the value is empty, reset the verification status
-                            if not value.strip():
-                                setattr(user, f"extra_field_verified{i}", False)
-                                continue
+                        # If the value is empty, reset the verification status
+                        if not value.strip():
+                            setattr(user, f"extra_field_verified{i}", False)
+                            continue
 
-                            # Verify the URL only if it starts with "https://"
-                            url_to_verify = value.strip()
-                            if url_to_verify.startswith("https://"):
-                                base_url = current_app.config["HUSHLINE_TIPS_URL"]
-                                profile_url = f"{base_url}/to/{user.primary_username}"
+                        # Verify the URL only if it starts with "https://"
+                        url_to_verify = value.strip()
+                        if url_to_verify.startswith("https://"):
+                            task = verify_url(client_session, user, i, url_to_verify, profile_url)
+                            tasks.append(task)
 
-                                task = verify_url(session, user, i, url_to_verify, profile_url)
-                                tasks.append(task)
-
-                        # Run all the tasks concurrently
-                        if tasks:  # Only gather if there are tasks to run
-                            await asyncio.gather(*tasks)
-
-                # Run the async verification function
-                asyncio.run(perform_verification())
+                    # Run all the tasks concurrently
+                    if tasks:  # Only gather if there are tasks to run
+                        await asyncio.gather(*tasks)
 
                 db.session.commit()
                 flash("👍 Bio and fields updated successfully.")
