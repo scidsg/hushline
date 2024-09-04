@@ -57,8 +57,10 @@ def create_app() -> Flask:
 
     # Configure Stripe
     if app.config["STRIPE_SECRET_KEY"]:
-        stripe.api_key = app.config["STRIPE_SECRET_KEY"]
-        init_stripe()
+        with app.app_context():
+            init_stripe(app)
+    else:
+        app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
     routes.init_app(app)
     for module in [admin, settings]:

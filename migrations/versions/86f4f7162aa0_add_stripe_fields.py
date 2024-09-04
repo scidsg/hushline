@@ -22,8 +22,8 @@ def upgrade():
     with op.batch_alter_table("tiers", schema=None) as batch_op:
         batch_op.add_column(sa.Column("stripe_product_id", sa.String(length=255), nullable=True))
         batch_op.add_column(sa.Column("stripe_price_id", sa.String(length=255), nullable=True))
-        batch_op.create_unique_constraint(None, ["stripe_product_id"])
-        batch_op.create_unique_constraint(None, ["stripe_price_id"])
+        batch_op.create_unique_constraint("tiers_stripe_product_id", ["stripe_product_id"])
+        batch_op.create_unique_constraint("tiers_stripe_price_id", ["stripe_price_id"])
 
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.add_column(sa.Column("stripe_customer_id", sa.String(length=255), nullable=True))
@@ -41,8 +41,8 @@ def downgrade():
         batch_op.drop_column("stripe_customer_id")
 
     with op.batch_alter_table("tiers", schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_="unique")
-        batch_op.drop_constraint(None, type_="unique")
+        batch_op.drop_constraint("tiers_stripe_product_id", type_="unique")
+        batch_op.drop_constraint("tiers_stripe_price_id", type_="unique")
         batch_op.drop_column("stripe_price_id")
         batch_op.drop_column("stripe_product_id")
 
