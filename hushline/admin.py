@@ -3,6 +3,7 @@ from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import Tier, User
+from .stripe import update_price
 from .utils import admin_authentication_required
 
 
@@ -54,9 +55,12 @@ def create_blueprint() -> Blueprint:
         # Convert to cents
         monthly_amount = int(monthly_price_number * 100)
 
-        # Update
+        # Update in the database
         tier.monthly_amount = monthly_amount
         db.session.commit()
+
+        # Update in stripe
+        update_price(tier)
 
         flash("✅ Price updated.", "success")
         return redirect(url_for("settings.index"))

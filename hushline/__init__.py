@@ -3,7 +3,6 @@ import os
 from datetime import timedelta
 from typing import Any
 
-import stripe
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
@@ -58,7 +57,7 @@ def create_app() -> Flask:
     # Configure Stripe
     if app.config["STRIPE_SECRET_KEY"]:
         with app.app_context():
-            init_stripe(app)
+            init_stripe()
     else:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
