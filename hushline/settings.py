@@ -299,7 +299,7 @@ def create_blueprint() -> Blueprint:
                             continue
 
                         # Verify the URL only if it starts with "https://"
-                        url_to_verify = value.strip()
+                        url_to_verify = value
                         if url_to_verify.startswith("https://"):
                             task = verify_url(client_session, user, i, url_to_verify, profile_url)
                             tasks.append(task)
