@@ -1,7 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Premium{% endblock %}
 {% block content %}
-  <h2>Premium</h2>
+  <h2>Hush Line Plan</h2>
+  <div id="plan-wrapper">
+    <div class="plan">
+      {% if user.tier_id == 1 %}
+        <p class="plan-status">Current Plan</p>
+      {% endif %}
+      {% if user.tier_id == 2 %}
+        <p class="plan-status">Fewer Features</p>
+      {% endif %}
+      <h3>Free</h3>
+      <p>Monthly Messages: 250</p>
+      <p>Forwarding Addresses: 1</p>
+      <p>Tor Onion Service: ✅</p>
+      <p>End-to-End Encrypted: ✅</p>
+      {% if user.tier_id == 2 %}
+        <button id="subscribe">Downgrade</button>
+      {% endif %}
+    </div>
+    <div class="plan plan-recommended">
+      {% if user.tier_id == 1 %}
+        <p class="plan-status">Recommended</p>
+      {% endif %}
+      {% if user.tier_id == 2 %}
+        <p class="plan-status">Current Plan</p>
+      {% endif %}
+      <h3>Business</h3>
+      <p>All Free Features</p>
+      <p>Monthly Messages: Unlimited</p>
+      <p>Forwarding Addresses: 100</p>
+      {% if user.tier_id == 1 %}
+        <button id="subscribe">Upgrade for $20/mo</button>
+      {% endif %}
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}

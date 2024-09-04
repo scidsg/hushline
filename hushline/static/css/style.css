@@ -2031,3 +2031,27 @@ p.bio + .extra-fields {
     width: 100%;
   }
 }
+
+#plan-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.plan {
+  flex: 250px;
+  box-sizing: border-box;
+  padding: 20px;
+  margin: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.plan .plan-status {
+  font-style: italic;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.plan-recommended .plan-status {
+  font-weight: bold;
+}

@@ -551,5 +551,11 @@ def init_app(app: Flask) -> None:
         return {"status": "ok"}
 
     @app.route("/premium", methods=["GET"])
-    def premium() -> str:
+    @authentication_required
+    def premium() -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
         return render_template("premium.html")
