@@ -294,7 +294,7 @@ def create_blueprint() -> Blueprint:
                         setattr(user, f"extra_field_value{i}", value)
 
                         # If the value is empty, reset the verification status
-                        if not value.strip():
+                        if not value:
                             setattr(user, f"extra_field_verified{i}", False)
                             continue
 
