@@ -65,9 +65,11 @@ class User(Model):
     extra_field_label4: Mapped[Optional[str]]
     extra_field_value4: Mapped[Optional[str]]
 
-    # Tier
+    # Paid tier fields
     tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
+    stripe_customer_id = mapped_column(db.String(255))
+    stripe_subscription_id = mapped_column(db.String(255))
 
     @property
     def password_hash(self) -> str:
@@ -274,6 +276,8 @@ class Tier(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(db.String(255), unique=True)
     monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
+    stripe_product_id = mapped_column(db.String(255), unique=True)
+    stripe_price_id = mapped_column(db.String(255), unique=True)
 
     def __init__(self, name: str, monthly_amount: int) -> None:
         super().__init__()

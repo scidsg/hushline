@@ -11,6 +11,7 @@ from werkzeug.wrappers.response import Response
 from . import admin, routes, settings
 from .db import db
 from .model import User
+from .stripe import init_stripe
 from .version import __version__
 
 
@@ -57,6 +58,7 @@ def create_app() -> Flask:
     # Configure Stripe
     if app.config["STRIPE_SECRET_KEY"]:
         stripe.api_key = app.config["STRIPE_SECRET_KEY"]
+        init_stripe()
 
     routes.init_app(app)
     for module in [admin, settings]:
