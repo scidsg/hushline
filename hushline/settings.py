@@ -279,7 +279,7 @@ def create_blueprint() -> Blueprint:
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 user.bio = profile_form.bio.data
 
-                base_url = current_app.config["HUSHLINE_TIPS_URL"]
+                profile_url = url_for("profile", _external=True, username=user.primary_username)
                 profile_url = f"{base_url}/to/{user.primary_username}"
                 async with aiohttp.ClientSession() as client_session:
                     tasks = []
