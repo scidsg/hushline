@@ -1,8 +1,8 @@
 # Getting Started as a Hush Line Operator
 
-Hush Line is a free and open-source, whistleblowing platform for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or employers, Board rooms, and C-suites for anonymous employee reporting.
+Hush Line connects whistleblowers with organizations and people through our anonymous whistleblowing platform. If you need a confidential reporting system—lawyers, journalists, employers, educators, or more—you can create a free account, and when you add an encryption key, you can start receiving secure messages!
 
-We strongly encourage all Hush Line operators to add a PGP key to ensure messages are encrypted, only readable by the key owner if the database is compromised.
+Our application is intended to be a background service for you - add your key, then forward your messages to your desired email address, and never have to worry about logging back into the Hush Line platform again. We recommend using [Proton Mail](https://proton.me) since we're built on the same encryption technology - PGP or [Pretty Good Privacy](https://en.wikipedia.org/wiki/Pretty_Good_Privacy). PGP is an open protocol providing strong encryption that's been around for decades and is trusted by governments and activists alike. When you use Proton Mail as described below, your anonymous Hush Line messages will be automatically delivered to and decrypted in your Inbox - no logging back into the Hush Line platform necessary. And since your messages are encrypted with a key to which only you have access, they are unreadable to anyone but you 💪.
 
 ## Contents
 
