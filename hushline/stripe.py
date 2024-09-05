@@ -44,7 +44,7 @@ def init_stripe() -> None:
         if create_price:
             current_app.logger.info(f"Creating price for tier: {tier.name}")
             price = stripe.Price.create(
-                product=tier.stripe_product_id,
+                product=product.id,
                 unit_amount=tier.monthly_amount,
                 currency="usd",
                 recurring={"interval": "month"},
