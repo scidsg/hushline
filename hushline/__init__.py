@@ -48,7 +48,7 @@ def create_app() -> Flask:
     app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
 
     # Handle the tips domain for profile verification
-    app.config["HUSHLINE_TIPS_URL"] = os.getenv("HUSHLINE_TIPS_URL", "https://tips.hushline.app")
+    app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
 
     # Run migrations
     db.init_app(app)

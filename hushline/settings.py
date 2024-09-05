@@ -280,9 +280,7 @@ def create_blueprint() -> Blueprint:
                 user.bio = profile_form.bio.data
 
                 # Define base_url from the environment or config
-                base_url = current_app.config.get("HUSHLINE_TIPS_URL", "https://tips.hushline.app")
-
-                profile_url = f"{base_url}/to/{user.primary_username}"
+                profile_url = url_for("profile", _external=True, username=user.primary_username)
 
                 async with aiohttp.ClientSession() as client_session:
                     tasks = []
