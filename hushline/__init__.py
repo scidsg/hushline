@@ -7,7 +7,7 @@ from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from werkzeug.wrappers.response import Response
 
-from . import admin, routes, settings
+from . import admin, premium, routes, settings
 from .db import db
 from .model import User
 from .stripe import init_stripe
@@ -62,7 +62,7 @@ def create_app() -> Flask:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
     routes.init_app(app)
-    for module in [admin, settings]:
+    for module in [admin, settings, premium]:
         app.register_blueprint(module.create_blueprint())
 
     @app.errorhandler(404)
