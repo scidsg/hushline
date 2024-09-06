@@ -138,3 +138,20 @@ def get_subscription(user: User) -> stripe.Subscription | None:
         return None
 
     return stripe.Subscription.retrieve(user.stripe_subscription_id)
+
+
+def handle_webhook(payload: bytes, sig_header: str) -> None:
+    # Parse the event
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, current_app.config.get("STRIPE_WEBHOOK_SECRET")
+        )
+    except ValueError as e:
+        current_app.logger.error(f"Invalid payload: {e}")
+        raise e
+    except stripe._error.SignatureVerificationError as e:
+        current_app.logger.error(f"Error verifying webhook signature: {e}")
+        raise e
+
+    # Handle the event
+    current_app.logger.info(f"Received event: {event}")

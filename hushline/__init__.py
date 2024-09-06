@@ -51,6 +51,7 @@ def create_app() -> Flask:
     app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
     app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", None)
     app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY", None)
+    app.config["STRIPE_WEBHOOK_SECRET"] = os.environ.get("STRIPE_WEBHOOK_SECRET", None)
 
     # Handle the tips domain for profile verification
     app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")

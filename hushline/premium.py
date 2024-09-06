@@ -2,6 +2,7 @@ from flask import (
     Blueprint,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -16,6 +17,7 @@ from .stripe import (
     create_subscription,
     get_latest_invoice_payment_intent_client_secret,
     get_subscription,
+    handle_webhook,
 )
 from .utils import authentication_required
 
@@ -99,5 +101,18 @@ def create_blueprint() -> Blueprint:
         # db.session.commit()
 
         return redirect(url_for("premium.index"))
+
+    @bp.route("/webhook", methods=["POST"])
+    def webhook() -> Response | str:
+        payload = request.data
+        sig_header = request.headers["STRIPE_SIGNATURE"]
+
+        try:
+            handle_webhook(payload, sig_header)
+        except Exception as e:
+            current_app.logger.error(f"Stripe webhook error: {e}")
+            return jsonify(success=False)
+
+        return jsonify(success=True)
 
     return bp
