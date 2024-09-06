@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
+from flask.cli import AppGroup
 from flask_migrate import Migrate
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
@@ -11,6 +12,7 @@ from werkzeug.wrappers.response import Response
 from . import admin, premium, routes, settings
 from .db import db
 from .model import User
+from .stripe import init_stripe
 from .version import __version__
 
 
@@ -93,4 +95,21 @@ def create_app() -> Flask:
             )
             return response
 
+    # Register custom CLI commands
+    register_commands(app)
+
     return app
+
+
+def register_commands(app: Flask) -> None:
+    custom_cli = AppGroup("custom")
+
+    @custom_cli.command("stripe")
+    def stripe() -> None:
+        """Make sure the products and prices are created in Stripe"""
+        if app.config["STRIPE_SECRET_KEY"]:
+            init_stripe()
+        else:
+            app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
+
+    app.cli.add_command(custom_cli)
