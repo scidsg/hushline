@@ -87,9 +87,7 @@
             🚀 Need more features? Upgrade to Business for
             ${{ business_tier_display_price }}/mo.
           </p>
-          <form method="GET" action="{{ url_for('premium') }}">
-            <button>Upgrade</button>
-          </form>
+          <a href="{{ url_for('premium.index') }}">Upgrade</a>
         </div>
       {% endif %}
 

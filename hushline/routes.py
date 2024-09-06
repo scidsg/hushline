@@ -604,13 +604,3 @@ def init_app(app: Flask) -> None:
     @app.route("/health.json")
     def health() -> dict[str, str]:
         return {"status": "ok"}
-
-    @app.route("/premium", methods=["GET"])
-    @authentication_required
-    def premium() -> Response | str:
-        user = db.session.get(User, session.get("user_id"))
-        if not user:
-            session.clear()
-            return redirect(url_for("login"))
-
-        return render_template("premium.html")

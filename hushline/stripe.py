@@ -131,3 +131,10 @@ def get_latest_invoice_payment_intent_client_secret(
 
     stripe_payment_intent = stripe.PaymentIntent.retrieve(str(stripe_invoice.payment_intent))
     return stripe_payment_intent.client_secret
+
+
+def get_subscription(user: User) -> stripe.Subscription | None:
+    if user.stripe_subscription_id is None:
+        return None
+
+    return stripe.Subscription.retrieve(user.stripe_subscription_id)

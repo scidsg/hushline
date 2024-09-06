@@ -12,7 +12,11 @@ from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import Tier, User
-from .stripe import create_subscription, get_latest_invoice_payment_intent_client_secret
+from .stripe import (
+    create_subscription,
+    get_latest_invoice_payment_intent_client_secret,
+    get_subscription,
+)
 from .utils import authentication_required
 
 FREE_TIER = 1
@@ -26,9 +30,15 @@ def create_blueprint() -> Blueprint:
     @authentication_required
     def index() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
+        current_app.logger.info(f"User: {user}")
         if not user:
             session.clear()
             return redirect(url_for("login"))
+
+        # Check if we have an incomplete subscription
+        stripe_subscription = get_subscription(user)
+        if stripe_subscription and stripe_subscription.status == "incomplete":
+            flash("⚠️ Your subscription is incomplete. Please try again.", "warning")
 
         return render_template("premium.html", user=user)
 
@@ -57,6 +67,9 @@ def create_blueprint() -> Blueprint:
         # Subscribe the user to the business tier
         try:
             stripe_subscription = create_subscription(user, business_tier)
+            user.stripe_subscription_id = stripe_subscription.id
+            db.session.add(user)
+            db.session.commit()
         except Exception as e:
             current_app.logger.error(f"Stripe error: {e}")
             flash("⚠️ Something went wrong!")
