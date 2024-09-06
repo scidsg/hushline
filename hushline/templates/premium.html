@@ -16,7 +16,9 @@
       <p>Tor Onion Service: ✅</p>
       <p>End-to-End Encrypted: ✅</p>
       {% if user.tier_id == 2 %}
-        <button id="subscribe">Downgrade</button>
+        <form action="{{ url_for('premium.downgrade') }}" method="post">
+          <button id="downgrade">Downgrade</button>
+        </form>
       {% endif %}
     </div>
     <div class="plan plan-recommended">
@@ -31,12 +33,13 @@
       <p>Monthly Messages: Unlimited</p>
       <p>Forwarding Addresses: 100</p>
       {% if user.tier_id == 1 %}
-        <button id="subscribe">Upgrade for $20/mo</button>
+        <form action="{{ url_for('premium.upgrade') }}" method="post">
+          <button id="upgrade">Upgrade for $20/mo</button>
+        </form>
       {% endif %}
     </div>
   </div>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/premium.js') }}"></script>
 {% endblock %}

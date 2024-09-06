@@ -2055,3 +2055,9 @@ p.bio + .extra-fields {
 .plan-recommended .plan-status {
   font-weight: bold;
 }
+
+#card-element {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #666;
+}

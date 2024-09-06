@@ -2,7 +2,7 @@ import stripe
 from flask import current_app
 
 from .db import db
-from .model import Tier
+from .model import Tier, User
 
 
 def init_stripe() -> None:
@@ -86,3 +86,46 @@ def update_price(tier: Tier) -> None:
     db.session.commit()
 
     stripe.Product.modify(tier.stripe_product_id, default_price=price.id)
+
+
+def create_customer(user: User) -> stripe.Customer:
+    email: str = user.email if user.email is not None else ""
+
+    if user.stripe_customer_id is None:
+        stripe_customer = stripe.Customer.create(email=email)
+        user.stripe_customer_id = stripe_customer.id
+        db.session.add(user)
+        db.session.commit()
+        return stripe_customer
+
+    return stripe.Customer.modify(user.stripe_customer_id, email=email)
+
+
+def create_subscription(user: User, tier: Tier) -> stripe.Subscription:
+    stripe_customer = create_customer(user)
+
+    # Create a subscription
+    stripe_subscription = stripe.Subscription.create(
+        customer=stripe_customer.id,
+        items=[{"price": tier.stripe_price_id}],
+        payment_behavior="default_incomplete",
+    )
+    user.stripe_subscription_id = stripe_subscription.id
+    db.session.add(user)
+    db.session.commit()
+
+    return stripe_subscription
+
+
+def get_latest_invoice_payment_intent_client_secret(
+    subscription: stripe.Subscription,
+) -> str | None:
+    if subscription.latest_invoice is None:
+        return None
+
+    stripe_invoice = stripe.Invoice.retrieve(str(subscription.latest_invoice))
+    if stripe_invoice.payment_intent is None:
+        return None
+
+    stripe_payment_intent = stripe.PaymentIntent.retrieve(str(stripe_invoice.payment_intent))
+    return stripe_payment_intent.client_secret

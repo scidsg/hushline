@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Subscribe to {{ tier.name }}{% endblock %}
+{% block content %}
+  <h2>Subscribe to {{ tier.name }}</h2>
+  <form id="subscribe-form">
+    <input
+      type="hidden"
+      name="stripe_client_secret"
+      value="{{ stripe_client_secret }}"
+    />
+    <input
+      type="hidden"
+      name="stripe_publishable_key"
+      value="{{ stripe_publishable_key }}"
+    />
+    <div>
+      <label for="name">Full Name</label>
+      <input type="text" id="name" placeholder="Enter your name" />
+    </div>
+    <div>
+      <label for="card-element">Credit Card Details</label>
+      <div id="card-element"></div>
+    </div>
+    <button id="submit">Subscribe</button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="{{ url_for('static', filename='js/premium-subscribe.js') }}"></script>
+{% endblock %}
