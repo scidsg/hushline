@@ -11,7 +11,6 @@ from werkzeug.wrappers.response import Response
 from . import admin, premium, routes, settings
 from .db import db
 from .model import User
-from .stripe import init_stripe
 from .version import __version__
 
 
@@ -65,10 +64,7 @@ def create_app() -> Flask:
     Migrate(app, db)
 
     # Configure Stripe
-    if app.config["STRIPE_SECRET_KEY"]:
-        with app.app_context():
-            init_stripe()
-    else:
+    if not app.config["STRIPE_SECRET_KEY"]:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
     routes.init_app(app)
