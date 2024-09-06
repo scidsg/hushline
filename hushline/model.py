@@ -64,6 +64,10 @@ class User(Model):
     extra_field_value3: Mapped[Optional[str]]
     extra_field_label4: Mapped[Optional[str]]
     extra_field_value4: Mapped[Optional[str]]
+    extra_field_verified1: Mapped[Optional[bool]] = mapped_column(default=False)
+    extra_field_verified2: Mapped[Optional[bool]] = mapped_column(default=False)
+    extra_field_verified3: Mapped[Optional[bool]] = mapped_column(default=False)
+    extra_field_verified4: Mapped[Optional[bool]] = mapped_column(default=False)
 
     # Paid tier fields
     tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))

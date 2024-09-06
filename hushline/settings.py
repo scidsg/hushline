@@ -1,12 +1,15 @@
+import asyncio
 import base64
 import io
 import re
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Any, Optional
 
+import aiohttp
 import pyotp
 import qrcode
 import requests
+from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
     current_app,
@@ -141,31 +144,53 @@ class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 
 
+def strip_whitespace(value: Optional[Any]) -> Optional[str]:
+    if value is not None and hasattr(value, "strip"):
+        return value.strip()
+    return value
+
+
 class ProfileForm(FlaskForm):
-    bio = TextAreaField("Bio", validators=[Length(max=250)])
+    bio = TextAreaField("Bio", filters=[strip_whitespace], validators=[Length(max=250)])
     extra_field_label1 = StringField(
-        "Extra Field Label 1", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 1",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value1 = StringField(
-        "Extra Field Value 1", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 1",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label2 = StringField(
-        "Extra Field Label 2", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 2",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value2 = StringField(
-        "Extra Field Value 2", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 2",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label3 = StringField(
-        "Extra Field Label 3", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 3",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value3 = StringField(
-        "Extra Field Value 3", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 3",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label4 = StringField(
-        "Extra Field Label 4", validators=[OptionalField(), Length(max=50)]
+        "Extra Field Label 4",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value4 = StringField(
-        "Extra Field Value 4", validators=[OptionalField(), Length(max=4096)]
+        "Extra Field Value 4",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=4096)],
     )
 
 
@@ -194,12 +219,36 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
+# Define the async function for URL verification
+async def verify_url(
+    session: aiohttp.ClientSession, user: User, i: int, url_to_verify: str, profile_url: str
+) -> None:
+    try:
+        async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
+            response.raise_for_status()
+            html_content = await response.text()
+
+            soup = BeautifulSoup(html_content, "html.parser")
+            verified = False
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                rel = link.get("rel", [])
+                if href == profile_url and "me" in rel:
+                    verified = True
+                    break
+
+            setattr(user, f"extra_field_verified{i}", verified)
+    except aiohttp.ClientError as e:
+        current_app.logger.error(f"Error fetching URL for field {i}: {e}")
+        setattr(user, f"extra_field_verified{i}", False)
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
-    @bp.route("/", methods=["GET", "POST"])
     @authentication_required
-    def index() -> str | Response:
+    @bp.route("/", methods=["GET", "POST"])
+    async def index() -> str | Response:
         user_id = session.get("user_id")
         if not user_id:
             return redirect(url_for("login"))
@@ -224,57 +273,56 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm()
         profile_form = ProfileForm()
 
-        # Check if the bio update form was submitted
-        if (
-            request.method == "POST"
-            and "update_bio" in request.form
-            and profile_form.validate_on_submit()
-        ):
-            user.bio = request.form["bio"]
-            user.extra_field_label1 = profile_form.extra_field_label1.data.strip()
-            user.extra_field_value1 = profile_form.extra_field_value1.data.strip()
-            user.extra_field_label2 = profile_form.extra_field_label2.data.strip()
-            user.extra_field_value2 = profile_form.extra_field_value2.data.strip()
-            user.extra_field_label3 = profile_form.extra_field_label3.data.strip()
-            user.extra_field_value3 = profile_form.extra_field_value3.data.strip()
-            user.extra_field_label4 = profile_form.extra_field_label4.data.strip()
-            user.extra_field_value4 = profile_form.extra_field_value4.data.strip()
-            db.session.commit()
-            flash("👍 Bio updated successfully.")
-            return redirect(url_for("settings.index"))
-
-        if request.method == "POST" and (
-            directory_visibility_form.validate_on_submit()
-            and "update_directory_visibility" in request.form
-        ):
-            user.show_in_directory = directory_visibility_form.show_in_directory.data
-            db.session.commit()
-            flash("👍 Directory visibility updated successfully.")
-            return redirect(url_for("settings.index"))
-
-        # Additional admin-specific data initialization
-        user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
-        all_users = []
-
-        # Check if user is admin and add admin-specific data
-        if user.is_admin:
-            user_count = db.session.scalar(db.func.count(User.id))
-            two_fa_count = db.session.scalar(
-                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
-            )
-            pgp_key_count = db.session.scalar(
-                db.select(
-                    db.func.count(User.id)
-                    .filter(User._pgp_key.isnot(None))
-                    .filter(User._pgp_key != "")
-                )
-            )
-            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
-
         # Handle form submissions
         if request.method == "POST":
+            # Update bio and custom fields
+            if "update_bio" in request.form and profile_form.validate_on_submit():
+                user.bio = profile_form.bio.data
+
+                # Define base_url from the environment or config
+                profile_url = url_for("profile", _external=True, username=user.primary_username)
+
+                async with aiohttp.ClientSession() as client_session:
+                    tasks = []
+                    for i in range(1, 5):
+                        label_field = getattr(profile_form, f"extra_field_label{i}", "")
+                        value_field = getattr(profile_form, f"extra_field_value{i}", "")
+
+                        label = label_field.data if hasattr(label_field, "data") else label_field
+                        setattr(user, f"extra_field_label{i}", label)
+
+                        value = value_field.data if hasattr(value_field, "data") else value_field
+                        setattr(user, f"extra_field_value{i}", value)
+
+                        # If the value is empty, reset the verification status
+                        if not value:
+                            setattr(user, f"extra_field_verified{i}", False)
+                            continue
+
+                        # Verify the URL only if it starts with "https://"
+                        url_to_verify = value
+                        if url_to_verify.startswith("https://"):
+                            task = verify_url(client_session, user, i, url_to_verify, profile_url)
+                            tasks.append(task)
+
+                    # Run all the tasks concurrently
+                    if tasks:  # Only gather if there are tasks to run
+                        await asyncio.gather(*tasks)
+
+                db.session.commit()
+                flash("👍 Bio and fields updated successfully.")
+                return redirect(url_for("settings.index"))
+
+            # Update directory visibility
+            if (
+                "update_directory_visibility" in request.form
+                and directory_visibility_form.validate_on_submit()
+            ):
+                user.show_in_directory = directory_visibility_form.show_in_directory.data
+                db.session.commit()
+                flash("👍 Directory visibility updated successfully.")
+                return redirect(url_for("settings.index"))
+
             # Handle Display Name Form Submission
             if "update_display_name" in request.form and display_name_form.validate_on_submit():
                 user.update_display_name(display_name_form.display_name.data.strip())
@@ -305,26 +353,26 @@ def create_blueprint() -> Blueprint:
                     )
                 return redirect(url_for(".index"))
 
-            # Check if user is admin and add admin-specific data
-            is_admin = user.is_admin
-            if is_admin:
-                user_count = db.session.scalar(db.func.count(User.id))
-                two_fa_count = db.session.scalar(
-                    db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+        # Additional admin-specific data initialization
+        user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
+        all_users = []
+
+        # Check if user is admin and add admin-specific data
+        if user.is_admin:
+            user_count = db.session.scalar(db.func.count(User.id))
+            two_fa_count = db.session.scalar(
+                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
+            )
+            pgp_key_count = db.session.scalar(
+                db.select(
+                    db.func.count(User.id)
+                    .filter(User._pgp_key.isnot(None))
+                    .filter(User._pgp_key != "")
                 )
-                pgp_key_count = db.session.scalar(
-                    db.select(
-                        db.func.count(User.id)
-                        .filter(User._pgp_key.isnot(None))
-                        .filter(User._pgp_key != "")
-                    )
-                )
-                two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-                pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            else:
-                user_count = two_fa_count = pgp_key_count = two_fa_percentage = (
-                    pgp_key_percentage
-                ) = None
+            )
+            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
+            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
+            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
 
         # Load the business tier price
         business_tier = db.session.query(Tier).filter_by(name="Business").first()
