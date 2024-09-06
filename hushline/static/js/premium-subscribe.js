@@ -5,7 +5,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const stripePublishableKey = document.querySelector(
     "input[name='stripe_publishable_key']",
   ).value;
-  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+  const premiumHome = window.location.pathname
+    .split("/")
+    .slice(0, -1)
+    .join("/");
 
   stripe = Stripe(stripePublishableKey);
   const elements = stripe.elements();
@@ -31,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert(`Payment failed: ${result.error.message}`);
       return;
     } else {
-      window.location.href = pathPrefix;
+      window.location.href = premiumHome;
     }
   });
 });

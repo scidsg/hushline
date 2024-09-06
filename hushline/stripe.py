@@ -8,6 +8,8 @@ from .model import Tier, User
 def init_stripe() -> None:
     stripe.api_key = current_app.config["STRIPE_SECRET_KEY"]
 
+
+def create_products_and_prices() -> None:
     # Make sure the products and prices are created in Stripe
     tiers = db.session.query(Tier).all()
     for tier in tiers:
