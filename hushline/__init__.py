@@ -54,8 +54,9 @@ def create_app() -> Flask:
 
     if not app.config["IS_PERSONAL_SERVER"]:
         # if were running the managed service, we are behind a proxy
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0)
-
+        app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+            app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0
+        )
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
