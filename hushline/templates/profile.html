@@ -1,9 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{% if (not require_pgp) or (require_pgp and user.pgp_key) %}
-  Send a Message to {{ display_name_or_username }}
-{% else %}
-  Profile: {{ display_name_or_username }}
-{% endif %}{% endblock %}
+{% block title %}
+  {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
+    Send a Message to {{ display_name_or_username }}
+  {% else %}
+    Profile: {{ display_name_or_username }}
+  {% endif %}
+{% endblock %}
 
 {% block content %}
   <h2 class="submit">
@@ -13,6 +15,7 @@
       {{ display_name_or_username }}
     {% endif %}
   </h2>
+
   {% if user.is_admin or user.is_verified %}
     <div class="badgeContainer">
       {% if user.is_admin %}
@@ -31,33 +34,38 @@
       {% endif %}
     </div>
   {% endif %}
+
   {% if user.bio %}
     <p class="bio">{{ user.bio }}</p>
   {% endif %}
-
   {%
-    if (user.extra_field_label1 and user.extra_field_value1) or (user.extra_field_label2 and user.extra_field_value2) or
-    (user.extra_field_label3 and user.extra_field_value3) or (user.extra_field_label4 and user.extra_field_value4)
+    set extra_fields = [
+      {'label': user.extra_field_label1, 'value': user.extra_field_value1, 'verified': user.extra_field_verified1},
+      {'label': user.extra_field_label2, 'value': user.extra_field_value2, 'verified': user.extra_field_verified2},
+      {'label': user.extra_field_label3, 'value': user.extra_field_value3, 'verified': user.extra_field_verified3},
+      {'label': user.extra_field_label4, 'value': user.extra_field_value4, 'verified': user.extra_field_verified4}
+    ]
   %}
+
+  {% if extra_fields | selectattr('label', 'defined') | selectattr('value', 'defined') %}
     <div class="extra-fields">
-      {%
-        for label, value in [
-        (user.extra_field_label1, user.extra_field_value1),
-        (user.extra_field_label2, user.extra_field_value2),
-        (user.extra_field_label3, user.extra_field_value3),
-        (user.extra_field_label4, user.extra_field_value4)
-        ]
-      %}
-        {% if label and value %}
+      {% for field in extra_fields %}
+        {% if field.label and field.value %}
           <p class="extra-field">
-            <span class="extra-field-label">{{ label }}</span>
+            <span class="extra-field-label">{{ field.label }}</span>
             <span class="extra-field-value">
-              {% if value.startswith('https://') %}
-                <a href="{{ value }}" target="_blank" rel="noopener noreferrer"
-                  >{{ value }}</a
+              {% if field.verified %}
+                <span class="icon verifiedURL" title="Verified Address"></span>
+              {% endif %}
+              {% if field.value.startswith('https://') %}
+                <a
+                  href="{{ field.value }}"
+                  target="_blank"
+                  rel="noopener noreferrer me"
+                  >{{ field.value }}</a
                 >
               {% else %}
-                {{ value }}
+                {{ field.value }}
               {% endif %}
             </span>
           </p>
@@ -67,7 +75,7 @@
   {% endif %}
   {% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
 
-  {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
+  {% if current_user_id == user.id %}
     <p class="instr">
       {% if pgp_required_but_not_set %}
         <b>Only visible to you:</b> In order to protect your sources, you need
@@ -83,6 +91,7 @@
       {% endif %}
     </p>
   {% endif %}
+
   <form
     method="POST"
     action="{{ url_for('submit_message', username=username) }}"
@@ -98,12 +107,7 @@
       id="contact_method"
       name="contact_method"
       value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}"
-      {%
-        if
-        pgp_required_but_not_set
-      %}
-        disabled="disabled"
-      {% endif %}
+      {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
     />
 
     <label for="content">Message</label>
@@ -113,11 +117,10 @@
       name="content"
       required=""
       spellcheck="true"
-      {% if pgp_required_but_not_set %}
-        disabled="disabled"
-      {% endif %}
+      {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
     >
-{{ form.content.data if form.content.data is not none else '' }}</textarea
+      {{ form.content.data if form.content.data is not none else '' }}
+    </textarea
     >
 
     {% if not pgp_required_but_not_set %}
@@ -131,7 +134,7 @@
         value="false"
       />
 
-      {% if current_user_id == user.id or (secondary_username and current_user_id == secondary_username.primary_user_id) %}
+      {% if current_user_id == user.id %}
         {% if user.pgp_key %}
           <p class="helper meta">
             🔐 Your message will be encrypted and only readable by you.

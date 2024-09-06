@@ -145,6 +145,30 @@ def init_app(app: Flask) -> None:
         math_problem = f"{num1} + {num2} ="
         session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
+        # Prepare extra fields and verification status
+        extra_fields = [
+            {
+                "label": user.extra_field_label1,
+                "value": user.extra_field_value1,
+                "verified": user.extra_field_verified1,
+            },
+            {
+                "label": user.extra_field_label2,
+                "value": user.extra_field_value2,
+                "verified": user.extra_field_verified2,
+            },
+            {
+                "label": user.extra_field_label3,
+                "value": user.extra_field_value3,
+                "verified": user.extra_field_verified3,
+            },
+            {
+                "label": user.extra_field_label4,
+                "value": user.extra_field_value4,
+                "verified": user.extra_field_verified4,
+            },
+        ]
+
         return render_template(
             "profile.html",
             form=form,
@@ -156,6 +180,7 @@ def init_app(app: Flask) -> None:
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
             require_pgp=app.config["REQUIRE_PGP"],
             math_problem=math_problem,
+            extra_fields=extra_fields,  # Pass extra fields to template
         )
 
     @app.route("/to/<username>", methods=["POST"])
