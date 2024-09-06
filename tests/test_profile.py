@@ -173,3 +173,42 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
         soup
     ) or "&lt;script&gt;alert('xss')&lt;/script&gt;" in str(soup)
     assert "<script>alert('xss')</script>" not in str(soup)
+
+
+def test_profile_submit_message_with_invalid_captcha(client: FlaskClient) -> None:
+    # Register a user
+    user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert user is not None
+
+    # Log in the user
+    login_success = login_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert login_success
+
+    # Prepare the message and contact method data
+    message_content = "This is a test message."
+    contact_method = "email@example.com"
+    message_data = {
+        "content": message_content,
+        "contact_method": contact_method,
+        "client_side_encrypted": "false",
+        "captcha_answer": 0,  # the answer is never 0
+    }
+
+    # Send a POST request to submit the message
+    response = client.post(
+        f"/to/{user.primary_username}",
+        data=message_data,
+        follow_redirects=True,
+    )
+
+    # Make sure there's a CAPTCHA error
+    assert response.status_code == 200
+    assert b"Incorrect CAPTCHA." in response.data
+
+    # Make sure the contact method and message content are there
+    assert contact_method.encode() in response.data
+    assert message_content.encode() in response.data
+
+    # Verify that the message is not saved in the database
+    message = db.session.scalars(db.select(Message).filter_by(user_id=user.id).limit(1)).first()
+    assert message is None
