@@ -5,6 +5,7 @@ from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
@@ -49,6 +50,11 @@ def create_app() -> Flask:
 
     # Handle the tips domain for profile verification
     app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
+    app.config["PREFERRED_URL_SCHEME"] = "https" if os.getenv("SERVER_NAME") is not None else "http"
+
+    if not app.config["IS_PERSONAL_SERVER"]:
+        # if were running the managed service, we are behind a proxy
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0)
 
     # Run migrations
     db.init_app(app)
