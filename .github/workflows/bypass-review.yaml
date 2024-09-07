@@ -31,11 +31,9 @@ jobs:
           # Check the user's role using memberships API (works for both public and private members)
           ADMIN_CHECK=$(gh api orgs/scidsg/memberships/$AUTHOR --jq '.role')
 
-          # Output the result for debugging purposes
-          echo "Admin check response: $ADMIN_CHECK"
-
+          # If the user isn't an admin, exit with a detailed error message
           if [ "$ADMIN_CHECK" != "admin" ]; then
-            echo "User is not an admin or is not a public member of the organization. Exiting."
+            echo "User is not an admin. Their role is: $ADMIN_CHECK. Exiting."
             exit 1
           fi
 
