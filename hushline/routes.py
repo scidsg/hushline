@@ -21,7 +21,7 @@ from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
-from .crypto import encrypt_message
+from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
@@ -118,6 +118,27 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
+        # If the encrypted message is stored in the session, use it to populate the form
+        scope = "submit_message"
+        if (
+            f"{scope}:salt" in session
+            and f"{scope}:contact_method" in session
+            and f"{scope}:content" in session
+        ):
+            try:
+                form.contact_method.data = decrypt_field(
+                    session[f"{scope}:contact_method"], scope, session[f"{scope}:salt"]
+                )
+                form.content.data = decrypt_field(
+                    session[f"{scope}:content"], scope, session[f"{scope}:salt"]
+                )
+            except Exception:
+                app.logger.error("Error decrypting content", exc_info=True)
+
+            session.pop(f"{scope}:contact_method", None)
+            session.pop(f"{scope}:content", None)
+            session.pop(f"{scope}:salt", None)
+
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
         num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
         num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
@@ -179,6 +200,15 @@ def init_app(app: Flask) -> None:
 
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
+                # Encrypt the message and store it in the session
+                scope = "submit_message"
+                salt = generate_salt()
+                session[f"{scope}:contact_method"] = encrypt_field(
+                    form.contact_method.data, scope, salt
+                )
+                session[f"{scope}:content"] = encrypt_field(form.content.data, scope, salt)
+                session[f"{scope}:salt"] = salt
+
                 return redirect(url_for("profile", username=username))
 
             content = form.content.data
