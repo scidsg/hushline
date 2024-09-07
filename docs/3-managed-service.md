@@ -103,7 +103,7 @@ Users may opt in to being listed on our public directory, making it easy for any
 
 #### Verified Addresses
 
-Verified addresses establishes a relationship between your Hush Line account and another website. Verification is automatic, and all you need to do is include a link to your Hush Line profile containing `rel="me"` on the page of the address you want verified. 
+Verified addresses establishes a relationship between your Hush Line account and another website. Verification is automatic, and all you need to do is include a link to your Hush Line profile containing `rel="me"` on the page of the address you want verified.
 
 For example, if I want to verify my personal website `glennsorrentino.com` I would add this to my page:
 
@@ -111,7 +111,7 @@ For example, if I want to verify my personal website `glennsorrentino.com` I wou
 <a href="https://tips.hushline.app/to/glenn" rel="me">Hush Line</a>
 ```
 
-In your Hush Line settings, when I add `https://glennsorrentino.com` you'll see a verified checkmark. 
+In your Hush Line settings, when I add `https://glennsorrentino.com` you'll see a verified checkmark.
 
 ### Authentication
 
