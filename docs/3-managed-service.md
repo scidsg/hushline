@@ -36,7 +36,7 @@ Our verified accounts feature is designed to ensure that messages reach their in
 
 To ensure your account is recognized as authentic, users belonging to the categories listed above can apply for verification. Follow these steps to initiate the verification process:
 
-1. **First, add a verified URL to your Hush Line profile:** In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, you simply need to add a link to your Hush Line address on the page for that URL with `rel="me"` in the link's markup. For example:
+1. **First, add a verified URL to your Hush Line profile:** In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, add it to your Hush Line extra fields using `https://` - `https://scidsg.org`, for example. Then, add a link to your Hush Line address on the page for that URL with `rel="me"` in the markup. For example:
 
    ```html
    <a href="https://tips.hushline.app/to/scidsg" rel="me">Send an anonymous tip!</a>
@@ -88,7 +88,7 @@ Users may opt in to being listed on our public directory, making it easy for any
 
 #### Verified Addresses
 
-In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, you simply need to add a link to your Hush Line address on the page for that URL with `rel="me"` in the link's markup. For example:
+In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, add it to your Hush Line extra fields using `https://` - `https://scidsg.org`, for example. Then, add a link to your Hush Line address on the page for that URL with `rel="me"` in the markup. For example:
 
 ```html
 <a href="https://tips.hushline.app/to/scidsg" rel="me">Send an anonymous tip!</a>
