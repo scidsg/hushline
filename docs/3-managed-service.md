@@ -36,36 +36,21 @@ Our verified accounts feature is designed to ensure that messages reach their in
 
 To ensure your account is recognized as authentic, users belonging to the categories listed above can apply for verification. Follow these steps to initiate the verification process:
 
-1. **Send a Message:** Use the contact form in the app to reach out to us. Include your name or organization's name and a preferred method of contact (email or phone number). We'll get back to you to schedule a verification meeting.
-2. **Prepare Your Documents:** To verify your identity or your authority to represent an organization, please include the relevant documents for your role:
+1. **First, add a verified URL to your Hush Line profile:** In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, you simply need to add a link to your Hush Line address on the page for that URL with `rel="me"` in the link's markup. For example:
 
-   - **A Valid ID:** Government-issued identification that shows your full name and photo.
-   - **Proof of Employment or Association:** A letter from your employer or organization confirming your role or a recent pay stub.
-   - **An Active Profile:** A link to your profile on your employer's or organization's official website, verifying your position or role.
-   - **Published Articles:** For journalists, links to your articles published on recognized news websites.
-   - **Proof of Authority:** For those representing organizations, a document proving your authority to represent the organization, such as a power of attorney or a board resolution.
+   ```html
+   <a href="https://tips.hushline.app/to/scidsg" rel="me">Send an anonymous tip!</a>
+   ```
 
-   These documents help us ensure that verified accounts are granted to the rightful individuals or representatives of organizations.
+   ![verified-url](https://github.com/user-attachments/assets/acd84800-f17e-4e25-a1bf-6315af235ccf)
 
-3. **Prepare Your Account:** Verified accounts are required to use their public name or official organization name. For example:
+   a. **Alternatively, verify a Hush Line address using Mastodon:** Add your Mastodon address to your Hush Line profile, then add your Hush Line address to your Mastodon profile. You'll see your Hush Line address verify on Mastodon.
 
-| Category                           | Example                        |
-| ---------------------------------- | ------------------------------ |
-| Individuals                        | Art Vandelay                   |
-| Organizations                      | Vandelay Industries            |
-| Departments within an organization | Vandelay Industries, HR Dept.  |
-| Journalists                        | Art Vandelay, The Daily Worker |
-| Independent Journalists            | Art Vandelay, Ind.             |
-| Politicians                        | Sen. Art Vandelay, D-CA, 🇺🇸    |
-|                                    | Gob Bluth, PM, 🇨🇦              |
+   ![verify-via-mastodon](https://github.com/user-attachments/assets/cd1d25c2-d119-4f9b-9c31-472b0d29ad84)
 
-Once your Display Name matches the format above, we'll promptly verify your account!
+3. **Set your Display Name:** To help guard against abuse, our verification system is built so that if a verified user changes their username or display name, they'll lose their verified status and need to initiate the process again. This feature is intended to eliminate the risk of a user with a verified account changing their information to impersonate another person or organization.
 
-### Safeguards
-
-To help guard against abuse, our verification system is built so that if a verified user changes their username or display name, they'll lose their verified status and need to initiate the process again. This feature is intended to eliminate the risk of a user with a verified account changing their information to impersonate another person or organization.
-
-![Settings - Directory](https://github.com/user-attachments/assets/bbddbbea-9d92-4234-be48-00b9bc65b4e3)
+4. **Send a Message:** Use the contact form in the app to reach out to us to request verification!
 
 ## Sending Messages
 
