@@ -13,3 +13,5 @@ volumes/app
 volumes/redis
 volumes/postgres
 /node_modules
+.coverage
+htmlcov
