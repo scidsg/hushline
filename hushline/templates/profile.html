@@ -46,30 +46,29 @@
       {'label': user.extra_field_label4, 'value': user.extra_field_value4, 'verified': user.extra_field_verified4}
     ]
   %}
+  {%- set valid_fields = extra_fields | selectattr('label', 'defined') | selectattr('value', 'defined') | selectattr('value') | list -%}
 
-  {% if extra_fields | selectattr('label', 'defined') | selectattr('value', 'defined') %}
+  {% if valid_fields | length > 0 %}
     <div class="extra-fields">
-      {% for field in extra_fields %}
-        {% if field.label and field.value %}
-          <p class="extra-field">
-            <span class="extra-field-label">{{ field.label }}</span>
-            <span class="extra-field-value">
-              {% if field.verified %}
-                <span class="icon verifiedURL" title="Verified Address"></span>
-              {% endif %}
-              {% if field.value.startswith('https://') %}
-                <a
-                  href="{{ field.value }}"
-                  target="_blank"
-                  rel="noopener noreferrer me"
-                  >{{ field.value }}</a
-                >
-              {% else %}
-                {{ field.value }}
-              {% endif %}
-            </span>
-          </p>
-        {% endif %}
+      {% for field in valid_fields %}
+        <p class="extra-field">
+          <span class="extra-field-label">{{ field.label }}</span>
+          <span class="extra-field-value">
+            {% if field.verified %}
+              <span class="icon verifiedURL" title="Verified Address"></span>
+            {% endif %}
+            {% if field.value.startswith('https://') %}
+              <a
+                href="{{ field.value }}"
+                target="_blank"
+                rel="noopener noreferrer me"
+                >{{ field.value }}</a
+              >
+            {% else %}
+              {{ field.value }}
+            {% endif %}
+          </span>
+        </p>
       {% endfor %}
     </div>
   {% endif %}
