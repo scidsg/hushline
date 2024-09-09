@@ -2014,7 +2014,7 @@ p.bio + .extra-fields {
   text-overflow: ellipsis;
   font-family: var(--font-sans-bold);
   font-size: calc(var(--font-size-small) * 0.975);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
 }
 
 .extra-fields .extra-field-value {
