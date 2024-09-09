@@ -1995,7 +1995,7 @@ p.bio + .extra-fields {
   flex-direction: row;
   margin-top: 0.5rem;
   margin-bottom: 0.75rem;
-  gap: .8125rem 2rem;
+  gap: 0.8125rem 2rem;
 }
 
 .extra-field {
@@ -2013,7 +2013,7 @@ p.bio + .extra-fields {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-sans-bold);
-  font-size: calc(var(--font-size-small) * .975);
+  font-size: calc(var(--font-size-small) * 0.975);
   margin-bottom: 0.25rem;
 }
 
