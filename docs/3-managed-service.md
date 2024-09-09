@@ -88,15 +88,13 @@ Users may opt in to being listed on our public directory, making it easy for any
 
 #### Verified Addresses
 
-Verified addresses establishes a relationship between your Hush Line account and another website. Verification is automatic, and all you need to do is include a link to your Hush Line profile containing `rel="me"` on the page of the address you want verified.
-
-For example, if I want to verify my personal website `glennsorrentino.com` I would add this to my page:
+In Hush Line settings you can add up to four additional fields - a URL, Signal username, phone number, or anything else. To verify a URL, you simply need to add a link to your Hush Line address on the page for that URL with `rel="me"` in the link's markup. For example:
 
 ```html
-<a href="https://tips.hushline.app/to/glenn" rel="me">Hush Line</a>
+<a href="https://tips.hushline.app/to/scidsg" rel="me">Send an anonymous tip!</a>
 ```
 
-In your Hush Line settings, when I add `https://glennsorrentino.com` you'll see a verified checkmark.
+![verified-url](https://github.com/user-attachments/assets/acd84800-f17e-4e25-a1bf-6315af235ccf)
 
 ### Authentication
 
@@ -121,8 +119,6 @@ Like when changing your display name, when you change your username, you'll lose
 ### Email & Encryption
 
 Before users can enable message forwading, a PGP key must be uploaded.
-
-![Settings - Email](https://github.com/user-attachments/assets/4a1ec530-cf19-432e-81ee-cbbf53da1261)
 
 #### Email Delivery
 
