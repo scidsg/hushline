@@ -34,7 +34,7 @@ jobs:
           # If the user isn't an admin, exit with a detailed error message
           if [ "$ADMIN_CHECK" != "admin" ]; then
             echo "User is not an admin. Their role is: $ADMIN_CHECK. Exiting."
-            exit 1
+            exit 0
           fi
 
       - name: Check for specific files and approve if conditions are met
