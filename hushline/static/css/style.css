@@ -1771,21 +1771,6 @@ input#captcha_answer {
   margin-bottom: 1rem;
 }
 
-.icon.verifiedURL {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  background-size: contain;
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-
-.extra-field-value .icon.verifiedURL + a,
-.extra-field-value .icon.verifiedURL + span {
-  padding-left: 1.5rem;
-}
-
 @media only screen and (max-width: 768px) {
   .container {
     min-width: initial;
@@ -2010,13 +1995,13 @@ p.bio + .extra-fields {
   flex-direction: row;
   margin-top: 0.5rem;
   margin-bottom: 0.75rem;
-  gap: 0.25rem 2rem;
+  gap: .8125rem 2rem;
 }
 
 .extra-field {
   margin: 0;
   flex: 1;
-  flex-direction: row;
+  flex-direction: column;
   display: flex;
   min-width: 45%;
 }
@@ -2028,11 +2013,8 @@ p.bio + .extra-fields {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-sans-bold);
-  font-size: var(--font-size-small);
+  font-size: calc(var(--font-size-small) * .975);
   margin-bottom: 0.25rem;
-  max-width: 68px;
-  width: 100%;
-  min-width: 54px;
 }
 
 .extra-fields .extra-field-value {
@@ -2041,6 +2023,29 @@ p.bio + .extra-fields {
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
+}
+
+.icon.verifiedURL {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  background-size: contain;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.extra-fields .extra-field-value .icon {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.extra-field-value .icon.verifiedURL + a,
+.extra-field-value .icon.verifiedURL + span {
+  padding-left: 1.5rem;
 }
 
 .pgp-disabled-overlay {
