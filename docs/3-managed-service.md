@@ -141,7 +141,7 @@ Before users can enable message forwading, a PGP key must be uploaded.
 
 #### Email Delivery
 
-We use Riseup.net for our email forwarding provider. All you need to do is add an email address and you'll get new secure messages delivered directly to your inbox.
+We use Riseup.net for our email forwarding provider. All you need to do is add an email address and you'll get new secure messages delivered directly to your email inbox.
 
 ![Settings - Email](https://github.com/user-attachments/assets/3865afea-ea24-499f-96b0-c6d680e7e3f3)
 
