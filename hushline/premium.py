@@ -1,3 +1,7 @@
+import asyncio
+from typing import Tuple
+
+import stripe
 from flask import (
     Blueprint,
     current_app,
@@ -17,7 +21,6 @@ from .stripe import (
     create_subscription,
     get_latest_invoice_payment_intent_client_secret,
     get_subscription,
-    handle_webhook,
 )
 from .utils import authentication_required
 
@@ -27,6 +30,24 @@ BUSINESS_TIER = 2
 
 def create_blueprint() -> Blueprint:
     bp = Blueprint("premium", __file__, url_prefix="/premium")
+
+    # This is used to process Stripe events in a background
+    event_queue: asyncio.Queue = asyncio.Queue()
+
+    async def process_events() -> None:
+        while True:
+            event = await event_queue.get()
+            try:
+                # Process the event
+                current_app.logger.info(f"Processing event: {event}")
+                # Add your event processing logic here
+
+            except Exception as e:
+                current_app.logger.error(f"Error processing event: {e}")
+            finally:
+                event_queue.task_done()
+
+    asyncio.create_task(process_events())
 
     @bp.route("/", methods=["GET"])
     @authentication_required
@@ -103,16 +124,24 @@ def create_blueprint() -> Blueprint:
         return redirect(url_for("premium.index"))
 
     @bp.route("/webhook", methods=["POST"])
-    def webhook() -> Response | str:
+    def webhook() -> Response | str | Tuple[Response | str, int]:
         payload = request.data
         sig_header = request.headers["STRIPE_SIGNATURE"]
 
+        # Parse the event
         try:
-            handle_webhook(payload, sig_header)
-        except Exception as e:
-            current_app.logger.error(f"Stripe webhook error: {e}")
-            return jsonify(success=False)
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, current_app.config.get("STRIPE_WEBHOOK_SECRET")
+            )
+        except ValueError as e:
+            current_app.logger.error(f"Invalid payload: {e}")
+            return jsonify(success=False), 400
+        except stripe._error.SignatureVerificationError as e:
+            current_app.logger.error(f"Error verifying webhook signature: {e}")
+            return jsonify(success=False), 400
 
+        # Push the event into the queue and return immediately
+        asyncio.create_task(event_queue.put(event))
         return jsonify(success=True)
 
     return bp

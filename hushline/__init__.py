@@ -74,7 +74,10 @@ def create_app() -> Flask:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
     routes.init_app(app)
-    for module in [admin, settings, premium]:
+    blueprints_to_register = [admin, settings]
+    if app.config["STRIPE_SECRET_KEY"]:
+        blueprints_to_register.append(premium)
+    for module in blueprints_to_register:
         app.register_blueprint(module.create_blueprint())
 
     @app.errorhandler(404)
