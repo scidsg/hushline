@@ -80,7 +80,7 @@
       role="tabpanel"
       aria-labelledby="profile-tab"
     >
-      {% if user.tier_id == 1 %}
+      {% if is_premium_enabled and user.tier_id == 1 %}
         <div class="upgrade">
           <h3>Upgrade to Business</h3>
           <p class="info">
