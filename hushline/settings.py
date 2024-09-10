@@ -664,6 +664,50 @@ def create_blueprint() -> Blueprint:
         flash("👍 SMTP settings updated successfully")
         return redirect(url_for(".index"))
 
+    @bp.route("/update-brand-primary-color", methods=["POST"])
+    @authentication_required
+    def update_brand_primary_color() -> Response | str:
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("Please log in to continue.")
+            return redirect(url_for("login"))
+
+        user = db.session.get(User, user_id)
+        if user.is_admin:
+            # TODO:
+            # db persistence logic + form retrieval + update root style variable
+            form = UpdateBrandPrimaryColorForm()
+            if form.validate_on_submit():
+                user.hex_color = form.hex_color
+                db.session.commit()
+                flash("👍 Brand primary color updated successfully.")
+                return redirect(url_for(".index"))
+
+        flash("User not found. Please log in again.")
+        return redirect(url_for("login"))
+
+    @bp.route("/update-brand-app-name", methods=["POST"])
+    @authentication_required
+    def update_brand_app_name() -> Response | str:
+        user_id = session.get("user_id")
+        if not user_id:
+            flash("Please log in to continue.")
+            return redirect(url_for("login"))
+
+        user = db.session.get(User, user_id)
+        if user.is_admin:
+            # TODO:
+            # db persistence logic + form retrieval + update h1
+            form = UpdateBrandAppNameForm()
+            if form.validate_on_submit():
+                user.brand_app_name = form.app_name
+                db.session.commit()
+                flash("👍 Brand app name updated successfully.")
+                return redirect(url_for(".index"))
+
+        flash("User not found. Please log in again.")
+        return redirect(url_for("login"))
+
     @bp.route("/delete-account", methods=["POST"])
     @authentication_required
     def delete_account() -> Response | str:
