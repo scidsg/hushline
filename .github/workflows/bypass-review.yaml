@@ -25,11 +25,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ADMIN_PAT }}
         run: |
+          # Get the author of the PR
           AUTHOR=$(gh pr view ${{ github.event.pull_request.number }} --json author --jq '.author.login')
-          ADMIN_CHECK=$(gh api user/memberships/orgs/scidsg --jq '.role')
+
+          # Check the user's role using memberships API (works for both public and private members)
+          ADMIN_CHECK=$(gh api orgs/scidsg/memberships/$AUTHOR --jq '.role')
+
+          # If the user isn't an admin, exit with a detailed error message
           if [ "$ADMIN_CHECK" != "admin" ]; then
-            echo "User is not an admin or is not a public member of the organization. Exiting."
-            exit 1
+            echo "User is not an admin. Their role is: $ADMIN_CHECK. Exiting."
+            exit 0
           fi
 
       - name: Check for specific files and approve if conditions are met
