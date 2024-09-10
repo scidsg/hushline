@@ -1,4 +1,3 @@
-import asyncio
 from typing import Tuple
 
 import stripe
@@ -30,24 +29,6 @@ BUSINESS_TIER = 2
 
 def create_blueprint() -> Blueprint:
     bp = Blueprint("premium", __file__, url_prefix="/premium")
-
-    # This is used to process Stripe events in a background
-    event_queue: asyncio.Queue = asyncio.Queue()
-
-    async def process_events() -> None:
-        while True:
-            event = await event_queue.get()
-            try:
-                # Process the event
-                current_app.logger.info(f"Processing event: {event}")
-                # Add your event processing logic here
-
-            except Exception as e:
-                current_app.logger.error(f"Error processing event: {e}")
-            finally:
-                event_queue.task_done()
-
-    asyncio.create_task(process_events())
 
     @bp.route("/", methods=["GET"])
     @authentication_required
@@ -140,8 +121,9 @@ def create_blueprint() -> Blueprint:
             current_app.logger.error(f"Error verifying webhook signature: {e}")
             return jsonify(success=False), 400
 
-        # Push the event into the queue and return immediately
-        asyncio.create_task(event_queue.put(event))
+        # TODO: Push the event into the queue and return immediately
+        current_app.logger.info(f"Event: {event}")
+
         return jsonify(success=True)
 
     return bp
