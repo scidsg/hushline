@@ -2,8 +2,8 @@
   --color-border: rgba(0, 0, 0, 0.18);
   --color-border-dark: #7d7d7d;
   --color-border-dark-1: #555;
-  --color-brand: #7d25c1;
-  --color-brand-dark: #ecdafa;
+  --color-brand: oklch(48.55% 0.222 304.47); /* #7d25c1 */
+  --color-brand-dark: oklch(from var(--color-brand) calc(1.8797 * l) calc(0.2117 * c) calc(1.0197 * h)); /* #ecdafa */
   --color-text: #333;
   --color-text-dark-alt-2: #e4e4e4;
   --color-text-dark-alt: #c2c2c2;
