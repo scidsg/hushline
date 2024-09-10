@@ -39,6 +39,12 @@
   --line-height-base: 1.40625;
 }
 
+#brand-primary-color {
+  padding: 0.25rem;
+  width: 4rem;
+  height: 2rem;
+}
+
 @font-face {
   font-family: "Atkinson Hyperlegible";
   src:
