@@ -1,0 +1,53 @@
+name: Bypass Review by Admin for Specific Files
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  bypass-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history so we can access any branch
+
+      - name: Fetch main branch
+        run: git fetch origin main:main
+
+      - name: Fetch PR branch
+        run: |
+          git fetch origin $GITHUB_HEAD_REF:$GITHUB_HEAD_REF
+          git checkout $GITHUB_HEAD_REF
+
+      - name: Set up GitHub CLI Authentication
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
+        run: |
+          # Get the author of the PR
+          AUTHOR=$(gh pr view ${{ github.event.pull_request.number }} --json author --jq '.author.login')
+
+          # Check the user's role using memberships API (works for both public and private members)
+          ADMIN_CHECK=$(gh api orgs/scidsg/memberships/$AUTHOR --jq '.role')
+
+          # If the user isn't an admin, exit with a detailed error message
+          if [ "$ADMIN_CHECK" != "admin" ]; then
+            echo "User is not an admin. Their role is: $ADMIN_CHECK. Exiting."
+            exit 0
+          fi
+
+      - name: Check for specific files and approve if conditions are met
+        run: |
+          git diff --name-only origin/main $GITHUB_HEAD_REF > file_list.txt
+
+          if grep -v -qE '(\.css$|^hushline/version.py$)' file_list.txt; then
+            echo "PR contains files other than .css or hushline/version.py. Exiting without approval."
+            exit 0  # Exit without failure
+          fi
+
+          # Proceed to approve if only matching files are present
+          echo "Only .css files and/or hushline/version.py detected and user is an admin, approving PR"
+          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only specific files detected and user is an admin."
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}

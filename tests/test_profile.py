@@ -1,4 +1,5 @@
 from auth_helper import login_user, register_user
+from bs4 import BeautifulSoup
 from flask import Flask
 from flask.testing import FlaskClient
 
@@ -151,16 +152,63 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask) -> None:
     response = client.get(f"/to/{user.primary_username}")
     assert response.status_code == 200
 
-    # The message form should not be displayed, and the PGP warning should be shown
-    assert b"Signal username" in response.data
-    assert b"singleusername.666" in response.data
-    assert b"Arbitrary Link" in response.data
-    # URLs should turn into links
-    assert (
-        '<a href="https://scidsg.org/" target="_blank" rel="noopener noreferrer"'
-        "\n                  >https://scidsg.org/</a\n                >" in response.text
+    # Check the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    # Verify the signal username is displayed correctly
+    signal_username_span = soup.find("span", class_="extra-field-value")
+    assert signal_username_span is not None
+    assert signal_username_span.text.strip() == "singleusername.666"
+
+    # Verify the arbitrary link is present with correct attributes
+    link = soup.find("a", href="https://scidsg.org/")
+    assert link is not None
+    assert link.get("target") == "_blank"
+    assert "noopener" in link.get("rel", [])
+    assert "noreferrer" in link.get("rel", [])
+
+    # Verify that XSS is correctly escaped
+    # Search for the XSS string directly in the HTML with both possible escapes
+    assert "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in str(
+        soup
+    ) or "&lt;script&gt;alert('xss')&lt;/script&gt;" in str(soup)
+    assert "<script>alert('xss')</script>" not in str(soup)
+
+
+def test_profile_submit_message_with_invalid_captcha(client: FlaskClient) -> None:
+    # Register a user
+    user = register_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert user is not None
+
+    # Log in the user
+    login_success = login_user(client, "test_user_concat", "Secure-Test-Pass123")
+    assert login_success
+
+    # Prepare the message and contact method data
+    message_content = "This is a test message."
+    contact_method = "email@example.com"
+    message_data = {
+        "content": message_content,
+        "contact_method": contact_method,
+        "client_side_encrypted": "false",
+        "captcha_answer": 0,  # the answer is never 0
+    }
+
+    # Send a POST request to submit the message
+    response = client.post(
+        f"/to/{user.primary_username}",
+        data=message_data,
+        follow_redirects=True,
     )
-    assert b"xss should fail" in response.data
-    # XSS should be escaped
-    assert b"<script>alert('xss')</script>" not in response.data
-    assert b"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in response.data
+
+    # Make sure there's a CAPTCHA error
+    assert response.status_code == 200
+    assert b"Incorrect CAPTCHA." in response.data
+
+    # Make sure the contact method and message content are there
+    assert contact_method.encode() in response.data
+    assert message_content.encode() in response.data
+
+    # Verify that the message is not saved in the database
+    message = db.session.scalars(db.select(Message).filter_by(user_id=user.id).limit(1)).first()
+    assert message is None

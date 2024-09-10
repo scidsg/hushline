@@ -1,20 +1,84 @@
 import os
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app
 from pysequoia import Cert, encrypt
+
+# https://cryptography.io/en/latest/hazmat/primitives/key-derivation-functions/#scrypt
+SCRYPT_LENGTH = 32  # The desired length of the derived key in bytes.
+SCRYPT_N = 2**14  # CPU/Memory cost parameter. It must be larger than 1 and be a power of 2.
+SCRYPT_R = 8  # Block size parameter.
+SCRYPT_P = 1  # Parallelization parameter.
+
+
+def generate_salt() -> str:
+    """
+    Generate a random salt for use in encryption key derivation.
+    """
+    return urlsafe_b64encode(os.urandom(32)).decode()
+
+
+def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
+    """
+    Return the default Fernet encryption key. If a scope and salt are provided, a unique encryption
+    key will be derived based on the scope and salt.
+    """
+    encryption_key = os.environ.get("ENCRYPTION_KEY")
+    if encryption_key is None:
+        raise ValueError("Encryption key not found. Please check your .env file.")
+
+    # If a scope is provided, we will use it to derive a unique encryption key
+    if scope is not None and salt is not None:
+        # Convert the scope to bytes if it is a string
+        if isinstance(scope, str):
+            scope_bytes = scope.encode()
+        elif isinstance(scope, bytes):
+            scope_bytes = scope
+
+        # Convert the encryption key and salt to bytes
+        encryption_key_bytes = urlsafe_b64decode(encryption_key)
+        salt_bytes = urlsafe_b64decode(salt)
+
+        # Use Scrypt to derive a unique encryption key based on the scope
+        kdf = Scrypt(
+            salt=salt_bytes,
+            length=SCRYPT_LENGTH,
+            n=SCRYPT_N,
+            r=SCRYPT_R,
+            p=SCRYPT_P,
+        )
+
+        # Concatenate the encryption key with the scope
+        items = (encryption_key_bytes, scope_bytes)
+        result = len(items).to_bytes(8, "big")
+        result += b"".join(len(item).to_bytes(8, "big") + item for item in items)
+
+        # Derive the new key
+        new_encryption_key_bytes = kdf.derive(result)
+        encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
+
+    return Fernet(encryption_key)
+
 
 encryption_key = os.environ.get("ENCRYPTION_KEY")
 
 if encryption_key is None:
     raise ValueError("Encryption key not found. Please check your .env file.")
 
-fernet = Fernet(encryption_key)
 
-
-def encrypt_field(data: bytes | str | None) -> str | None:
+def encrypt_field(
+    data: bytes | str | None, scope: bytes | str | None = None, salt: str | None = None
+) -> str | None:
+    """
+    Encrypts the data with the default encryption key. If both scope and salt are provided,
+    a unique encryption key will be derived based on the scope and salt.
+    """
     if data is None:
         return None
+
+    fernet = get_encryption_key(scope, salt)
 
     # Check if data is already a bytes object
     if not isinstance(data, bytes):
@@ -26,9 +90,17 @@ def encrypt_field(data: bytes | str | None) -> str | None:
     return fernet.encrypt_at_time(data, current_time=0).decode()
 
 
-def decrypt_field(data: str | None) -> str | None:
+def decrypt_field(
+    data: str | None, scope: bytes | str | None = None, salt: str | None = None
+) -> str | None:
+    """
+    Decrypts the data with the default encryption key. If both scope and salt are provided,
+    a unique encryption key will be derived based on the scope and salt.
+    """
     if data is None:
         return None
+
+    fernet = get_encryption_key(scope, salt)
     return fernet.decrypt(data.encode()).decode()
 
 
