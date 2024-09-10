@@ -169,6 +169,14 @@ class ProfileForm(FlaskForm):
     )
 
 
+class UpdateBrandPrimaryColorForm(FlaskForm):
+    hex_color = StringField("HEX Color", validators=[DataRequired(), Length(min=3, max=7)])
+
+
+class UpdateBrandAppNameForm(FlaskForm):
+    app_name = StringField("App Name", validators=[DataRequired(), Length(min=2, max=30)])
+
+
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
     if input_field.render_kw is None:
         input_field.render_kw = {}
