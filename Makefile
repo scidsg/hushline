@@ -13,8 +13,9 @@ install:
 
 
 .PHONY: run
-run: migrate ## Run the app
+run: ## Run the app
 	. ./dev_env.sh && \
+	poetry run python -c 'from hushline import create_app; from hushline.db import db; create_app().app_context().push(); db.create_all()' && \
 	poetry run flask run --debug -h localhost -p 8080
 
 .PHONY: lint
