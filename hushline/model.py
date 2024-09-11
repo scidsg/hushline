@@ -7,6 +7,7 @@ from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Index
+from stripe import Event
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -287,3 +288,27 @@ class Tier(Model):
         super().__init__()
         self.name = name
         self.monthly_amount = monthly_amount
+
+
+class StripeEvents(Model):
+    __tablename__ = "stripe_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(db.String(255), unique=True)
+    event_type: Mapped[str] = mapped_column(db.String(255))
+    event_data: Mapped[str] = mapped_column(db.Text)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+    status: Mapped[str] = mapped_column(db.String(255), default="pending")
+
+    def __init__(self, event: Event) -> None:
+        super().__init__()
+        self.event_id = event.id
+        self.event_type = event.type
+        self.event_data = str(event)
+
+    __table_args__ = (
+        Index(
+            "idx_stripe_events_event_id",
+            "event_id",
+        ),
+    )
