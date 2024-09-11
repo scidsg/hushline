@@ -7,7 +7,7 @@ from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Index
-from stripe import Event
+from stripe import Event, Invoice
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -180,6 +180,13 @@ class User(Model):
         self.primary_username = primary_username
         self.tier_id = 1  # Default to the free tier
 
+    __table_args__ = (
+        Index(
+            "idx_users_stripe_customer_id",
+            "stripe_customer_id",
+        ),
+    )
+
 
 class AuthenticationLog(Model):
     __tablename__ = "authentication_logs"
@@ -290,7 +297,7 @@ class Tier(Model):
         self.monthly_amount = monthly_amount
 
 
-class StripeEvents(Model):
+class StripeEvent(Model):
     __tablename__ = "stripe_events"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -310,5 +317,63 @@ class StripeEvents(Model):
         Index(
             "idx_stripe_events_event_id",
             "event_id",
+        ),
+    )
+
+
+class StripeInvoice(Model):
+    __tablename__ = "stripe_invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[str] = mapped_column(db.String(255))
+    invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True)
+    hosted_invoice_url: Mapped[str] = mapped_column(db.String(255))
+    amount_due: Mapped[int] = mapped_column(db.Integer)
+    amount_paid: Mapped[int] = mapped_column(db.Integer)
+    amount_remaining: Mapped[int] = mapped_column(db.Integer)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
+
+    def __init__(self, invoice: Invoice):
+        if invoice.id:
+            self.invoice_id = invoice.id
+        if invoice.customer and isinstance(invoice.customer, str):
+            self.customer_id = invoice.customer
+        if invoice.hosted_invoice_url:
+            self.hosted_invoice_url = invoice.hosted_invoice_url
+        if invoice.amount_due:
+            self.amount_due = invoice.amount_due
+        if invoice.amount_paid:
+            self.amount_paid = invoice.amount_paid
+        if invoice.amount_remaining:
+            self.amount_remaining = invoice.amount_remaining
+        if invoice.created:
+            self.created_at = datetime.fromtimestamp(invoice.created, tz=timezone.utc)
+
+        # Look up the user by their customer ID
+        user = db.session.query(User).filter_by(stripe_customer_id=invoice.customer).first()
+        if user:
+            self.user_id = user.id
+        else:
+            raise ValueError(f"Could not find user with customer ID {invoice.customer}")
+
+        # Look up the tier by the product_id
+        if invoice.lines.data[0].plan:
+            product_id = invoice.lines.data[0].plan.product
+
+            tier = db.session.query(Tier).filter_by(stripe_product_id=product_id).first()
+            if tier:
+                self.tier_id = tier.id
+            else:
+                raise ValueError(f"Could not find tier with product ID {product_id}")
+        else:
+            raise ValueError("Invoice does not have a plan")
+
+    __table_args__ = (
+        Index(
+            "idx_stripe_invoices_invoice_id",
+            "invoice_id",
         ),
     )

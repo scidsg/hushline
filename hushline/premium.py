@@ -1,3 +1,4 @@
+import asyncio
 from typing import Tuple
 
 import stripe
@@ -15,7 +16,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from .db import db
-from .model import Tier, User
+from .model import StripeEvent, Tier, User
 from .stripe import (
     create_subscription,
     get_latest_invoice_payment_intent_client_secret,
@@ -25,6 +26,30 @@ from .utils import authentication_required
 
 FREE_TIER = 1
 BUSINESS_TIER = 2
+
+
+async def worker() -> None:
+    while True:
+        # Get the next stripe event to process
+        stripe_event = (
+            db.session.query(StripeEvent)
+            .filter_by(status="pending")
+            .order_by(StripeEvent.created_at)
+            .first()
+        )
+        if not stripe_event:
+            await asyncio.sleep(60)
+            continue
+
+        stripe_event.status = "in_progress"
+        db.session.add(stripe_event)
+        db.session.commit()
+
+        # TODO: Process the event
+
+        # invoice.created: create an invoice for the user
+        # invoice.updated: update an invoice for the user
+        # invoice.payment_succeeded: update the invoice, and finalize the user's tier
 
 
 def create_blueprint() -> Blueprint:
@@ -121,8 +146,17 @@ def create_blueprint() -> Blueprint:
             current_app.logger.error(f"Error verifying webhook signature: {e}")
             return jsonify(success=False), 400
 
-        # TODO: Push the event into the queue and return immediately
-        current_app.logger.info(f"Event: {event}")
+        # Have we seen this one before?
+        stripe_event = db.session.query(StripeEvent).filter_by(event_id=event.id).first()
+        if stripe_event:
+            current_app.logger.info(f"Event already seen: {event}")
+            return jsonify(success=True)
+
+        # Log it
+        current_app.logger.info(f"Received event: {event}")
+        stripe_event = StripeEvent(event)
+        db.session.add(stripe_event)
+        db.session.commit()
 
         return jsonify(success=True)
 
