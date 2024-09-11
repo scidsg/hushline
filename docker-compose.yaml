@@ -1,14 +1,15 @@
+---
 services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - 127.0.0.1:8080:8080
     environment:
-      - SQLALCHEMY_DATABASE_URI=postgresql://hushline:hushline@postgres:5432/hushline
-      - FLASK_ENV=development
-      - SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
-      - ENCRYPTION_KEY="bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
-      - REGISTRATION_CODES_REQUIRED=false
+      SQLALCHEMY_DATABASE_URI: postgresql://hushline:hushline@postgres:5432/hushline
+      FLASK_ENV: development
+      SECRET_KEY: "cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
+      ENCRYPTION_KEY: "bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
+      REGISTRATION_CODES_REQUIRED: false
     volumes:
       - ./volumes/app:/data
       - ./:/app
@@ -16,12 +17,12 @@ services:
       - postgres
 
   postgres:
-    image: "postgres:alpine"
+    image: postgres:16.4-alpine3.20
     environment:
-      - POSTGRES_USER=hushline
-      - POSTGRES_PASSWORD=hushline
-      - POSTGRES_DB=hushline
+      POSTGRES_USER: hushline
+      POSTGRES_PASSWORD: hushline
+      POSTGRES_DB: hushline
     ports:
-      - "5432:5432"
+      - 127.0.0.1:5432:5432
     volumes:
       - ./volumes/postgres:/var/lib/postgresql/data
