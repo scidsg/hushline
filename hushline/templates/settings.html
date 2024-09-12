@@ -490,7 +490,7 @@
       <h3>Primary Color</h3>
       <form
         method="POST"
-        action="{{ url_for('settings.update_brand_primary_color') }}"
+        action="{{ url_for('settings.update_brand_primary_color', user=user) }}"
         class="formBody"
       >
         <label for="brand-primary-color">Choose Color</label>
@@ -507,7 +507,7 @@
       <h3>App Name</h3>
       <form
         method="POST"
-        action="{{ url_for('settings.update_brand_app_name') }}"
+        action="{{ url_for('settings.update_brand_app_name', user=user) }}"
         class="formBody"
       >
         <label for="brand-app-name">Choose Name</label>
