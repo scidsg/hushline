@@ -2,17 +2,17 @@
   --color-border: rgba(0, 0, 0, 0.18);
   --color-border-dark: #7d7d7d;
   --color-border-dark-1: #555;
-  --color-brand: oklch(48.55% 0.222 304.47); /* #7d25c1 */
-  --color-brand-dark: oklch(from var(--color-brand) calc(1.8797 * l) calc(0.2117 * c) calc(1.0197 * h)); /* #ecdafa */
+  --color-brand: oklch(48.55% 0.222 304.47);  /* #7d25c1 */
+  --color-brand-dark: oklch(from var(--color-brand) calc(1.8797 * l) calc(0.2117 * c) calc(1.0197 * h));  /* #ecdafa */
   --color-text: #333;
   --color-text-dark-alt-2: #e4e4e4;
   --color-text-dark-alt: #c2c2c2;
   --color-text-dark: #dadada;
   --color-text-light: #595959;
-  --color-highlight: rgba(125, 37, 193, 0.1);
-  --color-highlight-dark: rgba(220, 198, 237, 0.2);
-  --color-brand-bg: #fbf3ff;
-  --color-dark-bg: #222;
+  --color-highlight: oklch(from var(--color-brand) l c h / 0.1);  /* rgba(125, 37, 193, 0.1) */
+  --color-highlight-dark: oklch(from var(--color-brand-dark) l c h / 0.2);  /* rgba(220, 198, 237, 0.2) */
+  --color-brand-bg: oklch(from var(--color-brand) calc(2.0058 * l) calc(0.0811 * c) calc(1.0337 * h));  /* #fbf3ff */
+  --color-dark-bg: oklch(from var(--color-brand) calc(0.5191 * l) calc(0.0676 * c) calc(1.0541 * h));  /* was #222 now with brand hue */
   --color-dark-bg-alt: #333;
   --color-dark-bg-alt-1: #444;
   --color-dark-bg-alt-transparent: rgba(51, 51, 51, 0.7);
@@ -147,7 +147,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: #fbf3ff;
+    background-color: var(--color-brand-bg);  /* #fbf3ff */
   }
 
   /* Create an active/current tablink class */
@@ -193,7 +193,7 @@
     background-color: white;
     color: var(--color-brand);
     border: 1px solid var(--color-brand);
-    box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, 0.25);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);  /* rgba(125, 37, 193, 0.25) */
   }
 
   .formBody input[type="submit"]:hover,
@@ -208,7 +208,7 @@
   .btn:active,
   input[type="file"]::file-selector-button:active,
   select:active {
-    box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, 0.25);
+    box-shadow: inset 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);  /* rgba(125, 37, 193, 0.25) */
   }
 
   .btn-danger,
@@ -435,7 +435,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: oklch(from var(--color-dark-bg) l c h / 0.35);  /* was rgba(255, 255, 255, 0.1) now with color */
   }
 
   /* Create an active/current tablink class */
@@ -481,7 +481,7 @@
     background-color: var(--color-dark);
     color: var(--color-brand-dark);
     border: 1px solid var(--color-brand-dark);
-    box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, 0.25);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);  /* rgba(125, 37, 193, 0.25) */
   }
 
   .formBody input[type="submit"]:hover,
@@ -495,7 +495,7 @@
   .formBody button:active,
   .btn:active,
   input[type="file"]::file-selector-button:active {
-    box-shadow: inset 0px 2px 0px 0px rgba(125, 37, 193, 0.25);
+    box-shadow: inset 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);  /* rgba(125, 37, 193, 0.25) */
   }
 
   .btn-danger,
@@ -618,7 +618,7 @@
   }
 
   .banner {
-    background-color: #ecdafa;
+    background-color: var(--color-brand-dark);  /* #ecdafa */
     color: #333;
   }
 
@@ -1171,7 +1171,7 @@ button,
 input[type="file"]::file-selector-button {
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0px 2px 0px 0px rgba(125, 37, 193, 0.25);
+  box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);  /* rgba(125, 37, 193, 0.25) */
 }
 
 textarea {
