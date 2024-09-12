@@ -25,5 +25,14 @@ class ComplexPassword:
             raise ValidationError(self.message)
 
 
+class HexColor:
+    hex_color_regex: re.Pattern = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+    def __call__(self, form: Form, field: Field) -> None:
+        color: str = field.data
+        if not self.hex_color_regex.match(color):
+            raise ValidationError(f"{color=} is an invalid 6-hexit color code.")
+
+
 class TwoFactorForm(FlaskForm):
     verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])

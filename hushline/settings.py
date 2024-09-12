@@ -37,7 +37,7 @@ from wtforms.validators import Optional as OptionalField
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .forms import ComplexPassword, TwoFactorForm
+from .forms import ComplexPassword, HexColor, TwoFactorForm
 from .model import Message, SecondaryUsername, SMTPEncryption, User
 from .utils import admin_authentication_required, authentication_required, create_smtp_config
 
@@ -195,7 +195,9 @@ class ProfileForm(FlaskForm):
 
 
 class UpdateBrandPrimaryColorForm(FlaskForm):
-    hex_color = StringField("HEX Color", validators=[DataRequired(), Length(min=3, max=7)])
+    hex_color = StringField(
+        "HEX Color", validators=[DataRequired(), HexColor(), Length(min=3, max=7)]
+    )
 
 
 class UpdateBrandAppNameForm(FlaskForm):
