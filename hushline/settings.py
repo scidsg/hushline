@@ -721,7 +721,7 @@ def create_blueprint() -> Blueprint:
         # db persistence logic + form retrieval + update root style variable
         form = UpdateBrandPrimaryColorForm()
         if form.validate_on_submit():
-            user.hex_color = form.hex_color
+            user.brand_primary_hex_color = form.hex_color.data
             db.session.commit()
             flash("👍 Brand primary color updated successfully.")
             return redirect(url_for(".index"))
@@ -736,7 +736,7 @@ def create_blueprint() -> Blueprint:
         # db persistence logic + form retrieval + update h1
         form = UpdateBrandAppNameForm()
         if form.validate_on_submit():
-            user.brand_app_name = form.app_name
+            user.brand_app_name = form.app_name.data
             db.session.commit()
             flash("👍 Brand app name updated successfully.")
             return redirect(url_for(".index"))
