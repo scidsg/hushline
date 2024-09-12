@@ -195,9 +195,7 @@ class ProfileForm(FlaskForm):
 
 
 class UpdateBrandPrimaryColorForm(FlaskForm):
-    hex_color = StringField(
-        "HEX Color", validators=[DataRequired(), HexColor(), Length(min=3, max=7)]
-    )
+    hex_color = StringField("HEX Color", validators=[DataRequired(), HexColor()])
 
 
 class UpdateBrandAppNameForm(FlaskForm):

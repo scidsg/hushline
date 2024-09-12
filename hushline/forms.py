@@ -26,6 +26,7 @@ class ComplexPassword:
 
 
 class HexColor:
+    # HTML input color elements only give & accept 6-hexit color codes
     hex_color_regex: re.Pattern = re.compile(r"^#[0-9a-fA-F]{6}$")
 
     def __call__(self, form: Form, field: Field) -> None:
