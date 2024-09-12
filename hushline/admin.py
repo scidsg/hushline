@@ -3,7 +3,7 @@ from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import Tier, User
-from .stripe import update_price
+from .premium import update_price
 from .utils import admin_authentication_required
 
 

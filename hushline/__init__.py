@@ -12,7 +12,6 @@ from werkzeug.wrappers.response import Response
 from . import admin, premium, routes, settings
 from .db import db
 from .model import User
-from .stripe import create_products_and_prices, init_stripe
 from .version import __version__
 
 
@@ -69,7 +68,7 @@ def create_app() -> Flask:
     # Configure Stripe
     if app.config["STRIPE_SECRET_KEY"]:
         with app.app_context():
-            init_stripe()
+            premium.init_stripe()
     else:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
@@ -116,8 +115,8 @@ def register_commands(app: Flask) -> None:
         """Make sure the products and prices are created in Stripe"""
         if app.config["STRIPE_SECRET_KEY"]:
             with app.app_context():
-                init_stripe()
-                create_products_and_prices()
+                premium.init_stripe()
+                premium.create_products_and_prices()
         else:
             app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
