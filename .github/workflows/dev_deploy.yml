@@ -13,7 +13,7 @@ env:
   DEV_TF_PATH: terraform/dev
   DO_APP_NAME: dev-${{ github.head_ref }}
   HUSHLINE_INFRA_REPO: scidsg/hushline-infra
-  HUSHLINE_INFRA_REF: main
+  HUSHLINE_INFRA_REF: fix-dev-db
 
 jobs:
   deploy:
