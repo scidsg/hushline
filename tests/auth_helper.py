@@ -5,8 +5,7 @@ import bs4
 import pyotp
 from flask.testing import FlaskClient
 
-from hushline.db import db
-from hushline.model import AuthenticationLog, User
+from hushline.model import AuthenticationLog, User, Username
 
 
 def register_user(client: FlaskClient, username: str, password: str) -> User:
@@ -24,11 +23,10 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     assert b"Registration successful!" in response.data
 
     # Verify user is added to the database
-    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
+    user = User.query.join(Username).filter(Username._username == username).one_or_none()
     assert user is not None
-    assert user.primary_username == username
+    assert user.primary_username.username == username
 
-    # Return the registered user
     return user
 
 
@@ -39,9 +37,9 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     assert response.status_code == 200
 
     # Verify user is added to the database
-    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
+    user = User.query.join(Username).filter(Username._username == username).one_or_none()
     assert user is not None
-    assert user.primary_username == username
+    assert user.primary_username.username == username
 
     # And 2FA is disabled
     assert user._totp_secret is None
@@ -77,7 +75,7 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     assert "Enter your 2FA Code" in login_response.text
 
     # Modify the timestamps on the AuthenticationLog entries to allow for 2FA verification
-    for log in db.session.scalars(db.select(AuthenticationLog)).all():
+    for log in AuthenticationLog.query.all():
         log.timestamp = datetime.now() - timedelta(minutes=5)
 
     return (user, totp_secret)
@@ -97,8 +95,9 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
         f'href="/inbox?username={username}"'.encode() in response.data
     ), f"Inbox link should be present for the user {username}"
 
-    # Return the logged-in user
-    return db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
+    if username := Username.query.filter_by(_username=username).one_or_none():
+        return username.user
+    return None
 
 
 def configure_pgp(client: FlaskClient) -> None:

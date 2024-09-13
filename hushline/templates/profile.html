@@ -35,22 +35,13 @@
     </div>
   {% endif %}
 
-  {% if user.bio %}
-    <p class="bio">{{ user.bio }}</p>
+  {% if user.primary_username.bio %}
+    <p class="bio">{{ user.primary_username.bio }}</p>
   {% endif %}
-  {%
-    set extra_fields = [
-      {'label': user.extra_field_label1, 'value': user.extra_field_value1, 'verified': user.extra_field_verified1},
-      {'label': user.extra_field_label2, 'value': user.extra_field_value2, 'verified': user.extra_field_verified2},
-      {'label': user.extra_field_label3, 'value': user.extra_field_value3, 'verified': user.extra_field_verified3},
-      {'label': user.extra_field_label4, 'value': user.extra_field_value4, 'verified': user.extra_field_verified4}
-    ]
-  %}
-  {%- set valid_fields = extra_fields | selectattr('label', 'defined') | selectattr('value', 'defined') | selectattr('value') | list -%}
 
-  {% if valid_fields | length > 0 %}
+  {% if user.primary_username.valid_fields | length > 0 %}
     <div class="extra-fields">
-      {% for field in valid_fields %}
+      {% for field in user.primary_username.valid_fields %}
         <p class="extra-field">
           <span class="extra-field-label">{{ field.label }}</span>
           <span class="extra-field-value">

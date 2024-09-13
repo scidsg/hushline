@@ -92,6 +92,7 @@ ignore = [
 "tests/*.py" = [
     # https://docs.astral.sh/ruff/rules/assert/
     "S101",
+    "S105",  # hardcoded password
     # https://docs.astral.sh/ruff/rules/magic-value-comparison/
     "PLR2004",
 ]

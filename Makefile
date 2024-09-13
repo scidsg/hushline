@@ -15,7 +15,7 @@ install:
 .PHONY: run
 run: ## Run the app
 	. ./dev_env.sh && \
-	poetry run python -c 'from hushline import create_app; from hushline.db import db; create_app().app_context().push(); db.create_all()' && \
+	poetry run python -c 'from hushline import create_app; from hushline.db import db; from sqlalchemy import text; create_app().app_context().push(); db.session.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")); db.session.commit(); db.create_all()' && \
 	poetry run flask run --debug -h localhost -p 8080
 
 .PHONY: lint

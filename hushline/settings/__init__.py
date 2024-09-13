@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import io
-from datetime import UTC, datetime
 
 import aiohttp
 import pyotp
@@ -18,13 +17,14 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy.sql import exists
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import Message, SMTPEncryption, User
+from ..model import Message, SMTPEncryption, User, Username
 from ..utils import authentication_required, create_smtp_config
 from .forms import (
     ChangePasswordForm,
@@ -65,7 +65,7 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 
 # Define the async function for URL verification
 async def verify_url(
-    session: aiohttp.ClientSession, user: User, i: int, url_to_verify: str, profile_url: str
+    session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
 ) -> None:
     try:
         async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
@@ -81,10 +81,10 @@ async def verify_url(
                     verified = True
                     break
 
-            setattr(user, f"extra_field_verified{i}", verified)
+            setattr(username, f"extra_field_verified{i}", verified)
     except aiohttp.ClientError as e:
         current_app.logger.error(f"Error fetching URL for field {i}: {e}")
-        setattr(user, f"extra_field_verified{i}", False)
+        setattr(username, f"extra_field_verified{i}", False)
 
 
 def create_blueprint() -> Blueprint:
@@ -103,7 +103,7 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for("login"))
 
         directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=user.show_in_directory
+            show_in_directory=user.primary_username.show_in_directory
         )
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
@@ -118,7 +118,7 @@ def create_blueprint() -> Blueprint:
         if request.method == "POST":
             # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
-                user.bio = profile_form.bio.data
+                user.primary_username.bio = profile_form.bio.data.strip()
 
                 # Define base_url from the environment or config
                 profile_url = url_for("profile", _external=True, username=user.primary_username)
@@ -126,24 +126,24 @@ def create_blueprint() -> Blueprint:
                 async with aiohttp.ClientSession() as client_session:
                     tasks = []
                     for i in range(1, 5):
-                        label_field = getattr(profile_form, f"extra_field_label{i}", "")
-                        value_field = getattr(profile_form, f"extra_field_value{i}", "")
+                        if (
+                            label_field := getattr(profile_form, f"extra_field_label{i}", None)
+                        ) and (label := getattr(label_field, "data", None)):
+                            setattr(user.primary_username, f"extra_field_label{i}", label)
 
-                        label = label_field.data if hasattr(label_field, "data") else label_field
-                        setattr(user, f"extra_field_label{i}", label)
-
-                        value = value_field.data if hasattr(value_field, "data") else value_field
-                        setattr(user, f"extra_field_value{i}", value)
-
-                        # If the value is empty, reset the verification status
-                        if not value:
-                            setattr(user, f"extra_field_verified{i}", False)
+                        if (
+                            value_field := getattr(profile_form, f"extra_field_value{i}", None)
+                        ) and (value := getattr(value_field, "data", None)):
+                            setattr(user.primary_username, f"extra_field_value{i}", value)
+                        else:
+                            setattr(user.primary_username, f"extra_field_verified{i}", False)
                             continue
 
                         # Verify the URL only if it starts with "https://"
-                        url_to_verify = value
-                        if url_to_verify.startswith("https://"):
-                            task = verify_url(client_session, user, i, url_to_verify, profile_url)
+                        if value.startswith("https://"):
+                            task = verify_url(
+                                client_session, user.primary_username, i, value, profile_url
+                            )
                             tasks.append(task)
 
                     # Run all the tasks concurrently
@@ -159,38 +159,41 @@ def create_blueprint() -> Blueprint:
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
-                user.show_in_directory = directory_visibility_form.show_in_directory.data
+                user.primary_username.show_in_directory = (
+                    directory_visibility_form.show_in_directory.data
+                )
                 db.session.commit()
                 flash("👍 Directory visibility updated successfully.")
                 return redirect(url_for("settings.index"))
 
             # Handle Display Name Form Submission
             if "update_display_name" in request.form and display_name_form.validate_on_submit():
-                user.update_display_name(display_name_form.display_name.data.strip())
+                user.primary_username.display_name = display_name_form.display_name.data.strip()
                 db.session.commit()
                 flash("👍 Display name updated successfully.")
                 current_app.logger.debug(
-                    f"Display name updated to {user.display_name}, "
-                    f"Verification status: {user.is_verified}"
+                    f"Display name updated to {user.primary_username.display_name}, "
+                    f"Verification status: {user.primary_username.is_verified}"
                 )
                 return redirect(url_for(".index"))
 
             # Handle Change Username Form Submission
             if "change_username" in request.form and change_username_form.validate_on_submit():
                 new_username = change_username_form.new_username.data
-                existing_user = db.session.scalars(
-                    db.select(User).filter_by(primary_username=new_username).limit(1)
-                ).first()
-                if existing_user:
+
+                # TODO a better pattern would be to try to commit, catch the exception, and match
+                # on the name of the unique index that errored
+                if db.session.query(
+                    exists(Username).where(Username._username == new_username)
+                ).scalar():
                     flash("💔 This username is already taken.")
                 else:
-                    user.update_username(new_username)
-                    db.session.commit()
+                    user.primary_username.username = new_username
                     session["username"] = new_username
                     flash("👍 Username changed successfully.")
                     current_app.logger.debug(
-                        f"Username updated to {user.primary_username}, "
-                        f"Verification status: {user.is_verified}"
+                        f"Username updated to {user.primary_username.username}, "
+                        f"Verification status: {user.primary_username.is_verified}"
                     )
                 return redirect(url_for(".index"))
 
@@ -213,7 +216,7 @@ def create_blueprint() -> Blueprint:
             )
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(db.session.scalars(db.select(User)).all())  # Fetch all users for admin
+            all_users = list(User.query.all())
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
@@ -227,12 +230,13 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption.value
         email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
         pgp_key_form.pgp_key.data = user.pgp_key
-        display_name_form.display_name.data = user.display_name or user.primary_username
-        directory_visibility_form.show_in_directory.data = user.show_in_directory
+        display_name_form.display_name.data = (
+            user.primary_username.display_name or user.primary_username.username
+        )
+        directory_visibility_form.show_in_directory.data = user.primary_username.show_in_directory
 
         return render_template(
             "settings.html",
-            now=datetime.now(UTC),
             user=user,
             all_users=all_users,  # Pass to the template for admin view
             email_forwarding_form=email_forwarding_form,
@@ -253,6 +257,19 @@ def create_blueprint() -> Blueprint:
             is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
         )
+
+    @bp.route("//update_directory_visibility", methods=["POST"])
+    @authentication_required
+    def update_directory_visibility() -> Response:
+        if "user_id" in session:
+            user = User.query.get(session.get("user_id"))
+            if user:
+                user.primary_username.show_in_directory = "show_in_directory" in request.form
+            db.session.commit()
+            flash("👍 Directory visibility updated.")
+        else:
+            flash("⛔️ You need to be logged in to update settings.")
+        return redirect(url_for("settings.index"))
 
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required
@@ -330,7 +347,7 @@ def create_blueprint() -> Blueprint:
         session["is_setting_up_2fa"] = True
         if user:
             totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-                name=user.primary_username, issuer_name="HushLine"
+                name=user.primary_username.username, issuer_name="HushLine"
             )
         img = qrcode.make(totp_uri)
         buffered = io.BytesIO()
