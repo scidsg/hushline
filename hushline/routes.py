@@ -76,6 +76,30 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
 
 
+def validate_captcha(captcha_answer: str) -> bool:
+    if not captcha_answer.isdigit():
+        flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
+        return False
+
+    if captcha_answer != session.get("math_answer"):
+        flash("Incorrect CAPTCHA. Please try again.", "error")
+        return False
+
+    return True
+
+
+def get_ip_address() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("1.1.1.1", 1))
+        ip_address = s.getsockname()[0]
+    except Exception:
+        ip_address = "127.0.0.1"
+    finally:
+        s.close()
+    return ip_address
+
+
 def init_app(app: Flask) -> None:
     @app.route("/")
     def index() -> Response:
@@ -137,8 +161,8 @@ def init_app(app: Flask) -> None:
             session.pop(f"{scope}:salt", None)
 
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
-        num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
-        num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+        num1 = secrets.randbelow(10) + 1
+        num2 = secrets.randbelow(10) + 1
         math_problem = f"{num1} + {num2} ="
         session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
@@ -252,17 +276,6 @@ def init_app(app: Flask) -> None:
     def redirect_submit_message(username: str) -> Response:
         return redirect(url_for("profile", username=username), 301)
 
-    def validate_captcha(captcha_answer: str) -> bool:
-        if not captcha_answer.isdigit():
-            flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
-            return False
-
-        if captcha_answer != session.get("math_answer"):
-            flash("Incorrect CAPTCHA. Please try again.", "error")
-            return False
-
-        return True
-
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @authentication_required
     def delete_message(message_id: int) -> Response:
@@ -343,7 +356,6 @@ def init_app(app: Flask) -> None:
                     409,
                 )
 
-            # Create new user instance
             user = User(password=password)
             db.session.add(user)
             db.session.flush()
@@ -384,7 +396,6 @@ def init_app(app: Flask) -> None:
                     session["is_authenticated"] = False
                     return redirect(url_for("verify_2fa_login"))
 
-                # Successful login
                 auth_log = AuthenticationLog(user_id=username.user_id, successful=True)
                 db.session.add(auth_log)
                 db.session.commit()
@@ -404,7 +415,6 @@ def init_app(app: Flask) -> None:
             session.clear()
             return redirect(url_for("login"))
 
-        # Redirect to inbox if already authenticated
         if session.get("is_authenticated", False):
             return redirect(url_for("inbox"))
 
@@ -419,7 +429,6 @@ def init_app(app: Flask) -> None:
             timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
 
-            # Rate limit 2FA attempts
             rate_limit = False
 
             # If the most recent successful login was made with the same OTP code, reject this one
@@ -456,7 +465,6 @@ def init_app(app: Flask) -> None:
                 return render_template("verify_2fa_login.html", form=form), 429
 
             if totp.verify(verification_code):
-                # Successful login
                 auth_log = AuthenticationLog(
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
@@ -466,7 +474,6 @@ def init_app(app: Flask) -> None:
                 session["is_authenticated"] = True
                 return redirect(url_for("inbox"))
 
-            # Failed login
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
             db.session.add(auth_log)
             db.session.commit()
@@ -481,17 +488,8 @@ def init_app(app: Flask) -> None:
     @app.route("/logout")
     @authentication_required
     def logout() -> Response:
-        # Explicitly remove specific session keys related to user authentication
-        session.pop("user_id", None)
-        session.pop("is_authenticated", None)
-
-        # Clear the entire session to ensure no leftover data
         session.clear()
-
-        # Flash a confirmation message for the user
         flash("👋 You have been logged out successfully.", "info")
-
-        # Redirect to the login page or home page after logout
         return redirect(url_for("index"))
 
     def get_directory_usernames(admin_first: bool = False) -> list[Username]:
@@ -535,17 +533,6 @@ def init_app(app: Flask) -> None:
     @app.route("/vision", methods=["GET"])
     def vision() -> str:
         return render_template("vision.html")
-
-    def get_ip_address() -> str:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(("1.1.1.1", 1))
-            ip_address = s.getsockname()[0]
-        except Exception:
-            ip_address = "127.0.0.1"
-        finally:
-            s.close()
-        return ip_address
 
     @app.route("/info")
     def personal_server_info() -> Response:
