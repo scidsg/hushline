@@ -496,8 +496,10 @@
         <label for="brand-primary-color">Choose Color</label>
         <input
           type="color"
+          name="brand_primary_color_choice"
           id="brand-primary-color"
           class="color-picker"
+          value="{{ user.brand_primary_hex_color or '#7d25c1' }}"
         />
         <button type="submit" class="btn" id="updateBrandPrimaryColor">
           Update Color
