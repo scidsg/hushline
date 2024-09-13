@@ -73,11 +73,11 @@ def create_app() -> Flask:
         app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
     routes.init_app(app)
-    blueprints_to_register = [admin, settings]
-    if app.config["STRIPE_SECRET_KEY"]:
-        blueprints_to_register.append(premium)
-    for module in blueprints_to_register:
+    for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
+
+    if app.config["STRIPE_SECRET_KEY"]:
+        app.register_blueprint(premium.create_blueprint(app))
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:

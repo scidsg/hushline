@@ -337,31 +337,31 @@ class StripeInvoice(Model):
     tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
 
     def __init__(self, invoice: Invoice):
-        if invoice.id:
-            self.invoice_id = invoice.id
-        if invoice.customer and isinstance(invoice.customer, str):
-            self.customer_id = invoice.customer
-        if invoice.hosted_invoice_url:
-            self.hosted_invoice_url = invoice.hosted_invoice_url
-        if invoice.amount_due:
-            self.amount_due = invoice.amount_due
-        if invoice.amount_paid:
-            self.amount_paid = invoice.amount_paid
-        if invoice.amount_remaining:
-            self.amount_remaining = invoice.amount_remaining
-        if invoice.created:
-            self.created_at = datetime.fromtimestamp(invoice.created, tz=timezone.utc)
+        if invoice["id"]:
+            self.invoice_id = invoice["id"]
+        if invoice["customer"]:
+            self.customer_id = invoice["customer"]
+        if invoice["hosted_invoice_url"]:
+            self.hosted_invoice_url = invoice["hosted_invoice_url"]
+        if invoice["amount_due"]:
+            self.amount_due = invoice["amount_due"]
+        if invoice["amount_paid"]:
+            self.amount_paid = invoice["amount_paid"]
+        if invoice["amount_remaining"]:
+            self.amount_remaining = invoice["amount_remaining"]
+        if invoice["created"]:
+            self.created_at = datetime.fromtimestamp(invoice["created"], tz=timezone.utc)
 
         # Look up the user by their customer ID
-        user = db.session.query(User).filter_by(stripe_customer_id=invoice.customer).first()
+        user = db.session.query(User).filter_by(stripe_customer_id=invoice["customer"]).first()
         if user:
             self.user_id = user.id
         else:
-            raise ValueError(f"Could not find user with customer ID {invoice.customer}")
+            raise ValueError(f"Could not find user with customer ID {invoice['customer']}")
 
         # Look up the tier by the product_id
         if invoice.lines.data[0].plan:
-            product_id = invoice.lines.data[0].plan.product
+            product_id = invoice["lines"]["data"][0]["plan"]["product"]
 
             tier = db.session.query(Tier).filter_by(stripe_product_id=product_id).first()
             if tier:

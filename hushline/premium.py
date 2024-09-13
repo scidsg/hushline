@@ -1,11 +1,13 @@
 import asyncio
 import json
+import threading
 import time
 from typing import Tuple
 
 import stripe
 from flask import (
     Blueprint,
+    Flask,
     current_app,
     flash,
     jsonify,
@@ -161,17 +163,17 @@ def get_subscription(user: User) -> stripe.Subscription | None:
 
 
 def handle_subscription_created(subscription: stripe.Subscription) -> None:
-    user = db.session.query(User).filter_by(stripe_customer_id=subscription.customer).first()
+    user = db.session.query(User).filter_by(stripe_customer_id=subscription["customer"]).first()
     if user:
-        user.stripe_subscription_id = subscription.id
+        user.stripe_subscription_id = subscription["id"]
         user.tier_id = 2  # Business plan
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with customer ID {subscription.customer}")
+        raise ValueError(f"Could not find user with customer ID {subscription['customer']}")
 
 
 def handle_subscription_updated(subscription: stripe.Subscription) -> None:
-    user = db.session.query(User).filter_by(stripe_subscription_id=subscription.id).first()
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
     if user:
         if subscription.status == "active":
             user.tier_id = 2  # Business plan
@@ -179,17 +181,17 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
             user.tier_id = 1  # Free plan
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+        raise ValueError(f"Could not find user with subscription ID {subscription['id']}")
 
 
 def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
-    user = db.session.query(User).filter_by(stripe_subscription_id=subscription.id).first()
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
     if user:
         user.tier_id = 1  # Free plan
         user.stripe_subscription_id = None
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+        raise ValueError(f"Could not find user with subscription ID {subscription['id']}")
 
 
 def handle_invoice_created(invoice: stripe.Invoice) -> None:
@@ -202,27 +204,27 @@ def handle_invoice_created(invoice: stripe.Invoice) -> None:
 
 
 def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice["id"]).first()
     if stripe_invoice:
         stripe_invoice.amount_paid = invoice.amount_paid
         stripe_invoice.amount_remaining = invoice.amount_remaining
         db.session.commit()
     else:
-        raise ValueError(f"Could not find invoice with ID {invoice.id}")
+        raise ValueError(f"Could not find invoice with ID {invoice['id']}")
 
 
 def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice["id"]).first()
     if stripe_invoice:
         stripe_invoice.amount_paid = invoice.amount_paid
         stripe_invoice.amount_remaining = invoice.amount_remaining
         db.session.commit()
     else:
-        raise ValueError(f"Could not find invoice with ID {invoice.id}")
+        raise ValueError(f"Could not find invoice with ID {invoice['id']}")
 
 
-async def worker() -> None:
-    with current_app.app_context():
+async def worker(app: Flask) -> None:
+    with app.app_context():
         while True:
             stripe_event = (
                 db.session.query(StripeEvent)
@@ -240,7 +242,7 @@ async def worker() -> None:
 
             event: stripe.Event = json.loads(stripe_event.event_data)
             current_app.logger.info(
-                f"Processing event {stripe_event.id}: {stripe_event.event_type}"
+                f"Processing event {stripe_event.event_type} ({stripe_event.event_id})"
             )
             try:
                 if event["type"] == "customer.subscription.created":
@@ -256,7 +258,9 @@ async def worker() -> None:
                 elif event["type"] == "invoice.payment_failed":
                     handle_invoice_payment_failed(event["data"]["object"])
             except Exception as e:
-                current_app.logger.error(f"Error processing event {stripe_event.id}: {e}")
+                current_app.logger.error(
+                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event}"  # noqa: E501
+                )
                 stripe_event.status = "error"
                 db.session.add(stripe_event)
                 db.session.commit()
@@ -267,10 +271,19 @@ async def worker() -> None:
             db.session.commit()
 
 
-def create_blueprint() -> Blueprint:
-    # Launch the worker as an asyncio background task
-    loop = asyncio.get_event_loop()
-    loop.create_task(worker())
+def start_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+def create_blueprint(app: Flask) -> Blueprint:
+    # Create a new asyncio event loop
+    loop = asyncio.new_event_loop()
+    t = threading.Thread(target=start_event_loop, args=(loop,), daemon=True)
+    t.start()
+
+    # Schedule the worker task
+    loop.call_soon_threadsafe(loop.create_task, worker(app))
 
     # Now define the blueprint
     bp = Blueprint("premium", __file__, url_prefix="/premium")
@@ -373,7 +386,7 @@ def create_blueprint() -> Blueprint:
             return jsonify(success=True)
 
         # Log it
-        current_app.logger.info(f"Received event: {event}")
+        current_app.logger.info(f"Received event: {event.type}")
         stripe_event = StripeEvent(event)
         db.session.add(stripe_event)
         db.session.commit()
