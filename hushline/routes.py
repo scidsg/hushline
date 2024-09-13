@@ -98,13 +98,11 @@ def init_app(app: Flask) -> None:
         messages = db.session.scalars(
             db.select(Message).filter_by(user_id=user.id).order_by(Message.id.desc())
         ).all()
-        secondary_users_dict = {su.id: su for su in user.secondary_usernames}
 
         return render_template(
             "inbox.html",
             user=user,
             messages=messages,
-            secondary_usernames=secondary_users_dict,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 

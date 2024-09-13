@@ -4,23 +4,14 @@ import sys
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import SecondaryUsername, User
+from hushline.model import User
 
 
 def toggle_admin(username: str) -> None:
-    # First, try to find a primary user
-    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
-
-    # If not found, try to find a secondary user
+    user = User.query.filter_by(primary_username=username).one_or_none()
     if not user:
-        secondary_username = db.session.scalars(
-            db.select(SecondaryUsername).filter_by(username=username).limit(1)
-        ).first()
-        if secondary_username:
-            user = secondary_username.primary_user
-        else:
-            print("User not found.")
-            return
+        print("User not found.")
+        return
 
     # Toggle admin status
     user.is_admin = not user.is_admin

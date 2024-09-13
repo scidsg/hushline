@@ -46,10 +46,6 @@ class User(Model):
     is_admin: Mapped[bool] = mapped_column(default=False)
     show_in_directory: Mapped[bool] = mapped_column(default=False)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
-    # Corrected the relationship and backref here
-    secondary_usernames: Mapped[Set["SecondaryUsername"]] = relationship(
-        backref=db.backref("primary_user", lazy=True)
-    )
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
@@ -210,27 +206,11 @@ class AuthenticationLog(Model):
         self.timecode = timecode
 
 
-class SecondaryUsername(Model):
-    __tablename__ = "secondary_usernames"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(db.String(80), unique=True)
-    # This foreign key points to the 'user' table's 'id' field
-    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
-    display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
-
-
 class Message(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
-    secondary_user_id: Mapped[Optional[int]] = mapped_column(
-        db.ForeignKey("secondary_usernames.id")
-    )
-    secondary_username: Mapped[Set["SecondaryUsername"]] = relationship(
-        "SecondaryUsername", backref="messages"
-    )
 
     def __init__(self, content: str, user_id: int) -> None:
         super().__init__()

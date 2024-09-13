@@ -24,7 +24,7 @@ from wtforms import Field
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import Message, SecondaryUsername, SMTPEncryption, User
+from ..model import Message, SMTPEncryption, User
 from ..utils import authentication_required, create_smtp_config
 from .forms import (
     ChangePasswordForm,
@@ -105,9 +105,6 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm(
             show_in_directory=user.show_in_directory
         )
-        secondary_usernames = db.session.scalars(
-            db.select(SecondaryUsername).filter_by(user_id=user.id)
-        ).all()
         change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
         pgp_proton_form = PGPProtonForm()
@@ -237,7 +234,6 @@ def create_blueprint() -> Blueprint:
             "settings.html",
             now=datetime.now(UTC),
             user=user,
-            secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
@@ -560,9 +556,6 @@ def create_blueprint() -> Blueprint:
         if user:
             # Explicitly delete messages for the user
             db.session.execute(db.delete(Message).filter_by(user_id=user.id))
-
-            # Explicitly delete secondary users if necessary
-            db.session.execute(db.delete(SecondaryUsername).filter_by(user_id=user.id))
 
             # Now delete the user
             db.session.delete(user)
