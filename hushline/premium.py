@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Tuple
 
 import stripe
@@ -16,7 +17,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from .db import db
-from .model import StripeEvent, Tier, User
+from .model import StripeEvent, StripeInvoice, Tier, User
 from .utils import authentication_required
 
 FREE_TIER = 1
@@ -158,9 +159,69 @@ def get_subscription(user: User) -> stripe.Subscription | None:
     return stripe.Subscription.retrieve(user.stripe_subscription_id)
 
 
+def handle_subscription_created(subscription: stripe.Subscription) -> None:
+    user = db.session.query(User).filter_by(stripe_customer_id=subscription.customer).first()
+    if user:
+        user.stripe_subscription_id = subscription.id
+        user.tier_id = 2  # Business plan
+        db.session.commit()
+    else:
+        raise ValueError(f"Could not find user with customer ID {subscription.customer}")
+
+
+def handle_subscription_updated(subscription: stripe.Subscription) -> None:
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription.id).first()
+    if user:
+        if subscription.status == "active":
+            user.tier_id = 2  # Business plan
+        elif subscription.status in ["canceled", "unpaid"]:
+            user.tier_id = 1  # Free plan
+        db.session.commit()
+    else:
+        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+
+
+def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription.id).first()
+    if user:
+        user.tier_id = 1  # Free plan
+        user.stripe_subscription_id = None
+        db.session.commit()
+    else:
+        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+
+
+def handle_invoice_created(invoice: stripe.Invoice) -> None:
+    try:
+        new_invoice = StripeInvoice(invoice)
+        db.session.add(new_invoice)
+        db.session.commit()
+    except ValueError as e:
+        current_app.logger.error(f"Error creating invoice: {e}")
+
+
+def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
+    if stripe_invoice:
+        stripe_invoice.amount_paid = invoice.amount_paid
+        stripe_invoice.amount_remaining = invoice.amount_remaining
+        db.session.commit()
+    else:
+        raise ValueError(f"Could not find invoice with ID {invoice.id}")
+
+
+def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
+    if stripe_invoice:
+        stripe_invoice.amount_paid = invoice.amount_paid
+        stripe_invoice.amount_remaining = invoice.amount_remaining
+        db.session.commit()
+    else:
+        raise ValueError(f"Could not find invoice with ID {invoice.id}")
+
+
 async def worker() -> None:
     while True:
-        # Get the next stripe event to process
         stripe_event = (
             db.session.query(StripeEvent)
             .filter_by(status="pending")
@@ -175,11 +236,31 @@ async def worker() -> None:
         db.session.add(stripe_event)
         db.session.commit()
 
-        # TODO: Process the event
+        event: stripe.Event = json.loads(stripe_event.event_data)
+        current_app.logger.info(f"Processing event: {stripe_event.id}")
+        try:
+            if event["type"] == "customer.subscription.created":
+                handle_subscription_created(event["data"]["object"])
+            elif event["type"] == "customer.subscription.updated":
+                handle_subscription_updated(event["data"]["object"])
+            elif event["type"] == "customer.subscription.deleted":
+                handle_subscription_deleted(event["data"]["object"])
+            elif event["type"] == "invoice.created":
+                handle_invoice_created(event["data"]["object"])
+            elif event["type"] == "invoice.payment_succeeded":
+                handle_invoice_payment_succeeded(event["data"]["object"])
+            elif event["type"] == "invoice.payment_failed":
+                handle_invoice_payment_failed(event["data"]["object"])
+        except Exception as e:
+            current_app.logger.error(f"Error processing event {stripe_event.id}: {e}")
+            stripe_event.status = "error"
+            db.session.add(stripe_event)
+            db.session.commit()
+            continue
 
-        # invoice.created: create an invoice for the user
-        # invoice.updated: update an invoice for the user
-        # invoice.payment_succeeded: update the invoice, and finalize the user's tier
+        stripe_event.status = "finished"
+        db.session.add(stripe_event)
+        db.session.commit()
 
 
 def create_blueprint() -> Blueprint:
