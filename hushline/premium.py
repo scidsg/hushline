@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from typing import Tuple
 
 import stripe
@@ -221,49 +222,57 @@ def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
 
 
 async def worker() -> None:
-    while True:
-        stripe_event = (
-            db.session.query(StripeEvent)
-            .filter_by(status="pending")
-            .order_by(StripeEvent.created_at)
-            .first()
-        )
-        if not stripe_event:
-            await asyncio.sleep(60)
-            continue
+    with current_app.app_context():
+        while True:
+            stripe_event = (
+                db.session.query(StripeEvent)
+                .filter_by(status="pending")
+                .order_by(StripeEvent.created_at)
+                .first()
+            )
+            if not stripe_event:
+                time.sleep(10)
+                continue
 
-        stripe_event.status = "in_progress"
-        db.session.add(stripe_event)
-        db.session.commit()
-
-        event: stripe.Event = json.loads(stripe_event.event_data)
-        current_app.logger.info(f"Processing event: {stripe_event.id}")
-        try:
-            if event["type"] == "customer.subscription.created":
-                handle_subscription_created(event["data"]["object"])
-            elif event["type"] == "customer.subscription.updated":
-                handle_subscription_updated(event["data"]["object"])
-            elif event["type"] == "customer.subscription.deleted":
-                handle_subscription_deleted(event["data"]["object"])
-            elif event["type"] == "invoice.created":
-                handle_invoice_created(event["data"]["object"])
-            elif event["type"] == "invoice.payment_succeeded":
-                handle_invoice_payment_succeeded(event["data"]["object"])
-            elif event["type"] == "invoice.payment_failed":
-                handle_invoice_payment_failed(event["data"]["object"])
-        except Exception as e:
-            current_app.logger.error(f"Error processing event {stripe_event.id}: {e}")
-            stripe_event.status = "error"
+            stripe_event.status = "in_progress"
             db.session.add(stripe_event)
             db.session.commit()
-            continue
 
-        stripe_event.status = "finished"
-        db.session.add(stripe_event)
-        db.session.commit()
+            event: stripe.Event = json.loads(stripe_event.event_data)
+            current_app.logger.info(
+                f"Processing event {stripe_event.id}: {stripe_event.event_type}"
+            )
+            try:
+                if event["type"] == "customer.subscription.created":
+                    handle_subscription_created(event["data"]["object"])
+                elif event["type"] == "customer.subscription.updated":
+                    handle_subscription_updated(event["data"]["object"])
+                elif event["type"] == "customer.subscription.deleted":
+                    handle_subscription_deleted(event["data"]["object"])
+                elif event["type"] == "invoice.created":
+                    handle_invoice_created(event["data"]["object"])
+                elif event["type"] == "invoice.payment_succeeded":
+                    handle_invoice_payment_succeeded(event["data"]["object"])
+                elif event["type"] == "invoice.payment_failed":
+                    handle_invoice_payment_failed(event["data"]["object"])
+            except Exception as e:
+                current_app.logger.error(f"Error processing event {stripe_event.id}: {e}")
+                stripe_event.status = "error"
+                db.session.add(stripe_event)
+                db.session.commit()
+                continue
+
+            stripe_event.status = "finished"
+            db.session.add(stripe_event)
+            db.session.commit()
 
 
 def create_blueprint() -> Blueprint:
+    # Launch the worker as an asyncio background task
+    loop = asyncio.get_event_loop()
+    loop.create_task(worker())
+
+    # Now define the blueprint
     bp = Blueprint("premium", __file__, url_prefix="/premium")
 
     @bp.route("/", methods=["GET"])
