@@ -12,6 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
+    abort,
     current_app,
     flash,
     redirect,
@@ -720,7 +721,8 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     def update_brand_primary_color() -> Response | str:
         if (host_org := db.session.get(HostOrganization, 1)) is None:
-            host_org = HostOrganization()  # only needed for mypy
+            abort(500)
+
         form = UpdateBrandPrimaryColorForm()
         if form.validate_on_submit():
             host_org.brand_primary_hex_color = form.brand_primary_hex_color.data
@@ -737,7 +739,8 @@ def create_blueprint() -> Blueprint:
         # TODO:
         # db persistence logic + form retrieval + update h1
         if (host_org := db.session.get(HostOrganization, 1)) is None:
-            host_org = HostOrganization()  # only needed for mypy
+            abort(500)
+
         form = UpdateBrandAppNameForm()
         if form.validate_on_submit():
             host_org.brand_app_name = form.brand_app_name.data
