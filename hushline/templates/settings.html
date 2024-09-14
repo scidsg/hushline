@@ -493,6 +493,7 @@
         action="{{ url_for('settings.update_brand_primary_color') }}"
         class="formBody"
       >
+        {{ update_brand_primary_color_form.hidden_tag() }}
         <label for="brand-primary-color">Choose Color</label>
         <input
           type="color"
@@ -512,6 +513,7 @@
         action="{{ url_for('settings.update_brand_app_name') }}"
         class="formBody"
       >
+        {{ update_brand_app_name_form.hidden_tag() }}
         <label for="brand-app-name">Choose Name</label>
         <input
           type="text"

@@ -280,6 +280,8 @@ def create_blueprint() -> Blueprint:
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
         profile_form = ProfileForm()
+        update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
+        update_brand_app_name_form = UpdateBrandAppNameForm()
 
         # Handle form submissions
         if request.method == "POST":
@@ -403,6 +405,8 @@ def create_blueprint() -> Blueprint:
             user=user,
             secondary_usernames=secondary_usernames,
             all_users=all_users,  # Pass to the template for admin view
+            update_brand_primary_color_form=update_brand_primary_color_form,
+            update_brand_app_name_form=update_brand_app_name_form,
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
