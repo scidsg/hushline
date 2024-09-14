@@ -64,6 +64,16 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
+    <script>
+      function importHostConfiguration() {
+        // Update page theme with host's brand color from the database
+        const brandColor = "{{ host_org.brand_primary_hex_color or '#7d25c1' }}";
+        document.documentElement.style.setProperty(
+          "--color-brand", `oklch(from ${brandColor} l c h)`
+        );
+      }
+      importHostConfiguration();
+    </script>
   </head>
 
   <body>
