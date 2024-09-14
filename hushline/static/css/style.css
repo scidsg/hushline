@@ -8,7 +8,7 @@
   );
   --color-brand-dark: oklch(  /* was #ecdafa now slightly more saturated */
     from var(--color-brand)
-    clamp(0.85, l + 0.4271, 0.98) calc(0.25 * c) calc(h + 6)
+    clamp(0.85, l + 0.4271, 0.95) calc(0.25 * c) calc(h + 6)
   );
   --color-text: #333;
   --color-text-dark-alt-2: #e4e4e4;
