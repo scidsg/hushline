@@ -490,16 +490,16 @@
       <h3>Primary Color</h3>
       <form
         method="POST"
-        action="{{ url_for('settings.update_brand_primary_color', user=user) }}"
+        action="{{ url_for('settings.update_brand_primary_color') }}"
         class="formBody"
       >
         <label for="brand-primary-color">Choose Color</label>
         <input
           type="color"
-          name="brand_primary_color_choice"
+          name="brand_primary_hex_color"
           id="brand-primary-color"
           class="color-picker"
-          value="{{ user.brand_primary_hex_color or '#7d25c1' }}"
+          value="{{ host_org.brand_primary_hex_color or '#7d25c1' }}"
         />
         <button type="submit" class="btn" id="updateBrandPrimaryColor">
           Update Color
@@ -509,16 +509,16 @@
       <h3>App Name</h3>
       <form
         method="POST"
-        action="{{ url_for('settings.update_brand_app_name', user=user) }}"
+        action="{{ url_for('settings.update_brand_app_name') }}"
         class="formBody"
       >
         <label for="brand-app-name">Choose Name</label>
         <input
           type="text"
-          name="brand_app_name_choice"
+          name="brand_app_name"
           id="brand-app-name"
           placeholder="🤫 Hush Line"
-          value="{{ user.brand_app_name or '' }}"
+          value="{{ host_org.brand_app_name or '' }}"
         />
         <button type="submit" class="btn" id="updateBrandAppName">
           Update Name

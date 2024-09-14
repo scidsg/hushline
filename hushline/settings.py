@@ -38,7 +38,7 @@ from wtforms.validators import Optional as OptionalField
 from .crypto import is_valid_pgp_key
 from .db import db
 from .forms import ComplexPassword, HexColor, TwoFactorForm
-from .model import Message, SecondaryUsername, SMTPEncryption, User
+from .model import HostOrganization, Message, SecondaryUsername, SMTPEncryption, User
 from .utils import admin_authentication_required, authentication_required, create_smtp_config
 
 
@@ -195,11 +195,11 @@ class ProfileForm(FlaskForm):
 
 
 class UpdateBrandPrimaryColorForm(FlaskForm):
-    hex_color = StringField("HEX Color", validators=[DataRequired(), HexColor()])
+    brand_primary_hex_color = StringField("Hex Color", validators=[DataRequired(), HexColor()])
 
 
 class UpdateBrandAppNameForm(FlaskForm):
-    app_name = StringField("App Name", validators=[DataRequired(), Length(min=2, max=30)])
+    brand_app_name = StringField("App Name", validators=[DataRequired(), Length(min=2, max=30)])
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
@@ -714,12 +714,12 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/update-brand-primary-color", methods=["POST"])
     @admin_authentication_required
-    def update_brand_primary_color(user: User) -> Response | str:
-        # TODO:
-        # db persistence logic + form retrieval + update root style variable
+    def update_brand_primary_color() -> Response | str:
+        if (host_org := db.session.get(HostOrganization, 1)) is None:
+            host_org = HostOrganization()  # only needed for mypy
         form = UpdateBrandPrimaryColorForm()
         if form.validate_on_submit():
-            user.brand_primary_hex_color = form.hex_color.data
+            host_org.brand_primary_hex_color = form.brand_primary_hex_color.data
             db.session.commit()
             flash("👍 Brand primary color updated successfully.")
             return redirect(url_for(".index"))
@@ -729,12 +729,14 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
-    def update_brand_app_name(user: User) -> Response | str:
+    def update_brand_app_name() -> Response | str:
         # TODO:
         # db persistence logic + form retrieval + update h1
+        if (host_org := db.session.get(HostOrganization, 1)) is None:
+            host_org = HostOrganization()  # only needed for mypy
         form = UpdateBrandAppNameForm()
         if form.validate_on_submit():
-            user.brand_app_name = form.app_name.data
+            host_org.brand_app_name = form.brand_app_name.data
             db.session.commit()
             flash("👍 Brand app name updated successfully.")
             return redirect(url_for(".index"))
