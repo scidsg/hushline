@@ -736,8 +736,6 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
     def update_brand_app_name() -> Response | str:
-        # TODO:
-        # db persistence logic + form retrieval + update h1
         if (host_org := db.session.get(HostOrganization, 1)) is None:
             abort(500)
 

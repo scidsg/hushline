@@ -71,8 +71,11 @@
         document.documentElement.style.setProperty(
           "--color-brand", `oklch(from ${brandColor} l c h)`
         );
+
+        // Update page h1 with host's brand name from the database
+        const brandName = "{{ host_org.brand_app_name or '🤫 Hush Line' }}";
+        document.querySelector("h1").innerText = brandName;
       }
-      importHostConfiguration();
     </script>
   </head>
 
@@ -161,6 +164,9 @@
           >
         </div>
       </nav>
+      <script>
+        importHostConfiguration();
+      </script>
     </header>
 
     <main>
