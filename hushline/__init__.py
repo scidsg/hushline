@@ -10,7 +10,7 @@ from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
 from .db import db
-from .model import User
+from .model import HostOrganization, User
 from .version import __version__
 
 
@@ -61,6 +61,9 @@ def create_app() -> Flask:
     db.init_app(app)
     Migrate(app, db)
 
+    with app.app_context():
+        db.create_all()
+
     routes.init_app(app)
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
@@ -76,6 +79,14 @@ def create_app() -> Flask:
             user = db.session.get(User, session["user_id"])
             return {"user": user}
         return {}
+
+    @app.context_processor
+    def inject_host() -> dict[str, HostOrganization]:
+        if (host_org := db.session.get(HostOrganization, 1)) is None:
+            host_org = HostOrganization()
+            db.session.add(host_org)
+            db.session.commit()
+        return dict(host_org=host_org)
 
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:
