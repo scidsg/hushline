@@ -28,6 +28,14 @@ class SMTPEncryption(enum.Enum):
         return cls.StartTLS
 
 
+class HostOrganization(Model):
+    __tablename__ = "host_organization"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    brand_app_name: Mapped[str] = mapped_column(db.String(255), default="🤫 Hush Line")
+    brand_primary_hex_color: Mapped[str] = mapped_column(db.String(255), default="#7d25c1")
+
+
 class User(Model):
     __tablename__ = "users"
 
