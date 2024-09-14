@@ -79,18 +79,16 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("brand-primary-color")
     .addEventListener("input", function(event) {
-      const brandColor = `lch(from ${event.target.value} l c h)`;
+      const brandColor = `oklch(from ${event.target.value} l c h)`;
       document.documentElement.style.setProperty("--color-brand", brandColor);
-      document.body.offsetHeight;  // force a reflow
     });
 
   // Update color once it's been finalized
   document
     .getElementById("brand-primary-color")
     .addEventListener("change", function(event) {
-      const brandColor = `lch(from ${event.target.value} l c h)`;
+      const brandColor = `oklch(from ${event.target.value} l c h)`;
       document.documentElement.style.setProperty("--color-brand", brandColor);
-      document.body.offsetHeight;  // force a reflow
     });
 
   var forwarding_enabled = document.querySelector(
