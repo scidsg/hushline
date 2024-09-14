@@ -499,12 +499,9 @@
           type="color"
           name="brand_primary_hex_color"
           id="brand-primary-color"
-          class="color-picker"
-          value="{{ host_org.brand_primary_hex_color or '#7d25c1' }}"
+          value="{{ host_org.brand_primary_hex_color }}"
         />
-        <button type="submit" class="btn" id="updateBrandPrimaryColor">
-          Update Color
-        </button>
+        <button type="submit" class="btn">Update Color</button>
       </form>
 
       <h3>App Name</h3>
@@ -519,12 +516,9 @@
           type="text"
           name="brand_app_name"
           id="brand-app-name"
-          placeholder="🤫 Hush Line"
-          value="{{ host_org.brand_app_name or '' }}"
+          value="{{ host_org.brand_app_name }}"
         />
-        <button type="submit" class="btn" id="updateBrandAppName">
-          Update Name
-        </button>
+        <button type="submit" class="btn">Update Name</button>
       </form>
     </div>
 
