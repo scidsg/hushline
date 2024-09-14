@@ -91,6 +91,13 @@ document.addEventListener("DOMContentLoaded", function () {
       document.documentElement.style.setProperty("--color-brand", brandColor);
     });
 
+  // Update app name in real-time as it's being typed
+  document
+    .getElementById("brand-app-name")
+    .addEventListener("input", function(event) {
+      document.querySelector("h1").innerText = event.target.value;
+    });
+
   var forwarding_enabled = document.querySelector(
     "input[id='forwarding_enabled']",
   ).checked;
