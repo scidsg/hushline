@@ -43,10 +43,11 @@
           Email &amp; Encryption
         </button>
       </li>
+      {% if user.is_admin %}
       <li role="presentation">
         <button
           type="button"
-          class="tab"
+          class="tab admin-only"
           data-tab="branding"
           role="tab"
           aria-selected="false"
@@ -56,6 +57,7 @@
           Branding
         </button>
       </li>
+      {% endif %}
       <li role="presentation">
         <button
           type="button"
@@ -480,9 +482,10 @@
       {% endif %}
     </div>
 
+    {% if user.is_admin %}
     <div
       id="branding"
-      class="tab-content"
+      class="tab-content admin-only"
       role="tabpanel"
       aria-labelledby="branding-tab"
       hidden
@@ -521,6 +524,7 @@
         <button type="submit" class="btn">Update Name</button>
       </form>
     </div>
+    {% endif %}
 
     <div
       id="advanced"
