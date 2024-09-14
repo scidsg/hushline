@@ -200,7 +200,9 @@ class UpdateBrandPrimaryColorForm(FlaskForm):
 
 
 class UpdateBrandAppNameForm(FlaskForm):
-    brand_app_name = StringField("App Name", validators=[CanonicalHTML(), Length(min=2, max=30)])
+    brand_app_name = StringField(
+        "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
+    )
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
