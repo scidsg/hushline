@@ -87,6 +87,77 @@ async def verify_url(
         setattr(username, f"extra_field_verified{i}", False)
 
 
+async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
+    username.bio = form.bio.data.strip()
+
+    # Define base_url from the environment or config
+    profile_url = url_for("profile", _external=True, username=username._username)
+
+    async with aiohttp.ClientSession() as client_session:
+        tasks = []
+        for i in range(1, 5):
+            if (label_field := getattr(form, f"extra_field_label{i}", None)) and (
+                label := getattr(label_field, "data", None)
+            ):
+                setattr(username, f"extra_field_label{i}", label)
+
+            if (value_field := getattr(form, f"extra_field_value{i}", None)) and (
+                value := getattr(value_field, "data", None)
+            ):
+                setattr(username, f"extra_field_value{i}", value)
+            else:
+                setattr(username, f"extra_field_verified{i}", False)
+                continue
+
+            # Verify the URL only if it starts with "https://"
+            if value.startswith("https://"):
+                task = verify_url(client_session, username, i, value, profile_url)
+                tasks.append(task)
+
+        # Run all the tasks concurrently
+        if tasks:  # Only gather if there are tasks to run
+            await asyncio.gather(*tasks)
+
+    db.session.commit()
+    flash("👍 Bio and fields updated successfully.")
+    return redirect(url_for("settings.index"))
+
+
+def handle_update_directory_visibility(user: Username, form: DirectoryVisibilityForm) -> Response:
+    user.primary_username.show_in_directory = form.show_in_directory.data
+    db.session.commit()
+    flash("👍 Directory visibility updated successfully.")
+    return redirect(url_for("settings.index"))
+
+
+def handle_display_name_form(username: Username, form: DisplayNameForm) -> Response:
+    username.display_name = form.display_name.data.strip()
+    flash("👍 Display name updated successfully.")
+    current_app.logger.debug(
+        f"Display name updated to {username.display_name}, "
+        f"Verification status: {username.is_verified}"
+    )
+    return redirect(url_for(".index"))
+
+
+def handle_change_username_form(username: Username, form: ChangeUsernameForm) -> Response:
+    new_username = form.new_username.data
+
+    # TODO a better pattern would be to try to commit, catch the exception, and match
+    # on the name of the unique index that errored
+    if db.session.query(exists(Username).where(Username._username == new_username)).scalar():
+        flash("💔 This username is already taken.")
+    else:
+        username.username = new_username
+        session["username"] = new_username
+        flash("👍 Username changed successfully.")
+        current_app.logger.debug(
+            f"Username updated to {username.username}, "
+            f"Verification status: {username.is_verified}"
+        )
+    return redirect(url_for(".index"))
+
+
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
@@ -114,88 +185,22 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm()
         profile_form = ProfileForm()
 
-        # Handle form submissions
         if request.method == "POST":
             # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
-                user.primary_username.bio = profile_form.bio.data.strip()
-
-                # Define base_url from the environment or config
-                profile_url = url_for("profile", _external=True, username=user.primary_username)
-
-                async with aiohttp.ClientSession() as client_session:
-                    tasks = []
-                    for i in range(1, 5):
-                        if (
-                            label_field := getattr(profile_form, f"extra_field_label{i}", None)
-                        ) and (label := getattr(label_field, "data", None)):
-                            setattr(user.primary_username, f"extra_field_label{i}", label)
-
-                        if (
-                            value_field := getattr(profile_form, f"extra_field_value{i}", None)
-                        ) and (value := getattr(value_field, "data", None)):
-                            setattr(user.primary_username, f"extra_field_value{i}", value)
-                        else:
-                            setattr(user.primary_username, f"extra_field_verified{i}", False)
-                            continue
-
-                        # Verify the URL only if it starts with "https://"
-                        if value.startswith("https://"):
-                            task = verify_url(
-                                client_session, user.primary_username, i, value, profile_url
-                            )
-                            tasks.append(task)
-
-                    # Run all the tasks concurrently
-                    if tasks:  # Only gather if there are tasks to run
-                        await asyncio.gather(*tasks)
-
-                db.session.commit()
-                flash("👍 Bio and fields updated successfully.")
-                return redirect(url_for("settings.index"))
-
-            # Update directory visibility
+                return await handle_update_bio(user.primary_username, profile_form)
             if (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
-                user.primary_username.show_in_directory = (
-                    directory_visibility_form.show_in_directory.data
-                )
-                db.session.commit()
-                flash("👍 Directory visibility updated successfully.")
-                return redirect(url_for("settings.index"))
-
-            # Handle Display Name Form Submission
+                return update_directory_visibility(user.primary_username, directory_visibility_form)
             if "update_display_name" in request.form and display_name_form.validate_on_submit():
-                user.primary_username.display_name = display_name_form.display_name.data.strip()
-                db.session.commit()
-                flash("👍 Display name updated successfully.")
-                current_app.logger.debug(
-                    f"Display name updated to {user.primary_username.display_name}, "
-                    f"Verification status: {user.primary_username.is_verified}"
-                )
-                return redirect(url_for(".index"))
-
-            # Handle Change Username Form Submission
+                return handle_display_name_form(user.primary_username, display_name_form)
             if "change_username" in request.form and change_username_form.validate_on_submit():
-                new_username = change_username_form.new_username.data
-
-                # TODO a better pattern would be to try to commit, catch the exception, and match
-                # on the name of the unique index that errored
-                if db.session.query(
-                    exists(Username).where(Username._username == new_username)
-                ).scalar():
-                    flash("💔 This username is already taken.")
-                else:
-                    user.primary_username.username = new_username
-                    session["username"] = new_username
-                    flash("👍 Username changed successfully.")
-                    current_app.logger.debug(
-                        f"Username updated to {user.primary_username.username}, "
-                        f"Verification status: {user.primary_username.is_verified}"
-                    )
-                return redirect(url_for(".index"))
+                return handle_change_username_form(user.primary_username, change_username_form)
+            current_app.logger.error(
+                "Unable to handle form submission on endpoint {request.endpoint!}"
+            )
 
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
@@ -238,7 +243,7 @@ def create_blueprint() -> Blueprint:
         return render_template(
             "settings.html",
             user=user,
-            all_users=all_users,  # Pass to the template for admin view
+            all_users=all_users,
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
@@ -258,7 +263,7 @@ def create_blueprint() -> Blueprint:
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
         )
 
-    @bp.route("//update_directory_visibility", methods=["POST"])
+    @bp.route("/update_directory_visibility", methods=["POST"])
     @authentication_required
     def update_directory_visibility() -> Response:
         if "user_id" in session:
@@ -302,20 +307,18 @@ def create_blueprint() -> Blueprint:
             flash("New password is invalid.")
             return redirect(url_for("settings.index"))
 
-        # Verify the old password
         if not user.check_password(change_password_form.old_password.data):
             flash("Incorrect old password.", "error")
             return redirect(url_for("settings.index"))
 
-        # Set the new password
         user.password_hash = change_password_form.new_password.data
         db.session.commit()
-        session.clear()  # Clears the session, logging the user out
+        session.clear()
         flash(
             "👍 Password successfully changed. Please log in again.",
             "success",
         )
-        return redirect(url_for("login"))  # Redirect to the login page for re-authentication
+        return redirect(url_for("login"))
 
     @bp.route("/enable-2fa", methods=["GET", "POST"])
     @authentication_required
@@ -336,7 +339,7 @@ def create_blueprint() -> Blueprint:
                 db.session.commit()
                 session.pop("temp_totp_secret", None)
                 flash("👍 2FA setup successful. Please log in again with 2FA.")
-                return redirect(url_for("logout"))  # Redirect to logout
+                return redirect(url_for("logout"))
 
             flash("⛔️ Invalid 2FA code. Please try again.")
             return redirect(url_for(".enable_2fa"))
@@ -354,7 +357,6 @@ def create_blueprint() -> Blueprint:
         img.save(buffered)
         qr_code_img = "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
 
-        # Pass the text-based pairing code and the user to the template
         return render_template(
             "enable_2fa.html",
             form=form,
@@ -571,14 +573,11 @@ def create_blueprint() -> Blueprint:
 
         user = db.session.get(User, user_id)
         if user:
-            # Explicitly delete messages for the user
             db.session.execute(db.delete(Message).filter_by(user_id=user.id))
-
-            # Now delete the user
             db.session.delete(user)
             db.session.commit()
 
-            session.clear()  # Clear the session
+            session.clear()
             flash("🔥 Your account and all related information have been deleted.")
             return redirect(url_for("index"))
 
