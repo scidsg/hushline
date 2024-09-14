@@ -38,7 +38,7 @@ from wtforms.validators import Optional as OptionalField
 
 from .crypto import is_valid_pgp_key
 from .db import db
-from .forms import ComplexPassword, HexColor, TwoFactorForm
+from .forms import CanonicalHTML, ComplexPassword, HexColor, TwoFactorForm
 from .model import HostOrganization, Message, SecondaryUsername, SMTPEncryption, User
 from .utils import admin_authentication_required, authentication_required, create_smtp_config
 
@@ -200,7 +200,9 @@ class UpdateBrandPrimaryColorForm(FlaskForm):
 
 
 class UpdateBrandAppNameForm(FlaskForm):
-    brand_app_name = StringField("App Name", validators=[DataRequired(), Length(min=2, max=30)])
+    brand_app_name = StringField(
+        "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
+    )
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:

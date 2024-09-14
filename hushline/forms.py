@@ -1,3 +1,4 @@
+import html
 import re
 
 from flask_wtf import FlaskForm
@@ -33,6 +34,13 @@ class HexColor:
         color: str = field.data
         if not self.hex_color_regex.match(color):
             raise ValidationError(f"{color=} is an invalid 6-hexit color code.")
+
+
+class CanonicalHTML:
+    def __call__(self, form: Form, field: Field) -> None:
+        text: str = field.data
+        if text != html.escape(text).strip():
+            raise ValidationError(f"{text=} is ambiguous or unescaped.")
 
 
 class TwoFactorForm(FlaskForm):
