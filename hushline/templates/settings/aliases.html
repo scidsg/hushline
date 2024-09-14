@@ -1,0 +1,33 @@
+<div
+  id="aliases"
+  class="tab-content"
+  role="tabpanel"
+  aria-labelledby="aliases-tab"
+>
+  <h3>Add an Alias</h3>
+  {% set alias_count = aliases.__len__() %}
+    {% if alias_count < max_aliases %}
+      <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
+        {{ new_alias_form.hidden_tag() }}
+        <label for="alias_username">Alias Username</label>
+        {{ new_alias_form.username(id='alias_username') }}
+        <button type="submit" name="new_alias">Add Alias</button>
+      </form>
+    {% else %}
+      <p>Alias limit reached.</p>
+    {% endif %}
+
+  <h3>Current Aliases</h3>
+  {% if aliases %}
+    <div class="alias-list">
+      {% for username in aliases %}
+        <div class="alias-entry">
+          <div><a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">{% if username.display_name %}{{ username.display_name }} {% endif %}@{{ username.username }}</a></div>
+          <div>&gt;</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No alises configured.</p>
+  {% endif %}
+</div>

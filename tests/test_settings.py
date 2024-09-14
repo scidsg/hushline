@@ -88,7 +88,7 @@ def test_change_password(client: FlaskClient) -> None:
         },
         follow_redirects=True,
     )
-    assert response.status_code == 200, "Failed to update password"
+    assert response.status_code == 200
     assert "login" in response.request.url
     assert len(new_password_hash := user.password_hash) > 32
     assert new_password_hash.startswith("$scrypt$")

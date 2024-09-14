@@ -122,12 +122,9 @@ def init_app(app: Flask) -> None:
             flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
-        messages = Message.query.filter_by(username_id=user.id).order_by(Message.id.desc()).all()
-
         return render_template(
             "inbox.html",
             user=user,
-            messages=messages,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
@@ -230,7 +227,7 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(content=content_to_save, username_id=uname.user_id)
+            new_message = Message(content=content_to_save, username_id=uname.id)
             db.session.add(new_message)
             db.session.commit()
 

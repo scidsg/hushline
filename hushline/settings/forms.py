@@ -117,6 +117,10 @@ class DisplayNameForm(FlaskForm):
     display_name = StringField("Display Name", validators=[Length(max=100)])
 
 
+class NewAliasForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+
+
 class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
 

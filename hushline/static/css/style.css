@@ -2083,3 +2083,26 @@ p.bio + .extra-fields {
     width: 100%;
   }
 }
+
+.alias-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.alias-entry {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  position: relative; /* needed for stretched-link */
+}
+
+.stretched-link::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: q;
+  content: '';
+}

@@ -114,6 +114,16 @@ class User(Model):
         primaryjoin="and_(Username.user_id == User.id, Username.is_primary)",
         back_populates="user",
     )
+    messages: Mapped[list["Message"]] = relationship(
+        secondary="usernames",
+        primaryjoin="Username.user_id == User.id",
+        secondaryjoin="Message.username_id == Username.id",
+        order_by="Message.id.desc()",
+        backref=db.backref("user", lazy=False, uselist=False, viewonly=True),
+        lazy=True,
+        uselist=True,
+        viewonly=True,
+    )
 
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
@@ -245,8 +255,8 @@ class AuthenticationLog(Model):
 class Message(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
-    username_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(backref=db.backref("messages", lazy=True))
+    username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
+    username: Mapped["Username"] = relationship(uselist=False)
 
     def __init__(self, **kwargs: Any) -> None:
         if "_content" in kwargs:

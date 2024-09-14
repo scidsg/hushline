@@ -17,6 +17,7 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 from werkzeug.wrappers.response import Response
 from wtforms import Field
@@ -32,6 +33,7 @@ from .forms import (
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
+    NewAliasForm,
     PGPKeyForm,
     PGPProtonForm,
     ProfileForm,
@@ -87,7 +89,7 @@ async def verify_url(
         setattr(username, f"extra_field_verified{i}", False)
 
 
-async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
+async def handle_update_bio(username: Username, form: ProfileForm, redirect_url: str) -> Response:
     username.bio = form.bio.data.strip()
 
     # Define base_url from the environment or config
@@ -120,27 +122,33 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
 
     db.session.commit()
     flash("👍 Bio and fields updated successfully.")
-    return redirect(url_for("settings.index"))
+    return redirect(redirect_url)
 
 
-def handle_update_directory_visibility(user: Username, form: DirectoryVisibilityForm) -> Response:
-    user.primary_username.show_in_directory = form.show_in_directory.data
+def handle_update_directory_visibility(
+    user: Username, form: DirectoryVisibilityForm, redirect_url: str
+) -> Response:
+    user.show_in_directory = form.show_in_directory.data
     db.session.commit()
     flash("👍 Directory visibility updated successfully.")
-    return redirect(url_for("settings.index"))
+    return redirect(redirect_url)
 
 
-def handle_display_name_form(username: Username, form: DisplayNameForm) -> Response:
+def handle_display_name_form(
+    username: Username, form: DisplayNameForm, redirect_url: str
+) -> Response:
     username.display_name = form.display_name.data.strip()
     flash("👍 Display name updated successfully.")
     current_app.logger.debug(
         f"Display name updated to {username.display_name}, "
         f"Verification status: {username.is_verified}"
     )
-    return redirect(url_for(".index"))
+    return redirect(redirect_url)
 
 
-def handle_change_username_form(username: Username, form: ChangeUsernameForm) -> Response:
+def handle_change_username_form(
+    username: Username, form: ChangeUsernameForm, redirect_url: str
+) -> Response:
     new_username = form.new_username.data
 
     # TODO a better pattern would be to try to commit, catch the exception, and match
@@ -155,7 +163,25 @@ def handle_change_username_form(username: Username, form: ChangeUsernameForm) ->
             f"Username updated to {username.username}, "
             f"Verification status: {username.is_verified}"
         )
-    return redirect(url_for(".index"))
+    return redirect(redirect_url)
+
+
+def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url: str) -> Response:
+    current_app.logger.debug("Creating alias for {user.primary_username.username}")
+    # TODO check that users are allowed to add aliases here (is premium, not too many)
+    # TODO check that alias is not yet taken
+    uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
+    db.session.add(uname)
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        if 'duplicate key value violates unique constraint "usernames_username_key"' in str(e):
+            flash("💔 This username is already taken.")
+        else:
+            flash("⛔️ Internal server error. Alias not created.")
+    else:
+        flash("👍 Alias created successfully.")
+    return redirect(redirect_url)
 
 
 def create_blueprint() -> Blueprint:
@@ -183,25 +209,42 @@ def create_blueprint() -> Blueprint:
         email_forwarding_form = EmailForwardingForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
+        new_alias_form = NewAliasForm()
         profile_form = ProfileForm()
 
         if request.method == "POST":
             # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
-                return await handle_update_bio(user.primary_username, profile_form)
+                return await handle_update_bio(
+                    user.primary_username, profile_form, url_for(".index")
+                )
             if (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
-                return update_directory_visibility(user.primary_username, directory_visibility_form)
+                return handle_update_directory_visibility(
+                    user.primary_username, directory_visibility_form, url_for(".index")
+                )
             if "update_display_name" in request.form and display_name_form.validate_on_submit():
-                return handle_display_name_form(user.primary_username, display_name_form)
+                return handle_display_name_form(
+                    user.primary_username, display_name_form, url_for(".index")
+                )
             if "change_username" in request.form and change_username_form.validate_on_submit():
-                return handle_change_username_form(user.primary_username, change_username_form)
+                return handle_change_username_form(
+                    user.primary_username, change_username_form, url_for(".index")
+                )
+            if "new_alias" in request.form and new_alias_form.validate_on_submit():
+                return handle_new_alias_form(user, new_alias_form, url_for(".index"))
             current_app.logger.error(
-                "Unable to handle form submission on endpoint {request.endpoint!}"
+                "Unable to handle form submission on endpoint {request.endpoint!r}"
             )
+            flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
+        aliases = (
+            Username.query.filter_by(is_primary=False, user_id=user.id)
+            .order_by(db.func.coalesce(Username._display_name, Username._username))
+            .all()
+        )
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
         all_users = []
@@ -241,7 +284,7 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form.show_in_directory.data = user.primary_username.show_in_directory
 
         return render_template(
-            "settings.html",
+            "settings/index.html",
             user=user,
             all_users=all_users,
             email_forwarding_form=email_forwarding_form,
@@ -251,6 +294,9 @@ def create_blueprint() -> Blueprint:
             pgp_key_form=pgp_key_form,
             display_name_form=display_name_form,
             profile_form=profile_form,
+            new_alias_form=new_alias_form,
+            aliases=aliases,
+            max_aliases=5,  # TODO hardcoded for now
             # Admin-specific data passed to the template
             is_admin=user.is_admin,
             user_count=user_count,
@@ -262,19 +308,6 @@ def create_blueprint() -> Blueprint:
             is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
         )
-
-    @bp.route("/update_directory_visibility", methods=["POST"])
-    @authentication_required
-    def update_directory_visibility() -> Response:
-        if "user_id" in session:
-            user = User.query.get(session.get("user_id"))
-            if user:
-                user.primary_username.show_in_directory = "show_in_directory" in request.form
-            db.session.commit()
-            flash("👍 Directory visibility updated.")
-        else:
-            flash("⛔️ You need to be logged in to update settings.")
-        return redirect(url_for("settings.index"))
 
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required
@@ -583,5 +616,53 @@ def create_blueprint() -> Blueprint:
 
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
+
+    @authentication_required
+    @bp.route("/alias/<int:username_id>", methods=["GET", "POST"])
+    async def alias(username_id: int) -> Response | str:
+        user = User.query.get(session["user_id"])
+        alias = Username.query.filter_by(
+            id=username_id, user_id=user.id, is_primary=False
+        ).one_or_none()
+        if not alias:
+            flash("Alias not found.")
+            return redirect(url_for(".index"))
+
+        display_name_form = DisplayNameForm()
+        profile_form = ProfileForm()
+        directory_visibility_form = DirectoryVisibilityForm(
+            show_in_directory=alias.show_in_directory
+        )
+
+        if request.method == "POST":
+            if "update_bio" in request.form and profile_form.validate_on_submit():
+                return await handle_update_bio(
+                    alias, profile_form, url_for(".alias", username_id=username_id)
+                )
+            if (
+                "update_directory_visibility" in request.form
+                and directory_visibility_form.validate_on_submit()
+            ):
+                return handle_update_directory_visibility(
+                    alias, directory_visibility_form, url_for(".alias", username_id=username_id)
+                )
+            if "update_display_name" in request.form and display_name_form.validate_on_submit():
+                return handle_display_name_form(
+                    alias, display_name_form, url_for(".alias", username_id=username_id)
+                )
+
+            current_app.logger.error(
+                "Unable to handle form submission on endpoint {request.endpoint!r}"
+            )
+            flash("Uh oh. There was an error handling your data. Please notify the admin.")
+
+        return render_template(
+            "settings/alias.html",
+            user=user,
+            alias=alias,
+            display_name_form=display_name_form,
+            directory_visibility_form=directory_visibility_form,
+            profile_form=profile_form,
+        )
 
     return bp
