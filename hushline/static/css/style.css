@@ -6,8 +6,11 @@
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
   );
+  --color-brand-mid-contrast: oklch(
+    from var(--color-brand-min-contrast) max(l - 0.125, 0.1) calc(1.25 * c) h
+  );
   --color-brand-max-contrast: oklch(
-    from var(--color-brand-min-contrast) max(l - 0.175, 0.1) calc(1.25 * c) h
+    from var(--color-brand-min-contrast) max(l - 0.25, 0.1) calc(1.25 * c) h
   );
   --color-brand-dark: oklch(  /* was #ecdafa now slightly more saturated */
     from var(--color-brand)
@@ -198,7 +201,7 @@
   .btn,
   input[type="file"]::file-selector-button {
     border: 0px;
-    background-color: var(--color-brand-min-contrast);
+    background-color: var(--color-brand-mid-contrast);
     color: white;
   }
 
@@ -206,7 +209,7 @@
   .formBody button,
   .btn {
     background-color: white;
-    color: var(--color-brand-max-contrast);
+    color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-min-contrast);
     box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
       from var(--color-brand) min(l, 0.95) c h / 0.25
@@ -238,7 +241,7 @@
 
   p.badge {
     background-color: white;
-    color: var(--color-brand-max-contrast);
+    color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-min-contrast);
   }
 
