@@ -6,6 +6,9 @@
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
   );
+  --color-brand-max-contrast: oklch(
+    from var(--color-brand-min-contrast) max(l - 0.175, 0.1) calc(1.25 * c) h
+  );
   --color-brand-dark: oklch(  /* was #ecdafa now slightly more saturated */
     from var(--color-brand)
     clamp(0.85, l + 0.4271, 0.95) calc(0.25 * c) calc(h + 6)
@@ -23,11 +26,11 @@
   );
   --color-brand-bg: oklch(  /* #fbf3ff */
     from var(--color-brand)
-    clamp(0.6, l + 0.4883, 0.98) min(c, 0.0179) calc(h + 10.26)
+    clamp(0.8, l + 0.4883, 0.98) min(c, 0.0179) calc(h + 10.26)
   );
   --color-dark-bg: oklch(  /* was #222 now with brand hue */
     from var(--color-brand)
-    clamp(0.15, l - 0.2335, 0.4) min(c, 0.012) calc(h + 16.47)
+    clamp(0.15, l - 0.2335, 0.275) min(c, 0.012) calc(h + 16.47)
   );
   --color-dark-bg-alt: #333;
   --color-dark-bg-alt-1: #444;
@@ -90,7 +93,7 @@
   }
 
   a {
-    color: var(--color-brand-min-contrast);
+    color: var(--color-brand-max-contrast);
   }
 
   p.meta {
@@ -157,7 +160,9 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: var(--color-brand-bg);  /* #fbf3ff */
+    background-color: oklch(  /* #fbf3ff */
+      from var(--color-brand-bg) 0.97 c h / 0.85
+    );
   }
 
   /* Create an active/current tablink class */
@@ -201,7 +206,7 @@
   .formBody button,
   .btn {
     background-color: white;
-    color: var(--color-brand-min-contrast);
+    color: var(--color-brand-max-contrast);
     border: 1px solid var(--color-brand-min-contrast);
     box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
       from var(--color-brand) min(l, 0.95) c h / 0.25
@@ -233,7 +238,7 @@
 
   p.badge {
     background-color: white;
-    color: var(--color-brand-min-contrast);
+    color: var(--color-brand-max-contrast);
     border: 1px solid var(--color-brand-min-contrast);
   }
 
@@ -450,7 +455,7 @@
   .tab:hover,
   .subtab:hover {
     background-color: oklch(  /* was rgba(255, 255, 255, 0.1) now with color */
-      from var(--color-dark-bg) l c h / 0.2
+      from var(--color-dark-bg) 0.15 calc(12 * c) h / 0.0675
     );
   }
 
