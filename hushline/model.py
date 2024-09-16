@@ -33,7 +33,7 @@ class HostOrganization(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, default=1)
     brand_app_name: Mapped[str] = mapped_column(db.String(255), default="🤫 Hush Line")
-    brand_primary_hex_color: Mapped[str] = mapped_column(db.String(255), default="#7d25c1")
+    brand_primary_hex_color: Mapped[str] = mapped_column(db.String(7), default="#7d25c1")
 
 
 class User(Model):
