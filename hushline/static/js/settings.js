@@ -76,28 +76,25 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   if (document.getElementById("branding")) {
-    // Update color in real-time as they're being browsed
-    document
-      .getElementById("brand-primary-color")
-      .addEventListener("input", function(event) {
-        const brandColor = `oklch(from ${event.target.value} l c h)`;
-        document.documentElement.style.setProperty("--color-brand", brandColor);
-      });
 
-    // Update color once it's been finalized
-    document
-      .getElementById("brand-primary-color")
-      .addEventListener("change", function(event) {
+    // Update color in real-time as they're being browsed & finalized
+    const colorPicker = document.getElementById("brand-primary-color");
+
+    for (const eventName of ["input", "change"]) {
+      colorPicker.addEventListener(eventName, function (event) {
         const brandColor = `oklch(from ${event.target.value} l c h)`;
-        document.documentElement.style.setProperty("--color-brand", brandColor);
+        const cssVariable = ["--color-brand", brandColor];
+        document.documentElement.style.setProperty(...cssVariable);
       });
+    }
 
     // Update app name in real-time as it's being typed
-    document
-      .getElementById("brand-app-name")
-      .addEventListener("input", function(event) {
-        document.querySelector("h1").innerText = event.target.value;
-      });
+    const appNameBox = document.getElementById("brand-app-name");
+
+    appNameBox.addEventListener("input", function (event) {
+      document.querySelector("h1").innerText = event.target.value;
+    });
+
   }
 
   var forwarding_enabled = document.querySelector(

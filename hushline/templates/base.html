@@ -68,9 +68,8 @@
       function importHostConfiguration() {
         // Update page theme with host's brand color from the database
         const brandColor = "{{ host_org.brand_primary_hex_color }}";
-        document.documentElement.style.setProperty(
-          "--color-brand", `oklch(from ${brandColor} l c h)`
-        );
+        const cssVariable = ["--color-brand", brandColor];
+        document.documentElement.style.setProperty(...cssVariable);
 
         // Update page h1 with host's brand name from the database
         const brandName = "{{ host_org.brand_app_name }}";
