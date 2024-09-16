@@ -43,7 +43,7 @@
           Email &amp; Encryption
         </button>
       </li>
-      {% if user.is_admin %}
+      {% if user.is_admin -%}
       <li role="presentation">
         <button
           type="button"
@@ -57,7 +57,7 @@
           Branding
         </button>
       </li>
-      {% endif %}
+      {%- endif %}
       <li role="presentation">
         <button
           type="button"
@@ -482,7 +482,7 @@
       {% endif %}
     </div>
 
-    {% if user.is_admin %}
+    {% if user.is_admin -%}
     <div
       id="branding"
       class="tab-content admin-only"
@@ -525,7 +525,7 @@
         <button type="submit" class="btn">Update Name</button>
       </form>
     </div>
-    {% endif %}
+    {%- endif %}
 
     <div
       id="advanced"
