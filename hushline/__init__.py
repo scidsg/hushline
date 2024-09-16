@@ -61,9 +61,6 @@ def create_app() -> Flask:
     db.init_app(app)
     Migrate(app, db)
 
-    with app.app_context():
-        db.create_all()
-
     routes.init_app(app)
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
