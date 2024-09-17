@@ -19,7 +19,6 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from sqlalchemy import select
-from sqlalchemy.sql import exists
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -131,7 +130,7 @@ def init_app(app: Flask) -> None:
     @app.route("/to/<username>", methods=["GET"])
     def profile(username: str) -> Response | str:
         form = MessageForm()
-        uname = Username.query.filter_by(_username=username).one_or_none()
+        uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
         if not uname:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
@@ -179,7 +178,7 @@ def init_app(app: Flask) -> None:
     @app.route("/to/<username>", methods=["POST"])
     def submit_message(username: str) -> Response | str:
         form = MessageForm()
-        uname = Username.query.filter_by(_username=username).one_or_none()
+        uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
         if not uname:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
@@ -280,17 +279,23 @@ def init_app(app: Flask) -> None:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
 
-        user = User.query.get(session.get("user_id"))
+        user = db.session.get(User, session.get("user_id"))
         if not user:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
 
-        row_count = Message.query.filter(
-            Message.id == message_id,
-            Message.username_id.in_(
-                select(Username.user_id).select_from(Username).filter(Username.user_id == user.id)
-            ),
-        ).delete()
+        row_count = (
+            db.delete(Message)
+            .where(
+                Message.id == message_id,
+                Message.username_id.in_(
+                    select(Username.user_id)
+                    .select_from(Username)
+                    .filter(Username.user_id == user.id)
+                ),
+            )
+            .delete()
+        )
         match row_count:
             case 1:
                 db.session.commit()
@@ -328,7 +333,9 @@ def init_app(app: Flask) -> None:
 
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
-                invite_code = InviteCode.query.filter_by(code=invite_code_input).one_or_none()
+                invite_code = db.session.scalars(
+                    db.select(InviteCode).filter_by(code=invite_code_input)
+                ).one_or_none()
                 if not invite_code or invite_code.expiration_date.replace(
                     tzinfo=UTC
                 ) < datetime.now(UTC):
@@ -342,7 +349,7 @@ def init_app(app: Flask) -> None:
                         400,
                     )
 
-            if db.session.query(exists(Username).where(Username._username == username)).scalar():
+            if db.session.query(db.exists(Username).where(Username._username == username)).scalar():
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(

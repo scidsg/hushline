@@ -18,7 +18,7 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
     assert response.status_code == 200
     assert "Registration successful!" in response.text
 
-    uname = Username.query.filter_by(_username=username).one()
+    uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == username
 
 
@@ -42,7 +42,7 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     assert response.status_code == 200
     assert "Registration successful!" in response.text
 
-    uname = Username.query.filter_by(_username=username).one()
+    uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == "newuser"
 
 

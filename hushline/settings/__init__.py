@@ -17,8 +17,8 @@ from flask import (
     session,
     url_for,
 )
+from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
@@ -153,7 +153,7 @@ def handle_change_username_form(
 
     # TODO a better pattern would be to try to commit, catch the exception, and match
     # on the name of the unique index that errored
-    if db.session.query(exists(Username).where(Username._username == new_username)).scalar():
+    if db.session.query(db.exists(Username).where(Username._username == new_username)).scalar():
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
@@ -169,13 +169,12 @@ def handle_change_username_form(
 def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url: str) -> Response:
     current_app.logger.debug("Creating alias for {user.primary_username.username}")
     # TODO check that users are allowed to add aliases here (is premium, not too many)
-    # TODO check that alias is not yet taken
     uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
     db.session.add(uname)
     try:
         db.session.commit()
     except IntegrityError as e:
-        if 'duplicate key value violates unique constraint "usernames_username_key"' in str(e):
+        if isinstance(e.orig, UniqueViolation) and '"usernames_username_key"' in str(e.orig):
             flash("💔 This username is already taken.")
         else:
             flash("⛔️ Internal server error. Alias not created.")
@@ -240,11 +239,11 @@ def create_blueprint() -> Blueprint:
             )
             flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
-        aliases = (
-            Username.query.filter_by(is_primary=False, user_id=user.id)
+        aliases = db.session.scalars(
+            db.select(Username)
+            .filter_by(is_primary=False, user_id=user.id)
             .order_by(db.func.coalesce(Username._display_name, Username._username))
-            .all()
-        )
+        ).all()
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
         all_users = []
@@ -264,7 +263,11 @@ def create_blueprint() -> Blueprint:
             user_count = len(all_users)
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(User.query.join(Username).order_by(Username._username).all())
+            all_users = list(
+                db.session.scalars(
+                    db.select(User).join(Username).order_by(Username._username)
+                ).all()
+            )
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
@@ -620,9 +623,10 @@ def create_blueprint() -> Blueprint:
     @authentication_required
     @bp.route("/alias/<int:username_id>", methods=["GET", "POST"])
     async def alias(username_id: int) -> Response | str:
-        user = User.query.get(session["user_id"])
-        alias = Username.query.filter_by(
-            id=username_id, user_id=user.id, is_primary=False
+        alias = db.session.scalars(
+            db.select(Username).filter_by(
+                id=username_id, user_id=session["user_id"], is_primary=False
+            )
         ).one_or_none()
         if not alias:
             flash("Alias not found.")
@@ -658,7 +662,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/alias.html",
-            user=user,
+            user=alias.user,
             alias=alias,
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,

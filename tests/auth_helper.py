@@ -5,6 +5,7 @@ import bs4
 import pyotp
 from flask.testing import FlaskClient
 
+from hushline.db import db
 from hushline.model import AuthenticationLog, User, Username
 
 
@@ -12,33 +13,28 @@ def register_user(client: FlaskClient, username: str, password: str) -> User:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
-    # User registration data
     user_data = {"username": username, "password": password}
 
-    # Post request to register a new user
     response = client.post("/register", data=user_data, follow_redirects=True)
-
-    # Validate response
     assert response.status_code == 200
     assert b"Registration successful!" in response.data
 
-    # Verify user is added to the database
-    user = User.query.join(Username).filter(Username._username == username).one_or_none()
-    assert user is not None
+    user = db.session.scalars(
+        db.select(User).join(Username).filter(Username._username == username)
+    ).one()
     assert user.primary_username.username == username
 
     return user
 
 
 def register_user_2fa(client: FlaskClient, username: str, password: str) -> tuple[User, str]:
-    # Register a new user
     user_data = {"username": username, "password": password}
     response = client.post("/register", data=user_data, follow_redirects=True)
     assert response.status_code == 200
 
-    # Verify user is added to the database
-    user = User.query.join(Username).filter(Username._username == username).one_or_none()
-    assert user is not None
+    user = db.session.scalars(
+        db.select(User).join(Username).filter(Username._username == username)
+    ).one()
     assert user.primary_username.username == username
 
     # And 2FA is disabled
@@ -75,7 +71,7 @@ def register_user_2fa(client: FlaskClient, username: str, password: str) -> tupl
     assert "Enter your 2FA Code" in login_response.text
 
     # Modify the timestamps on the AuthenticationLog entries to allow for 2FA verification
-    for log in AuthenticationLog.query.all():
+    for log in db.session.scalars(db.select(AuthenticationLog)).all():
         log.timestamp = datetime.now() - timedelta(minutes=5)
 
     return (user, totp_secret)
@@ -95,7 +91,9 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
         f'href="/inbox?username={username}"'.encode() in response.data
     ), f"Inbox link should be present for the user {username}"
 
-    if username := Username.query.filter_by(_username=username).one_or_none():
+    if username := db.session.scalars(
+        db.select(Username).filter_by(_username=username)
+    ).one_or_none():
         return username.user
     return None
 

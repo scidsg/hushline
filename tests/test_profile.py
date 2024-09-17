@@ -40,7 +40,9 @@ def test_profile_submit_message(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert b"Message submitted successfully." in response.data
 
-    message = Message.query.filter_by(username_id=user.primary_username.id).one()
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
     assert message.content == msg_content
 
     response = client.get(url_for("inbox", unamename=username), follow_redirects=True)
@@ -75,7 +77,9 @@ def test_profile_submit_message_with_contact_method(client: FlaskClient) -> None
     assert response.status_code == 200
     assert b"Message submitted successfully." in response.data
 
-    message = Message.query.filter_by(username_id=user.primary_username.id).one_or_none()
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
     expected_content = f"Contact Method: {contact_method}\n\n{message_content}"
     assert message.content == expected_content
 
@@ -172,4 +176,9 @@ def test_profile_submit_message_with_invalid_captcha(client: FlaskClient) -> Non
     assert message_content.encode() in response.data
 
     # Verify that the message is not saved in the database
-    assert not Message.query.filter_by(username_id=user.primary_username.id).one_or_none()
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).one_or_none()
+        is None
+    )
