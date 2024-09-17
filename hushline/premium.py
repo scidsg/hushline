@@ -255,21 +255,32 @@ async def worker(app: Flask) -> None:
                 f"Processing event {stripe_event.event_type} ({stripe_event.event_id})"
             )
             try:
-                if event.type == "customer.subscription.created":
-                    handle_subscription_created(event.data.object)
-                elif event.type == "customer.subscription.updated":
-                    handle_subscription_updated(event.data.object)
-                elif event.type == "customer.subscription.deleted":
-                    handle_subscription_deleted(event.data.object)
-                elif event.type == "invoice.created":
-                    handle_invoice_created(event.data.object)
-                elif event.type == "invoice.payment_succeeded":
-                    handle_invoice_payment_succeeded(event.data.object)
-                elif event.type == "invoice.payment_failed":
-                    handle_invoice_payment_failed(event.data.object)
+                # subscription events
+                if event.type.startswith("customer.subscription."):
+                    subscription: stripe.Subscription = stripe.Subscription.construct_from(
+                        event.data.object, current_app.config["STRIPE_SECRET_KEY"]
+                    )
+                    if event.type == "customer.subscription.created":
+                        handle_subscription_created(subscription)
+                    elif event.type == "customer.subscription.updated":
+                        handle_subscription_updated(subscription)
+                    elif event.type == "customer.subscription.deleted":
+                        handle_subscription_deleted(subscription)
+                # invoice events
+                elif event.type.startswith("invoice."):
+                    invoice: stripe.Invoice = stripe.Invoice.construct_from(
+                        event.data.object, current_app.config["STRIPE_SECRET_KEY"]
+                    )
+                    if event.type == "invoice.created":
+                        handle_invoice_created(invoice)
+                    elif event.type == "invoice.payment_succeeded":
+                        handle_invoice_payment_succeeded(invoice)
+                    elif event.type == "invoice.payment_failed":
+                        handle_invoice_payment_failed(invoice)
+
             except Exception as e:
                 current_app.logger.error(
-                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event.data.object}"  # noqa: E501
+                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}"  # noqa: E501
                 )
                 stripe_event.status = "error"
                 db.session.add(stripe_event)
