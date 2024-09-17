@@ -31,13 +31,13 @@ def main() -> None:
 
             un1 = Username(
                 user_id=user.id,
-                _username=data["username"],
+                _username=data["username"],  # type: ignore
                 is_primary=True,
                 show_in_directory=True,
             )
             un2 = Username(
                 user_id=user.id,
-                _username=data["username"] + "-alias",
+                _username=data["username"] + "-alias",  # type: ignore
                 is_primary=False,
                 show_in_directory=True,
             )

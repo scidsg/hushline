@@ -364,7 +364,7 @@ def init_app(app: Flask) -> None:
             db.session.add(user)
             db.session.flush()
 
-            username = Username(username=username, user_id=user.id, is_primary=True)
+            username = Username(_username=username, user_id=user.id, is_primary=True)
             db.session.add(username)
             db.session.commit()
 

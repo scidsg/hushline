@@ -68,6 +68,16 @@ class Username(Model):
     extra_field_verified3: Mapped[Optional[bool]] = mapped_column(default=False)
     extra_field_verified4: Mapped[Optional[bool]] = mapped_column(default=False)
 
+    def __init__(
+        self,
+        _username: str,
+        is_primary: bool,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._username = _username
+        self.is_primary = is_primary
+
     @property
     def username(self) -> str:
         return self._username
@@ -258,10 +268,9 @@ class Message(Model):
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
     username: Mapped["Username"] = relationship(uselist=False)
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, content: str, **kwargs: Any) -> None:
         if "_content" in kwargs:
             raise ValueError("Cannot set '_content' directly. Use 'content'")
-        content = kwargs.pop("content", None)
         super().__init__(**kwargs)
         self.content = content
 

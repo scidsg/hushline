@@ -246,7 +246,7 @@ def create_blueprint() -> Blueprint:
         ).all()
         # Additional admin-specific data initialization
         user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
-        all_users = []
+        all_users: list[User] = []
 
         # Check if user is admin and add admin-specific data
         if user.is_admin:
@@ -260,7 +260,6 @@ def create_blueprint() -> Blueprint:
                     .filter(User._pgp_key != "")
                 )
             )
-            user_count = len(all_users)
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
             all_users = list(
@@ -268,6 +267,7 @@ def create_blueprint() -> Blueprint:
                     db.select(User).join(Username).order_by(Username._username)
                 ).all()
             )
+            user_count = len(all_users)
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
@@ -343,7 +343,9 @@ def create_blueprint() -> Blueprint:
             flash("New password is invalid.")
             return redirect(url_for("settings.index"))
 
-        if not user.check_password(change_password_form.old_password.data):
+        if not change_password_form.old_password.data or not user.check_password(
+            change_password_form.old_password.data
+        ):
             flash("Incorrect old password.", "error")
             return redirect(url_for("settings.index"))
 
@@ -503,7 +505,7 @@ def create_blueprint() -> Blueprint:
         if form.validate_on_submit():
             pgp_key = form.pgp_key.data
 
-            if pgp_key.strip() == "":
+            if pgp_key is None or pgp_key.strip() == "":
                 # If the field is empty, remove the PGP key
                 user.pgp_key = None
                 user.email = None  # remove the forwarding email if the PGP key is removed

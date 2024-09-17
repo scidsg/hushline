@@ -91,10 +91,8 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
         f'href="/inbox?username={username}"'.encode() in response.data
     ), f"Inbox link should be present for the user {username}"
 
-    if username := db.session.scalars(
-        db.select(Username).filter_by(_username=username)
-    ).one_or_none():
-        return username.user
+    if uname := db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none():
+        return uname.user
     return None
 
 
