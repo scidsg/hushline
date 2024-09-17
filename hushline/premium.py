@@ -256,20 +256,20 @@ async def worker(app: Flask) -> None:
             )
             try:
                 if event.type == "customer.subscription.created":
-                    handle_subscription_created(event_json.data.object)
+                    handle_subscription_created(event.data.object)
                 elif event.type == "customer.subscription.updated":
-                    handle_subscription_updated(event_json.data.object)
+                    handle_subscription_updated(event.data.object)
                 elif event.type == "customer.subscription.deleted":
-                    handle_subscription_deleted(event_json.data.object)
+                    handle_subscription_deleted(event.data.object)
                 elif event.type == "invoice.created":
-                    handle_invoice_created(event_json.data.object)
+                    handle_invoice_created(event.data.object)
                 elif event.type == "invoice.payment_succeeded":
-                    handle_invoice_payment_succeeded(event_json.data.object)
+                    handle_invoice_payment_succeeded(event.data.object)
                 elif event.type == "invoice.payment_failed":
-                    handle_invoice_payment_failed(event_json.data.object)
+                    handle_invoice_payment_failed(event.data.object)
             except Exception as e:
                 current_app.logger.error(
-                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event_json['data']['object']}"  # noqa: E501
+                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event.data.object}"  # noqa: E501
                 )
                 stripe_event.status = "error"
                 db.session.add(stripe_event)
