@@ -44,19 +44,19 @@
         </button>
       </li>
       {% if user.is_admin -%}
-      <li role="presentation">
-        <button
-          type="button"
-          class="tab admin-only"
-          data-tab="branding"
-          role="tab"
-          aria-selected="false"
-          aria-controls="branding"
-          id="branding-tab"
-        >
-          Branding
-        </button>
-      </li>
+        <li role="presentation">
+          <button
+            type="button"
+            class="tab admin-only"
+            data-tab="branding"
+            role="tab"
+            aria-selected="false"
+            aria-controls="branding"
+            id="branding-tab"
+          >
+            Branding
+          </button>
+        </li>
       {%- endif %}
       <li role="presentation">
         <button
@@ -483,48 +483,48 @@
     </div>
 
     {% if user.is_admin -%}
-    <div
-      id="branding"
-      class="tab-content admin-only"
-      role="tabpanel"
-      aria-labelledby="branding-tab"
-      hidden
-    >
-      <h3>Primary Color</h3>
-      <form
-        method="POST"
-        action="{{ url_for('settings.update_brand_primary_color') }}"
-        class="formBody"
+      <div
+        id="branding"
+        class="tab-content admin-only"
+        role="tabpanel"
+        aria-labelledby="branding-tab"
+        hidden
       >
-        {{ update_brand_primary_color_form.hidden_tag() }}
-        <label for="brand-primary-color">Choose Color</label>
-        <input
-          type="color"
-          name="brand_primary_hex_color"
-          id="brand-primary-color"
-          value="{{ host_org.brand_primary_hex_color }}"
-        />
-        <button type="submit" class="btn">Update Color</button>
-      </form>
+        <h3>Primary Color</h3>
+        <form
+          method="POST"
+          action="{{ url_for('settings.update_brand_primary_color') }}"
+          class="formBody"
+        >
+          {{ update_brand_primary_color_form.hidden_tag() }}
+          <label for="brand-primary-color">Choose Color</label>
+          <input
+            type="color"
+            name="brand_primary_hex_color"
+            id="brand-primary-color"
+            value="{{ host_org.brand_primary_hex_color }}"
+          />
+          <button type="submit" class="btn">Update Color</button>
+        </form>
 
-      <h3>App Name</h3>
-      <form
-        method="POST"
-        action="{{ url_for('settings.update_brand_app_name') }}"
-        class="formBody"
-      >
-        {{ update_brand_app_name_form.hidden_tag() }}
-        <label for="brand-app-name">Choose Name</label>
-        <input
-          type="text"
-          name="brand_app_name"
-          id="brand-app-name"
-          value="{{ host_org.brand_app_name }}"
-          required
-        />
-        <button type="submit" class="btn">Update Name</button>
-      </form>
-    </div>
+        <h3>App Name</h3>
+        <form
+          method="POST"
+          action="{{ url_for('settings.update_brand_app_name') }}"
+          class="formBody"
+        >
+          {{ update_brand_app_name_form.hidden_tag() }}
+          <label for="brand-app-name">Choose Name</label>
+          <input
+            type="text"
+            name="brand_app_name"
+            id="brand-app-name"
+            value="{{ host_org.brand_app_name }}"
+            required
+          />
+          <button type="submit" class="btn">Update Name</button>
+        </form>
+      </div>
     {%- endif %}
 
     <div

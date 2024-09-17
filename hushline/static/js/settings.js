@@ -76,7 +76,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   if (document.getElementById("branding")) {
-
     // Update color in real-time as they're being browsed & finalized
     const colorPicker = document.getElementById("brand-primary-color");
 
@@ -94,7 +93,6 @@ document.addEventListener("DOMContentLoaded", function () {
     appNameBox.addEventListener("input", function (event) {
       document.querySelector("h1").innerText = event.target.value;
     });
-
   }
 
   var forwarding_enabled = document.querySelector(
