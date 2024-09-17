@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from sqlalchemy.sql import exists
+
 from hushline import create_app
 from hushline.db import db
 from hushline.model import User, Username
@@ -7,22 +9,43 @@ from hushline.model import User, Username
 def main() -> None:
     create_app().app_context().push()
 
-    username = "test"
-    password = "Test-testtesttesttest-1"  # noqa: S105
+    users = [
+        {
+            "username": "test",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+        },
+        {
+            "username": "admin",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": True,
+        },
+    ]
 
-    user = User(password=password)
-    db.session.add(user)
-    db.session.flush()
+    for data in users:
+        username = data["username"]
+        if not db.session.query(exists(Username).where(Username._username == username)).scalar():
+            user = User(password=data["password"], is_admin=data["is_admin"])
+            db.session.add(user)
+            db.session.flush()
 
-    un1 = Username(user_id=user.id, _username=username, is_primary=True, show_in_directory=True)
-    un2 = Username(
-        user_id=user.id, _username=username + "-alias", is_primary=False, show_in_directory=True
-    )
-    db.session.add(un1)
-    db.session.add(un2)
-    db.session.commit()
+            un1 = Username(
+                user_id=user.id,
+                _username=data["username"],
+                is_primary=True,
+                show_in_directory=True,
+            )
+            un2 = Username(
+                user_id=user.id,
+                _username=data["username"] + "-alias",
+                is_primary=False,
+                show_in_directory=True,
+            )
+            db.session.add(un1)
+            db.session.add(un2)
+            db.session.commit()
 
-    print(f"User created:\n  username = {username}\n  password = {password}")
+        print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
 
 
 if __name__ == "__main__":
