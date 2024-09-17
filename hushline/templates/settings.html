@@ -82,14 +82,12 @@
     >
       {% if is_premium_enabled and user.tier_id == 1 %}
         <div class="upgrade">
-          <div>
-            <h3>Upgrade to Business</h3>
-            <p class="info">
-              🚀 Need more features? Upgrade to Business for
-              ${{ business_tier_display_price }}/mo.
-            </p>
-          </div>
-          <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
+          <h3>Upgrade to Business</h3>
+          <p class="info">
+            🚀 Need more features? Upgrade to Business for
+            ${{ business_tier_display_price }}/mo.
+          </p>
+          <a href="{{ url_for('premium.index') }}">Upgrade</a>
         </div>
       {% endif %}
 
