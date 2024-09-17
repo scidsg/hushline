@@ -416,6 +416,7 @@
 
   .mobileNav {
     background-image: url("../img/app/icon-menu-light.png");
+    color: var(--color-brand-dark-min-saturation);
   }
 
   .container {
