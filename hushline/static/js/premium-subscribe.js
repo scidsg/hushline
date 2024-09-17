@@ -14,10 +14,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const stripePublishableKey = document.querySelector(
     "input[name='stripe_publishable_key']",
   ).value;
-  const premiumHome = window.location.pathname
-    .split("/")
-    .slice(0, -1)
-    .join("/");
 
   stripe = Stripe(stripePublishableKey);
   const elements = stripe.elements();
@@ -54,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           .then((data) => {
             if (data.tier_id === 2) {
               // Payment successful, redirect to premium home
-              window.location.href = premiumHome;
+              window.location.href = pathPrefix;
             } else {
               console.log("Payment status not yet confirmed.", data);
             }
