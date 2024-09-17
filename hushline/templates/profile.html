@@ -35,17 +35,17 @@
     </div>
   {% endif %}
 
-  {% if user.primary_username.bio %}
-    <p class="bio">{{ user.primary_username.bio }}</p>
+  {% if username.bio %}
+    <p class="bio">{{ username.bio }}</p>
   {% endif %}
 
-  {% if user.primary_username.valid_fields | length > 0 %}
+  {% if username.valid_fields | length > 0 %}
     <div class="extra-fields">
-      {% for field in user.primary_username.valid_fields %}
+      {% for field in username.valid_fields %}
         <p class="extra-field">
           <span class="extra-field-label">{{ field.label }}</span>
           <span class="extra-field-value">
-            {% if field.verified %}
+            {% if field.is_verified %}
               <span class="icon verifiedURL" title="Verified Address"></span>
             {% endif %}
             {% if field.value.startswith('https://') %}
@@ -63,6 +63,7 @@
       {% endfor %}
     </div>
   {% endif %}
+
   {% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
 
   {% if current_user_id == user.id %}

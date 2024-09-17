@@ -14,8 +14,12 @@ def main() -> None:
     db.session.add(user)
     db.session.flush()
 
-    un = Username(user_id=user.id, _username=username, is_primary=True)
-    db.session.add(un)
+    un1 = Username(user_id=user.id, _username=username, is_primary=True, show_in_directory=True)
+    un2 = Username(
+        user_id=user.id, _username=username + "-alias", is_primary=False, show_in_directory=True
+    )
+    db.session.add(un1)
+    db.session.add(un2)
     db.session.commit()
 
     print(f"User created:\n  username = {username}\n  password = {password}")

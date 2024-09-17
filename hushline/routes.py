@@ -167,7 +167,7 @@ def init_app(app: Flask) -> None:
             "profile.html",
             form=form,
             user=uname.user,
-            username=username,
+            username=uname,
             display_name_or_username=uname.display_name or uname.username,
             current_user_id=session.get("user_id"),
             public_key=uname.user.pgp_key,
