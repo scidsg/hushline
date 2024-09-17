@@ -318,6 +318,11 @@
     color: white;
   }
 
+  .upgrade {
+    background-color: var(--color-brand);
+    color: white;
+  }
+
   @media screen and (max-width: 768px) {
     .dropdown-content a:hover {
       background-color: white;
@@ -612,11 +617,21 @@
   }
 
   .banner {
-    background-color: #ecdafa;
+    background-color: var(--color-brand-dark);
     color: #333;
   }
 
   .banner a {
+    color: #333;
+  }
+
+  .upgrade .btn {
+    border: 1px solid #333;
+    color: #333;
+  }
+
+  .upgrade {
+    background-color: var(--color-brand-dark);
     color: #333;
   }
 
@@ -2112,4 +2127,39 @@ p.bio + .extra-fields {
   margin-bottom: 1rem;
   padding: 1rem;
   border: 1px solid #666;
+}
+
+.upgrade {
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: .5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upgrade .btn {
+  width: fit-content;
+  box-sizing: border-box;
+  text-align: center;
+  margin: 0;
+}
+
+.upgrade h3 {
+  font-size: var(--font-size-4);
+  margin-bottom: .25rem;
+}
+
+.upgrade p {
+  font-size: var(--font-size-small);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .upgrade {
+    flex-direction: column;
+    align-items: start;
+    gap: .75rem;
+  }
 }
