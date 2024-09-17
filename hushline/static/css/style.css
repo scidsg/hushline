@@ -2,7 +2,7 @@
   --color-border: rgba(0, 0, 0, 0.18);
   --color-border-dark: #7d7d7d;
   --color-border-dark-1: #555;
-  --color-brand: oklch(48.55% 0.222 304.47);  /* #7d25c1 */
+  --color-brand: oklch(48.55% 0.222 304.47); /* #7d25c1 */
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
   );
@@ -13,35 +13,34 @@
     from var(--color-brand-min-contrast) max(l - 0.25, 0.1) calc(1.25 * c) h
   );
   --color-brand-dark-min-saturation: oklch(
-    from var(--color-brand)
-    clamp(0.96, l + 0.425, 0.98) calc(0.5 * c) h
+    from var(--color-brand) clamp(0.96, l + 0.425, 0.98) calc(0.5 * c) h
   );
   --color-brand-dark-mid-saturation: oklch(
-    from var(--color-brand)
-    clamp(0.93, l + 0.4, 0.98) calc(0.75 * c) h
+    from var(--color-brand) clamp(0.93, l + 0.4, 0.98) calc(0.75 * c) h
   );
   --color-brand-dark-max-saturation: oklch(
-    from var(--color-brand)
-    clamp(0.8, l + 0.175, 0.94) calc(1.5 * c) calc(h - 6)
+    from var(--color-brand) clamp(0.8, l + 0.175, 0.94) calc(1.5 * c)
+      calc(h - 6)
   );
   --color-text: #333;
   --color-text-dark-alt-2: #e4e4e4;
   --color-text-dark-alt: #c2c2c2;
   --color-text-dark: #dadada;
   --color-text-light: #595959;
-  --color-highlight: oklch(  /* rgba(125, 37, 193, 0.1) */
-    from var(--color-brand) l c h / 0.1
+  --color-highlight: oklch(
+    /* rgba(125, 37, 193, 0.1) */ from var(--color-brand) l c h / 0.1
   );
-  --color-highlight-dark: oklch(  /* rgba(220, 198, 237, 0.2) */
-    from var(--color-brand-dark-mid-saturation) l c h / 0.2
+  --color-highlight-dark: oklch(
+    /* rgba(220, 198, 237, 0.2) */ from var(--color-brand-dark-mid-saturation) l
+      c h / 0.2
   );
-  --color-brand-bg: oklch(  /* #fbf3ff */
-    from var(--color-brand)
-    clamp(0.8, l + 0.4883, 0.98) min(c, 0.0179) calc(h + 10.26)
+  --color-brand-bg: oklch(
+    /* #fbf3ff */ from var(--color-brand) clamp(0.8, l + 0.4883, 0.98)
+      min(c, 0.0179) calc(h + 10.26)
   );
-  --color-dark-bg: oklch(  /* was #222 now with brand hue */
-    from var(--color-brand)
-    clamp(0.18, l - 0.275, 0.215) min(c, 0.01) calc(h + 10.26)
+  --color-dark-bg: oklch(
+    /* was #222 now with brand hue */ from var(--color-brand)
+      clamp(0.18, l - 0.275, 0.215) min(c, 0.01) calc(h + 10.26)
   );
   --color-dark-bg-alt: #333;
   --color-dark-bg-alt-1: #444;
@@ -171,8 +170,8 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: oklch(  /* #fbf3ff */
-      from var(--color-brand-bg) 0.97 c h / 0.85
+    background-color: oklch(
+      /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
     );
   }
 
@@ -219,9 +218,11 @@
     background-color: white;
     color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-min-contrast);
-    box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-      from var(--color-brand) min(l, 0.95) c h / 0.25
-    );
+    box-shadow: 0px 2px 0px 0px
+      oklch(
+        /* rgba(125, 37, 193, 0.25) */ from var(--color-brand) min(l, 0.95) c h /
+          0.25
+      );
   }
 
   .formBody input[type="submit"]:hover,
@@ -236,9 +237,11 @@
   .btn:active,
   input[type="file"]::file-selector-button:active,
   select:active {
-    box-shadow: inset 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-      from var(--color-brand) min(l, 0.95) c h / 0.25
-    );
+    box-shadow: inset 0px 2px 0px 0px
+      oklch(
+        /* rgba(125, 37, 193, 0.25) */ from var(--color-brand) min(l, 0.95) c h /
+          0.25
+      );
   }
 
   .btn-danger,
@@ -465,8 +468,9 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: oklch(  /* was rgba(255, 255, 255, 0.1) now with color */
-      from var(--color-dark-bg) 0.15 calc(12 * c) h / 0.0675
+    background-color: oklch(
+      /* was rgba(255, 255, 255, 0.1) now with color */ from
+        var(--color-dark-bg) 0.15 calc(12 * c) h / 0.0675
     );
   }
 
@@ -514,9 +518,11 @@
     background-color: var(--color-dark);
     color: var(--color-brand-dark-min-saturation);
     border: 1px solid var(--color-brand-dark-max-saturation);
-    box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-      from var(--color-brand-dark-max-saturation) l c h / 0.25
-    );
+    box-shadow: 0px 2px 0px 0px
+      oklch(
+        /* rgba(125, 37, 193, 0.25) */ from
+          var(--color-brand-dark-max-saturation) l c h / 0.25
+      );
   }
 
   .formBody input[type="submit"]:hover,
@@ -530,9 +536,8 @@
   .formBody button:active,
   .btn:active,
   input[type="file"]::file-selector-button:active {
-    box-shadow: inset 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-      from var(--color-brand) l c h / 0.25
-    );
+    box-shadow: inset 0px 2px 0px 0px
+      oklch(/* rgba(125, 37, 193, 0.25) */ from var(--color-brand) l c h / 0.25);
   }
 
   .btn-danger,
@@ -657,7 +662,7 @@
   }
 
   .banner {
-    background-color: var(--color-brand-dark-min-saturation);  /* #ecdafa */
+    background-color: var(--color-brand-dark-min-saturation); /* #ecdafa */
     color: #333;
   }
 
@@ -1216,9 +1221,8 @@ button,
 input[type="file"]::file-selector-button {
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-    from var(--color-brand) l c h / 0.25
-  );
+  box-shadow: 0px 2px 0px 0px
+    oklch(/* rgba(125, 37, 193, 0.25) */ from var(--color-brand) l c h / 0.25);
 }
 
 textarea {
