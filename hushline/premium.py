@@ -162,73 +162,83 @@ def get_subscription(user: User) -> stripe.Subscription | None:
     return stripe.Subscription.retrieve(user.stripe_subscription_id)
 
 
-def handle_subscription_created(subscription: stripe.Subscription) -> None:
+def handle_subscription_created(subscription_json: stripe.Subscription) -> None:
     # Subscription is created, but not yet paid
-    user = db.session.query(User).filter_by(stripe_customer_id=subscription["customer"]).first()
+    user = (
+        db.session.query(User).filter_by(stripe_customer_id=subscription_json["customer"]).first()
+    )
     if user:
-        user.stripe_subscription_id = subscription["id"]
+        user.stripe_subscription_id = subscription_json["id"]
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with customer ID {subscription['customer']}")
+        raise ValueError(f"Could not find user with customer ID {subscription_json['customer']}")
 
 
-def handle_subscription_updated(subscription: stripe.Subscription) -> None:
+def handle_subscription_updated(subscription_json: stripe.Subscription) -> None:
     # If subscription changes to cancel or unpaid, downgrade user
-    user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription_json["id"]).first()
     if user:
-        if subscription.status in ["canceled", "unpaid"]:
+        if subscription_json["status"] in ["canceled", "unpaid"]:
             user.tier_id = FREE_TIER
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with subscription ID {subscription['id']}")
+        raise ValueError(f"Could not find user with subscription ID {subscription_json['id']}")
 
 
-def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
+def handle_subscription_deleted(subscription_json: stripe.Subscription) -> None:
     # If subscription is deleted, downgrade user
-    user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
+    user = db.session.query(User).filter_by(stripe_subscription_id=subscription_json["id"]).first()
     if user:
         user.tier_id = FREE_TIER
         user.stripe_subscription_id = None
         db.session.commit()
     else:
-        raise ValueError(f"Could not find user with subscription ID {subscription['id']}")
+        raise ValueError(f"Could not find user with subscription ID {subscription_json['id']}")
 
 
-def handle_invoice_created(invoice: stripe.Invoice) -> None:
+def handle_invoice_created(invoice_json: stripe.Invoice) -> None:
     try:
-        new_invoice = StripeInvoice(invoice)
+        new_invoice = StripeInvoice(invoice_json)
         db.session.add(new_invoice)
         db.session.commit()
     except ValueError as e:
         current_app.logger.error(f"Error creating invoice: {e}")
 
 
-def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice["id"]).first()
+def handle_invoice_payment_succeeded(invoice_json: stripe.Invoice) -> None:
+    stripe_invoice = (
+        db.session.query(StripeInvoice).filter_by(invoice_id=invoice_json["id"]).first()
+    )
     if stripe_invoice:
-        stripe_invoice.amount_paid = invoice.amount_paid
-        stripe_invoice.amount_remaining = invoice.amount_remaining
-        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
+        stripe_invoice.amount_paid = invoice_json["amount_paid"]
+        stripe_invoice.amount_remaining = invoice_json["amount_remaining"]
+        stripe_invoice.status = StripeInvoiceStatusEnum(invoice_json["status"])
         db.session.commit()
 
         # Invoice has been paid, so make sure the user is upgraded
-        user = db.session.query(User).filter_by(stripe_subscription_id=invoice.subscription).first()
+        user = (
+            db.session.query(User)
+            .filter_by(stripe_subscription_id=invoice_json["subscription"])
+            .first()
+        )
         if user:
             user.tier_id = BUSINESS_TIER
             db.session.commit()
     else:
-        raise ValueError(f"Could not find invoice with ID {invoice['id']}")
+        raise ValueError(f"Could not find invoice with ID {invoice_json['id']}")
 
 
-def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice["id"]).first()
+def handle_invoice_payment_failed(invoice_json: stripe.Invoice) -> None:
+    stripe_invoice = (
+        db.session.query(StripeInvoice).filter_by(invoice_id=invoice_json["id"]).first()
+    )
     if stripe_invoice:
-        stripe_invoice.amount_paid = invoice.amount_paid
-        stripe_invoice.amount_remaining = invoice.amount_remaining
-        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
+        stripe_invoice.amount_paid = invoice_json["amount_paid"]
+        stripe_invoice.amount_remaining = invoice_json["amount_remaining"]
+        stripe_invoice.status = StripeInvoiceStatusEnum(invoice_json["status"])
         db.session.commit()
     else:
-        raise ValueError(f"Could not find invoice with ID {invoice['id']}")
+        raise ValueError(f"Could not find invoice with ID {invoice_json['id']}")
 
 
 async def worker(app: Flask) -> None:
@@ -248,29 +258,29 @@ async def worker(app: Flask) -> None:
             db.session.add(stripe_event)
             db.session.commit()
 
-            event: stripe.Event = json.loads(stripe_event.event_data)
+            event_json: stripe.Event = json.loads(stripe_event.event_data)
             current_app.logger.info(
                 f"Processing event {stripe_event.event_type} ({stripe_event.event_id})"
             )
             try:
-                if event["type"] == "customer.subscription.created":
-                    handle_subscription_created(event["data"]["object"])
-                elif event["type"] == "customer.subscription.updated":
-                    handle_subscription_updated(event["data"]["object"])
-                elif event["type"] == "customer.subscription.deleted":
-                    handle_subscription_deleted(event["data"]["object"])
-                elif event["type"] == "invoice.created":
-                    handle_invoice_created(event["data"]["object"])
-                elif event["type"] == "invoice.payment_succeeded":
-                    handle_invoice_payment_succeeded(event["data"]["object"])
-                elif event["type"] == "invoice.payment_failed":
-                    handle_invoice_payment_failed(event["data"]["object"])
+                if event_json["type"] == "customer.subscription.created":
+                    handle_subscription_created(event_json["data"]["object"])
+                elif event_json["type"] == "customer.subscription.updated":
+                    handle_subscription_updated(event_json["data"]["object"])
+                elif event_json["type"] == "customer.subscription.deleted":
+                    handle_subscription_deleted(event_json["data"]["object"])
+                elif event_json["type"] == "invoice.created":
+                    handle_invoice_created(event_json["data"]["object"])
+                elif event_json["type"] == "invoice.payment_succeeded":
+                    handle_invoice_payment_succeeded(event_json["data"]["object"])
+                elif event_json["type"] == "invoice.payment_failed":
+                    handle_invoice_payment_failed(event_json["data"]["object"])
             except Exception as e:
                 current_app.logger.error(
-                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event}"  # noqa: E501
+                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event_json['data']['object']}"  # noqa: E501
                 )
                 stripe_event.status = "error"
-                db.session.add(stripe_event)
+                db.session.add(json.dumps(stripe_event))
                 db.session.commit()
                 continue
 
@@ -307,7 +317,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         # Check if we have an incomplete subscription
         stripe_subscription = get_subscription(user)
-        if stripe_subscription and stripe_subscription.status == "incomplete":
+        if stripe_subscription and stripe_subscription["status"] == "incomplete":
             flash("⚠️ Your subscription is incomplete. Please try again.", "warning")
 
         return render_template("premium.html", user=user)
