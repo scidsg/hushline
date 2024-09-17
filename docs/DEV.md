@@ -56,6 +56,9 @@ make run
 Run the tests:
 
 ```sh
+# in one terminal
+./scripts/local-postgres.sh
+# in another terminal
 make test
 ```
 
