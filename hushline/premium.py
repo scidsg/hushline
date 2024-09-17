@@ -20,7 +20,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from .db import db
-from .model import StripeEvent, StripeInvoice, Tier, User
+from .model import StripeEvent, StripeInvoice, StripeInvoiceStatusEnum, Tier, User
 from .utils import authentication_required
 
 FREE_TIER = 1
@@ -163,31 +163,31 @@ def get_subscription(user: User) -> stripe.Subscription | None:
 
 
 def handle_subscription_created(subscription: stripe.Subscription) -> None:
+    # Subscription is created, but not yet paid
     user = db.session.query(User).filter_by(stripe_customer_id=subscription["customer"]).first()
     if user:
         user.stripe_subscription_id = subscription["id"]
-        user.tier_id = 2  # Business plan
         db.session.commit()
     else:
         raise ValueError(f"Could not find user with customer ID {subscription['customer']}")
 
 
 def handle_subscription_updated(subscription: stripe.Subscription) -> None:
+    # If subscription changes to cancel or unpaid, downgrade user
     user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
     if user:
-        if subscription.status == "active":
-            user.tier_id = 2  # Business plan
-        elif subscription.status in ["canceled", "unpaid"]:
-            user.tier_id = 1  # Free plan
+        if subscription.status in ["canceled", "unpaid"]:
+            user.tier_id = FREE_TIER
         db.session.commit()
     else:
         raise ValueError(f"Could not find user with subscription ID {subscription['id']}")
 
 
 def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
+    # If subscription is deleted, downgrade user
     user = db.session.query(User).filter_by(stripe_subscription_id=subscription["id"]).first()
     if user:
-        user.tier_id = 1  # Free plan
+        user.tier_id = FREE_TIER
         user.stripe_subscription_id = None
         db.session.commit()
     else:
@@ -208,7 +208,14 @@ def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
     if stripe_invoice:
         stripe_invoice.amount_paid = invoice.amount_paid
         stripe_invoice.amount_remaining = invoice.amount_remaining
+        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
         db.session.commit()
+
+        # Invoice has been paid, so make sure the user is upgraded
+        user = db.session.query(User).filter_by(stripe_subscription_id=invoice.subscription).first()
+        if user:
+            user.tier_id = BUSINESS_TIER
+            db.session.commit()
     else:
         raise ValueError(f"Could not find invoice with ID {invoice['id']}")
 
@@ -218,6 +225,7 @@ def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
     if stripe_invoice:
         stripe_invoice.amount_paid = invoice.amount_paid
         stripe_invoice.amount_remaining = invoice.amount_remaining
+        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
         db.session.commit()
     else:
         raise ValueError(f"Could not find invoice with ID {invoice['id']}")

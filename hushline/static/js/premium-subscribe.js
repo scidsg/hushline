@@ -34,7 +34,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert(`Payment failed: ${result.error.message}`);
       return;
     } else {
-      window.location.href = premiumHome;
+      // window.location.href = premiumHome;
+      alert("Payment successful! I think.");
     }
   });
 });
