@@ -15,7 +15,7 @@ def create_blueprint() -> Blueprint:
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)
-        user.is_verified = not user.is_verified
+        user.primary_username.is_verified = not user.primary_username.is_verified
         db.session.commit()
         flash("✅ User verification status toggled.", "success")
         return redirect(url_for("settings.index"))
