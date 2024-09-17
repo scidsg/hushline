@@ -48,6 +48,36 @@
       {% endif %}
     </div>
   </div>
+
+  <div id="invoice-wrapper">
+    <h3>Invoices</h3>
+    {% if invoices %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount Paid</th>
+            <th>Status</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>${{ invoice.amount_paid / 100 }}</td>
+              <td>{{ invoice.status.value }}</td>
+              <td>
+                <a href="{{ invoice.hosted_invoice_url }}" target="_blank">
+                  Receipt
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
 {% endblock %}
 
 {% block scripts %}

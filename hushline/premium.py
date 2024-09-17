@@ -16,6 +16,7 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import desc
 from werkzeug.wrappers.response import Response
 
 from .db import db
@@ -319,7 +320,15 @@ def create_blueprint(app: Flask) -> Blueprint:
         if stripe_subscription and stripe_subscription["status"] == "incomplete":
             flash("⚠️ Your subscription is incomplete. Please try again.", "warning")
 
-        return render_template("premium.html", user=user)
+        # Load the user's invoices
+        invoices = (
+            db.session.query(StripeInvoice)
+            .filter_by(user_id=user.id)
+            .order_by(desc(StripeInvoice.created_at))
+            .all()
+        )
+
+        return render_template("premium.html", user=user, invoices=invoices)
 
     @bp.route("/upgrade", methods=["GET", "POST"])
     @authentication_required
