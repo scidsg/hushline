@@ -251,7 +251,6 @@ def create_blueprint() -> Blueprint:
 
         # Check if user is admin and add admin-specific data
         if user.is_admin:
-            user_count = db.session.scalar(db.func.count(User.id))
             two_fa_count = db.session.scalar(
                 db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
             )
@@ -262,9 +261,10 @@ def create_blueprint() -> Blueprint:
                     .filter(User._pgp_key != "")
                 )
             )
+            user_count = len(all_users)
             two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
             pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-            all_users = list(User.query.all())
+            all_users = list(User.query.join(Username).order_by(Username._username).all())
 
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None

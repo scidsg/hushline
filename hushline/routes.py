@@ -342,7 +342,7 @@ def init_app(app: Flask) -> None:
                         400,
                     )
 
-            if db.session.query(exists(Username).where(Username.username == username)).scalar():
+            if db.session.query(exists(Username).where(Username._username == username)).scalar():
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(
