@@ -1,7 +1,6 @@
 import asyncio
 import json
 import threading
-import time
 from typing import Tuple
 
 import stripe
@@ -251,7 +250,7 @@ async def worker(app: Flask) -> None:
                 .first()
             )
             if not stripe_event:
-                time.sleep(10)
+                await asyncio.sleep(10)
                 continue
 
             stripe_event.status = "in_progress"
@@ -280,7 +279,7 @@ async def worker(app: Flask) -> None:
                     f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{event_json['data']['object']}"  # noqa: E501
                 )
                 stripe_event.status = "error"
-                db.session.add(json.dumps(stripe_event))
+                db.session.add(stripe_event)
                 db.session.commit()
                 continue
 
@@ -379,9 +378,8 @@ def create_blueprint(app: Flask) -> Blueprint:
                 # Cancel the subscription
                 stripe.Subscription.delete(user.stripe_subscription_id)
 
-                # Downgrade the user
+                # Downgrade the user (the subscription ID will get removed in the webhook)
                 user.tier_id = FREE_TIER
-                user.stripe_subscription_id = None
                 db.session.add(user)
                 db.session.commit()
 
