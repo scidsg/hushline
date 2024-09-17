@@ -356,7 +356,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("premium.index"))
 
         return render_template(
-            "premium_subscribe.html",
+            "premium-subscribe.html",
             user=user,
             tier=business_tier,
             stripe_subscription_id=stripe_subscription.id,
@@ -379,6 +379,19 @@ def create_blueprint(app: Flask) -> Blueprint:
         # db.session.commit()
 
         return redirect(url_for("premium.index"))
+
+    @bp.route("/status.json", methods=["GET"])
+    @authentication_required
+    def statis() -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if user.tier_id == BUSINESS_TIER:
+            flash("👍 Congratulations, you've upgraded to the business tier!")
+
+        return jsonify({"tier_id": user.tier_id})
 
     @bp.route("/webhook", methods=["POST"])
     def webhook() -> Response | str | Tuple[Response | str, int]:

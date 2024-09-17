@@ -1,4 +1,13 @@
 document.addEventListener("DOMContentLoaded", async function () {
+  const subscribeForm = document.querySelector("#subscribe-form");
+  const processingPayment = document.querySelector("#processing-payment");
+
+  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+
+  // Show #subscribe-form and hide #processing-payment
+  subscribeForm.style.display = "block";
+  processingPayment.style.display = "none";
+
   const stripeClientSecret = document.querySelector(
     "input[name='stripe_client_secret']",
   ).value;
@@ -34,8 +43,26 @@ document.addEventListener("DOMContentLoaded", async function () {
       alert(`Payment failed: ${result.error.message}`);
       return;
     } else {
-      // window.location.href = premiumHome;
-      alert("Payment successful! I think.");
+      // Processing payment
+      subscribeForm.style.display = "none";
+      processingPayment.style.display = "block";
+
+      // Check for payment status every 2 seconds
+      setInterval(() => {
+        fetch(`${pathPrefix}/status.json`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.tier_id === 2) {
+              // Payment successful, redirect to premium home
+              window.location.href = premiumHome;
+            } else {
+              console.log("Payment status not yet confirmed.", data);
+            }
+          })
+          .catch((error) =>
+            console.error("Failed to load payment status:", error),
+          );
+      }, 2000);
     }
   });
 });
