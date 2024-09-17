@@ -12,9 +12,17 @@
   --color-brand-max-contrast: oklch(
     from var(--color-brand-min-contrast) max(l - 0.25, 0.1) calc(1.25 * c) h
   );
-  --color-brand-dark: oklch(  /* was #ecdafa now slightly more saturated */
+  --color-brand-dark-min-saturation: oklch(
     from var(--color-brand)
-    clamp(0.9126, l + 0.4271, 0.95) calc(0.35 * c) calc(h + 6)
+    clamp(0.96, l + 0.425, 0.98) calc(0.5 * c) h
+  );
+  --color-brand-dark-mid-saturation: oklch(
+    from var(--color-brand)
+    clamp(0.93, l + 0.4, 0.98) calc(0.75 * c) h
+  );
+  --color-brand-dark-max-saturation: oklch(
+    from var(--color-brand)
+    clamp(0.8, l + 0.175, 0.94) calc(1.5 * c) calc(h - 6)
   );
   --color-text: #333;
   --color-text-dark-alt-2: #e4e4e4;
@@ -25,7 +33,7 @@
     from var(--color-brand) l c h / 0.1
   );
   --color-highlight-dark: oklch(  /* rgba(220, 198, 237, 0.2) */
-    from var(--color-brand-dark) l c h / 0.2
+    from var(--color-brand-dark-mid-saturation) l c h / 0.2
   );
   --color-brand-bg: oklch(  /* #fbf3ff */
     from var(--color-brand)
@@ -33,7 +41,7 @@
   );
   --color-dark-bg: oklch(  /* was #222 now with brand hue */
     from var(--color-brand)
-    clamp(0.15, l - 0.2335, 0.275) min(c, 0.012) calc(h + 16.47)
+    clamp(0.18, l - 0.275, 0.215) min(c, 0.01) calc(h + 10.26)
   );
   --color-dark-bg-alt: #333;
   --color-dark-bg-alt-1: #444;
@@ -381,7 +389,7 @@
   }
 
   a {
-    color: var(--color-brand-dark);
+    color: var(--color-brand-dark-mid-saturation);
   }
 
   p.meta {
@@ -465,8 +473,8 @@
   /* Create an active/current tablink class */
   .tab.active,
   .subtab.active {
-    box-shadow: 0 -2px 0 inset var(--color-brand-dark);
-    border-bottom: 1px solid var(--color-brand-dark);
+    box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
+    border-bottom: 1px solid var(--color-brand-dark-min-saturation);
   }
 
   .user,
@@ -486,16 +494,17 @@
   button:focus,
   input[type="file"]::file-selector-button:focus,
   select:focus {
-    outline: 4px double var(--color-brand-dark);
-    border: 1px solid var(--color-brand-dark);
+    outline: 4px double var(--color-brand-dark-min-saturation);
+    border: 1px solid var(--color-brand-dark-min-saturation);
     box-shadow: none;
   }
 
   input[type="submit"],
   button,
-  .btn {
+  .btn,
+  input[type="file"]::file-selector-button {
     border: 0px;
-    background-color: var(--color-brand-dark);
+    background-color: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
   }
 
@@ -503,10 +512,10 @@
   .formBody button,
   .btn {
     background-color: var(--color-dark);
-    color: var(--color-brand-dark);
-    border: 1px solid var(--color-brand-dark);
+    color: var(--color-brand-dark-min-saturation);
+    border: 1px solid var(--color-brand-dark-max-saturation);
     box-shadow: 0px 2px 0px 0px oklch(  /* rgba(125, 37, 193, 0.25) */
-      from var(--color-brand) l c h / 0.25
+      from var(--color-brand-dark-max-saturation) l c h / 0.25
     );
   }
 
@@ -528,14 +537,16 @@
 
   .btn-danger,
   .formBody .btn-danger {
-    color: lightpink;
-    border-color: lightpink;
+    background-color: darkred;
+    color: white;
+    border: 1px solid oklch(1 0 0 / 0.55);
+    box-shadow: 0px 4px 8px -4px oklch(1 0 0 / 0.25);
   }
 
   p.badge {
     background-color: var(--color-dark-bg-alt-1);
-    color: var(--color-brand-dark);
-    border: 1px solid var(--color-brand-dark);
+    color: var(--color-brand-dark-min-saturation);
+    border: 1px solid var(--color-brand-dark-max-saturation);
   }
 
   h2.submit + .badgeContainer p.badge {
@@ -598,7 +609,7 @@
   }
 
   .toggle-ui input[type="checkbox"]:checked ~ label .toggle {
-    background: var(--color-brand-dark);
+    background: var(--color-brand-dark-mid-saturation);
   }
 
   footer {
@@ -646,7 +657,7 @@
   }
 
   .banner {
-    background-color: var(--color-brand-dark);  /* #ecdafa */
+    background-color: var(--color-brand-dark-min-saturation);  /* #ecdafa */
     color: #333;
   }
 
