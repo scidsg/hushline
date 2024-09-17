@@ -368,17 +368,34 @@ def create_blueprint(app: Flask) -> Blueprint:
 
     @bp.route("/downgrade", methods=["POST"])
     @authentication_required
-    def downgrade() -> Response:
+    def downgrade() -> Response | str | Tuple[Response | str, int]:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
             return redirect(url_for("login"))
 
-        # user.premium = False
-        # db.session.add(user)
-        # db.session.commit()
+        if user.stripe_subscription_id:
+            try:
+                # Cancel the subscription
+                stripe.Subscription.delete(user.stripe_subscription_id)
 
-        return redirect(url_for("premium.index"))
+                # Downgrade the user
+                user.tier_id = FREE_TIER
+                user.stripe_subscription_id = None
+                db.session.add(user)
+                db.session.commit()
+
+                current_app.logger.info(
+                    f"Subscription {user.stripe_subscription_id} canceled for user {user.id}"
+                )
+
+                flash("💔 Sorry to see you go!")
+                return jsonify(success=True)
+            except stripe._error.StripeError as e:
+                current_app.logger.error(f"Stripe error: {e}")
+                return jsonify(success=False), 400
+
+        return jsonify(success=False), 400
 
     @bp.route("/status.json", methods=["GET"])
     @authentication_required
@@ -389,7 +406,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("login"))
 
         if user.tier_id == BUSINESS_TIER:
-            flash("👍 Congratulations, you've upgraded to the business tier!")
+            flash("🔥 Congratulations, you've upgraded your account!")
 
         return jsonify({"tier_id": user.tier_id})
 

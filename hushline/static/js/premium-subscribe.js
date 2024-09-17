@@ -1,8 +1,7 @@
 document.addEventListener("DOMContentLoaded", async function () {
+  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const subscribeForm = document.querySelector("#subscribe-form");
   const processingPayment = document.querySelector("#processing-payment");
-
-  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
 
   // Show #subscribe-form and hide #processing-payment
   subscribeForm.style.display = "block";
