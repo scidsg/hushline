@@ -1,7 +1,7 @@
 :root {
   --color-border: rgba(0, 0, 0, 0.18);
-  --color-border-dark: #7d7d7d;
-  --color-border-dark-1: #555;
+  --color-border-dark: #787878;
+  --color-border-dark-1: #505050;
   --color-brand: oklch(48.55% 0.222 304.47); /* #7d25c1 */
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
@@ -23,9 +23,9 @@
       calc(h - 6)
   );
   --color-text: #333;
-  --color-text-dark-alt-2: #e4e4e4;
-  --color-text-dark-alt: #c2c2c2;
-  --color-text-dark: #dadada;
+  --color-text-dark-alt-2: #e6e6e6;
+  --color-text-dark-alt: #c4c4c4;
+  --color-text-dark: #dcdcdc;
   --color-text-light: #595959;
   --color-highlight: oklch(
     /* rgba(125, 37, 193, 0.1) */ from var(--color-brand) l c h / 0.1
@@ -40,10 +40,10 @@
   );
   --color-dark-bg: oklch(
     /* was #222 now with brand hue */ from var(--color-brand)
-      clamp(0.18, l - 0.275, 0.215) min(c, 0.01) calc(h + 10.26)
+      clamp(0.18, l - 0.275, 0.2) min(c, 0.01) calc(h + 10.26)
   );
-  --color-dark-bg-alt: #333;
-  --color-dark-bg-alt-1: #444;
+  --color-dark-bg-alt: #272727;
+  --color-dark-bg-alt-1: #353535;
   --color-dark-bg-alt-transparent: rgba(51, 51, 51, 0.7);
 
   --border: 1px solid var(--color-border);
