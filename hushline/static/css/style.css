@@ -2138,6 +2138,7 @@ p.bio + .extra-fields {
 
 .back-button {
   margin-bottom: 1.5rem;
+  margin-top: -0.75rem;
 }
 
 .alias-heading {
