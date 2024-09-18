@@ -723,6 +723,7 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     def update_brand_primary_color() -> Response | str:
         if (host_org := HostOrganization.default()) is None:
+            current_app.logger.error("Fatal! `host_org` record is undefined.")
             abort(500)
 
         form = UpdateBrandPrimaryColorForm()
@@ -739,6 +740,7 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     def update_brand_app_name() -> Response | str:
         if (host_org := HostOrganization.default()) is None:
+            current_app.logger.error("Fatal! `host_org` record is undefined.")
             abort(500)
 
         form = UpdateBrandAppNameForm()
