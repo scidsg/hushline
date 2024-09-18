@@ -72,7 +72,7 @@ class User(Model):
     extra_field_verified4: Mapped[Optional[bool]] = mapped_column(default=False)
 
     # Paid tier fields
-    tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
+    tier_id: Mapped[int | None] = mapped_column(db.ForeignKey("tiers.id"), nullable=True)
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
     stripe_customer_id = mapped_column(db.String(255))
     stripe_subscription_id = mapped_column(db.String(255))
@@ -302,7 +302,7 @@ class StripeEvent(Model):
     __tablename__ = "stripe_events"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    event_id: Mapped[str] = mapped_column(db.String(255), unique=True)
+    event_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     event_type: Mapped[str] = mapped_column(db.String(255))
     event_data: Mapped[str] = mapped_column(db.Text)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
@@ -313,13 +313,6 @@ class StripeEvent(Model):
         self.event_id = event.id
         self.event_type = event.type
         self.event_data = str(event)
-
-    __table_args__ = (
-        Index(
-            "idx_stripe_events_event_id",
-            "event_id",
-        ),
-    )
 
 
 class StripeInvoiceStatusEnum(enum.Enum):
@@ -335,7 +328,7 @@ class StripeInvoice(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[str] = mapped_column(db.String(255))
-    invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True)
+    invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     hosted_invoice_url: Mapped[str] = mapped_column(db.String(255))
     amount_due: Mapped[int] = mapped_column(db.Integer)
     amount_paid: Mapped[int] = mapped_column(db.Integer)
@@ -390,10 +383,3 @@ class StripeInvoice(Model):
                 raise ValueError(f"Could not find tier with product ID {product_id}")
         else:
             raise ValueError("Invoice does not have a plan")
-
-    __table_args__ = (
-        Index(
-            "idx_stripe_invoices_invoice_id",
-            "invoice_id",
-        ),
-    )
