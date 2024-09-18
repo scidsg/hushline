@@ -22,12 +22,16 @@
     <div class="alias-list">
       {% for username in aliases %}
         <div class="alias-entry">
-          <div><a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">{% if username.display_name %}{{ username.display_name }} {% endif %}@{{ username.username }}</a></div>
-          <div>&gt;</div>
+          <div>
+              <a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">
+                  {{ username.display_name or username.username }}
+              </a>
+          </div>          
+          <div class="icon chevron"></div>
         </div>
       {% endfor %}
     </div>
   {% else %}
-    <p>No alises configured.</p>
+    <p>🙊 No alises configured.</p>
   {% endif %}
 </div>
