@@ -353,6 +353,10 @@
   .plan {
     border: var(--border);
   }
+
+  #invoice-wrapper {
+    border: var(--border);
+  }
 }
 
 /* Dark Mode */
@@ -673,6 +677,10 @@
 
   .inputElement {
     color: var(--color-text-dark);
+  }
+
+  #invoice-wrapper {
+    border: var(--border-dark);
   }
 }
 
@@ -2178,6 +2186,26 @@ p.bio + .extra-fields {
 
 .feature-meta p:first-of-type {
   font-family: var(--font-sans-bold);
+}
+
+#invoice-wrapper {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: .25rem;
+}
+
+#invoice-wrapper table {
+  width: 100%;
+}
+
+#invoice-wrapper table th {
+  text-align: left;
+  font-weight: normal;
+  font-family: var(--font-sans-bold);
+}
+
+#invoice-wrapper table td {
+  padding: .325rem 0;
 }
 
 @media (max-width: 640px) {

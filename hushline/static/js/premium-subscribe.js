@@ -23,10 +23,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   // Apply dark mode styles
   const style = {
     base: {
-      color: isDarkMode ? "#ffffff" : "#000000",
-      fontSize: "16px",
+      color: isDarkMode ? "#fafafa" : "#000000",
+      fontSize: "15px",
+      fontFamily: "var(--font-sans)",
       "::placeholder": {
-        color: isDarkMode ? "#ffffff" : "#a0a0a0",
+        color: isDarkMode ? "#fafafa" : "#a0a0a0",
       },
     },
   };
