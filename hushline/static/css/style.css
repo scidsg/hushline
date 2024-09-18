@@ -2095,6 +2095,7 @@ p.bio + .extra-fields {
 .alias-list {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
 }
 
 .alias-entry {
