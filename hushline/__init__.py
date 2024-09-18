@@ -4,11 +4,12 @@ from datetime import timedelta
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
+from flask.cli import AppGroup
 from flask_migrate import Migrate
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
-from . import admin, routes, settings
+from . import admin, premium, routes, settings
 from .db import db
 from .model import User
 from .version import __version__
@@ -47,6 +48,9 @@ def create_app() -> Flask:
     app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
     app.config["SMTP_ENCRYPTION"] = os.environ.get("SMTP_ENCRYPTION", "StartTLS")
     app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
+    app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", None)
+    app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY", None)
+    app.config["STRIPE_WEBHOOK_SECRET"] = os.environ.get("STRIPE_WEBHOOK_SECRET", None)
 
     # Handle the tips domain for profile verification
     app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
@@ -61,9 +65,19 @@ def create_app() -> Flask:
     db.init_app(app)
     Migrate(app, db)
 
+    # Configure Stripe
+    if app.config["STRIPE_SECRET_KEY"]:
+        with app.app_context():
+            premium.init_stripe()
+    else:
+        app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
+
     routes.init_app(app)
     for module in [admin, settings]:
         app.register_blueprint(module.create_blueprint())
+
+    if app.config["STRIPE_SECRET_KEY"]:
+        app.register_blueprint(premium.create_blueprint(app))
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:
@@ -87,4 +101,23 @@ def create_app() -> Flask:
             )
             return response
 
+    # Register custom CLI commands
+    register_commands(app)
+
     return app
+
+
+def register_commands(app: Flask) -> None:
+    custom_cli = AppGroup("custom")
+
+    @custom_cli.command("stripe")
+    def stripe() -> None:
+        """Make sure the products and prices are created in Stripe"""
+        if app.config["STRIPE_SECRET_KEY"]:
+            with app.app_context():
+                premium.init_stripe()
+                premium.create_products_and_prices()
+        else:
+            app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
+
+    app.cli.add_command(custom_cli)

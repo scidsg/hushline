@@ -3,3 +3,4 @@ build
 coverage
 hushline/static/vendor/*
 .pytest_cache
+.venv

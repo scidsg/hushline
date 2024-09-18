@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Premium{% endblock %}
+{% block content %}
+  <h2>Hush Line Plan</h2>
+
+  <div id="plan-wrapper">
+    <div class="plan">
+      {% if user.tier_id == 1 %}
+        <p class="plan-status">Current Plan</p>
+      {% endif %}
+      {% if user.tier_id == 2 %}
+        <p class="plan-status">Fewer Features</p>
+      {% endif %}
+      <h3>Free</h3>
+      <p>Monthly Messages: 250</p>
+      <p>Forwarding Addresses: 1</p>
+      <p>Tor Onion Service: ✅</p>
+      <p>End-to-End Encrypted: ✅</p>
+      {% if user.tier_id == 2 %}
+        <form
+          id="downgrade-form"
+          action="{{ url_for('premium.downgrade') }}"
+          method="post"
+        >
+          <button id="downgrade">Downgrade</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="plan plan-recommended">
+      {% if user.tier_id == 1 %}
+        <p class="plan-status">Recommended</p>
+      {% endif %}
+      {% if user.tier_id == 2 %}
+        <p class="plan-status">Current Plan</p>
+      {% endif %}
+      <h3>Business</h3>
+      <p>All Free Features</p>
+      <p>Monthly Messages: Unlimited</p>
+      <p>Forwarding Addresses: 100</p>
+      {% if user.tier_id == 1 %}
+        <form
+          id="upgrade-form"
+          action="{{ url_for('premium.upgrade') }}"
+          method="post"
+        >
+          <button id="upgrade">Upgrade for $20/mo</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="invoice-wrapper">
+    {% if invoices %}
+      <h3>Invoices</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount Paid</th>
+            <th>Status</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>${{ invoice.amount_paid / 100 }}</td>
+              <td>{{ invoice.status.value }}</td>
+              <td>
+                <a href="{{ invoice.hosted_invoice_url }}" target="_blank">
+                  Receipt
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/premium.js') }}"></script>
+{% endblock %}

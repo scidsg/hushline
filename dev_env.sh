@@ -5,3 +5,9 @@ export SQLALCHEMY_DATABASE_URI=postgresql://hushline:hushline@127.0.0.1:5432/hus
 export REGISTRATION_CODES_REQUIRED=False
 export SESSION_COOKIE_NAME=session
 export NOTIFICATIONS_ADDRESS=notifications@hushline.app
+
+# Stripe
+export STRIPE_PUBLISHABLE_KEY=pk_test_51OhDeALcBPqjxU07I70UA6JYGDPUmkxEwZW0lvGyNXGlJ4QPfWIBFZJau7XOb3QDzDWrVutBVkz9SNrSjq2vRawm00TwfyFuma
+# set these manually:
+# export STRIPE_SECRET_KEY=
+# export STRIPE_WEBHOOK_SECRET=
