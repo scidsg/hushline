@@ -220,17 +220,6 @@ def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
         raise ValueError(f"Could not find invoice with ID {invoice.id}")
 
 
-def handle_invoice_payment_failed(invoice: stripe.Invoice) -> None:
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
-    if stripe_invoice:
-        stripe_invoice.amount_paid = invoice.amount_paid
-        stripe_invoice.amount_remaining = invoice.amount_remaining
-        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
-        db.session.commit()
-    else:
-        raise ValueError(f"Could not find invoice with ID {invoice.id}")
-
-
 async def worker(app: Flask) -> None:
     with app.app_context():
         while True:
@@ -275,8 +264,6 @@ async def worker(app: Flask) -> None:
                         handle_invoice_created(invoice)
                     elif event.type == "invoice.payment_succeeded":
                         handle_invoice_payment_succeeded(invoice)
-                    elif event.type == "invoice.payment_failed":
-                        handle_invoice_payment_failed(invoice)
 
             except Exception as e:
                 current_app.logger.error(
