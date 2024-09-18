@@ -2180,8 +2180,6 @@ p.bio + .extra-fields {
   font-family: var(--font-sans-bold);
 }
 
-
-
 @media (max-width: 640px) {
   .extra-fields {
     flex-direction: column;

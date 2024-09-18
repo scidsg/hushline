@@ -18,15 +18,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   const elements = stripe.elements();
 
   // Check if the user prefers dark mode
-  const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
   // Apply dark mode styles
   const style = {
     base: {
-      color: isDarkMode ? '#ffffff' : '#000000',
-      fontSize: '16px',
-      '::placeholder': {
-        color: isDarkMode ? '#ffffff' : '#a0a0a0',
+      color: isDarkMode ? "#ffffff" : "#000000",
+      fontSize: "16px",
+      "::placeholder": {
+        color: isDarkMode ? "#ffffff" : "#a0a0a0",
       },
     },
   };
