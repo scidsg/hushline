@@ -33,7 +33,7 @@ class HexColor:
     def __call__(self, form: Form, field: Field) -> None:
         color: str = field.data
         if not self.hex_color_regex.match(color):
-            raise ValidationError(f"{color=} is an invalid 6-hexit color code.")
+            raise ValidationError(f"{color=} is an invalid 6-hexit color code. (eg. #7d25c1)")
 
 
 class CanonicalHTML:
