@@ -2096,17 +2096,6 @@ p.bio + .extra-fields {
   margin-top: 0.5rem;
 }
 
-@media (max-width: 640px) {
-  .extra-fields {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .extra-field {
-    width: 100%;
-  }
-}
-
 #plan-wrapper {
   display: flex;
   flex-wrap: wrap;
@@ -2188,6 +2177,21 @@ p.bio + .extra-fields {
 
 .feature-meta p:first-of-type {
   font-family: var(--font-sans-bold);
+}
+
+@media (max-width: 640px) {
+  .extra-fields {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .extra-field {
+    width: 100%;
+  }
+
+  #plan-wrapper {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
