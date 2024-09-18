@@ -2191,7 +2191,7 @@ p.bio + .extra-fields {
 #invoice-wrapper {
   margin-top: 1rem;
   padding: 1.25rem;
-  border-radius: .25rem;
+  border-radius: 0.25rem;
 }
 
 #invoice-wrapper table {
@@ -2205,7 +2205,7 @@ p.bio + .extra-fields {
 }
 
 #invoice-wrapper table td {
-  padding: .325rem 0;
+  padding: 0.325rem 0;
 }
 
 @media (max-width: 640px) {
