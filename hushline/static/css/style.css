@@ -2117,10 +2117,12 @@ p.bio + .extra-fields {
   content: "";
 }
 
-#aliases {
-  form + h3 {
+#aliases form + h3 {
     margin-top: 2rem;
-  }
+}
+
+#aliases h3 {
+  margin-bottom: 0;
 }
 
 .alias-entry .icon,
@@ -2145,4 +2147,17 @@ p.bio + .extra-fields {
 
 .alias-heading {
   margin-bottom: 1rem;
+}
+
+.drill-in {
+  display: flex;
+  flex-direction: column;
+}
+
+.drill-in h3 {
+  margin-bottom: 0;
+}
+
+.drill-in .checkbox-group {
+  margin-bottom: 0;
 }

@@ -3,6 +3,7 @@
 {% block title %}Alias: @{{ alias.username }}{% endblock %}
 
 {% block content %}
+<div class="drill-in">
   <a href="{{ url_for('.index') }}" class="back-button"><span class="icon chevron back"></span> Back to Settings</a>
   <h2 class="alias-heading">{{ alias.display_name or alias.username }}</h2>
 
@@ -174,6 +175,7 @@
     </div>
     <button type="submit" name="update_bio">Update Bio</button>
   </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
