@@ -16,7 +16,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   stripe = Stripe(stripePublishableKey);
   const elements = stripe.elements();
-  const cardElement = elements.create("card");
+
+  // Check if the user prefers dark mode
+  const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // Apply dark mode styles
+  const style = {
+    base: {
+      color: isDarkMode ? '#ffffff' : '#000000',
+      fontSize: '16px',
+      '::placeholder': {
+        color: isDarkMode ? '#ffffff' : '#a0a0a0',
+      },
+    },
+  };
+
+  const cardElement = elements.create("card", { style: style });
   cardElement.mount("#card-element");
 
   const form = document.querySelector("#subscribe-form");

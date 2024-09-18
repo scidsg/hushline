@@ -108,7 +108,8 @@
 
   input,
   textarea,
-  select {
+  select,
+  #card-element {
     border: var(--border);
     background-color: white;
   }
@@ -404,7 +405,8 @@
 
   input,
   textarea,
-  select {
+  select,
+  #card-element {
     border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
     color: var(--color-text-dark);
@@ -667,6 +669,10 @@
 
   .plan {
     border: var(--border-dark);
+  }
+
+  .inputElement {
+    color: var(--color-text-dark);
   }
 }
 
@@ -1088,7 +1094,8 @@ h2.submit + p.instr {
 
 input,
 textarea,
-select {
+select,
+#card-element {
   display: flex;
   flex-direction: column;
   max-width: 640px;
@@ -2130,12 +2137,6 @@ p.bio + .extra-fields {
   font-family: var(--font-sans-bold);
 }
 
-#card-element {
-  margin-bottom: 1rem;
-  padding: 1rem;
-  border: 1px solid #666;
-}
-
 .upgrade {
   padding: 1rem;
   margin-bottom: 2rem;
@@ -2178,6 +2179,8 @@ p.bio + .extra-fields {
 .feature-meta p:first-of-type {
   font-family: var(--font-sans-bold);
 }
+
+
 
 @media (max-width: 640px) {
   .extra-fields {
