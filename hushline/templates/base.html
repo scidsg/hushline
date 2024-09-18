@@ -64,18 +64,11 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
-    <script>
-      function importHostConfiguration() {
-        // Update page theme with host's brand color from the database
-        const brandColor = "{{ host_org.brand_primary_hex_color }}";
-        const cssVariable = ["--color-brand", brandColor];
-        document.documentElement.style.setProperty(...cssVariable);
-
-        // Update page h1 with host's brand name from the database
-        const brandName = "{{ host_org.brand_app_name }}";
-        document.querySelector("h1").innerText = brandName;
+    <style>
+      :root {
+        --color-brand: oklch(from {{ host_org.brand_primary_hex_color }} l c h);
       }
-    </script>
+    </style>
   </head>
 
   <body>
@@ -107,7 +100,7 @@
 
     <header>
       <!-- Navigation bar, logo, etc. -->
-      <h1>🤫 Hush Line</h1>
+      <h1>{{ host_org.brand_app_name }}</h1>
       <nav>
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
@@ -163,9 +156,6 @@
           >
         </div>
       </nav>
-      <script>
-        importHostConfiguration();
-      </script>
     </header>
 
     <main>

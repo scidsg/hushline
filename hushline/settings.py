@@ -722,7 +722,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-primary-color", methods=["POST"])
     @admin_authentication_required
     def update_brand_primary_color() -> Response | str:
-        if (host_org := db.session.get(HostOrganization, 1)) is None:
+        if (host_org := HostOrganization.default()) is None:
             abort(500)
 
         form = UpdateBrandPrimaryColorForm()
@@ -738,7 +738,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
     def update_brand_app_name() -> Response | str:
-        if (host_org := db.session.get(HostOrganization, 1)) is None:
+        if (host_org := HostOrganization.default()) is None:
             abort(500)
 
         form = UpdateBrandAppNameForm()

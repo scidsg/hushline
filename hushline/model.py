@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING, Optional, Self, Set
 
 from flask import current_app
 from flask_sqlalchemy.model import Model
@@ -31,9 +31,23 @@ class SMTPEncryption(enum.Enum):
 class HostOrganization(Model):
     __tablename__ = "host_organization"
 
-    id: Mapped[int] = mapped_column(primary_key=True, default=1)
-    brand_app_name: Mapped[str] = mapped_column(db.String(255), default="🤫 Hush Line")
-    brand_primary_hex_color: Mapped[str] = mapped_column(db.String(7), default="#7d25c1")
+    _DEFAULT_PRIMARY_KEY: int = 1
+    _DEFAULT_BRAND_PRIMARY_HEX_COLOR: str = "#7d25c1"
+    _DEFAULT_BRAND_APP_NAME: str = "🤫 Hush Line"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_app_name: Mapped[str] = mapped_column(db.String(255), default=_DEFAULT_BRAND_APP_NAME)
+    brand_primary_hex_color: Mapped[str] = mapped_column(
+        db.String(7), default=_DEFAULT_BRAND_PRIMARY_HEX_COLOR
+    )
+
+    @classmethod
+    def default(cls) -> Self | None:
+        return db.session.get(cls, cls._DEFAULT_PRIMARY_KEY)
+
+    def __init__(self, primary_key: int | None = None) -> None:
+        super().__init__()
+        self.id = primary_key if isinstance(primary_key, int) else self._DEFAULT_PRIMARY_KEY
 
 
 class User(Model):

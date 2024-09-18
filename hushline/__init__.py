@@ -79,7 +79,7 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_host() -> dict[str, HostOrganization]:
-        if (host_org := db.session.get(HostOrganization, 1)) is None:
+        if (host_org := HostOrganization.default()) is None:
             host_org = HostOrganization()
             db.session.add(host_org)
             db.session.commit()
