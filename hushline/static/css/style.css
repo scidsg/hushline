@@ -2129,11 +2129,11 @@ p.bio + .extra-fields {
   background-repeat: no-repeat;
 }
 
-.icon.back { 
+.icon.back {
   transform: rotate(180deg);
   display: inline-block;
   position: relative;
-  top: .175rem;
+  top: 0.175rem;
 }
 
 .back-button {
