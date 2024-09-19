@@ -6,7 +6,7 @@
 >
   {# TODO: much of this was copy/pasted to "settings/alias.html" and will need to have updates synced there #}
 
-  {% if is_premium_enabled and user.tier_id == 1 or user.tier_id == None %}
+  {% if is_premium_enabled and (user.tier_id == 1 or user.tier_id == None) %}
     <div class="upgrade">
       <div>
         <h3>Upgrade to Business</h3>
