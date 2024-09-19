@@ -15,8 +15,17 @@ install:
 .PHONY: run
 run: ## Run the app
 	. ./dev_env.sh && \
-	poetry run python -c 'from hushline import create_app; from hushline.db import db; from sqlalchemy import text; create_app().app_context().push(); db.session.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")); db.session.commit(); db.create_all()' && \
 	poetry run flask run --debug -h localhost -p 8080
+
+.PHONY: migrate-dev
+migrate-dev: ## Run dev env migrations
+	. ./dev_env.sh && \
+	poetry run ./scripts/dev_migrations.py
+
+.PHONY: migrate-prod
+migrate-prod: ## Run prod env (alembic) migrations
+	. ./dev_env.sh && \
+	poetry run flask db upgrade
 
 .PHONY: lint
 lint: ## Lint the code
@@ -31,13 +40,8 @@ fix: ## Format the code
 	poetry run ruff check --fix
 	npx prettier --write .
 
-.PHONY: migrate
-migrate: ## Apply migrations
-	. ./dev_env.sh && \
-	poetry run flask db upgrade
-
 .PHONY: revision
-revision:  ## Create a new migration
+revision: migrate-prod ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
