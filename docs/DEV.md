@@ -41,10 +41,11 @@ Install Poetry dependencies:
 make install
 ```
 
-Run the database migrations:
+Run one of the database migrations:
 
 ```sh
-make migrate
+make migrate-dev  # for current dev DB settings
+make migrate-prod # for current alembic migrations
 ```
 
 Run the app in debug mode:

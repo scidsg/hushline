@@ -93,12 +93,14 @@ ignore = [
 "tests/*.py" = [
     # https://docs.astral.sh/ruff/rules/assert/
     "S101",
+    "S105",  # hardcoded password
     # https://docs.astral.sh/ruff/rules/magic-value-comparison/
     "PLR2004",
 ]
 "migrations/versions/*.py" = [
     # https://docs.astral.sh/ruff/rules/unsorted-imports/
     "I001",
+    "S608", # sql injection via string-based query construction
 ]
 
 [tool.mypy]

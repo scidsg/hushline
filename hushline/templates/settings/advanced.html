@@ -1,0 +1,21 @@
+<div
+  id="advanced"
+  class="tab-content"
+  role="tabpanel"
+  aria-labelledby="advanced-tab"
+  hidden
+>
+  <h3>Delete Account</h3>
+  <p class="meta">
+    ⚠️ Deleting your account is a permanent action that cannot be undone!
+  </p>
+  <form
+    method="POST"
+    action="{{ url_for('settings.delete_account') }}"
+    class="formBody"
+  >
+    <button type="submit" class="btn-danger" id="deleteAccountButton">
+      Delete Account
+    </button>
+  </form>
+</div>
