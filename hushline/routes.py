@@ -4,6 +4,7 @@ import re
 import secrets
 import socket
 from datetime import UTC, datetime, timedelta
+from typing import Sequence
 
 import pyotp
 from flask import (
@@ -284,9 +285,8 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
 
-        row_count = (
-            db.delete(Message)
-            .where(
+        row_count = db.session.execute(
+            db.delete(Message).where(
                 Message.id == message_id,
                 Message.username_id.in_(
                     select(Username.user_id)
@@ -294,15 +294,14 @@ def init_app(app: Flask) -> None:
                     .filter(Username.user_id == user.id)
                 ),
             )
-            .delete()
-        )
+        ).rowcount
         match row_count:
             case 1:
                 db.session.commit()
                 flash("🗑️ Message deleted successfully.")
             case 0:
                 db.session.rollback()
-                flash("⛔️ Message not found or unauthorized access.")
+                flash("⛔️ Message not found.")
             case _:
                 db.session.rollback()
                 current_app.logger.error(
@@ -349,7 +348,9 @@ def init_app(app: Flask) -> None:
                         400,
                     )
 
-            if db.session.query(db.exists(Username).where(Username._username == username)).scalar():
+            if db.session.scalar(
+                db.exists(Username).where(Username._username == username).select()
+            ):
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(
@@ -386,8 +387,8 @@ def init_app(app: Flask) -> None:
 
         form = LoginForm()
         if form.validate_on_submit():
-            username = Username.query.filter_by(
-                _username=form.username.data.strip(), is_primary=True
+            username = db.session.scalars(
+                select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
             ).one_or_none()
             if username and username.user.check_password(form.password.data):
                 session.permanent = True
@@ -436,12 +437,12 @@ def init_app(app: Flask) -> None:
             rate_limit = False
 
             # If the most recent successful login was made with the same OTP code, reject this one
-            last_login = (
-                AuthenticationLog.query.filter_by(user_id=user.id, successful=True)
+            last_login = db.session.scalars(
+                db.select(AuthenticationLog)
+                .filter_by(user_id=user.id, successful=True)
                 .order_by(AuthenticationLog.timestamp.desc())
                 .limit(1)
-                .first()
-            )
+            ).first()
             if (
                 last_login
                 and last_login.timecode == timecode
@@ -496,14 +497,14 @@ def init_app(app: Flask) -> None:
         flash("👋 You have been logged out successfully.", "info")
         return redirect(url_for("index"))
 
-    def get_directory_usernames(admin_first: bool = False) -> list[Username]:
-        query = Username.query.filter_by(show_in_directory=True)
+    def get_directory_usernames(admin_first: bool = False) -> Sequence[Username]:
+        query = select(Username).filter_by(show_in_directory=True)
         display_ordering = db.func.coalesce(Username._display_name, Username._username)
         if admin_first:
             query = query.order_by(Username.user.is_admin.desc(), display_ordering)
         else:
             query = query.order_by(display_ordering)
-        return query.all()
+        return db.session.scalars(query).all()
 
     @app.route("/directory")
     def directory() -> Response | str:

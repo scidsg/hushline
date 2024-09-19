@@ -153,7 +153,7 @@ def handle_change_username_form(
 
     # TODO a better pattern would be to try to commit, catch the exception, and match
     # on the name of the unique index that errored
-    if db.session.query(db.exists(Username).where(Username._username == new_username)).scalar():
+    if db.session.scalar(db.exists(Username).where(Username._username == new_username).select()):
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
