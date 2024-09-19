@@ -2,24 +2,15 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
-  {% if messages %}
-    <h2>Inbox for {{ user.display_name or user.primary_username }}</h2>
-    {% for message in messages %}
+  {% if user.messages %}
+    <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
+    {% for message in user.messages %}
       <article
         class="message {% if 'BEGIN PGP MESSAGE' in message.content %}encrypted{% endif %}"
         data-encrypted-content="{{ message.content }}"
         aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
       >
-        {% if message.secondary_user_id %}
-          {% set sender_info = secondary_usernames[message.secondary_user_id] %}
-          <p class="message-label">
-            📥 {{ sender_info.display_name or sender_info.username }}
-          </p>
-        {% elif secondary_usernames|length > 0 %}
-          <p class="message-label">
-            📥 {{ user.display_name or user.primary_username }}
-          </p>
-        {% endif %}
+        <p>To: @{{ message.username.username }}</p>
         <p class="decrypted-content">{{ message.content }}</p>
         <div
           class="mailvelope-decryption-container"

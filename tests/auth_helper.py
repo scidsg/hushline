@@ -6,42 +6,36 @@ import pyotp
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import AuthenticationLog, User
+from hushline.model import AuthenticationLog, User, Username
 
 
 def register_user(client: FlaskClient, username: str, password: str) -> User:
     # Prepare the environment to not require invite codes
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
 
-    # User registration data
     user_data = {"username": username, "password": password}
 
-    # Post request to register a new user
     response = client.post("/register", data=user_data, follow_redirects=True)
-
-    # Validate response
     assert response.status_code == 200
     assert b"Registration successful!" in response.data
 
-    # Verify user is added to the database
-    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
-    assert user is not None
-    assert user.primary_username == username
+    user = db.session.scalars(
+        db.select(User).join(Username).filter(Username._username == username)
+    ).one()
+    assert user.primary_username.username == username
 
-    # Return the registered user
     return user
 
 
 def register_user_2fa(client: FlaskClient, username: str, password: str) -> tuple[User, str]:
-    # Register a new user
     user_data = {"username": username, "password": password}
     response = client.post("/register", data=user_data, follow_redirects=True)
     assert response.status_code == 200
 
-    # Verify user is added to the database
-    user = db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
-    assert user is not None
-    assert user.primary_username == username
+    user = db.session.scalars(
+        db.select(User).join(Username).filter(Username._username == username)
+    ).one()
+    assert user.primary_username.username == username
 
     # And 2FA is disabled
     assert user._totp_secret is None
@@ -97,8 +91,9 @@ def login_user(client: FlaskClient, username: str, password: str) -> User | None
         f'href="/inbox?username={username}"'.encode() in response.data
     ), f"Inbox link should be present for the user {username}"
 
-    # Return the logged-in user
-    return db.session.scalars(db.select(User).filter_by(primary_username=username).limit(1)).first()
+    if uname := db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none():
+        return uname.user
+    return None
 
 
 def configure_pgp(client: FlaskClient) -> None:
