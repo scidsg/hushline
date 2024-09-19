@@ -1,8 +1,5 @@
 from flask.testing import FlaskClient
 
-from hushline.db import db
-from hushline.model import StripeEvent
-
 
 def test_webhook_customer_subscription_created(client: FlaskClient) -> None:
     pass
