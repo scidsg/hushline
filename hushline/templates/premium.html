@@ -5,7 +5,7 @@
 
   <div id="plan-wrapper">
     <div class="plan">
-      {% if user.tier_id == 1 %}
+      {% if user.tier_id == 1 or user.tier_id == None %}
         <p class="plan-status badge">📍 Current Plan</p>
       {% endif %}
       {% if user.tier_id == 2 %}
@@ -47,7 +47,7 @@
       {% endif %}
     </div>
     <div class="plan plan-recommended">
-      {% if user.tier_id == 1 %}
+      {% if user.tier_id == 1 or user.tier_id == None %}
         <p class="plan-status badge">⭐️ Recommended</p>
       {% endif %}
       {% if user.tier_id == 2 %}
@@ -81,7 +81,7 @@
         <p>Monthly Price</p>
         <p>$26</p>
       </div>
-      {% if user.tier_id == 1 %}
+      {% if user.tier_id == 1 or user.tier_id == None %}
         <form
           id="upgrade-form"
           action="{{ url_for('premium.upgrade') }}"
