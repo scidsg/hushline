@@ -99,6 +99,7 @@ ignore = [
 "migrations/versions/*.py" = [
     # https://docs.astral.sh/ruff/rules/unsorted-imports/
     "I001",
+    "S608", # sql injection via string-based query construction
 ]
 
 [tool.mypy]

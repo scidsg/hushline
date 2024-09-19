@@ -49,7 +49,7 @@ class Username(Model):
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship()
     _username: Mapped[str] = mapped_column("username", unique=True)
-    _display_name: Mapped[Optional[str]] = mapped_column(db.String(80))
+    _display_name: Mapped[Optional[str]] = mapped_column("display_name", db.String(80))
     is_primary: Mapped[bool] = mapped_column()
     is_verified: Mapped[bool] = mapped_column(default=False)
     show_in_directory: Mapped[bool] = mapped_column(default=False)
