@@ -1,6 +1,5 @@
 import asyncio
 import json
-import threading
 from typing import Tuple
 
 import stripe
@@ -285,14 +284,6 @@ def start_event_loop(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def create_blueprint(app: Flask) -> Blueprint:
-    # Create a new asyncio event loop
-    loop = asyncio.new_event_loop()
-    t = threading.Thread(target=start_event_loop, args=(loop,), daemon=True)
-    t.start()
-
-    # Schedule the worker task
-    loop.call_soon_threadsafe(loop.create_task, worker(app))
-
     # Now define the blueprint
     bp = Blueprint("premium", __file__, url_prefix="/premium")
 

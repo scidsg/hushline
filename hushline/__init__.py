@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from datetime import timedelta
@@ -108,16 +109,23 @@ def create_app() -> Flask:
 
 
 def register_commands(app: Flask) -> None:
-    custom_cli = AppGroup("custom")
+    if app.config["STRIPE_SECRET_KEY"]:
+        stripe_cli = AppGroup("stripe")
 
-    @custom_cli.command("stripe")
-    def stripe() -> None:
-        """Make sure the products and prices are created in Stripe"""
-        if app.config["STRIPE_SECRET_KEY"]:
+        @stripe_cli.command("create-products-and-prices")
+        def create_products_and_prices() -> None:
+            """Make sure the products and prices are created in Stripe"""
             with app.app_context():
                 premium.init_stripe()
                 premium.create_products_and_prices()
-        else:
-            app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
 
-    app.cli.add_command(custom_cli)
+        @stripe_cli.command("start-worker")
+        def start_worker() -> None:
+            """Start the Stripe worker"""
+            with app.app_context():
+                asyncio.run(premium.worker(app))
+
+        app.cli.add_command(stripe_cli)
+
+    else:
+        app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
