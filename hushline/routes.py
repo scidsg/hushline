@@ -19,7 +19,6 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
-from sqlalchemy import select
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -289,7 +288,7 @@ def init_app(app: Flask) -> None:
             db.delete(Message).where(
                 Message.id == message_id,
                 Message.username_id.in_(
-                    select(Username.user_id)
+                    db.select(Username.user_id)
                     .select_from(Username)
                     .filter(Username.user_id == user.id)
                 ),
@@ -388,7 +387,7 @@ def init_app(app: Flask) -> None:
         form = LoginForm()
         if form.validate_on_submit():
             username = db.session.scalars(
-                select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
+                db.select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
             ).one_or_none()
             if username and username.user.check_password(form.password.data):
                 session.permanent = True
@@ -409,7 +408,9 @@ def init_app(app: Flask) -> None:
 
             flash("⛔️ Invalid username or password")
         return render_template(
-            "login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+            "login.html",
+            form=form,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
@@ -498,7 +499,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("index"))
 
     def get_directory_usernames(admin_first: bool = False) -> Sequence[Username]:
-        query = select(Username).filter_by(show_in_directory=True)
+        query = db.select(Username).filter_by(show_in_directory=True)
         display_ordering = db.func.coalesce(Username._display_name, Username._username)
         if admin_first:
             query = query.order_by(Username.user.is_admin.desc(), display_ordering)
@@ -512,7 +513,7 @@ def init_app(app: Flask) -> None:
         is_personal_server = app.config["IS_PERSONAL_SERVER"]
         return render_template(
             "directory.html",
-            users=get_directory_usernames(),
+            usernames=get_directory_usernames(),
             logged_in=logged_in,
             is_personal_server=is_personal_server,
         )

@@ -25,9 +25,8 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
     Return the default Fernet encryption key. If a scope and salt are provided, a unique encryption
     key will be derived based on the scope and salt.
     """
-    encryption_key = os.environ.get("ENCRYPTION_KEY")
-    if encryption_key is None:
-        raise ValueError("Encryption key not found. Please check your .env file.")
+    if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
+        raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
 
     # If a scope is provided, we will use it to derive a unique encryption key
     if scope is not None and salt is not None:
@@ -60,12 +59,6 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
     return Fernet(encryption_key)
-
-
-encryption_key = os.environ.get("ENCRYPTION_KEY")
-
-if encryption_key is None:
-    raise ValueError("Encryption key not found. Please check your .env file.")
 
 
 def encrypt_field(

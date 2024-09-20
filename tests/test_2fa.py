@@ -1,62 +1,87 @@
-import random
 import secrets
-import string
-from typing import TypeAlias
 
 import pyotp
 import pytest
-from auth_helper import register_user_2fa
+from flask import url_for
 from flask.testing import FlaskClient
 
-LoginData: TypeAlias = dict[str, str]
+from hushline.db import db
+from hushline.model import User
+
+TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
 
 
 @pytest.fixture()
-def nonce(length: int = 15) -> str:
-    return "".join(
-        random.choices(  # noqa: S311
-            string.ascii_lowercase + string.digits,
-            k=length,
-        )
+def _2fa_user(client: FlaskClient, user: User) -> None:
+    user.totp_secret = TOTP_SECRET
+    db.session.commit()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_2fa(client: FlaskClient, user: User, user_password: str) -> None:
+    enable_2fa_response = client.post(url_for("settings.toggle_2fa"), follow_redirects=True)
+    assert enable_2fa_response.status_code == 200
+    assert "Scan the QR code with your 2FA app" in enable_2fa_response.text
+
+    with client.session_transaction() as session:
+        totp_secret = session["temp_totp_secret"]
+
+    # Verify the 2FA code
+    verify_2fa_response = client.post(
+        url_for("settings.enable_2fa"),
+        data={"verification_code": pyotp.TOTP(totp_secret).now()},
+        follow_redirects=True,
     )
-
-
-@pytest.fixture()
-def login_data(nonce: str) -> LoginData:
-    return {"username": "test_user_" + nonce, "password": "SecurePassword123!"}
-
-
-def test_enable_2fa(client: FlaskClient) -> None:
-    user, totp_secret = register_user_2fa(client, "test_user", "SecurePassword123!")
-
-
-def test_valid_2fa_should_login(client: FlaskClient, login_data: LoginData) -> None:
-    user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
+    assert verify_2fa_response.status_code == 200
 
     # Logging in should now require 2FA
-    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    login_response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
     assert login_response.status_code == 200
     assert "Enter your 2FA Code" in login_response.text
 
-    # Verify 2FA
-    totp = pyotp.TOTP(totp_secret)
-    verification_code = totp.now()
-    verify_2fa_data = {"verification_code": verification_code}
+
+@pytest.mark.usefixtures("_2fa_user")
+def test_valid_2fa_should_login(client: FlaskClient, user: User, user_password: str) -> None:
+    login_response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert login_response.status_code == 200
+    assert "Enter your 2FA Code" in login_response.text
+
     valid_2fa_response = client.post(
-        "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
+        url_for("verify_2fa_login"),
+        data={"verification_code": pyotp.TOTP(TOTP_SECRET).now()},
+        follow_redirects=True,
     )
     assert valid_2fa_response.status_code == 200
 
 
-def test_invalid_2fa_should_not_login(client: FlaskClient, login_data: LoginData) -> None:
-    user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
-
-    # Start logging in
-    login_response = client.post("/login", data=login_data, follow_redirects=True)
+@pytest.mark.usefixtures("_2fa_user")
+def test_invalid_2fa_should_not_login(client: FlaskClient, user: User, user_password: str) -> None:
+    login_response = client.post(
+        "/login",
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
     assert login_response.status_code == 200
 
     # Make a valid verification code
-    totp = pyotp.TOTP(totp_secret)
+    totp = pyotp.TOTP(TOTP_SECRET)
     valid_verification_code = totp.now()
 
     # Change the first character by one digit to make it invalid
@@ -65,53 +90,62 @@ def test_invalid_2fa_should_not_login(client: FlaskClient, login_data: LoginData
     )
 
     # Logging in should fail
-    invalid_2fa_data = {"verification_code": invalid_verification_code}
     invalid_2fa_response = client.post(
-        "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
+        url_for("verify_2fa_login"),
+        data={"verification_code": invalid_verification_code},
+        follow_redirects=True,
     )
     assert invalid_2fa_response.status_code == 401
     assert "Invalid 2FA code" in invalid_2fa_response.text
 
 
-def test_reuse_of_2fa_code_should_fail(client: FlaskClient, login_data: LoginData) -> None:
-    user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
-
-    # Make sure we have a valid verification code
-    totp = pyotp.TOTP(totp_secret)
-    verification_code = totp.now()
-    verify_2fa_data = {"verification_code": verification_code}
+@pytest.mark.usefixtures("_2fa_user")
+def test_reuse_of_2fa_code_should_fail(client: FlaskClient, user: User, user_password: str) -> None:
+    verify_2fa_data = {"verification_code": pyotp.TOTP(TOTP_SECRET).now()}
+    login_data = {
+        "username": user.primary_username.username,
+        "password": user_password,
+    }
 
     # Log in
-    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    login_response = client.post(url_for("login"), data=login_data, follow_redirects=True)
     assert login_response.status_code == 200
     valid_2fa_response = client.post(
-        "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
+        url_for("verify_2fa_login"), data=verify_2fa_data, follow_redirects=True
     )
     assert valid_2fa_response.status_code == 200
 
     # Log out
-    logout_response = client.get("/logout", follow_redirects=True)
+    logout_response = client.get(url_for("logout"), follow_redirects=True)
     assert logout_response.status_code == 200
 
     # Log in again with the same 2FA code
-    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    login_response = client.post(url_for("login"), data=login_data, follow_redirects=True)
     assert login_response.status_code == 200
     valid_2fa_response = client.post(
-        "/verify-2fa-login", data=verify_2fa_data, follow_redirects=True
+        url_for("verify_2fa_login"), data=verify_2fa_data, follow_redirects=True
     )
     # Should be rejected
+    # NOTE: if this fails 401, it's because it's flaky and we need to redesign the endpoint
+    # to allow for a larger window (or something, idk)
     assert valid_2fa_response.status_code == 429
 
 
-def test_limit_invalid_2fa_guesses(client: FlaskClient, login_data: LoginData) -> None:
-    user, totp_secret = register_user_2fa(client, login_data["username"], login_data["password"])
-
+@pytest.mark.usefixtures("_2fa_user")
+def test_limit_invalid_2fa_guesses(client: FlaskClient, user: User, user_password: str) -> None:
     # Make sure we have a valid verification code
-    totp = pyotp.TOTP(totp_secret)
+    totp = pyotp.TOTP(TOTP_SECRET)
     verification_code = totp.now()
 
     # Log in
-    login_response = client.post("/login", data=login_data, follow_redirects=True)
+    login_response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
     assert login_response.status_code == 200
 
     # Make a random invalid verification code
@@ -124,17 +158,19 @@ def test_limit_invalid_2fa_guesses(client: FlaskClient, login_data: LoginData) -
 
     # Try 5 invalid codes
     for _ in range(5):
-        invalid_2fa_data = {"verification_code": random_verification_code()}
         invalid_2fa_response = client.post(
-            "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
+            url_for("verify_2fa_login"),
+            data={"verification_code": random_verification_code()},
+            follow_redirects=True,
         )
         assert invalid_2fa_response.status_code == 401
         assert "Invalid 2FA code" in invalid_2fa_response.text
 
     # The 6th guess should give a different error
-    invalid_2fa_data = {"verification_code": random_verification_code()}
     invalid_2fa_response = client.post(
-        "/verify-2fa-login", data=invalid_2fa_data, follow_redirects=True
+        url_for("verify_2fa_login"),
+        data={"verification_code": random_verification_code()},
+        follow_redirects=True,
     )
     assert invalid_2fa_response.status_code == 429
     assert "Please wait a moment before trying again" in invalid_2fa_response.text

@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, url_for
 
 
 def test_info_available_on_personal_server(app: Flask) -> None:
@@ -6,7 +6,7 @@ def test_info_available_on_personal_server(app: Flask) -> None:
     app.config["ONION_HOSTNAME"] = "example.onion"
 
     with app.test_client() as client:
-        response = client.get("/info")
+        response = client.get(url_for("personal_server_info"))
         assert response.status_code == 200
         assert "Hush Line Personal Server" in response.get_data(as_text=True)
         assert "example.onion" in response.get_data(as_text=True)
@@ -17,6 +17,5 @@ def test_info_not_available_by_default(app: Flask) -> None:
     app.config["ONION_HOSTNAME"] = "example.onion"
 
     with app.test_client() as client:
-        response = client.get("/info")
-        print(response.get_data(as_text=True))
+        response = client.get(url_for("personal_server_info"))
         assert response.status_code == 404
