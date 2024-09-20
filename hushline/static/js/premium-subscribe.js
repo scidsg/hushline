@@ -9,10 +9,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   console.log("Dark mode:", isDarkMode);
 
   const stripeClientSecret = document.querySelector(
-    "input[name='stripe_client_secret']"
+    "input[name='stripe_client_secret']",
   ).value;
   const stripePublishableKey = document.querySelector(
-    "input[name='stripe_publishable_key']"
+    "input[name='stripe_publishable_key']",
   ).value;
 
   stripe = Stripe(stripePublishableKey);
