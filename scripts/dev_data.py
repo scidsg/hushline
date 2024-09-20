@@ -3,7 +3,7 @@ from sqlalchemy.sql import exists
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import User, Username
+from hushline.model import Tier, User, Username
 
 
 def main() -> None:
@@ -46,6 +46,25 @@ def main() -> None:
             db.session.commit()
 
         print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
+
+    tiers = [
+        {
+            "name": "Free",
+            "monthly_amount": 0,
+        },
+        {
+            "name": "Business",
+            "monthly_amount": 2000,
+        },
+    ]
+    for data in tiers:
+        tier = Tier.query.filter_by(name=data["name"]).first()
+        if not tier:
+            tier = Tier(name=data["name"], monthly_amount=data["monthly_amount"])
+            db.session.add(tier)
+            db.session.commit()
+
+        print(f"Tier:\n  name = {data['name']}\n  monthly_amount = {data['monthly_amount']}")
 
 
 if __name__ == "__main__":

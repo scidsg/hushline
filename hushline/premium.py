@@ -220,6 +220,7 @@ def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
 
 
 async def worker(app: Flask) -> None:
+    current_app.logger.error("Starting worker")
     with app.app_context():
         while True:
             stripe_event = (
