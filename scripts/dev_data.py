@@ -58,9 +58,10 @@ def main() -> None:
         },
     ]
     for data in tiers:
-        tier = Tier.query.filter_by(name=data["name"]).first()
-        if not tier:
-            tier = Tier(name=data["name"], monthly_amount=data["monthly_amount"])
+        name = str(data["name"])  # type: ignore
+        monthly_amount = int(data["monthly_amount"])  # type: ignore
+        if not db.session.query(exists(Tier).where(Tier.name == data["name"])).scalar():
+            tier = Tier(name, monthly_amount)
             db.session.add(tier)
             db.session.commit()
 
