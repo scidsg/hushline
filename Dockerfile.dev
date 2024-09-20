@@ -2,7 +2,8 @@
 FROM python:3.12.6-slim-bookworm
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
         build-essential \
         libffi-dev \
         libpq-dev
@@ -10,7 +11,7 @@ RUN apt-get update && \
 RUN pip install poetry
 
 WORKDIR /app
-ENV PYTHONPATH /app
+ENV PYTHONPATH=/app
 
 COPY pyproject.toml poetry.lock .
 
