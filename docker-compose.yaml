@@ -26,7 +26,7 @@ services:
     <<: *app_env
     ports: []
     restart: on-failure
-    command: make migrate-dev && ./scripts/dev_data.py
+    command: make dev-data
 
   postgres:
     image: postgres:16.4-alpine3.20

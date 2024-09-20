@@ -7,6 +7,7 @@ from hushline.model import Tier, User, Username
 
 
 def main() -> None:
+    print("Adding dev data")
     create_app().app_context().push()
 
     users = [
@@ -66,6 +67,8 @@ def main() -> None:
             db.session.commit()
 
         print(f"Tier:\n  name = {data['name']}\n  monthly_amount = {data['monthly_amount']}")
+
+    print("Dev data added")
 
 
 if __name__ == "__main__":

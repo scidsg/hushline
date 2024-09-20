@@ -150,6 +150,7 @@ class User(Model):
     # Paid tier fields
     tier_id: Mapped[int | None] = mapped_column(db.ForeignKey("tiers.id"), nullable=True)
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
+
     stripe_customer_id = mapped_column(db.String(255))
     stripe_subscription_id = mapped_column(db.String(255))
 

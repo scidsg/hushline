@@ -276,6 +276,7 @@ def create_blueprint() -> Blueprint:
 
         # Load the business tier price
         business_tier = db.session.query(Tier).filter_by(name="Business").first()
+        business_tier_display_price = ""
         if business_tier:
             price_usd = business_tier.monthly_amount / 100
             if price_usd % 1 == 0:
