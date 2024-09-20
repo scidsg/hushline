@@ -312,7 +312,6 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
-            is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
         )
 

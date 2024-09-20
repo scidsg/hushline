@@ -7,7 +7,7 @@
 >
   <!-- Change Username Section -->
   <h3>Change Username</h3>
-  {% if user.is_verified %}
+  {% if user.primary_username.is_verified %}
     <p class="meta">
       ⚠️ Changing your username will result in losing your verification
       status.

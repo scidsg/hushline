@@ -1,11 +1,11 @@
 import logging
-from jinja2 import StrictUndefined
 import os
 from datetime import timedelta
 from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
+from jinja2 import StrictUndefined
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
@@ -66,7 +66,7 @@ def create_app() -> Flask:
         )
 
     # jinja configs
-    if app.config.get('FLASK_ENV', None) == 'development':
+    if app.config.get("FLASK_ENV", None) == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
 
@@ -90,8 +90,13 @@ def create_app() -> Flask:
             return {"user": user}
         return {}
 
+    @app.context_processor
+    def inject_is_personal_server() -> dict[str, Any]:
+        return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
+
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:
+
         @app.after_request
         def add_onion_location_header(response: Response) -> Response:
             response.headers["Onion-Location"] = (
