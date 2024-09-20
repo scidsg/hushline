@@ -9,11 +9,13 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from pytest_mock import MockFixture
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from hushline import create_app
+from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
 from hushline.model import User, Username
 
@@ -101,6 +103,11 @@ def database(_db_template: None) -> str:
     print(f"Postgres DB: {db_name}, template: {TEMPLATE_DB_NAME}")  # to help with debugging tests
 
     return db_name
+
+
+@pytest.fixture(autouse=True)
+def _insecure_scrypt_params(mocker: MockFixture) -> None:
+    mocker.patch.dict(_SCRYPT_PARAMS, {"n": 2, "r": 1, "p": 1}, clear=True)
 
 
 @pytest.fixture()
