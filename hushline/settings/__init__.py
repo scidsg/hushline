@@ -138,6 +138,8 @@ def handle_display_name_form(
     username: Username, form: DisplayNameForm, redirect_url: str
 ) -> Response:
     username.display_name = form.display_name.data.strip()
+    db.session.commit()
+
     flash("👍 Display name updated successfully.")
     current_app.logger.debug(
         f"Display name updated to {username.display_name}, "
@@ -157,6 +159,8 @@ def handle_change_username_form(
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
+        db.session.commit()
+
         session["username"] = new_username
         flash("👍 Username changed successfully.")
         current_app.logger.debug(
