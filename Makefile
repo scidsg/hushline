@@ -11,7 +11,6 @@ install:
 	poetry install
 	npm install
 
-
 .PHONY: run
 run: ## Run the app
 	. ./dev_env.sh && \
@@ -19,12 +18,10 @@ run: ## Run the app
 
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations
-	. ./dev_env.sh && \
 	poetry run ./scripts/dev_migrations.py
 
 .PHONY: migrate-prod
 migrate-prod: ## Run prod env (alembic) migrations
-	. ./dev_env.sh && \
 	poetry run flask db upgrade
 
 .PHONY: lint
@@ -50,5 +47,5 @@ endif
 
 .PHONY: test
 test: ## Run the test suite
-	. ./dev_env.sh && \
-	poetry run pytest --cov hushline --cov-report term --cov-report html -vv tests/$(test)
+	docker compose run --rm app \
+		poetry run pytest --cov hushline --cov-report term --cov-report html -vv tests/$(test)
