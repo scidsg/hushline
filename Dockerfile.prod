@@ -1,5 +1,5 @@
 # vim: set syntax=dockerfile :
-FROM python:3.12.6-bookworm-slim
+FROM python:3.12.6-slim-bookworm
 
 WORKDIR /app
 
