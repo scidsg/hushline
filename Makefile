@@ -9,7 +9,6 @@ help: ## Print the help message
 .PHONY: install
 install:
 	poetry install
-	npm install
 
 .PHONY: run
 run: ## Run the app
@@ -26,16 +25,18 @@ migrate-prod: ## Run prod env (alembic) migrations
 
 .PHONY: lint
 lint: ## Lint the code
+	docker compose run --rm app \
 	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
-	npx prettier --check .
+	docker run --rm -v $(shell pwd):/work tmknom/prettier:3.2.5 --check ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: fix
 fix: ## Format the code
+	docker compose run --rm app \
 	poetry run ruff format && \
 	poetry run ruff check --fix
-	npx prettier --write .
+	docker run --rm -v $(shell pwd):/work tmknom/prettier:3.2.5 --write ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: revision
 revision: migrate-prod ## Create a new migration
