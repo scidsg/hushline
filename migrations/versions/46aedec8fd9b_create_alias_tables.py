@@ -102,10 +102,10 @@ def upgrade() -> None:
 
     with op.batch_alter_table("message", schema=None) as batch_op:
         batch_op.alter_column("username_id", existing_type=sa.Integer(), nullable=False)
-        batch_op.drop_constraint(op.f("message_secondary_user_id_fkey"), type_="foreignkey")
-        batch_op.drop_constraint(op.f("message_user_id_fkey"), type_="foreignkey")
+        batch_op.drop_constraint(batch_op.f("message_secondary_user_id_fkey"), type_="foreignkey")
+        batch_op.drop_constraint(batch_op.f("message_user_id_fkey"), type_="foreignkey")
         batch_op.create_foreign_key(
-            op.f("fk_message_username_id_usernames"), "usernames", ["username_id"], ["id"]
+            batch_op.f("fk_message_username_id_usernames"), "usernames", ["username_id"], ["id"]
         )
         batch_op.drop_column("user_id")
         batch_op.drop_column("secondary_user_id")
@@ -113,7 +113,7 @@ def upgrade() -> None:
     op.drop_table("secondary_usernames")
 
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_constraint(op.f("users_primary_username_key"), type_="unique")
+        batch_op.drop_constraint(batch_op.f("users_primary_username_key"), type_="unique")
         batch_op.drop_column("primary_username")
         batch_op.drop_column("display_name")
         batch_op.drop_column("bio")
@@ -145,7 +145,9 @@ def downgrade() -> None:
             batch_op.add_column(sa.Column(f"extra_field_label{i}", sa.VARCHAR(), nullable=True))
             batch_op.add_column(sa.Column(f"extra_field_verified{i}", sa.BOOLEAN(), nullable=True))
 
-        batch_op.create_unique_constraint(op.f("users_primary_username_key"), ["primary_username"])
+        batch_op.create_unique_constraint(
+            batch_op.f("users_primary_username_key"), ["primary_username"]
+        )
 
     users_insert_str = ""
     for field in user_common_fields:
@@ -238,10 +240,12 @@ def downgrade() -> None:
     )
 
     with op.batch_alter_table("message", schema=None) as batch_op:
-        batch_op.drop_constraint(op.f("fk_message_username_id_usernames"), type_="foreignkey")
-        batch_op.create_foreign_key(op.f("message_user_id_fkey"), "users", ["user_id"], ["id"])
+        batch_op.drop_constraint(batch_op.f("fk_message_username_id_usernames"), type_="foreignkey")
         batch_op.create_foreign_key(
-            op.f("message_secondary_user_id_fkey"),
+            batch_op.f("message_user_id_fkey"), "users", ["user_id"], ["id"]
+        )
+        batch_op.create_foreign_key(
+            batch_op.f("message_secondary_user_id_fkey"),
             "secondary_usernames",
             ["secondary_user_id"],
             ["id"],
