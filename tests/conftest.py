@@ -4,9 +4,9 @@ import string
 import time
 from contextlib import contextmanager
 from typing import Generator
+from uuid import uuid4
 
 import pytest
-from cryptography.fernet import Fernet
 from flask import Flask
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -14,10 +14,12 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from hushline import create_app, db
-from hushline.model import Tier
+from hushline import create_app
+from hushline.crypto import _SCRYPT_PARAMS
+from hushline.db import db
+from hushline.model import Tier, User, Username
 
-CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@127.0.0.1:5432/{database}"
+CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@postgres:5432/{database}"
 TEMPLATE_DB_NAME = "app_db_template"
 
 
@@ -103,16 +105,14 @@ def database(_db_template: None) -> str:
     return db_name
 
 
-@pytest.fixture()
-def _config(mocker: MockFixture) -> None:
-    mocker.patch.dict(os.environ, {})
+@pytest.fixture(autouse=True)
+def _insecure_scrypt_params(mocker: MockFixture) -> None:
+    mocker.patch.dict(_SCRYPT_PARAMS, {"n": 2, "r": 1, "p": 1}, clear=True)
 
 
 @pytest.fixture()
-def app(_config: None, database: str) -> Generator[Flask, None, None]:
-    os.environ["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
+def app(database: str) -> Generator[Flask, None, None]:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
-    os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
 
     app = create_app()
@@ -137,3 +137,37 @@ def app(_config: None, database: str) -> Generator[Flask, None, None]:
 def client(app: Flask) -> Generator[FlaskClient, None, None]:
     with app.test_client() as client:
         yield client
+
+
+@pytest.fixture()
+def user_password() -> str:
+    return "Test-testtesttesttest-1"
+
+
+@pytest.fixture()
+def user(app: Flask, user_password: str, database: str) -> User:
+    user = User(password=user_password)
+    db.session.add(user)
+    db.session.flush()
+
+    uuid_ish = str(uuid4())[0:12]
+    username = Username(user_id=user.id, _username=f"test-{uuid_ish}", is_primary=True)
+    db.session.add(username)
+    db.session.commit()
+
+    return user
+
+
+@pytest.fixture()
+def _authenticated_user(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+
+@pytest.fixture()
+def _pgp_user(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as f:
+        user.pgp_key = f.read()
+    db.session.commit()

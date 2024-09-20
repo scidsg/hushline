@@ -1,4 +1,6 @@
-FROM python:3.12-bookworm
+# vim: set syntax=dockerfile :
+FROM python:3.12.6-slim-bookworm
+
 WORKDIR /app
 
 # Install system dependencies

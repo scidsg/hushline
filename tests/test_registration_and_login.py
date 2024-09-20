@@ -3,7 +3,7 @@ import os
 from flask import url_for
 from flask.testing import FlaskClient
 
-from hushline import db
+from hushline.db import db
 from hushline.model import InviteCode, Username
 
 

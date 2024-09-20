@@ -89,7 +89,6 @@ class Username(Model):
     def username(self, username: str) -> None:
         self._username = username
         self.is_verified = False
-        db.session.commit()
 
     @property
     def display_name(self) -> Optional[str]:
@@ -99,7 +98,6 @@ class Username(Model):
     def display_name(self, display_name: str | None) -> None:
         self._display_name = display_name
         self.is_verified = False
-        db.session.commit()
 
     @property
     def extra_fields(self) -> Generator[ExtraField, None, None]:

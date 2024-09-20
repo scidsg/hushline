@@ -7,6 +7,7 @@ from typing import Any
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from flask_migrate import Migrate
+from jinja2 import StrictUndefined
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
@@ -22,9 +23,7 @@ def create_app() -> Flask:
     # Configure logging
     app.logger.setLevel(logging.DEBUG)
 
-    app.config["VERSION"] = __version__
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
+    # sqlalchemy configs
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
     # if it's a Postgres URI, replace the scheme with `postgresql+psycopg`
     # because we're using the psycopg driver
@@ -33,11 +32,19 @@ def create_app() -> Flask:
             "postgresql://", "postgresql+psycopg://", 1
         )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # cookie configs
+    app.config["FLASK_ENV"] = os.environ.get("FLASK_ENV")
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     app.config["SESSION_COOKIE_NAME"] = os.environ.get("SESSION_COOKIE_NAME", "__HOST-session")
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+
+    # hushline specific configs
+    app.config["VERSION"] = __version__
+    app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
     app.config["IS_PERSONAL_SERVER"] = (
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
@@ -62,6 +69,12 @@ def create_app() -> Flask:
         app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
             app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0
         )
+
+    # jinja configs
+    if app.config.get("FLASK_ENV", None) == "development":
+        app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
+        app.jinja_env.undefined = StrictUndefined
+
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
@@ -91,6 +104,10 @@ def create_app() -> Flask:
             user = db.session.get(User, session["user_id"])
             return {"user": user}
         return {}
+
+    @app.context_processor
+    def inject_is_personal_server() -> dict[str, Any]:
+        return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
 
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:

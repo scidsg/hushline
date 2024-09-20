@@ -138,6 +138,8 @@ def handle_display_name_form(
     username: Username, form: DisplayNameForm, redirect_url: str
 ) -> Response:
     username.display_name = form.display_name.data.strip()
+    db.session.commit()
+
     flash("👍 Display name updated successfully.")
     current_app.logger.debug(
         f"Display name updated to {username.display_name}, "
@@ -157,6 +159,8 @@ def handle_change_username_form(
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
+        db.session.commit()
+
         session["username"] = new_username
         flash("👍 Username changed successfully.")
         current_app.logger.debug(
@@ -235,7 +239,8 @@ def create_blueprint() -> Blueprint:
             if "new_alias" in request.form and new_alias_form.validate_on_submit():
                 return handle_new_alias_form(user, new_alias_form, url_for(".index"))
             current_app.logger.error(
-                "Unable to handle form submission on endpoint {request.endpoint!r}"
+                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                f"form fields: {request.form.keys()}"
             )
             flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
@@ -317,7 +322,6 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
-            is_personal_server=current_app.config["IS_PERSONAL_SERVER"],
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
             # Premium-specific data
             is_premium_enabled=bool(current_app.config.get("STRIPE_SECRET_KEY", False)),
@@ -670,7 +674,8 @@ def create_blueprint() -> Blueprint:
                 )
 
             current_app.logger.error(
-                "Unable to handle form submission on endpoint {request.endpoint!r}"
+                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                f"form fields: {request.form.keys()}"
             )
             flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
