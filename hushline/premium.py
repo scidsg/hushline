@@ -311,6 +311,11 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         return render_template("premium.html", user=user, invoices=invoices)
 
+    @bp.route("/waiting", methods=["GET"])
+    @authentication_required
+    def waiting() -> Response | str:
+        return render_template("premium-waiting.html")
+
     @bp.route("/upgrade", methods=["GET", "POST"])
     @authentication_required
     def upgrade() -> Response | str:
