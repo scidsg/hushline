@@ -54,9 +54,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
+            op.f("usernames_user_id_fkey"),
         ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("username"),
+        sa.PrimaryKeyConstraint("id", name=op.f("usernames_pkey")),
+        sa.UniqueConstraint("username", name=op.f("usernames_username_key")),
     )
 
     op.execute(
@@ -101,16 +102,18 @@ def upgrade() -> None:
 
     with op.batch_alter_table("message", schema=None) as batch_op:
         batch_op.alter_column("username_id", existing_type=sa.Integer(), nullable=False)
-        batch_op.drop_constraint("message_secondary_user_id_fkey", type_="foreignkey")
-        batch_op.drop_constraint("message_user_id_fkey", type_="foreignkey")
-        batch_op.create_foreign_key(None, "usernames", ["username_id"], ["id"])
+        batch_op.drop_constraint(op.f("message_secondary_user_id_fkey"), type_="foreignkey")
+        batch_op.drop_constraint(op.f("message_user_id_fkey"), type_="foreignkey")
+        batch_op.create_foreign_key(
+            op.f("fk_message_username_id_usernames"), "usernames", ["username_id"], ["id"]
+        )
         batch_op.drop_column("user_id")
         batch_op.drop_column("secondary_user_id")
 
     op.drop_table("secondary_usernames")
 
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_constraint("users_primary_username_key", type_="unique")
+        batch_op.drop_constraint(op.f("users_primary_username_key"), type_="unique")
         batch_op.drop_column("primary_username")
         batch_op.drop_column("display_name")
         batch_op.drop_column("bio")
@@ -125,39 +128,24 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("display_name", sa.VARCHAR(length=80), autoincrement=False, nullable=True)
-        )
+        batch_op.add_column(sa.Column("display_name", sa.VARCHAR(length=80), nullable=True))
         batch_op.add_column(
             sa.Column(
                 "primary_username",
                 sa.VARCHAR(length=80),
-                autoincrement=False,
                 nullable=True,
             )
         )
-        batch_op.add_column(
-            sa.Column("is_verified", sa.BOOLEAN(), autoincrement=False, nullable=True)
-        )
-        batch_op.add_column(sa.Column("bio", sa.TEXT(), autoincrement=False, nullable=True))
-        batch_op.add_column(
-            sa.Column("show_in_directory", sa.BOOLEAN(), autoincrement=False, nullable=True)
-        )
+        batch_op.add_column(sa.Column("is_verified", sa.BOOLEAN(), nullable=True))
+        batch_op.add_column(sa.Column("bio", sa.TEXT(), nullable=True))
+        batch_op.add_column(sa.Column("show_in_directory", sa.BOOLEAN(), nullable=True))
 
         for i in range(1, 5):
-            batch_op.add_column(
-                sa.Column(f"extra_field_value{i}", sa.VARCHAR(), autoincrement=False, nullable=True)
-            )
-            batch_op.add_column(
-                sa.Column(f"extra_field_label{i}", sa.VARCHAR(), autoincrement=False, nullable=True)
-            )
-            batch_op.add_column(
-                sa.Column(
-                    f"extra_field_verified{i}", sa.BOOLEAN(), autoincrement=False, nullable=True
-                )
-            )
+            batch_op.add_column(sa.Column(f"extra_field_value{i}", sa.VARCHAR(), nullable=True))
+            batch_op.add_column(sa.Column(f"extra_field_label{i}", sa.VARCHAR(), nullable=True))
+            batch_op.add_column(sa.Column(f"extra_field_verified{i}", sa.BOOLEAN(), nullable=True))
 
-        batch_op.create_unique_constraint("users_primary_username_key", ["primary_username"])
+        batch_op.create_unique_constraint(op.f("users_primary_username_key"), ["primary_username"])
 
     users_insert_str = ""
     for field in user_common_fields:
@@ -181,24 +169,17 @@ def downgrade() -> None:
     )
 
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.alter_column(
-            "is_verified", existing_type=sa.BOOLEAN(), autoincrement=False, nullable=False
-        )
+        batch_op.alter_column("is_verified", existing_type=sa.BOOLEAN(), nullable=False)
         batch_op.alter_column(
             "primary_username",
             existing_type=sa.VARCHAR(length=80),
-            autoincrement=False,
             nullable=False,
         )
-        batch_op.alter_column(
-            "show_in_directory", existing_type=sa.BOOLEAN(), autoincrement=False, nullable=False
-        )
+        batch_op.alter_column("show_in_directory", existing_type=sa.BOOLEAN(), nullable=False)
 
     with op.batch_alter_table("message", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("user_id", sa.INTEGER(), autoincrement=False, nullable=True))
-        batch_op.add_column(
-            sa.Column("secondary_user_id", sa.INTEGER(), autoincrement=False, nullable=True)
-        )
+        batch_op.add_column(sa.Column("user_id", sa.INTEGER(), nullable=True))
+        batch_op.add_column(sa.Column("secondary_user_id", sa.INTEGER(), nullable=True))
 
     op.execute(
         sa.text(
@@ -230,19 +211,19 @@ def downgrade() -> None:
     )
 
     with op.batch_alter_table("message", schema=None) as batch_op:
-        batch_op.alter_column(
-            "user_id", existing_type=sa.INTEGER(), autoincrement=False, nullable=False
-        )
+        batch_op.alter_column("user_id", existing_type=sa.INTEGER(), nullable=False)
 
     op.create_table(
         "secondary_usernames",
-        sa.Column("id", sa.INTEGER(), autoincrement=True, nullable=False),
-        sa.Column("username", sa.VARCHAR(length=80), autoincrement=False, nullable=False),
-        sa.Column("user_id", sa.INTEGER(), autoincrement=False, nullable=False),
-        sa.Column("display_name", sa.VARCHAR(length=80), autoincrement=False, nullable=True),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name="secondary_usernames_user_id_fkey"),
-        sa.PrimaryKeyConstraint("id", name="secondary_usernames_pkey"),
-        sa.UniqueConstraint("username", name="secondary_usernames_username_key"),
+        sa.Column("id", sa.INTEGER(), nullable=False),
+        sa.Column("username", sa.VARCHAR(length=80), nullable=False),
+        sa.Column("user_id", sa.INTEGER(), nullable=False),
+        sa.Column("display_name", sa.VARCHAR(length=80), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["users.id"], name=op.f("secondary_usernames_user_id_fkey")
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("secondary_usernames_pkey")),
+        sa.UniqueConstraint("username", name=op.f("secondary_usernames_username_key")),
     )
 
     op.execute(
@@ -257,10 +238,13 @@ def downgrade() -> None:
     )
 
     with op.batch_alter_table("message", schema=None) as batch_op:
-        batch_op.drop_constraint("message_username_id_fkey", type_="foreignkey")
-        batch_op.create_foreign_key("message_user_id_fkey", "users", ["user_id"], ["id"])
+        batch_op.drop_constraint(op.f("fk_message_username_id_usernames"), type_="foreignkey")
+        batch_op.create_foreign_key(op.f("message_user_id_fkey"), "users", ["user_id"], ["id"])
         batch_op.create_foreign_key(
-            "message_secondary_user_id_fkey", "secondary_usernames", ["secondary_user_id"], ["id"]
+            op.f("message_secondary_user_id_fkey"),
+            "secondary_usernames",
+            ["secondary_user_id"],
+            ["id"],
         )
         batch_op.drop_column("username_id")
 

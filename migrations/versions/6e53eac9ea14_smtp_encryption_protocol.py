@@ -19,7 +19,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.add_column(
         "users",
         sa.Column(
@@ -32,6 +32,6 @@ def upgrade():
     op.add_column("users", sa.Column("smtp_sender", sa.String(), nullable=True))
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_column("users", "smtp_encryption")
     op.drop_column("users", "smtp_sender")
