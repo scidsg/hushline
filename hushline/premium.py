@@ -31,6 +31,7 @@ def init_stripe() -> None:
 
 
 def create_products_and_prices() -> None:
+    current_app.logger.info("Creating products and prices")
     # Make sure the products and prices are created in Stripe
     tiers = db.session.query(Tier).all()
     for tier in tiers:
@@ -53,6 +54,8 @@ def create_products_and_prices() -> None:
             tier.stripe_product_id = product.id
             db.session.add(tier)
             db.session.commit()
+        else:
+            current_app.logger.info(f"Product already exists for tier: {tier.name}")
 
         # Check if the price exists
         create_price = False
@@ -75,6 +78,8 @@ def create_products_and_prices() -> None:
             tier.stripe_price_id = price.id
             db.session.add(tier)
             db.session.commit()
+        else:
+            current_app.logger.info(f"Price already exists for tier: {tier.name}")
 
 
 def update_price(tier: Tier) -> None:
@@ -337,6 +342,7 @@ def create_blueprint(app: Flask) -> Blueprint:
         # Select the business tier
         business_tier = db.session.query(Tier).get(BUSINESS_TIER)
         if not business_tier:
+            current_app.logger.error("Could not find business tier")
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
