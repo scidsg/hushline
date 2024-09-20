@@ -261,6 +261,8 @@ class AuthenticationLog(Model):
 
 
 class Message(Model):
+    __tablename__ = "messages"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
@@ -286,6 +288,8 @@ class Message(Model):
 
 
 class InviteCode(Model):
+    __tablename__ = "invite_codes"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(db.String(255), unique=True)
     expiration_date: Mapped[datetime]
