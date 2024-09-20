@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from hushline import create_app, db
 
-CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@127.0.0.1:5432/{database}"
+CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@postgres:5432/{database}"
 TEMPLATE_DB_NAME = "app_db_template"
 
 
