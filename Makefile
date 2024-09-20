@@ -42,7 +42,6 @@ revision: migrate-prod ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
-	. ./dev_env.sh && \
 	poetry run flask db revision -m "$(message)" --autogenerate
 
 .PHONY: test
