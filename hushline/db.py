@@ -11,4 +11,4 @@ metadata = MetaData(
     }
 )
 
-db = SQLAlchemy()
+db = SQLAlchemy(metadata=metadata)
