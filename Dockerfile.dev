@@ -6,11 +6,17 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         libffi-dev \
-        libpq-dev
+        libpq-dev \
+        npm
 
 RUN pip install poetry
 
 WORKDIR /app
+
+COPY package.json package-lock.json .
+
+RUN npm install
+
 ENV PYTHONPATH=/app
 
 COPY pyproject.toml poetry.lock .
