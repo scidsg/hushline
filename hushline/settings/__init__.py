@@ -239,7 +239,8 @@ def create_blueprint() -> Blueprint:
             if "new_alias" in request.form and new_alias_form.validate_on_submit():
                 return handle_new_alias_form(user, new_alias_form, url_for(".index"))
             current_app.logger.error(
-                "Unable to handle form submission on endpoint {request.endpoint!r}"
+                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                f"form fields: {request.form.keys()}"
             )
             flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
@@ -661,7 +662,8 @@ def create_blueprint() -> Blueprint:
                 )
 
             current_app.logger.error(
-                "Unable to handle form submission on endpoint {request.endpoint!r}"
+                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                f"form fields: {request.form.keys()}"
             )
             flash("Uh oh. There was an error handling your data. Please notify the admin.")
 

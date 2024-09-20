@@ -1,61 +1,50 @@
-from secrets import token_urlsafe
 from unittest.mock import ANY, MagicMock, patch
 
-from auth_helper import configure_pgp, login_user, register_user
+import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import SMTPEncryption, Username
+from hushline.model import SMTPEncryption, User, Username
 
 
-def test_settings_page_loads(client: FlaskClient) -> None:
-    username = "testuser_settings"
-    password = "SecureTestPass123!"
-    register_user(client, username, password)
-
-    assert login_user(client, username, password)
-
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_page_loads(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("settings.index"), follow_redirects=True)
     assert response.status_code == 200
+    assert "Settings" in response.text
 
 
-def test_change_display_name(client: FlaskClient) -> None:
-    username = "testuser_settings"
-    password = "SecureTestPass123!"
-    register_user(client, username, password)
-    login_user(client, username, password)
-
-    new_display_name = "New Display Name"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_display_name(client: FlaskClient, user: User) -> None:
+    new_display_name = (user.primary_username.display_name or "") + "_NEW"
 
     response = client.post(
-        "/settings/",
+        url_for("settings.index"),
         data={
             "display_name": new_display_name,
             "update_display_name": "Update Display Name",
         },
         follow_redirects=True,
     )
-    assert response.status_code == 200, "Failed to update display name"
+    assert response.status_code == 200
     assert "Display name updated successfully" in response.text
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
     assert updated_user.display_name == new_display_name
 
 
-def test_change_username(client: FlaskClient) -> None:
-    username = "original_username"
-    password = "SecureTestPass123!"
-    new_username = "updated_username"
-
-    register_user(client, username, password)
-    assert login_user(client, username, password)
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_username(client: FlaskClient, user: User) -> None:
+    new_username = user.primary_username.username + "-new"
 
     response = client.post(
         url_for("settings.index"),
         data={
             "new_username": new_username,
-            "change_username": "Update Username",  # html submit button
+            "change_username": "Change Username",  # html submit button
         },
         follow_redirects=True,
     )
@@ -67,106 +56,99 @@ def test_change_username(client: FlaskClient) -> None:
     assert not updated_user.is_verified
 
 
-def test_change_password(client: FlaskClient) -> None:
-    username = "test_change_password"
-    original_password = f"{token_urlsafe(16)}!"
-    new_password = f"{token_urlsafe(16)}!!!"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password(client: FlaskClient, user: User, user_password: str) -> None:
+    new_password = user_password + "xxx"
 
-    user = register_user(client, username, original_password)
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
-    assert original_password not in original_password_hash
-
-    logged_in_user = login_user(client, username, original_password)
-    assert logged_in_user is not None
-    assert user.id == logged_in_user.id
+    assert user_password not in original_password_hash
 
     response = client.post(
-        "/settings/change-password",
+        url_for("settings.change_password"),
         data={
-            "old_password": original_password,
+            "old_password": user_password,
             "new_password": new_password,
         },
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "login" in response.request.url
+    assert "Password successfully changed. Please log in again." in response.text
+    assert "/login" in response.request.url
     assert len(new_password_hash := user.password_hash) > 32
     assert new_password_hash.startswith("$scrypt$")
     assert original_password_hash not in new_password_hash
-    assert original_password not in new_password_hash
+    assert user_password not in new_password_hash
     assert new_password not in new_password_hash
-    assert "Password successfully changed. Please log in again." in response.text
+
+    # TODO simulate a log out?
 
     # Attempt to log in with the registered user's old password
     response = client.post(
-        "/login", data={"username": username, "password": original_password}, follow_redirects=True
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "login" in response.request.url
     assert "Invalid username or password" in response.text
+    assert "/login" in response.request.url
+
+    # TODO simulate a log out?
 
     # Attempt to log in with the registered user's new password
     response = client.post(
-        "/login", data={"username": username, "password": new_password}, follow_redirects=True
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": new_password},
+        follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "inbox" in response.request.url
     assert "Empty Inbox" in response.text
     assert "Invalid username or password" not in response.text
+    assert "/inbox" in response.request.url
 
 
-def test_add_pgp_key(client: FlaskClient) -> None:
-    username = "user_with_pgp"
-    password = "SecureTestPass123!"
-    register_user(client, username, password)
-    login_user(client, username, password)
-
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_pgp_key(client: FlaskClient, user: User, user_password: str) -> None:
     with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read()
 
     response = client.post(
-        "/settings/update-pgp-key",
+        url_for("settings.update_pgp_key"),
         data={"pgp_key": new_pgp_key},
         follow_redirects=True,
     )
     assert response.status_code == 200, "Failed to update PGP key"
     assert "PGP key updated successfully" in response.text
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
     assert updated_user.user.pgp_key == new_pgp_key
 
 
-def test_add_invalid_pgp_key(client: FlaskClient) -> None:
-    username = "user_invalid_pgp"
-    password = "SecureTestPass123!"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
     invalid_pgp_key = "NOT A VALID PGP KEY BLOCK"
 
-    register_user(client, username, password)
-    login_user(client, username, password)
-
     response = client.post(
-        "/settings/update-pgp-key",
+        url_for("settings.update_pgp_key"),
         data={"pgp_key": invalid_pgp_key},
         follow_redirects=True,
     )
     assert response.status_code == 200
     assert "Invalid PGP key format" in response.text
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
     assert updated_user.user.pgp_key != invalid_pgp_key
 
 
+@pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> None:
-    username = "user_smtp_settings_no_pgp"
-    password = "SecureTestPass123!"
-
-    register_user(client, username, password)
-    login_user(client, username, password)
-
+def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     response = client.post(
-        "/settings/update-smtp-settings",
+        url_for("settings.update_smtp_settings"),
         data={
             "forwarding_enabled": True,
             "email_address": "primary@example.com",
@@ -183,7 +165,11 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> No
     assert response.status_code == 200
     assert "Email forwarding requires a configured PGP key" in response.text
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one().user
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
     assert updated_user.email is None
     assert updated_user.smtp_server is None
     assert updated_user.smtp_port is None
@@ -191,15 +177,10 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> No
     assert updated_user.smtp_password is None
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> None:
-    username = "user_smtp_settings_tls"
-    password = "SecureTestPass123!"
-
-    user = register_user(client, username, password)
-    login_user(client, username, password)
-    configure_pgp(client)
-
+def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
@@ -213,7 +194,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
     }
 
     response = client.post(
-        "/settings/update-smtp-settings",
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -226,7 +207,11 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
         user.smtp_username, user.smtp_password
     )
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one().user
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
     assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
@@ -236,14 +221,10 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> 
     assert updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.utils.smtplib.SMTP_SSL")
-def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
-    username = "user_smtp_settings_ssl"
-    password = "SecureTestPass123!"
-    user = register_user(client, username, password)
-    login_user(client, username, password)
-    configure_pgp(client)
-
+def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
@@ -257,7 +238,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
     }
 
     response = client.post(
-        "/settings/update-smtp-settings",
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -270,7 +251,11 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
         user.smtp_username, user.smtp_password
     )
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one().user
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
     assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
@@ -280,15 +265,12 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
     assert updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskClient) -> None:
-    username = "user_default_forwarding"
-    password = "SecureTestPass123!"
-
-    register_user(client, username, password)
-    login_user(client, username, password)
-    configure_pgp(client)
-
+def test_update_smtp_settings_default_forwarding(
+    SMTP: MagicMock, client: FlaskClient, user: User
+) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
@@ -296,7 +278,7 @@ def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskC
     }
 
     response = client.post(
-        "/settings/update-smtp-settings",
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -307,7 +289,11 @@ def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskC
     SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
     SMTP.return_value.__enter__.return_value.login.assert_not_called()
 
-    updated_user = db.session.scalars(db.select(Username).filter_by(_username=username)).one().user
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
     assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server is None
     assert updated_user.smtp_port is None

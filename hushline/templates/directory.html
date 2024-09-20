@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+
 {% block title %}Directory{% endblock %}
+
 {% block content %}
   <h2>User Directory</h2>
   {% if not is_personal_server %}
@@ -78,38 +80,38 @@
         </p>
       {% endif %}
       <div class="user-list">
-        {% for user in users %}
-          {% if user.is_verified and user.show_in_directory %}
+        {% for username in usernames %}
+          {% if username.is_verified and username.show_in_directory %}
             <article class="user">
-              <h3>{{ user.display_name or user.primary_username }}</h3>
-              {% if user.primary_username %}
-                <p class="meta">@{{ user.primary_username }}</p>
+              <h3>{{ username.display_name or username.username }}</h3>
+              {% if username.username %}
+                <p class="meta">@{{ username.username }}</p>
               {% endif %}
-              {% if user.is_verified or user.is_admin %}
+              {% if username.is_verified or useranme.user.is_admin %}
                 <div class="badgeContainer">
-                  {% if user.is_admin %}
+                  {% if username.user.is_admin %}
                     <p class="badge">⚙️ Admin</p>
                   {% endif %}
-                  {% if user.is_verified %}
+                  {% if username.is_verified %}
                     <p class="badge">⭐️ Verified</p>
                   {% endif %}
                 </div>
               {% endif %}
-              {% if user.bio %}
-                <p class="bio">{{ user.bio }}</p>
+              {% if username.bio %}
+                <p class="bio">{{ username.bio }}</p>
               {% endif %}
               <div class="user-actions">
                 <a
-                  href="{{ url_for('profile', username=user.primary_username) }}"
+                  href="{{ url_for('profile', username=username.username) }}"
                   >View Profile</a
                 >
                 {% if logged_in %}
                   <a
                     href="#"
                     class="report-link"
-                    data-username="{{ user.primary_username.username }}"
-                    data-display-name="{{ user.primary_username.display_name or user.primary_username.username }}"
-                    data-bio="{{ user.primary_username.bio }}"
+                    data-username="{{ username.username }}"
+                    data-display-name="{{ username.display_name or username.username }}"
+                    data-bio="{{ username.bio }}"
                     >Report Account</a
                   >
                 {% endif %}
@@ -131,16 +133,16 @@
     aria-labelledby="all-users-tab"
   >
     <div class="user-list">
-      {% for username in users %}
+      {% for username in usernames %}
         {% if username.show_in_directory %}
           <article class="user">
             <h3>{{ username.display_name or username.username }}</h3>
-            {% if user.primary_username %}
+            {% if username.username %}
               <p class="meta">@{{ username.username }}</p>
             {% endif %}
             {% if username.is_verified or username.user.is_admin %}
               <div class="badgeContainer">
-                {% if user.is_admin %}
+                {% if username.user.is_admin %}
                   <p class="badge">⚙️ Admin</p>
                 {% endif %}
                 {% if username.is_verified %}
@@ -176,6 +178,7 @@
     </div>
   </div>
 {% endblock %}
+
 {% block scripts %}
   {% if is_personal_server %}
     <script src="{{ url_for('static', filename='js/directory_personal_server.js') }}"></script>
