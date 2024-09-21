@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -15,8 +16,6 @@ if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 else:
     Model = db.Model
-
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 @enum.unique
