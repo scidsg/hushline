@@ -126,8 +126,12 @@ def app(database: str) -> Generator[Flask, None, None]:
 
         # Create the default tiers
         # (this happens in the migrations, but migrations don't run in the tests)
-        db.session.add(Tier(name="Free", monthly_amount=0))
-        db.session.add(Tier(name="Business", monthly_amount=2000))
+        free_tier = Tier(name="Free", monthly_amount=0)
+        business_tier = Tier(name="Business", monthly_amount=2000)
+        business_tier.stripe_product_id = "prod_123"
+        business_tier.stripe_price_id = "price_123"
+        db.session.add(free_tier)
+        db.session.add(business_tier)
         db.session.commit()
 
         yield app
