@@ -210,8 +210,7 @@ def handle_invoice_created(invoice: stripe.Invoice) -> None:
 def handle_invoice_payment_succeeded(invoice: stripe.Invoice) -> None:
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id=invoice.id).first()
     if stripe_invoice:
-        stripe_invoice.amount_paid = invoice.amount_paid
-        stripe_invoice.amount_remaining = invoice.amount_remaining
+        stripe_invoice.total = invoice.total
         stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
         db.session.commit()
 

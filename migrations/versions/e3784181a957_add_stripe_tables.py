@@ -49,9 +49,7 @@ def upgrade():
         sa.Column("customer_id", sa.String(length=255), nullable=False),
         sa.Column("invoice_id", sa.String(length=255), nullable=False),
         sa.Column("hosted_invoice_url", sa.String(length=255), nullable=False),
-        sa.Column("amount_due", sa.Integer(), nullable=False),
-        sa.Column("amount_paid", sa.Integer(), nullable=False),
-        sa.Column("amount_remaining", sa.Integer(), nullable=False),
+        sa.Column("total", sa.Integer(), nullable=False),
         sa.Column(
             "status",
             sa.Enum(

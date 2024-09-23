@@ -357,9 +357,7 @@ class StripeInvoice(Model):
     customer_id: Mapped[str] = mapped_column(db.String(255))
     invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     hosted_invoice_url: Mapped[str] = mapped_column(db.String(255))
-    amount_due: Mapped[int] = mapped_column(db.Integer)
-    amount_paid: Mapped[int] = mapped_column(db.Integer)
-    amount_remaining: Mapped[int] = mapped_column(db.Integer)
+    total: Mapped[int] = mapped_column(db.Integer)
     status: Mapped[StripeInvoiceStatusEnum] = mapped_column(
         SQLAlchemyEnum(StripeInvoiceStatusEnum), nullable=True
     )
@@ -375,18 +373,10 @@ class StripeInvoice(Model):
             self.customer_id = invoice.customer
         if invoice.hosted_invoice_url:
             self.hosted_invoice_url = invoice.hosted_invoice_url
-        if invoice.amount_due:
-            self.amount_due = invoice.amount_due
+        if invoice.total:
+            self.total = invoice.total
         else:
-            self.amount_due = 0
-        if invoice.amount_paid:
-            self.amount_paid = invoice.amount_paid
-        else:
-            self.amount_paid = 0
-        if invoice.amount_remaining:
-            self.amount_remaining = invoice.amount_remaining
-        else:
-            self.amount_remaining = 0
+            self.total = 0
         if invoice.status:
             self.status = StripeInvoiceStatusEnum(invoice.status)
         if invoice.created:

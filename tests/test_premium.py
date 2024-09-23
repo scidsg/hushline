@@ -214,9 +214,7 @@ def test_handle_invoice_created(app: Flask) -> None:
                 id="inv_123",
                 customer="cus_123",
                 hosted_invoice_url="https://example.com",
-                amount_paid=0,
-                amount_due=2000,
-                amount_remaining=2000,
+                total=2000,
                 status=StripeInvoiceStatusEnum.OPEN,
                 lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
             )
@@ -238,9 +236,7 @@ def test_handle_invoice_payment_succeeded(app: Flask) -> None:
             id="inv_123",
             customer="cus_123",
             hosted_invoice_url="https://example.com",
-            amount_paid=0,
-            amount_due=2000,
-            amount_remaining=2000,
+            total=2000,
             status=StripeInvoiceStatusEnum.OPEN,
             lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
             subscription="sub_123",
@@ -255,7 +251,6 @@ def test_handle_invoice_payment_succeeded(app: Flask) -> None:
 
         stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
         assert stripe_invoice is not None
-        assert stripe_invoice.amount_paid == 0
-        assert stripe_invoice.amount_remaining == 2000
+        assert stripe_invoice.total == 2000
         assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
         assert user.tier_id == BUSINESS_TIER

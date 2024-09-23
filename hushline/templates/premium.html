@@ -109,7 +109,7 @@
           {% for invoice in invoices %}
             <tr>
               <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
-              <td>${{ invoice.amount_paid / 100 }}</td>
+              <td>${{ invoice.total / 100 }}</td>
               <td>{{ invoice.status.value }}</td>
               <td>
                 <a href="{{ invoice.hosted_invoice_url }}" target="_blank">
