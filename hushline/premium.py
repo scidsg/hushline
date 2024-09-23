@@ -283,11 +283,6 @@ async def worker(app: Flask) -> None:
             db.session.commit()
 
 
-def start_event_loop(loop: asyncio.AbstractEventLoop) -> None:
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-
 def create_blueprint(app: Flask) -> Blueprint:
     # Now define the blueprint
     bp = Blueprint("premium", __file__, url_prefix="/premium")
