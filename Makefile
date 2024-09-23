@@ -28,13 +28,13 @@ lint: ## Lint the code
 	poetry run ruff format --check && \
 	poetry run ruff check && \
 	poetry run mypy .
-	docker compose run --rm -v $(shell pwd):/work app npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
+	docker compose run --rm app npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: fix
 fix: ## Format the code
 	poetry run ruff format && \
 	poetry run ruff check --fix
-	docker compose run --rm -v $(shell pwd):/work app npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
+	docker compose run --rm app npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: revision
 revision: migrate-prod ## Create a new migration
