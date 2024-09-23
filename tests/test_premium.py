@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+import stripe
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -330,3 +331,60 @@ def test_upgrade_process(
     # And an invoice was created
     stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).first()
     assert stripe_invoice is not None
+
+
+def test_downgrade_no_user_in_session(client: FlaskClient) -> None:
+    response = client.post(url_for("premium.downgrade"))
+    assert response.status_code == 302
+    assert response.location == url_for("login")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_downgrade_no_subscription(client: FlaskClient, user: User) -> None:
+    response = client.post(url_for("premium.downgrade"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_downgrade_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.tier_id = BUSINESS_TIER
+    db.session.commit()
+
+    mock_stripe_delete = mocker.patch(
+        "hushline.premium.stripe.Subscription.delete", return_value=MagicMock()
+    )
+
+    response = client.post(url_for("premium.downgrade"))
+    assert response.status_code == 200
+    assert response.json == {"success": True}
+    assert mock_stripe_delete.called
+
+    # Send the webhook event
+    handle_subscription_deleted(MagicMock(id="sub_123"))
+
+    db.session.refresh(user)
+    assert user.tier_id == FREE_TIER
+    assert user.stripe_subscription_id is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_downgrade_stripe_error(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.tier_id = BUSINESS_TIER
+    db.session.commit()
+
+    # Create an instance of the StripeError exception
+    stripe_error_instance = MagicMock()
+    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+
+    # Mock the stripe.Subscription.delete method to raise the StripeError exception
+    mock_stripe_delete = mocker.patch(
+        "hushline.premium.stripe.Subscription.delete", side_effect=stripe_error_instance
+    )
+
+    response = client.post(url_for("premium.downgrade"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+    assert mock_stripe_delete.called
