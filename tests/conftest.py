@@ -115,6 +115,9 @@ def app(database: str) -> Generator[Flask, None, None]:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
 
+    # For premium tests
+    os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
+
     app = create_app()
     app.config["TESTING"] = True
     app.config["WTF_CSRF_ENABLED"] = False

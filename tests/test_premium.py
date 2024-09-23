@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
+from flask import Flask, url_for
+from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
 from hushline.db import db
@@ -26,6 +27,15 @@ from hushline.premium import (
 @pytest.fixture()
 def mock_stripe(mocker: MockFixture) -> MagicMock:
     return mocker.patch("hushline.premium.stripe")
+
+
+@pytest.fixture()
+def business_tier() -> Tier:
+    tier = db.session.query(Tier).filter_by(name="Business").first()
+    if not tier:
+        raise ValueError("Business tier not found")
+
+    return tier
 
 
 def test_create_products_and_prices(app: Flask, mock_stripe: MagicMock) -> None:
@@ -254,3 +264,69 @@ def test_handle_invoice_payment_succeeded(app: Flask) -> None:
         assert stripe_invoice.total == 2000
         assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
         assert user.tier_id == BUSINESS_TIER
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_upgrade_get_redirects_to_index(client: FlaskClient, user: User) -> None:
+    response = client.get(url_for("premium.upgrade"))
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_upgrade_post_user_already_on_business_tier(
+    client: FlaskClient, user: User, business_tier: Tier
+) -> None:
+    user.tier_id = BUSINESS_TIER
+    db.session.commit()
+
+    response = client.post(url_for("premium.upgrade"))
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_upgrade_process(
+    client: FlaskClient, user: User, business_tier: Tier, mocker: MockFixture
+) -> None:
+    user.stripe_customer_id = "cus_123"
+    db.session.commit()
+
+    mocker.patch("hushline.premium.create_subscription", return_value=MagicMock(id="sub_123"))
+    mocker.patch(
+        "hushline.premium.get_latest_invoice_payment_intent_client_secret",
+        return_value="secret_123",
+    )
+
+    response = client.post(url_for("premium.upgrade"))
+    assert response.status_code == 200
+
+    # Check that the user has a stripe_subscription_id
+    db.session.refresh(user)
+    assert user.stripe_subscription_id is not None
+    assert user.tier_id is None
+
+    # Send the webhook event
+    invoice = MagicMock(
+        id="inv_123",
+        customer="cus_123",
+        hosted_invoice_url="https://example.com",
+        total=2000,
+        status=StripeInvoiceStatusEnum.OPEN,
+        lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
+        subscription="sub_123",
+    )
+    handle_invoice_created(invoice)
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
+    assert stripe_invoice is not None
+
+    invoice.status = StripeInvoiceStatusEnum.PAID
+    handle_invoice_payment_succeeded(invoice)
+
+    # Check that the user is now on the business tier
+    db.session.refresh(user)
+    assert user.tier_id == BUSINESS_TIER
+
+    # And an invoice was created
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).first()
+    assert stripe_invoice is not None
