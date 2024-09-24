@@ -36,15 +36,6 @@
         <p>OCR Vision Assistant</p>
         <p>✅</p>
       </div>
-      {% if user.tier_id == 2 %}
-        <form
-          id="downgrade-form"
-          action="{{ url_for('premium.downgrade') }}"
-          method="post"
-        >
-          <button id="downgrade">Downgrade</button>
-        </form>
-      {% endif %}
     </div>
     <div class="plan plan-recommended">
       {% if user.tier_id == 1 or user.tier_id == None %}
@@ -90,6 +81,33 @@
           <button id="upgrade">Upgrade Now</button>
         </form>
       {% endif %}
+      {% if user.tier_id == 2 %}
+        {% if user.stripe_subscription_cancel_at_period_end %}
+        <p>Your subscription will expire on {{ user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.</p>
+        <form
+          id="enable-autorenew-form"
+          action="{{ url_for('premium.disable_autorenew') }}"
+          method="post"
+        >
+          <button id="enable-autorenew">Automatically Renew</button>
+        </form>
+        <form
+          id="cancel-form"
+          action="{{ url_for('premium.disable_autorenew') }}"
+          method="post"
+        >
+          <button id="cancel">Cancel Now</button>
+        </form>
+        {% else %}
+        <form
+          id="disable-autorenew-form"
+          action="{{ url_for('premium.disable_autorenew') }}"
+          method="post"
+        >
+          <button id="disable-autorenew">Don't Renew</button>
+        </form>
+        {% endif %}
+    {% endif %}
     </div>
   </div>
 

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -139,6 +140,8 @@ def register_commands(app: Flask) -> None:
         @stripe_cli.command("start-worker")
         def start_worker() -> None:
             """Start the Stripe worker"""
+            # Wait a few seconds to make sure the app is fully initialized
+            time.sleep(5)
             with app.app_context():
                 asyncio.run(premium.worker(app))
 

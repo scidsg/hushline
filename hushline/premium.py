@@ -1,11 +1,13 @@
 import asyncio
 import json
+from datetime import datetime
 from typing import Tuple
 
 import stripe
 from flask import (
     Blueprint,
     Flask,
+    abort,
     current_app,
     flash,
     jsonify,
@@ -181,8 +183,12 @@ def handle_subscription_created(subscription: stripe.Subscription) -> None:
         user.stripe_subscription_id = subscription.id
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
-        user.stripe_subscription_current_period_end = subscription.current_period_end
-        user.stripe_subscription_current_period_start = subscription.current_period_start
+        user.stripe_subscription_current_period_end = datetime.fromtimestamp(
+            subscription.current_period_end
+        )
+        user.stripe_subscription_current_period_start = datetime.fromtimestamp(
+            subscription.current_period_start
+        )
         db.session.commit()
     else:
         raise ValueError(f"Could not find user with customer ID {subscription.customer}")
@@ -196,13 +202,15 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
     if user:
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
-        user.stripe_subscription_current_period_end = subscription.current_period_end
-        user.stripe_subscription_current_period_start = subscription.current_period_start
+        user.stripe_subscription_current_period_end = datetime.fromtimestamp(
+            subscription.current_period_end
+        )
+        user.stripe_subscription_current_period_start = datetime.fromtimestamp(
+            subscription.current_period_start
+        )
 
-        if subscription.status in [
-            StripeSubscriptionStatusEnum.ACTIVE,
-            StripeSubscriptionStatusEnum.TRIALING,
-        ]:
+        current_app.logger.info("status is: " + subscription.status)
+        if subscription.status in ["active", "trialing"]:
             user.tier_id = BUSINESS_TIER
         else:
             user.tier_id = FREE_TIER
@@ -368,31 +376,92 @@ def create_blueprint(app: Flask) -> Blueprint:
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
-        # Subscribe the user to the business tier
+        # Does the user already have a Stripe customer?
+        if not user.stripe_customer_id:
+            try:
+                create_customer(user)
+            except stripe._error.StripeError as e:
+                current_app.logger.error(f"Failed to create Stripe customer: {e}")
+                flash("⚠️ Something went wrong!")
+                return redirect(url_for("premium.index"))
+
+        # Create a Stripe Checkout session
         try:
-            stripe_subscription = create_subscription(user, business_tier)
-            user.stripe_subscription_id = stripe_subscription.id
-            db.session.add(user)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(f"Stripe error: {e}")
-            flash("⚠️ Something went wrong!")
-            return redirect(url_for("premium.index"))
+            checkout_session = stripe.checkout.Session.create(
+                client_reference_id=str(user.id),
+                customer=user.stripe_customer_id,
+                line_items=[{"price": business_tier.stripe_price_id, "quantity": 1}],
+                mode="subscription",
+                success_url=url_for("premium.waiting", _external=True),
+                automatic_tax={"enabled": True},
+                customer_update={"address": "auto"},
+            )
+        except stripe._error.StripeError as e:
+            current_app.logger.error(f"Failed to create Stripe Checkout session: {e}")
+            return abort(500)
 
-        return render_template(
-            "premium-subscribe.html",
-            user=user,
-            tier=business_tier,
-            stripe_subscription_id=stripe_subscription.id,
-            stripe_client_secret=get_latest_invoice_payment_intent_client_secret(
-                stripe_subscription
-            ),
-            stripe_publishable_key=current_app.config.get("STRIPE_PUBLISHABLE_KEY"),
-        )
+        if checkout_session.url:
+            return redirect(checkout_session.url)
 
-    @bp.route("/downgrade", methods=["POST"])
+        return abort(500)
+
+    @bp.route("/disable-autorenew", methods=["POST"])
     @authentication_required
-    def downgrade() -> Response | str | Tuple[Response | str, int]:
+    def disable_autorenew() -> Response | str | Tuple[Response | str, int]:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if user.stripe_subscription_id:
+            try:
+                stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=True)
+                user.stripe_subscription_cancel_at_period_end = True
+                db.session.add(user)
+                db.session.commit()
+
+                current_app.logger.info(
+                    f"Autorenew disabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
+                )
+
+                flash("Autorenew has been disabled.")
+                return jsonify(success=True)
+            except stripe._error.StripeError as e:
+                current_app.logger.error(f"Stripe error: {e}")
+                return jsonify(success=False), 400
+
+        return jsonify(success=False), 400
+
+    @bp.route("/enable-autorenew", methods=["POST"])
+    @authentication_required
+    def enable_autorenew() -> Response | str | Tuple[Response | str, int]:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if user.stripe_subscription_id:
+            try:
+                stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=False)
+                user.stripe_subscription_cancel_at_period_end = False
+                db.session.add(user)
+                db.session.commit()
+
+                current_app.logger.info(
+                    f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
+                )
+
+                flash("Autorenew has been enabled.")
+                return jsonify(success=True)
+            except stripe._error.StripeError as e:
+                current_app.logger.error(f"Stripe error: {e}")
+                return jsonify(success=False), 400
+
+        return jsonify(success=False), 400
+
+    @bp.route("/cancel", methods=["POST"])
+    @authentication_required
+    def cancel() -> Response | str | Tuple[Response | str, int]:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
