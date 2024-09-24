@@ -166,6 +166,16 @@ def _pgp_user(client: FlaskClient, user: User) -> None:
 
 
 @pytest.fixture()
+def user_alias(app: Flask, user: User) -> Username:
+    uuid_ish = str(uuid4())[0:12]
+    username = Username(user_id=user.id, _username=f"test-{uuid_ish}", is_primary=False)
+    db.session.add(username)
+    db.session.commit()
+
+    return username
+
+
+@pytest.fixture()
 def message(app: Flask, user: User) -> Message:
     msg = Message(content=str(uuid4()), username_id=user.primary_username.id)
     db.session.add(msg)

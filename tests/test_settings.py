@@ -305,6 +305,48 @@ def test_update_smtp_settings_default_forwarding(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias(client: FlaskClient, user: User) -> None:
+    alias_username = str(uuid4())[0:12]
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": alias_username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Alias created successfully" in response.text
+
+    alias = db.session.scalars(db.select(Username).filter_by(_username=alias_username)).one()
+    assert not alias.is_primary
+    assert alias.user_id == user.id
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias_duplicate(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": user.primary_username.username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert "This username is already taken." in response.text
+    assert db.session.scalar(db.func.count(Username.id)) == 1
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_page_loads(client: FlaskClient, user: User, user_alias: Username) -> None:
+    response = client.get(
+        url_for("settings.alias", username_id=user_alias.id), follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert f"Alias: @{user_alias.username}" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_delete_account(client: FlaskClient, user: User, message: Message) -> None:
     # save these because SqlAlchemy is too smart about nullifying them on deletion
     user_id = user.id
@@ -317,3 +359,122 @@ def test_delete_account(client: FlaskClient, user: User, message: Message) -> No
     assert db.session.scalars(db.select(User).filter_by(id=user_id)).one_or_none() is None
     assert db.session.scalars(db.select(Username).filter_by(id=username_id)).one_or_none() is None
     assert db.session.scalars(db.select(Message).filter_by(id=msg_id)).one_or_none() is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_display_name(client: FlaskClient, user: User, user_alias: Username) -> None:
+    new_display_name = (user_alias.display_name or "") + "_NEW"
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "display_name": new_display_name,
+            "update_display_name": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Display name updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user_alias.username)
+    ).one()
+    assert updated_user.display_name == new_display_name
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_bio(client: FlaskClient, user: User) -> None:
+    data = {
+        "bio": str(uuid4()),
+        "update_bio": "",  # html form
+    }
+
+    for i in range(1, 5):
+        data[f"extra_field_label{i}"] = str(uuid4())
+        data[f"extra_field_value{i}"] = str(uuid4())
+
+    response = client.post(
+        url_for("settings.index"),
+        data=data,
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
+    assert updated_user.bio == data["bio"]
+
+    for i in range(1, 5):
+        label = f"extra_field_label{i}"
+        value = f"extra_field_value{i}"
+        assert getattr(updated_user, label) == data[label]
+        assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
+    data = {
+        "bio": str(uuid4()),
+        "update_bio": "",  # html form
+    }
+
+    for i in range(1, 5):
+        data[f"extra_field_label{i}"] = str(uuid4())
+        data[f"extra_field_value{i}"] = str(uuid4())
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data=data,
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user_alias.username)
+    ).one()
+    assert updated_user.bio == data["bio"]
+
+    for i in range(1, 5):
+        label = f"extra_field_label{i}"
+        value = f"extra_field_value{i}"
+        assert getattr(updated_user, label) == data[label]
+        assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_directory_visibility(client: FlaskClient, user: User) -> None:
+    original_visibility = user.primary_username.show_in_directory
+    resp = client.post(
+        url_for("settings.index"),
+        data={
+            "show_in_directory": not original_visibility,
+            "update_directory_visibility": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory visibility updated successfully" in resp.text
+    assert db.session.scalar(
+        db.select(Username.show_in_directory).filter_by(id=user.primary_username.id)
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_directory_visibility(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    original_visibility = user_alias.show_in_directory
+    resp = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "show_in_directory": not original_visibility,
+            "update_directory_visibility": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory visibility updated successfully" in resp.text
+    assert db.session.scalar(db.select(Username.show_in_directory).filter_by(id=user_alias.id))
