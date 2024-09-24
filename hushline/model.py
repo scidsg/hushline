@@ -38,6 +38,25 @@ class ExtraField:
     is_verified: Optional[bool]
 
 
+class StripeInvoiceStatusEnum(enum.Enum):
+    DRAFT = "draft"
+    OPEN = "open"
+    PAID = "paid"
+    UNCOLLECTIBLE = "uncollectible"
+    VOID = "void"
+
+
+class StripeSubscriptionStatusEnum(enum.Enum):
+    INCOMPLETE = "incomplete"
+    INCOMPLETE_EXPIRED = "incomplete_expired"
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    CANCELED = "canceled"
+    UNPAID = "unpaid"
+    PAUSED = "paused"
+
+
 class Username(Model):
     """
     Class representing a username and associated profile.
@@ -152,7 +171,15 @@ class User(Model):
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
 
     stripe_customer_id = mapped_column(db.String(255))
-    stripe_subscription_id = mapped_column(db.String(255))
+    stripe_subscription_id = mapped_column(db.String(255), nullable=True)
+    stripe_subscription_cancel_at_period_end = mapped_column(
+        db.Boolean, default=False, nullable=True
+    )
+    stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeSubscriptionStatusEnum)
+    )
+    stripe_subscription_current_period_end = mapped_column(db.DateTime, nullable=True)
+    stripe_subscription_current_period_start = mapped_column(db.DateTime, nullable=True)
 
     @property
     def password_hash(self) -> str:
@@ -340,14 +367,6 @@ class StripeEvent(Model):
         self.event_id = event.id
         self.event_type = event.type
         self.event_data = str(event)
-
-
-class StripeInvoiceStatusEnum(enum.Enum):
-    DRAFT = "draft"
-    OPEN = "open"
-    PAID = "paid"
-    UNCOLLECTIBLE = "uncollectible"
-    VOID = "void"
 
 
 class StripeInvoice(Model):

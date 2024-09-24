@@ -81,6 +81,40 @@ def upgrade():
         batch_op.add_column(
             sa.Column("stripe_subscription_id", sa.String(length=255), nullable=True)
         )
+        batch_op.add_column(
+            sa.Column("stripe_subscription_cancel_at_period_end", sa.Boolean, nullable=True)
+        )
+        batch_op.add_column(
+            sa.Column(
+                "stripe_subscription_status",
+                sa.Enum(
+                    "INCOMPLETE",
+                    "INCOMPLETE_EXPIRED",
+                    "TRIALING",
+                    "ACTIVE",
+                    "PAST_DUE",
+                    "CANCELED",
+                    "UNPAID",
+                    "PAUSED",
+                    name="stripesubscriptionstatusenum",
+                ),
+                nullable=True,
+            ),
+        )
+        batch_op.add_column(
+            sa.Column(
+                "stripe_subscription_current_period_end",
+                sa.DateTime(),
+                nullable=True,
+            ),
+        )
+        batch_op.add_column(
+            sa.Column(
+                "stripe_subscription_current_period_start",
+                sa.DateTime(),
+                nullable=True,
+            ),
+        )
         batch_op.create_index("idx_users_stripe_customer_id", ["stripe_customer_id"], unique=False)
         batch_op.create_foreign_key(None, "tiers", ["tier_id"], ["id"])
 
@@ -104,6 +138,10 @@ def downgrade():
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.drop_constraint(None, type_="foreignkey")
         batch_op.drop_index("idx_users_stripe_customer_id")
+        batch_op.drop_column("stripe_subscription_current_period_start")
+        batch_op.drop_column("stripe_subscription_current_period_end")
+        batch_op.drop_column("stripe_subscription_status")
+        batch_op.drop_column("stripe_subscription_cancel_at_period_end")
         batch_op.drop_column("stripe_subscription_id")
         batch_op.drop_column("stripe_customer_id")
         batch_op.drop_column("tier_id")
