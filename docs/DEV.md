@@ -82,3 +82,9 @@ Create a new revision:
 ```sh
 make revision name="my db changes"
 ```
+
+Test the migrations:
+
+```sh
+PYTEST_ADDOPTS='--alembic' make test
+```
