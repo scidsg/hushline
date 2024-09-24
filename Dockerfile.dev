@@ -22,3 +22,5 @@ ENV PYTHONPATH=/app
 COPY pyproject.toml poetry.lock .
 
 RUN poetry install
+
+COPY . /app
