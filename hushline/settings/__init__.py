@@ -171,14 +171,15 @@ def handle_change_username_form(
 
 
 def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url: str) -> Response:
-    current_app.logger.debug("Creating alias for {user.primary_username.username}")
+    current_app.logger.debug(f"Creating alias for {user.primary_username.username}")
     # TODO check that users are allowed to add aliases here (is premium, not too many)
     uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
     db.session.add(uname)
     try:
         db.session.commit()
     except IntegrityError as e:
-        if isinstance(e.orig, UniqueViolation) and '"usernames_username_key"' in str(e.orig):
+        db.session.rollback()
+        if isinstance(e.orig, UniqueViolation) and '"uq_usernames_username"' in str(e.orig):
             flash("💔 This username is already taken.")
         else:
             flash("⛔️ Internal server error. Alias not created.")
@@ -216,7 +217,6 @@ def create_blueprint() -> Blueprint:
         profile_form = ProfileForm()
 
         if request.method == "POST":
-            # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 return await handle_update_bio(
                     user.primary_username, profile_form, url_for(".index")
@@ -615,7 +615,12 @@ def create_blueprint() -> Blueprint:
 
         user = db.session.get(User, user_id)
         if user:
-            db.session.execute(db.delete(Message).filter_by(user_id=user.id))
+            db.session.execute(
+                db.delete(Message).filter(
+                    Message.username_id.in_(db.select(Username.id).filter_by(user_id=user.id))
+                )
+            )
+            db.session.execute(db.delete(Username).filter_by(user_id=user.id))
             db.session.delete(user)
             db.session.commit()
 
