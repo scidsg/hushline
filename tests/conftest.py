@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from hushline import create_app
 from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
-from hushline.model import User, Username
+from hushline.model import Message, User, Username
 
 CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@postgres:5432/{database}"
 TEMPLATE_DB_NAME = "app_db_template"
@@ -163,3 +163,11 @@ def _pgp_user(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as f:
         user.pgp_key = f.read()
     db.session.commit()
+
+
+@pytest.fixture()
+def message(app: Flask, user: User) -> Message:
+    msg = Message(content=str(uuid4()), username_id=user.primary_username.id)
+    db.session.add(msg)
+    db.session.commit()
+    return msg

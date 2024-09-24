@@ -1,11 +1,12 @@
 from unittest.mock import ANY, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import SMTPEncryption, User, Username
+from hushline.model import Message, SMTPEncryption, User, Username
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -301,3 +302,18 @@ def test_update_smtp_settings_default_forwarding(
     assert updated_user.smtp_password is None
     assert updated_user.smtp_encryption.value == SMTPEncryption.default().value
     assert updated_user.smtp_sender is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account(client: FlaskClient, user: User, message: Message) -> None:
+    # save these because SqlAlchemy is too smart about nullifying them on deletion
+    user_id = user.id
+    username_id = user.primary_username.id
+    msg_id = message.id
+
+    resp = client.post(url_for("settings.delete_account"), follow_redirects=True)
+    assert resp.status_code == 200
+    assert "Your account and all related information have been deleted." in resp.text
+    assert db.session.scalars(db.select(User).filter_by(id=user_id)).one_or_none() is None
+    assert db.session.scalars(db.select(Username).filter_by(id=username_id)).one_or_none() is None
+    assert db.session.scalars(db.select(Message).filter_by(id=msg_id)).one_or_none() is None

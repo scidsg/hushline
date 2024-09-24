@@ -4,7 +4,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import Message, User
+from hushline.model import Message, User, Username
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
