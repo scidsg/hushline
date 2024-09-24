@@ -108,6 +108,9 @@ class Username(Model):
     def valid_fields(self) -> Sequence[ExtraField]:
         return [x for x in self.extra_fields if x.label and x.value]
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id} username={self.username}>"
+
 
 class User(Model):
     __tablename__ = "users"
