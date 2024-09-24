@@ -4,7 +4,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import Message, User
+from hushline.model import Message, User, Username
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
@@ -42,6 +42,32 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     response = client.get(
         url_for("inbox", username=user.primary_username.username), follow_redirects=True
     )
+    assert response.status_code == 200
+    assert msg_content in response.text, response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_submit_message_to_alias(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    msg_content = "This is a test message."
+
+    response = client.post(
+        url_for("profile", username=user_alias.username),
+        data={
+            "content": msg_content,
+            "client_side_encrypted": "false",
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+
+    message = db.session.scalars(db.select(Message).filter_by(username_id=user_alias.id)).one()
+    assert message.content == msg_content
+
+    response = client.get(url_for("inbox", username=user_alias.username), follow_redirects=True)
     assert response.status_code == 200
     assert msg_content in response.text, response.text
 
