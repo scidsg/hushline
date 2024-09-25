@@ -11,31 +11,7 @@
       {% if user.tier_id == 2 %}
         <p class="plan-status">Fewer Features</p>
       {% endif %}
-      <h3>Core/Free</h3>
-      <div class="feature-meta">
-        <p>Monthly Messages</p>
-        <p>Unlimited</p>
-      </div>
-      <div class="feature-meta">
-        <p>Forwarding Addresses</p>
-        <p>1</p>
-      </div>
-      <div class="feature-meta">
-        <p>Tor Onion Service</p>
-        <p>✅</p>
-      </div>
-      <div class="feature-meta">
-        <p>End-to-End Encryption</p>
-        <p>✅</p>
-      </div>
-      <div class="feature-meta">
-        <p>Easy Message Forwarding</p>
-        <p>✅</p>
-      </div>
-      <div class="feature-meta">
-        <p>OCR Vision Assistant</p>
-        <p>✅</p>
-      </div>
+      {% include "premium/free-features.html" %}
     </div>
     <div class="plan plan-recommended">
       {% if user.tier_id == 1 or user.tier_id == None %}
@@ -44,34 +20,7 @@
       {% if user.tier_id == 2 %}
         <p class="plan-status">Current Plan</p>
       {% endif %}
-      <h3>Super User</h3>
-      <div class="feature-meta">
-        <p>All Free Features</p>
-      </div>
-      <div class="feature-meta">
-        <p>Monthly Messages</p>
-        <p>Unlimited</p>
-      </div>
-      <div class="feature-meta">
-        <p>Aliases</p>
-        <p>100</p>
-      </div>
-      <div class="feature-meta">
-        <p>Forwarding Addresses</p>
-        <p>100</p>
-      </div>
-      <div class="feature-meta">
-        <p>Custom Message Subjects</p>
-        <p>100</p>
-      </div>
-      <div class="feature-meta">
-        <p>Self-Destructing Messages</p>
-        <p>✅</p>
-      </div>
-      <div class="feature-meta">
-        <p>Monthly Price</p>
-        <p>$26</p>
-      </div>
+      {% include "premium/business-features.html" %}
       {% if user.tier_id == 1 or user.tier_id == None %}
         <form
           id="upgrade-form"

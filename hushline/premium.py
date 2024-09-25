@@ -41,54 +41,55 @@ def init_stripe() -> None:
 
 def create_products_and_prices() -> None:
     current_app.logger.info("Creating products and prices")
+
     # Make sure the products and prices are created in Stripe
-    tiers = db.session.query(Tier).all()
-    for tier in tiers:
-        if tier.monthly_amount == 0:
-            continue
+    business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+    if not business_tier:
+        current_app.logger.error("Could not find business tier")
+        return
 
-        # Check if the product exists
-        create_product = False
-        if tier.stripe_product_id is None:
+    # Check if the product exists in the db
+    create_product = False
+    if business_tier.stripe_product_id is None:
+        create_product = True
+    else:
+        try:
+            product = stripe.Product.retrieve(business_tier.stripe_product_id)
+        except stripe._error.InvalidRequestError:
             create_product = True
-        else:
-            try:
-                product = stripe.Product.retrieve(tier.stripe_product_id)
-            except stripe._error.InvalidRequestError:
-                create_product = True
 
-        if create_product:
-            current_app.logger.info(f"Creating product for tier: {tier.name}")
-            product = stripe.Product.create(name=tier.name, type="service")
-            tier.stripe_product_id = product.id
-            db.session.add(tier)
-            db.session.commit()
-        else:
-            current_app.logger.info(f"Product already exists for tier: {tier.name}")
+    if create_product:
+        current_app.logger.info(f"Creating product for tier: {business_tier.name}")
+        product = stripe.Product.create(name=business_tier.name, type="service")
+        business_tier.stripe_product_id = product.id
+        db.session.add(business_tier)
+        db.session.commit()
+    else:
+        current_app.logger.info(f"Product already exists for tier: {business_tier.name}")
 
-        # Check if the price exists
-        create_price = False
-        if tier.stripe_price_id is None:
+    # Check if the price exists
+    create_price = False
+    if business_tier.stripe_price_id is None:
+        create_price = True
+    else:
+        try:
+            price = stripe.Price.retrieve(business_tier.stripe_price_id)
+        except stripe._error.InvalidRequestError:
             create_price = True
-        else:
-            try:
-                price = stripe.Price.retrieve(tier.stripe_price_id)
-            except stripe._error.InvalidRequestError:
-                create_price = True
 
-        if create_price:
-            current_app.logger.info(f"Creating price for tier: {tier.name}")
-            price = stripe.Price.create(
-                product=product.id,
-                unit_amount=tier.monthly_amount,
-                currency="usd",
-                recurring={"interval": "month"},
-            )
-            tier.stripe_price_id = price.id
-            db.session.add(tier)
-            db.session.commit()
-        else:
-            current_app.logger.info(f"Price already exists for tier: {tier.name}")
+    if create_price:
+        current_app.logger.info(f"Creating price for tier: {business_tier.name}")
+        price = stripe.Price.create(
+            product=product.id,
+            unit_amount=business_tier.monthly_amount,
+            currency="usd",
+            recurring={"interval": "month"},
+        )
+        business_tier.stripe_price_id = price.id
+        db.session.add(business_tier)
+        db.session.commit()
+    else:
+        current_app.logger.info(f"Price already exists for tier: {business_tier.name}")
 
 
 def update_price(tier: Tier) -> None:
@@ -327,7 +328,6 @@ def create_blueprint(app: Flask) -> Blueprint:
     @authentication_required
     def index() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
-        current_app.logger.info(f"User: {user}")
         if not user:
             session.clear()
             return redirect(url_for("login"))
@@ -347,6 +347,31 @@ def create_blueprint(app: Flask) -> Blueprint:
         )
 
         return render_template("premium.html", user=user, invoices=invoices)
+
+    @bp.route("/select-tier", methods=["GET"])
+    @authentication_required
+    def select_tier() -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        return render_template("premium-select-tier.html", user=user)
+
+    @bp.route("/select-tier/free", methods=["POST"])
+    @authentication_required
+    def select_free() -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if user.tier_id is None:
+            user.tier_id = FREE_TIER
+            db.session.add(user)
+            db.session.commit()
+
+        return redirect(url_for("inbox"))
 
     @bp.route("/waiting", methods=["GET"])
     @authentication_required
