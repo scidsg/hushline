@@ -182,10 +182,10 @@ def test_handle_subscription_created(app: Flask) -> None:
         subscription = MagicMock()
         subscription.customer = "cus_123"
         subscription.id = "sub_123"
-        subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE
+        subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE.value
         subscription.cancel_at_period_end = False
-        subscription.current_period_end = datetime.now() + timedelta(days=30)
-        subscription.current_period_start = datetime.now()
+        subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
+        subscription.current_period_start = datetime.now().timestamp()
 
         handle_subscription_created(subscription)
 
@@ -202,10 +202,10 @@ def test_handle_subscription_updated_upgrade(app: Flask) -> None:
 
         subscription = MagicMock()
         subscription.id = "sub_123"
-        subscription.status = StripeSubscriptionStatusEnum.ACTIVE
+        subscription.status = StripeSubscriptionStatusEnum.ACTIVE.value
         subscription.cancel_at_period_end = False
-        subscription.current_period_end = datetime.now() + timedelta(days=30)
-        subscription.current_period_start = datetime.now()
+        subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
+        subscription.current_period_start = datetime.now().timestamp()
 
         handle_subscription_updated(subscription)
 
@@ -221,10 +221,10 @@ def test_handle_subscription_updated_downgrade(app: Flask) -> None:
 
         subscription = MagicMock()
         subscription.id = "sub_123"
-        subscription.status = StripeSubscriptionStatusEnum.CANCELED
+        subscription.status = StripeSubscriptionStatusEnum.CANCELED.value
         subscription.cancel_at_period_end = True
-        subscription.current_period_end = datetime.now() + timedelta(days=30)
-        subscription.current_period_start = datetime.now()
+        subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
+        subscription.current_period_start = datetime.now().timestamp()
 
         handle_subscription_updated(subscription)
 
@@ -365,21 +365,128 @@ def test_upgrade_post_user_already_on_business_tier(
 #     assert stripe_invoice is not None
 
 
-def test_downgrade_no_user_in_session(client: FlaskClient) -> None:
-    response = client.post(url_for("premium.downgrade"))
+def test_disable_autorenew_no_user_in_session(client: FlaskClient) -> None:
+    response = client.post(url_for("premium.disable_autorenew"))
     assert response.status_code == 302
     assert response.location == url_for("login")
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_downgrade_no_subscription(client: FlaskClient, user: User) -> None:
-    response = client.post(url_for("premium.downgrade"))
+def test_disable_autorenew_no_subscription(client: FlaskClient, user: User) -> None:
+    response = client.post(url_for("premium.disable_autorenew"))
     assert response.status_code == 400
     assert response.json == {"success": False}
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_downgrade_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+def test_disable_autorenew_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+    user.stripe_subscription_id = "sub_123"
+    db.session.commit()
+
+    assert user.stripe_subscription_cancel_at_period_end is False
+
+    mock_stripe_modify = mocker.patch(
+        "hushline.premium.stripe.Subscription.modify", return_value=MagicMock()
+    )
+
+    response = client.post(url_for("premium.disable_autorenew"))
+    assert response.status_code == 200
+    assert response.json == {"success": True}
+    assert mock_stripe_modify.called
+
+    db.session.refresh(user)
+    assert user.stripe_subscription_cancel_at_period_end is True
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_disable_autorenew_stripe_error(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    user.stripe_subscription_id = "sub_123"
+    db.session.commit()
+
+    stripe_error_instance = MagicMock()
+    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+
+    mock_stripe_modify = mocker.patch(
+        "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
+    )
+
+    response = client.post(url_for("premium.disable_autorenew"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+    assert mock_stripe_modify.called
+
+
+def test_enable_autorenew_no_user_in_session(client: FlaskClient) -> None:
+    response = client.post(url_for("premium.enable_autorenew"))
+    assert response.status_code == 302
+    assert response.location == url_for("login")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_autorenew_no_subscription(client: FlaskClient, user: User) -> None:
+    response = client.post(url_for("premium.enable_autorenew"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_autorenew_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.stripe_subscription_cancel_at_period_end = True
+    db.session.commit()
+
+    assert user.stripe_subscription_cancel_at_period_end is True
+
+    mock_stripe_modify = mocker.patch(
+        "hushline.premium.stripe.Subscription.modify", return_value=MagicMock()
+    )
+
+    response = client.post(url_for("premium.enable_autorenew"))
+    assert response.status_code == 200
+    assert response.json == {"success": True}
+    assert mock_stripe_modify.called
+
+    db.session.refresh(user)
+    assert user.stripe_subscription_cancel_at_period_end is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_autorenew_stripe_error(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    user.stripe_subscription_id = "sub_123"
+    db.session.commit()
+
+    stripe_error_instance = MagicMock()
+    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+
+    mock_stripe_modify = mocker.patch(
+        "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
+    )
+
+    response = client.post(url_for("premium.enable_autorenew"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+    assert mock_stripe_modify.called
+
+
+def test_cancel_no_user_in_session(client: FlaskClient) -> None:
+    response = client.post(url_for("premium.cancel"))
+    assert response.status_code == 302
+    assert response.location == url_for("login")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_cancel_no_subscription(client: FlaskClient, user: User) -> None:
+    response = client.post(url_for("premium.cancel"))
+    assert response.status_code == 400
+    assert response.json == {"success": False}
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
     user.stripe_subscription_id = "sub_123"
     user.tier_id = BUSINESS_TIER
     db.session.commit()
@@ -388,7 +495,7 @@ def test_downgrade_success(client: FlaskClient, user: User, mocker: MockFixture)
         "hushline.premium.stripe.Subscription.delete", return_value=MagicMock()
     )
 
-    response = client.post(url_for("premium.downgrade"))
+    response = client.post(url_for("premium.cancel"))
     assert response.status_code == 200
     assert response.json == {"success": True}
     assert mock_stripe_delete.called
@@ -402,21 +509,19 @@ def test_downgrade_success(client: FlaskClient, user: User, mocker: MockFixture)
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_downgrade_stripe_error(client: FlaskClient, user: User, mocker: MockFixture) -> None:
+def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixture) -> None:
     user.stripe_subscription_id = "sub_123"
     user.tier_id = BUSINESS_TIER
     db.session.commit()
 
-    # Create an instance of the StripeError exception
     stripe_error_instance = MagicMock()
     stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
 
-    # Mock the stripe.Subscription.delete method to raise the StripeError exception
     mock_stripe_delete = mocker.patch(
         "hushline.premium.stripe.Subscription.delete", side_effect=stripe_error_instance
     )
 
-    response = client.post(url_for("premium.downgrade"))
+    response = client.post(url_for("premium.cancel"))
     assert response.status_code == 400
     assert response.json == {"success": False}
     assert mock_stripe_delete.called
