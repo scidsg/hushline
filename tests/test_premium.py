@@ -318,51 +318,55 @@ def test_upgrade_post_user_already_on_business_tier(
     assert response.location == url_for("premium.index")
 
 
-# @pytest.mark.usefixtures("_authenticated_user")
-# def test_upgrade_process(
-#     client: FlaskClient, user: User, business_tier: Tier, mocker: MockFixture
-# ) -> None:
-#     user.stripe_customer_id = "cus_123"
-#     db.session.commit()
+@pytest.mark.usefixtures("_authenticated_user")
+def test_upgrade_process(
+    client: FlaskClient, user: User, business_tier: Tier, mocker: MockFixture
+) -> None:
+    user.stripe_customer_id = "cus_123"
+    db.session.commit()
 
-#     mocker.patch("hushline.premium.create_subscription", return_value=MagicMock(id="sub_123"))
-#     mocker.patch(
-#         "hushline.premium.get_latest_invoice_payment_intent_client_secret",
-#         return_value="secret_123",
-#     )
+    mocker.patch(
+        "stripe.checkout.Session.create",
+        return_value=MagicMock(url="https://checkout.stripe.com/session_123"),
+    )
 
-#     response = client.post(url_for("premium.upgrade"))
-#     assert response.status_code == 200
+    response = client.post(url_for("premium.upgrade"))
+    assert response.status_code == 302
+    assert response.location == "https://checkout.stripe.com/session_123"
 
-#     # Check that the user has a stripe_subscription_id
-#     db.session.refresh(user)
-#     assert user.stripe_subscription_id is not None
-#     assert user.tier_id is None
+    # Send the webhook events
+    subscription = MagicMock(
+        id="sub_123",
+        customer="cus_123",
+        status=StripeSubscriptionStatusEnum.INCOMPLETE.value,
+        cancel_at_period_end=False,
+        current_period_end=(datetime.now() + timedelta(days=30)).timestamp(),
+        current_period_start=datetime.now().timestamp(),
+    )
+    invoice = MagicMock(
+        id="inv_123",
+        customer="cus_123",
+        hosted_invoice_url="https://stripe.com/invoice/inv_123",
+        total=2000,
+        status=StripeInvoiceStatusEnum.OPEN.value,
+        lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
+        subscription="sub_123",
+    )
 
-#     # Send the webhook event
-#     invoice = MagicMock(
-#         id="inv_123",
-#         customer="cus_123",
-#         hosted_invoice_url="https://example.com",
-#         total=2000,
-#         status=StripeInvoiceStatusEnum.OPEN,
-#         lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
-#         subscription="sub_123",
-#     )
-#     handle_invoice_created(invoice)
-#     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
-#     assert stripe_invoice is not None
+    handle_subscription_created(subscription)
+    handle_invoice_created(invoice)
+    invoice.status = StripeInvoiceStatusEnum.PAID.value
+    handle_invoice_updated(invoice)
+    subscription.status = StripeSubscriptionStatusEnum.ACTIVE.value
+    handle_subscription_updated(subscription)
 
-#     invoice.status = StripeInvoiceStatusEnum.PAID
-#     handle_invoice_updated(invoice)
+    # Check that the user is now on the business tier
+    db.session.refresh(user)
+    assert user.tier_id == BUSINESS_TIER
 
-#     # Check that the user is now on the business tier
-#     db.session.refresh(user)
-#     assert user.tier_id == BUSINESS_TIER
-
-#     # And an invoice was created
-#     stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).first()
-#     assert stripe_invoice is not None
+    # And an invoice was created
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).first()
+    assert stripe_invoice is not None
 
 
 def test_disable_autorenew_no_user_in_session(client: FlaskClient) -> None:
