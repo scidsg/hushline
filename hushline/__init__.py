@@ -76,6 +76,11 @@ def create_app() -> Flask:
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
 
+    # Inject variables into every template
+    @app.context_processor
+    def inject_config() -> dict[str, Any]:
+        return {"is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False))}
+
     # Run migrations
     db.init_app(app)
     Migrate(app, db)

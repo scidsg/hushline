@@ -325,7 +325,6 @@ def create_blueprint() -> Blueprint:
             directory_visibility_form=directory_visibility_form,
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
             # Premium-specific data
-            is_premium_enabled=bool(current_app.config.get("STRIPE_SECRET_KEY", False)),
             business_tier_display_price=business_tier_display_price,
         )
 

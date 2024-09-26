@@ -154,6 +154,7 @@ def user_password() -> str:
 @pytest.fixture()
 def user(app: Flask, user_password: str, database: str) -> User:
     user = User(password=user_password)
+    user.tier_id = 1
     db.session.add(user)
     db.session.flush()
 

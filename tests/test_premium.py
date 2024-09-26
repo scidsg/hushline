@@ -20,8 +20,6 @@ from hushline.premium import (
     FREE_TIER,
     create_customer,
     create_products_and_prices,
-    create_subscription,
-    get_latest_invoice_payment_intent_client_secret,
     get_subscription,
     handle_invoice_created,
     handle_invoice_updated,
@@ -46,7 +44,7 @@ def business_tier() -> Tier:
     return tier
 
 
-def test_create_products_and_prices(app: Flask, mock_stripe: MagicMock) -> None:
+def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
     with app.app_context():
         # Remove the stripe_product_id and stripe_price_id from the Business tier
         tier = Tier.query.filter_by(name="Business").first()
@@ -59,13 +57,34 @@ def test_create_products_and_prices(app: Flask, mock_stripe: MagicMock) -> None:
         db.session.add(tier)
         db.session.commit()
 
-        mock_stripe.Product.create.return_value = MagicMock(id="prod_123")
-        mock_stripe.Price.create.return_value = MagicMock(id="price_123")
+        stripe_error_instance = MagicMock()
+        stripe_error_instance.side_effect = stripe._error.InvalidRequestError("", param={})
+
+        # Mock the Stripe API calls
+        mock_stripe_product_create = mocker.patch(
+            "hushline.premium.stripe.Product.create", return_value=MagicMock(id="prod_123")
+        )
+        mock_stripe_price_create = mocker.patch(
+            "hushline.premium.stripe.Price.create", return_value=MagicMock(id="price_123")
+        )
+        mock_stripe_product_retrieve = mocker.patch(
+            "hushline.premium.stripe.Product.retrieve",
+            side_effect=stripe_error_instance,
+        )
+        mocker.patch(
+            "hushline.premium.stripe.Product.list",
+            return_value=[MagicMock(id="prod_123", name="Business")],
+        )
+        mock_stripe_price_retrieve = mocker.patch(
+            "hushline.premium.stripe.Price.retrieve",
+            side_effect=stripe_error_instance,
+        )
 
         create_products_and_prices()
 
-        assert mock_stripe.Product.create.called
-        assert mock_stripe.Price.create.called
+        # Check that the product creation was called
+        assert mock_stripe_product_create.called
+        assert mock_stripe_price_create.called
 
         # Check that stripe_product_id and stripe_price_id were set
         tier = Tier.query.filter_by(name="Business").first()
@@ -73,8 +92,34 @@ def test_create_products_and_prices(app: Flask, mock_stripe: MagicMock) -> None:
         if not tier:
             return
 
-        assert tier.stripe_product_id is not None
-        assert tier.stripe_price_id is not None
+        assert tier.stripe_product_id == "prod_123"
+        assert tier.stripe_price_id == "price_123"
+
+        # Test the case where the product already exists in Stripe
+
+        tier.stripe_product_id = "prod_123"
+        tier.stripe_price_id = None
+        db.session.add(tier)
+        db.session.commit()
+
+        mock_stripe_product_retrieve.side_effect = None
+        mock_stripe_product_retrieve.return_value = MagicMock(id="prod_123")
+        mock_stripe_price_retrieve.side_effect = stripe_error_instance
+
+        create_products_and_prices()
+
+        # Check that the product creation was not called again
+        assert mock_stripe_product_create.call_count == 1
+        assert mock_stripe_price_create.call_count == 2
+
+        # Check that stripe_product_id and stripe_price_id were set
+        tier = Tier.query.filter_by(name="Business").first()
+        assert tier is not None
+        if not tier:
+            return
+
+        assert tier.stripe_product_id == "prod_123"
+        assert tier.stripe_price_id == "price_123"
 
 
 def test_update_price_existing(app: Flask, mock_stripe: MagicMock) -> None:
@@ -124,37 +169,6 @@ def test_create_customer(app: Flask, mock_stripe: MagicMock) -> None:
         # Check that the customer ID was saved to the database
         db.session.refresh(user)
         assert user.stripe_customer_id is not None
-
-
-def test_create_subscription(app: Flask, mock_stripe: MagicMock) -> None:
-    mock_stripe.Customer.create.return_value = MagicMock(id="cus_123")
-    mock_stripe.Subscription.create.return_value = MagicMock(id="sub_123")
-
-    with app.app_context():
-        tier = Tier.query.filter_by(name="Business").first()
-        assert tier is not None
-
-        user = User(email="test@example.com", password="password")  # noqa: S106
-        db.session.add(user)
-        db.session.commit()
-
-        create_subscription(user, tier)
-
-        assert mock_stripe.Subscription.create.called
-        assert user.stripe_subscription_id is not None
-
-        # Check that the subscription ID was saved to the database
-        db.session.refresh(user)
-        assert user.stripe_subscription_id is not None
-
-
-def test_get_latest_invoice_payment_intent_client_secret(mock_stripe: MagicMock) -> None:
-    mock_stripe.Invoice.retrieve.return_value = MagicMock(payment_intent="pi_123")
-    mock_stripe.PaymentIntent.retrieve.return_value = MagicMock(client_secret="secret_123")  # noqa: S106
-
-    secret = get_latest_invoice_payment_intent_client_secret(MagicMock(latest_invoice="inv_123"))
-
-    assert secret == "secret_123"
 
 
 def test_get_subscription(app: Flask, mock_stripe: MagicMock) -> None:
@@ -322,12 +336,13 @@ def test_upgrade_post_user_already_on_business_tier(
 def test_upgrade_process(
     client: FlaskClient, user: User, business_tier: Tier, mocker: MockFixture
 ) -> None:
-    user.stripe_customer_id = "cus_123"
-    db.session.commit()
-
     mocker.patch(
         "stripe.checkout.Session.create",
         return_value=MagicMock(url="https://checkout.stripe.com/session_123"),
+    )
+    mocker.patch(
+        "stripe.Customer.create",
+        return_value=MagicMock(id="cus_123"),
     )
 
     response = client.post(url_for("premium.upgrade"))

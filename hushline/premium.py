@@ -101,6 +101,7 @@ def create_products_and_prices() -> None:
         if stripe_product.default_price:
             try:
                 stripe_price = stripe.Price.retrieve(str(stripe_product.default_price))
+                current_app.logger.info(f"Found Stripe price for tier: {business_tier.name}")
                 business_tier.stripe_price_id = stripe_price.id
                 business_tier.monthly_amount = stripe_price.unit_amount
                 db.session.add(business_tier)
@@ -162,44 +163,17 @@ def update_price(tier: Tier) -> None:
 def create_customer(user: User) -> stripe.Customer:
     email: str = user.email if user.email is not None else ""
 
-    if user.stripe_customer_id is None:
-        stripe_customer = stripe.Customer.create(email=email)
-        user.stripe_customer_id = stripe_customer.id
-        db.session.add(user)
-        db.session.commit()
-        return stripe_customer
+    if user.stripe_customer_id is not None:
+        try:
+            return stripe.Customer.modify(user.stripe_customer_id, email=email)
+        except stripe._error.InvalidRequestError:
+            user.stripe_customer_id = None
 
-    return stripe.Customer.modify(user.stripe_customer_id, email=email)
-
-
-def create_subscription(user: User, tier: Tier) -> stripe.Subscription:
-    stripe_customer = create_customer(user)
-
-    # Create a subscription
-    stripe_subscription = stripe.Subscription.create(
-        customer=stripe_customer.id,
-        items=[{"price": tier.stripe_price_id}],
-        payment_behavior="default_incomplete",
-    )
-    user.stripe_subscription_id = stripe_subscription.id
+    stripe_customer = stripe.Customer.create(email=email)
+    user.stripe_customer_id = stripe_customer.id
     db.session.add(user)
     db.session.commit()
-
-    return stripe_subscription
-
-
-def get_latest_invoice_payment_intent_client_secret(
-    subscription: stripe.Subscription,
-) -> str | None:
-    if subscription.latest_invoice is None:
-        return None
-
-    stripe_invoice = stripe.Invoice.retrieve(str(subscription.latest_invoice))
-    if stripe_invoice.payment_intent is None:
-        return None
-
-    stripe_payment_intent = stripe.PaymentIntent.retrieve(str(stripe_invoice.payment_intent))
-    return stripe_payment_intent.client_secret
+    return stripe_customer
 
 
 def get_subscription(user: User) -> stripe.Subscription | None:
@@ -207,6 +181,21 @@ def get_subscription(user: User) -> stripe.Subscription | None:
         return None
 
     return stripe.Subscription.retrieve(user.stripe_subscription_id)
+
+
+def get_business_price_string() -> str:
+    business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+    if not business_tier:
+        current_app.logger.error("Could not find business tier")
+        return "NA"
+
+    business_price = f"{business_tier.monthly_amount / 100:.2f}"
+    if business_price.endswith(".00"):
+        business_price = business_price[:-3]
+    elif business_price.endswith("0"):
+        business_price = business_price[:-1]
+
+    return business_price
 
 
 def handle_subscription_created(subscription: stripe.Subscription) -> None:
@@ -379,21 +368,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             .all()
         )
 
-        # Load the business tier
-        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
-        if not business_tier:
-            current_app.logger.error("Could not find business tier")
-            flash("⚠️ Something went wrong!")
-            business_price = "NA"
-        else:
-            business_price = f"{business_tier.monthly_amount / 100:.2f}"
-            if business_price.endswith(".00"):
-                business_price = business_price[:-3]
-            elif business_price.endswith("0"):
-                business_price = business_price[:-1]
-
         return render_template(
-            "premium.html", user=user, invoices=invoices, business_price=business_price
+            "premium.html", user=user, invoices=invoices, business_price=get_business_price_string()
         )
 
     @bp.route("/select-tier", methods=["GET"])
@@ -404,7 +380,9 @@ def create_blueprint(app: Flask) -> Blueprint:
             session.clear()
             return redirect(url_for("login"))
 
-        return render_template("premium-select-tier.html", user=user)
+        return render_template(
+            "premium-select-tier.html", user=user, business_price=get_business_price_string()
+        )
 
     @bp.route("/select-tier/free", methods=["POST"])
     @authentication_required
@@ -449,14 +427,13 @@ def create_blueprint(app: Flask) -> Blueprint:
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
-        # Does the user already have a Stripe customer?
-        if not user.stripe_customer_id:
-            try:
-                create_customer(user)
-            except stripe._error.StripeError as e:
-                current_app.logger.error(f"Failed to create Stripe customer: {e}")
-                flash("⚠️ Something went wrong!")
-                return redirect(url_for("premium.index"))
+        # Make sure the user has a Stripe customer
+        try:
+            create_customer(user)
+        except stripe._error.StripeError as e:
+            current_app.logger.error(f"Failed to create Stripe customer: {e}")
+            flash("⚠️ Something went wrong!")
+            return redirect(url_for("premium.index"))
 
         # Create a Stripe Checkout session
         try:
