@@ -29,16 +29,6 @@ services:
     ports: []
     restart: always
     command: poetry run flask stripe start-worker
-    depends_on:
-      - stripe_data
-
-  stripe_data:
-    <<: *app_env
-    ports: []
-    restart: on-failure
-    command: poetry run flask stripe create-products-and-prices
-    depends_on:
-      - dev_data
 
   dev_data:
     <<: *app_env
