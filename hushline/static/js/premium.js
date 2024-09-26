@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const disableAutorenewForm = document.querySelector(
-    "#disable-autorenew-form"
+    "#disable-autorenew-form",
   );
   const enableAutorenewForm = document.querySelector("#enable-autorenew-form");
   const cancelForm = document.querySelector("#cancel-form");
@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       // Show confirmation dialog
       const confirmed = confirm(
-        "Are you sure you want to not renew your subscription?"
+        "Are you sure you want to not renew your subscription?",
       );
       if (!confirmed) return;
 
@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       // Show confirmation dialog
       const confirmed = confirm(
-        "Are you sure you want to cancel your subscription?"
+        "Are you sure you want to cancel your subscription?",
       );
       if (!confirmed) return;
 
