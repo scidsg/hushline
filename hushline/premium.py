@@ -54,16 +54,34 @@ def create_products_and_prices() -> None:
         create_product = True
     else:
         try:
-            product = stripe.Product.retrieve(business_tier.stripe_product_id)
+            stripe_product = stripe.Product.retrieve(business_tier.stripe_product_id)
         except stripe._error.InvalidRequestError:
             create_product = True
 
     if create_product:
-        current_app.logger.info(f"Creating product for tier: {business_tier.name}")
-        product = stripe.Product.create(name=business_tier.name, type="service")
-        business_tier.stripe_product_id = product.id
-        db.session.add(business_tier)
-        db.session.commit()
+        # Do we already have a product in Stripe?
+        found = False
+        stripe_products = stripe.Product.list(limit=100)
+        for stripe_product in stripe_products:
+            if stripe_product.name == business_tier.name:
+                current_app.logger.info(f"Found Stripe product for tier: {business_tier.name}")
+                found = True
+                business_tier.stripe_product_id = stripe_product.id
+                db.session.add(business_tier)
+                db.session.commit()
+                break
+
+        # Create a product if we didn't find one
+        if not found:
+            current_app.logger.info(f"Creating Stripe product for tier: {business_tier.name}")
+            stripe_product = stripe.Product.create(
+                name=business_tier.name,
+                type="service",
+                tax_code="txcd_10103001",  # Software as a service (SaaS) - business use
+            )
+            business_tier.stripe_product_id = stripe_product.id
+            db.session.add(business_tier)
+            db.session.commit()
     else:
         current_app.logger.info(f"Product already exists for tier: {business_tier.name}")
 
@@ -78,16 +96,31 @@ def create_products_and_prices() -> None:
             create_price = True
 
     if create_price:
-        current_app.logger.info(f"Creating price for tier: {business_tier.name}")
-        price = stripe.Price.create(
-            product=product.id,
-            unit_amount=business_tier.monthly_amount,
-            currency="usd",
-            recurring={"interval": "month"},
-        )
-        business_tier.stripe_price_id = price.id
-        db.session.add(business_tier)
-        db.session.commit()
+        # Do we already have a price in Stripe?
+        found = False
+        if stripe_product.default_price:
+            try:
+                stripe_price = stripe.Price.retrieve(stripe_product.default_price)
+                business_tier.stripe_price_id = stripe_price.id
+                business_tier.monthly_amount = stripe_price.unit_amount
+                db.session.add(business_tier)
+                db.session.commit()
+                found = True
+            except stripe._error.InvalidRequestError:
+                found = False
+
+        # Create a price if we didn't find one
+        if not found:
+            current_app.logger.info(f"Creating price for tier: {business_tier.name}")
+            price = stripe.Price.create(
+                product=stripe_product.id,
+                unit_amount=business_tier.monthly_amount,
+                currency="usd",
+                recurring={"interval": "month"},
+            )
+            business_tier.stripe_price_id = price.id
+            db.session.add(business_tier)
+            db.session.commit()
     else:
         current_app.logger.info(f"Price already exists for tier: {business_tier.name}")
 
