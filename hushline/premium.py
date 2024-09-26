@@ -100,7 +100,7 @@ def create_products_and_prices() -> None:
         found = False
         if stripe_product.default_price:
             try:
-                stripe_price = stripe.Price.retrieve(stripe_product.default_price)
+                stripe_price = stripe.Price.retrieve(str(stripe_product.default_price))
                 business_tier.stripe_price_id = stripe_price.id
                 business_tier.monthly_amount = stripe_price.unit_amount
                 db.session.add(business_tier)
@@ -379,7 +379,22 @@ def create_blueprint(app: Flask) -> Blueprint:
             .all()
         )
 
-        return render_template("premium.html", user=user, invoices=invoices)
+        # Load the business tier
+        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+        if not business_tier:
+            current_app.logger.error("Could not find business tier")
+            flash("⚠️ Something went wrong!")
+            business_price = "NA"
+        else:
+            business_price = f"{business_tier.monthly_amount / 100:.2f}"
+            if business_price.endswith(".00"):
+                business_price = business_price[:-3]
+            elif business_price.endswith("0"):
+                business_price = business_price[:-1]
+
+        return render_template(
+            "premium.html", user=user, invoices=invoices, business_price=business_price
+        )
 
     @bp.route("/select-tier", methods=["GET"])
     @authentication_required
