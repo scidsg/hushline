@@ -365,7 +365,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         # Load the user's invoices
         invoices = (
-            db.session.query(StripeInvoice)
+            db.session.scalars(db.select(StripeInvoice)
             .filter_by(user_id=user.id)
             .filter_by(status=StripeInvoiceStatusEnum.PAID)
             .order_by(desc(StripeInvoice.created_at))
