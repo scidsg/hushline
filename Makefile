@@ -25,8 +25,7 @@ migrate-prod: ## Run prod env (alembic) migrations
 	poetry run flask db upgrade
 
 .PHONY: dev-data
-dev-data: ## Run dev env migrations, and add dev data
-	poetry run ./scripts/dev_migrations.py && \
+dev-data: migrate-dev ## Run dev env migrations, and add dev data
 	poetry run ./scripts/dev_data.py
 
 .PHONY: lint
