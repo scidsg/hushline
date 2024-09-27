@@ -287,12 +287,14 @@ async def worker(app: Flask) -> None:
     current_app.logger.error("Starting worker")
     with app.app_context():
         while True:
-            stripe_event = (
-                db.session.query(StripeEvent)
-                .filter_by(status=StripeEventStatusEnum.PENDING)
+            stripe_event = db.session.scalars(
+                db.update(StripeEvent)
+                .where(status=StripeEventStatusEnum.PENDING)
                 .order_by(StripeEvent.created_at)
-                .first()
-            )
+                .values("in_progress")
+                .limit(1)
+                .returning(StripeEvent)
+            ).one_or_none()
             if not stripe_event:
                 await asyncio.sleep(10)
                 continue
