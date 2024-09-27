@@ -23,6 +23,7 @@ from werkzeug.wrappers.response import Response
 from .db import db
 from .model import (
     StripeEvent,
+    StripeEventStatusEnum,
     StripeInvoice,
     StripeInvoiceStatusEnum,
     StripeSubscriptionStatusEnum,
@@ -288,7 +289,7 @@ async def worker(app: Flask) -> None:
         while True:
             stripe_event = (
                 db.session.query(StripeEvent)
-                .filter_by(status="pending")
+                .filter_by(status=StripeEventStatusEnum.PENDING)
                 .order_by(StripeEvent.created_at)
                 .first()
             )
@@ -296,7 +297,7 @@ async def worker(app: Flask) -> None:
                 await asyncio.sleep(10)
                 continue
 
-            stripe_event.status = "in_progress"
+            stripe_event.status = StripeEventStatusEnum.IN_PROGRESS
             db.session.add(stripe_event)
             db.session.commit()
 
@@ -332,12 +333,12 @@ async def worker(app: Flask) -> None:
                 current_app.logger.error(
                     f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}"  # noqa: E501
                 )
-                stripe_event.status = "error"
+                stripe_event.status = StripeEventStatusEnum.ERROR
                 db.session.add(stripe_event)
                 db.session.commit()
                 continue
 
-            stripe_event.status = "finished"
+            stripe_event.status = StripeEventStatusEnum.FINISHED
             db.session.add(stripe_event)
             db.session.commit()
 

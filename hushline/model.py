@@ -57,6 +57,13 @@ class StripeSubscriptionStatusEnum(enum.Enum):
     PAUSED = "paused"
 
 
+class StripeEventStatusEnum(enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    ERROR = "error"
+    FINISHED = "finished"
+
+
 class Username(Model):
     """
     Class representing a username and associated profile.
@@ -360,7 +367,9 @@ class StripeEvent(Model):
     event_type: Mapped[str] = mapped_column(db.String(255))
     event_data: Mapped[str] = mapped_column(db.Text)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
-    status: Mapped[str] = mapped_column(db.String(255), default="pending")
+    status: Mapped[Optional[StripeEventStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeEventStatusEnum), default=StripeEventStatusEnum.PENDING
+    )
 
     def __init__(self, event: Event) -> None:
         super().__init__()
