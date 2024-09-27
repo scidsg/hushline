@@ -129,40 +129,40 @@ def create_app() -> Flask:
 
 
 def register_commands(app: Flask) -> None:
-    if app.config["STRIPE_SECRET_KEY"]:
-        stripe_cli = AppGroup("stripe")
+    stripe_cli = AppGroup("stripe")
 
-        @stripe_cli.command("configure")
-        def configure() -> None:
-            """Configure Stripe and premium tiers"""
-            # Make sure tiers exist
+    @stripe_cli.command("configure")
+    def configure() -> None:
+        """Configure Stripe and premium tiers"""
+        # Make sure tiers exist
+        with app.app_context():
+            free_tier = db.session.query(Tier).filter_by(name="Free").first()
+            if not free_tier:
+                free_tier = Tier(name="Free", monthly_amount=0)
+                db.session.add(free_tier)
+                db.session.commit()
+            business_tier = db.session.query(Tier).filter_by(name="Business").first()
+            if not business_tier:
+                business_tier = Tier(name="Business", monthly_amount=2000)
+                db.session.add(business_tier)
+                db.session.commit()
+
+        # Configure Stripe
+        if app.config["STRIPE_SECRET_KEY"]:
             with app.app_context():
-                free_tier = db.session.query(Tier).filter_by(name="Free").first()
-                if not free_tier:
-                    free_tier = Tier(name="Free", monthly_amount=0)
-                    db.session.add(free_tier)
-                    db.session.commit()
-                business_tier = db.session.query(Tier).filter_by(name="Business").first()
-                if not business_tier:
-                    business_tier = Tier(name="Business", monthly_amount=2000)
-                    db.session.add(business_tier)
-                    db.session.commit()
+                premium.init_stripe()
+                premium.create_products_and_prices()
+        else:
+            app.logger.warning("Skipping Stripe configuration because STRIPE_SECRET_KEY is not set")
 
-            # Configure Stripe
-            if app.config["STRIPE_SECRET_KEY"]:
-                with app.app_context():
-                    premium.init_stripe()
-                    premium.create_products_and_prices()
-            else:
-                app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
+    @stripe_cli.command("start-worker")
+    def start_worker() -> None:
+        """Start the Stripe worker"""
+        if not app.config["STRIPE_SECRET_KEY"]:
+            app.logger.error("Cannot start the Stripe worker without a STRIPE_SECRET_KEY")
+            return
 
-        @stripe_cli.command("start-worker")
-        def start_worker() -> None:
-            """Start the Stripe worker"""
-            with app.app_context():
-                asyncio.run(premium.worker(app))
+        with app.app_context():
+            asyncio.run(premium.worker(app))
 
-        app.cli.add_command(stripe_cli)
-
-    else:
-        app.logger.warning("Stripe is not configured because STRIPE_SECRET_KEY is not set")
+    app.cli.add_command(stripe_cli)

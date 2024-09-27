@@ -22,7 +22,6 @@ services:
     depends_on:
       - postgres
     restart: always
-    command: ./scripts/dev_start.sh
 
   worker:
     <<: *app_env
