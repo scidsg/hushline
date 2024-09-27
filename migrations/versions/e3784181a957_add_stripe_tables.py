@@ -49,7 +49,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("customer_id", sa.String(length=255), nullable=False),
         sa.Column("invoice_id", sa.String(length=255), nullable=False),
-        sa.Column("hosted_invoice_url", sa.String(length=255), nullable=False),
+        sa.Column("hosted_invoice_url", sa.String(length=2048), nullable=False),
         sa.Column("total", sa.Integer(), nullable=False),
         sa.Column(
             "status",

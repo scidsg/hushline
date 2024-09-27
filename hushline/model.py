@@ -38,6 +38,7 @@ class ExtraField:
     is_verified: Optional[bool]
 
 
+@enum.unique
 class StripeInvoiceStatusEnum(enum.Enum):
     DRAFT = "draft"
     OPEN = "open"
@@ -46,6 +47,7 @@ class StripeInvoiceStatusEnum(enum.Enum):
     VOID = "void"
 
 
+@enum.unique
 class StripeSubscriptionStatusEnum(enum.Enum):
     INCOMPLETE = "incomplete"
     INCOMPLETE_EXPIRED = "incomplete_expired"
@@ -57,6 +59,7 @@ class StripeSubscriptionStatusEnum(enum.Enum):
     PAUSED = "paused"
 
 
+@enum.unique
 class StripeEventStatusEnum(enum.Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -385,7 +388,7 @@ class StripeInvoice(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[str] = mapped_column(db.String(255))
     invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
-    hosted_invoice_url: Mapped[str] = mapped_column(db.String(255))
+    hosted_invoice_url: Mapped[str] = mapped_column(db.String(2048))
     total: Mapped[int] = mapped_column(db.Integer)
     status: Mapped[Optional[StripeInvoiceStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeInvoiceStatusEnum)
