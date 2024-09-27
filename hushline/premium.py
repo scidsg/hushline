@@ -336,6 +336,7 @@ async def worker(app: Flask) -> None:
                     f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}"  # noqa: E501
                 )
                 stripe_event.status = StripeEventStatusEnum.ERROR
+                stripe_event.error_message = str(e)
                 db.session.add(stripe_event)
                 db.session.commit()
                 continue

@@ -17,7 +17,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "stripe_events",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -26,6 +26,7 @@ def upgrade():
         sa.Column("event_data", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("status", sa.String(length=255), nullable=False),
+        sa.Column("error_message", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("stripe_events", schema=None) as batch_op:
@@ -116,27 +117,12 @@ def upgrade():
             ),
         )
         batch_op.create_index("idx_users_stripe_customer_id", ["stripe_customer_id"], unique=False)
-        batch_op.create_foreign_key(None, "tiers", ["tier_id"], ["id"])
-
-    # Add the default tiers
-    tiers_table = sa.table(
-        "tiers",
-        sa.column("id", sa.Integer),
-        sa.column("name", sa.String),
-        sa.column("monthly_amount", sa.Integer),
-    )
-    op.bulk_insert(
-        tiers_table,
-        [
-            {"id": 1, "name": "Free", "monthly_amount": 0},
-            {"id": 2, "name": "Business", "monthly_amount": 2000},
-        ],
-    )
+        batch_op.create_foreign_key("users_tier_id_fkey", "tiers", ["tier_id"], ["id"])
 
 
-def downgrade():
+def downgrade() -> None:
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_="foreignkey")
+        batch_op.drop_constraint("users_tier_id_fkey", type_="foreignkey")
         batch_op.drop_index("idx_users_stripe_customer_id")
         batch_op.drop_column("stripe_subscription_current_period_start")
         batch_op.drop_column("stripe_subscription_current_period_end")

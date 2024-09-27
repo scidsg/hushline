@@ -370,6 +370,7 @@ class StripeEvent(Model):
     status: Mapped[Optional[StripeEventStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeEventStatusEnum), default=StripeEventStatusEnum.PENDING
     )
+    error_message: Mapped[Optional[str]] = mapped_column(db.Text)
 
     def __init__(self, event: Event) -> None:
         super().__init__()
