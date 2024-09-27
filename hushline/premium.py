@@ -364,8 +364,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             flash("⚠️ Your subscription is incomplete. Please try again.", "warning")
 
         # Load the user's invoices
-        invoices = (
-            db.session.scalars(db.select(StripeInvoice)
+        invoices = db.session.scalars(
+            db.select(StripeInvoice)
             .filter_by(user_id=user.id)
             .filter_by(status=StripeInvoiceStatusEnum.PAID)
             .order_by(desc(StripeInvoice.created_at))
@@ -574,7 +574,9 @@ def create_blueprint(app: Flask) -> Blueprint:
             return jsonify(success=False), 400
 
         # Have we seen this one before?
-        stripe_event = db.session.scalars(db.select(StripeEvent).filter_by(event_id=event.id)).one_or_none()
+        stripe_event = db.session.scalars(
+            db.select(StripeEvent).filter_by(event_id=event.id)
+        ).one_or_none()
         if stripe_event:
             current_app.logger.info(f"Event already seen: {event}")
             return jsonify(success=True)
