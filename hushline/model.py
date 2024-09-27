@@ -354,7 +354,9 @@ class Tier(Model):
     stripe_price_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)
 
     def __init__(self, name: str, monthly_amount: int) -> None:
-        super().__init__(name=name, monthly_amount=monthly_amount)
+        super().__init__()
+        self.name = name
+        self.monthly_amount = monthly_amount
 
 
 class StripeEvent(Model):
@@ -410,7 +412,9 @@ class StripeInvoice(Model):
             self.created_at = datetime.fromtimestamp(invoice.created, tz=timezone.utc)
 
         # Look up the user by their customer ID
-        user = db.session.scalars(db.select(User).filter_by(stripe_customer_id=invoice.customer)).one_or_none()
+        user = db.session.scalars(
+            db.select(User).filter_by(stripe_customer_id=invoice.customer)
+        ).one_or_none()
         if user:
             self.user_id = user.id
         else:
@@ -420,7 +424,9 @@ class StripeInvoice(Model):
         if invoice.lines.data[0].plan:
             product_id = invoice.lines.data[0].plan.product
 
-            tier = db.session.scalars(db.select(Tier).filter_by(stripe_product_id=product_id)).one_or_none()
+            tier = db.session.scalars(
+                db.select(Tier).filter_by(stripe_product_id=product_id)
+            ).one_or_none()
             if tier:
                 self.tier_id = tier.id
             else:

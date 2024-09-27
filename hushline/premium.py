@@ -130,6 +130,10 @@ def create_products_and_prices() -> None:
 def update_price(tier: Tier) -> None:
     current_app.logger.info(f"Updating price for tier {tier.name} to {tier.monthly_amount}")
 
+    if not tier.stripe_product_id:
+        current_app.logger.error(f"Tier {tier.name} does not have a product ID")
+        return
+
     # See if we already have an appropriate price for this product
     prices = stripe.Price.search(query=f'product:"{tier.stripe_product_id}"')
     found_price_id = None
@@ -202,7 +206,9 @@ def get_business_price_string() -> str:
 def handle_subscription_created(subscription: stripe.Subscription) -> None:
     # customer.subscription.created
 
-    user = db.session.scalars(db.select(User).filter_by(stripe_customer_id=subscription.customer)).one_or_none()
+    user = db.session.scalars(
+        db.select(User).filter_by(stripe_customer_id=subscription.customer)
+    ).one_or_none()
     if user:
         user.stripe_subscription_id = subscription.id
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
@@ -222,7 +228,9 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
     # customer.subscription.updated
 
     # If subscription changes to cancel or unpaid, downgrade user
-    user = db.session.scalars(db.select(User).filter_by(stripe_subscription_id=subscription.id)).one_or_none()
+    user = db.session.scalars(
+        db.select(User).filter_by(stripe_subscription_id=subscription.id)
+    ).one_or_none()
     if user:
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
@@ -428,6 +436,10 @@ def create_blueprint(app: Flask) -> Blueprint:
         business_tier = db.session.get(Tier, BUSINESS_TIER)
         if not business_tier:
             current_app.logger.error("Could not find business tier")
+            flash("⚠️ Something went wrong!")
+            return redirect(url_for("premium.index"))
+        if not business_tier.stripe_price_id:
+            current_app.logger.error("Business tier does not have a price ID")
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
