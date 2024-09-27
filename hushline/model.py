@@ -422,7 +422,7 @@ class StripeInvoice(Model):
         if invoice.lines.data[0].plan:
             product_id = invoice.lines.data[0].plan.product
 
-            tier = db.session.query(Tier).filter_by(stripe_product_id=product_id).first()
+            tier = db.session.scalars(db.select(Tier).filter_by(stripe_product_id=product_id)).one_or_none()
             if tier:
                 self.tier_id = tier.id
             else:
