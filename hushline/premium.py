@@ -425,7 +425,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("premium.index"))
 
         # Select the business tier
-        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+        business_tier = db.session.get(Tier, BUSINESS_TIER)
         if not business_tier:
             current_app.logger.error("Could not find business tier")
             flash("⚠️ Something went wrong!")
