@@ -86,17 +86,20 @@ def create_app() -> Flask:
     Migrate(app, db)
 
     # Make sure tiers exist
-    with app.app_context():
-        free_tier = db.session.query(Tier).filter_by(name="Free").first()
-        if not free_tier:
-            free_tier = Tier(name="Free", monthly_amount=0)
-            db.session.add(free_tier)
-            db.session.commit()
-        business_tier = db.session.query(Tier).filter_by(name="Business").first()
-        if not business_tier:
-            business_tier = Tier(name="Business", monthly_amount=2000)
-            db.session.add(business_tier)
-            db.session.commit()
+    try:
+        with app.app_context():
+            free_tier = db.session.query(Tier).filter_by(name="Free").first()
+            if not free_tier:
+                free_tier = Tier(name="Free", monthly_amount=0)
+                db.session.add(free_tier)
+                db.session.commit()
+            business_tier = db.session.query(Tier).filter_by(name="Business").first()
+            if not business_tier:
+                business_tier = Tier(name="Business", monthly_amount=2000)
+                db.session.add(business_tier)
+                db.session.commit()
+    except Exception:
+        app.logger.debug("Skipping tier creation because the database is not initialized")
 
     # Configure Stripe
     if app.config["STRIPE_SECRET_KEY"]:
