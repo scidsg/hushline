@@ -222,7 +222,7 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
     # customer.subscription.updated
 
     # If subscription changes to cancel or unpaid, downgrade user
-    user = db.session.query(User).filter_by(stripe_subscription_id=subscription.id).first()
+    user = db.session.scalars(db.select(User).filter_by(stripe_subscription_id=subscription.id)).one_or_none()
     if user:
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
