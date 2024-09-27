@@ -61,7 +61,7 @@ def main() -> None:
     for data in tiers:
         name = str(data["name"])  # type: ignore
         monthly_amount = int(data["monthly_amount"])  # type: ignore
-        if not db.session.query(exists(Tier).where(Tier.name == data["name"])).scalar():
+        if not db.session.scalar(db.exists(Tier).where(Tier.name == data["name"]).select()):
             tier = Tier(name, monthly_amount)
             db.session.add(tier)
             db.session.commit()
