@@ -574,7 +574,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return jsonify(success=False), 400
 
         # Have we seen this one before?
-        stripe_event = db.session.query(StripeEvent).filter_by(event_id=event.id).first()
+        stripe_event = db.session.scalars(db.select(StripeEvent).filter_by(event_id=event.id)).one_or_none()
         if stripe_event:
             current_app.logger.info(f"Event already seen: {event}")
             return jsonify(success=True)
