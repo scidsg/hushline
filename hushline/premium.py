@@ -365,7 +365,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         # Load the user's invoices
         invoices = (
-            db.session.query(StripeInvoice)
+            db.session.scalars(db.select(StripeInvoice)
             .filter_by(user_id=user.id)
             .filter_by(status=StripeInvoiceStatusEnum.PAID)
             .order_by(desc(StripeInvoice.created_at))
@@ -425,7 +425,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("premium.index"))
 
         # Select the business tier
-        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+        business_tier = db.session.get(Tier, BUSINESS_TIER)
         if not business_tier:
             current_app.logger.error("Could not find business tier")
             flash("⚠️ Something went wrong!")
@@ -574,7 +574,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return jsonify(success=False), 400
 
         # Have we seen this one before?
-        stripe_event = db.session.query(StripeEvent).filter_by(event_id=event.id).first()
+        stripe_event = db.session.scalars(db.select(StripeEvent).filter_by(event_id=event.id)).one_or_none()
         if stripe_event:
             current_app.logger.info(f"Event already seen: {event}")
             return jsonify(success=True)
