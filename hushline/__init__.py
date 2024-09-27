@@ -153,7 +153,7 @@ def register_commands(app: Flask) -> None:
                 premium.init_stripe()
                 premium.create_products_and_prices()
         else:
-            app.logger.warning("Skipping Stripe configuration because STRIPE_SECRET_KEY is not set")
+            app.logger.info("Skipping Stripe configuration because STRIPE_SECRET_KEY is not set")
 
     @stripe_cli.command("start-worker")
     def start_worker() -> None:
