@@ -22,7 +22,7 @@ services:
     depends_on:
       - postgres
     restart: always
-    command: poetry run flask run --debug --host=0.0.0.0 --port=8080 --with-threads
+    command: ./scripts/dev_start.sh
 
   worker:
     <<: *app_env
