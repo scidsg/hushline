@@ -412,7 +412,7 @@ class StripeInvoice(Model):
             self.created_at = datetime.fromtimestamp(invoice.created, tz=timezone.utc)
 
         # Look up the user by their customer ID
-        user = db.session.query(User).filter_by(stripe_customer_id=invoice.customer).first()
+        user = db.session.scalars(db.select(User).filter_by(stripe_customer_id=invoice.customer)).one_or_none()
         if user:
             self.user_id = user.id
         else:
