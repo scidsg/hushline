@@ -350,13 +350,11 @@ class Tier(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(db.String(255), unique=True)
     monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
-    stripe_product_id = mapped_column(db.String(255), unique=True)
-    stripe_price_id = mapped_column(db.String(255), unique=True)
+    stripe_product_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)
 
     def __init__(self, name: str, monthly_amount: int) -> None:
-        super().__init__()
-        self.name = name
-        self.monthly_amount = monthly_amount
+        super().__init__(name=name, monthly_amount=monthly_amount)
 
 
 class StripeEvent(Model):
@@ -387,8 +385,8 @@ class StripeInvoice(Model):
     invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     hosted_invoice_url: Mapped[str] = mapped_column(db.String(255))
     total: Mapped[int] = mapped_column(db.Integer)
-    status: Mapped[StripeInvoiceStatusEnum] = mapped_column(
-        SQLAlchemyEnum(StripeInvoiceStatusEnum), nullable=True
+    status: Mapped[Optional[StripeInvoiceStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeInvoiceStatusEnum)
     )
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
