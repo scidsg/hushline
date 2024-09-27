@@ -26,6 +26,7 @@ from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
 from ..model import Message, SMTPEncryption, Tier, User, Username
+from ..premium import BUSINESS_TIER
 from ..utils import authentication_required, create_smtp_config
 from .forms import (
     ChangePasswordForm,
@@ -275,7 +276,7 @@ def create_blueprint() -> Blueprint:
             user_count = len(all_users)
 
         # Load the business tier price
-        business_tier = db.session.query(Tier).filter_by(name="Business").first()
+        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
         business_tier_display_price = ""
         if business_tier:
             price_usd = business_tier.monthly_amount / 100
