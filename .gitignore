@@ -6,12 +6,8 @@ __pycache__
 _DEV.md
 .DS_Store
 /venv
-hushline.db
 /tests/__pycache__
 hushline/static/data/users_directory.json
-volumes/app
-volumes/redis
-volumes/postgres
 /node_modules
 .coverage
 htmlcov

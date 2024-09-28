@@ -17,7 +17,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     with op.batch_alter_table("users") as batch_op:
         batch_op.add_column(sa.Column("extra_field_label1", sa.String(), nullable=True))
         batch_op.add_column(sa.Column("extra_field_value1", sa.String(), nullable=True))
@@ -28,10 +28,8 @@ def upgrade():
         batch_op.add_column(sa.Column("extra_field_label4", sa.String(), nullable=True))
         batch_op.add_column(sa.Column("extra_field_value4", sa.String(), nullable=True))
 
-    # ### end Alembic commands ###
 
-
-def downgrade():
+def downgrade() -> None:
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.drop_column("extra_field_value4")
         batch_op.drop_column("extra_field_label4")
@@ -41,5 +39,3 @@ def downgrade():
         batch_op.drop_column("extra_field_label2")
         batch_op.drop_column("extra_field_value1")
         batch_op.drop_column("extra_field_label1")
-
-    # ### end Alembic commands ###

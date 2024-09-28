@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+
+{% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
+
 {% block title %}
   {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
     Send a Message to {{ display_name_or_username }}
@@ -16,12 +19,12 @@
     {% endif %}
   </h2>
 
-  {% if user.is_admin or user.is_verified %}
+  {% if user.is_admin or username.is_verified %}
     <div class="badgeContainer">
       {% if user.is_admin %}
         <p class="badge">⚙️&nbsp;Admin</p>
       {% endif %}
-      {% if user.is_verified %}
+      {% if username.is_verified %}
         <p class="badge">⭐️&nbsp;Verified</p>
         <a
           class="meta"
@@ -35,26 +38,17 @@
     </div>
   {% endif %}
 
-  {% if user.bio %}
-    <p class="bio">{{ user.bio }}</p>
+  {% if username.bio %}
+    <p class="bio">{{ username.bio }}</p>
   {% endif %}
-  {%
-    set extra_fields = [
-      {'label': user.extra_field_label1, 'value': user.extra_field_value1, 'verified': user.extra_field_verified1},
-      {'label': user.extra_field_label2, 'value': user.extra_field_value2, 'verified': user.extra_field_verified2},
-      {'label': user.extra_field_label3, 'value': user.extra_field_value3, 'verified': user.extra_field_verified3},
-      {'label': user.extra_field_label4, 'value': user.extra_field_value4, 'verified': user.extra_field_verified4}
-    ]
-  %}
-  {%- set valid_fields = extra_fields | selectattr('label', 'defined') | selectattr('value', 'defined') | selectattr('value') | list -%}
 
-  {% if valid_fields | length > 0 %}
+  {% if username.valid_fields | length > 0 %}
     <div class="extra-fields">
-      {% for field in valid_fields %}
+      {% for field in username.valid_fields %}
         <p class="extra-field">
           <span class="extra-field-label">{{ field.label }}</span>
           <span class="extra-field-value">
-            {% if field.verified %}
+            {% if field.is_verified %}
               <span class="icon verifiedURL" title="Verified Address"></span>
             {% endif %}
             {% if field.value.startswith('https://') %}
@@ -72,7 +66,6 @@
       {% endfor %}
     </div>
   {% endif %}
-  {% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
 
   {% if current_user_id == user.id %}
     <p class="instr">
@@ -93,7 +86,7 @@
 
   <form
     method="POST"
-    action="{{ url_for('submit_message', username=username) }}"
+    action="{{ url_for('submit_message', username=username.username) }}"
     id="messageForm"
   >
     {% if not pgp_required_but_not_set %}

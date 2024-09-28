@@ -4,10 +4,12 @@ import re
 import secrets
 import socket
 from datetime import UTC, datetime, timedelta
+from typing import Sequence
 
 import pyotp
 from flask import (
     Flask,
+    current_app,
     flash,
     make_response,
     redirect,
@@ -24,7 +26,7 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
 from .forms import ComplexPassword
-from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User
+from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User, Username
 from .utils import SMTPConfig, authentication_required, create_smtp_config, send_email
 
 # Logging setup
@@ -73,6 +75,30 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
 
 
+def validate_captcha(captcha_answer: str) -> bool:
+    if not captcha_answer.isdigit():
+        flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
+        return False
+
+    if captcha_answer != session.get("math_answer"):
+        flash("Incorrect CAPTCHA. Please try again.", "error")
+        return False
+
+    return True
+
+
+def get_ip_address() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("1.1.1.1", 1))
+        ip_address = s.getsockname()[0]
+    except Exception:
+        ip_address = "127.0.0.1"
+    finally:
+        s.close()
+    return ip_address
+
+
 def init_app(app: Flask) -> None:
     @app.route("/")
     def index() -> Response:
@@ -95,26 +121,17 @@ def init_app(app: Flask) -> None:
             flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
-        messages = db.session.scalars(
-            db.select(Message).filter_by(user_id=user.id).order_by(Message.id.desc())
-        ).all()
-        secondary_users_dict = {su.id: su for su in user.secondary_usernames}
-
         return render_template(
             "inbox.html",
             user=user,
-            messages=messages,
-            secondary_usernames=secondary_users_dict,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/to/<username>", methods=["GET"])
     def profile(username: str) -> Response | str:
         form = MessageForm()
-        user = db.session.scalars(
-            db.select(User).filter_by(primary_username=username).limit(1)
-        ).first()
-        if not user:
+        uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
+        if not uname:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
@@ -140,61 +157,34 @@ def init_app(app: Flask) -> None:
             session.pop(f"{scope}:salt", None)
 
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
-        num1 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
-        num2 = secrets.randbelow(10) + 1  # To get a number between 1 and 10
+        num1 = secrets.randbelow(10) + 1
+        num2 = secrets.randbelow(10) + 1
         math_problem = f"{num1} + {num2} ="
         session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
-
-        # Prepare extra fields and verification status
-        extra_fields = [
-            {
-                "label": user.extra_field_label1,
-                "value": user.extra_field_value1,
-                "verified": user.extra_field_verified1,
-            },
-            {
-                "label": user.extra_field_label2,
-                "value": user.extra_field_value2,
-                "verified": user.extra_field_verified2,
-            },
-            {
-                "label": user.extra_field_label3,
-                "value": user.extra_field_value3,
-                "verified": user.extra_field_verified3,
-            },
-            {
-                "label": user.extra_field_label4,
-                "value": user.extra_field_value4,
-                "verified": user.extra_field_verified4,
-            },
-        ]
 
         return render_template(
             "profile.html",
             form=form,
-            user=user,
-            username=username,
-            display_name_or_username=user.display_name or user.primary_username,
+            user=uname.user,
+            username=uname,
+            display_name_or_username=uname.display_name or uname.username,
             current_user_id=session.get("user_id"),
-            public_key=user.pgp_key,
+            public_key=uname.user.pgp_key,
             is_personal_server=app.config["IS_PERSONAL_SERVER"],
             require_pgp=app.config["REQUIRE_PGP"],
             math_problem=math_problem,
-            extra_fields=extra_fields,  # Pass extra fields to template
         )
 
     @app.route("/to/<username>", methods=["POST"])
     def submit_message(username: str) -> Response | str:
         form = MessageForm()
-        user = db.session.scalars(
-            db.select(User).filter_by(primary_username=username).limit(1)
-        ).first()
-        if not user:
+        uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
+        if not uname:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
 
         if form.validate_on_submit():
-            if not user.pgp_key and app.config["REQUIRE_PGP"]:
+            if not uname.user.pgp_key and app.config["REQUIRE_PGP"]:
                 flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
                 return redirect(url_for("profile", username=username))
 
@@ -222,9 +212,9 @@ def init_app(app: Flask) -> None:
                 content_to_save = (
                     content  # Assume content is already encrypted and includes contact method
                 )
-            elif user.pgp_key:
+            elif uname.user.pgp_key:
                 try:
-                    encrypted_content = encrypt_message(full_content, user.pgp_key)
+                    encrypted_content = encrypt_message(full_content, uname.user.pgp_key)
                     if not encrypted_content:
                         flash("⛔️ Failed to encrypt message.", "error")
                         return redirect(url_for("profile", username=username))
@@ -236,11 +226,11 @@ def init_app(app: Flask) -> None:
             else:
                 content_to_save = full_content
 
-            new_message = Message(content=content_to_save, user_id=user.id)
+            new_message = Message(content=content_to_save, username_id=uname.id)
             db.session.add(new_message)
             db.session.commit()
 
-            if user.email and content_to_save:
+            if uname.user.email and content_to_save:
                 try:
                     smtp_config: SMTPConfig = create_smtp_config(
                         app.config["SMTP_USERNAME"],
@@ -250,17 +240,19 @@ def init_app(app: Flask) -> None:
                         app.config["NOTIFICATIONS_ADDRESS"],
                         encryption=SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
                     )
-                    if user.smtp_server:
+                    if uname.user.smtp_server:
                         smtp_config = create_smtp_config(
-                            user.smtp_username,
-                            user.smtp_server,
-                            user.smtp_port,
-                            user.smtp_password,
-                            user.smtp_sender,
-                            encryption=user.smtp_encryption,
+                            uname.user.smtp_username,
+                            uname.user.smtp_server,
+                            uname.user.smtp_port,
+                            uname.user.smtp_password,
+                            uname.user.smtp_sender,
+                            encryption=uname.user.smtp_encryption,
                         )
 
-                    email_sent = send_email(user.email, "New Message", content_to_save, smtp_config)
+                    email_sent = send_email(
+                        uname.user.email, "New Message", content_to_save, smtp_config
+                    )
                     flash_message = (
                         "👍 Message submitted successfully."
                         if email_sent
@@ -280,17 +272,6 @@ def init_app(app: Flask) -> None:
     def redirect_submit_message(username: str) -> Response:
         return redirect(url_for("profile", username=username), 301)
 
-    def validate_captcha(captcha_answer: str) -> bool:
-        if not captcha_answer.isdigit():
-            flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
-            return False
-
-        if captcha_answer != session.get("math_answer"):
-            flash("Incorrect CAPTCHA. Please try again.", "error")
-            return False
-
-        return True
-
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @authentication_required
     def delete_message(message_id: int) -> Response:
@@ -303,14 +284,30 @@ def init_app(app: Flask) -> None:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
 
-        message = db.session.get(Message, message_id)
-        if message and message.user_id == user.id:
-            db.session.delete(message)
-            db.session.commit()
-            flash("🗑️ Message deleted successfully.")
-            return redirect(url_for("inbox"))
+        row_count = db.session.execute(
+            db.delete(Message).where(
+                Message.id == message_id,
+                Message.username_id.in_(
+                    db.select(Username.user_id)
+                    .select_from(Username)
+                    .filter(Username.user_id == user.id)
+                ),
+            )
+        ).rowcount
+        match row_count:
+            case 1:
+                db.session.commit()
+                flash("🗑️ Message deleted successfully.")
+            case 0:
+                db.session.rollback()
+                flash("⛔️ Message not found.")
+            case _:
+                db.session.rollback()
+                current_app.logger.error(
+                    f"Multiple messages would have been deleted. Message.id={message_id}"
+                )
+                flash("Internal server error. Message not deleted.")
 
-        flash("⛔️ Message not found or unauthorized access.")
         return redirect(url_for("inbox"))
 
     @app.route("/register", methods=["GET", "POST"])
@@ -335,8 +332,8 @@ def init_app(app: Flask) -> None:
             invite_code_input = form.invite_code.data if require_invite_code else None
             if invite_code_input:
                 invite_code = db.session.scalars(
-                    db.select(InviteCode).filter_by(code=invite_code_input).limit(1)
-                ).first()
+                    db.select(InviteCode).filter_by(code=invite_code_input)
+                ).one_or_none()
                 if not invite_code or invite_code.expiration_date.replace(
                     tzinfo=UTC
                 ) < datetime.now(UTC):
@@ -350,9 +347,9 @@ def init_app(app: Flask) -> None:
                         400,
                     )
 
-            if db.session.scalars(
-                db.select(User).filter_by(primary_username=username).limit(1)
-            ).first():
+            if db.session.scalar(
+                db.exists(Username).where(Username._username == username).select()
+            ):
                 flash("💔 Username already taken.", "error")
                 return (
                     render_template(
@@ -363,10 +360,12 @@ def init_app(app: Flask) -> None:
                     409,
                 )
 
-            # Create new user instance
-            new_user = User(primary_username=username)
-            new_user.password_hash = password  # This triggers the password_hash setter
-            db.session.add(new_user)
+            user = User(password=password)
+            db.session.add(user)
+            db.session.flush()
+
+            username = Username(_username=username, user_id=user.id, is_primary=True)
+            db.session.add(username)
             db.session.commit()
 
             flash("Registration successful!", "success")
@@ -387,26 +386,21 @@ def init_app(app: Flask) -> None:
 
         form = LoginForm()
         if form.validate_on_submit():
-            username = form.username.data.strip()
-            password = form.password.data
-
-            user = db.session.scalars(
-                db.select(User).filter_by(primary_username=username).limit(1)
-            ).first()
-
-            if user and user.check_password(password):
+            username = db.session.scalars(
+                db.select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
+            ).one_or_none()
+            if username and username.user.check_password(form.password.data):
                 session.permanent = True
-                session["user_id"] = user.id
-                session["username"] = user.primary_username
+                session["user_id"] = username.user_id
+                session["username"] = username.username
                 session["is_authenticated"] = True
 
                 # 2FA enabled?
-                if user.totp_secret:
+                if username.user.totp_secret:
                     session["is_authenticated"] = False
                     return redirect(url_for("verify_2fa_login"))
 
-                # Successful login
-                auth_log = AuthenticationLog(user_id=user.id, successful=True)
+                auth_log = AuthenticationLog(user_id=username.user_id, successful=True)
                 db.session.add(auth_log)
                 db.session.commit()
 
@@ -414,7 +408,9 @@ def init_app(app: Flask) -> None:
 
             flash("⛔️ Invalid username or password")
         return render_template(
-            "login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
+            "login.html",
+            form=form,
+            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
@@ -425,7 +421,6 @@ def init_app(app: Flask) -> None:
             session.clear()
             return redirect(url_for("login"))
 
-        # Redirect to inbox if already authenticated
         if session.get("is_authenticated", False):
             return redirect(url_for("inbox"))
 
@@ -440,7 +435,6 @@ def init_app(app: Flask) -> None:
             timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
 
-            # Rate limit 2FA attempts
             rate_limit = False
 
             # If the most recent successful login was made with the same OTP code, reject this one
@@ -477,7 +471,6 @@ def init_app(app: Flask) -> None:
                 return render_template("verify_2fa_login.html", form=form), 429
 
             if totp.verify(verification_code):
-                # Successful login
                 auth_log = AuthenticationLog(
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
@@ -487,7 +480,6 @@ def init_app(app: Flask) -> None:
                 session["is_authenticated"] = True
                 return redirect(url_for("inbox"))
 
-            # Failed login
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
             db.session.add(auth_log)
             db.session.commit()
@@ -502,49 +494,18 @@ def init_app(app: Flask) -> None:
     @app.route("/logout")
     @authentication_required
     def logout() -> Response:
-        # Explicitly remove specific session keys related to user authentication
-        session.pop("user_id", None)
-        session.pop("is_authenticated", None)
-
-        # Clear the entire session to ensure no leftover data
         session.clear()
-
-        # Flash a confirmation message for the user
         flash("👋 You have been logged out successfully.", "info")
-
-        # Redirect to the login page or home page after logout
         return redirect(url_for("index"))
 
-    @app.route("/settings/update_directory_visibility", methods=["POST"])
-    @authentication_required
-    def update_directory_visibility() -> Response:
-        if "user_id" in session:
-            user = db.session.get(User, session.get("user_id"))
-            if user:
-                user.show_in_directory = "show_in_directory" in request.form
-            db.session.commit()
-            flash("👍 Directory visibility updated.")
-        else:
-            flash("⛔️ You need to be logged in to update settings.")
-        return redirect(url_for("settings.index"))
-
-    def sort_users_by_display_name(users: list[User], admin_first: bool = True) -> list[User]:
+    def get_directory_usernames(admin_first: bool = False) -> Sequence[Username]:
+        query = db.select(Username).filter_by(show_in_directory=True)
+        display_ordering = db.func.coalesce(Username._display_name, Username._username)
         if admin_first:
-            # Sorts admins to the top, then by display name or username
-            return sorted(
-                users,
-                key=lambda u: (
-                    not u.is_admin,
-                    (u.display_name or u.primary_username).strip().lower(),
-                ),
-            )
-
-        # Sorts only by display name or username
-        return sorted(users, key=lambda u: (u.display_name or u.primary_username).strip().lower())
-
-    def get_directory_users() -> list[User]:
-        users = db.session.scalars(db.select(User).filter_by(show_in_directory=True)).all()
-        return sort_users_by_display_name(list(users))
+            query = query.order_by(Username.user.is_admin.desc(), display_ordering)
+        else:
+            query = query.order_by(display_ordering)
+        return db.session.scalars(query).all()
 
     @app.route("/directory")
     def directory() -> Response | str:
@@ -552,7 +513,7 @@ def init_app(app: Flask) -> None:
         is_personal_server = app.config["IS_PERSONAL_SERVER"]
         return render_template(
             "directory.html",
-            users=get_directory_users(),
+            usernames=get_directory_usernames(),
             logged_in=logged_in,
             is_personal_server=is_personal_server,
         )
@@ -566,29 +527,18 @@ def init_app(app: Flask) -> None:
     def directory_users() -> list[dict[str, str | bool | None]]:
         return [
             {
-                "primary_username": user.primary_username,
-                "display_name": user.display_name or user.primary_username,
-                "bio": user.bio,
-                "is_admin": user.is_admin,
-                "is_verified": user.is_verified,
+                "primary_username": username.username,
+                "display_name": username.display_name or username.username,
+                "bio": username.bio,
+                "is_admin": username.user.is_admin,
+                "is_verified": username.is_verified,
             }
-            for user in get_directory_users()
+            for username in get_directory_usernames()
         ]
 
     @app.route("/vision", methods=["GET"])
     def vision() -> str:
         return render_template("vision.html")
-
-    def get_ip_address() -> str:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(("1.1.1.1", 1))
-            ip_address = s.getsockname()[0]
-        except Exception:
-            ip_address = "127.0.0.1"
-        finally:
-            s.close()
-        return ip_address
 
     @app.route("/info")
     def personal_server_info() -> Response:

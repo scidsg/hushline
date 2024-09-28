@@ -210,8 +210,8 @@ The account's primary inbox will aggregate and label messages in a single view.
 
 <img src="img/paid.primary.inbox.png">
 
-#### Secondary Inboxes
+#### Aliased Inboxes
 
-Account owners can navigate to their secondary username's inboxes from the settings page.
+Account owners can navigate to their aliases' inboxes from the settings page.
 
-<img src="img/paid.secondary.inbox.png">
+<img src="img/paid.alias.inbox.png">
