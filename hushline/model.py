@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
 
-from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Index
@@ -32,7 +31,7 @@ class SMTPEncryption(enum.Enum):
 class HostOrganization(Model):
     __tablename__ = "host_organization"
 
-    _DEFAULT_PRIMARY_KEY: int = 1
+    _DEFAULT_ID: int = 1
     _DEFAULT_BRAND_PRIMARY_HEX_COLOR: str = "#7d25c1"
     _DEFAULT_BRAND_APP_NAME: str = "🤫 Hush Line"
 
@@ -43,22 +42,16 @@ class HostOrganization(Model):
     )
 
     @classmethod
-    def fetch_or_default(cls) -> Self | None:
-        if instance := db.session.get(cls, cls._DEFAULT_PRIMARY_KEY):
-            return instance
+    def fetch(cls) -> Self | None:
+        return db.session.get(cls, cls._DEFAULT_ID)
 
-        current_app.logger.warning(
-            f"Fetching {cls.__class__.__name__} from DB failed. No instance was returned."
-        )
-        return cls(
-            id=cls._DEFAULT_PRIMARY_KEY,
-            brand_app_name=cls._DEFAULT_BRAND_APP_NAME,
-            brand_primary_hex_color=cls._DEFAULT_BRAND_PRIMARY_HEX_COLOR,
-        )
+    @classmethod
+    def fetch_or_default(cls) -> Self:
+        return cls.fetch() or cls()
 
-    def __init__(self, primary_key: int | None = None) -> None:
+    def __init__(self, id: int | None = None) -> None:
         super().__init__()
-        self.id = primary_key if isinstance(primary_key, int) else self._DEFAULT_PRIMARY_KEY
+        self.id = id if id is not None else self._DEFAULT_ID
 
 
 @dataclass(frozen=True, repr=False, eq=False)
