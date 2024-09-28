@@ -1,8 +1,9 @@
+from typing import Callable
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
@@ -480,33 +481,75 @@ def test_alias_change_directory_visibility(
     assert db.session.scalar(db.select(Username.show_in_directory).filter_by(id=user_alias.id))
 
 
-@pytest.mark.usefixtures("_authenticated_admin")
-def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
-    color = "#acab00"
-    resp = client.post(
-        url_for("settings.update_brand_primary_color"),
-        data={"brand_primary_hex_color": color},
-        follow_redirects=True,
-    )
-    assert resp.status_code == 200
-    assert "Brand primary color updated successfully" in resp.text
+class TestSingleTenant:
+    @pytest.fixture()
+    def inject_app_configs(self) -> Callable[[Flask], None]:
+        def injector(app: Flask) -> None:
+            app.config["IS_PERSONAL_SERVER"] = True
 
-    host_org = HostOrganization.fetch()
-    assert host_org
-    assert host_org.brand_primary_hex_color == color
+        return injector
+
+    @pytest.mark.usefixtures("_authenticated_admin")
+    def test_update_brand_primary_color(self, client: FlaskClient, admin: User) -> None:
+        color = "#acab00"
+        resp = client.post(
+            url_for("settings.update_brand_primary_color"),
+            data={"brand_primary_hex_color": color},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert "Brand primary color updated successfully" in resp.text
+
+        assert (host_org := HostOrganization.fetch())
+        assert host_org.brand_primary_hex_color == color
+
+    @pytest.mark.usefixtures("_authenticated_admin")
+    def test_update_brand_app_name(self, client: FlaskClient, admin: User) -> None:
+        name = "h4cK3rZ"
+        resp = client.post(
+            url_for("settings.update_brand_app_name"),
+            data={"brand_app_name": name},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert "Brand app name updated successfully" in resp.text
+
+        assert (host_org := HostOrganization.fetch())
+        assert host_org.brand_app_name == name
 
 
-@pytest.mark.usefixtures("_authenticated_admin")
-def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
-    name = "h4cK3rZ"
-    resp = client.post(
-        url_for("settings.update_brand_app_name"),
-        data={"brand_app_name": name},
-        follow_redirects=True,
-    )
-    assert resp.status_code == 200
-    assert "Brand app name updated successfully" in resp.text
+class TestMultiTenant:
+    @pytest.fixture()
+    def inject_app_configs(self) -> Callable[[Flask], None]:
+        def injector(app: Flask) -> None:
+            app.config["IS_PERSONAL_SERVER"] = False
 
-    host_org = HostOrganization.fetch()
-    assert host_org
-    assert host_org.brand_app_name == name
+        return injector
+
+    @pytest.mark.usefixtures("_authenticated_admin")
+    def test_update_brand_primary_color(self, client: FlaskClient, admin: User) -> None:
+        color = "#acab00"
+        resp = client.post(
+            url_for("settings.update_brand_primary_color"),
+            data={"brand_primary_hex_color": color},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 403
+
+        # acceptable states: not in DB, or in DB and color not updated
+        if host_org := HostOrganization.fetch():
+            assert host_org.brand_primary_hex_color != color
+
+    @pytest.mark.usefixtures("_authenticated_admin")
+    def test_update_brand_app_name(self, client: FlaskClient, admin: User) -> None:
+        name = "h4cK3rZ"
+        resp = client.post(
+            url_for("settings.update_brand_app_name"),
+            data={"brand_app_name": name},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 403
+
+        # acceptable states: not in DB, or in DB and name not updated
+        if host_org := HostOrganization.fetch():
+            assert host_org.brand_app_name != name

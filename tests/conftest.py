@@ -3,7 +3,7 @@ import random
 import string
 import time
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any, Callable, Generator
 from uuid import uuid4
 
 import flask_migrate
@@ -140,7 +140,12 @@ def _insecure_scrypt_params(mocker: MockFixture) -> None:
 
 
 @pytest.fixture()
-def app(database: str) -> Generator[Flask, None, None]:
+def inject_app_configs() -> Callable[[Flask], None]:
+    return lambda x: None
+
+
+@pytest.fixture()
+def app(database: str, inject_app_configs: Callable[[Flask], None]) -> Generator[Flask, None, None]:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
 
@@ -149,6 +154,8 @@ def app(database: str) -> Generator[Flask, None, None]:
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SERVER_NAME"] = "localhost:8080"
     app.config["PREFERRED_URL_SCHEME"] = "http"
+
+    inject_app_configs(app)
 
     with app.app_context():
         yield app

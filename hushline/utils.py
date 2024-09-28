@@ -40,6 +40,17 @@ def admin_authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
     return decorated_function
 
 
+def personal_server_required(f: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(f)
+    @authentication_required
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
+        if not current_app.config["IS_PERSONAL_SERVER"]:
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 @dataclass
 class SMTPConfig:
     username: str
