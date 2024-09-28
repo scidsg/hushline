@@ -9,7 +9,6 @@ import requests
 from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
-    abort,
     current_app,
     flash,
     redirect,
@@ -615,13 +614,11 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-primary-color", methods=["POST"])
     @admin_authentication_required
     def update_brand_primary_color() -> Response | str:
-        if (host_org := HostOrganization.default()) is None:
-            current_app.logger.error("Fatal! `host_org` record is undefined.")
-            abort(500)
-
+        host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandPrimaryColorForm()
         if form.validate_on_submit():
             host_org.brand_primary_hex_color = form.brand_primary_hex_color.data
+            db.session.add(host_org)  # explicitly add because instance might be new
             db.session.commit()
             flash("👍 Brand primary color updated successfully.")
             return redirect(url_for(".index"))
@@ -632,13 +629,11 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
     def update_brand_app_name() -> Response | str:
-        if (host_org := HostOrganization.default()) is None:
-            current_app.logger.error("Fatal! `host_org` record is undefined.")
-            abort(500)
-
+        host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandAppNameForm()
         if form.validate_on_submit():
             host_org.brand_app_name = form.brand_app_name.data
+            db.session.add(host_org)  # explicitly add because instance might be new
             db.session.commit()
             flash("👍 Brand app name updated successfully.")
             return redirect(url_for(".index"))

@@ -92,11 +92,7 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_host() -> dict[str, HostOrganization]:
-        if (host_org := HostOrganization.default()) is None:
-            host_org = HostOrganization()
-            db.session.add(host_org)
-            db.session.commit()
-        return dict(host_org=host_org)
+        return dict(host_org=HostOrganization.fetch_or_default())
 
     @app.context_processor
     def inject_is_personal_server() -> dict[str, Any]:
