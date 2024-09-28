@@ -6,7 +6,7 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import Message, SMTPEncryption, User, Username
+from hushline.model import HostOrganization, Message, SMTPEncryption, User, Username
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -478,3 +478,35 @@ def test_alias_change_directory_visibility(
     assert resp.status_code == 200
     assert "Directory visibility updated successfully" in resp.text
     assert db.session.scalar(db.select(Username.show_in_directory).filter_by(id=user_alias.id))
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
+    color = "#acab00"
+    resp = client.post(
+        url_for("settings.update_brand_primary_color"),
+        data={"brand_primary_hex_color": color},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Brand primary color updated successfully" in resp.text
+
+    host_org = HostOrganization.fetch()
+    assert host_org
+    assert host_org.brand_primary_hex_color == color
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
+    name = "h4cK3rZ"
+    resp = client.post(
+        url_for("settings.update_brand_app_name"),
+        data={"brand_app_name": name},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Brand app name updated successfully" in resp.text
+
+    host_org = HostOrganization.fetch()
+    assert host_org
+    assert host_org.brand_app_name == name
