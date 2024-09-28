@@ -50,8 +50,9 @@ class HostOrganization(Model):
         return cls.fetch() or cls()
 
     def __init__(self, id: int | None = None) -> None:
-        super().__init__()
-        self.id = id if id is not None else self._DEFAULT_ID
+        super().__init__(
+            id=id if id is not None else self._DEFAULT_ID,  # type: ignore[call-arg]
+        )
 
 
 @dataclass(frozen=True, repr=False, eq=False)
@@ -99,9 +100,11 @@ class Username(Model):
         is_primary: bool,
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
-        self._username = _username
-        self.is_primary = is_primary
+        super().__init__(
+            _username=_username,  # type: ignore[call-arg]
+            is_primary=is_primary,  # type: ignore[call-arg]
+            **kwargs,
+        )
 
     @property
     def username(self) -> str:
@@ -245,7 +248,7 @@ class User(Model):
             if key in kwargs:
                 raise ValueError(f"Key {key!r} cannot be mannually set. Try 'password' instead.")
         pw = kwargs.pop("password", None)
-        super().__init__()
+        super().__init__(**kwargs)
         self.password_hash = pw
 
 
@@ -281,11 +284,12 @@ class AuthenticationLog(Model):
         otp_code: str | None = None,
         timecode: int | None = None,
     ) -> None:
-        super().__init__()
-        self.user_id = user_id
-        self.successful = successful
-        self.otp_code = otp_code
-        self.timecode = timecode
+        super().__init__(
+            user_id=user_id,  # type: ignore[call-arg]
+            successful=successful,  # type: ignore[call-arg]
+            otp_code=otp_code,  # type: ignore[call-arg]
+            timecode=timecode,  # type: ignore[call-arg]
+        )
 
 
 class Message(Model):
@@ -299,8 +303,10 @@ class Message(Model):
     def __init__(self, content: str, **kwargs: Any) -> None:
         if "_content" in kwargs:
             raise ValueError("Cannot set '_content' directly. Use 'content'")
-        super().__init__(**kwargs)
-        self.content = content
+        super().__init__(
+            content=content,  # type: ignore[call-arg]
+            **kwargs,
+        )
 
     @property
     def content(self) -> str | None:
@@ -323,9 +329,10 @@ class InviteCode(Model):
     expiration_date: Mapped[datetime]
 
     def __init__(self) -> None:
-        super().__init__()
-        self.code = secrets.token_urlsafe(16)
-        self.expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
+        super().__init__(
+            code=secrets.token_urlsafe(16),  # type: ignore[call-arg]
+            expiration_date=datetime.now(timezone.utc) + timedelta(days=365),  # type: ignore[call-arg]
+        )
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"
