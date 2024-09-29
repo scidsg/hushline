@@ -26,11 +26,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_host_organization")),
     )
 
-    op.execute(
-        "INSERT INTO host_organization (id, brand_app_name, brand_primary_hex_color) "
-        "VALUES (1, '🤫 Hush Line', '#7d25c1')"
-    )
-
 
 def downgrade() -> None:
     op.drop_table("host_organization")
