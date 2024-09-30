@@ -402,7 +402,7 @@ class StripeInvoice(Model):
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
 
-    def __init__(self, invoice: Invoice):
+    def __init__(self, invoice: Invoice) -> None:
         if invoice.id:
             self.invoice_id = invoice.id
         if invoice.customer and isinstance(invoice.customer, str):
