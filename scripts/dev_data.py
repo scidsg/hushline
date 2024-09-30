@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from typing import cast
+
 from sqlalchemy.sql import exists
 
 from hushline import create_app
@@ -59,8 +61,8 @@ def main() -> None:
         },
     ]
     for data in tiers:
-        name = str(data["name"])  # type: ignore
-        monthly_amount = int(data["monthly_amount"])  # type: ignore
+        name = cast(str, data["name"])
+        monthly_amount = cast(int, data["monthly_amount"])
         if not db.session.scalar(db.exists(Tier).where(Tier.name == data["name"]).select()):
             tier = Tier(name, monthly_amount)
             db.session.add(tier)
