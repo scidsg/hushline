@@ -301,20 +301,19 @@ async def worker(app: Flask) -> None:
     with app.app_context():
         while True:
             stripe_event = db.session.scalars(
-                db.update(StripeEvent)
-                .where(status=StripeEventStatusEnum.PENDING)
+                db.select(StripeEvent)
+                .filter_by(status=StripeEventStatusEnum.PENDING)
                 .order_by(StripeEvent.created_at)
-                .values("in_progress")
+                .with_for_update()
                 .limit(1)
-                .returning(StripeEvent)
             ).one_or_none()
-            if not stripe_event:
+            if stripe_event:
+                stripe_event.status = StripeEventStatusEnum.IN_PROGRESS
+                db.session.add(stripe_event)
+                db.session.commit()
+            else:
                 await asyncio.sleep(10)
                 continue
-
-            stripe_event.status = StripeEventStatusEnum.IN_PROGRESS
-            db.session.add(stripe_event)
-            db.session.commit()
 
             event_json = json.loads(stripe_event.event_data)
             event = stripe.Event.construct_from(event_json, current_app.config["STRIPE_SECRET_KEY"])
