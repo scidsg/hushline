@@ -48,7 +48,9 @@ def create_app() -> Flask:
     app.config["IS_PERSONAL_SERVER"] = (
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
     )
-    app.config['REGISTRATION_CODES_REQUIRED'] = os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
+    app.config["REGISTRATION_CODES_REQUIRED"] = (
+        os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
+    )
     app.config["NOTIFICATIONS_ADDRESS"] = os.environ.get("NOTIFICATIONS_ADDRESS", None)
     app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME", None)
     app.config["SMTP_SERVER"] = os.environ.get("SMTP_SERVER", None)

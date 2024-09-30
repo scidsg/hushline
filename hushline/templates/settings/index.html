@@ -7,16 +7,16 @@
   <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list" role="tablist">
       {% with buttons = [
-        ('profile', 'Profile', False, False),
-        ('aliases', 'Aliases', False, False),
-        ('auth', 'Authentication', False, False),
-        ('email', 'Email & Encryption', False, False),
-        ('advanced', 'Advanced', False, False),
-        ('branding', 'Branding', True, True),
-        ('admin', 'Admin', True, False)
+        ('profile', 'Profile', False),
+        ('aliases', 'Aliases', False),
+        ('auth', 'Authentication', False),
+        ('email', 'Email & Encryption', False),
+        ('advanced', 'Advanced', False),
+        ('branding', 'Branding', True),
+        ('admin', 'Admin', True)
       ] %}
-        {% for (id, display, requires_admin, requires_personal_server) in buttons %}
-          {% if (not requires_admin or user.is_admin) and (not requires_personal_server or is_personal_server) %}
+        {% for (id, display, requires_admin) in buttons %}
+          {% if not requires_admin or user.is_admin %}
             <li role="presentation">
               <button
                 type="button"

@@ -30,7 +30,6 @@ from ..utils import (
     admin_authentication_required,
     authentication_required,
     create_smtp_config,
-    personal_server_required,
 )
 from .forms import (
     ChangePasswordForm,
@@ -618,7 +617,6 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/update-brand-primary-color", methods=["POST"])
     @admin_authentication_required
-    @personal_server_required
     def update_brand_primary_color() -> Response | str:
         host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandPrimaryColorForm()
@@ -634,7 +632,6 @@ def create_blueprint() -> Blueprint:
 
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
-    @personal_server_required
     def update_brand_app_name() -> Response | str:
         host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandAppNameForm()
