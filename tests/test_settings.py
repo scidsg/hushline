@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
@@ -500,6 +501,15 @@ class TestSingleTenant:
         assert resp.status_code == 200
         assert "Brand primary color updated successfully" in resp.text
 
+        soup = BeautifulSoup(resp.text, "html.parser")
+        styles = soup.find_all("style")
+        assert styles  # sensibility check
+        for style in styles:
+            if f"--color-brand: oklch(from {color} l c h);" in style.string:
+                break
+        else:
+            pytest.fail("Brand color CSS not updated in response <style>")
+
         assert (host_org := HostOrganization.fetch())
         assert host_org.brand_primary_hex_color == color
 
@@ -513,6 +523,15 @@ class TestSingleTenant:
         )
         assert resp.status_code == 200
         assert "Brand app name updated successfully" in resp.text
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        h1s = soup.select("header h1")
+        assert h1s  # sensibility check
+        for h1 in h1s:
+            if name in h1.string:
+                break
+        else:
+            pytest.fail("Brand name not updated in header <h1>")
 
         assert (host_org := HostOrganization.fetch())
         assert host_org.brand_app_name == name
