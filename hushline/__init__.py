@@ -6,14 +6,13 @@ from typing import Any
 
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
-from flask_migrate import Migrate
 from jinja2 import StrictUndefined
 from sqlalchemy.exc import ProgrammingError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings
-from .db import db
+from .db import db, migrate
 from .model import HostOrganization, Tier, User
 from .version import __version__
 
@@ -79,9 +78,8 @@ def create_app() -> Flask:
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
 
-    # Run migrations
     db.init_app(app)
-    Migrate(app, db)
+    migrate.init_app(app, db)
 
     # Initialize Stripe
     if app.config["STRIPE_SECRET_KEY"]:

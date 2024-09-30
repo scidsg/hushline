@@ -39,7 +39,7 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def random_name(size: int) -> str:
-    return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])  # noqa: S311
+    return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])
 
 
 @contextmanager
@@ -112,8 +112,7 @@ def init_db_via_alembic(db_uri: str) -> None:
 
 
 @pytest.fixture()
-def database(_db_template: None) -> str:
-    """A clean Postgres database from the template with DDLs applied"""
+def database(request: pytest.FixtureRequest, _db_template: None) -> str:
     db_name = random_name(16)
     conn_str = CONN_FMT_STR.format(database="hushline")
     engine = create_engine(conn_str)
@@ -121,7 +120,11 @@ def database(_db_template: None) -> str:
 
     session = sessionmaker(bind=engine)()
 
-    sql = text(f"CREATE DATABASE {db_name} WITH TEMPLATE {TEMPLATE_DB_NAME}")
+    if request.module.__name__ == "test_migrations":
+        # don't use the template when testing migrations. we want a blank db
+        sql = text(f"CREATE DATABASE {db_name}")
+    else:
+        sql = text(f"CREATE DATABASE {db_name} WITH TEMPLATE {TEMPLATE_DB_NAME}")
     session.execute(sql)
 
     # aggressively terminate all connections
