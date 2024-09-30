@@ -49,9 +49,22 @@ class HostOrganization(Model):
     def fetch_or_default(cls) -> Self:
         return cls.fetch() or cls()
 
-    def __init__(self, id: int | None = None) -> None:
+    def __init__(self, **kwargs: Any) -> None:
+        # never allow setting of the ID. It should only ever be `1`
+        if "id" in kwargs:
+            raise ValueError(f"Cannot manually set {self.__class__.__name__} attribute `id`")
+
+        # always initialize all values so that the object is populated for use in templates
+        # even when it's not pulled from the DB.
+        # yes, we have to do this here and not rely on `mapped_column(default='...')` because
+        # that logic doesn't trigger until insert, and we want these here pre-insert
+        if "brand_app_name" not in kwargs:
+            kwargs["brand_app_name"] = self._DEFAULT_BRAND_APP_NAME
+        if "brand_primary_hex_color" not in kwargs:
+            kwargs["brand_primary_hex_color"] = self._DEFAULT_BRAND_PRIMARY_HEX_COLOR
         super().__init__(
-            id=id if id is not None else self._DEFAULT_ID,  # type: ignore[call-arg]
+            id=self._DEFAULT_ID,  # type: ignore[call-arg]
+            **kwargs,
         )
 
 
