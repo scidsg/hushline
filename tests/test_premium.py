@@ -180,6 +180,7 @@ def test_get_subscription(app: Flask, mock_stripe: MagicMock, user: User) -> Non
     assert mock_stripe.Subscription.retrieve.called
 
 
+# Webhook handler for customer.subscription.created
 def test_handle_subscription_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     db.session.commit()
@@ -198,6 +199,7 @@ def test_handle_subscription_created(app: Flask, user: User) -> None:
     assert user.tier_id != BUSINESS_TIER
 
 
+# Webhook handler for customer.subscription.updated, when the status changes to active
 def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -214,6 +216,7 @@ def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
     assert user.tier_id == BUSINESS_TIER
 
 
+# Webhook handler for customer.subscription.updated, when the status changes to canceled
 def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -230,6 +233,7 @@ def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     assert user.tier_id == FREE_TIER
 
 
+# Webhook handler for customer.subscription.deleted
 def test_handle_subscription_deleted(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -243,6 +247,7 @@ def test_handle_subscription_deleted(app: Flask, user: User) -> None:
     assert user.stripe_subscription_id is None
 
 
+# Webhook handler for invoice.created
 def test_handle_invoice_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     db.session.commit()
@@ -262,6 +267,7 @@ def test_handle_invoice_created(app: Flask, user: User) -> None:
     assert stripe_invoice is not None
 
 
+# Webhook handler for invoice.updated
 def test_handle_invoice_updated(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     user.stripe_subscription_id = "sub_123"
