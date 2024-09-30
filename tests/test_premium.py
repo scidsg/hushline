@@ -37,7 +37,7 @@ def mock_stripe(mocker: MockFixture) -> MagicMock:
 
 @pytest.fixture()
 def business_tier() -> Tier:
-    tier = db.session.query(Tier).filter_by(name="Business").first()
+    tier = db.session.query(Tier).filter_by(name="Business").one()
     if not tier:
         raise ValueError("Business tier not found")
 
@@ -270,7 +270,7 @@ def test_handle_invoice_created(app: Flask) -> None:
         )
     )
 
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice is not None
 
 
@@ -292,13 +292,13 @@ def test_handle_invoice_updated(app: Flask) -> None:
     )
     handle_invoice_created(invoice)
 
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice is not None
 
     invoice.status = StripeInvoiceStatusEnum.PAID
     handle_invoice_updated(invoice)
 
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice is not None
     assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
 
@@ -370,7 +370,7 @@ def test_upgrade_process(
     assert user.tier_id == BUSINESS_TIER
 
     # And an invoice was created
-    stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).first()
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).one()
     assert stripe_invoice is not None
 
 
