@@ -155,12 +155,8 @@ def test_update_price_new(app: Flask, mock_stripe: MagicMock) -> None:
     assert tier.stripe_price_id == "price_123"
 
 
-def test_create_customer(app: Flask, mock_stripe: MagicMock) -> None:
+def test_create_customer(app: Flask, mock_stripe: MagicMock, user: User) -> None:
     mock_stripe.Customer.create.return_value = MagicMock(id="cus_123")
-
-    user = User(email="test@example.com", password="password")  # noqa: S106
-    db.session.add(user)
-    db.session.commit()
 
     create_customer(user)
 
@@ -172,12 +168,10 @@ def test_create_customer(app: Flask, mock_stripe: MagicMock) -> None:
     assert user.stripe_customer_id is not None
 
 
-def test_get_subscription(app: Flask, mock_stripe: MagicMock) -> None:
+def test_get_subscription(app: Flask, mock_stripe: MagicMock, user: User) -> None:
     mock_stripe.Subscription.retrieve.return_value = MagicMock(id="sub_123")
 
-    user = User(email="test@example.com", password="password")  # noqa: S106
     user.stripe_subscription_id = "sub_123"
-    db.session.add(user)
     db.session.commit()
 
     subscription = get_subscription(user)
@@ -186,10 +180,8 @@ def test_get_subscription(app: Flask, mock_stripe: MagicMock) -> None:
     assert mock_stripe.Subscription.retrieve.called
 
 
-def test_handle_subscription_created(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_subscription_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
-    db.session.add(user)
     db.session.commit()
 
     subscription = MagicMock()
@@ -206,10 +198,8 @@ def test_handle_subscription_created(app: Flask) -> None:
     assert user.tier_id != BUSINESS_TIER
 
 
-def test_handle_subscription_updated_upgrade(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
-    db.session.add(user)
     db.session.commit()
 
     subscription = MagicMock()
@@ -224,10 +214,8 @@ def test_handle_subscription_updated_upgrade(app: Flask) -> None:
     assert user.tier_id == BUSINESS_TIER
 
 
-def test_handle_subscription_updated_downgrade(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
-    db.session.add(user)
     db.session.commit()
 
     subscription = MagicMock()
@@ -242,10 +230,8 @@ def test_handle_subscription_updated_downgrade(app: Flask) -> None:
     assert user.tier_id == FREE_TIER
 
 
-def test_handle_subscription_deleted(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_subscription_deleted(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
-    db.session.add(user)
     db.session.commit()
 
     subscription = MagicMock()
@@ -257,10 +243,8 @@ def test_handle_subscription_deleted(app: Flask) -> None:
     assert user.stripe_subscription_id is None
 
 
-def test_handle_invoice_created(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_invoice_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
-    db.session.add(user)
     db.session.commit()
 
     handle_invoice_created(
@@ -278,11 +262,9 @@ def test_handle_invoice_created(app: Flask) -> None:
     assert stripe_invoice is not None
 
 
-def test_handle_invoice_updated(app: Flask) -> None:
-    user = User(email="test@example.com", password="password")  # noqa: S106
+def test_handle_invoice_updated(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     user.stripe_subscription_id = "sub_123"
-    db.session.add(user)
     db.session.commit()
 
     invoice = MagicMock(
