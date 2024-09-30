@@ -135,6 +135,8 @@ def test_update_price_existing(app: Flask, mock_stripe: MagicMock) -> None:
     assert not mock_stripe.Price.create.called
     assert mock_stripe.Product.modify.called
 
+    assert tier.stripe_price_id == "price_123"
+
 
 def test_update_price_new(app: Flask, mock_stripe: MagicMock) -> None:
     mock_stripe.Price.search.return_value = []
