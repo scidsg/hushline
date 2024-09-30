@@ -45,12 +45,13 @@ def business_tier() -> Tier:
 
 
 def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
-    # Remove the stripe_product_id and stripe_price_id from the Business tier
-    tier = Tier.query.filter_by(name="Business").first()
+    # Make sure we have a business tier
+    tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
     if not tier:
         return
 
+    # Make sure it has no Stripe IDs to start
     tier.stripe_product_id = None
     tier.stripe_price_id = None
     db.session.add(tier)
@@ -86,7 +87,7 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
     assert mock_stripe_price_create.called
 
     # Check that stripe_product_id and stripe_price_id were set
-    tier = Tier.query.filter_by(name="Business").first()
+    tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
     if not tier:
         return
@@ -112,7 +113,7 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
     assert mock_stripe_price_create.call_count == 2
 
     # Check that stripe_product_id and stripe_price_id were set
-    tier = Tier.query.filter_by(name="Business").first()
+    tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
     if not tier:
         return
@@ -124,7 +125,7 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
 def test_update_price_existing(app: Flask, mock_stripe: MagicMock) -> None:
     mock_stripe.Price.search.return_value = [MagicMock(id="price_123", unit_amount=2000)]
 
-    tier = Tier.query.filter_by(name="Business").first()
+    tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
     if not tier:
         return
@@ -139,7 +140,7 @@ def test_update_price_new(app: Flask, mock_stripe: MagicMock) -> None:
     mock_stripe.Price.search.return_value = []
     mock_stripe.Price.create.return_value = MagicMock(id="price_123")
 
-    tier = Tier.query.filter_by(name="Business").first()
+    tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
     if not tier:
         return
