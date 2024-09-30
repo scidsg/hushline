@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import Index
+from sqlalchemy import Index, text
 from stripe import Event, Invoice
 
 from .crypto import decrypt_field, encrypt_field
@@ -373,7 +373,7 @@ class StripeEvent(Model):
     event_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     event_type: Mapped[str] = mapped_column(db.String(255))
     event_data: Mapped[str] = mapped_column(db.Text)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
     status: Mapped[Optional[StripeEventStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeEventStatusEnum), default=StripeEventStatusEnum.PENDING
     )
