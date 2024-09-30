@@ -15,7 +15,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, Length
 from wtforms.validators import Optional as OptionalField
 
-from ..forms import ComplexPassword
+from ..forms import CanonicalHTML, ComplexPassword, HexColor
 from ..model import SMTPEncryption
 
 
@@ -172,4 +172,14 @@ class ProfileForm(FlaskForm):
         "Extra Field Value 4",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=4096)],
+    )
+
+
+class UpdateBrandPrimaryColorForm(FlaskForm):
+    brand_primary_hex_color = StringField("Hex Color", validators=[DataRequired(), HexColor()])
+
+
+class UpdateBrandAppNameForm(FlaskForm):
+    brand_app_name = StringField(
+        "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
     )

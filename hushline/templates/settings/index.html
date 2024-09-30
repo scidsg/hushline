@@ -12,6 +12,7 @@
         ('auth', 'Authentication', False),
         ('email', 'Email & Encryption', False),
         ('advanced', 'Advanced', False),
+        ('branding', 'Branding', True),
         ('admin', 'Admin', True)
       ] %}
         {% for (id, display, requires_admin) in buttons %}
@@ -41,6 +42,7 @@
     {% include "settings/email.html" %}
     {% include "settings/advanced.html" %}
     {% if user.is_admin %}
+      {% include "settings/branding.html" %}
       {% include "settings/admin.html" %}
     {% endif %}
   </div>

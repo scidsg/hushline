@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import secrets
 import socket
@@ -320,7 +319,7 @@ def init_app(app: Flask) -> None:
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
-        require_invite_code = os.environ.get("REGISTRATION_CODES_REQUIRED", "True") == "True"
+        require_invite_code = app.config["REGISTRATION_CODES_REQUIRED"]
         form = RegistrationForm()
         if not require_invite_code:
             del form.invite_code

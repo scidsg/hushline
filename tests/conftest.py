@@ -188,6 +188,28 @@ def _authenticated_user(client: FlaskClient, user: User) -> None:
 
 
 @pytest.fixture()
+def admin(app: Flask, user_password: str, database: str) -> User:
+    user = User(password=user_password, is_admin=True)
+    db.session.add(user)
+    db.session.flush()
+
+    uuid_ish = str(uuid4())[0:12]
+    username = Username(user_id=user.id, _username=f"test-{uuid_ish}", is_primary=True)
+    db.session.add(username)
+    db.session.commit()
+
+    return user
+
+
+@pytest.fixture()
+def _authenticated_admin(client: FlaskClient, admin: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = admin.id
+        session["username"] = admin.primary_username.username
+        session["is_authenticated"] = True
+
+
+@pytest.fixture()
 def _pgp_user(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as f:
         user.pgp_key = f.read()

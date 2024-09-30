@@ -6,12 +6,13 @@ from typing import Any
 from flask import Flask, flash, redirect, request, session, url_for
 from flask_migrate import Migrate
 from jinja2 import StrictUndefined
+from sqlalchemy.exc import ProgrammingError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
 from . import admin, routes, settings
 from .db import db
-from .model import User
+from .model import HostOrganization, User
 from .version import __version__
 
 
@@ -46,6 +47,9 @@ def create_app() -> Flask:
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
     app.config["IS_PERSONAL_SERVER"] = (
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
+    )
+    app.config["REGISTRATION_CODES_REQUIRED"] = (
+        os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
     )
     app.config["NOTIFICATIONS_ADDRESS"] = os.environ.get("NOTIFICATIONS_ADDRESS", None)
     app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME", None)
@@ -91,6 +95,10 @@ def create_app() -> Flask:
         return {}
 
     @app.context_processor
+    def inject_host() -> dict[str, HostOrganization]:
+        return dict(host_org=HostOrganization.fetch_or_default())
+
+    @app.context_processor
     def inject_is_personal_server() -> dict[str, Any]:
         return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
 
@@ -103,5 +111,18 @@ def create_app() -> Flask:
                 f"http://{app.config['ONION_HOSTNAME']}{request.path}"
             )
             return response
+
+    # we can't
+    if app.config.get("FLASK_ENV", None) != "development":
+        with app.app_context():
+            try:
+                host_org = HostOrganization.fetch()
+            except ProgrammingError:
+                app.logger.warning(
+                    "Could not check for existence of HostOrganization", exc_info=True
+                )
+            else:
+                if host_org is None:
+                    app.logger.warning("HostOrganization data not found in database.")
 
     return app
