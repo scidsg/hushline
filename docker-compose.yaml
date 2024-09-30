@@ -18,7 +18,7 @@ services:
     volumes:
       - ./:/app
     depends_on:
-      - postgres
+      - dev_data
     restart: always
 
   dev_data:
@@ -26,6 +26,8 @@ services:
     ports: []
     restart: on-failure
     command: make dev-data
+    depends_on:
+      - postgres
 
   postgres:
     image: postgres:16.4-alpine3.20
