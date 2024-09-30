@@ -109,14 +109,14 @@ def upgrade() -> None:
         batch_op.add_column(
             sa.Column(
                 "stripe_subscription_current_period_end",
-                sa.DateTime(),
+                sa.DateTime(timezone=True),
                 nullable=True,
             ),
         )
         batch_op.add_column(
             sa.Column(
                 "stripe_subscription_current_period_start",
-                sa.DateTime(),
+                sa.DateTime(timezone=True),
                 nullable=True,
             ),
         )

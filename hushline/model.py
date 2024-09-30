@@ -188,8 +188,12 @@ class User(Model):
     stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeSubscriptionStatusEnum)
     )
-    stripe_subscription_current_period_end = mapped_column(db.DateTime, nullable=True)
-    stripe_subscription_current_period_start = mapped_column(db.DateTime, nullable=True)
+    stripe_subscription_current_period_end = mapped_column(
+        db.DateTime(timezone=True), nullable=True
+    )
+    stripe_subscription_current_period_start = mapped_column(
+        db.DateTime(timezone=True), nullable=True
+    )
 
     @property
     def password_hash(self) -> str:
