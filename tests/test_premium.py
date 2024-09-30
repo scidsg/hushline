@@ -265,6 +265,10 @@ def test_handle_invoice_created(app: Flask, user: User) -> None:
 
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice is not None
+    assert stripe_invoice.user_id == user.id
+    assert stripe_invoice.total == 2000
+    assert stripe_invoice.status == StripeInvoiceStatusEnum.OPEN
+    assert stripe_invoice.hosted_invoice_url == "https://example.com"
 
 
 # Webhook handler for invoice.updated
