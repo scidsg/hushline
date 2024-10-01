@@ -24,8 +24,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("event_id", sa.String(length=255), nullable=False),
         sa.Column("event_type", sa.String(length=255), nullable=False),
+        sa.Column("event_created", sa.Integer, nullable=False),
         sa.Column("event_data", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False, default=datetime.now(timezone.utc)),
         sa.Column(
             "status",
             sa.Enum("PENDING", "IN_PROGRESS", "ERROR", "FINISHED", name="stripeeventstatusenum"),

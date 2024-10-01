@@ -435,8 +435,8 @@ class StripeEvent(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     event_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     event_type: Mapped[str] = mapped_column(db.String(255))
+    event_created: Mapped[int] = mapped_column(db.Integer)
     event_data: Mapped[str] = mapped_column(db.Text)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
     status: Mapped[Optional[StripeEventStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeEventStatusEnum), default=StripeEventStatusEnum.PENDING
     )
@@ -445,6 +445,7 @@ class StripeEvent(Model):
     def __init__(self, event: Event) -> None:
         super().__init__()
         self.event_id = event.id
+        self.event_created = event.created
         self.event_type = event.type
         self.event_data = str(event)
 

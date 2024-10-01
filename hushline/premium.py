@@ -303,7 +303,7 @@ async def worker(app: Flask) -> None:
                 stripe_event = transaction.session.scalars(
                     db.select(StripeEvent)
                     .filter_by(status=StripeEventStatusEnum.PENDING)
-                    .order_by(StripeEvent.created_at)
+                    .order_by(StripeEvent.event_created.asc())
                     .with_for_update()
                     .limit(1)
                 ).one_or_none()
