@@ -7,23 +7,23 @@
 
   <div id="plan-wrapper">
     <div class="plan">
-      {% if user.tier_id == 1 or user.tier_id == None %}
+      {% if user.is_free_tier() %}
         <p class="plan-status badge">📍 Current Plan</p>
       {% endif %}
-      {% if user.tier_id == 2 %}
+      {% if user.is_business_tier() %}
         <p class="plan-status">Fewer Features</p>
       {% endif %}
       {% include "premium/free-features.html" %}
     </div>
     <div class="plan plan-recommended">
-      {% if user.tier_id == 1 or user.tier_id == None %}
+      {% if user.is_free_tier() %}
         <p class="plan-status badge">⭐️ Recommended</p>
       {% endif %}
-      {% if user.tier_id == 2 %}
+      {% if user.is_business_tier() %}
         <p class="plan-status">Current Plan</p>
       {% endif %}
       {% include "premium/business-features.html" %}
-      {% if user.tier_id == 1 or user.tier_id == None %}
+      {% if user.is_free_tier() %}
         <form
           id="upgrade-form"
           action="{{ url_for('premium.upgrade') }}"
@@ -32,7 +32,7 @@
           <button id="upgrade">Upgrade Now</button>
         </form>
       {% endif %}
-      {% if user.tier_id == 2 %}
+      {% if user.is_business_tier() %}
         {% if user.stripe_subscription_cancel_at_period_end %}
         <p>Your subscription will expire on {{ user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.</p>
         <form

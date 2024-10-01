@@ -21,6 +21,8 @@ from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import (
+    BUSINESS_TIER,
+    FREE_TIER,
     StripeEvent,
     StripeEventStatusEnum,
     StripeInvoice,
@@ -30,9 +32,6 @@ from .model import (
     User,
 )
 from .utils import authentication_required
-
-FREE_TIER = 1
-BUSINESS_TIER = 2
 
 
 def init_stripe() -> None:

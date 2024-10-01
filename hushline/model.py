@@ -67,6 +67,11 @@ class StripeEventStatusEnum(enum.Enum):
     FINISHED = "finished"
 
 
+# Premium tiers
+FREE_TIER = 1
+BUSINESS_TIER = 2
+
+
 class Username(Model):
     """
     Class representing a username and associated profile.
@@ -262,6 +267,12 @@ class User(Model):
             self._pgp_key = None
         else:
             self._pgp_key = encrypt_field(value)
+
+    def is_free_tier(self) -> bool:
+        return self.tier_id is None or self.tier_id == FREE_TIER
+
+    def is_business_tier(self) -> bool:
+        return self.tier_id == BUSINESS_TIER
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

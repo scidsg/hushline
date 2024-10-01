@@ -140,7 +140,7 @@
                     <li><a href="{{ url_for('logout') }}">Logout</a></li>
                   </ul>
                 </div>
-                {% if is_premium_enabled and (user.tier_id == 1 or user.tier_id is none) %}
+                {% if is_premium_enabled and user.is_free_tier() %}
                   <a class="btn" href="{{ url_for('premium.index') }}">Upgrade</a>
                 {% endif %}
               </li>
