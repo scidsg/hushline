@@ -8,7 +8,6 @@ Create Date: 2024-09-18 14:14:43.460228
 
 from alembic import op
 import sqlalchemy as sa
-from datetime import datetime, timezone
 
 
 # revision identifiers, used by Alembic.
