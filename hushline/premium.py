@@ -491,6 +491,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}")
                 return jsonify(success=False), 400
+        else:
+            return jsonify(success=False), 400
 
         user.stripe_subscription_cancel_at_period_end = True
         db.session.add(user)
