@@ -2194,7 +2194,7 @@ p.bio + .extra-fields {
 .alias-heading + .meta,
 .alias-heading + a {
   margin-bottom: 2rem;
-  margin-top: .25rem;
+  margin-top: 0.25rem;
 }
 
 .icon.back {
@@ -2210,8 +2210,8 @@ p.bio + .extra-fields {
 }
 
 .alias-heading {
-  margin-bottom: .25rem;
-  margin-top: .5rem;
+  margin-bottom: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .drill-in {
