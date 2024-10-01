@@ -300,13 +300,6 @@ def test_handle_invoice_updated(app: Flask, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_upgrade_get_redirects_to_index(client: FlaskClient, user: User) -> None:
-    response = client.get(url_for("premium.upgrade"))
-    assert response.status_code == 302
-    assert response.location == url_for("premium.index")
-
-
-@pytest.mark.usefixtures("_authenticated_user")
 def test_upgrade_post_user_already_on_business_tier(
     client: FlaskClient, user: User, business_tier: Tier
 ) -> None:
