@@ -315,7 +315,7 @@ async def worker(app: Flask) -> None:
                     transaction.session.add(stripe_event)
                     transaction.session.commit()
                 else:
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(2)
                     continue
 
             event_json = json.loads(stripe_event.event_data)
