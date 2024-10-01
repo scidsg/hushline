@@ -4,8 +4,6 @@
   role="tabpanel"
   aria-labelledby="profile-tab"
 >
-  {# TODO: much of this was copy/pasted to "settings/alias.html" and will need to have updates synced there #}
-
   {% if is_premium_enabled and (user.tier_id == 1 or user.tier_id == None) %}
     <div class="upgrade">
       <div>
@@ -18,6 +16,8 @@
       <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
     </div>
   {% endif %}
+
+  {# TODO: much of this was copy/pasted to "settings/alias.html" and will need to have updates synced there #}
 
   <h3>Update Display Name</h3>
   {% if user.primary_username.is_verified %}
