@@ -423,12 +423,9 @@ def create_blueprint(app: Flask) -> Blueprint:
     def waiting() -> Response | str:
         return render_template("premium-waiting.html")
 
-    @bp.route("/upgrade", methods=["GET", "POST"])
+    @bp.route("/upgrade", methods=["POST"])
     @authentication_required
     def upgrade() -> Response | str:
-        if request.method == "GET":
-            return redirect(url_for("premium.index"))
-
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
