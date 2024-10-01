@@ -17,7 +17,6 @@ from flask import (
     session,
     url_for,
 )
-from sqlalchemy import desc
 from werkzeug.wrappers.response import Response
 
 from .db import db
@@ -384,7 +383,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             db.select(StripeInvoice)
             .filter_by(user_id=user.id)
             .filter_by(status=StripeInvoiceStatusEnum.PAID)
-            .order_by(desc(StripeInvoice.created_at))
+            .order_by(StripeInvoice.created_at.desc())
         ).all()
 
         return render_template(
