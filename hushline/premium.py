@@ -385,8 +385,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             .filter_by(user_id=user.id)
             .filter_by(status=StripeInvoiceStatusEnum.PAID)
             .order_by(desc(StripeInvoice.created_at))
-            .all()
-        )
+        ).all()
 
         return render_template(
             "premium.html", user=user, invoices=invoices, business_price=get_business_price_string()
