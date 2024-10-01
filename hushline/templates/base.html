@@ -64,6 +64,12 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
+    <!-- prettier-ignore -->
+    <style>
+      :root {
+        --color-brand: oklch(from {{ host_org.brand_primary_hex_color }} l c h);
+      }
+    </style>
   </head>
 
   <body>
@@ -95,7 +101,7 @@
 
     <header>
       <!-- Navigation bar, logo, etc. -->
-      <h1>🤫 Hush Line</h1>
+      <h1>{{ host_org.brand_app_name }}</h1>
       <nav>
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>

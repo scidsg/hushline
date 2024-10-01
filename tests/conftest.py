@@ -3,9 +3,10 @@ import random
 import string
 import time
 from contextlib import contextmanager
-from typing import Generator
+from typing import TYPE_CHECKING, Any, Generator
 from uuid import uuid4
 
+import flask_migrate
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
@@ -17,10 +18,24 @@ from sqlalchemy.orm import Session, sessionmaker
 from hushline import create_app
 from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
-from hushline.model import Tier, User, Username
+from hushline.model import Message, Tier, User, Username
+
+if TYPE_CHECKING:
+    from _pytest.config.argparsing import Parser
+else:
+    Parser = Any
+
 
 CONN_FMT_STR = "postgresql+psycopg://hushline:hushline@postgres:5432/{database}"
 TEMPLATE_DB_NAME = "app_db_template"
+
+
+def pytest_addoption(parser: Parser) -> None:
+    parser.addoption(
+        "--alembic",
+        action="store_true",
+        help="Use alembic migrations for DB initialization",
+    )
 
 
 def random_name(size: int) -> str:
@@ -42,7 +57,7 @@ def temp_session(conn_str: str) -> Generator[Session, None, None]:
 
 
 @pytest.fixture(scope="session")
-def _db_template() -> Generator[None, None, None]:
+def _db_template(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """A template database that all other databases are created from.
     Effectively allows caching of `db.create_all()`"""
 
@@ -62,7 +77,11 @@ def _db_template() -> Generator[None, None, None]:
                 raise
 
     db_uri = CONN_FMT_STR.format(database=TEMPLATE_DB_NAME)
-    init_db_via_create_all(db_uri)
+
+    if request.config.getoption("--alembic"):
+        init_db_via_alembic(db_uri)
+    else:
+        init_db_via_create_all(db_uri)
 
     yield
 
@@ -78,6 +97,16 @@ def init_db_via_create_all(db_uri: str) -> None:
     with app.app_context():
         db.session.commit()
         db.create_all()
+        db.session.close()
+        db.session.connection().connection.invalidate()  # type: ignore
+
+
+def init_db_via_alembic(db_uri: str) -> None:
+    # dumb hack to easily get the create_all() functionality
+    os.environ["SQLALCHEMY_DATABASE_URI"] = db_uri
+    app = create_app()
+    with app.app_context():
+        flask_migrate.upgrade()
         db.session.close()
         db.session.connection().connection.invalidate()  # type: ignore
 
@@ -175,7 +204,47 @@ def _authenticated_user(client: FlaskClient, user: User) -> None:
 
 
 @pytest.fixture()
+def admin(app: Flask, user_password: str, database: str) -> User:
+    user = User(password=user_password, is_admin=True)
+    db.session.add(user)
+    db.session.flush()
+
+    uuid_ish = str(uuid4())[0:12]
+    username = Username(user_id=user.id, _username=f"test-{uuid_ish}", is_primary=True)
+    db.session.add(username)
+    db.session.commit()
+
+    return user
+
+
+@pytest.fixture()
+def _authenticated_admin(client: FlaskClient, admin: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = admin.id
+        session["username"] = admin.primary_username.username
+        session["is_authenticated"] = True
+
+
+@pytest.fixture()
 def _pgp_user(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as f:
         user.pgp_key = f.read()
     db.session.commit()
+
+
+@pytest.fixture()
+def user_alias(app: Flask, user: User) -> Username:
+    uuid_ish = str(uuid4())[0:12]
+    username = Username(user_id=user.id, _username=f"test-{uuid_ish}", is_primary=False)
+    db.session.add(username)
+    db.session.commit()
+
+    return username
+
+
+@pytest.fixture()
+def message(app: Flask, user: User) -> Message:
+    msg = Message(content=str(uuid4()), username_id=user.primary_username.id)
+    db.session.add(msg)
+    db.session.commit()
+    return msg

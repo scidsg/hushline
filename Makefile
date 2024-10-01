@@ -9,7 +9,6 @@ help: ## Print the help message
 .PHONY: install
 install:
 	poetry install
-	npm install
 
 .PHONY: run
 run: ## Run the app
@@ -32,24 +31,23 @@ dev-data: migrate-dev ## Run dev env migrations, and add dev data
 lint: ## Lint the code
 	poetry run ruff format --check && \
 	poetry run ruff check && \
-	poetry run mypy .
-	npx prettier --check .
+	poetry run mypy . && \
+	docker compose run --rm app npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: fix
 fix: ## Format the code
 	poetry run ruff format && \
-	poetry run ruff check --fix
-	npx prettier --write .
+	poetry run ruff check --fix && \
+	docker compose run --rm app npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: revision
 revision: migrate-prod ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
-	. ./dev_env.sh && \
 	poetry run flask db revision -m "$(message)" --autogenerate
 
 .PHONY: test
 test: ## Run the test suite
 	docker compose run --rm app \
-		poetry run pytest --cov hushline --cov-report term --cov-report html -vv tests/$(test)
+		poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) tests/$(test)

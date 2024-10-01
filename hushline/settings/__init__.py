@@ -25,9 +25,12 @@ from wtforms import Field
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import Message, SMTPEncryption, Tier, User, Username
-from ..premium import BUSINESS_TIER
-from ..utils import authentication_required, create_smtp_config
+from ..model import BUSINESS_TIER, HostOrganization, Message, SMTPEncryption, Tier, User, Username
+from ..utils import (
+    admin_authentication_required,
+    authentication_required,
+    create_smtp_config,
+)
 from .forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -38,6 +41,8 @@ from .forms import (
     PGPKeyForm,
     PGPProtonForm,
     ProfileForm,
+    UpdateBrandAppNameForm,
+    UpdateBrandPrimaryColorForm,
 )
 
 
@@ -172,14 +177,15 @@ def handle_change_username_form(
 
 
 def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url: str) -> Response:
-    current_app.logger.debug("Creating alias for {user.primary_username.username}")
+    current_app.logger.debug(f"Creating alias for {user.primary_username.username}")
     # TODO check that users are allowed to add aliases here (is premium, not too many)
     uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
     db.session.add(uname)
     try:
         db.session.commit()
     except IntegrityError as e:
-        if isinstance(e.orig, UniqueViolation) and '"usernames_username_key"' in str(e.orig):
+        db.session.rollback()
+        if isinstance(e.orig, UniqueViolation) and '"uq_usernames_username"' in str(e.orig):
             flash("💔 This username is already taken.")
         else:
             flash("⛔️ Internal server error. Alias not created.")
@@ -215,9 +221,10 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm()
         new_alias_form = NewAliasForm()
         profile_form = ProfileForm()
+        update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
+        update_brand_app_name_form = UpdateBrandAppNameForm()
 
         if request.method == "POST":
-            # Update bio and custom fields
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 return await handle_update_bio(
                     user.primary_username, profile_form, url_for(".index")
@@ -306,6 +313,8 @@ def create_blueprint() -> Blueprint:
             "settings/index.html",
             user=user,
             all_users=all_users,
+            update_brand_primary_color_form=update_brand_primary_color_form,
+            update_brand_app_name_form=update_brand_app_name_form,
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
@@ -618,6 +627,36 @@ def create_blueprint() -> Blueprint:
         flash("👍 SMTP settings updated successfully")
         return redirect(url_for(".index"))
 
+    @bp.route("/update-brand-primary-color", methods=["POST"])
+    @admin_authentication_required
+    def update_brand_primary_color() -> Response | str:
+        host_org = HostOrganization.fetch_or_default()
+        form = UpdateBrandPrimaryColorForm()
+        if form.validate_on_submit():
+            host_org.brand_primary_hex_color = form.brand_primary_hex_color.data
+            db.session.add(host_org)  # explicitly add because instance might be new
+            db.session.commit()
+            flash("👍 Brand primary color updated successfully.")
+            return redirect(url_for(".index"))
+
+        flash("⛔ Invalid form data. Please try again.")
+        return redirect(url_for(".index"))
+
+    @bp.route("/update-brand-app-name", methods=["POST"])
+    @admin_authentication_required
+    def update_brand_app_name() -> Response | str:
+        host_org = HostOrganization.fetch_or_default()
+        form = UpdateBrandAppNameForm()
+        if form.validate_on_submit():
+            host_org.brand_app_name = form.brand_app_name.data
+            db.session.add(host_org)  # explicitly add because instance might be new
+            db.session.commit()
+            flash("👍 Brand app name updated successfully.")
+            return redirect(url_for(".index"))
+
+        flash("⛔ Invalid form data. Please try again.")
+        return redirect(url_for(".index"))
+
     @bp.route("/delete-account", methods=["POST"])
     @authentication_required
     def delete_account() -> Response | str:
@@ -628,7 +667,12 @@ def create_blueprint() -> Blueprint:
 
         user = db.session.get(User, user_id)
         if user:
-            db.session.execute(db.delete(Message).filter_by(user_id=user.id))
+            db.session.execute(
+                db.delete(Message).filter(
+                    Message.username_id.in_(db.select(Username.id).filter_by(user_id=user.id))
+                )
+            )
+            db.session.execute(db.delete(Username).filter_by(user_id=user.id))
             db.session.delete(user)
             db.session.commit()
 

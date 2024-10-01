@@ -75,6 +75,26 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  if (document.getElementById("branding")) {
+    // Update color in real-time as they're being browsed & finalized
+    const colorPicker = document.getElementById("brand-primary-color");
+
+    for (const eventName of ["input", "change"]) {
+      colorPicker.addEventListener(eventName, function (event) {
+        const brandColor = `oklch(from ${event.target.value} l c h)`;
+        const cssVariable = ["--color-brand", brandColor];
+        document.documentElement.style.setProperty(...cssVariable);
+      });
+    }
+
+    // Update app name in real-time as it's being typed
+    const appNameBox = document.getElementById("brand-app-name");
+
+    appNameBox.addEventListener("input", function (event) {
+      document.querySelector("h1").innerText = event.target.value;
+    });
+  }
+
   var forwarding_enabled = document.querySelector(
     "input[id='forwarding_enabled']",
   ).checked;

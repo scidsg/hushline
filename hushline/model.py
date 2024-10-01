@@ -2,12 +2,13 @@ import enum
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
 
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from stripe import Event, Invoice
 
 from .crypto import decrypt_field, encrypt_field
@@ -18,8 +19,6 @@ if TYPE_CHECKING:
 else:
     Model = db.Model
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 
 @enum.unique
 class SMTPEncryption(enum.Enum):
@@ -29,6 +28,46 @@ class SMTPEncryption(enum.Enum):
     @classmethod
     def default(cls) -> "SMTPEncryption":
         return cls.StartTLS
+
+
+class HostOrganization(Model):
+    __tablename__ = "host_organization"
+
+    _DEFAULT_ID: int = 1
+    _DEFAULT_BRAND_PRIMARY_HEX_COLOR: str = "#7d25c1"
+    _DEFAULT_BRAND_APP_NAME: str = "🤫 Hush Line"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_app_name: Mapped[str] = mapped_column(db.String(255), default=_DEFAULT_BRAND_APP_NAME)
+    brand_primary_hex_color: Mapped[str] = mapped_column(
+        db.String(7), default=_DEFAULT_BRAND_PRIMARY_HEX_COLOR
+    )
+
+    @classmethod
+    def fetch(cls) -> Self | None:
+        return db.session.get(cls, cls._DEFAULT_ID)
+
+    @classmethod
+    def fetch_or_default(cls) -> Self:
+        return cls.fetch() or cls()
+
+    def __init__(self, **kwargs: Any) -> None:
+        # never allow setting of the ID. It should only ever be `1`
+        if "id" in kwargs:
+            raise ValueError(f"Cannot manually set {self.__class__.__name__} attribute `id`")
+
+        # always initialize all values so that the object is populated for use in templates
+        # even when it's not pulled from the DB.
+        # yes, we have to do this here and not rely on `mapped_column(default='...')` because
+        # that logic doesn't trigger until insert, and we want these here pre-insert
+        if "brand_app_name" not in kwargs:
+            kwargs["brand_app_name"] = self._DEFAULT_BRAND_APP_NAME
+        if "brand_primary_hex_color" not in kwargs:
+            kwargs["brand_primary_hex_color"] = self._DEFAULT_BRAND_PRIMARY_HEX_COLOR
+        super().__init__(
+            id=self._DEFAULT_ID,  # type: ignore[call-arg]
+            **kwargs,
+        )
 
 
 @dataclass(frozen=True, repr=False, eq=False)
@@ -111,9 +150,11 @@ class Username(Model):
         is_primary: bool,
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
-        self._username = _username
-        self.is_primary = is_primary
+        super().__init__(
+            _username=_username,  # type: ignore[call-arg]
+            is_primary=is_primary,  # type: ignore[call-arg]
+            **kwargs,
+        )
 
     @property
     def username(self) -> str:
@@ -145,6 +186,9 @@ class Username(Model):
     @property
     def valid_fields(self) -> Sequence[ExtraField]:
         return [x for x in self.extra_fields if x.label and x.value]
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id} username={self.username}>"
 
 
 class User(Model):
@@ -279,7 +323,7 @@ class User(Model):
             if key in kwargs:
                 raise ValueError(f"Key {key!r} cannot be mannually set. Try 'password' instead.")
         pw = kwargs.pop("password", None)
-        super().__init__()
+        super().__init__(**kwargs)
         self.password_hash = pw
 
 
@@ -315,14 +359,17 @@ class AuthenticationLog(Model):
         otp_code: str | None = None,
         timecode: int | None = None,
     ) -> None:
-        super().__init__()
-        self.user_id = user_id
-        self.successful = successful
-        self.otp_code = otp_code
-        self.timecode = timecode
+        super().__init__(
+            user_id=user_id,  # type: ignore[call-arg]
+            successful=successful,  # type: ignore[call-arg]
+            otp_code=otp_code,  # type: ignore[call-arg]
+            timecode=timecode,  # type: ignore[call-arg]
+        )
 
 
 class Message(Model):
+    __tablename__ = "messages"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
@@ -331,8 +378,10 @@ class Message(Model):
     def __init__(self, content: str, **kwargs: Any) -> None:
         if "_content" in kwargs:
             raise ValueError("Cannot set '_content' directly. Use 'content'")
-        super().__init__(**kwargs)
-        self.content = content
+        super().__init__(
+            content=content,  # type: ignore[call-arg]
+            **kwargs,
+        )
 
     @property
     def content(self) -> str | None:
@@ -348,14 +397,17 @@ class Message(Model):
 
 
 class InviteCode(Model):
+    __tablename__ = "invite_codes"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(db.String(255), unique=True)
     expiration_date: Mapped[datetime]
 
     def __init__(self) -> None:
-        super().__init__()
-        self.code = secrets.token_urlsafe(16)
-        self.expiration_date = datetime.now(timezone.utc) + timedelta(days=365)
+        super().__init__(
+            code=secrets.token_urlsafe(16),  # type: ignore[call-arg]
+            expiration_date=datetime.now(timezone.utc) + timedelta(days=365),  # type: ignore[call-arg]
+        )
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"
