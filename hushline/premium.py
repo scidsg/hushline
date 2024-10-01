@@ -561,7 +561,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
     @bp.route("/status.json", methods=["GET"])
     @authentication_required
-    def statis() -> Response | str:
+    def status() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
