@@ -301,20 +301,22 @@ async def worker(app: Flask) -> None:
     current_app.logger.error("Starting worker")
     with app.app_context():
         while True:
-            stripe_event = db.session.scalars(
-                db.select(StripeEvent)
-                .filter_by(status=StripeEventStatusEnum.PENDING)
-                .order_by(StripeEvent.created_at)
-                .with_for_update()
-                .limit(1)
-            ).one_or_none()
-            if stripe_event:
-                stripe_event.status = StripeEventStatusEnum.IN_PROGRESS
-                db.session.add(stripe_event)
-                db.session.commit()
-            else:
-                await asyncio.sleep(10)
-                continue
+            with db.session.begin() as transaction:  # Start a transaction block
+                stripe_event = transaction.session.scalars(
+                    db.select(StripeEvent)
+                    .filter_by(status=StripeEventStatusEnum.PENDING)
+                    .order_by(StripeEvent.created_at)
+                    .with_for_update()
+                    .limit(1)
+                ).one_or_none()
+
+                if stripe_event:
+                    stripe_event.status = StripeEventStatusEnum.IN_PROGRESS
+                    transaction.session.add(stripe_event)
+                    transaction.session.commit()
+                else:
+                    await asyncio.sleep(10)
+                    continue
 
             event_json = json.loads(stripe_event.event_data)
             event = stripe.Event.construct_from(event_json, current_app.config["STRIPE_SECRET_KEY"])
