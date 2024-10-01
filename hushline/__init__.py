@@ -79,11 +79,6 @@ def create_app() -> Flask:
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
 
-    # Inject variables into every template
-    @app.context_processor
-    def inject_config() -> dict[str, Any]:
-        return {"is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False))}
-
     # Run migrations
     db.init_app(app)
     Migrate(app, db)
@@ -119,6 +114,10 @@ def create_app() -> Flask:
     @app.context_processor
     def inject_is_personal_server() -> dict[str, Any]:
         return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
+
+    @app.context_processor
+    def inject_is_premium_enabled() -> dict[str, Any]:
+        return {"is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False))}
 
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:
