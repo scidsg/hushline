@@ -136,12 +136,6 @@ def downgrade() -> None:
         batch_op.drop_column("stripe_customer_id")
         batch_op.drop_column("tier_id")
 
-    with op.batch_alter_table("stripe_invoices", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_stripe_invoices_invoice_id"))
-
     op.drop_table("stripe_invoices")
     op.drop_table("tiers")
-    with op.batch_alter_table("stripe_events", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_stripe_events_event_id"))
-
     op.drop_table("stripe_events")
