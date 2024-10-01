@@ -1,8 +1,8 @@
-"""add Stripe tables
+"""add stripe tables
 
-Revision ID: e3784181a957
-Revises: c2b6eff6e213
-Create Date: 2024-09-18 14:14:43.460228
+Revision ID: be0744a5679f
+Revises: 5410668e15ad
+Create Date: 2024-10-01 10:41:41.834277
 
 """
 
@@ -11,13 +11,36 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "e3784181a957"
-down_revision = "c2b6eff6e213"
+revision = "be0744a5679f"
+down_revision = "5410668e15ad"
 branch_labels = None
 depends_on = None
 
+stripe_event_status_enum = sa.Enum(
+    "PENDING", "IN_PROGRESS", "ERROR", "FINISHED", name="stripeeventstatusenum"
+)
+
+stripe_invoice_status_enum = sa.Enum(
+    "DRAFT", "OPEN", "PAID", "UNCOLLECTIBLE", "VOID", name="stripeinvoicestatusenum"
+)
+
+stripe_subscription_status_enum = sa.Enum(
+    "INCOMPLETE",
+    "INCOMPLETE_EXPIRED",
+    "TRIALING",
+    "ACTIVE",
+    "PAST_DUE",
+    "CANCELED",
+    "UNPAID",
+    "PAUSED",
+    name="stripesubscriptionstatusenum",
+)
+
 
 def upgrade() -> None:
+    # Create the enum type
+    stripe_subscription_status_enum.create(op.get_bind(), checkfirst=True)
+
     op.create_table(
         "stripe_events",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -27,7 +50,7 @@ def upgrade() -> None:
         sa.Column("event_data", sa.Text(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "IN_PROGRESS", "ERROR", "FINISHED", name="stripeeventstatusenum"),
+            stripe_event_status_enum,
             nullable=True,
         ),
         sa.Column("error_message", sa.Text(), nullable=True),
@@ -57,9 +80,7 @@ def upgrade() -> None:
         sa.Column("total", sa.Integer(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum(
-                "DRAFT", "OPEN", "PAID", "UNCOLLECTIBLE", "VOID", name="stripeinvoicestatusenum"
-            ),
+            stripe_invoice_status_enum,
             nullable=True,
         ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
@@ -92,17 +113,7 @@ def upgrade() -> None:
         batch_op.add_column(
             sa.Column(
                 "stripe_subscription_status",
-                sa.Enum(
-                    "INCOMPLETE",
-                    "INCOMPLETE_EXPIRED",
-                    "TRIALING",
-                    "ACTIVE",
-                    "PAST_DUE",
-                    "CANCELED",
-                    "UNPAID",
-                    "PAUSED",
-                    name="stripesubscriptionstatusenum",
-                ),
+                stripe_subscription_status_enum,
                 nullable=True,
             ),
         )
@@ -139,3 +150,5 @@ def downgrade() -> None:
     op.drop_table("stripe_invoices")
     op.drop_table("tiers")
     op.drop_table("stripe_events")
+
+    stripe_subscription_status_enum.drop(op.get_bind(), checkfirst=True)
