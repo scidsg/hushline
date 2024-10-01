@@ -48,5 +48,6 @@ class Missing:
         return True
 
 
-assert Missing() != Missing()
+# ridiculous formatting because `ruff` won't allow `not (x == y)`
+assert (Missing() == Missing()) ^ bool("x")
 assert Missing() != Missing()
