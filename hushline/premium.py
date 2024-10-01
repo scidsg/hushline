@@ -276,10 +276,11 @@ def handle_invoice_created(invoice: stripe.Invoice) -> None:
 
     try:
         new_invoice = StripeInvoice(invoice)
-        db.session.add(new_invoice)
-        db.session.commit()
     except ValueError as e:
         current_app.logger.error(f"Error creating invoice: {e}")
+
+    db.session.add(new_invoice)
+    db.session.commit()
 
 
 def handle_invoice_updated(invoice: stripe.Invoice) -> None:
@@ -345,7 +346,8 @@ async def worker(app: Flask) -> None:
 
             except Exception as e:
                 current_app.logger.error(
-                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}"  # noqa: E501
+                    f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}",  # noqa: E501
+                    exc_info=True,
                 )
                 stripe_event.status = StripeEventStatusEnum.ERROR
                 stripe_event.error_message = str(e)
@@ -486,21 +488,20 @@ def create_blueprint(app: Flask) -> Blueprint:
         if user.stripe_subscription_id:
             try:
                 stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=True)
-                user.stripe_subscription_cancel_at_period_end = True
-                db.session.add(user)
-                db.session.commit()
-
-                current_app.logger.info(
-                    f"Autorenew disabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
-                )
-
-                flash("Autorenew has been disabled.")
-                return jsonify(success=True)
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}")
                 return jsonify(success=False), 400
 
-        return jsonify(success=False), 400
+        user.stripe_subscription_cancel_at_period_end = True
+        db.session.add(user)
+        db.session.commit()
+
+        current_app.logger.info(
+            f"Autorenew disabled for subscription {user.stripe_subscription_id} for user {user.id}"
+        )
+
+        flash("Autorenew has been disabled.")
+        return jsonify(success=True)
 
     @bp.route("/enable-autorenew", methods=["POST"])
     @authentication_required
@@ -574,13 +575,12 @@ def create_blueprint(app: Flask) -> Blueprint:
 
     @bp.route("/webhook", methods=["POST"])
     def webhook() -> Response | str | Tuple[Response | str, int]:
-        payload = request.data
         sig_header = request.headers["STRIPE_SIGNATURE"]
 
         # Parse the event
         try:
             event = stripe.Webhook.construct_event(
-                payload, sig_header, current_app.config.get("STRIPE_WEBHOOK_SECRET")
+                request.data, sig_header, current_app.config.get("STRIPE_WEBHOOK_SECRET")
             )
         except ValueError as e:
             current_app.logger.error(f"Invalid payload: {e}")
