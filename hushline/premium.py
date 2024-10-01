@@ -451,7 +451,7 @@ def create_blueprint(app: Flask) -> Blueprint:
         try:
             create_customer(user)
         except stripe._error.StripeError as e:
-            current_app.logger.error(f"Failed to create Stripe customer: {e}")
+            current_app.logger.error(f"Failed to create Stripe customer: {e}", exc_info=True)
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
@@ -467,7 +467,9 @@ def create_blueprint(app: Flask) -> Blueprint:
                 customer_update={"address": "auto"},
             )
         except stripe._error.StripeError as e:
-            current_app.logger.error(f"Failed to create Stripe Checkout session: {e}")
+            current_app.logger.error(
+                f"Failed to create Stripe Checkout session: {e}", exc_info=True
+            )
             return abort(500)
 
         if checkout_session.url:
@@ -487,7 +489,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             try:
                 stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=True)
             except stripe._error.StripeError as e:
-                current_app.logger.error(f"Stripe error: {e}")
+                current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 return jsonify(success=False), 400
         else:
             return jsonify(success=False), 400
@@ -525,7 +527,7 @@ def create_blueprint(app: Flask) -> Blueprint:
                 flash("Autorenew has been enabled.")
                 return jsonify(success=True)
             except stripe._error.StripeError as e:
-                current_app.logger.error(f"Stripe error: {e}")
+                current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 return jsonify(success=False), 400
 
         return jsonify(success=False), 400
@@ -555,7 +557,7 @@ def create_blueprint(app: Flask) -> Blueprint:
                 flash("💔 Sorry to see you go!")
                 return jsonify(success=True)
             except stripe._error.StripeError as e:
-                current_app.logger.error(f"Stripe error: {e}")
+                current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 return jsonify(success=False), 400
 
         return jsonify(success=False), 400
