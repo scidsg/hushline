@@ -3,7 +3,7 @@
 {% block title %}Premium{% endblock %}
 
 {% block content %}
-  <h2>Choose a Hush Line Plan</h2>
+  <h2 class="centered-heading">Choose a Hush Line Plan</h2>
 
   <div id="plan-wrapper">
     <div class="plan">
@@ -17,7 +17,7 @@
     </div>
     <div class="plan plan-recommended">
       {% if user.is_free_tier() %}
-        <p class="plan-status badge">⭐️ Recommended</p>
+        <p class="plan-status badge">⭐️ Recommended for Businesses</p>
       {% endif %}
       {% if user.is_business_tier() %}
         <p class="plan-status">Current Plan</p>
