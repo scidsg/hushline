@@ -2198,7 +2198,7 @@ p.bio + .extra-fields {
 
 .plan .badge {
   margin-bottom: 1.5rem;
-  margin-top: .625rem;
+  margin-top: 0.625rem;
 }
 
 .plan .plan-status {
@@ -2354,7 +2354,7 @@ p.bio + .extra-fields {
 #invoice-wrapper {
   margin-top: 1rem;
   padding: 1.5rem;
-  border-radius: .25rem;
+  border-radius: 0.25rem;
 }
 
 #invoice-wrapper table {
@@ -2370,8 +2370,8 @@ p.bio + .extra-fields {
 
 #invoice-wrapper table th,
 #invoice-wrapper table td {
-  padding-top: .325rem;
-  padding-bottom: .325rem;
+  padding-top: 0.325rem;
+  padding-bottom: 0.325rem;
 }
 
 .adv-form {
