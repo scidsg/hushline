@@ -106,11 +106,6 @@
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
           <ul>
-            <li>
-              {% if is_premium_enabled and user.is_free_tier() %}
-                  <a href="{{ url_for('premium.index') }}">⭐️ Upgrade</a>
-                {% endif %}
-            </li>
             {% if is_personal_server %}
               <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
             {% endif %}
@@ -151,6 +146,11 @@
                     <li><a href="{{ url_for('logout') }}">Logout</a></li>
                   </ul>
                 </div>
+              </li>
+              <li>
+                {% if is_premium_enabled and user.is_free_tier() %}
+                    <a href="{{ url_for('premium.index') }}">⭐️ Upgrade</a>
+                  {% endif %}
               </li>
             {% else %}
               <li><a href="{{ url_for('login') }}">Login</a></li>
