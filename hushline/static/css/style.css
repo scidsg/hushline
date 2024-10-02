@@ -395,6 +395,10 @@
   .plan {
     border: var(--border);
   }
+
+  #invoice-wrapper {
+    border: var(--border);
+  }
 }
 
 /* Dark Mode */
@@ -726,6 +730,10 @@
 
   .icon.chevron {
     background-image: url("../img/app/icon-chevron-dm.png");
+  }
+
+  #invoice-wrapper {
+    border: var(--border-dark);
   }
 }
 
@@ -2189,7 +2197,8 @@ p.bio + .extra-fields {
 }
 
 .plan .badge {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  margin-top: .625rem;
 }
 
 .plan .plan-status {
@@ -2340,4 +2349,52 @@ p.bio + .extra-fields {
 
 .drill-in .checkbox-group {
   margin-bottom: 0;
+}
+
+#invoice-wrapper {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border-radius: .25rem;
+}
+
+#invoice-wrapper table {
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+#invoice-wrapper table tr {
+  width: 100%;
+}
+
+#invoice-wrapper table th,
+#invoice-wrapper table td {
+  padding-top: .325rem;
+  padding-bottom: .325rem;
+}
+
+.adv-form {
+  display: flex;
+  margin-bottom: 2rem;
+  flex-direction: column;
+}
+
+#enable-autorenew-form,
+#cancel-form {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+#enable-autorenew-form button,
+#cancel-form button {
+  margin-bottom: 0;
+}
+
+#enable-autorenew-form {
+  margin-top: 1rem;
+}
+
+.plan .sub-info {
+  margin-top: 1.25rem;
 }
