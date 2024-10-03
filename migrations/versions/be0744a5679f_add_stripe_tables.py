@@ -107,9 +107,7 @@ def upgrade() -> None:
         batch_op.add_column(
             sa.Column("stripe_subscription_id", sa.String(length=255), nullable=True)
         )
-        batch_op.add_column(
-            sa.Column("stripe_subscription_cancel_at_period_end", sa.Boolean, nullable=True)
-        )
+        batch_op.add_column(sa.Column("stripe_subscription_cancel_at_period_end", sa.Boolean))
         batch_op.add_column(
             sa.Column(
                 "stripe_subscription_status",
@@ -132,12 +130,12 @@ def upgrade() -> None:
             ),
         )
         batch_op.create_index("idx_users_stripe_customer_id", ["stripe_customer_id"], unique=False)
-        batch_op.create_foreign_key("users_tier_id_fkey", "tiers", ["tier_id"], ["id"])
+        batch_op.create_foreign_key("fk_users_tier_ids", "tiers", ["tier_id"], ["id"])
 
 
 def downgrade() -> None:
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_constraint("users_tier_id_fkey", type_="foreignkey")
+        batch_op.drop_constraint("fk_users_tier_ids", type_="foreignkey")
         batch_op.drop_index("idx_users_stripe_customer_id")
         batch_op.drop_column("stripe_subscription_current_period_start")
         batch_op.drop_column("stripe_subscription_current_period_end")

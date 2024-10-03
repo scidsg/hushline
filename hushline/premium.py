@@ -362,7 +362,7 @@ def create_blueprint(app: Flask) -> Blueprint:
     # Now define the blueprint
     bp = Blueprint("premium", __file__, url_prefix="/premium")
 
-    @bp.route("/", methods=["GET"])
+    @bp.route("/")
     @authentication_required
     def index() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
@@ -387,7 +387,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             "premium.html", user=user, invoices=invoices, business_price=get_business_price_string()
         )
 
-    @bp.route("/select-tier", methods=["GET"])
+    @bp.route("/select-tier")
     @authentication_required
     def select_tier() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
@@ -414,7 +414,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         return redirect(url_for("inbox"))
 
-    @bp.route("/waiting", methods=["GET"])
+    @bp.route("/waiting")
     @authentication_required
     def waiting() -> Response | str:
         return render_template("premium-waiting.html")
@@ -512,19 +512,20 @@ def create_blueprint(app: Flask) -> Blueprint:
         if user.stripe_subscription_id:
             try:
                 stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=False)
-                user.stripe_subscription_cancel_at_period_end = False
-                db.session.add(user)
-                db.session.commit()
-
-                current_app.logger.info(
-                    f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
-                )
-
-                flash("Autorenew has been enabled.")
-                return jsonify(success=True)
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 return jsonify(success=False), 400
+
+            user.stripe_subscription_cancel_at_period_end = False
+            db.session.add(user)
+            db.session.commit()
+
+            current_app.logger.info(
+                f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
+            )
+
+            flash("Autorenew has been enabled.")
+            return jsonify(success=True)
 
         return jsonify(success=False), 400
 
@@ -558,7 +559,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         return jsonify(success=False), 400
 
-    @bp.route("/status.json", methods=["GET"])
+    @bp.route("/status.json")
     @authentication_required
     def status() -> Response | str:
         user = db.session.get(User, session.get("user_id"))

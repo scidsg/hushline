@@ -226,9 +226,7 @@ class User(Model):
 
     stripe_customer_id = mapped_column(db.String(255))
     stripe_subscription_id = mapped_column(db.String(255), nullable=True)
-    stripe_subscription_cancel_at_period_end = mapped_column(
-        db.Boolean, default=False, nullable=True
-    )
+    stripe_subscription_cancel_at_period_end = mapped_column(db.Boolean, default=False)
     stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeSubscriptionStatusEnum)
     )
@@ -461,8 +459,8 @@ class StripeEvent(Model):
     )
     error_message: Mapped[Optional[str]] = mapped_column(db.Text)
 
-    def __init__(self, event: Event) -> None:
-        super().__init__()
+    def __init__(self, event: Event, **kwargs: dict[str, Any]) -> None:
+        super().__init__(**kwargs)
         self.event_id = event.id
         self.event_created = event.created
         self.event_type = event.type

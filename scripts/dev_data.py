@@ -63,12 +63,12 @@ def main() -> None:
     for data in tiers:
         name = cast(str, data["name"])
         monthly_amount = cast(int, data["monthly_amount"])
-        if not db.session.scalar(db.exists(Tier).where(Tier.name == data["name"]).select()):
+        if not db.session.scalar(db.exists(Tier).where(Tier.name == name).select()):
             tier = Tier(name, monthly_amount)
             db.session.add(tier)
             db.session.commit()
 
-        print(f"Tier:\n  name = {data['name']}\n  monthly_amount = {data['monthly_amount']}")
+        print(f"Tier:\n  name = {name}\n  monthly_amount = {monthly_amount}")
 
     print("Dev data added")
 

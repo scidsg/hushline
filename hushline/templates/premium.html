@@ -34,29 +34,29 @@
       {% endif %}
       {% if user.is_business_tier %}
         {% if user.stripe_subscription_cancel_at_period_end %}
-        <p class="meta sub-info">⚠️ Your subscription will expire on {{ user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.</p>
-        <form
-          id="enable-autorenew-form"
-          action="{{ url_for('premium.disable_autorenew') }}"
-          method="post"
-        >
-          <button id="enable-autorenew">Automatically Renew</button>
-        </form>
-        <form
-          id="cancel-form"
-          action="{{ url_for('premium.disable_autorenew') }}"
-          method="post"
-        >
-          <button id="cancel" class="btn">Cancel Now</button>
-        </form>
+          <p class="meta sub-info">⚠️ Your subscription will expire on {{ user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.</p>
+          <form
+            id="enable-autorenew-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button id="enable-autorenew">Automatically Renew</button>
+          </form>
+          <form
+            id="cancel-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button id="cancel" class="btn">Cancel Now</button>
+          </form>
         {% else %}
-        <form
-          id="disable-autorenew-form"
-          action="{{ url_for('premium.disable_autorenew') }}"
-          method="post"
-        >
-          <button class="btn" id="disable-autorenew">Don't Renew</button>
-        </form>
+          <form
+            id="disable-autorenew-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button class="btn" id="disable-autorenew">Don't Renew</button>
+          </form>
         {% endif %}
     {% endif %}
     </div>

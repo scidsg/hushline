@@ -156,12 +156,12 @@ def register_commands(app: Flask) -> None:
         """Configure Stripe and premium tiers"""
         # Make sure tiers exist
         with app.app_context():
-            free_tier = db.session.query(Tier).filter_by(name="Free").first()
+            free_tier = Tier.free_tier()
             if not free_tier:
                 free_tier = Tier(name="Free", monthly_amount=0)
                 db.session.add(free_tier)
                 db.session.commit()
-            business_tier = db.session.query(Tier).filter_by(name="Business").first()
+            business_tier = Tier.business_tier()
             if not business_tier:
                 business_tier = Tier(name="Business", monthly_amount=2000)
                 db.session.add(business_tier)
