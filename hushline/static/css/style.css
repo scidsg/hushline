@@ -2322,6 +2322,12 @@ p.bio + .extra-fields {
   background-repeat: no-repeat;
 }
 
+.alias-heading + .meta,
+.alias-heading + a {
+  margin-bottom: 2rem;
+  margin-top: 0.25rem;
+}
+
 .icon.back {
   transform: rotate(180deg);
   display: inline-block;
@@ -2335,7 +2341,8 @@ p.bio + .extra-fields {
 }
 
 .alias-heading {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .drill-in {

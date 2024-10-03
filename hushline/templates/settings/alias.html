@@ -6,6 +6,7 @@
 <div class="drill-in">
   <a href="{{ url_for('.index') }}" class="back-button"><span class="icon chevron back"></span> Back to Settings</a>
   <h2 class="alias-heading">{{ alias.display_name or alias.username }}</h2>
+  <a href="{{ url_for('profile', username=alias.username) }}">Alias tip line</a>
 
   {# TODO: much of this is copy/pasted from "settings/profile.html" and will need to be synced with updates there #}
   <h3>Update Display Name</h3>
