@@ -62,8 +62,8 @@
     </div>
   </div>
 
+  {% if invoices %}
   <div id="invoice-wrapper">
-    {% if invoices %}
       <h3>Invoices</h3>
       <table class="table">
         <thead>
@@ -89,8 +89,8 @@
           {% endfor %}
         </tbody>
       </table>
-    {% endif %}
   </div>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
