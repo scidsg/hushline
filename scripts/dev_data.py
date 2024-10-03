@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+from typing import cast
+
 from sqlalchemy.sql import exists
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import User, Username
+from hushline.model import Tier, User, Username
 
 
 def main() -> None:
+    print("Adding dev data")
     create_app().app_context().push()
 
     users = [
@@ -46,6 +49,28 @@ def main() -> None:
             db.session.commit()
 
         print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
+
+    tiers = [
+        {
+            "name": "Free",
+            "monthly_amount": 0,
+        },
+        {
+            "name": "Business",
+            "monthly_amount": 2000,
+        },
+    ]
+    for data in tiers:
+        name = cast(str, data["name"])
+        monthly_amount = cast(int, data["monthly_amount"])
+        if not db.session.scalar(db.exists(Tier).where(Tier.name == name).select()):
+            tier = Tier(name, monthly_amount)
+            db.session.add(tier)
+            db.session.commit()
+
+        print(f"Tier:\n  name = {name}\n  monthly_amount = {monthly_amount}")
+
+    print("Dev data added")
 
 
 if __name__ == "__main__":

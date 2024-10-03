@@ -25,7 +25,7 @@ from wtforms import Field
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import HostOrganization, Message, SMTPEncryption, User, Username
+from ..model import HostOrganization, Message, SMTPEncryption, Tier, User, Username
 from ..utils import (
     admin_authentication_required,
     authentication_required,
@@ -282,6 +282,16 @@ def create_blueprint() -> Blueprint:
             )
             user_count = len(all_users)
 
+        # Load the business tier price
+        business_tier = Tier.business_tier()
+        business_tier_display_price = ""
+        if business_tier:
+            price_usd = business_tier.monthly_amount / 100
+            if price_usd % 1 == 0:
+                business_tier_display_price = str(int(price_usd))
+            else:
+                business_tier_display_price = f"{price_usd:.2f}"
+
         # Prepopulate form fields
         email_forwarding_form.forwarding_enabled.data = user.email is not None
         if not user.pgp_key:
@@ -324,6 +334,8 @@ def create_blueprint() -> Blueprint:
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
             default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
+            # Premium-specific data
+            business_tier_display_price=business_tier_display_price,
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])

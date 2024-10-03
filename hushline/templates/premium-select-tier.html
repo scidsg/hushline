@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Select a Tier{% endblock %}
+{% block content %}
+  <h2 class="centered-heading">Choose a Hush Line Plan</h2>
+
+  <div id="plan-wrapper">
+    <div class="plan">
+      <p class="plan-status badge">👍 Great for Individuals</p>
+      {% include "premium/free-features.html" %}
+      <form
+        id="free-form"
+        action="{{ url_for('premium.select_free') }}"
+        method="post"
+      >
+        <button class="btn">Use Free Plan</button>
+      </form>
+    </div>
+    <div class="plan plan-recommended">
+      <p class="plan-status badge">⭐️ Recommended for Businesses</p>
+      {% include "premium/business-features.html" %}
+      <form
+        id="upgrade-form"
+        action="{{ url_for('premium.upgrade') }}"
+        method="post"
+      >
+        <button class="btn">Upgrade to Super User</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

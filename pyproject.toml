@@ -7,11 +7,10 @@ license = "AGPL 3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
 aiohttp = "^3.10.5"
 cryptography = "^43.0.1"
 email-validator = "^2.2.0"
-flask = {extras = ["async"], version = "^3.0.3"}
+flask = { extras = ["async"], version = "^3.0.3" }
 flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
@@ -23,6 +22,10 @@ pysequoia = "^0.1.23"
 qrcode = "^7.4.2"
 requests = "^2.32.3"
 ruff = "^0.4.7"
+stripe = "^10.9.0"
+types-requests = "^2.32.0.20240712"
+types-setuptools = "^71.1.0.20240813"
+python = "^3.11"
 
 [tool.poetry.group.dev.dependencies]
 beautifulsoup4 = "^4.12.3"
@@ -91,7 +94,7 @@ ignore = [
 "tests/*.py" = [
     # https://docs.astral.sh/ruff/rules/assert/
     "S101",
-    "S105",  # hardcoded password
+    "S105", # hardcoded password
     # https://docs.astral.sh/ruff/rules/magic-value-comparison/
     "PLR2004",
 ]

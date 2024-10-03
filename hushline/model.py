@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
 
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
+from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from stripe import Event, Invoice
 
 from .crypto import decrypt_field, encrypt_field
 from .db import db
@@ -75,6 +77,35 @@ class ExtraField:
     is_verified: Optional[bool]
 
 
+@enum.unique
+class StripeInvoiceStatusEnum(enum.Enum):
+    DRAFT = "draft"
+    OPEN = "open"
+    PAID = "paid"
+    UNCOLLECTIBLE = "uncollectible"
+    VOID = "void"
+
+
+@enum.unique
+class StripeSubscriptionStatusEnum(enum.Enum):
+    INCOMPLETE = "incomplete"
+    INCOMPLETE_EXPIRED = "incomplete_expired"
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    CANCELED = "canceled"
+    UNPAID = "unpaid"
+    PAUSED = "paused"
+
+
+@enum.unique
+class StripeEventStatusEnum(enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    ERROR = "error"
+    FINISHED = "finished"
+
+
 class Username(Model):
     """
     Class representing a username and associated profile.
@@ -94,6 +125,7 @@ class Username(Model):
     show_in_directory: Mapped[bool] = mapped_column(default=False)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
 
+    # Extra fields
     extra_field_label1: Mapped[Optional[str]]
     extra_field_value1: Mapped[Optional[str]]
     extra_field_label2: Mapped[Optional[str]]
@@ -188,6 +220,23 @@ class User(Model):
     )
     smtp_sender: Mapped[Optional[str]]
 
+    # Paid tier fields
+    tier_id: Mapped[int | None] = mapped_column(db.ForeignKey("tiers.id"), nullable=True)
+    tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
+
+    stripe_customer_id = mapped_column(db.String(255))
+    stripe_subscription_id = mapped_column(db.String(255), nullable=True)
+    stripe_subscription_cancel_at_period_end = mapped_column(db.Boolean, default=False)
+    stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeSubscriptionStatusEnum)
+    )
+    stripe_subscription_current_period_end = mapped_column(
+        db.DateTime(timezone=True), nullable=True
+    )
+    stripe_subscription_current_period_start = mapped_column(
+        db.DateTime(timezone=True), nullable=True
+    )
+
     @property
     def password_hash(self) -> str:
         """Return the hashed password."""
@@ -255,6 +304,20 @@ class User(Model):
             self._pgp_key = None
         else:
             self._pgp_key = encrypt_field(value)
+
+    @property
+    def is_free_tier(self) -> bool:
+        return self.tier_id is None or self.tier_id == Tier.free_tier_id()
+
+    @property
+    def is_business_tier(self) -> bool:
+        return self.tier_id == Tier.business_tier_id()
+
+    def set_free_tier(self) -> None:
+        self.tier_id = Tier.free_tier_id()
+
+    def set_business_tier(self) -> None:
+        self.tier_id = Tier.business_tier_id()
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:
@@ -349,3 +412,112 @@ class InviteCode(Model):
 
     def __repr__(self) -> str:
         return f"<InviteCode {self.code}>"
+
+
+# Paid tiers
+class Tier(Model):
+    __tablename__ = "tiers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(255), unique=True)
+    monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
+    stripe_product_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)
+
+    def __init__(self, name: str, monthly_amount: int) -> None:
+        super().__init__()
+        self.name = name
+        self.monthly_amount = monthly_amount
+
+    @staticmethod
+    def free_tier_id() -> int:
+        return 1
+
+    @staticmethod
+    def business_tier_id() -> int:
+        return 2
+
+    @staticmethod
+    def free_tier() -> Self | None:  # type: ignore
+        return db.session.get(Tier, Tier.free_tier_id())  # type: ignore
+
+    @staticmethod
+    def business_tier() -> Self | None:  # type: ignore
+        return db.session.get(Tier, Tier.business_tier_id())  # type: ignore
+
+
+class StripeEvent(Model):
+    __tablename__ = "stripe_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
+    event_type: Mapped[str] = mapped_column(db.String(255))
+    event_created: Mapped[int] = mapped_column(db.Integer)
+    event_data: Mapped[str] = mapped_column(db.Text)
+    status: Mapped[Optional[StripeEventStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeEventStatusEnum), default=StripeEventStatusEnum.PENDING
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(db.Text)
+
+    def __init__(self, event: Event, **kwargs: dict[str, Any]) -> None:
+        super().__init__(**kwargs)
+        self.event_id = event.id
+        self.event_created = event.created
+        self.event_type = event.type
+        self.event_data = str(event)
+
+
+class StripeInvoice(Model):
+    __tablename__ = "stripe_invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[str] = mapped_column(db.String(255))
+    invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
+    hosted_invoice_url: Mapped[str] = mapped_column(db.String(2048))
+    total: Mapped[int] = mapped_column(db.Integer)
+    status: Mapped[Optional[StripeInvoiceStatusEnum]] = mapped_column(
+        SQLAlchemyEnum(StripeInvoiceStatusEnum)
+    )
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
+
+    def __init__(self, invoice: Invoice) -> None:
+        if invoice.id:
+            self.invoice_id = invoice.id
+        if invoice.customer and isinstance(invoice.customer, str):
+            self.customer_id = invoice.customer
+        if invoice.hosted_invoice_url:
+            self.hosted_invoice_url = invoice.hosted_invoice_url
+        if invoice.total:
+            self.total = invoice.total
+        else:
+            self.total = 0
+        if invoice.status:
+            self.status = StripeInvoiceStatusEnum(invoice.status)
+        if invoice.created:
+            self.created_at = datetime.fromtimestamp(invoice.created, tz=timezone.utc)
+
+        # Look up the user by their customer ID
+        user = db.session.scalars(
+            db.select(User).filter_by(stripe_customer_id=invoice.customer)
+        ).one_or_none()
+        if user:
+            self.user_id = user.id
+        else:
+            raise ValueError(f"Could not find user with customer ID {invoice.customer}")
+
+        # Look up the tier by the product_id
+        if invoice.lines.data[0].plan:
+            product_id = invoice.lines.data[0].plan.product
+
+            tier = db.session.scalars(
+                db.select(Tier).filter_by(stripe_product_id=product_id)
+            ).one_or_none()
+            if tier:
+                self.tier_id = tier.id
+            else:
+                raise ValueError(f"Could not find tier with product ID {product_id}")
+        else:
+            raise ValueError("Invoice does not have a plan")

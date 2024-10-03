@@ -4,7 +4,21 @@
   role="tabpanel"
   aria-labelledby="profile-tab"
 >
+  {% if is_premium_enabled and user.is_free_tier %}
+    <div class="upgrade">
+      <div>
+        <h3>Upgrade to Business</h3>
+        <p class="info">
+          🚀 Need more features? Upgrade to Business for
+          ${{ business_tier_display_price }}/mo.
+        </p>
+      </div>
+      <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
+    </div>
+  {% endif %}
+
   {# TODO: much of this was copy/pasted to "settings/alias.html" and will need to have updates synced there #}
+
   <h3>Update Display Name</h3>
   {% if user.primary_username.is_verified %}
     <p class="meta">

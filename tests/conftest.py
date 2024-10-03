@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from hushline import create_app
 from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
-from hushline.model import Message, User, Username
+from hushline.model import Message, Tier, User, Username
 
 if TYPE_CHECKING:
     from _pytest.config.argparsing import Parser
@@ -144,6 +144,9 @@ def app(database: str) -> Generator[Flask, None, None]:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
 
+    # For premium tests
+    os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
+
     app = create_app()
     app.config["TESTING"] = True
     app.config["WTF_CSRF_ENABLED"] = False
@@ -151,6 +154,18 @@ def app(database: str) -> Generator[Flask, None, None]:
     app.config["PREFERRED_URL_SCHEME"] = "http"
 
     with app.app_context():
+        db.create_all()
+
+        # Create the default tiers
+        # (this happens in the migrations, but migrations don't run in the tests)
+        free_tier = Tier(name="Free", monthly_amount=0)
+        business_tier = Tier(name="Business", monthly_amount=2000)
+        business_tier.stripe_product_id = "prod_123"
+        business_tier.stripe_price_id = "price_123"
+        db.session.add(free_tier)
+        db.session.add(business_tier)
+        db.session.commit()
+
         yield app
 
 
@@ -168,6 +183,7 @@ def user_password() -> str:
 @pytest.fixture()
 def user(app: Flask, user_password: str, database: str) -> User:
     user = User(password=user_password)
+    user.tier_id = 1
     db.session.add(user)
     db.session.flush()
 

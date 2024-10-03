@@ -34,3 +34,6 @@ ENV PYTHONPATH=/app
 COPY pyproject.toml poetry.lock .
 
 RUN poetry install
+
+ENV FLASK_APP="hushline"
+CMD ["./scripts/dev_start.sh"]

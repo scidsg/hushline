@@ -12,14 +12,24 @@ services:
       ENCRYPTION_KEY: bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw=
       SECRET_KEY: cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd
       SQLALCHEMY_DATABASE_URI: postgresql://hushline:hushline@postgres:5432/hushline
-      REGISTRATION_CODES_REQUIRED: 'false'
+      REGISTRATION_CODES_REQUIRED: False
       SESSION_COOKIE_NAME: session
       NOTIFICATIONS_ADDRESS: notifications@hushline.app
+    env_file:
+      - .env.stripe
     volumes:
       - ./:/app
     depends_on:
       - dev_data
     restart: always
+
+  worker:
+    <<: *app_env
+    ports: []
+    restart: always
+    command: poetry run flask stripe start-worker
+    depends_on:
+      - app
 
   dev_data:
     <<: *app_env
