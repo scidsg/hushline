@@ -25,7 +25,7 @@ from wtforms import Field
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import BUSINESS_TIER, HostOrganization, Message, SMTPEncryption, Tier, User, Username
+from ..model import HostOrganization, Message, SMTPEncryption, Tier, User, Username
 from ..utils import (
     admin_authentication_required,
     authentication_required,
@@ -283,7 +283,7 @@ def create_blueprint() -> Blueprint:
             user_count = len(all_users)
 
         # Load the business tier price
-        business_tier = db.session.query(Tier).get(BUSINESS_TIER)
+        business_tier = Tier.business_tier()
         business_tier_display_price = ""
         if business_tier:
             price_usd = business_tier.monthly_amount / 100

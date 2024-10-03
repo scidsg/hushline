@@ -4,7 +4,7 @@
   role="tabpanel"
   aria-labelledby="profile-tab"
 >
-  {% if is_premium_enabled and user.is_free_tier() %}
+  {% if is_premium_enabled and user.is_free_tier %}
     <div class="upgrade">
       <div>
         <h3>Upgrade to Business</h3>

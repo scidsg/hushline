@@ -21,8 +21,6 @@ from werkzeug.wrappers.response import Response
 
 from .db import db
 from .model import (
-    BUSINESS_TIER,
-    FREE_TIER,
     StripeEvent,
     StripeEventStatusEnum,
     StripeInvoice,
@@ -42,7 +40,7 @@ def create_products_and_prices() -> None:
     current_app.logger.info("Creating products and prices")
 
     # Make sure the products and prices are created in Stripe
-    business_tier = db.session.get(Tier, BUSINESS_TIER)
+    business_tier = Tier.business_tier()
     if not business_tier:
         current_app.logger.error("Could not find business tier")
         return
@@ -188,7 +186,7 @@ def get_subscription(user: User) -> stripe.Subscription | None:
 
 
 def get_business_price_string() -> str:
-    business_tier = db.session.get(Tier, BUSINESS_TIER)
+    business_tier = Tier.business_tier()
     if not business_tier:
         current_app.logger.error("Could not find business tier")
         return "NA"
@@ -242,9 +240,9 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
 
         current_app.logger.info("status is: " + subscription.status)
         if subscription.status in ["active", "trialing"]:
-            user.tier_id = BUSINESS_TIER
+            user.set_business_tier()
         else:
-            user.tier_id = FREE_TIER
+            user.set_free_tier()
 
         db.session.commit()
     else:
@@ -258,7 +256,7 @@ def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
         db.select(User).filter_by(stripe_subscription_id=subscription.id)
     ).one_or_none()
     if user:
-        user.tier_id = FREE_TIER
+        user.set_free_tier()
         user.stripe_subscription_id = None
         user.stripe_subscription_status = None
         user.stripe_subscription_cancel_at_period_end = None
@@ -410,7 +408,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("login"))
 
         if user.tier_id is None:
-            user.tier_id = FREE_TIER
+            user.set_free_tier()
             db.session.add(user)
             db.session.commit()
 
@@ -430,12 +428,12 @@ def create_blueprint(app: Flask) -> Blueprint:
             return redirect(url_for("login"))
 
         # If the user is already on the business tier
-        if user.tier_id == BUSINESS_TIER:
+        if user.is_business_tier:
             flash("👍 You're already upgraded.")
             return redirect(url_for("premium.index"))
 
         # Select the business tier
-        business_tier = db.session.get(Tier, BUSINESS_TIER)
+        business_tier = Tier.business_tier()
         if not business_tier:
             current_app.logger.error("Could not find business tier")
             flash("⚠️ Something went wrong!")
@@ -544,7 +542,7 @@ def create_blueprint(app: Flask) -> Blueprint:
                 stripe.Subscription.delete(user.stripe_subscription_id)
 
                 # Downgrade the user (the subscription ID will get removed in the webhook)
-                user.tier_id = FREE_TIER
+                user.set_free_tier()
                 db.session.add(user)
                 db.session.commit()
 
@@ -568,7 +566,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             session.clear()
             return redirect(url_for("login"))
 
-        if user.tier_id == BUSINESS_TIER:
+        if user.is_business_tier:
             flash("🔥 Congratulations, you've upgraded your account!")
 
         return jsonify({"tier_id": user.tier_id})

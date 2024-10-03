@@ -16,8 +16,6 @@ from hushline.model import (
     User,
 )
 from hushline.premium import (
-    BUSINESS_TIER,
-    FREE_TIER,
     create_customer,
     create_products_and_prices,
     get_subscription,
@@ -196,7 +194,7 @@ def test_handle_subscription_created(app: Flask, user: User) -> None:
     handle_subscription_created(subscription)
 
     assert user.stripe_subscription_id == "sub_123"
-    assert user.tier_id != BUSINESS_TIER
+    assert not user.is_business_tier
 
 
 # Webhook handler for customer.subscription.updated, when the status changes to active
@@ -213,7 +211,7 @@ def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
 
     handle_subscription_updated(subscription)
 
-    assert user.tier_id == BUSINESS_TIER
+    assert user.is_business_tier
 
 
 # Webhook handler for customer.subscription.updated, when the status changes to canceled
@@ -230,7 +228,7 @@ def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
 
     handle_subscription_updated(subscription)
 
-    assert user.tier_id == FREE_TIER
+    assert user.is_free_tier
 
 
 # Webhook handler for customer.subscription.deleted
@@ -243,7 +241,7 @@ def test_handle_subscription_deleted(app: Flask, user: User) -> None:
 
     handle_subscription_deleted(subscription)
 
-    assert user.tier_id == FREE_TIER
+    assert user.is_free_tier
     assert user.stripe_subscription_id is None
 
 
@@ -303,7 +301,7 @@ def test_handle_invoice_updated(app: Flask, user: User) -> None:
 def test_upgrade_post_user_already_on_business_tier(
     client: FlaskClient, user: User, business_tier: Tier
 ) -> None:
-    user.tier_id = BUSINESS_TIER
+    user.set_business_tier()
     db.session.commit()
 
     response = client.post(url_for("premium.upgrade"))
@@ -356,7 +354,7 @@ def test_upgrade_process(
 
     # Check that the user is now on the business tier
     db.session.refresh(user)
-    assert user.tier_id == BUSINESS_TIER
+    assert user.is_business_tier
 
     # And an invoice was created
     stripe_invoice = db.session.query(StripeInvoice).filter_by(user_id=user.id).one()
@@ -486,7 +484,7 @@ def test_cancel_no_subscription(client: FlaskClient, user: User) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) -> None:
     user.stripe_subscription_id = "sub_123"
-    user.tier_id = BUSINESS_TIER
+    user.set_business_tier()
     db.session.commit()
 
     mock_stripe_delete = mocker.patch(
@@ -502,14 +500,14 @@ def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) ->
     handle_subscription_deleted(MagicMock(id="sub_123"))
 
     db.session.refresh(user)
-    assert user.tier_id == FREE_TIER
+    assert user.is_free_tier
     assert user.stripe_subscription_id is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixture) -> None:
     user.stripe_subscription_id = "sub_123"
-    user.tier_id = BUSINESS_TIER
+    user.set_business_tier()
     db.session.commit()
 
     stripe_error_instance = MagicMock()

@@ -106,11 +106,6 @@ class StripeEventStatusEnum(enum.Enum):
     FINISHED = "finished"
 
 
-# Premium tiers
-FREE_TIER = 1
-BUSINESS_TIER = 2
-
-
 class Username(Model):
     """
     Class representing a username and associated profile.
@@ -312,11 +307,19 @@ class User(Model):
         else:
             self._pgp_key = encrypt_field(value)
 
+    @property
     def is_free_tier(self) -> bool:
-        return self.tier_id is None or self.tier_id == FREE_TIER
+        return self.tier_id is None or self.tier_id == Tier.free_tier_id()
 
+    @property
     def is_business_tier(self) -> bool:
-        return self.tier_id == BUSINESS_TIER
+        return self.tier_id == Tier.business_tier_id()
+
+    def set_free_tier(self) -> None:
+        self.tier_id = Tier.free_tier_id()
+
+    def set_business_tier(self) -> None:
+        self.tier_id = Tier.business_tier_id()
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:
@@ -427,6 +430,22 @@ class Tier(Model):
         super().__init__()
         self.name = name
         self.monthly_amount = monthly_amount
+
+    @staticmethod
+    def free_tier_id() -> int:
+        return 1
+
+    @staticmethod
+    def business_tier_id() -> int:
+        return 2
+
+    @staticmethod
+    def free_tier() -> Self | None:  # type: ignore
+        return db.session.get(Tier, Tier.free_tier_id())  # type: ignore
+
+    @staticmethod
+    def business_tier() -> Self | None:  # type: ignore
+        return db.session.get(Tier, Tier.business_tier_id())  # type: ignore
 
 
 class StripeEvent(Model):
