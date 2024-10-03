@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+from hmac import compare_digest as bytes_are_equal
 
 import aiohttp
 import pyotp
@@ -354,22 +355,25 @@ def create_blueprint() -> Blueprint:
 
         change_password_form = ChangePasswordForm(request.form)
         if not change_password_form.validate_on_submit():
-            flash("New password is invalid.")
+            flash("⛔️ Invalid form data. Please try again.", "error")
             return redirect(url_for("settings.index"))
 
-        if not change_password_form.old_password.data or not user.check_password(
-            change_password_form.old_password.data
+        if not user.check_password(change_password_form.old_password.data):
+            flash("⛔️ Incorrect old password.", "error")
+            return redirect(url_for("settings.index"))
+
+        # SECURITY: only check equality after successful old password check
+        if bytes_are_equal(
+            change_password_form.old_password.data.encode(),
+            change_password_form.new_password.data.encode(),
         ):
-            flash("Incorrect old password.", "error")
+            flash("⛔️ Cannot choose a repeat password.", "error")
             return redirect(url_for("settings.index"))
 
         user.password_hash = change_password_form.new_password.data
         db.session.commit()
         session.clear()
-        flash(
-            "👍 Password successfully changed. Please log in again.",
-            "success",
-        )
+        flash("👍 Password successfully changed. Please log in again.", "success")
         return redirect(url_for("login"))
 
     @bp.route("/enable-2fa", methods=["GET", "POST"])
