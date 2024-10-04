@@ -20,6 +20,8 @@ services:
       SMTP_FORWARDING_MESSAGE_HTML: |
         ✊ Email forwarding is powered by
         <a href="https://riseup.net" target="_blank">Riseup.net</a>.
+      BLOB_STORAGE_PRIVATE_DRIVER: file-system
+      BLOB_STORAGE_PRIVATE_FS_ROOT: /tmp/blob-storage/private
     volumes:
       - ./:/app
     depends_on:

@@ -8,6 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 aiohttp = "^3.10.5"
+boto3 = "^1.35.33"
 cryptography = "^43.0.1"
 email-validator = "^2.2.0"
 flask = { extras = ["async"], version = "^3.0.3" }

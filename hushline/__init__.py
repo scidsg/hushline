@@ -11,6 +11,7 @@ from . import admin, premium, routes, settings
 from .config import AliasMode, load_config
 from .db import db, migrate
 from .model import HostOrganization, Tier, User
+from .storage import BlobStorage, private_store
 from .version import __version__
 
 
@@ -25,6 +26,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
 
     app.config.from_mapping(config)
     configure_jinja(app)
+
     db.init_app(app)
     migrate.init_app(app, db)
 
@@ -37,6 +39,9 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         # Initialize Stripe
         with app.app_context():
             premium.init_stripe()
+
+    private_store.init_app(app)
+    BlobStorage.finalize(app)
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:
