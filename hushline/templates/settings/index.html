@@ -7,16 +7,16 @@
   <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list" role="tablist">
       {% with buttons = [
-        ('profile', 'Profile', False),
-        ('aliases', 'Aliases', False),
-        ('auth', 'Authentication', False),
-        ('email', 'Email & Encryption', False),
-        ('branding', 'Branding', True),
-        ('advanced', 'Advanced', False),
-        ('admin', 'Admin', True)
+        ('profile', 'Profile', False, False),
+        ('aliases', 'Aliases', False, True),
+        ('auth', 'Authentication', False, False),
+        ('email', 'Email & Encryption', False, False),
+        ('branding', 'Branding', True, False),
+        ('advanced', 'Advanced', False, False),
+        ('admin', 'Admin', True, False)
       ] %}
-        {% for (id, display, requires_admin) in buttons %}
-          {% if not requires_admin or user.is_admin %}
+        {% for (id, display, requires_admin, requires_paying_customer) in buttons %}
+          {% if (not requires_admin or user.is_admin) and (not requires_paying_customer or not user.is_free_tier) %}
             <li role="presentation">
               <button
                 type="button"
@@ -37,7 +37,9 @@
   </div>
   <div>
     {% include "settings/profile.html" %}
-    {% include "settings/aliases.html" %}
+    {% if not user.is_free_tier %}
+      {% include "settings/aliases.html" %}
+    {% endif %}
     {% include "settings/auth.html" %}
     {% include "settings/email.html" %}
     {% include "settings/advanced.html" %}

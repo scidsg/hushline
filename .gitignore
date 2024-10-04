@@ -11,3 +11,4 @@ hushline/static/data/users_directory.json
 /node_modules
 .coverage
 htmlcov
+.env.stripe

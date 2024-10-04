@@ -403,6 +403,12 @@ def init_app(app: Flask) -> None:
                 db.session.add(auth_log)
                 db.session.commit()
 
+                # If premium features are enabled, prompt the user to select a tier if they haven't
+                if app.config["STRIPE_SECRET_KEY"]:
+                    user = db.session.get(User, username.user_id)
+                    if user and user.tier_id is None:
+                        return redirect(url_for("premium.select_tier"))
+
                 return redirect(url_for("inbox"))
 
             flash("⛔️ Invalid username or password")
@@ -477,6 +483,11 @@ def init_app(app: Flask) -> None:
                 db.session.commit()
 
                 session["is_authenticated"] = True
+
+                # If premium features are enabled, prompt the user to select a tier if they haven't
+                if app.config["STRIPE_SECRET_KEY"] and user.tier_id is None:
+                    return redirect(url_for("premium.select_tier"))
+
                 return redirect(url_for("inbox"))
 
             auth_log = AuthenticationLog(user_id=user.id, successful=False)

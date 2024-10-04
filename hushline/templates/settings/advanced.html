@@ -5,6 +5,15 @@
   aria-labelledby="advanced-tab"
   hidden
 >
+  {% if is_premium_enabled %}
+  <div class="adv-form">
+    <h3>Paid Features</h3>
+    <div>
+      <a href="{{ url_for('premium.index') }}">Manage my plan</a>
+    </div>
+  </div>
+  {% endif %}
+
   <h3>Delete Account</h3>
   <p class="meta">
     ⚠️ Deleting your account is a permanent action that cannot be undone!

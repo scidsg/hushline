@@ -361,6 +361,11 @@
     color: white;
   }
 
+  .upgrade {
+    background-color: var(--color-brand);
+    color: white;
+  }
+
   @media screen and (max-width: 768px) {
     .dropdown-content a:hover {
       background-color: white;
@@ -385,6 +390,14 @@
 
   .icon.verifiedURL {
     background-image: url("../img/app/icon-verified-lm.png");
+  }
+
+  .plan {
+    border: var(--border);
+  }
+
+  #invoice-wrapper {
+    border: var(--border);
   }
 }
 
@@ -675,6 +688,16 @@
     color: #333;
   }
 
+  .upgrade .btn {
+    border: 1px solid #333;
+    color: #333;
+  }
+
+  .upgrade {
+    background-color: var(--color-brand-dark);
+    color: #333;
+  }
+
   @media screen and (max-width: 768px) {
     .dropdown-content a:hover {
       background-color: var(--color-dark-bg-alt);
@@ -701,8 +724,16 @@
     background-image: url("../img/app/icon-verified-dm.png");
   }
 
+  .plan {
+    border: var(--border-dark);
+  }
+
   .icon.chevron {
     background-image: url("../img/app/icon-chevron-dm.png");
+  }
+
+  #invoice-wrapper {
+    border: var(--border-dark);
   }
 }
 
@@ -786,6 +817,10 @@ h4 {
 
 .user h4 {
   margin-top: 0;
+}
+
+.centered-heading {
+  text-align: center;
 }
 
 p {
@@ -1059,6 +1094,11 @@ header nav ul {
 header nav li {
   list-style: none;
   font-size: 0.875rem;
+}
+
+.nav-emoji {
+  position: absolute;
+  transform: translateY(-0.325rem) translateX(-1.5rem);
 }
 
 header nav a {
@@ -1908,6 +1948,11 @@ input#captcha_answer {
   .admin-highlights {
     gap: 0.5rem;
   }
+
+  .nav-emoji {
+    position: absolute;
+    transform: translateY(-0.325rem) translateX(3.75rem);
+  }
 }
 
 .toggle-ui {
@@ -2139,6 +2184,90 @@ p.bio + .extra-fields {
   margin-top: 0.5rem;
 }
 
+#plan-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.plan {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan p {
+  margin: 0.25rem 0;
+}
+
+.plan .badge {
+  margin-bottom: 1.5rem;
+  margin-top: 0.625rem;
+}
+
+.plan .plan-status {
+  text-align: center;
+}
+
+.plan-recommended .plan-status {
+  font-family: var(--font-sans-bold);
+}
+
+#card-element {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #666;
+}
+
+.upgrade {
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upgrade .btn {
+  width: fit-content;
+  box-sizing: border-box;
+  text-align: center;
+  margin: 0;
+}
+
+.upgrade h3 {
+  font-size: var(--font-size-4);
+  margin-bottom: 0.25rem;
+}
+
+.plan h3 {
+  margin-bottom: 0.75rem;
+}
+
+.upgrade p {
+  font-size: var(--font-size-small);
+  margin: 0;
+}
+
+.feature-meta {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  font-size: var(--font-size-small);
+}
+
+.feature-meta p:first-of-type {
+  font-family: var(--font-sans-bold);
+}
+
 @media (max-width: 640px) {
   .extra-fields {
     flex-direction: column;
@@ -2147,6 +2276,18 @@ p.bio + .extra-fields {
 
   .extra-field {
     width: 100%;
+  }
+
+  #plan-wrapper {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .upgrade {
+    flex-direction: column;
+    align-items: start;
+    gap: 0.75rem;
   }
 }
 
@@ -2225,4 +2366,52 @@ p.bio + .extra-fields {
 
 .drill-in .checkbox-group {
   margin-bottom: 0;
+}
+
+#invoice-wrapper {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border-radius: 0.25rem;
+}
+
+#invoice-wrapper table {
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+#invoice-wrapper table tr {
+  width: 100%;
+}
+
+#invoice-wrapper table th,
+#invoice-wrapper table td {
+  padding-top: 0.325rem;
+  padding-bottom: 0.325rem;
+}
+
+.adv-form {
+  display: flex;
+  margin-bottom: 2rem;
+  flex-direction: column;
+}
+
+#enable-autorenew-form,
+#cancel-form {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+#enable-autorenew-form button,
+#cancel-form button {
+  margin-bottom: 0;
+}
+
+#enable-autorenew-form {
+  margin-top: 1rem;
+}
+
+.plan .sub-info {
+  margin-top: 1.25rem;
 }

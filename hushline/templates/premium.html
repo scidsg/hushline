@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Premium{% endblock %}
+
+{% block content %}
+  <h2 class="centered-heading">Choose a Hush Line Plan</h2>
+
+  <div id="plan-wrapper">
+    <div class="plan">
+      {% if user.is_free_tier %}
+        <p class="plan-status badge">📍 Current Plan</p>
+      {% endif %}
+      {% if user.is_business_tier %}
+        <p class="plan-status badge">👇 Fewer Features</p>
+      {% endif %}
+      {% include "premium/free-features.html" %}
+    </div>
+    <div class="plan plan-recommended">
+      {% if user.is_free_tier %}
+        <p class="plan-status badge">⭐️ Recommended for Businesses</p>
+      {% endif %}
+      {% if user.is_business_tier %}
+        <p class="plan-status badge">📍 Current Plan</p>
+      {% endif %}
+      {% include "premium/business-features.html" %}
+      {% if user.is_free_tier %}
+        <form
+          id="upgrade-form"
+          action="{{ url_for('premium.upgrade') }}"
+          method="post"
+        >
+          <button id="upgrade">Upgrade Now</button>
+        </form>
+      {% endif %}
+      {% if user.is_business_tier %}
+        {% if user.stripe_subscription_cancel_at_period_end %}
+          <p class="meta sub-info">⚠️ Your subscription will expire on {{ user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.</p>
+          <form
+            id="enable-autorenew-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button id="enable-autorenew">Automatically Renew</button>
+          </form>
+          <form
+            id="cancel-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button id="cancel" class="btn">Cancel Now</button>
+          </form>
+        {% else %}
+          <form
+            id="disable-autorenew-form"
+            action="{{ url_for('premium.disable_autorenew') }}"
+            method="post"
+          >
+            <button class="btn" id="disable-autorenew">Don't Renew</button>
+          </form>
+        {% endif %}
+    {% endif %}
+    </div>
+  </div>
+
+  {% if invoices %}
+  <div id="invoice-wrapper">
+      <h3>Invoices</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount Paid</th>
+            <th>Status</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>${{ invoice.total / 100 }}</td>
+              <td>{{ invoice.status.value }}</td>
+              <td>
+                <a href="{{ invoice.hosted_invoice_url }}" target="_blank">
+                  Receipt
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/premium.js') }}"></script>
+{% endblock %}

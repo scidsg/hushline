@@ -29,4 +29,4 @@ EXPOSE 8080
 
 # Run!
 ENV FLASK_APP="hushline"
-CMD ["./start.sh"]
+CMD ["./scripts/prod_start.sh"]
