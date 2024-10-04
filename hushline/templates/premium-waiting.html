@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Subscribing{% endblock %}
+
+{% block content %}
+  <h2>Subscribing</h2>
+  <p>⏳ Processing payment, please wait...</p>
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="{{ url_for('static', filename='js/premium-waiting.js') }}"></script>
+{% endblock %}

@@ -10,6 +10,13 @@ on:
 jobs:
   run-lint-and-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine3.20
+        env:
+          POSTGRES_USER: hushline
+          POSTGRES_PASSWORD: hushline
+          POSTGRES_DB: hushline
     steps:
       - uses: actions/checkout@v4
 
@@ -21,19 +28,16 @@ jobs:
           python-version: "3.12"
           cache: "poetry"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: "npm"
-
       - name: Install Python dependencies
         run: poetry install
-
-      - name: Install Node dependencies
-        run: npm install
 
       - name: Lint
         run: poetry run make lint
 
       - name: Test
-        run: poetry run make test
+        run: make test
+
+      - name: Test with alembic
+        run: make test
+        env:
+          PYTEST_ADDOPTS: "--alembic"

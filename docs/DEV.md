@@ -41,10 +41,11 @@ Install Poetry dependencies:
 make install
 ```
 
-Run the database migrations:
+Run one of the database migrations:
 
 ```sh
-make migrate
+make migrate-dev  # for current dev DB settings
+make migrate-prod # for current alembic migrations
 ```
 
 Run the app in debug mode:
@@ -56,6 +57,9 @@ make run
 Run the tests:
 
 ```sh
+# in one terminal
+./scripts/local-postgres.sh
+# in another terminal
 make test
 ```
 
@@ -77,4 +81,10 @@ Create a new revision:
 
 ```sh
 make revision name="my db changes"
+```
+
+Test the migrations:
+
+```sh
+PYTEST_ADDOPTS='--alembic' make test
 ```

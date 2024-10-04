@@ -1,232 +1,188 @@
-from secrets import token_urlsafe
 from unittest.mock import ANY, MagicMock, patch
+from uuid import uuid4
 
-from auth_helper import configure_pgp, login_user, register_user
+import pytest
+from bs4 import BeautifulSoup
+from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import SMTPEncryption, User
+from hushline.model import HostOrganization, Message, SMTPEncryption, User, Username
 
 
-def test_settings_page_loads(client: FlaskClient) -> None:
-    # Register a user
-    user = register_user(client, "testuser_settings", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-
-    # Log in the user
-    user_logged_in = login_user(client, "testuser_settings", "SecureTestPass123!")
-    assert user_logged_in is not None, "User login failed"
-
-    # Access the /settings page
-    response = client.get("/settings/", follow_redirects=True)
-    assert response.status_code == 200, "Failed to load the settings page"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_page_loads(client: FlaskClient, user: User) -> None:
+    response = client.get(url_for("settings.index"), follow_redirects=True)
+    assert response.status_code == 200
+    assert "Settings" in response.text
 
 
-def test_change_display_name(client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "testuser_settings", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_display_name(client: FlaskClient, user: User) -> None:
+    new_display_name = (user.primary_username.display_name or "") + "_NEW"
 
-    login_user(client, "testuser_settings", "SecureTestPass123!")
-
-    # Define new display name
-    new_display_name = "New Display Name"
-
-    # Submit POST request to change display name
     response = client.post(
-        "/settings/",
+        url_for("settings.index"),
         data={
             "display_name": new_display_name,
             "update_display_name": "Update Display Name",
         },
         follow_redirects=True,
     )
+    assert response.status_code == 200
+    assert "Display name updated successfully" in response.text
 
-    # Verify update was successful
-    assert response.status_code == 200, "Failed to update display name"
-
-    # Fetch updated user info from the database to confirm change
     updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="testuser_settings").limit(1)
+        db.select(Username).filter_by(_username=user.primary_username.username)
     ).one()
-    assert updated_user is not None, "User was not found after update attempt"
-    assert updated_user.display_name == new_display_name, "Display name was not updated correctly"
-
-    # Optional: Check for success message in response
-    assert (
-        b"Display name updated successfully" in response.data
-    ), "Success message not found in response"
+    assert updated_user.display_name == new_display_name
 
 
-def test_change_username(client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "original_username", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_username(client: FlaskClient, user: User) -> None:
+    new_username = user.primary_username.username + "-new"
 
-    login_user(client, "original_username", "SecureTestPass123!")
-
-    # Define new username
-    new_username = "updated_username"
-
-    # Submit POST request to change the username
     response = client.post(
-        "/settings/",
+        url_for("settings.index"),
         data={
             "new_username": new_username,
-            "change_username": "Update Username",  # This button name must match your HTML form
+            "change_username": "Change Username",  # html submit button
         },
         follow_redirects=True,
     )
+    assert response.status_code == 200
+    assert "Username changed successfully" in response.text
 
-    # Verify update was successful
-    assert response.status_code == 200, "Failed to update username"
-
-    # Fetch updated user info from the database to confirm change
-    updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username=new_username).limit(1)
-    ).one()
-    assert updated_user is not None, "Username was not updated correctly in the database"
-    assert (
-        updated_user.primary_username == new_username
-    ), "Database does not reflect the new username"
-
-    assert (
-        not updated_user.is_verified
-    ), "User verification status should be reset after username change"
-
-    # Optional: Check for success message in response
-    assert (
-        b"Username changed successfully" in response.data
-    ), "Success message not found in response"
+    updated_user = db.session.scalars(db.select(Username).filter_by(_username=new_username)).one()
+    assert updated_user.username == new_username
+    assert not updated_user.is_verified
 
 
-def test_change_password(client: FlaskClient) -> None:
-    # Register a new user
-    username = "test_change_password"
-    original_password = f"{token_urlsafe(16)}!"
-    new_password = f"{token_urlsafe(16)}!!!"
-    user = register_user(client, username, original_password)
-    assert user is not None, "User registration failed"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password(client: FlaskClient, user: User, user_password: str) -> None:
+    new_password = user_password + "xxx"
+
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
-    assert original_password not in original_password_hash
+    assert user_password not in original_password_hash
 
-    # Log in the registered user
-    logged_in_user = login_user(client, username, original_password)
-    assert logged_in_user is not None
-    assert user.id == logged_in_user.id
-
-    # Submit POST request to change the username & verify update was successful
     response = client.post(
-        "/settings/change-password",
+        url_for("settings.change_password"),
         data={
-            "old_password": original_password,
+            "old_password": user_password,
             "new_password": new_password,
         },
         follow_redirects=True,
     )
-    assert response.status_code == 200, "Failed to update password"
-    assert "login" in response.request.url
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert "/login" in response.request.url
     assert len(new_password_hash := user.password_hash) > 32
     assert new_password_hash.startswith("$scrypt$")
     assert original_password_hash not in new_password_hash
-    assert original_password not in new_password_hash
+    assert user_password not in new_password_hash
     assert new_password not in new_password_hash
-    assert (
-        b"Password successfully changed. Please log in again." in response.data
-    ), "Success message not found in response"
+
+    # TODO simulate a log out?
 
     # Attempt to log in with the registered user's old password
     response = client.post(
-        "/login", data={"username": username, "password": original_password}, follow_redirects=True
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "login" in response.request.url
-    assert b"Invalid username or password" in response.data, "Failure message not found in response"
+    assert "Invalid username or password" in response.text
+    assert "/login" in response.request.url
+
+    # TODO simulate a log out?
 
     # Attempt to log in with the registered user's new password
     response = client.post(
-        "/login", data={"username": username, "password": new_password}, follow_redirects=True
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": new_password},
+        follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "inbox" in response.request.url
-    assert b"Empty Inbox" in response.data, "Inbox message not found in response"
-    assert (
-        b"Invalid username or password" not in response.data
-    ), "Failure message was found in response"
+    assert "Empty Inbox" in response.text
+    assert "Invalid username or password" not in response.text
+    assert "/inbox" in response.request.url
 
 
-def test_add_pgp_key(client: FlaskClient) -> None:
-    # Setup and login
-    user = register_user(client, "user_with_pgp", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-    login_user(client, "user_with_pgp", "SecureTestPass123!")
-
-    # Load the PGP key from a file
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_pgp_key(client: FlaskClient, user: User, user_password: str) -> None:
     with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read()
 
-    # Submit POST request to add the PGP key
     response = client.post(
-        "/settings/update-pgp-key",
+        url_for("settings.update_pgp_key"),
         data={"pgp_key": new_pgp_key},
         follow_redirects=True,
     )
-
-    # Check successful update
     assert response.status_code == 200, "Failed to update PGP key"
+    assert "PGP key updated successfully" in response.text
+
     updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_with_pgp").limit(1)
+        db.select(Username).filter_by(_username=user.primary_username.username)
     ).one()
-    assert updated_user is not None, "User was not found after update attempt"
-    assert updated_user.pgp_key == new_pgp_key, "PGP key was not updated correctly"
-
-    # Check for success message
-    assert b"PGP key updated successfully" in response.data, "Success message not found"
+    assert updated_user.user.pgp_key == new_pgp_key
 
 
-def test_add_invalid_pgp_key(client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "user_invalid_pgp", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-
-    login_user(client, "user_invalid_pgp", "SecureTestPass123!")
-
-    # Define an invalid PGP key string
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
     invalid_pgp_key = "NOT A VALID PGP KEY BLOCK"
 
-    # Submit POST request to add the invalid PGP key
     response = client.post(
-        "/settings/update-pgp-key",
+        url_for("settings.update_pgp_key"),
         data={"pgp_key": invalid_pgp_key},
         follow_redirects=True,
     )
+    assert response.status_code == 200
+    assert "Invalid PGP key format" in response.text
 
-    # Check that update was not successful
-    assert response.status_code == 200, "HTTP status code check"
-
-    # Fetch updated user info from the database to confirm no change
     updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_invalid_pgp")
+        db.select(Username).filter_by(_username=user.primary_username.username)
     ).one()
-    assert updated_user is not None, "User was not found after update attempt"
-    assert (
-        updated_user.pgp_key != invalid_pgp_key
-    ), "Invalid PGP key should not have been updated in the database"
-
-    # Optional: Check for error message in response
-    assert b"Invalid PGP key format" in response.data, "Error message for invalid PGP key not found"
+    assert updated_user.user.pgp_key != invalid_pgp_key
 
 
+@pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "user_smtp_settings_no_pgp", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
+def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.update_smtp_settings"),
+        data={
+            "forwarding_enabled": True,
+            "email_address": "primary@example.com",
+            "custom_smtp_settings": True,
+            "smtp_settings-smtp_server": "smtp.example.com",
+            "smtp_settings-smtp_port": 587,
+            "smtp_settings-smtp_username": "user@example.com",
+            "smtp_settings-smtp_password": "securepassword123",
+            "smtp_settings-smtp_encryption": "StartTLS",
+            "smtp_settings-smtp_sender": "sender@example.com",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Email forwarding requires a configured PGP key" in response.text
 
-    login_user(client, "user_smtp_settings_no_pgp", "SecureTestPass123!")
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
+    assert updated_user.email is None
+    assert updated_user.smtp_server is None
+    assert updated_user.smtp_port is None
+    assert updated_user.smtp_username is None
+    assert updated_user.smtp_password is None
 
-    # Define new SMTP settings
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.utils.smtplib.SMTP")
+def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
@@ -239,115 +195,38 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient) -> No
         "smtp_settings-smtp_sender": "sender@example.com",
     }
 
-    # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update-smtp-settings",
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
-
-    # Check successful update
-    assert response.status_code == 200, "Failed to update SMTP settings"
-    assert (
-        b"Email forwarding requires a configured PGP key" in response.data
-    ), "Expected email forwarding to require PGP key"
-    # Fetch updated user info from the database to confirm changes
-    updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_smtp_settings_no_pgp")
-    ).one()
-    assert updated_user is not None, "User was not found after update attempt"
-    assert updated_user.email is None, f"Email address should not be set, was {updated_user.email}"
-    assert (
-        updated_user.smtp_server is None
-    ), f"SMTP server should not be set, was {updated_user.smtp_server}"
-    assert (
-        updated_user.smtp_port is None
-    ), f"SMTP port should not be set, was {updated_user.smtp_port}"
-    assert (
-        updated_user.smtp_username is None
-    ), f"SMTP username should not be set, was {updated_user.smtp_username}"
-    assert (
-        updated_user.smtp_password is None
-    ), f"SMTP password should not be set, was {updated_user.smtp_password}"
-
-
-@patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "user_smtp_settings_tls", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-
-    login_user(client, "user_smtp_settings_tls", "SecureTestPass123!")
-
-    configure_pgp(client)
-
-    # Define new SMTP settings
-    new_smtp_settings = {
-        "forwarding_enabled": True,
-        "email_address": "primary@example.com",
-        "custom_smtp_settings": True,
-        "smtp_settings-smtp_server": "smtp.example.com",
-        "smtp_settings-smtp_port": 587,
-        "smtp_settings-smtp_username": "user@example.com",
-        "smtp_settings-smtp_password": "securepassword123",
-        "smtp_settings-smtp_encryption": "StartTLS",
-        "smtp_settings-smtp_sender": "sender@example.com",
-    }
-
-    # Submit POST request to update SMTP settings
-    response = client.post(
-        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
-        data=new_smtp_settings,
-        follow_redirects=True,
-    )
+    assert response.status_code == 200
+    assert "SMTP settings updated successfully" in response.text
 
     SMTP.assert_called_with(user.smtp_server, user.smtp_port, timeout=ANY)
     SMTP.return_value.__enter__.return_value.starttls.assert_called_once_with()
     SMTP.return_value.__enter__.return_value.login.assert_called_once_with(
         user.smtp_username, user.smtp_password
     )
-    # Check successful update
-    assert response.status_code == 200, "Failed to update SMTP settings"
-    updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_smtp_settings_tls")
-    ).one()
-    assert (
-        updated_user.email == new_smtp_settings["email_address"]
-    ), "Email address was not updated correctly"
-    assert (
-        updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
-    ), "SMTP server was not updated correctly"
-    assert (
-        updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
-    ), "SMTP port was not updated correctly"
-    assert (
-        updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
-    ), "SMTP username was not updated correctly"
-    assert (
-        updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
-    ), "SMTP password was not updated correctly"
-    assert (
-        updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
-    ), "SMTP encryption was not updated correctly"
-    assert (
-        updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
-    ), "SMTP sender was not updated correctly"
 
-    # Optional: Check for success message in response
-    assert b"SMTP settings updated successfully" in response.data, "Success message not found"
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
+    assert updated_user.email == new_smtp_settings["email_address"]
+    assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
+    assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
+    assert updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
+    assert updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
+    assert updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
+    assert updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.utils.smtplib.SMTP_SSL")
-def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "user_smtp_settings_ssl", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-
-    login_user(client, "user_smtp_settings_ssl", "SecureTestPass123!")
-
-    configure_pgp(client)
-
-    # Define new SMTP settings
+def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
@@ -360,92 +239,291 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient) -> None:
         "smtp_settings-smtp_sender": "sender@example.com",
     }
 
-    # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
+    assert response.status_code == 200
+    assert "SMTP settings updated successfully" in response.text
 
     SMTP.assert_called_with(user.smtp_server, user.smtp_port, timeout=ANY)
     SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
     SMTP.return_value.__enter__.return_value.login.assert_called_once_with(
         user.smtp_username, user.smtp_password
     )
-    # Check successful update
-    assert response.status_code == 200, "Failed to update SMTP settings"
-    updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_smtp_settings_ssl")
-    ).one()
-    assert (
-        updated_user.email == new_smtp_settings["email_address"]
-    ), "Email address was not updated correctly"
-    assert (
-        updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
-    ), "SMTP server was not updated correctly"
-    assert (
-        updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
-    ), "SMTP port was not updated correctly"
-    assert (
-        updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
-    ), "SMTP username was not updated correctly"
-    assert (
-        updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
-    ), "SMTP password was not updated correctly"
-    assert (
-        updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
-    ), "SMTP encryption was not updated correctly"
-    assert (
-        updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
-    ), "SMTP sender was not updated correctly"
 
-    # Optional: Check for success message in response
-    assert b"SMTP settings updated successfully" in response.data, "Success message not found"
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
+    assert updated_user.email == new_smtp_settings["email_address"]
+    assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
+    assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
+    assert updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
+    assert updated_user.smtp_password == new_smtp_settings["smtp_settings-smtp_password"]
+    assert updated_user.smtp_encryption.value == new_smtp_settings["smtp_settings-smtp_encryption"]
+    assert updated_user.smtp_sender == new_smtp_settings["smtp_settings-smtp_sender"]
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.utils.smtplib.SMTP")
-def test_update_smtp_settings_default_forwarding(SMTP: MagicMock, client: FlaskClient) -> None:
-    # Register and log in a user
-    user = register_user(client, "user_default_forwarding", "SecureTestPass123!")
-    assert user is not None, "User registration failed"
-
-    login_user(client, "user_default_forwarding", "SecureTestPass123!")
-
-    configure_pgp(client)
-
-    # Define new SMTP settings
+def test_update_smtp_settings_default_forwarding(
+    SMTP: MagicMock, client: FlaskClient, user: User
+) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
         "smtp_settings-smtp_encryption": "StartTLS",
     }
 
-    # Submit POST request to update SMTP settings
     response = client.post(
-        "/settings/update-smtp-settings",  # Adjust to your app's correct endpoint
+        url_for("settings.update_smtp_settings"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
+    assert response.status_code == 200
+    assert "SMTP settings updated successfully" in response.text
 
     SMTP.assert_not_called()
     SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
     SMTP.return_value.__enter__.return_value.login.assert_not_called()
-    # Check successful update
-    assert response.status_code == 200, "Failed to update SMTP settings"
-    updated_user = db.session.scalars(
-        db.select(User).filter_by(primary_username="user_default_forwarding")
-    ).one()
-    assert (
-        updated_user.email == new_smtp_settings["email_address"]
-    ), "Email address was not updated correctly"
-    assert updated_user.smtp_server is None, "SMTP server was not updated correctly"
-    assert updated_user.smtp_port is None, "SMTP port was not updated correctly"
-    assert updated_user.smtp_username is None, "SMTP username was not updated correctly"
-    assert updated_user.smtp_password is None, "SMTP password was not updated correctly"
-    assert (
-        updated_user.smtp_encryption.value == SMTPEncryption.default().value
-    ), "SMTP encryption was not updated correctly"
-    assert updated_user.smtp_sender is None, "SMTP sender was not updated correctly"
 
-    # Optional: Check for success message in response
-    assert b"SMTP settings updated successfully" in response.data, "Success message not found"
+    updated_user = (
+        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
+        .one()
+        .user
+    )
+    assert updated_user.email == new_smtp_settings["email_address"]
+    assert updated_user.smtp_server is None
+    assert updated_user.smtp_port is None
+    assert updated_user.smtp_username is None
+    assert updated_user.smtp_password is None
+    assert updated_user.smtp_encryption.value == SMTPEncryption.default().value
+    assert updated_user.smtp_sender is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias(client: FlaskClient, user: User) -> None:
+    alias_username = str(uuid4())[0:12]
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": alias_username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Alias created successfully" in response.text
+
+    alias = db.session.scalars(db.select(Username).filter_by(_username=alias_username)).one()
+    assert not alias.is_primary
+    assert alias.user_id == user.id
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias_duplicate(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": user.primary_username.username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert "This username is already taken." in response.text
+    assert db.session.scalar(db.func.count(Username.id)) == 1
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_page_loads(client: FlaskClient, user: User, user_alias: Username) -> None:
+    response = client.get(
+        url_for("settings.alias", username_id=user_alias.id), follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert f"Alias: @{user_alias.username}" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account(client: FlaskClient, user: User, message: Message) -> None:
+    # save these because SqlAlchemy is too smart about nullifying them on deletion
+    user_id = user.id
+    username_id = user.primary_username.id
+    msg_id = message.id
+
+    resp = client.post(url_for("settings.delete_account"), follow_redirects=True)
+    assert resp.status_code == 200
+    assert "Your account and all related information have been deleted." in resp.text
+    assert db.session.scalars(db.select(User).filter_by(id=user_id)).one_or_none() is None
+    assert db.session.scalars(db.select(Username).filter_by(id=username_id)).one_or_none() is None
+    assert db.session.scalars(db.select(Message).filter_by(id=msg_id)).one_or_none() is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_display_name(client: FlaskClient, user: User, user_alias: Username) -> None:
+    new_display_name = (user_alias.display_name or "") + "_NEW"
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "display_name": new_display_name,
+            "update_display_name": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Display name updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user_alias.username)
+    ).one()
+    assert updated_user.display_name == new_display_name
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_bio(client: FlaskClient, user: User) -> None:
+    data = {
+        "bio": str(uuid4()),
+        "update_bio": "",  # html form
+    }
+
+    for i in range(1, 5):
+        data[f"extra_field_label{i}"] = str(uuid4())
+        data[f"extra_field_value{i}"] = str(uuid4())
+
+    response = client.post(
+        url_for("settings.index"),
+        data=data,
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
+    assert updated_user.bio == data["bio"]
+
+    for i in range(1, 5):
+        label = f"extra_field_label{i}"
+        value = f"extra_field_value{i}"
+        assert getattr(updated_user, label) == data[label]
+        assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
+    data = {
+        "bio": str(uuid4()),
+        "update_bio": "",  # html form
+    }
+
+    for i in range(1, 5):
+        data[f"extra_field_label{i}"] = str(uuid4())
+        data[f"extra_field_value{i}"] = str(uuid4())
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data=data,
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user_alias.username)
+    ).one()
+    assert updated_user.bio == data["bio"]
+
+    for i in range(1, 5):
+        label = f"extra_field_label{i}"
+        value = f"extra_field_value{i}"
+        assert getattr(updated_user, label) == data[label]
+        assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_directory_visibility(client: FlaskClient, user: User) -> None:
+    original_visibility = user.primary_username.show_in_directory
+    resp = client.post(
+        url_for("settings.index"),
+        data={
+            "show_in_directory": not original_visibility,
+            "update_directory_visibility": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory visibility updated successfully" in resp.text
+    assert db.session.scalar(
+        db.select(Username.show_in_directory).filter_by(id=user.primary_username.id)
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_directory_visibility(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    original_visibility = user_alias.show_in_directory
+    resp = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "show_in_directory": not original_visibility,
+            "update_directory_visibility": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory visibility updated successfully" in resp.text
+    assert db.session.scalar(db.select(Username.show_in_directory).filter_by(id=user_alias.id))
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
+    color = "#acab00"
+    resp = client.post(
+        url_for("settings.update_brand_primary_color"),
+        data={"brand_primary_hex_color": color},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Brand primary color updated successfully" in resp.text
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    styles = soup.find_all("style")
+    assert styles  # sensibility check
+    for style in styles:
+        if f"--color-brand: oklch(from {color} l c h);" in style.string:
+            break
+    else:
+        pytest.fail("Brand color CSS not updated in response <style>")
+
+    assert (host_org := HostOrganization.fetch())
+    assert host_org.brand_primary_hex_color == color
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
+    name = "h4cK3rZ"
+    resp = client.post(
+        url_for("settings.update_brand_app_name"),
+        data={"brand_app_name": name},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Brand app name updated successfully" in resp.text
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    h1s = soup.select("header h1")
+    assert h1s  # sensibility check
+    for h1 in h1s:
+        if name in h1.string:
+            break
+    else:
+        pytest.fail("Brand name not updated in header <h1>")
+
+    assert (host_org := HostOrganization.fetch())
+    assert host_org.brand_app_name == name

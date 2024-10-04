@@ -1,4 +1,6 @@
-FROM python:3.12-bookworm
+# vim: set syntax=dockerfile :
+FROM python:3.12.6-slim-bookworm
+
 WORKDIR /app
 
 # Install system dependencies
@@ -22,11 +24,9 @@ RUN poetry install --no-root
 # Copy the rest of the application
 COPY . /app
 
-RUN . ./dev_env.sh && poetry run pytest -vv /app/tests
-
 # Expose port 8080
 EXPOSE 8080
 
 # Run!
 ENV FLASK_APP="hushline"
-CMD ["./start.sh"]
+CMD ["./scripts/prod_start.sh"]

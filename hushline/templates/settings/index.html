@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
+    <ul class="tab-list" role="tablist">
+      {% with buttons = [
+        ('profile', 'Profile', False),
+        ('aliases', 'Aliases', False),
+        ('auth', 'Authentication', False),
+        ('email', 'Email & Encryption', False),
+        ('branding', 'Branding', True),
+        ('advanced', 'Advanced', False),
+        ('admin', 'Admin', True)
+      ] %}
+        {% for (id, display, requires_admin) in buttons %}
+          {% if not requires_admin or user.is_admin %}
+            <li role="presentation">
+              <button
+                type="button"
+                class="tab{% if loop.first %} active{% endif %}{% if requires_admin %} admin-only{% endif %}"
+                data-tab="{{ id }}"
+                role="tab"
+                aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
+                aria-controls="{{ id }}"
+                id="{{ id }}-tab"
+              >
+                {{ display }}
+              </button>
+            </li>
+          {% endif %}
+        {% endfor %}
+      {% endwith %}
+    </ul>
+  </div>
+  <div>
+    {% include "settings/profile.html" %}
+    {% include "settings/aliases.html" %}
+    {% include "settings/auth.html" %}
+    {% include "settings/email.html" %}
+    {% include "settings/advanced.html" %}
+    {% if user.is_admin %}
+      {% include "settings/branding.html" %}
+      {% include "settings/admin.html" %}
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

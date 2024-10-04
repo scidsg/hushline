@@ -1,27 +1,39 @@
+---
 services:
-  app:
-    build: .
+  app: &app_env
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
-      - "8080:8080"
+      - 127.0.0.1:8080:8080
     environment:
-      - SQLALCHEMY_DATABASE_URI=postgresql://hushline:hushline@postgres:5432/hushline
-      - FLASK_ENV=development
-      - SECRET_KEY="cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd"
-      - ENCRYPTION_KEY="bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw="
-      - REGISTRATION_CODES_REQUIRED=false
+      FLASK_APP: hushline
+      FLASK_ENV: development
+      ENCRYPTION_KEY: bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw=
+      SECRET_KEY: cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd
+      SQLALCHEMY_DATABASE_URI: postgresql://hushline:hushline@postgres:5432/hushline
+      REGISTRATION_CODES_REQUIRED: 'false'
+      SESSION_COOKIE_NAME: session
+      NOTIFICATIONS_ADDRESS: notifications@hushline.app
     volumes:
-      - ./volumes/app:/data
       - ./:/app
+    depends_on:
+      - dev_data
+    restart: always
+
+  dev_data:
+    <<: *app_env
+    ports: []
+    restart: on-failure
+    command: make dev-data
     depends_on:
       - postgres
 
   postgres:
-    image: "postgres:alpine"
+    image: postgres:16.4-alpine3.20
     environment:
-      - POSTGRES_USER=hushline
-      - POSTGRES_PASSWORD=hushline
-      - POSTGRES_DB=hushline
+      POSTGRES_USER: hushline
+      POSTGRES_PASSWORD: hushline
+      POSTGRES_DB: hushline
     ports:
-      - "5432:5432"
-    volumes:
-      - ./volumes/postgres:/var/lib/postgresql/data
+      - 127.0.0.1:5432:5432

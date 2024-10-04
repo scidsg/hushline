@@ -64,6 +64,12 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
+    <!-- prettier-ignore -->
+    <style>
+      :root {
+        --color-brand: oklch(from {{ host_org.brand_primary_hex_color }} l c h);
+      }
+    </style>
   </head>
 
   <body>
@@ -95,11 +101,18 @@
 
     <header>
       <!-- Navigation bar, logo, etc. -->
-      <h1>🤫 Hush Line</h1>
+      <h1>{{ host_org.brand_app_name }}</h1>
       <nav>
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
           <ul>
+            {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
+              {% if is_premium_enabled and user.is_free_tier %}
+              <li>
+                  <a href="{{ url_for('premium.index') }}">⭐️ Upgrade</a>
+              </li>
+              {% endif %}
+            {% endif %}
             {% if is_personal_server %}
               <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
             {% endif %}

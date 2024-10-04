@@ -2,4 +2,6 @@
 build
 coverage
 hushline/static/vendor/*
+hushline/templates/*
 .pytest_cache
+.venv

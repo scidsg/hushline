@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Alias: @{{ alias.username }}{% endblock %}
+
+{% block content %}
+<div class="drill-in">
+  <a href="{{ url_for('.index') }}" class="back-button"><span class="icon chevron back"></span> Back to Settings</a>
+  <h2 class="alias-heading">{{ alias.display_name or alias.username }}</h2>
+  <a href="{{ url_for('profile', username=alias.username) }}">Alias tip line</a>
+
+  {# TODO: much of this is copy/pasted from "settings/profile.html" and will need to be synced with updates there #}
+  <h3>Update Display Name</h3>
+  {% if alias.is_verified %}
+    <p class="meta">
+      ⚠️ Changing your display name will result in losing your verification status.
+    </p>
+  {% endif %}
+  <form
+    method="POST"
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+    class="formBody"
+  >
+    {{ display_name_form.hidden_tag() }}
+    <label for="display_name">Display Name</label>
+    {{ display_name_form.display_name(id='display_name') }}
+    {% if display_name_form.display_name.errors %}
+      {% for error in display_name_form.display_name.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    {% endif %}
+    <button type="submit" name="update_display_name">
+      Update Display Name
+    </button>
+  </form>
+
+  <h3>Public User Directory</h3>
+  <form
+    method="POST"
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+    class="formBody"
+  >
+    {{ directory_visibility_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ directory_visibility_form.show_in_directory() }}
+      <label for="show_in_directory" class="toggle-label">
+        Show on public directory
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    <button type="submit" name="update_directory_visibility">
+      Update Visibility
+    </button>
+  </form>
+
+  <h3>Add Your Bio</h3>
+  <form
+    method="POST"
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+    class="formBody"
+  >
+    {{ profile_form.hidden_tag() }}
+    <div class="form-group">
+      <div class="label-with-wordcount">
+        <label for="bio">Bio (up to 250 characters):</label>
+        <span class="meta"><span class="bio-count">0</span>/250</span>
+      </div>
+      <textarea id="bio" name="bio" rows="4" maxlength="250">{{ alias.bio or '' }}</textarea>
+    </div>
+
+    <h4>Extra Fields</h4>
+    <p class="info">
+      Add links to social media, your Signal username, your pronouns, or
+      anything else you want on your profile.
+    </p>
+
+    <div class="form-group-pairs">
+      <div class="input-pair">
+        <div>
+          <label for="extra_field_label1">Label</label>
+          <input
+            type="text"
+            name="extra_field_label1"
+            id="extra_field_label1"
+            placeholder="Signal"
+            value="{{ alias.extra_field_label1 or '' }}"
+          />
+        </div>
+        <div>
+          <label for="extra_field_value1">Content</label>
+          <input
+            type="text"
+            name="extra_field_value1"
+            id="extra_field_value1"
+            placeholder="signaluser.123"
+            value="{{ alias.extra_field_value1 or '' }}"
+          />
+          {% if alias.extra_field_verified1 %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="input-pair">
+        <div>
+          <label for="extra_field_label2">Label</label>
+          <input
+            type="text"
+            name="extra_field_label2"
+            id="extra_field_label2"
+            value="{{ alias.extra_field_label2 or '' }}"
+          />
+        </div>
+        <div>
+          <label for="extra_field_value2">Content</label>
+          <input
+            type="text"
+            name="extra_field_value2"
+            id="extra_field_value2"
+            value="{{ alias.extra_field_value2 or '' }}"
+          />
+          {% if alias.extra_field_verified2 %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="input-pair">
+        <div>
+          <label for="extra_field_label3">Label</label>
+          <input
+            type="text"
+            name="extra_field_label3"
+            id="extra_field_label3"
+            value="{{ alias.extra_field_label3 or '' }}"
+          />
+        </div>
+        <div>
+          <label for="extra_field_value3">Content</label>
+          <input
+            type="text"
+            name="extra_field_value3"
+            id="extra_field_value3"
+            value="{{ alias.extra_field_value3 or '' }}"
+          />
+          {% if alias.extra_field_verified3 %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="input-pair">
+        <div>
+          <label for="extra_field_label4">Label</label>
+          <input
+            type="text"
+            name="extra_field_label4"
+            id="extra_field_label4"
+            value="{{ alias.extra_field_label4 or '' }}"
+          />
+        </div>
+        <div>
+          <label for="extra_field_value4">Content</label>
+          <input
+            type="text"
+            name="extra_field_value4"
+            id="extra_field_value4"
+            value="{{ alias.extra_field_value4 or '' }}"
+          />
+          {% if alias.extra_field_verified4 %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <button type="submit" name="update_bio">Update Bio</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}
