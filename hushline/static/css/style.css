@@ -1098,7 +1098,7 @@ header nav li {
 
 .nav-emoji {
   position: absolute;
-  transform: translateY(-.325rem) translateX(-1.5rem); 
+  transform: translateY(-0.325rem) translateX(-1.5rem);
 }
 
 header nav a {
@@ -1951,7 +1951,7 @@ input#captcha_answer {
 
   .nav-emoji {
     position: absolute;
-    transform: translateY(-.325rem) translateX(3.75rem); 
+    transform: translateY(-0.325rem) translateX(3.75rem);
   }
 }
 
