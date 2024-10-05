@@ -400,7 +400,7 @@ def create_blueprint() -> Blueprint:
             if (
                 verification_code
                 and temp_totp_secret
-                and pyotp.TOTP(temp_totp_secret).verify(verification_code)
+                and pyotp.TOTP(temp_totp_secret).verify(verification_code, valid_window=1)
                 and user
             ):
                 user.totp_secret = temp_totp_secret
@@ -465,7 +465,7 @@ def create_blueprint() -> Blueprint:
 
         verification_code = request.form["verification_code"]
         totp = pyotp.TOTP(user.totp_secret)
-        if not totp.verify(verification_code):
+        if not totp.verify(verification_code, valid_window=1):
             flash("⛔️ Invalid 2FA code. Please try again.")
             return redirect(url_for("show_qr_code"))
 
