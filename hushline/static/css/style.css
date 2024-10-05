@@ -560,9 +560,9 @@
 
   .btn-danger,
   .formBody .btn-danger {
-    background-color: darkred;
-    color: white;
-    border: 1px solid oklch(1 0 0 / 0.15);
+    background-color: transparent;
+    color: pink;
+    border: 1px solid pink;
     box-shadow: 0px 4px 8px -4px oklch(1 0 0 / 0.25);
   }
 
@@ -1019,6 +1019,7 @@ img.empty {
   padding: 1.125rem;
   border-radius: 0.25rem;
   margin: 0.5rem 0;
+  position: relative;
 }
 
 .message:last-of-type {
@@ -1285,7 +1286,7 @@ a.logoutLink {
 
 .message.encrypted p {
   font-family: var(--font-mono);
-  font-size: calc(var(--font-size-smaller) * 1.0625);
+  font-size: var(--font-size-smaller);
   white-space: break-spaces;
   margin-top: 0.25rem;
 }
@@ -1293,7 +1294,11 @@ a.logoutLink {
 .message p.badge {
   font-family: var(--font-sans-bold);
   font-size: var(--font-size-smaller); 
-  margin-bottom: 1.25rem;
+  position: absolute;
+  right: 1.125rem;
+  top: 0.825rem;
+  filter: saturate(0) opacity(.6);
+  transform: scale(.9); 
 }
 
 footer {
