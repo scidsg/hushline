@@ -2286,6 +2286,7 @@ p.bio + .extra-fields {
   width: fit-content;
   text-align: right;
   white-space: nowrap;
+  align-self: center;
 }
 
 @media (max-width: 640px) {
