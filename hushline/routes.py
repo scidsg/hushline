@@ -475,7 +475,7 @@ def init_app(app: Flask) -> None:
                 flash("⏲️ Please wait a moment before trying again.")
                 return render_template("verify_2fa_login.html", form=form), 429
 
-            if totp.verify(verification_code):
+            if totp.verify(verification_code, valid_window=1):
                 auth_log = AuthenticationLog(
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
