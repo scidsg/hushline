@@ -60,53 +60,56 @@ def test_change_username(client: FlaskClient, user: User) -> None:
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_change_password(client: FlaskClient, user: User, user_password: str) -> None:
-    new_password = user_password + "xxx"
-
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
     assert user_password not in original_password_hash
 
-    response = client.post(
-        url_for("settings.change_password"),
-        data={
-            "old_password": user_password,
-            "new_password": new_password,
-        },
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Password successfully changed. Please log in again." in response.text
-    assert "/login" in response.request.url
-    assert len(new_password_hash := user.password_hash) > 32
-    assert new_password_hash.startswith("$scrypt$")
-    assert original_password_hash not in new_password_hash
-    assert user_password not in new_password_hash
-    assert new_password not in new_password_hash
+    url = url_for("settings.change_password")
+    for new_password in [user_password, "", "aB!!", "aB3!", (33 * "aB3!")[:129], 5 * "aB3!"]:
+        data = dict(old_password=user_password, new_password=new_password)
+        response = client.post(url, data=data, follow_redirects=True)
+        if (
+            user_password != new_password
+            and 17 < len(user_password) < 129
+            and 17 < len(new_password) < 129
+        ):
+            assert response.status_code == 200, data
+            assert "Password successfully changed. Please log in again." in response.text, data
+            assert "/login" in response.request.url, data
+            assert len(new_password_hash := user.password_hash) > 32, data
+            assert new_password_hash.startswith("$scrypt$"), data
+            assert original_password_hash not in new_password_hash, data
+            assert user_password not in new_password_hash, data
+            assert new_password not in new_password_hash, data
+        elif user_password == new_password:
+            assert "Cannot choose a repeat password." in response.text, data
+            assert "/settings" in response.request.url, data
+            assert original_password_hash == user.password_hash, data
+        else:
+            assert "Invalid form data. Please try again." in response.text, data
+            assert "/settings" in response.request.url, data
+            assert original_password_hash == user.password_hash, data
+
+    assert original_password_hash != user.password_hash
 
     # TODO simulate a log out?
 
     # Attempt to log in with the registered user's old password
-    response = client.post(
-        url_for("login"),
-        data={"username": user.primary_username.username, "password": user_password},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Invalid username or password" in response.text
-    assert "/login" in response.request.url
+    data = dict(username=user.primary_username.username, password=user_password)
+    response = client.post(url_for("login"), data=data, follow_redirects=True)
+    assert response.status_code == 200, data
+    assert "Invalid username or password" in response.text, data
+    assert "/login" in response.request.url, data
 
     # TODO simulate a log out?
 
     # Attempt to log in with the registered user's new password
-    response = client.post(
-        url_for("login"),
-        data={"username": user.primary_username.username, "password": new_password},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Empty Inbox" in response.text
-    assert "Invalid username or password" not in response.text
-    assert "/inbox" in response.request.url
+    data = dict(username=user.primary_username.username, password=new_password)
+    response = client.post(url_for("login"), data=data, follow_redirects=True)
+    assert response.status_code == 200, data
+    assert "Empty Inbox" in response.text, data
+    assert "Invalid username or password" not in response.text, data
+    assert "/inbox" in response.request.url, data
 
 
 @pytest.mark.usefixtures("_authenticated_user")
