@@ -1293,12 +1293,12 @@ a.logoutLink {
 
 .message p.badge {
   font-family: var(--font-sans-bold);
-  font-size: var(--font-size-smaller); 
+  font-size: var(--font-size-smaller);
   position: absolute;
   right: 1.125rem;
   top: 0.825rem;
-  filter: saturate(0) opacity(.6);
-  transform: scale(.9); 
+  filter: saturate(0) opacity(0.6);
+  transform: scale(0.9);
 }
 
 footer {
