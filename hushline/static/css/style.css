@@ -1055,7 +1055,8 @@ form {
   margin-bottom: 2rem;
 }
 
-form:only-of-type {
+form:only-of-type,
+form:last-of-type {
   margin-bottom: 0;
 }
 
