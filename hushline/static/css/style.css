@@ -1290,6 +1290,12 @@ a.logoutLink {
   margin-top: 0.25rem;
 }
 
+.message p.badge {
+  font-family: var(--font-sans-bold);
+  font-size: var(--font-size-smaller); 
+  margin-bottom: 1.25rem;
+}
+
 footer {
   position: fixed;
   bottom: 0;

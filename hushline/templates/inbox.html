@@ -10,7 +10,7 @@
         data-encrypted-content="{{ message.content }}"
         aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
       >
-        <p>To: @{{ message.username.username }}</p>
+        <p class="badge">📥 @{{ message.username.username }}</p>
         <p class="decrypted-content">{{ message.content }}</p>
         <div
           class="mailvelope-decryption-container"
