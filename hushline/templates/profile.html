@@ -110,10 +110,7 @@
       required=""
       spellcheck="true"
       {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
-    >
-      {{ form.content.data if form.content.data is not none else '' }}
-    </textarea
-    >
+    >{{ form.content.data if form.content.data is not none else '' }}</textarea>
 
     {% if not pgp_required_but_not_set %}
       <!-- Hidden field for public PGP key -->
