@@ -8,7 +8,6 @@ from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from flask_migrate import Migrate
 from jinja2 import StrictUndefined
-from sqlalchemy.exc import ProgrammingError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
@@ -131,19 +130,6 @@ def create_app() -> Flask:
 
     # Register custom CLI commands
     register_commands(app)
-
-    # we can't
-    if app.config.get("FLASK_ENV", None) != "development":
-        with app.app_context():
-            try:
-                host_org = HostOrganization.fetch()
-            except ProgrammingError:
-                app.logger.warning(
-                    "Could not check for existence of HostOrganization", exc_info=True
-                )
-            else:
-                if host_org is None:
-                    app.logger.warning("HostOrganization data not found in database.")
 
     return app
 
