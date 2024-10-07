@@ -39,7 +39,7 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def random_name(size: int) -> str:
-    return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])  # noqa: S311
+    return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])
 
 
 @contextmanager
@@ -111,23 +111,47 @@ def init_db_via_alembic(db_uri: str) -> None:
         db.session.connection().connection.invalidate()  # type: ignore
 
 
+def populate_db(session: Session) -> None:
+    """Populate the DB with common objects required for the app to function at all"""
+    free_tier = Tier(name="Free", monthly_amount=0)
+    business_tier = Tier(name="Business", monthly_amount=2000)
+    business_tier.stripe_product_id = "prod_123"
+    business_tier.stripe_price_id = "price_123"
+    session.add(free_tier)
+    session.add(business_tier)
+    session.commit()
+
+
 @pytest.fixture()
-def database(_db_template: None) -> str:
-    """A clean Postgres database from the template with DDLs applied"""
+def database(request: pytest.FixtureRequest, _db_template: None) -> str:
     db_name = random_name(16)
     conn_str = CONN_FMT_STR.format(database="hushline")
     engine = create_engine(conn_str)
     engine = engine.execution_options(isolation_level="AUTOCOMMIT")
-
     session = sessionmaker(bind=engine)()
 
-    sql = text(f"CREATE DATABASE {db_name} WITH TEMPLATE {TEMPLATE_DB_NAME}")
-    session.execute(sql)
+    if request.module.__name__ == "test_migrations":
+        # don't use the template when testing migrations. we want a blank db
+        session.execute(text(f"CREATE DATABASE {db_name}"))
+    else:
+        session.execute(text(f"CREATE DATABASE {db_name} WITH TEMPLATE {TEMPLATE_DB_NAME}"))
 
     # aggressively terminate all connections
     session.close()
     session.connection().connection.invalidate()
     engine.dispose()
+
+    if request.module.__name__ != "test_migrations":
+        conn_str = CONN_FMT_STR.format(database=db_name)
+        engine = create_engine(conn_str)
+        session = sessionmaker(bind=engine)()
+
+        populate_db(session)
+
+        # aggressively terminate all connections
+        session.close()
+        session.connection().connection.invalidate()
+        engine.dispose()
 
     print(f"Postgres DB: {db_name}, template: {TEMPLATE_DB_NAME}")  # to help with debugging tests
 
@@ -154,18 +178,6 @@ def app(database: str) -> Generator[Flask, None, None]:
     app.config["PREFERRED_URL_SCHEME"] = "http"
 
     with app.app_context():
-        db.create_all()
-
-        # Create the default tiers
-        # (this happens in the migrations, but migrations don't run in the tests)
-        free_tier = Tier(name="Free", monthly_amount=0)
-        business_tier = Tier(name="Business", monthly_amount=2000)
-        business_tier.stripe_product_id = "prod_123"
-        business_tier.stripe_price_id = "price_123"
-        db.session.add(free_tier)
-        db.session.add(business_tier)
-        db.session.commit()
-
         yield app
 
 

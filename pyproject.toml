@@ -45,6 +45,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 pythonpath = "."
+filterwarnings = [
+    # passlib unmaintianed, see: https://github.com/scidsg/hushline/issues/553
+    "ignore:.*'crypt' is deprecated.*:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
@@ -52,56 +56,40 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    # pycodestyle errors
-    "E",
-    # pyflakes
-    "F",
-    # isort
-    "I",
-    # flake8-gettext
-    "INT",
-    # flake8-pie
-    "PIE",
-    # pylint
-    "PL",
-    # flake8-pytest-style
-    "PT",
-    # flake8-pyi
-    "PYI",
-    # flake8-return
-    "RET",
-    # flake8-bandit
-    "S",
-    # flake8-simplify
-    "SIM",
-    # pyupgrade
-    "UP",
-    # pycodestyle warnings
-    "W",
-    # Unused noqa directive
-    "RUF100",
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "I", # isort
+    "INT", # flake8-gettext
+    "PIE", # flake8-pie
+    "PL", # pylint
+    "PT", # flake8-pytest-style
+    "PYI", # flake8-pyi
+    "RET", # flake8-return
+    "S", # flake8-bandit
+    "SIM", # flake8-simplify
+    "UP", # pyupgrade
+    "W", # pycodestyle warnings
+    "RUF100", # Unused noqa directive
 ]
 ignore = [
-    # https://docs.astral.sh/ruff/rules/too-many-statements/
-    "PLR0915",
-    # https://docs.astral.sh/ruff/rules/too-many-return-statements/
-    "PLR0911",
-    # https://docs.astral.sh/ruff/rules/too-many-branches/
-    "PLR0912",
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLR0915", # too-many-statements
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*.py" = [
-    # https://docs.astral.sh/ruff/rules/assert/
-    "S101",
-    "S105", # hardcoded password
-    # https://docs.astral.sh/ruff/rules/magic-value-comparison/
-    "PLR2004",
-]
 "migrations/versions/*.py" = [
-    # https://docs.astral.sh/ruff/rules/unsorted-imports/
-    "I001",
-    "S608", # sql injection via string-based query construction
+    "I001", # unsorted-imports
+    "S608", # hardcoded-sql-expression
+]
+"tests/*.py" = [
+    "PLR2004", # magic-value-comparison
+    "S101", # assert
+    "S105",  # hardcoded-password-string
+    "S311", # suspicious-non-cryptographic-random-usage
+]
+"tests/migrations/*.py" = [
+    "S608", # hardcoded-sql-expression
 ]
 
 [tool.mypy]
@@ -111,4 +99,4 @@ no_implicit_optional = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 warn_unused_configs = true
-exclude = '^migrations/env\.py$|^migrations/versions/.*\.py$'
+exclude = "^migrations/env\\.py$"
