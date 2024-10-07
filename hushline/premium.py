@@ -303,11 +303,20 @@ async def worker(app: Flask) -> None:
         User.__tablename__,
     ]
     with app.app_context():
-        engine = sa.create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
-        insp = sa.inspect(engine)
-        while not all(insp.has_table(table) for table in tables):
-            current_app.logger.error("Waiting for tables to be created")
-            await asyncio.sleep(2)
+        tables_created = 0
+        while tables_created < len(tables):
+            tables_created = 0
+            for table in tables:
+                engine = sa.create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
+                insp = sa.inspect(engine)
+                if insp.has_table(table):
+                    tables_created += 1
+                else:
+                    current_app.logger.error(f"Table {table} not found")
+
+            if tables_created < len(tables):
+                current_app.logger.error("Waiting for tables to be created")
+                await asyncio.sleep(2)
 
     # Start the worker
     current_app.logger.error("Starting worker")
