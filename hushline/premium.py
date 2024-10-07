@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from typing import Tuple
 
+import sqlalchemy as sa
 import stripe
 from flask import (
     Blueprint,
@@ -294,6 +295,30 @@ def handle_invoice_updated(invoice: stripe.Invoice) -> None:
 
 
 async def worker(app: Flask) -> None:
+    # Wait for migrations to finish
+    tables = [
+        StripeEvent.__tablename__,
+        StripeInvoice.__tablename__,
+        Tier.__tablename__,
+        User.__tablename__,
+    ]
+    with app.app_context():
+        tables_created = 0
+        while tables_created < len(tables):
+            tables_created = 0
+            for table in tables:
+                engine = sa.create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
+                insp = sa.inspect(engine)
+                if insp.has_table(table):
+                    tables_created += 1
+                else:
+                    current_app.logger.error(f"Table {table} not found")
+
+            if tables_created < len(tables):
+                current_app.logger.error("Waiting for tables to be created")
+                await asyncio.sleep(2)
+
+    # Start the worker
     current_app.logger.error("Starting worker")
     with app.app_context():
         while True:
