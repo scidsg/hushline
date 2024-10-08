@@ -2214,6 +2214,10 @@ p.bio + .extra-fields {
   flex-direction: column;
 }
 
+.plan .meta {
+  margin-top: 1rem;
+}
+
 .plan p {
   margin: 0.25rem 0;
 }
