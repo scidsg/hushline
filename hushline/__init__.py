@@ -7,7 +7,6 @@ from typing import Any
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from jinja2 import StrictUndefined
-from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings
@@ -65,12 +64,6 @@ def create_app() -> Flask:
     # Handle the tips domain for profile verification
     app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
     app.config["PREFERRED_URL_SCHEME"] = "https" if os.getenv("SERVER_NAME") is not None else "http"
-
-    if not app.config["IS_PERSONAL_SERVER"]:
-        # if were running the managed service, we are behind a proxy
-        app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
-            app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0
-        )
 
     # jinja configs
     if app.config.get("FLASK_ENV", None) == "development":
