@@ -3,7 +3,7 @@ import random
 import string
 import time
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any, Callable, Generator
 from uuid import uuid4
 
 import flask_migrate
@@ -164,12 +164,19 @@ def _insecure_scrypt_params(mocker: MockFixture) -> None:
 
 
 @pytest.fixture()
-def app(database: str) -> Generator[Flask, None, None]:
+def env_var_modifier(mocker: MockFixture) -> Callable[[MockFixture], None]:
+    return lambda mocker: None
+
+
+@pytest.fixture()
+def app(
+    database: str, mocker: MockFixture, env_var_modifier: Callable[[MockFixture], None]
+) -> Generator[Flask, None, None]:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
+    os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"  # For premium tests
 
-    # For premium tests
-    os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"
+    env_var_modifier(mocker)
 
     app = create_app()
     app.config["TESTING"] = True

@@ -1,9 +1,21 @@
+import os
+from typing import Callable
+
+import pytest
 from flask import Flask, url_for
+from pytest_mock import MockFixture
+
+
+@pytest.fixture()
+def env_var_modifier(mocker: MockFixture) -> Callable[[MockFixture], None]:
+    def modifier(mocker: MockFixture) -> None:
+        mocker.patch.dict(os.environ, {"ONION_HOSTNAME": "example.onion"})
+
+    return modifier
 
 
 def test_info_available_on_personal_server(app: Flask) -> None:
     app.config["IS_PERSONAL_SERVER"] = True
-    app.config["ONION_HOSTNAME"] = "example.onion"
 
     with app.test_client() as client:
         response = client.get(url_for("personal_server_info"))
@@ -14,7 +26,6 @@ def test_info_available_on_personal_server(app: Flask) -> None:
 
 def test_info_not_available_by_default(app: Flask) -> None:
     app.config["IS_PERSONAL_SERVER"] = False
-    app.config["ONION_HOSTNAME"] = "example.onion"
 
     with app.test_client() as client:
         response = client.get(url_for("personal_server_info"))
