@@ -66,9 +66,16 @@ def create_app() -> Flask:
     app.config["PREFERRED_URL_SCHEME"] = "https" if os.getenv("SERVER_NAME") is not None else "http"
 
     # jinja configs
+    app.jinja_env.globals["hushline_version"] = __version__
+
     if app.config.get("FLASK_ENV", None) == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
+
+    # always pop the config to avoid accidentally dumping all our secrets to the user
+    app.jinja_env.globals.pop("config", None)
+    if onion_hostname := app.config.get("ONION_HOSTNAME", None):
+        app.jinja_env.globals["onion_hostname"] = onion_hostname
 
     db.init_app(app)
     migrate.init_app(app, db)

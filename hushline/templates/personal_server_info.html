@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block title %}Hush Line Personal Server{% endblock %}
 
 {% block content %}
@@ -21,7 +22,7 @@
     with the following URL:
   </p>
 
-  <pre>http://{{ config.ONION_HOSTNAME }}</pre>
+  <pre>http://{{ onion_hostname }}</pre>
 
   <p>
     Or, you can access the service from the network the device is connected to
@@ -41,7 +42,4 @@
       >https://hushline.app</a
     >.
   </p>
-{% endblock %}
-
-{% block scripts %}
 {% endblock %}
