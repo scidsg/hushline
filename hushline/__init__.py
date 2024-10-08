@@ -91,23 +91,15 @@ def create_app() -> Flask:
         return redirect(url_for("index"))
 
     @app.context_processor
-    def inject_user() -> dict[str, Any]:
+    def inject_variables() -> dict[str, Any]:
+        data = {
+            "host_org": HostOrganization.fetch_or_default(),
+            "is_personal_server": app.config["IS_PERSONAL_SERVER"],
+            "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
+        }
         if "user_id" in session:
-            user = db.session.get(User, session["user_id"])
-            return {"user": user}
-        return {}
-
-    @app.context_processor
-    def inject_host() -> dict[str, HostOrganization]:
-        return dict(host_org=HostOrganization.fetch_or_default())
-
-    @app.context_processor
-    def inject_is_personal_server() -> dict[str, Any]:
-        return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
-
-    @app.context_processor
-    def inject_is_premium_enabled() -> dict[str, Any]:
-        return {"is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False))}
+            data["user"] = db.session.get(User, session["user_id"])
+        return data
 
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:
