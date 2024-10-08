@@ -26,7 +26,15 @@ from wtforms import Field
 from ..crypto import is_valid_pgp_key
 from ..db import db
 from ..forms import TwoFactorForm
-from ..model import HostOrganization, Message, SMTPEncryption, Tier, User, Username
+from ..model import (
+    AuthenticationLog,
+    HostOrganization,
+    Message,
+    SMTPEncryption,
+    Tier,
+    User,
+    Username,
+)
 from ..utils import (
     admin_authentication_required,
     authentication_required,
@@ -676,6 +684,7 @@ def create_blueprint() -> Blueprint:
                     Message.username_id.in_(db.select(Username.id).filter_by(user_id=user.id))
                 )
             )
+            db.session.execute(db.delete(AuthenticationLog).filter_by(user_id=user.id))
             db.session.execute(db.delete(Username).filter_by(user_id=user.id))
             db.session.delete(user)
             db.session.commit()

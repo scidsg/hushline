@@ -7,7 +7,14 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import HostOrganization, Message, SMTPEncryption, User, Username
+from hushline.model import (
+    AuthenticationLog,
+    HostOrganization,
+    Message,
+    SMTPEncryption,
+    User,
+    Username,
+)
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -351,7 +358,9 @@ def test_alias_page_loads(client: FlaskClient, user: User, user_alias: Username)
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_delete_account(client: FlaskClient, user: User, message: Message) -> None:
+def test_delete_account(
+    client: FlaskClient, user: User, message: Message, authentication_log: AuthenticationLog
+) -> None:
     # save these because SqlAlchemy is too smart about nullifying them on deletion
     user_id = user.id
     username_id = user.primary_username.id

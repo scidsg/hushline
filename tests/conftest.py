@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from hushline import create_app
 from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
-from hushline.model import Message, Tier, User, Username
+from hushline.model import AuthenticationLog, Message, Tier, User, Username
 
 if TYPE_CHECKING:
     from _pytest.config.argparsing import Parser
@@ -260,3 +260,11 @@ def message(app: Flask, user: User) -> Message:
     db.session.add(msg)
     db.session.commit()
     return msg
+
+
+@pytest.fixture()
+def authentication_log(app: Flask, user: User) -> AuthenticationLog:
+    log = AuthenticationLog(user_id=user.id, successful=True)
+    db.session.add(log)
+    db.session.commit()
+    return log
