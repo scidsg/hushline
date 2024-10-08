@@ -7,10 +7,10 @@
   {% if is_premium_enabled and user.is_free_tier %}
     <div class="upgrade">
       <div>
-        <h3>Upgrade to Business</h3>
+        <h3>Business User?</h3>
         <p class="info">
-          🚀 Need more features? Upgrade to Business for
-          ${{ business_tier_display_price }}/mo.
+          🚀 Upgrade to Super User for
+          ${{ business_tier_display_price }}/mo to unlock more features!
         </p>
       </div>
       <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
