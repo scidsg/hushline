@@ -223,7 +223,7 @@
                   <button class="btn" id="disable-autorenew">Don't Renew</button>
                 </form>
               {% endif %}
-          {% endif %}
+          
           </div>
         </div>
 
@@ -255,6 +255,7 @@
               </tbody>
             </table>
         </div>
+        {% endif %}
       </div>
     </main>
 
@@ -282,8 +283,6 @@
         >
       </p>
     </footer>
-    {% block scripts %}
-    {% endblock %}
     <script src="{{ url_for('static', filename='js/global.js') }}"></script>
     <script src="{{ url_for('static', filename='js/premium.js') }}"></script>
   </body>
