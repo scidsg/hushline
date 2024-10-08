@@ -409,7 +409,7 @@
   }
 
   a {
-    color: var(--color-brand-dark-mid-saturation);
+    color: var(--color-brand-dark-min-saturation);
   }
 
   p.meta {
@@ -535,7 +535,7 @@
   .btn {
     background-color: var(--color-dark);
     color: var(--color-brand-dark-min-saturation);
-    border: 1px solid var(--color-brand-dark-max-saturation);
+    border: 1px solid var(--color-brand-dark-min-saturation);
     box-shadow: 0px 2px 0px 0px
       oklch(
         /* rgba(125, 37, 193, 0.25) */ from
@@ -569,7 +569,7 @@
   p.badge {
     background-color: var(--color-dark-bg-alt-1);
     color: var(--color-brand-dark-min-saturation);
-    border: 1px solid var(--color-brand-dark-max-saturation);
+    border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
   h2.submit + .badgeContainer p.badge {
