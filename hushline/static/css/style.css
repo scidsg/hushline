@@ -754,6 +754,7 @@ main {
 
 main.tier-select {
   width: fit-content;
+  max-width: 768px;
 }
 
 form {
