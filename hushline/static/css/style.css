@@ -752,6 +752,10 @@ main {
   width: 100%;
 }
 
+main.tier-select {
+  width: fit-content;
+}
+
 form {
   margin: 0.75rem 0;
 }
