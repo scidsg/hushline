@@ -536,10 +536,8 @@ def init_app(app: Flask) -> None:
         return render_template("vision.html")
 
     @app.route("/info")
-    def personal_server_info() -> Response | str:
-        if app.config.get("IS_PERSONAL_SERVER"):
-            return render_template("personal_server_info.html", ip_address=get_ip_address())
-        return Response(status=404)
+    def server_info() -> Response | str:
+        return render_template("server_info.html", ip_address=get_ip_address())
 
     @app.route("/health.json")
     def health() -> dict[str, str]:

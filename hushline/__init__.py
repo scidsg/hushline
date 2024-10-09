@@ -45,9 +45,6 @@ def create_app() -> Flask:
     app.config["VERSION"] = __version__
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
-    app.config["IS_PERSONAL_SERVER"] = (
-        os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
-    )
     app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = (
         os.environ.get("DIRECTORY_VERIFIED_TAB_ENABLED", "true").lower() == "true"
     )
@@ -113,7 +110,6 @@ def create_app() -> Flask:
     def inject_variables() -> dict[str, Any]:
         data = {
             "host_org": HostOrganization.fetch_or_default(),
-            "is_personal_server": app.config["IS_PERSONAL_SERVER"],
             "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
             "is_onion_service": request.host.lower().endswith(".onion"),
         }
