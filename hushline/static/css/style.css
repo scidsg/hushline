@@ -753,8 +753,8 @@ main {
 }
 
 main.tier-select {
-  width: fit-content;
   max-width: 768px;
+  width: 100%;
 }
 
 form {
