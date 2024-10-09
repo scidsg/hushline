@@ -115,9 +115,7 @@
               {% endif %}
             {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>
-            {% if not is_personal_server %}
-              <li><a href="{{ url_for('vision') }}">Vision</a></li>
-            {% endif %}
+            <li><a href="{{ url_for('vision') }}">Vision</a></li>
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
               <li>
                 <a href="{{ url_for('inbox', username=session.username) }}"
