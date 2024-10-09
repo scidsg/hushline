@@ -114,9 +114,6 @@
               </li>
               {% endif %}
             {% endif %}
-            {% if is_personal_server %}
-              <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
-            {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>
             {% if not is_personal_server %}
               <li><a href="{{ url_for('vision') }}">Vision</a></li>
