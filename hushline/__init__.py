@@ -7,6 +7,7 @@ from typing import Any
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from jinja2 import StrictUndefined
+from markupsafe import Markup
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings
@@ -50,6 +51,9 @@ def create_app() -> Flask:
     app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = (
         os.environ.get("DIRECTORY_VERIFIED_TAB_ENABLED", "true").lower() == "true"
     )
+    app.config["SMTP_FORWARDING_MESSAGE_HTML"] = (
+        Markup(os.environ.get("SMTP_FORWARDING_MESSAGE_HTML", "")) or None
+    )
     app.config["REGISTRATION_CODES_REQUIRED"] = (
         os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
     )
@@ -79,6 +83,9 @@ def create_app() -> Flask:
 
     # always pop the config to avoid accidentally dumping all our secrets to the user
     app.jinja_env.globals.pop("config", None)
+    app.jinja_env.globals["smtp_forwarding_message_html"] = app.config[
+        "SMTP_FORWARDING_MESSAGE_HTML"
+    ]
     if onion_hostname := app.config.get("ONION_HOSTNAME", None):
         app.jinja_env.globals["onion_hostname"] = onion_hostname
 
