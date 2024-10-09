@@ -47,6 +47,9 @@ def create_app() -> Flask:
     app.config["IS_PERSONAL_SERVER"] = (
         os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
     )
+    app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = (
+        os.environ.get("DIRECTORY_VERIFIED_TAB_ENABLED", "true").lower() == "true"
+    )
     app.config["REGISTRATION_CODES_REQUIRED"] = (
         os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
     )
@@ -67,7 +70,9 @@ def create_app() -> Flask:
 
     # jinja configs
     app.jinja_env.globals["hushline_version"] = __version__
-
+    app.jinja_env.globals["directory_verified_tab_enabled"] = app.config[
+        "DIRECTORY_VERIFIED_TAB_ENABLED"
+    ]
     if app.config.get("FLASK_ENV", None) == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined

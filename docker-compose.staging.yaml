@@ -15,6 +15,7 @@ services:
       REGISTRATION_CODES_REQUIRED: False
       SESSION_COOKIE_NAME: session
       NOTIFICATIONS_ADDRESS: notifications@hushline.app
+      DIRECTORY_VERIFIED_TAB_ENABLED: "${DIRECTORY_VERIFIED_TAB_ENABLED:-true}"
     env_file:
       - .env.stripe
     restart: always
