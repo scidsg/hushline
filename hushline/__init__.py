@@ -108,6 +108,7 @@ def create_app() -> Flask:
             "host_org": HostOrganization.fetch_or_default(),
             "is_personal_server": app.config["IS_PERSONAL_SERVER"],
             "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            "is_onion_service": request.host.lower().endswith(".onion"),
         }
         if "user_id" in session:
             data["user"] = db.session.get(User, session["user_id"])
