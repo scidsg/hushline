@@ -752,7 +752,7 @@ main {
   width: 100%;
 }
 
-main.tier-select {
+.tier-select {
   max-width: 768px;
   width: 100%;
 }
