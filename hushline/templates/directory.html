@@ -4,7 +4,7 @@
 
 {% block content %}
   <h2>User Directory</h2>
-  {% if not is_personal_server %}
+  {% if directory_verified_tab_enabled %}
     {% if not logged_in %}
       <p class="helper section-intro">
         👋 Hush Line connects whistleblowers with lawyers, journalists, business
@@ -60,7 +60,7 @@
       &times;
     </button>
   </div>
-  {% if not is_personal_server %}
+  {% if directory_verified_tab_enabled %}
     <div
       id="verified"
       class="tab-content active"
@@ -128,7 +128,7 @@
   {% endif %}
   <div
     id="all"
-    class="tab-content {% if is_personal_server %}active{% endif %}"
+    class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
     role="tabpanel"
     aria-labelledby="all-users-tab"
   >
@@ -180,8 +180,8 @@
 {% endblock %}
 
 {% block scripts %}
-  {% if is_personal_server %}
-    <script src="{{ url_for('static', filename='js/directory_personal_server.js') }}"></script>
+  {% if directory_verified_tab_enabled %}
+    <script src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
   {% else %}
     <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
   {% endif %}

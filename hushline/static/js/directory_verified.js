@@ -1,63 +1,76 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Get the path prefix
+  // If window.location.pathname is /tips/directory, then prefix is /tips
+  // If it's /directory, then prefix is /
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+  const tabs = document.querySelectorAll(".tab");
+  const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
-  let userData = [];
+  let userData = []; // Will hold the user data loaded from JSON
   let isSessionUser = false;
+
+  function updatePlaceholder() {
+    const activeTab = document
+      .querySelector(".tab.active")
+      .getAttribute("data-tab");
+    searchInput.placeholder = `Search ${activeTab === "verified" ? "verified " : ""}users...`;
+  }
 
   function loadData() {
     fetch(`${pathPrefix}/directory/users.json`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
+      .then((response) => response.json())
       .then((data) => {
         userData = data;
-        handleSearchInput();
+        handleSearchInput(); // Initial display after data is loaded
       })
       .catch((error) => console.error("Failed to load user data:", error));
   }
 
   async function checkIfSessionUser() {
-    try {
-      const response = await fetch(
-        `${pathPrefix}/directory/get-session-user.json`,
-      );
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const { logged_in } = await response.json();
-      isSessionUser = logged_in;
-    } catch (error) {
-      console.error("Failed to check session user:", error);
-    }
+    const response = await fetch(
+      `${pathPrefix}/directory/get-session-user.json`,
+    );
+    const { logged_in } = await response.json();
+    isSessionUser = logged_in;
   }
 
   function filterUsers(query) {
+    const tab = document.querySelector(".tab.active").getAttribute("data-tab");
     return userData.filter((user) => {
       const searchText =
         `${user.primary_username} ${user.display_name} ${user.bio}`.toLowerCase();
-      return searchText.includes(query.toLowerCase());
+      const matchesTab =
+        tab === "all" || (tab === "verified" && user.is_verified);
+      return searchText.includes(query.toLowerCase()) && matchesTab;
     });
   }
 
   function highlightMatch(text, query) {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
+    if (!query) return text; // If no query, return the text unmodified
+    const regex = new RegExp(`(${query})`, "gi"); // Case-insensitive matching
     return text.replace(regex, '<mark class="search-highlight">$1</mark>');
   }
 
   function reportUser(username, bio) {
+    // Construct the message content with explicit line breaks
     const messageContent = `Reported user: ${username}\n\nBio: ${bio}\n\nReason:`;
+
+    // Encode the message content to ensure line breaks and other special characters are correctly handled
     const encodedMessage = encodeURIComponent(messageContent);
-    const submissionUrl = `${pathPrefix}/profile/admin?prefill=${encodedMessage}`;
+
+    // Redirect to the message submission form for the admin with the pre-filled content
+    const submissionUrl = `${pathPrefix}/to/admin?prefill=${encodedMessage}`;
     window.location.href = submissionUrl;
   }
 
   function displayUsers(users, query) {
-    const userListContainer = document.querySelector(".user-list");
+    const userListContainer = document.querySelector(
+      ".tab-content.active .user-list",
+    );
+    const activeTab = document
+      .querySelector(".tab.active")
+      .getAttribute("data-tab");
     userListContainer.innerHTML = "";
 
     if (users.length > 0) {
@@ -73,10 +86,18 @@ document.addEventListener("DOMContentLoaded", function () {
         const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
         let badgeContainer = "";
+
         if (user.is_admin) {
           badgeContainer += '<p class="badge">⚙️ Admin</p>';
         }
-        if (user.is_verified) {
+
+        // Include the "Verified" badge if the "all" tab is active
+        if (activeTab === "all" && user.is_verified) {
+          badgeContainer += '<p class="badge">⭐️ Verified</p>';
+        }
+
+        // Include the "Verified" badge if the "verified" tab is active
+        if (activeTab === "verified" && user.is_verified) {
           badgeContainer += '<p class="badge">⭐️ Verified</p>';
         }
 
@@ -96,14 +117,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
                     <div class="user-actions">
-                        <a href="${pathPrefix}/profile/${user.primary_username}">Send a Message</a>
+                        <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
                         ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
         userListContainer.appendChild(userDiv);
       });
 
-      createReportEventListeners(".user-list");
+      createReportEventListeners(".tab-content.active .user-list");
     } else {
       userListContainer.innerHTML =
         '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
@@ -124,6 +145,17 @@ document.addEventListener("DOMContentLoaded", function () {
     handleSearchInput();
   });
 
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", function (e) {
+      window.activateTab(e, tabs, tabPanels);
+      handleSearchInput(); // Filter again when tab changes
+      updatePlaceholder();
+    });
+    tab.addEventListener("keydown", function (e) {
+      window.handleKeydown(e);
+    });
+  });
+
   function createReportEventListeners(selector) {
     document
       .querySelector(selector)
@@ -137,8 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
   }
-
-  checkIfSessionUser().then(() => {
-    loadData();
-  });
+  checkIfSessionUser();
+  updatePlaceholder(); // Initialize placeholder text
+  loadData();
 });
