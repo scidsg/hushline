@@ -845,9 +845,19 @@ pre {
   white-space: break-spaces;
 }
 
+th {
+  font-weight: normal;
+  font-family: var(--font-sans-bold);
+}
+
 p.instr {
   font-style: italic;
   font-size: var(--font-size-smaller);
+}
+
+p b {
+  font-weight: normal;
+  font-family: var(--font-sans-bold);
 }
 
 .badgeContainer {
@@ -2211,7 +2221,7 @@ p.bio + .extra-fields {
 .plan {
   flex: 1;
   box-sizing: border-box;
-  padding: 20px;
+  padding: 1.25rem;
   border-radius: 5px;
   text-align: center;
   align-items: center;
@@ -2401,7 +2411,7 @@ p.bio + .extra-fields {
 
 #invoice-wrapper {
   margin-top: 1rem;
-  padding: 1.5rem;
+  padding: 1.25rem;
   border-radius: 0.25rem;
 }
 
