@@ -38,6 +38,18 @@ def valid_username(form: Form, field: Field) -> None:
         )
 
 
+def get_directory_usernames() -> Sequence[Username]:
+    return db.session.scalars(
+        db.select(Username)
+        .join(User)
+        .filter(Username.show_in_directory.is_(True))
+        .order_by(
+            User.is_admin.desc(),
+            db.func.coalesce(Username._display_name, Username._username),
+        )
+    ).all()
+
+
 class TwoFactorForm(FlaskForm):
     verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
 
@@ -494,15 +506,6 @@ def init_app(app: Flask) -> None:
         session.clear()
         flash("👋 You have been logged out successfully.", "info")
         return redirect(url_for("index"))
-
-    def get_directory_usernames(admin_first: bool = False) -> Sequence[Username]:
-        query = db.select(Username).filter_by(show_in_directory=True)
-        display_ordering = db.func.coalesce(Username._display_name, Username._username)
-        if admin_first:
-            query = query.order_by(Username.user.is_admin.desc(), display_ordering)
-        else:
-            query = query.order_by(display_ordering)
-        return db.session.scalars(query).all()
 
     @app.route("/directory")
     def directory() -> Response | str:
