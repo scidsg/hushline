@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function reportUser(username, bio) {
     const messageContent = `Reported user: ${username}\n\nBio: ${bio}\n\nReason:`;
     const encodedMessage = encodeURIComponent(messageContent);
-    const submissionUrl = `${pathPrefix}/profile/admin?prefill=${encodedMessage}`;
+    const submissionUrl = `${pathPrefix}/to/admin?prefill=${encodedMessage}`;
     window.location.href = submissionUrl;
   }
 
@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
                     <div class="user-actions">
-                        <a href="${pathPrefix}/profile/${user.primary_username}">Send a Message</a>
+                        <a href="${pathPrefix}/to/${user.primary_username}">Send a Message</a>
                         ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
