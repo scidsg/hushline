@@ -11,9 +11,12 @@ install:
 	poetry install
 
 .PHONY: run
-run: ## Run the app
-	. ./dev_env.sh && \
-	poetry run flask run --debug -h localhost -p 8080
+run: ## Run the app in a limited mode
+	docker compose up
+
+.PHONY: run-full
+run-full: ## Run the app with all features enabled
+	docker compose -f docker-compose.stripe.yaml up
 
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations

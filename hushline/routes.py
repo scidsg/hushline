@@ -10,7 +10,6 @@ from flask import (
     Flask,
     current_app,
     flash,
-    make_response,
     redirect,
     render_template,
     request,
@@ -120,11 +119,7 @@ def init_app(app: Flask) -> None:
             flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
-        return render_template(
-            "inbox.html",
-            user=user,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
-        )
+        return render_template("inbox.html", user=user)
 
     @app.route("/to/<username>", methods=["GET"])
     def profile(username: str) -> Response | str:
@@ -169,7 +164,6 @@ def init_app(app: Flask) -> None:
             display_name_or_username=uname.display_name or uname.username,
             current_user_id=session.get("user_id"),
             public_key=uname.user.pgp_key,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
             require_pgp=app.config["REQUIRE_PGP"],
             math_problem=math_problem,
         )
@@ -374,7 +368,6 @@ def init_app(app: Flask) -> None:
             "register.html",
             form=form,
             require_invite_code=require_invite_code,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
         )
 
     @app.route("/login", methods=["GET", "POST"])
@@ -412,11 +405,7 @@ def init_app(app: Flask) -> None:
                 return redirect(url_for("inbox"))
 
             flash("⛔️ Invalid username or password")
-        return render_template(
-            "login.html",
-            form=form,
-            is_personal_server=app.config["IS_PERSONAL_SERVER"],
-        )
+        return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
@@ -497,9 +486,7 @@ def init_app(app: Flask) -> None:
             flash("⛔️ Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
 
-        return render_template(
-            "verify_2fa_login.html", form=form, is_personal_server=app.config["IS_PERSONAL_SERVER"]
-        )
+        return render_template("verify_2fa_login.html", form=form)
 
     @app.route("/logout")
     @authentication_required
@@ -520,12 +507,10 @@ def init_app(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        is_personal_server = app.config["IS_PERSONAL_SERVER"]
         return render_template(
             "directory.html",
             usernames=get_directory_usernames(),
             logged_in=logged_in,
-            is_personal_server=is_personal_server,
         )
 
     @app.route("/directory/get-session-user.json")
@@ -551,15 +536,8 @@ def init_app(app: Flask) -> None:
         return render_template("vision.html")
 
     @app.route("/info")
-    def personal_server_info() -> Response:
-        if app.config.get("IS_PERSONAL_SERVER"):
-            ip_address = get_ip_address()
-            return make_response(
-                render_template(
-                    "personal_server_info.html", is_personal_server=True, ip_address=ip_address
-                )
-            )
-        return Response(status=404)
+    def server_info() -> Response | str:
+        return render_template("server_info.html", ip_address=get_ip_address())
 
     @app.route("/health.json")
     def health() -> dict[str, str]:

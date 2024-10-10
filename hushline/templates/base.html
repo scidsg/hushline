@@ -83,7 +83,7 @@
       {% endif %}
     {% endwith %}
 
-    {% if not is_personal_server %}
+    {% if not is_onion_service %}
       <div class="banner">
         <p>
           🧅 Use
@@ -114,13 +114,8 @@
               </li>
               {% endif %}
             {% endif %}
-            {% if is_personal_server %}
-              <li><a href="{{ url_for('personal_server_info') }}">Info</a></li>
-            {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>
-            {% if not is_personal_server %}
-              <li><a href="{{ url_for('vision') }}">Vision</a></li>
-            {% endif %}
+            <li><a href="{{ url_for('vision') }}">Vision</a></li>
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
               <li>
                 <a href="{{ url_for('inbox', username=session.username) }}"
@@ -167,7 +162,7 @@
       </nav>
     </header>
 
-    <main>
+    <main class="{% block main_class %}{% endblock %}">
       <div class="container">
         {% block content %}
           <!-- This block will be filled with page-specific content -->
@@ -195,7 +190,7 @@
           href="https://github.com/scidsg/hushline"
           target="_blank"
           rel="noopener noreferrer"
-          >v{{ config.VERSION }}</a
+          >v{{ hushline_version }}</a
         >
       </p>
     </footer>

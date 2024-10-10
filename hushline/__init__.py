@@ -7,7 +7,7 @@ from typing import Any
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from jinja2 import StrictUndefined
-from werkzeug.middleware.proxy_fix import ProxyFix
+from markupsafe import Markup
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings
@@ -45,17 +45,20 @@ def create_app() -> Flask:
     app.config["VERSION"] = __version__
     app.config["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY")
     app.config["ONION_HOSTNAME"] = os.environ.get("ONION_HOSTNAME", None)
-    app.config["IS_PERSONAL_SERVER"] = (
-        os.environ.get("IS_PERSONAL_SERVER", "False").lower() == "true"
+    app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = (
+        os.environ.get("DIRECTORY_VERIFIED_TAB_ENABLED", "true").lower() == "true"
+    )
+    app.config["SMTP_FORWARDING_MESSAGE_HTML"] = (
+        Markup(os.environ.get("SMTP_FORWARDING_MESSAGE_HTML", "")) or None
     )
     app.config["REGISTRATION_CODES_REQUIRED"] = (
         os.environ.get("REGISTRATION_CODES_REQUIRED", "true").lower() == "true"
     )
     app.config["NOTIFICATIONS_ADDRESS"] = os.environ.get("NOTIFICATIONS_ADDRESS", None)
     app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME", None)
+    app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
     app.config["SMTP_SERVER"] = os.environ.get("SMTP_SERVER", None)
     app.config["SMTP_PORT"] = int(os.environ.get("SMTP_PORT", 0))
-    app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD", None)
     app.config["SMTP_ENCRYPTION"] = os.environ.get("SMTP_ENCRYPTION", "StartTLS")
     app.config["REQUIRE_PGP"] = os.environ.get("REQUIRE_PGP", "False").lower() == "true"
     app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", None)
@@ -66,16 +69,22 @@ def create_app() -> Flask:
     app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
     app.config["PREFERRED_URL_SCHEME"] = "https" if os.getenv("SERVER_NAME") is not None else "http"
 
-    if not app.config["IS_PERSONAL_SERVER"]:
-        # if were running the managed service, we are behind a proxy
-        app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
-            app.wsgi_app, x_for=2, x_proto=1, x_host=0, x_port=0, x_prefix=0
-        )
-
     # jinja configs
+    app.jinja_env.globals["hushline_version"] = __version__
+    app.jinja_env.globals["directory_verified_tab_enabled"] = app.config[
+        "DIRECTORY_VERIFIED_TAB_ENABLED"
+    ]
     if app.config.get("FLASK_ENV", None) == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
+
+    # always pop the config to avoid accidentally dumping all our secrets to the user
+    app.jinja_env.globals.pop("config", None)
+    app.jinja_env.globals["smtp_forwarding_message_html"] = app.config[
+        "SMTP_FORWARDING_MESSAGE_HTML"
+    ]
+    if onion_hostname := app.config.get("ONION_HOSTNAME", None):
+        app.jinja_env.globals["onion_hostname"] = onion_hostname
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -98,23 +107,15 @@ def create_app() -> Flask:
         return redirect(url_for("index"))
 
     @app.context_processor
-    def inject_user() -> dict[str, Any]:
+    def inject_variables() -> dict[str, Any]:
+        data = {
+            "host_org": HostOrganization.fetch_or_default(),
+            "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            "is_onion_service": request.host.lower().endswith(".onion"),
+        }
         if "user_id" in session:
-            user = db.session.get(User, session["user_id"])
-            return {"user": user}
-        return {}
-
-    @app.context_processor
-    def inject_host() -> dict[str, HostOrganization]:
-        return dict(host_org=HostOrganization.fetch_or_default())
-
-    @app.context_processor
-    def inject_is_personal_server() -> dict[str, Any]:
-        return {"is_personal_server": app.config["IS_PERSONAL_SERVER"]}
-
-    @app.context_processor
-    def inject_is_premium_enabled() -> dict[str, Any]:
-        return {"is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False))}
+            data["user"] = db.session.get(User, session["user_id"])
+        return data
 
     # Add Onion-Location header to all responses
     if app.config["ONION_HOSTNAME"]:

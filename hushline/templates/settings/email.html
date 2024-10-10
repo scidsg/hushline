@@ -32,15 +32,9 @@
           </div>
         </label>
       </div>
-      {% if not is_personal_server and default_forwarding_enabled %}
+      {% if default_forwarding_enabled and smtp_forwarding_message_html %}
         <p class="meta">
-          ✊ Email forwarding is powered by
-          <a
-            href="https://riseup.net"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Riseup.net</a
-          >.
+          {{ smtp_forwarding_message_html }}
         </p>
       {% endif %}
       <fieldset id="forwarding_enabled_fields">
