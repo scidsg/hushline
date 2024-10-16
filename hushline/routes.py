@@ -409,7 +409,7 @@ def init_app(app: Flask) -> None:
                 db.session.commit()
 
                 # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY"):
+                if app.config["STRIPE_SECRET_KEY"]:
                     user = db.session.get(User, username.user_id)
                     if user and user.tier_id is None:
                         return redirect(url_for("premium.select_tier"))
@@ -486,7 +486,7 @@ def init_app(app: Flask) -> None:
                 session["is_authenticated"] = True
 
                 # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+                if app.config["STRIPE_SECRET_KEY"] and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
                 return redirect(url_for("inbox"))

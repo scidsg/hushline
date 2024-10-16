@@ -33,7 +33,7 @@ dev-data: migrate-dev ## Run dev env migrations, and add dev data
 .PHONY: lint
 lint: ## Lint the code
 	poetry run ruff format --check && \
-	poetry run ruff check --output-format full && \
+	poetry run ruff check && \
 	poetry run mypy . && \
 	docker compose run --rm app npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
 

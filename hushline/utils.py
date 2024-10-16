@@ -4,36 +4,13 @@ from dataclasses import dataclass
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from functools import wraps
-from typing import Any, Callable, Generator, Optional, TypeVar
+from typing import Any, Callable, Generator
 
 from flask import abort, current_app, flash, redirect, session, url_for
 
 from hushline.model import SMTPEncryption, User
 
 from .db import db
-
-T = TypeVar("T")
-U = TypeVar("U")
-
-
-def if_not_none(
-    value: Optional[T], func: Callable[[T], U], allow_falsey: bool = True
-) -> Optional[U]:
-    if allow_falsey:
-        if value is not None:
-            return func(value)
-    elif value:
-        return func(value)
-    return None
-
-
-def parse_bool(val: str) -> bool:
-    match val:
-        case "true":
-            return True
-        case "false":
-            return False
-    raise ValueError(f"Unparseable boolean value: {val!r}")
 
 
 def authentication_required(f: Callable[..., Any]) -> Callable[..., Any]:
