@@ -66,9 +66,7 @@ class EmailForwardingForm(FlaskForm):
                     "Email address must be specified when forwarding is enabled."
                 )
                 rv = False
-            if self.custom_smtp_settings.data or not current_app.config.get(
-                "NOTIFICATIONS_ADDRESS"
-            ):
+            if self.custom_smtp_settings.data or not current_app.config["NOTIFICATIONS_ADDRESS"]:
                 smtp_fields = [
                     self.smtp_settings.smtp_sender,
                     self.smtp_settings.smtp_username,
