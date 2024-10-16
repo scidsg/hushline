@@ -25,6 +25,13 @@ Note: There may be additional env vars the code uses, but if they are undocument
       <td></td>
       <td>Set the server/host name in Flask</td>
     </tr>
+    <tr>
+      <td><code>SECRET_KEY</code></td>
+      <td>true</td>
+      <td>string</td>
+      <td></td>
+      <td>The Flask secret key used for signing cookies.</td>
+    </tr>
     <!-- SqlAlchemy configs -->
     <tr>
       <td><code>SQLALCHEMY_DATABASE_URI</code></td>
@@ -138,3 +145,10 @@ Note: There may be additional env vars the code uses, but if they are undocument
     </tr>
   </tbody>
 </table>
+
+## Customization
+
+To support customization of the app, there are two methods of setting arbitrary config values.
+
+- All values of the form `HL_CFG_*` will have the prefix `HL_CFG_` stripped and will be set as strings in the config. (e.g., `HL_CFG_FOO='bar'` will set the config `FOO` to the string `bar`)
+- All values of the form `HL_CFG_JSON_*` will have the prefix `HL_CFG_JSON_` stripped and will be parsed as JSON then set in the config. (e.g., `HL_CFG_FOO='123'` will set the config `FOO` to the int `123` and `HL_CFG_BAZ='"true"'` [note the quotes] will the config `BAZ` to the string `true`)
