@@ -79,7 +79,7 @@ def _load_smtp(env: Mapping[str, str]) -> Mapping[str, Any]:
         if val := env.get(key):
             data[key] = val
 
-    data["SMTP_PORT"] = if_not_none(env.get("SMTP_PORT"), int)
+    data["SMTP_PORT"] = if_not_none(env.get("SMTP_PORT"), int, allow_falsey=False)
     data["SMTP_ENCRYPTION"] = env.get("SMTP_ENCRYPTION", "StartTLS")
     data["SMTP_FORWARDING_MESSAGE_HTML"] = if_not_none(
         env.get("SMTP_FORWARDING_MESSAGE_HTML"), Markup, allow_falsey=False
