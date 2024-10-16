@@ -172,7 +172,7 @@ def env_var_modifier(mocker: MockFixture) -> Callable[[MockFixture], None]:
 def app(
     database: str, mocker: MockFixture, env_var_modifier: Callable[[MockFixture], None]
 ) -> Generator[Flask, None, None]:
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "false"
     os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
     os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"  # For premium tests
 

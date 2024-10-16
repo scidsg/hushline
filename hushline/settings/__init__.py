@@ -342,7 +342,7 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=two_fa_percentage,
             pgp_key_percentage=pgp_key_percentage,
             directory_visibility_form=directory_visibility_form,
-            default_forwarding_enabled=bool(current_app.config["NOTIFICATIONS_ADDRESS"]),
+            default_forwarding_enabled=bool(current_app.config.get("NOTIFICATIONS_ADDRESS")),
             # Premium-specific data
             business_tier_display_price=business_tier_display_price,
         )
