@@ -3,9 +3,10 @@ from uuid import uuid4
 
 import pytest
 from bs4 import BeautifulSoup
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+from hushline.config import AliasMode
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -316,7 +317,9 @@ def test_update_smtp_settings_default_forwarding(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_add_alias(client: FlaskClient, user: User) -> None:
+def test_add_alias(app: Flask, client: FlaskClient, user: User) -> None:
+    app.config["ALIAS_MODE"] = AliasMode.ALWAYS
+
     alias_username = str(uuid4())[0:12]
     response = client.post(
         url_for("settings.index"),
@@ -332,6 +335,74 @@ def test_add_alias(client: FlaskClient, user: User) -> None:
     alias = db.session.scalars(db.select(Username).filter_by(_username=alias_username)).one()
     assert not alias.is_primary
     assert alias.user_id == user.id
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias_fails_when_alias_mode_is_never(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["ALIAS_MODE"] = AliasMode.NEVER
+
+    alias_username = str(uuid4())[0:12]
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": alias_username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert not db.session.scalars(
+        db.select(Username).filter_by(_username=alias_username)
+    ).one_or_none()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias_not_exceed_max(
+    app: Flask, client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # patch to a small number for faster tests
+    monkeypatch.setattr(User, "_PREMIUM_ALIAS_COUNT", 2)
+
+    app.config["ALIAS_MODE"] = AliasMode.PREMIUM
+    user.set_business_tier()
+
+    # add up to the max number
+    max_alises = user.max_aliases
+    for _ in range(max_alises):
+        alias_username = str(uuid4())[0:12]
+        response = client.post(
+            url_for("settings.index"),
+            data={
+                "username": alias_username,
+                "new_alias": "",  # html form
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert db.session.scalars(
+            db.select(Username).filter_by(_username=alias_username)
+        ).one_or_none()
+
+    # try adding one more
+    alias_username = str(uuid4())[0:12]
+    response = client.post(
+        url_for("settings.index"),
+        data={
+            "username": alias_username,
+            "new_alias": "",  # html form
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert (
+        "Your current subscription level does not allow the creation of more aliases"
+        in response.text
+    )
+    assert not db.session.scalars(
+        db.select(Username).filter_by(_username=alias_username)
+    ).one_or_none()
 
 
 @pytest.mark.usefixtures("_authenticated_user")

@@ -189,9 +189,13 @@ def handle_new_alias_form(
     current_app.logger.debug(f"Attempting to create alias for user_id={user.id}")
 
     count = db.session.scalar(
-        db.select(db.func.count(Username.id).filter(Username.user_id == user.id))
+        db.select(
+            db.func.count(Username.id).filter(
+                Username.user_id == user.id, Username.is_primary.is_(False)
+            )
+        )
     )
-    if count > user.max_aliases:
+    if count >= user.max_aliases:
         flash("Your current subscription level does not allow the creation of more aliases.")
         return None
 

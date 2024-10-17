@@ -239,6 +239,8 @@ class User(Model):
         db.DateTime(timezone=True), nullable=True
     )
 
+    _PREMIUM_ALIAS_COUNT = 100
+
     @property
     def password_hash(self) -> str:
         """Return the hashed password."""
@@ -335,6 +337,7 @@ class User(Model):
                     if current_app.config["FLASK_ENV"] == "development":
                         raise Exception(err_msg)
                     current_app.logger.warning(err_msg)
+                return self._PREMIUM_ALIAS_COUNT
             case AliasMode.NEVER:
                 return 0
 
@@ -342,7 +345,7 @@ class User(Model):
         if current_app.config["FLASK_ENV"] == "development":
             raise Exception(err_msg)
         current_app.logger.warning(err_msg)
-        return 100
+        return self._PREMIUM_ALIAS_COUNT
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:
