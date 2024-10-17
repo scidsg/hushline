@@ -3,6 +3,7 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
+  {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
   <h2>Settings</h2>
   <div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
     <ul class="tab-list" role="tablist">
@@ -16,7 +17,7 @@
         ('admin', 'Admin', True, False)
       ] %}
         {% for (id, display, requires_admin, requires_paying_customer) in buttons %}
-          {% if (not requires_admin or user.is_admin) and (not requires_paying_customer or not user.is_free_tier) %}
+          {% if (not requires_admin or user.is_admin) and (not requires_paying_customer or aliases_enabled) %}
             <li role="presentation">
               <button
                 type="button"
@@ -37,7 +38,7 @@
   </div>
   <div>
     {% include "settings/profile.html" %}
-    {% if not user.is_free_tier %}
+    {% if aliases_enabled %}
       {% include "settings/aliases.html" %}
     {% endif %}
     {% include "settings/auth.html" %}

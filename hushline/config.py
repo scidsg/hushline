@@ -1,8 +1,9 @@
 import json
 import os
 from datetime import timedelta
+from enum import Enum, unique
 from json import JSONDecodeError
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Self
 
 from markupsafe import Markup
 
@@ -14,6 +15,20 @@ _JSON_CFG_PREFIX = "HL_CFG_JSON_"
 
 class ConfigParseError(Exception):
     pass
+
+
+@unique
+class AliasMode(Enum):
+    ALWAYS = "always"
+    PREMIUM = "premium"
+    NEVER = "never"
+
+    @classmethod
+    def parse(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ConfigParseError(f"Not a valid value for {cls.__name__}: {var!r}")
 
 
 def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
@@ -108,6 +123,12 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
             data[key] = parse_bool(value)
         else:
             data[key] = default
+
+    if alias_str := env.get("ALIAS_MODE"):
+        data["ALIAS_MODE"] = AliasMode.parse(alias_str)
+    else:
+        data["ALIAS_MODE"] = AliasMode.ALWAYS
+
     return data
 
 
