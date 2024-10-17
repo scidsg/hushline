@@ -132,7 +132,14 @@ def init_app(app: Flask) -> None:
             flash("👉 Please log in to access your inbox.")
             return redirect(url_for("login"))
 
-        return render_template("inbox.html", user=user)
+        user_alias_count = db.session.scalar(
+            db.select(db.func.count(Username.id).filter(Username.user_id == user.id))
+        )
+        return render_template(
+            "inbox.html",
+            user=user,
+            user_has_aliases=user_alias_count > 1,
+        )
 
     @app.route("/to/<username>", methods=["GET"])
     def profile(username: str) -> Response | str:
