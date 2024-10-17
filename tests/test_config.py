@@ -3,7 +3,13 @@ import os
 
 import pytest
 
-from hushline.config import _JSON_CFG_PREFIX, _STRING_CFG_PREFIX, ConfigParseError, load_config
+from hushline.config import (
+    _JSON_CFG_PREFIX,
+    _STRING_CFG_PREFIX,
+    AliasMode,
+    ConfigParseError,
+    load_config,
+)
 
 CFG_NAME = "DOES_NOT_EXIST"
 
@@ -42,3 +48,10 @@ def test_config_parse_json_fail() -> None:
         load_config(env)
     assert key in str(e_info.value)
     assert value not in str(e_info.value)
+
+
+def test_parse_alias_mode() -> None:
+    assert AliasMode.parse("always") == AliasMode.ALWAYS
+
+    with pytest.raises(ConfigParseError, match="Not a valid value"):
+        AliasMode.parse("wat")

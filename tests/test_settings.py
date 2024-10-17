@@ -157,7 +157,7 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-@patch("hushline.utils.smtplib.SMTP")
+@patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     response = client.post(
         url_for("settings.update_smtp_settings"),
@@ -191,7 +191,7 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
-@patch("hushline.utils.smtplib.SMTP")
+@patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
@@ -235,7 +235,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
-@patch("hushline.utils.smtplib.SMTP_SSL")
+@patch("hushline.email.smtplib.SMTP_SSL")
 def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
         "forwarding_enabled": True,
@@ -279,7 +279,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: Us
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
-@patch("hushline.utils.smtplib.SMTP")
+@patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_default_forwarding(
     SMTP: MagicMock, client: FlaskClient, user: User
 ) -> None:

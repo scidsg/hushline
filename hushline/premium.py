@@ -20,6 +20,7 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
+from .auth import authentication_required
 from .db import db
 from .model import (
     StripeEvent,
@@ -30,7 +31,6 @@ from .model import (
     Tier,
     User,
 )
-from .utils import authentication_required
 
 
 def init_stripe() -> None:

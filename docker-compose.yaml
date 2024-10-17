@@ -13,6 +13,7 @@ services:
       SECRET_KEY: cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd
       SQLALCHEMY_DATABASE_URI: postgresql://hushline:hushline@postgres:5432/hushline
       REGISTRATION_CODES_REQUIRED: 'false'
+      ALIAS_MODE: always
       SESSION_COOKIE_NAME: session
       NOTIFICATIONS_ADDRESS: notifications@hushline.app
       DIRECTORY_VERIFIED_TAB_ENABLED: "${DIRECTORY_VERIFIED_TAB_ENABLED:-true}"

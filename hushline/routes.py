@@ -21,11 +21,12 @@ from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
+from .auth import authentication_required
 from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
+from .email import SMTPConfig, create_smtp_config, send_email
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User, Username
-from .utils import SMTPConfig, authentication_required, create_smtp_config, send_email
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
