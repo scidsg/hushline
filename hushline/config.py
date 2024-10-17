@@ -89,9 +89,12 @@ def _load_smtp(env: Mapping[str, str]) -> Mapping[str, Any]:
 
 
 def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
-    data: dict[str, Any] = {
-        "ENCRYPTION_KEY": env["ENCRYPTION_KEY"],
-    }
+    data: dict[str, Any] = {}
+
+    # this is required by the Flask app but not by the Stripe worker
+    # so we have to allow for it to be missing
+    if key := env.get("ENCRYPTION_KEY"):
+        data["ENCRYPTION_KEY"] = key
 
     if onion := env.get("ONION_HOSTNAME"):
         data["ONION_HOSTNAME"] = onion
