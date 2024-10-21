@@ -19,13 +19,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install doctl and authenticate
+        run: |
+          sudo snap install doctl jq
+          doctl auth init -t $DIGITALOCEAN_TOKEN
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.prod
           push: true
-          tags: ghcr.io/${{ github.repository }}/hushline:latest
+          tags: |
+            ghcr.io/${{ github.repository }}/hushline:latest
+            registry.digitalocean.com/scidsg/hushline:latest
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
