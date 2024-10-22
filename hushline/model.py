@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
 
+from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -11,6 +12,7 @@ from sqlalchemy import Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from stripe import Event, Invoice
 
+from .config import AliasMode
 from .crypto import decrypt_field, encrypt_field
 from .db import db
 
@@ -237,6 +239,8 @@ class User(Model):
         db.DateTime(timezone=True), nullable=True
     )
 
+    _PREMIUM_ALIAS_COUNT = 100
+
     @property
     def password_hash(self) -> str:
         """Return the hashed password."""
@@ -318,6 +322,30 @@ class User(Model):
 
     def set_business_tier(self) -> None:
         self.tier_id = Tier.business_tier_id()
+
+    @property
+    def max_aliases(self) -> int:
+        alias_mode = current_app.config["ALIAS_MODE"]
+        match alias_mode:
+            case AliasMode.ALWAYS:
+                return 2**32  # just some massive number we'll never have an issue with
+            case AliasMode.PREMIUM:
+                if self.is_free_tier:
+                    return 0
+                if not self.is_business_tier:
+                    err_msg = f"Programming Error. Unknown tier id: {self.tier_id}"
+                    if current_app.config["FLASK_ENV"] == "development":
+                        raise Exception(err_msg)
+                    current_app.logger.warning(err_msg)
+                return self._PREMIUM_ALIAS_COUNT
+            case AliasMode.NEVER:
+                return 0
+
+        err_msg = f"Programming error. Unhandled alias mode: {alias_mode!r}"
+        if current_app.config["FLASK_ENV"] == "development":
+            raise Exception(err_msg)
+        current_app.logger.warning(err_msg)
+        return self._PREMIUM_ALIAS_COUNT
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

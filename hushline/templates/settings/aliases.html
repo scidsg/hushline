@@ -6,7 +6,7 @@
 >
   <h3>Add an Alias</h3>
   {% set alias_count = aliases.__len__() %}
-    {% if alias_count < max_aliases %}
+    {% if alias_count < user.max_aliases %}
       <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
         {{ new_alias_form.hidden_tag() }}
         <label for="alias_username">Alias Username</label>

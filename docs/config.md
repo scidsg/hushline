@@ -26,6 +26,19 @@ These configs are needed for the web app.
   </thead>
   <tbody>
     <tr>
+      <td><code>ALIAS_MODE</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td><code>always</code></td>
+      <td>
+        Whether users should be able to create "aliases" (additional usernames by which they are addressable).
+        Values:
+          `always` - users can always create unlimited aliases.
+          `premium` - only users with a paid plan can create a limited number of aliases.
+          `never` - aliases are disabled for all users.
+      </td>
+    </tr>
+    <tr>
       <td><code>DIRECTORY_VERIFIED_TAB_ENABLED</code></td>
       <td>false</td>
       <td>boolean</td>

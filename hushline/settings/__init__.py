@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 from hmac import compare_digest as bytes_are_equal
+from typing import Optional
 
 import aiohttp
 import pyotp
@@ -23,8 +24,10 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
+from ..auth import admin_authentication_required, authentication_required
 from ..crypto import is_valid_pgp_key
 from ..db import db
+from ..email import create_smtp_config
 from ..forms import TwoFactorForm
 from ..model import (
     AuthenticationLog,
@@ -34,11 +37,6 @@ from ..model import (
     Tier,
     User,
     Username,
-)
-from ..utils import (
-    admin_authentication_required,
-    authentication_required,
-    create_smtp_config,
 )
 from .forms import (
     ChangePasswordForm,
@@ -185,9 +183,22 @@ def handle_change_username_form(
     return redirect(redirect_url)
 
 
-def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url: str) -> Response:
-    current_app.logger.debug(f"Creating alias for {user.primary_username.username}")
-    # TODO check that users are allowed to add aliases here (is premium, not too many)
+def handle_new_alias_form(
+    user: User, new_alias_form: NewAliasForm, redirect_url: str
+) -> Optional[Response]:
+    current_app.logger.debug(f"Attempting to create alias for user_id={user.id}")
+
+    count = db.session.scalar(
+        db.select(
+            db.func.count(Username.id).filter(
+                Username.user_id == user.id, Username.is_primary.is_(False)
+            )
+        )
+    )
+    if count >= user.max_aliases:
+        flash("Your current subscription level does not allow the creation of more aliases.")
+        return None
+
     uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
     db.session.add(uname)
     try:
@@ -196,8 +207,10 @@ def handle_new_alias_form(user: User, new_alias_form: NewAliasForm, redirect_url
         db.session.rollback()
         if isinstance(e.orig, UniqueViolation) and '"uq_usernames_username"' in str(e.orig):
             flash("💔 This username is already taken.")
-        else:
-            flash("⛔️ Internal server error. Alias not created.")
+            return None
+        current_app.logger.error("Error creating username", exc_info=True)
+        flash("⛔️ Internal server error. Alias not created.")
+        return None
     else:
         flash("👍 Alias created successfully.")
     return redirect(redirect_url)
@@ -254,12 +267,14 @@ def create_blueprint() -> Blueprint:
                     user.primary_username, change_username_form, url_for(".index")
                 )
             if "new_alias" in request.form and new_alias_form.validate_on_submit():
-                return handle_new_alias_form(user, new_alias_form, url_for(".index"))
-            current_app.logger.error(
-                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
-                f"form fields: {request.form.keys()}"
-            )
-            flash("Uh oh. There was an error handling your data. Please notify the admin.")
+                if resp := handle_new_alias_form(user, new_alias_form, url_for(".index")):
+                    return resp
+            else:
+                current_app.logger.error(
+                    f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                    f"form fields: {request.form.keys()}"
+                )
+                flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
         aliases = db.session.scalars(
             db.select(Username)
@@ -333,7 +348,6 @@ def create_blueprint() -> Blueprint:
             profile_form=profile_form,
             new_alias_form=new_alias_form,
             aliases=aliases,
-            max_aliases=5,  # TODO hardcoded for now
             # Admin-specific data passed to the template
             is_admin=user.is_admin,
             user_count=user_count,

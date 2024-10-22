@@ -1,10 +1,10 @@
 from flask import Blueprint, abort, flash, redirect, request, url_for
 from werkzeug.wrappers.response import Response
 
+from .auth import admin_authentication_required
 from .db import db
 from .model import Tier, User
 from .premium import update_price
-from .utils import admin_authentication_required
 
 
 def create_blueprint() -> Blueprint:
