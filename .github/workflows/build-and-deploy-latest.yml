@@ -33,7 +33,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/hushline:latest
-            hub.docker.com/scidsg/hushline:latest
+            scidsg/hushline:latest
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
