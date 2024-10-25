@@ -2,10 +2,10 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
-import stripe
 from flask import Flask, get_flashed_messages, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
+from stripe import InvalidRequestError, StripeError  # Import exceptions directly
 
 from hushline.db import db
 from hushline.model import (
@@ -53,7 +53,7 @@ def test_create_products_and_prices(app: Flask, mocker: MockFixture) -> None:
     db.session.add(tier)
     db.session.commit()
 
-    stripe_error_instance = stripe.error.InvalidRequestError("Invalid request", param="")
+    stripe_error_instance = InvalidRequestError("Invalid request", param="")
 
     # Mock the Stripe API calls
     mock_stripe_product_create = mocker.patch(
@@ -390,7 +390,7 @@ def test_disable_autorenew_stripe_error(
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
 
-    stripe_error_instance = stripe.error.StripeError("An error occurred")
+    stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
         "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
@@ -458,7 +458,7 @@ def test_enable_autorenew_stripe_error(
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
 
-    stripe_error_instance = stripe.error.StripeError("An error occurred")
+    stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
         "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
@@ -527,7 +527,7 @@ def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixtur
     user.set_business_tier()
     db.session.commit()
 
-    stripe_error_instance = stripe.error.StripeError("An error occurred")
+    stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_delete = mocker.patch(
         "hushline.premium.stripe.Subscription.delete", side_effect=stripe_error_instance
