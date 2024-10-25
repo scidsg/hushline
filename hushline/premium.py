@@ -319,7 +319,7 @@ async def worker(app: Flask) -> None:
                 await asyncio.sleep(2)
 
     # Start the worker
-    current_app.logger.error("Starting worker")
+    current_app.logger.info("Starting worker")
     with app.app_context():
         while True:
             with db.session.begin() as transaction:  # Start a transaction block
