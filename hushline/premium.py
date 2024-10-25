@@ -549,7 +549,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             db.session.commit()
 
             current_app.logger.info(
-                f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"
+                f"Autorenew enabled for subscription {user.stripe_subscription_id} "
+                f"for user {user.id}"
             )
 
             flash("Autorenew has been enabled.")
