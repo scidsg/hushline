@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import stripe
-from flask import Flask, url_for
+from flask import Flask, get_flashed_messages, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
@@ -42,12 +42,10 @@ def business_tier() -> Tier:
     return tier
 
 
-def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
+def test_create_products_and_prices(app: Flask, mocker: MockFixture) -> None:
     # Make sure we have a business tier
     tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
-    if not tier:
-        return
 
     # Make sure it has no Stripe IDs to start
     tier.stripe_product_id = None
@@ -55,8 +53,7 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
     db.session.add(tier)
     db.session.commit()
 
-    stripe_error_instance = MagicMock()
-    stripe_error_instance.side_effect = stripe._error.InvalidRequestError("", param={})
+    stripe_error_instance = stripe.error.InvalidRequestError("Invalid request", param="")
 
     # Mock the Stripe API calls
     mock_stripe_product_create = mocker.patch(
@@ -86,10 +83,6 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
 
     # Check that stripe_product_id and stripe_price_id were set
     tier = Tier.query.filter_by(name="Business").one()
-    assert tier is not None
-    if not tier:
-        return
-
     assert tier.stripe_product_id == "prod_123"
     assert tier.stripe_price_id == "price_123"
 
@@ -112,10 +105,6 @@ def test_create_products_and_prices(app: Flask, mocker: MagicMock) -> None:
 
     # Check that stripe_product_id and stripe_price_id were set
     tier = Tier.query.filter_by(name="Business").one()
-    assert tier is not None
-    if not tier:
-        return
-
     assert tier.stripe_product_id == "prod_123"
     assert tier.stripe_price_id == "price_123"
 
@@ -125,8 +114,6 @@ def test_update_price_existing(app: Flask, mock_stripe: MagicMock) -> None:
 
     tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
-    if not tier:
-        return
 
     update_price(tier)
 
@@ -142,8 +129,6 @@ def test_update_price_new(app: Flask, mock_stripe: MagicMock) -> None:
 
     tier = Tier.query.filter_by(name="Business").one()
     assert tier is not None
-    if not tier:
-        return
 
     update_price(tier)
 
@@ -163,7 +148,7 @@ def test_create_customer(app: Flask, mock_stripe: MagicMock, user: User) -> None
 
     # Check that the customer ID was saved to the database
     db.session.refresh(user)
-    assert user.stripe_customer_id is not None
+    assert user.stripe_customer_id == "cus_123"
 
 
 def test_get_subscription(app: Flask, mock_stripe: MagicMock, user: User) -> None:
@@ -178,7 +163,6 @@ def test_get_subscription(app: Flask, mock_stripe: MagicMock, user: User) -> Non
     assert mock_stripe.Subscription.retrieve.called
 
 
-# Webhook handler for customer.subscription.created
 def test_handle_subscription_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     db.session.commit()
@@ -188,8 +172,8 @@ def test_handle_subscription_created(app: Flask, user: User) -> None:
     subscription.id = "sub_123"
     subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE.value
     subscription.cancel_at_period_end = False
-    subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
-    subscription.current_period_start = datetime.now().timestamp()
+    subscription.current_period_end = int((datetime.now() + timedelta(days=30)).timestamp())
+    subscription.current_period_start = int(datetime.now().timestamp())
 
     handle_subscription_created(subscription)
 
@@ -197,7 +181,6 @@ def test_handle_subscription_created(app: Flask, user: User) -> None:
     assert not user.is_business_tier
 
 
-# Webhook handler for customer.subscription.updated, when the status changes to active
 def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -206,15 +189,14 @@ def test_handle_subscription_updated_upgrade(app: Flask, user: User) -> None:
     subscription.id = "sub_123"
     subscription.status = StripeSubscriptionStatusEnum.ACTIVE.value
     subscription.cancel_at_period_end = False
-    subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
-    subscription.current_period_start = datetime.now().timestamp()
+    subscription.current_period_end = int((datetime.now() + timedelta(days=30)).timestamp())
+    subscription.current_period_start = int(datetime.now().timestamp())
 
     handle_subscription_updated(subscription)
 
     assert user.is_business_tier
 
 
-# Webhook handler for customer.subscription.updated, when the status changes to canceled
 def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -223,15 +205,14 @@ def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     subscription.id = "sub_123"
     subscription.status = StripeSubscriptionStatusEnum.CANCELED.value
     subscription.cancel_at_period_end = True
-    subscription.current_period_end = (datetime.now() + timedelta(days=30)).timestamp()
-    subscription.current_period_start = datetime.now().timestamp()
+    subscription.current_period_end = int((datetime.now() + timedelta(days=30)).timestamp())
+    subscription.current_period_start = int(datetime.now().timestamp())
 
     handle_subscription_updated(subscription)
 
     assert user.is_free_tier
 
 
-# Webhook handler for customer.subscription.deleted
 def test_handle_subscription_deleted(app: Flask, user: User) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
@@ -245,7 +226,6 @@ def test_handle_subscription_deleted(app: Flask, user: User) -> None:
     assert user.stripe_subscription_id is None
 
 
-# Webhook handler for invoice.created
 def test_handle_invoice_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     db.session.commit()
@@ -256,8 +236,9 @@ def test_handle_invoice_created(app: Flask, user: User) -> None:
             customer="cus_123",
             hosted_invoice_url="https://example.com",
             total=2000,
-            status=StripeInvoiceStatusEnum.OPEN,
+            status=StripeInvoiceStatusEnum.OPEN.value,
             lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
+            subscription="sub_123",
         )
     )
 
@@ -269,7 +250,6 @@ def test_handle_invoice_created(app: Flask, user: User) -> None:
     assert stripe_invoice.hosted_invoice_url == "https://example.com"
 
 
-# Webhook handler for invoice.updated
 def test_handle_invoice_updated(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     user.stripe_subscription_id = "sub_123"
@@ -280,7 +260,7 @@ def test_handle_invoice_updated(app: Flask, user: User) -> None:
         customer="cus_123",
         hosted_invoice_url="https://example.com",
         total=2000,
-        status=StripeInvoiceStatusEnum.OPEN,
+        status=StripeInvoiceStatusEnum.OPEN.value,
         lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
         subscription="sub_123",
     )
@@ -289,11 +269,10 @@ def test_handle_invoice_updated(app: Flask, user: User) -> None:
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice is not None
 
-    invoice.status = StripeInvoiceStatusEnum.PAID
+    invoice.status = StripeInvoiceStatusEnum.PAID.value
     handle_invoice_updated(invoice)
 
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
-    assert stripe_invoice is not None
     assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
 
 
@@ -332,8 +311,8 @@ def test_upgrade_process(
         customer="cus_123",
         status=StripeSubscriptionStatusEnum.INCOMPLETE.value,
         cancel_at_period_end=False,
-        current_period_end=(datetime.now() + timedelta(days=30)).timestamp(),
-        current_period_start=datetime.now().timestamp(),
+        current_period_end=int((datetime.now() + timedelta(days=30)).timestamp()),
+        current_period_start=int(datetime.now().timestamp()),
     )
     invoice = MagicMock(
         id="inv_123",
@@ -370,8 +349,13 @@ def test_disable_autorenew_no_user_in_session(client: FlaskClient) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_disable_autorenew_no_subscription(client: FlaskClient, user: User) -> None:
     response = client.post(url_for("premium.disable_autorenew"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ No active subscription found." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -386,12 +370,17 @@ def test_disable_autorenew_success(client: FlaskClient, user: User, mocker: Mock
     )
 
     response = client.post(url_for("premium.disable_autorenew"))
-    assert response.status_code == 200
-    assert response.json == {"success": True}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_modify.called
 
     db.session.refresh(user)
     assert user.stripe_subscription_cancel_at_period_end is True
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "Autorenew has been disabled." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -401,17 +390,21 @@ def test_disable_autorenew_stripe_error(
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
 
-    stripe_error_instance = MagicMock()
-    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+    stripe_error_instance = stripe.error.StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
         "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.disable_autorenew"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_modify.called
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ Something went wrong while disabling autorenew." in flashed_messages
 
 
 def test_enable_autorenew_no_user_in_session(client: FlaskClient) -> None:
@@ -423,8 +416,13 @@ def test_enable_autorenew_no_user_in_session(client: FlaskClient) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_enable_autorenew_no_subscription(client: FlaskClient, user: User) -> None:
     response = client.post(url_for("premium.enable_autorenew"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ No active subscription found." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -440,12 +438,17 @@ def test_enable_autorenew_success(client: FlaskClient, user: User, mocker: MockF
     )
 
     response = client.post(url_for("premium.enable_autorenew"))
-    assert response.status_code == 200
-    assert response.json == {"success": True}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_modify.called
 
     db.session.refresh(user)
     assert user.stripe_subscription_cancel_at_period_end is False
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "Autorenew has been enabled." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -455,17 +458,21 @@ def test_enable_autorenew_stripe_error(
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
 
-    stripe_error_instance = MagicMock()
-    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+    stripe_error_instance = stripe.error.StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
         "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.enable_autorenew"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_modify.called
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ Something went wrong while enabling autorenew." in flashed_messages
 
 
 def test_cancel_no_user_in_session(client: FlaskClient) -> None:
@@ -477,8 +484,13 @@ def test_cancel_no_user_in_session(client: FlaskClient) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_cancel_no_subscription(client: FlaskClient, user: User) -> None:
     response = client.post(url_for("premium.cancel"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ No active subscription found." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -492,8 +504,8 @@ def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) ->
     )
 
     response = client.post(url_for("premium.cancel"))
-    assert response.status_code == 200
-    assert response.json == {"success": True}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_delete.called
 
     # Send the webhook event
@@ -503,6 +515,11 @@ def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) ->
     assert user.is_free_tier
     assert user.stripe_subscription_id is None
 
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "💔 Sorry to see you go!" in flashed_messages
+
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixture) -> None:
@@ -510,14 +527,18 @@ def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixtur
     user.set_business_tier()
     db.session.commit()
 
-    stripe_error_instance = MagicMock()
-    stripe_error_instance.side_effect = stripe._error.StripeError("An error occurred")
+    stripe_error_instance = stripe.error.StripeError("An error occurred")
 
     mock_stripe_delete = mocker.patch(
         "hushline.premium.stripe.Subscription.delete", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.cancel"))
-    assert response.status_code == 400
-    assert response.json == {"success": False}
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
     assert mock_stripe_delete.called
+
+    # Check flash message
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ Something went wrong while canceling your subscription." in flashed_messages
