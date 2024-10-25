@@ -500,7 +500,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
     @bp.route("/disable-autorenew", methods=["POST"])
     @authentication_required
-    def disable_autorenew() -> Response | str | Tuple[Response | str, int]:
+    def disable_autorenew() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
@@ -511,9 +511,11 @@ def create_blueprint(app: Flask) -> Blueprint:
                 stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=True)
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
-                return jsonify(success=False), 400
+                flash("⚠️ Something went wrong while disabling autorenew.")
+                return redirect(url_for("premium.index"))
         else:
-            return jsonify(success=False), 400
+            flash("⚠️ No active subscription found.")
+            return redirect(url_for("premium.index"))
 
         user.stripe_subscription_cancel_at_period_end = True
         db.session.add(user)
@@ -524,11 +526,11 @@ def create_blueprint(app: Flask) -> Blueprint:
         )
 
         flash("Autorenew has been disabled.")
-        return jsonify(success=True)
+        return redirect(url_for("premium.index"))
 
     @bp.route("/enable-autorenew", methods=["POST"])
     @authentication_required
-    def enable_autorenew() -> Response | str | Tuple[Response | str, int]:
+    def enable_autorenew() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
@@ -539,24 +541,26 @@ def create_blueprint(app: Flask) -> Blueprint:
                 stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=False)
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
-                return jsonify(success=False), 400
+                flash("⚠️ Something went wrong while enabling autorenew.")
+                return redirect(url_for("premium.index"))
 
             user.stripe_subscription_cancel_at_period_end = False
             db.session.add(user)
             db.session.commit()
 
             current_app.logger.info(
-                f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"  # noqa: E501
+                f"Autorenew enabled for subscription {user.stripe_subscription_id} for user {user.id}"
             )
 
             flash("Autorenew has been enabled.")
-            return jsonify(success=True)
+            return redirect(url_for("premium.index"))
 
-        return jsonify(success=False), 400
+        flash("⚠️ No active subscription found.")
+        return redirect(url_for("premium.index"))
 
     @bp.route("/cancel", methods=["POST"])
     @authentication_required
-    def cancel() -> Response | str | Tuple[Response | str, int]:
+    def cancel() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
@@ -577,12 +581,14 @@ def create_blueprint(app: Flask) -> Blueprint:
                 )
 
                 flash("💔 Sorry to see you go!")
-                return jsonify(success=True)
+                return redirect(url_for("premium.index"))
             except stripe._error.StripeError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
-                return jsonify(success=False), 400
+                flash("⚠️ Something went wrong while canceling your subscription.")
+                return redirect(url_for("premium.index"))
 
-        return jsonify(success=False), 400
+        flash("⚠️ No active subscription found.")
+        return redirect(url_for("premium.index"))
 
     @bp.route("/status.json")
     @authentication_required
