@@ -8,7 +8,7 @@ from jinja2 import StrictUndefined
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings
-from .config import load_config
+from .config import AliasMode, load_config
 from .db import db, migrate
 from .model import HostOrganization, Tier, User
 from .version import __version__
@@ -59,9 +59,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
 
 def configure_jinja(app: Flask) -> None:
     app.jinja_env.globals["hushline_version"] = __version__
-    app.jinja_env.globals["directory_verified_tab_enabled"] = app.config[
-        "DIRECTORY_VERIFIED_TAB_ENABLED"
-    ]
+    app.jinja_env.globals["AliasMode"] = AliasMode
+
     if app.config.get("FLASK_ENV") == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
@@ -77,9 +76,11 @@ def configure_jinja(app: Flask) -> None:
     @app.context_processor
     def inject_variables() -> dict[str, Any]:
         data = {
+            "alias_mode": app.config["ALIAS_MODE"],
+            "directory_verified_tab_enabled": app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
             "host_org": HostOrganization.fetch_or_default(),
-            "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
             "is_onion_service": request.host.lower().endswith(".onion"),
+            "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
         }
         if "user_id" in session:
             data["user"] = db.session.get(User, session["user_id"])
