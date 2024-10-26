@@ -2,6 +2,12 @@
 
 For the most up-to-date end-user documentation visit https://hushline.app/docs.
 
+## Contents
+
+1. [Deploying Development Instances](#deploying-development-instances)
+2. [Local Development Environment](#local-development-environment)
+3. [Configuration](#configuration)
+
 ## Deploying Development Instances
 
 PRs opened against the `scisdg/hushline` repo can be deployed to isolated development instances.
