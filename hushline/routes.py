@@ -526,7 +526,7 @@ def init_app(app: Flask) -> None:
                 "connects whistleblowers with lawyers, journalists, business leaders, and more. "
                 "We advise speaking to a legal professional before taking any confidential "
                 "information from your workplace."
-            )
+            ),
         )
         return render_template(
             "directory.html",
