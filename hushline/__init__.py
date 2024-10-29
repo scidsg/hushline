@@ -43,8 +43,12 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     @app.context_processor
     def inject_donate_button() -> dict[str, Any]:
         return {
-            "HEADER_BUTTON_TEXT": os.getenv("HEADER_BUTTON_TEXT", "<span class='emoji'>❤️</span> Donate"),
-            "HEADER_BUTTON_LINK": os.getenv("HEADER_BUTTON_LINK", "https://opencollective.com/scidsg/")
+            "HEADER_BUTTON_TEXT": os.getenv(
+                "HEADER_BUTTON_TEXT", "<span class='emoji'>❤️</span> Donate"
+            ),
+            "HEADER_BUTTON_LINK": os.getenv(
+                "HEADER_BUTTON_LINK", "https://opencollective.com/scidsg/"
+            ),
         }
 
     @app.errorhandler(404)
