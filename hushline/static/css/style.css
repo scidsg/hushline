@@ -1973,7 +1973,7 @@ input#captcha_answer {
 
   .nav-emoji {
     position: absolute;
-    transform: translateY(-0.325rem) translateX(3.75rem);
+    transform: translateY(0rem) translateX(3.75rem);
   }
 }
 
