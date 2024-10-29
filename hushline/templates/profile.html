@@ -12,10 +12,22 @@
 
 {% block content %}
   <h2 class="submit">
-    {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
-      Submit a message to {{ display_name_or_username }}
+    {% if current_user_id == user.id %}
+      {% if user.pgp_key %}
+        <!-- Authenticated user viewing their own profile with PGP key -->
+        ✍️ Note to Self
+      {% else %}
+        <!-- Authenticated user viewing their own profile without a PGP key -->
+        ✍️ Note to Self (Add a PGP Key for secure notes)
+      {% endif %}
     {% else %}
-      {{ display_name_or_username }}
+      {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
+        <!-- Unauthenticated or other users who meet PGP requirements or don’t require PGP -->
+        Submit a message to {{ display_name_or_username }}
+      {% else %}
+        <!-- Unauthenticated or other users who don’t meet PGP requirements -->
+        {{ display_name_or_username }}
+      {% endif %}
     {% endif %}
   </h2>
 
@@ -70,16 +82,20 @@
   {% if current_user_id == user.id %}
     <p class="instr">
       {% if pgp_required_but_not_set %}
-        <b>Only visible to you:</b> In order to protect your sources, you need
+        <b>👁️ Only visible to you:</b> In order to protect your sources, you need
         to add a PGP key to your account before anyone can send you tips.
         Without a PGP key, your profile can still be listed in the Hush Line
         directory. Make sure to include a secure way to contact you, such as a
         Signal username, in your profile.
       {% else %}
-        <b>Only visible to you:</b> This is your public tip line. Share the
-        address on your social media profiles, your website, or email signature.
-        Ensuring that someone submitting a message trusts this form belongs to
-        you is critical!
+        <b>👁️ Only visible to you:</b> This is your secure notepad and public tip line. 
+        When you're viewing your own profile, you'll see &quot;✍️ Note to Self&quot;, but when 
+        someone else is viewing this page, they'll see &quot;Submit a message to 
+        {{ display_name_or_username }}&quot;.
+        <br>
+        <br>Share the address in your browser's address bar 
+        on your social media profiles, your website, or email signature. Ensuring that someone 
+        submitting a message trusts this form belongs to you is important for establishing trust.
       {% endif %}
     </p>
   {% endif %}
