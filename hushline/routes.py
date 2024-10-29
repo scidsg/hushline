@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import secrets
 import socket
@@ -518,10 +519,20 @@ def init_app(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
+        hushline_intro_text = os.getenv(
+            "HUSHLINE_INTRO_TEXT",
+            (
+                "👋 <a href='https://hushline.app' target='_blank'>Hush Line</a> "
+                "connects whistleblowers with lawyers, journalists, business leaders, and more. "
+                "We advise speaking to a legal professional before taking any confidential "
+                "information from your workplace."
+            )
+        )
         return render_template(
             "directory.html",
             usernames=get_directory_usernames(),
             logged_in=logged_in,
+            HUSHLINE_INTRO_TEXT=hushline_intro_text,
         )
 
     @app.route("/directory/get-session-user.json")

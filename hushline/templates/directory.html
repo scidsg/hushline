@@ -1,15 +1,14 @@
-{% extends "base.html" %} {% block title %}Directory{% endblock %} {% block
-content %}
+{% extends "base.html" %}
+{% block title %}Directory{% endblock %}
+{% block content %}
 <h2>User Directory</h2>
-{% if directory_verified_tab_enabled %} {% if not logged_in %}
+
+{% if not logged_in %}
 <p class="helper section-intro">
-  👋
-  <a href="https://hushline.app" target="_blank">Hush Line</a>
-  connects whistleblowers with lawyers, journalists, business leaders, and more.
-  We advise speaking to a legal professional before taking any confidential
-  information from your workplace.
+  {{ HUSHLINE_INTRO_TEXT | safe }}
 </p>
 {% endif %}
+
 <div class="directory-tabs">
   <ul class="tab-list" role="tablist">
     <li role="presentation">
@@ -40,7 +39,7 @@ content %}
     </li>
   </ul>
 </div>
-{% endif %}
+
 <div class="search-box">
   <label id="searchIcon" for="searchInput" aria-label="Search users">
     <img
@@ -58,6 +57,7 @@ content %}
     &times;
   </button>
 </div>
+
 {% if directory_verified_tab_enabled %}
 <div
   id="verified"
@@ -78,40 +78,44 @@ content %}
   </p>
   {% endif %}
   <div class="user-list">
-    {% for username in usernames %} {% if username.is_verified and
-    username.show_in_directory %}
-    <article class="user">
-      <h3>{{ username.display_name or username.username }}</h3>
-      {% if username.username %}
-      <p class="meta">@{{ username.username }}</p>
-      {% endif %} {% if username.is_verified or useranme.user.is_admin %}
-      <div class="badgeContainer">
-        {% if username.user.is_admin %}
-        <p class="badge">⚙️ Admin</p>
-        {% endif %} {% if username.is_verified %}
-        <p class="badge">⭐️ Verified</p>
+    {% for username in usernames %}
+      {% if username.is_verified and username.show_in_directory %}
+      <article class="user">
+        <h3>{{ username.display_name or username.username }}</h3>
+        {% if username.username %}
+        <p class="meta">@{{ username.username }}</p>
         {% endif %}
-      </div>
-      {% endif %} {% if username.bio %}
-      <p class="bio">{{ username.bio }}</p>
+        {% if username.is_verified or username.user.is_admin %}
+        <div class="badgeContainer">
+          {% if username.user.is_admin %}
+          <p class="badge">⚙️ Admin</p>
+          {% endif %}
+          {% if username.is_verified %}
+          <p class="badge">⭐️ Verified</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if username.bio %}
+        <p class="bio">{{ username.bio }}</p>
+        {% endif %}
+        <div class="user-actions">
+          <a href="{{ url_for('profile', username=username.username) }}"
+            >View Profile</a
+          >
+          {% if logged_in %}
+          <a
+            href="#"
+            class="report-link"
+            data-username="{{ username.username }}"
+            data-display-name="{{ username.display_name or username.username }}"
+            data-bio="{{ username.bio }}"
+            >Report Account</a
+          >
+          {% endif %}
+        </div>
+      </article>
       {% endif %}
-      <div class="user-actions">
-        <a href="{{ url_for('profile', username=username.username) }}"
-          >View Profile</a
-        >
-        {% if logged_in %}
-        <a
-          href="#"
-          class="report-link"
-          data-username="{{ username.username }}"
-          data-display-name="{{ username.display_name or username.username }}"
-          data-bio="{{ username.bio }}"
-          >Report Account</a
-        >
-        {% endif %}
-      </div>
-    </article>
-    {% endif %} {% else %}
+    {% else %}
     <p class="empty-message">
       <span class="emoji-message">🙈</span><br />Nothing to see here...
     </p>
@@ -119,6 +123,7 @@ content %}
   </div>
 </div>
 {% endif %}
+
 <div
   id="all"
   class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
@@ -126,47 +131,56 @@ content %}
   aria-labelledby="all-users-tab"
 >
   <div class="user-list">
-    {% for username in usernames %} {% if username.show_in_directory %}
-    <article class="user">
-      <h3>{{ username.display_name or username.username }}</h3>
-      {% if username.username %}
-      <p class="meta">@{{ username.username }}</p>
-      {% endif %} {% if username.is_verified or username.user.is_admin %}
-      <div class="badgeContainer">
-        {% if username.user.is_admin %}
-        <p class="badge">⚙️ Admin</p>
-        {% endif %} {% if username.is_verified %}
-        <p class="badge">⭐️ Verified</p>
+    {% for username in usernames %}
+      {% if username.show_in_directory %}
+      <article class="user">
+        <h3>{{ username.display_name or username.username }}</h3>
+        {% if username.username %}
+        <p class="meta">@{{ username.username }}</p>
         {% endif %}
-      </div>
-      {% endif %} {% if username.bio %}
-      <p class="bio">{{ username.bio }}</p>
+        {% if username.is_verified or username.user.is_admin %}
+        <div class="badgeContainer">
+          {% if username.user.is_admin %}
+          <p class="badge">⚙️ Admin</p>
+          {% endif %}
+          {% if username.is_verified %}
+          <p class="badge">⭐️ Verified</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if username.bio %}
+        <p class="bio">{{ username.bio }}</p>
+        {% endif %}
+        <div class="user-actions">
+          <a href="{{ url_for('profile', username=username.username) }}"
+            >View Profile</a
+          >
+          {% if logged_in %}
+          <a
+            href="#"
+            class="report-link"
+            data-username="{{ username.username }}"
+            data-display-name="{{ username.display_name or username.username }}"
+            data-bio="{{ username.bio }}"
+            >Report Account</a
+          >
+          {% endif %}
+        </div>
+      </article>
       {% endif %}
-      <div class="user-actions">
-        <a href="{{ url_for('profile', username=username.username) }}"
-          >View Profile</a
-        >
-        {% if logged_in %}
-        <a
-          href="#"
-          class="report-link"
-          data-username="{{ username.username }}"
-          data-display-name="{{ username.display_name or username.username }}"
-          data-bio="{{ username.bio }}"
-          >Report Account</a
-        >
-        {% endif %}
-      </div>
-    </article>
-    {% endif %} {% else %}
+    {% else %}
     <p class="empty-message">
       <span class="emoji-message">🙈</span><br />Nothing to see here...
     </p>
     {% endfor %}
   </div>
 </div>
-{% endblock %} {% block scripts %} {% if directory_verified_tab_enabled %}
+{% endblock %}
+
+{% block scripts %}
+{% if directory_verified_tab_enabled %}
 <script src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
 {% else %}
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
-{% endif %} {% endblock %}
+{% endif %}
+{% endblock %}
