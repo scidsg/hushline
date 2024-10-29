@@ -1113,11 +1113,6 @@ header nav li {
   font-size: 0.875rem;
 }
 
-.nav-emoji {
-  position: absolute;
-  transform: translateY(-0.325rem) translateX(-1.5rem);
-}
-
 header nav a {
   text-decoration: none;
 }
