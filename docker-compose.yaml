@@ -20,6 +20,8 @@ services:
       SMTP_FORWARDING_MESSAGE_HTML: |
         ✊ Email forwarding is powered by
         <a href="https://riseup.net" target="_blank">Riseup.net</a>.
+      HEADER_BUTTON_TEXT: "<span class='emoji'>❤️</span> Donate"
+      HEADER_BUTTON_LINK: "https://opencollective.com/scidsg/"
     volumes:
       - ./:/app
     depends_on:

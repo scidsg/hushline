@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import Any, Mapping, Optional
 
 from flask import Flask, flash, redirect, request, session, url_for
@@ -37,6 +38,14 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         # Initialize Stripe
         with app.app_context():
             premium.init_stripe()
+
+    # Inject donate button variables globally
+    @app.context_processor
+    def inject_donate_button() -> dict[str, Any]:
+        return {
+            "HEADER_BUTTON_TEXT": os.getenv("HEADER_BUTTON_TEXT", "<span class='emoji'>❤️</span> Donate"),
+            "HEADER_BUTTON_LINK": os.getenv("HEADER_BUTTON_LINK", "https://opencollective.com/scidsg/")
+        }
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:

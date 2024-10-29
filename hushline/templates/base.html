@@ -155,9 +155,9 @@
               <li><a href="{{ url_for('register') }}">Register</a></li>
             {% endif %}
           </ul>
-          <a class="btn" href="https://opencollective.com/scidsg/"
-            ><span class="emoji">❤️</span> Donate</a
-          >
+          <a class="btn" href="{{ HEADER_BUTTON_LINK | safe }}">
+            {{ HEADER_BUTTON_TEXT | safe }}
+          </a>
         </div>
       </nav>
     </header>
