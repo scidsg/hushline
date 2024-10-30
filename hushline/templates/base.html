@@ -109,7 +109,6 @@
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
               {% if is_premium_enabled and user.is_free_tier %}
               <li>
-                <span class="nav-emoji">⭐️&nbsp;</span>
                 <a href="{{ url_for('premium.index') }}">Upgrade</a>
               </li>
               {% endif %}
