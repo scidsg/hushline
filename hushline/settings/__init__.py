@@ -39,11 +39,13 @@ from ..model import (
     Username,
 )
 from .forms import (
+    AllowFileUploadsForm,
     ChangePasswordForm,
     ChangeUsernameForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
+    FileUploadSizeLimitForm,
     NewAliasForm,
     PGPKeyForm,
     PGPProtonForm,
@@ -234,39 +236,35 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm(
             show_in_directory=user.primary_username.show_in_directory
         )
-        change_password_form = ChangePasswordForm()
         change_username_form = ChangeUsernameForm()
-        pgp_proton_form = PGPProtonForm()
         pgp_key_form = PGPKeyForm()
         email_forwarding_form = EmailForwardingForm()
         display_name_form = DisplayNameForm()
         directory_visibility_form = DirectoryVisibilityForm()
         new_alias_form = NewAliasForm()
         profile_form = ProfileForm()
-        update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
-        update_brand_app_name_form = UpdateBrandAppNameForm()
 
         if request.method == "POST":
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 return await handle_update_bio(
                     user.primary_username, profile_form, url_for(".index")
                 )
-            if (
+            elif (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
                 return handle_update_directory_visibility(
                     user.primary_username, directory_visibility_form, url_for(".index")
                 )
-            if "update_display_name" in request.form and display_name_form.validate_on_submit():
+            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
                 return handle_display_name_form(
                     user.primary_username, display_name_form, url_for(".index")
                 )
-            if "change_username" in request.form and change_username_form.validate_on_submit():
+            elif "change_username" in request.form and change_username_form.validate_on_submit():
                 return handle_change_username_form(
                     user.primary_username, change_username_form, url_for(".index")
                 )
-            if "new_alias" in request.form and new_alias_form.validate_on_submit():
+            elif "new_alias" in request.form and new_alias_form.validate_on_submit():
                 if resp := handle_new_alias_form(user, new_alias_form, url_for(".index")):
                     return resp
             else:
@@ -337,15 +335,20 @@ def create_blueprint() -> Blueprint:
             "settings/index.html",
             user=user,
             all_users=all_users,
-            update_brand_primary_color_form=update_brand_primary_color_form,
-            update_brand_app_name_form=update_brand_app_name_form,
+            update_brand_primary_color_form=UpdateBrandPrimaryColorForm(),
+            update_brand_app_name_form=UpdateBrandAppNameForm(),
             email_forwarding_form=email_forwarding_form,
-            change_password_form=change_password_form,
+            change_password_form=ChangePasswordForm(),
             change_username_form=change_username_form,
-            pgp_proton_form=pgp_proton_form,
+            pgp_proton_form=PGPProtonForm(),
             pgp_key_form=pgp_key_form,
             display_name_form=display_name_form,
             profile_form=profile_form,
+            allow_file_uploads_form=AllowFileUploadsForm(
+                allow_file_uploads=user.file_uploads_enabled
+            ),
+            file_upload_size_limit_form=FileUploadSizeLimitForm(limit=user.file_size_limit),
+            file_pgp_key_form=PGPKeyForm(pgp_key=user.file_pgp_key.strip()),
             new_alias_form=new_alias_form,
             aliases=aliases,
             # Admin-specific data passed to the template
@@ -360,6 +363,38 @@ def create_blueprint() -> Blueprint:
             # Premium-specific data
             business_tier_display_price=business_tier_display_price,
         )
+
+    @bp.route("/files", methods=["POST"])
+    @authentication_required
+    def files() -> Response:
+        user = db.get_or_404(User, session["user_id"])
+
+        allow_file_uploads_form = AllowFileUploadsForm()
+        file_upload_size_limit_form = FileUploadSizeLimitForm()
+        pgp_key_form = PGPKeyForm()
+
+        if "allow_file_uploads" in request.form and allow_file_uploads_form.validate_on_submit():
+            user.file_uploads_enabled = allow_file_uploads_form.allow_file_uploads.data
+            db.session.commit()
+            if allow_file_uploads_form.allow_file_uploads.data:
+                flash("File uploads enabled")
+            else:
+                flash("File uploads disabled")
+        elif (
+            "file_upload_size_limit" in request.form
+            and file_upload_size_limit_form.validate_on_submit()
+        ):
+            user.file_size_limit = file_upload_size_limit_form.limit.data
+            db.session.commit()
+            flash(f"File upload size limit set to {user.file_size_limit} MB")
+        elif ("file_pgp_key" in request.form and pgp_key_form.validate_on_submit()):
+            user.file_pgp_key = pgp_key_form.pgp_key.data.strip()
+            db.session.commit()
+            flash("File specific PGP key added.")
+        else:
+            flash("There were errors with your form")
+
+        return redirect(url_for(".index"))
 
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required

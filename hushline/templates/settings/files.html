@@ -1,0 +1,67 @@
+<div
+  id="files"
+  class="tab-content"
+  role="tabpanel"
+  aria-labelledby="email-tab"
+  hidden
+>
+  <h3>File Attachments</h3>
+  {% if not user._pgp_key %}
+    <p class="info">A PGP key is required for file attachments.</p>
+  {% endif %}
+
+  <form
+    method="POST"
+    action="{{ url_for('settings.files') }}"
+    class="formBody"
+  >
+    {{ allow_file_uploads_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ allow_file_uploads_form.allow_file_uploads() }}
+      <label for="allow_file_uploads" class="toggle-label">
+        Allow file uploads
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    <button type="submit" name="allow_file_uploads">
+      Update
+    </button>
+  </form>
+
+  {% if user.file_uploads_enabled %}
+    <h3>Size Limit</h3>
+    <form
+      method="POST"
+      action="{{ url_for('settings.files') }}"
+      class="formBody"
+    >
+      {{ file_upload_size_limit_form.hidden_tag() }}
+      {{ file_upload_size_limit_form.limit.label }}
+      {{ file_upload_size_limit_form.limit }}
+      <button type="submit" name="file_upload_size_limit">
+        Update
+      </button>
+    </form>
+
+    <h3>Encryption</h3>
+    <p>
+      You can add a new key just for files.
+      This is helpful is someone other than the tip line will need access to uploaded data.
+    <p>
+
+    <form
+      method="POST"
+      action="{{ url_for('settings.files') }}"
+      class="formBody"
+    >
+      {{ file_pgp_key_form.hidden_tag() }}
+      <label for="pgp_key">Public PGP Key</label>
+      {{ file_pgp_key_form.pgp_key }}
+      <button type="submit" name="file_pgp_key">
+        Update
+      </button>
+    </form>
+  {% endif %}
+</div>

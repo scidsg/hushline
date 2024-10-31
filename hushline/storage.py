@@ -4,26 +4,55 @@ import shutil
 from io import IOBase
 from pathlib import Path
 from typing import Any, Mapping, Optional
+from uuid import UUID
 
 import boto3
 from botocore.config import Config as BotoConfig
-from flask import Blueprint, Flask, Response, current_app, send_from_directory
+from flask import Blueprint, Flask, abort, current_app, redirect, send_from_directory, session
 from werkzeug.routing import BuildError
+from werkzeug.wrappers.response import Response
+
+from .db import db
+from .model import FileUpload, Message, Username
+
+
+def init_app(app: Flask) -> None:
+    # TODO awful hack for prototyping, move to real config
+    for k, v in os.environ.items():
+        if k.startswith("BLOB_STORAGE"):
+            app.config[k] = v
+
+    app.register_blueprint(create_blueprint(), url_prefix="/assets")
+
+
+def create_blueprint() -> Blueprint:
+    bp = Blueprint("storage", __name__)
+
+    @bp.route("/messsages/<int:message_id>/encrypted-file/<uuid:file_id>.gpg")
+    def encrypted_file(message_id: int, file_id: UUID) -> Response:
+        file = db.session.scalar(
+            db.select(FileUpload)
+            .join(Message)
+            .join(Username)
+            .filter(
+                Message.id == message_id,
+                Username.user_id == session["user_id"],
+                FileUpload.id == file_id,
+            )
+        ).one_or_none()
+        if file is None:
+            abort(404)
+
+        return private_store.serve_encrypted_file(file)
+
+    return bp
 
 
 class StorageBase:
     __NAME_BASE = "BLOB_STORAGE"
-    _BLUEPRINT: Optional[Blueprint] = None
 
     def __init__(self, config_prefix: Optional[str] = None) -> None:
         self._config_prefix = config_prefix
-        StorageBase._BLUEPRINT = Blueprint("assets", __file__)
-
-    @classmethod
-    def _blueprint(cls) -> Blueprint:
-        if bp := cls._BLUEPRINT:
-            return bp
-        raise RuntimeError(f"{StorageBase.__name__} blueprint not initialized")
 
     def _env_var(self, name: str) -> str:
         env_var = self.__NAME_BASE
@@ -38,7 +67,10 @@ class StorageBase:
 
 
 class StorageDriver(StorageBase):
-    def put(self, path: str, reable: IOBase) -> None:
+    def _put(self, path: str, readable: IOBase) -> None:
+        raise NotImplementedError
+
+    def _serve(self, path: str) -> Response:
         raise NotImplementedError
 
 
@@ -56,27 +88,21 @@ class FsDriver(StorageDriver):
             raise ValueError(f"Path {root!r} was not absolute")
         self.__root = root
 
-        self.__init_app()
-
-    def __init_app(self) -> None:
-        bp = StorageBase._blueprint()
-
-        @bp.route("/<path:path>")
-        def item(path: str) -> Response:
-            return send_from_directory(self.__root, path)
-
     def __full_path(self, path: str) -> Path:
         full_path = self.__root / path
         if full_path.absolute() != full_path:
             raise ValueError(f"Path {full_path!r} was not absolute")
         return full_path
 
-    def put(self, path: str, readable: IOBase) -> None:
+    def _put(self, path: str, readable: IOBase) -> None:
         full_path = self.__full_path(path)
         # TODO make and check permissions
         os.makedirs(full_path.parent, exist_ok=True)
         with open(full_path, "wb") as f:
             shutil.copyfileobj(readable, f)
+
+    def _serve(self, path: str) -> Response:
+        return send_from_directory(self.__root, path)
 
 
 class S3Driver(StorageDriver):
@@ -125,15 +151,31 @@ class S3Driver(StorageDriver):
             case _:
                 raise NotImplementedError("Unreachable code")
 
-    def put(self, path: str, readable: IOBase) -> None:
+    @staticmethod
+    def mime_type(path: str) -> str:
         (typ, _) = mimetypes.guess_type(path)
+        return typ or "binary/octet-stream"
+
+    def _put(self, path: str, readable: IOBase) -> None:
         self._client.put_object(
             Bucket=self.__bucket,
             Key=path,
             Body=readable,
-            ContentType=typ or "binary/octet-stream",
+            ContentType=self.mime_type(path),
             ACL=self.__acl,
         )
+
+    def _serve(self, path: str) -> Response:
+        url = self._client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": self.__bucket,
+                "Key": path,
+                # "ResponseContentType": self.mime_type(path),
+            },
+            ExpiresIn=3600,
+        )
+        return redirect(url)
 
 
 class BlobStorage(StorageBase):
@@ -147,27 +189,34 @@ class BlobStorage(StorageBase):
         if ext_name in app.extensions:
             raise RuntimeError(f"Extension already loaded: {ext_name}")
 
-        driver: StorageDriver
-        match app.config[self._env_var("DRIVER")]:
+        driver: Optional[StorageDriver]
+        match app.config.get(self._env_var("DRIVER")) or None:
             case "file-system":
                 driver = FsDriver(app, self._config_prefix)
             case "s3":
                 driver = S3Driver(app, self._config_prefix)
+            case None:
+                driver = None
             case x:
-                raise ValueError(f"Unknown storage driver: {x}")
-        app.extensions[ext_name] = driver
+                raise ValueError(f"Unknown storage driver: {x!r}")
 
-    @classmethod
-    def finalize(cls, app: Flask) -> None:
-        if StorageBase._BLUEPRINT is not None:
-            app.register_blueprint(StorageBase._BLUEPRINT, url_prefix="/assets")
+        app.extensions[ext_name] = driver
 
     @property
     def _driver(self) -> StorageDriver:
-        return current_app.extensions[self._ext_name()]
+        if driver := current_app.extensions[self._ext_name()]:
+            return driver
+        raise RuntimeError("No storage driver was configured")
 
-    def put(self, path: str, readable: IOBase) -> None:
-        self._driver.put(path, readable)
+    @staticmethod
+    def _encrypted_file_path(file: FileUpload) -> str:
+        return f"/messsages/{file.message_id}/encrypted-file/{file.id}.gpg"
+
+    def put_encrypted_file(self, file: FileUpload, readable: IOBase) -> None:
+        self._driver._put(self._encrypted_file_path(file), readable)
+
+    def serve_encrypted_file(self, file: FileUpload) -> Response:
+        return self._driver._serve(self._encrypted_file_path(file))
 
 
 private_store = BlobStorage("PRIVATE")

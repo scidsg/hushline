@@ -3,6 +3,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
+from uuid import UUID
 
 from flask import current_app
 from flask_sqlalchemy.model import Model
@@ -211,12 +212,20 @@ class User(Model):
         viewonly=True,
     )
 
+    _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
+
+    use_file_specific_encryption: Mapped[bool] = mapped_column(server_default=db.text("false"))
+    _file_pgp_key: Mapped[Optional[str]] = mapped_column("file_pgp_key", db.Text)
+    file_size_limit: Mapped[Optional[int]] = mapped_column()
+    _file_uploads_enabled: Mapped[bool] = mapped_column(
+        "file_uploads_enabled", server_default=db.text("false")
+    )
+
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
     smtp_port: Mapped[Optional[int]]
     _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.String(255))
     _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.String(255))
-    _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
     )
@@ -261,7 +270,7 @@ class User(Model):
 
     @totp_secret.setter
     def totp_secret(self, value: str) -> None:
-        if value is None:
+        if not value:
             self._totp_secret = None
         else:
             self._totp_secret = encrypt_field(value)
@@ -304,7 +313,7 @@ class User(Model):
 
     @pgp_key.setter
     def pgp_key(self, value: str) -> None:
-        if value is None:
+        if not value:
             self._pgp_key = None
         else:
             self._pgp_key = encrypt_field(value)
@@ -346,6 +355,27 @@ class User(Model):
             raise Exception(err_msg)
         current_app.logger.warning(err_msg)
         return self._PREMIUM_ALIAS_COUNT
+
+    @property
+    def file_pgp_key(self) -> str | None:
+        return decrypt_field(self._file_pgp_key)
+
+    @file_pgp_key.setter
+    def file_pgp_key(self, value: str) -> None:
+        if not value:
+            self._file_pgp_key = None
+        else:
+            self._file_pgp_key = encrypt_field(value)
+
+    @property
+    def file_uploads_enabled(self) -> bool:
+        return self._pgp_key and self._file_uploads_enabled
+
+    @file_uploads_enabled.setter
+    def file_uploads_enabled(self, enable: bool) -> None:
+        if not self._pgp_key and enable:
+            raise ValueError("Cannot enable file uploads without a PGP key")
+        self._file_uploads_enabled = enable
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:
@@ -549,3 +579,12 @@ class StripeInvoice(Model):
                 raise ValueError(f"Could not find tier with product ID {product_id}")
         else:
             raise ValueError("Invoice does not have a plan")
+
+
+class FileUpload(Model):
+    __tablename__ = "file_uploads"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
+    message: Mapped["Message"] = relationship(backref=db.backref("messages"))
+    storage_key: Mapped[str] = mapped_column()

@@ -12,7 +12,7 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Email, Length
+from wtforms.validators import DataRequired, Email, Length, NumberRange
 from wtforms.validators import Optional as OptionalField
 
 from ..forms import CanonicalHTML, ComplexPassword, HexColor
@@ -184,4 +184,14 @@ class UpdateBrandPrimaryColorForm(FlaskForm):
 class UpdateBrandAppNameForm(FlaskForm):
     brand_app_name = StringField(
         "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
+    )
+
+
+class AllowFileUploadsForm(FlaskForm):
+    allow_file_uploads = BooleanField("Allow File Uploads", validators=[OptionalField()])
+
+
+class FileUploadSizeLimitForm(FlaskForm):
+    limit = IntegerField(
+        "Size limit (MB)", validators=[DataRequired(), NumberRange(min=1, max=1000)]
     )

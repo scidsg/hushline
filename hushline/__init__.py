@@ -7,11 +7,10 @@ from flask.cli import AppGroup
 from jinja2 import StrictUndefined
 from werkzeug.wrappers.response import Response
 
-from . import admin, premium, routes, settings
+from . import admin, premium, routes, settings, storage
 from .config import AliasMode, load_config
 from .db import db, migrate
 from .model import HostOrganization, Tier, User
-from .storage import BlobStorage, private_store
 from .version import __version__
 
 
@@ -40,8 +39,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         with app.app_context():
             premium.init_stripe()
 
-    private_store.init_app(app)
-    BlobStorage.finalize(app)
+    storage.init_app(app)
 
     @app.errorhandler(404)
     def page_not_found(e: Exception) -> Response:
@@ -86,6 +84,7 @@ def configure_jinja(app: Flask) -> None:
             "host_org": HostOrganization.fetch_or_default(),
             "is_onion_service": request.host.lower().endswith(".onion"),
             "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            "file_uploads_enabled": app.config["FILE_UPLOADS_ENABLED"],
         }
         if "user_id" in session:
             data["user"] = db.session.get(User, session["user_id"])

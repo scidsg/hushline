@@ -25,10 +25,13 @@ def main() -> None:
         },
     ]
 
+    with open("./tests/test_pgp_key.txt") as f:
+        pgp = f.read()
+
     for data in users:
         username = data["username"]
         if not db.session.query(exists(Username).where(Username._username == username)).scalar():
-            user = User(password=data["password"], is_admin=data["is_admin"])
+            user = User(password=data["password"], is_admin=data["is_admin"], pgp_key=pgp)
             db.session.add(user)
             db.session.flush()
 

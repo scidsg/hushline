@@ -115,11 +115,13 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     if onion := env.get("ONION_HOSTNAME"):
         data["ONION_HOSTNAME"] = onion
 
-    for key, default in [
+    bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
+        ("FILE_UPLOADS_ENABLED", False),
         ("REGISTRATION_CODES_REQUIRED", True),
         ("REQUIRE_PGP", False),
-    ]:
+    ]
+    for key, default in bool_configs:
         if value := env.get(key):
             data[key] = parse_bool(value)
         else:

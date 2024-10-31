@@ -1457,16 +1457,6 @@ img.upgrade {
   display: block;
 }
 
-.admin-only {
-  display: none;
-  /* Hide admin elements by default */
-}
-
-.is-admin .admin-only {
-  display: block;
-  /* Show admin elements when inside an .is-admin container */
-}
-
 .user {
   border-radius: 0.25rem;
   padding: 1rem;

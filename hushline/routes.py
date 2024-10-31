@@ -18,7 +18,7 @@ from flask import (
 )
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
-from wtforms import Field, Form, PasswordField, StringField, TextAreaField
+from wtforms import Field, Form, PasswordField, StringField, TextAreaField, FileField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
 from .auth import authentication_required
@@ -63,6 +63,10 @@ class MessageForm(FlaskForm):
     content = TextAreaField(
         "Message",
         validators=[DataRequired(), Length(max=10000)],
+    )
+    file = FileField(
+        "File (optional)",
+        validators=[Optional()]
     )
 
 
@@ -221,10 +225,11 @@ def init_app(app: Flask) -> None:
             )
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
+            raise Exception("need to encrypt file and store it")
+
             if client_side_encrypted:
-                content_to_save = (
-                    content  # Assume content is already encrypted and includes contact method
-                )
+                # Assume content is already encrypted and includes contact method
+                content_to_save = content
             elif uname.user.pgp_key:
                 try:
                     encrypted_content = encrypt_message(full_content, uname.user.pgp_key)

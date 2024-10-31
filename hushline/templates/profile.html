@@ -159,6 +159,12 @@
           </p>
         {% endif %}
       {% endif %}
+
+      {% if file_uploads_enabled and user.file_uploads_enabled %}
+        {{ form.file.label }} 
+        {{ form.file(id="messageFile") }} 
+      {% endif %}
+
       <!-- Math CAPTCHA -->
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>

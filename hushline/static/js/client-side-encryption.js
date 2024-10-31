@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   const messageField = document.querySelector('textarea[name="content"]');
   const contactMethodField = document.getElementById("contact_method");
+  const fileField = document.getElementById("messageFile");
   const encryptedFlag = document.getElementById("clientSideEncrypted");
   const publicKeyArmored = document.getElementById("publicKey")
     ? document.getElementById("publicKey").value
@@ -26,6 +27,23 @@ document.addEventListener("DOMContentLoaded", function () {
       return encryptedMessage;
     } catch (error) {
       console.error("Error encrypting message:", error);
+      return false;
+    }
+  }
+
+  async function encryptFile(publicKeyArmored, file) {
+    if (!publicKeyArmored) {
+      console.log(
+        "Public key not provided for encryption. Encryption cannot proceed.",
+      );
+      return false;
+    }
+
+    if !fileField
+
+    try {
+    } catch (error) {
+      console.error("Error encrypting file:", error);
       return false;
     }
   }
