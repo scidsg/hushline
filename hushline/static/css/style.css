@@ -2385,8 +2385,7 @@ p.bio + .extra-fields {
 }
 
 .settings-main .settings-content .tab-list li button {
-    padding: 0 0.625rem 0 0;
-
+  padding: 0 0.625rem 0 0;
 }
 
 .settings-main .settings-content .tab-list {
@@ -2405,7 +2404,7 @@ p.bio + .extra-fields {
 
 .settings-main .settings-content .tab.active,
 .settings-main .settings-content .subtab.active {
-    padding: 0 0.625rem;
+  padding: 0 0.625rem;
 }
 
 .settings-main .settings-content textarea {
