@@ -174,7 +174,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover,
-  .settings-main .settings-content .tab:hover{
+  .settings-main .settings-content .tab:hover {
     background-color: oklch(
       /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
     );
@@ -2365,8 +2365,8 @@ p.bio + .extra-fields {
 }
 
 .settings-main .settings-content .tab-list li button:hover {
-  padding-left: .625rem;
-  transition: .3s;
+  padding-left: 0.625rem;
+  transition: 0.3s;
 }
 
 .settings-main .settings-content .settings-tabs {
@@ -2380,7 +2380,7 @@ p.bio + .extra-fields {
 .settings-main .settings-content .tab-list {
   display: flex;
   flex-direction: column;
-  padding-top: .5rem;
+  padding-top: 0.5rem;
 }
 
 .settings-main .settings-content .settings-tabs + div {
@@ -2427,13 +2427,12 @@ p.bio + .extra-fields {
 
   .settings-main .settings-content .tab-list li button {
     padding: 1rem 0.625rem;
-    
   }
 
   .settings-main .settings-content .tab-list {
     display: flex;
     flex-direction: row;
-    padding-top: .5rem;
+    padding-top: 0.5rem;
   }
 
   .settings-main .settings-content .settings-tabs + div {
