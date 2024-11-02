@@ -2427,6 +2427,7 @@ p.bio + .extra-fields {
 
   .settings-main .settings-content .tab-list li button {
     padding: 1rem 0.625rem;
+    transition: none;
   }
 
   .settings-main .settings-content .tab-list {
