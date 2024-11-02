@@ -173,7 +173,8 @@
 
   /* Change background color of tabs on hover */
   .tab:hover,
-  .subtab:hover {
+  .subtab:hover,
+  .settings-main .settings-content .tab:hover {
     background-color: oklch(
       /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
     );
@@ -184,6 +185,19 @@
   .subtab.active {
     box-shadow: 0 -2px 0 inset var(--color-brand);
     border-bottom: 1px solid var(--color-brand);
+  }
+
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
+    box-shadow: none;
+    border-left: none;
+    border-bottom: none;
+    box-shadow: 2px 0 0 inset var(--color-brand);
+    border-left: 1px solid var(--color-brand);
+  }
+
+  .settings-main .settings-content .tab-list {
+    border-bottom: none;
   }
 
   .user,
@@ -372,6 +386,22 @@
     }
   }
 
+  @media (max-width: 640px) {
+    .settings-main .settings-content .tab.active,
+    .settings-main .settings-content .subtab.active {
+      box-shadow: 0 -2px 0 inset var(--color-brand);
+      border-bottom: 1px solid var(--color-brand);
+      border-left: none;
+    }
+
+    .settings-main .settings-content .tab-list {
+      border-bottom: var(--border);
+    }
+  }
+  .settings-main .settings-content .tab-list li button {
+    padding: 1rem;
+  }
+
   .pgp-disabled-overlay {
     background-color: rgba(255, 255, 255, 0.7);
   }
@@ -486,10 +516,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: oklch(
-      /* was rgba(255, 255, 255, 0.1) now with color */ from
-        var(--color-dark-bg) 0.15 calc(12 * c) h / 0.0675
-    );
+    background-color: var(--color-dark-bg-alt-1);
   }
 
   /* Create an active/current tablink class */
@@ -497,6 +524,17 @@
   .subtab.active {
     box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
     border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+  }
+
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
+    border-bottom: none;
+    box-shadow: 2px 0 0 inset var(--color-brand-dark-min-saturation);
+    border-left: 1px solid var(--color-brand-dark-min-saturation);
+  }
+
+  .settings-main .settings-content .tab-list {
+    border-bottom: none;
   }
 
   .user,
@@ -541,6 +579,19 @@
         /* rgba(125, 37, 193, 0.25) */ from
           var(--color-brand-dark-max-saturation) l c h / 0.25
       );
+  }
+
+  @media (max-width: 640px) {
+    .settings-main .settings-content .tab.active,
+    .settings-main .settings-content .subtab.active {
+      box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
+      border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+      border-left: none;
+    }
+
+    .settings-main .settings-content .tab-list {
+      border-bottom: var(--border-dark);
+    }
   }
 
   .formBody input[type="submit"]:hover,
@@ -1179,7 +1230,6 @@ textarea,
 select {
   display: flex;
   flex-direction: column;
-  max-width: 640px;
   width: 100%;
   padding: 0.75rem;
   font-size: var(--font-size-base);
@@ -2304,6 +2354,53 @@ p.bio + .extra-fields {
   align-self: center;
 }
 
+.settings-main .settings-content {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  width: 100%;
+}
+
+.settings-main .settings-content .tab-list li button:hover {
+  padding-left: 0.625rem;
+  transition: 0.3s;
+}
+
+.settings-main .settings-content .settings-tabs {
+  width: 240px;
+}
+
+.settings-main .settings-content .tab-list li button {
+  padding: 1rem 0.625rem 1rem 0;
+}
+
+.settings-main .settings-content .tab-list {
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.5rem;
+}
+
+.settings-main .settings-content .settings-tabs + div {
+  width: 100%;
+}
+
+.settings-main {
+  max-width: 768px;
+}
+
+.settings-main .settings-content .tab.active,
+.settings-main .settings-content .subtab.active {
+  padding: 1rem 0.625rem;
+}
+
+.settings-main .settings-content textarea {
+  width: 100%;
+}
+
+.settings-main {
+  max-width: 960px;
+}
+
 @media (max-width: 640px) {
   .extra-fields {
     flex-direction: column;
@@ -2316,6 +2413,37 @@ p.bio + .extra-fields {
 
   #plan-wrapper {
     flex-direction: column;
+  }
+
+  .settings-main .settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+
+  .settings-main .settings-content .tab-list li button {
+    padding: 1rem 0.625rem;
+    transition: none;
+  }
+
+  .settings-main .settings-content .tab-list {
+    display: flex;
+    flex-direction: row;
+    padding-top: 0.5rem;
+  }
+
+  .settings-main .settings-content .settings-tabs + div {
+    width: 100%;
+  }
+
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
+    padding: 1rem 0.625rem;
+  }
+
+  .settings-main .settings-content .settings-tabs {
+    width: inherit;
   }
 }
 
