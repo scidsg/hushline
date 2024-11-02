@@ -173,7 +173,8 @@
 
   /* Change background color of tabs on hover */
   .tab:hover,
-  .subtab:hover {
+  .subtab:hover,
+  .settings-main .settings-content .tab:hover{
     background-color: oklch(
       /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
     );
@@ -2364,30 +2365,35 @@ p.bio + .extra-fields {
 }
 
 .settings-main .settings-content .tab-list li button:hover {
-  background-color: transparent;
-  text-decoration: underline;
+  padding-left: .625rem;
+  transition: .3s;
+}
+
+.settings-main .settings-content .settings-tabs {
+  width: 240px;
 }
 
 .settings-main .settings-content .tab-list li button {
-  padding: 0.75rem 0.75rem 0.75rem 0;
+  padding: 1rem 0.625rem 1rem 0;
 }
 
 .settings-main .settings-content .tab-list {
   display: flex;
   flex-direction: column;
+  padding-top: .5rem;
 }
 
 .settings-main .settings-content .settings-tabs + div {
   width: 100%;
 }
 
-.settings-main .settings-main {
-  max-width: 960px;
+.settings-main {
+  max-width: 768px;
 }
 
 .settings-main .settings-content .tab.active,
 .settings-main .settings-content .subtab.active {
-  padding: 0.75rem;
+  padding: 1rem 0.625rem;
 }
 
 .settings-main .settings-content textarea {
@@ -2419,22 +2425,28 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab-list li button:hover {
-    background-color: transparent;
-    text-decoration: underline;
-  }
-
   .settings-main .settings-content .tab-list li button {
-    padding: 1rem 0.5rem;
+    padding: 1rem 0.625rem;
+    
   }
 
   .settings-main .settings-content .tab-list {
     display: flex;
     flex-direction: row;
+    padding-top: .5rem;
   }
 
   .settings-main .settings-content .settings-tabs + div {
     width: 100%;
+  }
+
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
+    padding: 1rem 0.625rem;
+  }
+
+  .settings-main .settings-content .settings-tabs {
+    width: inherit;
   }
 }
 
