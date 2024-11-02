@@ -173,11 +173,15 @@
 
   /* Change background color of tabs on hover */
   .tab:hover,
-  .subtab:hover,
-  .settings-main .settings-content .tab:hover {
+  .subtab:hover {
     background-color: oklch(
       /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
     );
+  }
+
+  .settings-main .settings-content .tab:hover {
+    background-color: transparent;
+    text-decoration: underline;
   }
 
   /* Create an active/current tablink class */
@@ -391,11 +395,16 @@
     .settings-main .settings-content .subtab.active {
       box-shadow: 0 -2px 0 inset var(--color-brand);
       border-bottom: 1px solid var(--color-brand);
-      border-left: none;
+      border-left: unset;
     }
 
     .settings-main .settings-content .tab-list {
       border-bottom: var(--border);
+    }
+
+    .settings-main .settings-content .tab:hover {
+      background-color: var(--color-brand-bg);
+      text-decoration: inherit;
     }
   }
   .settings-main .settings-content .tab-list li button {
@@ -519,6 +528,11 @@
     background-color: var(--color-dark-bg-alt-1);
   }
 
+  .settings-main .tab:hover {
+    background-color: transparent;
+    text-decoration: underline;
+  }
+
   /* Create an active/current tablink class */
   .tab.active,
   .subtab.active {
@@ -591,6 +605,11 @@
 
     .settings-main .settings-content .tab-list {
       border-bottom: var(--border-dark);
+    }
+
+    .settings-main .settings-content .tab:hover {
+      background-color: var(--color-dark-bg-alt-1);
+      text-decoration: inherit;
     }
   }
 
@@ -2361,23 +2380,19 @@ p.bio + .extra-fields {
   width: 100%;
 }
 
-.settings-main .settings-content .tab-list li button:hover {
-  padding-left: 0.625rem;
-  transition: 0.3s;
-}
-
 .settings-main .settings-content .settings-tabs {
   width: 240px;
 }
 
 .settings-main .settings-content .tab-list li button {
-  padding: 1rem 0.625rem 1rem 0;
+    padding: 0 0.625rem 0 0;
+
 }
 
 .settings-main .settings-content .tab-list {
   display: flex;
   flex-direction: column;
-  padding-top: 0.5rem;
+  padding-top: 0.25rem;
 }
 
 .settings-main .settings-content .settings-tabs + div {
@@ -2390,7 +2405,7 @@ p.bio + .extra-fields {
 
 .settings-main .settings-content .tab.active,
 .settings-main .settings-content .subtab.active {
-  padding: 1rem 0.625rem;
+    padding: 0 0.625rem;
 }
 
 .settings-main .settings-content textarea {
@@ -2399,6 +2414,14 @@ p.bio + .extra-fields {
 
 .settings-main {
   max-width: 960px;
+}
+
+.settings-main .tab-list li {
+  margin-bottom: 1rem;
+}
+
+.settings-content {
+  padding-top: 1rem;
 }
 
 @media (max-width: 640px) {
@@ -2444,6 +2467,14 @@ p.bio + .extra-fields {
 
   .settings-main .settings-content .settings-tabs {
     width: inherit;
+  }
+
+  .settings-main .tab-list li {
+    margin-bottom: 0;
+  }
+
+  .settings-content {
+    padding-top: 0;
   }
 }
 
