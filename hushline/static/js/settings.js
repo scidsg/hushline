@@ -2,12 +2,18 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabs = document.querySelectorAll(".tab");
   const tabPanels = document.querySelectorAll(".tab-content");
   const bioCountEl = document.querySelector(".bio-count");
+  const mainElement = document.querySelector("main");
+  const tabList = document.querySelectorAll(".tab-list .tab");
+
+  // Apply "settings-main" class if there are 5 or more tabs
+  if (tabList.length >= 5) {
+    mainElement.classList.add("settings-main");
+  }
 
   // Restore the active tab on page load
   function restoreActiveTab() {
     const activeTab = localStorage.getItem("activeTab");
     if (activeTab) {
-      // Deactivate all tabs and hide all tab contents
       tabs.forEach((tab) => {
         tab.classList.remove("active");
         tab.setAttribute("aria-selected", "false");
@@ -17,7 +23,6 @@ document.addEventListener("DOMContentLoaded", function () {
         panel.setAttribute("hidden", "true");
       });
 
-      // Activate the stored tab and show the corresponding content
       const activeTabElement = document.getElementById(`${activeTab}-tab`);
       const activePanelElement = document.getElementById(activeTab);
 
@@ -76,18 +81,15 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   if (document.getElementById("branding")) {
-    // Update color in real-time as they're being browsed & finalized
     const colorPicker = document.getElementById("brand-primary-color");
 
     for (const eventName of ["input", "change"]) {
       colorPicker.addEventListener(eventName, function (event) {
         const brandColor = `oklch(from ${event.target.value} l c h)`;
-        const cssVariable = ["--color-brand", brandColor];
-        document.documentElement.style.setProperty(...cssVariable);
+        document.documentElement.style.setProperty("--color-brand", brandColor);
       });
     }
 
-    // Update app name in real-time as it's being typed
     const appNameBox = document.getElementById("brand-app-name");
 
     appNameBox.addEventListener("input", function (event) {
@@ -95,48 +97,24 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  var forwarding_enabled = document.querySelector(
-    "input[id='forwarding_enabled']",
-  ).checked;
-  var forwarding_enabled_fieldset = document.querySelector(
-    "fieldset[id='forwarding_enabled_fields']",
-  );
+  var forwarding_enabled = document.querySelector("input[id='forwarding_enabled']").checked;
+  var forwarding_enabled_fieldset = document.querySelector("fieldset[id='forwarding_enabled_fields']");
   forwarding_enabled_fieldset.hidden = !forwarding_enabled;
 
-  document
-    .querySelector("input[id='forwarding_enabled']")
-    .addEventListener("change", function (e) {
-      // time out to let animation finish
-      setTimeout(() => {
-        var fieldset = document.querySelector(
-          "fieldset[id='forwarding_enabled_fields']",
-        );
-        fieldset.hidden = !e.target.checked;
+  document.querySelector("input[id='forwarding_enabled']").addEventListener("change", function (e) {
+    setTimeout(() => {
+      document.querySelector("fieldset[id='forwarding_enabled_fields']").hidden = !e.target.checked;
+      if (!e.target.checked) e.target.form.submit();
+    }, 200);
+  });
 
-        // If the toggle is turned off, submit the form automatically
-        if (!e.target.checked) {
-          e.target.form.submit();
-        }
-      }, 200);
-    });
-
-  var custom_smtp_settings = document.querySelector(
-    "input[id='custom_smtp_settings']",
-  ).checked;
-  var custom_smtp_settings_fields = document.querySelector(
-    "fieldset[id='custom_smtp_settings_fields']",
-  );
+  var custom_smtp_settings = document.querySelector("input[id='custom_smtp_settings']").checked;
+  var custom_smtp_settings_fields = document.querySelector("fieldset[id='custom_smtp_settings_fields']");
   custom_smtp_settings_fields.hidden = !custom_smtp_settings;
 
-  document
-    .querySelector("input[id='custom_smtp_settings']")
-    .addEventListener("change", function (e) {
-      // time out to let animation finish
-      setTimeout(() => {
-        var fieldset = document.querySelector(
-          "fieldset[id='custom_smtp_settings_fields']",
-        );
-        fieldset.hidden = !e.target.checked;
-      }, 200);
-    });
+  document.querySelector("input[id='custom_smtp_settings']").addEventListener("change", function (e) {
+    setTimeout(() => {
+      document.querySelector("fieldset[id='custom_smtp_settings_fields']").hidden = !e.target.checked;
+    }, 200);
+  });
 });

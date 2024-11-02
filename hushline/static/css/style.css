@@ -186,8 +186,8 @@
     border-bottom: 1px solid var(--color-brand);
   }
 
-  .settings-content .tab.active,
-  .settings-content .subtab.active {
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
     box-shadow: none;
     border-left: none;
     border-bottom: none;
@@ -195,7 +195,7 @@
     border-left: 1px solid var(--color-brand);
   }
 
-  .settings-content .tab-list {
+  .settings-main .settings-content .tab-list {
     border-bottom: none;
   }
 
@@ -386,18 +386,18 @@
   }
 
   @media (max-width: 640px) {
-    .settings-content .tab.active,
-    .settings-content .subtab.active {
+    .settings-main .settings-content .tab.active,
+    .settings-main .settings-content .subtab.active {
       box-shadow: 0 -2px 0 inset var(--color-brand);
       border-bottom: 1px solid var(--color-brand);
       border-left: none;
     }
 
-    .settings-content .tab-list {
+    .settings-main .settings-content .tab-list {
       border-bottom: var(--border);
     }
   }
-  .settings-content .tab-list li button {
+  .settings-main .settings-content .tab-list li button {
     padding: 1rem;
   }
 
@@ -528,14 +528,14 @@
     border-bottom: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  .settings-content .tab.active,
-  .settings-content .subtab.active {
-    box-shadow: none;
-    border-left: none;
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .subtab.active {
     border-bottom: none;
+    box-shadow: 2px 0 0 inset var(--color-brand-dark-min-saturation);
+    border-left: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  .settings-content .tab-list {
+  .settings-main .settings-content .tab-list {
     border-bottom: none;
   }
 
@@ -581,6 +581,19 @@
         /* rgba(125, 37, 193, 0.25) */ from
           var(--color-brand-dark-max-saturation) l c h / 0.25
       );
+  }
+
+    @media (max-width: 640px) {
+      .settings-main .settings-content .tab.active,
+      .settings-main .settings-content .subtab.active {
+        box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
+        border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+        border-left: none;
+    }
+
+    .settings-main .settings-content .tab-list {
+      border-bottom: var(--border-dark);
+    }
   }
 
   .formBody input[type="submit"]:hover,
@@ -2343,42 +2356,46 @@ p.bio + .extra-fields {
   align-self: center;
 }
 
-.settings-content {
+.settings-main .settings-content {
   display: flex;
   flex-direction: row;
   gap: 2rem;
   width: 100%;
 }
 
-.settings-content .tab-list li button:hover {
+.settings-main .settings-content .tab-list li button:hover {
   background-color: transparent;
   text-decoration: underline;
 }
 
-.settings-content .tab-list li button {
+.settings-main .settings-content .tab-list li button {
   padding: 0.75rem 0.75rem 0.75rem 0;
 }
 
-.settings-content .tab-list {
+.settings-main .settings-content .tab-list {
   display: flex;
   flex-direction: column;
 }
 
-.settings-content .settings-tabs + div {
+.settings-main .settings-content .settings-tabs + div {
+  width: 100%;
+}
+
+.settings-main .settings-main {
+  max-width: 960px;
+}
+
+.settings-main .settings-content .tab.active,
+.settings-main .settings-content .subtab.active {
+  padding: 0.75rem;
+}
+
+.settings-main .settings-content textarea {
   width: 100%;
 }
 
 .settings-main {
   max-width: 960px;
-}
-
-.settings-content .tab.active,
-.settings-content .subtab.active {
-  padding: 0.75rem;
-}
-
-.settings-content textarea {
-  width: 100%;
 }
 
 @media (max-width: 640px) {
@@ -2395,33 +2412,29 @@ p.bio + .extra-fields {
     flex-direction: column;
   }
 
-  .settings-content {
+  .settings-main .settings-content {
     display: flex;
     flex-direction: column;
     gap: 0;
     width: 100%;
   }
 
-  .settings-content .tab-list li button:hover {
+  .settings-main .settings-content .tab-list li button:hover {
     background-color: transparent;
     text-decoration: underline;
   }
 
-  .settings-content .tab-list li button {
+  .settings-main .settings-content .tab-list li button {
     padding: 1rem 0.5rem;
   }
 
-  .settings-content .tab-list {
+  .settings-main .settings-content .tab-list {
     display: flex;
     flex-direction: row;
   }
 
-  .settings-content .settings-tabs + div {
+  .settings-main .settings-content .settings-tabs + div {
     width: 100%;
-  }
-
-  .settings-main {
-    max-width: 960px;
   }
 }
 
