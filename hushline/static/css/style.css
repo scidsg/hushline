@@ -186,6 +186,19 @@
     border-bottom: 1px solid var(--color-brand);
   }
 
+  .settings-content .tab.active,
+  .settings-content .subtab.active {
+    box-shadow: none;
+    border-left: none;
+    border-bottom: none;
+    box-shadow: 2px 0 0 inset var(--color-brand);
+    border-left: 1px solid var(--color-brand);
+  }
+
+  .settings-content .tab-list {
+    border-bottom: none;
+  }
+
   .user,
   #results > div {
     border: var(--border);
@@ -372,6 +385,22 @@
     }
   }
 
+  @media (max-width: 640px) {
+    .settings-content .tab.active,
+    .settings-content .subtab.active {
+      box-shadow: 0 -2px 0 inset var(--color-brand);
+      border-bottom: 1px solid var(--color-brand);
+      border-left: none;
+    }
+
+    .settings-content .tab-list {
+      border-bottom: var(--border);
+    }
+  }
+  .settings-content .tab-list li button {
+    padding: 1rem;
+  }
+
   .pgp-disabled-overlay {
     background-color: rgba(255, 255, 255, 0.7);
   }
@@ -497,6 +526,17 @@
   .subtab.active {
     box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
     border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+  }
+
+  .settings-content .tab.active,
+  .settings-content .subtab.active {
+    box-shadow: none;
+    border-left: none;
+    border-bottom: none;
+  }
+
+  .settings-content .tab-list {
+    border-bottom: none;
   }
 
   .user,
@@ -1179,7 +1219,6 @@ textarea,
 select {
   display: flex;
   flex-direction: column;
-  max-width: 640px;
   width: 100%;
   padding: 0.75rem;
   font-size: var(--font-size-base);
@@ -2304,6 +2343,44 @@ p.bio + .extra-fields {
   align-self: center;
 }
 
+.settings-content {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  width: 100%;
+}
+
+.settings-content .tab-list li button:hover {
+  background-color: transparent;
+  text-decoration: underline;
+}
+
+.settings-content .tab-list li button {
+  padding: 0.75rem 0.75rem 0.75rem 0;
+}
+
+.settings-content .tab-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content .settings-tabs + div {
+  width: 100%;
+}
+
+.settings-main {
+  max-width: 960px;
+}
+
+.settings-content .tab.active,
+.settings-content .subtab.active {
+  padding: 0.75rem;
+}
+
+.settings-content textarea {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .extra-fields {
     flex-direction: column;
@@ -2316,6 +2393,35 @@ p.bio + .extra-fields {
 
   #plan-wrapper {
     flex-direction: column;
+  }
+
+  .settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+
+  .settings-content .tab-list li button:hover {
+    background-color: transparent;
+    text-decoration: underline;
+  }
+
+  .settings-content .tab-list li button {
+    padding: 1rem 0.5rem;
+  }
+
+  .settings-content .tab-list {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .settings-content .settings-tabs + div {
+    width: 100%;
+  }
+
+  .settings-main {
+    max-width: 960px;
   }
 }
 
