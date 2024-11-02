@@ -97,24 +97,40 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  var forwarding_enabled = document.querySelector("input[id='forwarding_enabled']").checked;
-  var forwarding_enabled_fieldset = document.querySelector("fieldset[id='forwarding_enabled_fields']");
+  var forwarding_enabled = document.querySelector(
+    "input[id='forwarding_enabled']",
+  ).checked;
+  var forwarding_enabled_fieldset = document.querySelector(
+    "fieldset[id='forwarding_enabled_fields']",
+  );
   forwarding_enabled_fieldset.hidden = !forwarding_enabled;
 
-  document.querySelector("input[id='forwarding_enabled']").addEventListener("change", function (e) {
-    setTimeout(() => {
-      document.querySelector("fieldset[id='forwarding_enabled_fields']").hidden = !e.target.checked;
-      if (!e.target.checked) e.target.form.submit();
-    }, 200);
-  });
+  document
+    .querySelector("input[id='forwarding_enabled']")
+    .addEventListener("change", function (e) {
+      setTimeout(() => {
+        document.querySelector(
+          "fieldset[id='forwarding_enabled_fields']",
+        ).hidden = !e.target.checked;
+        if (!e.target.checked) e.target.form.submit();
+      }, 200);
+    });
 
-  var custom_smtp_settings = document.querySelector("input[id='custom_smtp_settings']").checked;
-  var custom_smtp_settings_fields = document.querySelector("fieldset[id='custom_smtp_settings_fields']");
+  var custom_smtp_settings = document.querySelector(
+    "input[id='custom_smtp_settings']",
+  ).checked;
+  var custom_smtp_settings_fields = document.querySelector(
+    "fieldset[id='custom_smtp_settings_fields']",
+  );
   custom_smtp_settings_fields.hidden = !custom_smtp_settings;
 
-  document.querySelector("input[id='custom_smtp_settings']").addEventListener("change", function (e) {
-    setTimeout(() => {
-      document.querySelector("fieldset[id='custom_smtp_settings_fields']").hidden = !e.target.checked;
-    }, 200);
-  });
+  document
+    .querySelector("input[id='custom_smtp_settings']")
+    .addEventListener("change", function (e) {
+      setTimeout(() => {
+        document.querySelector(
+          "fieldset[id='custom_smtp_settings_fields']",
+        ).hidden = !e.target.checked;
+      }, 200);
+    });
 });

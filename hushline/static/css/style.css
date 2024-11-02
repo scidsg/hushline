@@ -583,12 +583,12 @@
       );
   }
 
-    @media (max-width: 640px) {
-      .settings-main .settings-content .tab.active,
-      .settings-main .settings-content .subtab.active {
-        box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
-        border-bottom: 1px solid var(--color-brand-dark-min-saturation);
-        border-left: none;
+  @media (max-width: 640px) {
+    .settings-main .settings-content .tab.active,
+    .settings-main .settings-content .subtab.active {
+      box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
+      border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+      border-left: none;
     }
 
     .settings-main .settings-content .tab-list {
