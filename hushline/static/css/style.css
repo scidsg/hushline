@@ -516,10 +516,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: oklch(
-      /* was rgba(255, 255, 255, 0.1) now with color */ from
-        var(--color-dark-bg) 0.15 calc(12 * c) h / 0.0675
-    );
+    background-color: var(--color-dark-bg-alt-1);
   }
 
   /* Create an active/current tablink class */
