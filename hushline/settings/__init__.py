@@ -11,6 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
+    abort,
     current_app,
     flash,
     redirect,
@@ -31,13 +32,14 @@ from ..email import create_smtp_config
 from ..forms import TwoFactorForm
 from ..model import (
     AuthenticationLog,
-    HostOrganization,
     Message,
+    OrganizationSetting,
     SMTPEncryption,
     Tier,
     User,
     Username,
 )
+from ..storage import public_store
 from .forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -49,6 +51,7 @@ from .forms import (
     PGPProtonForm,
     ProfileForm,
     UpdateBrandAppNameForm,
+    UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
 )
 
@@ -243,32 +246,33 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm()
         new_alias_form = NewAliasForm()
         profile_form = ProfileForm()
-        update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
-        update_brand_app_name_form = UpdateBrandAppNameForm()
 
         if request.method == "POST":
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 return await handle_update_bio(
                     user.primary_username, profile_form, url_for(".index")
                 )
-            if (
+            elif (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
                 return handle_update_directory_visibility(
                     user.primary_username, directory_visibility_form, url_for(".index")
                 )
-            if "update_display_name" in request.form and display_name_form.validate_on_submit():
+            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
                 return handle_display_name_form(
                     user.primary_username, display_name_form, url_for(".index")
                 )
-            if "change_username" in request.form and change_username_form.validate_on_submit():
+            elif "change_username" in request.form and change_username_form.validate_on_submit():
                 return handle_change_username_form(
                     user.primary_username, change_username_form, url_for(".index")
                 )
-            if "new_alias" in request.form and new_alias_form.validate_on_submit():
-                if resp := handle_new_alias_form(user, new_alias_form, url_for(".index")):
-                    return resp
+            elif (
+                "new_alias" in request.form
+                and new_alias_form.validate_on_submit()
+                and (resp := handle_new_alias_form(user, new_alias_form, url_for(".index")))
+            ):
+                return resp
             else:
                 current_app.logger.error(
                     f"Unable to handle form submission on endpoint {request.endpoint!r}, "
@@ -337,8 +341,9 @@ def create_blueprint() -> Blueprint:
             "settings/index.html",
             user=user,
             all_users=all_users,
-            update_brand_primary_color_form=update_brand_primary_color_form,
-            update_brand_app_name_form=update_brand_app_name_form,
+            update_brand_primary_color_form=UpdateBrandPrimaryColorForm(),
+            update_brand_app_name_form=UpdateBrandAppNameForm(),
+            update_brand_logo_form=UpdateBrandLogoForm(),
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
@@ -594,9 +599,10 @@ def create_blueprint() -> Blueprint:
         if not email_forwarding_form.validate_on_submit():
             flash(email_forwarding_form.flattened_errors().pop(0))
             return redirect(url_for(".index"))
-        if email_forwarding_form.email_address.data and not user.pgp_key:
+        elif email_forwarding_form.email_address.data and not user.pgp_key:
             flash("⛔️ Email forwarding requires a configured PGP key")
             return redirect(url_for(".index"))
+
         # Updating SMTP settings from form data
         forwarding_enabled = email_forwarding_form.forwarding_enabled.data
         custom_smtp_settings = forwarding_enabled and (
@@ -656,12 +662,11 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-primary-color", methods=["POST"])
     @admin_authentication_required
     def update_brand_primary_color() -> Response | str:
-        host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandPrimaryColorForm()
         if form.validate_on_submit():
-            host_org.brand_primary_hex_color = form.brand_primary_hex_color.data
-            db.session.add(host_org)  # explicitly add because instance might be new
-            db.session.commit()
+            OrganizationSetting.upsert(
+                key=OrganizationSetting.BRAND_PRIMARY_COLOR, value=form.brand_primary_hex_color.data
+            )
             flash("👍 Brand primary color updated successfully.")
             return redirect(url_for(".index"))
 
@@ -671,16 +676,53 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-app-name", methods=["POST"])
     @admin_authentication_required
     def update_brand_app_name() -> Response | str:
-        host_org = HostOrganization.fetch_or_default()
         form = UpdateBrandAppNameForm()
         if form.validate_on_submit():
-            host_org.brand_app_name = form.brand_app_name.data
-            db.session.add(host_org)  # explicitly add because instance might be new
-            db.session.commit()
+            OrganizationSetting.upsert(
+                key=OrganizationSetting.BRAND_NAME, value=form.brand_app_name.data
+            )
             flash("👍 Brand app name updated successfully.")
             return redirect(url_for(".index"))
 
         flash("⛔ Invalid form data. Please try again.")
+        return redirect(url_for(".index"))
+
+    @bp.route("/update-brand-logo", methods=["POST"])
+    @admin_authentication_required
+    def update_brand_logo() -> Response | str:
+        form = UpdateBrandLogoForm()
+        if form.validate_on_submit():
+            public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, form.logo.data)
+            OrganizationSetting.upsert(
+                key=OrganizationSetting.BRAND_LOGO,
+                value=OrganizationSetting.BRAND_LOGO_VALUE,
+            )
+            flash("👍 Brand logo updated successfully.")
+            return redirect(url_for(".index"))
+
+        flash("⛔ Invalid form data. Please try again.")
+        return redirect(url_for(".index"))
+
+    @bp.route("/delete-brand-logo", methods=["POST"])
+    @admin_authentication_required
+    def delete_brand_logo() -> Response | str:
+        row_count = db.session.execute(
+            db.delete(OrganizationSetting).where(
+                OrganizationSetting.key == OrganizationSetting.BRAND_LOGO
+            )
+        ).rowcount
+        if row_count > 1:
+            current_app.logger.error(
+                "Would have deleted multiple rows for OrganizationSetting key="
+                + OrganizationSetting.BRAND_LOGO
+            )
+            db.session.rollback()
+            abort(503)
+        db.session.commit()
+
+        public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
+
+        flash("👍 Brand logo deleted.")
         return redirect(url_for(".index"))
 
     @bp.route("/delete-account", methods=["POST"])
@@ -733,23 +775,23 @@ def create_blueprint() -> Blueprint:
                 return await handle_update_bio(
                     alias, profile_form, url_for(".alias", username_id=username_id)
                 )
-            if (
+            elif (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
                 return handle_update_directory_visibility(
                     alias, directory_visibility_form, url_for(".alias", username_id=username_id)
                 )
-            if "update_display_name" in request.form and display_name_form.validate_on_submit():
+            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
                 return handle_display_name_form(
                     alias, display_name_form, url_for(".alias", username_id=username_id)
                 )
-
-            current_app.logger.error(
-                f"Unable to handle form submission on endpoint {request.endpoint!r}, "
-                f"form fields: {request.form.keys()}"
-            )
-            flash("Uh oh. There was an error handling your data. Please notify the admin.")
+            else:
+                current_app.logger.error(
+                    f"Unable to handle form submission on endpoint {request.endpoint!r}, "
+                    f"form fields: {request.form.keys()}"
+                )
+                flash("Uh oh. There was an error handling your data. Please notify the admin.")
 
         return render_template(
             "settings/alias.html",

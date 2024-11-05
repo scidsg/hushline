@@ -7,7 +7,7 @@ from pytest_mock import MockFixture
 
 
 @pytest.fixture()
-def env_var_modifier(mocker: MockFixture) -> Callable[[MockFixture], None]:
+def env_var_modifier() -> Callable[[MockFixture], None]:
     def modifier(mocker: MockFixture) -> None:
         mocker.patch.dict(os.environ, {"ONION_HOSTNAME": "example.onion"})
 

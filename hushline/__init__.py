@@ -7,10 +7,11 @@ from flask.cli import AppGroup
 from jinja2 import StrictUndefined
 from werkzeug.wrappers.response import Response
 
-from . import admin, premium, routes, settings
+from . import admin, premium, routes, settings, storage
 from .config import AliasMode, load_config
 from .db import db, migrate
-from .model import HostOrganization, Tier, User
+from .model import OrganizationSetting, Tier, User
+from .storage import public_store
 from .version import __version__
 
 
@@ -27,9 +28,10 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     configure_jinja(app)
     db.init_app(app)
     migrate.init_app(app, db)
+    public_store.init_app(app)
 
     routes.init_app(app)
-    for module in [admin, settings]:
+    for module in [admin, settings, storage]:
         app.register_blueprint(module.create_blueprint())
 
     if app.config.get("STRIPE_SECRET_KEY"):
@@ -75,16 +77,29 @@ def configure_jinja(app: Flask) -> None:
 
     @app.context_processor
     def inject_variables() -> dict[str, Any]:
-        data = {
-            "alias_mode": app.config["ALIAS_MODE"],
-            "directory_verified_tab_enabled": app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
-            "host_org": HostOrganization.fetch_or_default(),
-            "is_onion_service": request.host.lower().endswith(".onion"),
-            "is_premium_enabled": bool(app.config.get("STRIPE_SECRET_KEY", False)),
-        }
+        data = OrganizationSetting.fetch(
+            OrganizationSetting.BRAND_NAME,
+            OrganizationSetting.BRAND_PRIMARY_COLOR,
+        )
+
+        data.update(
+            alias_mode=app.config["ALIAS_MODE"],
+            directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
+            is_onion_service=request.host.lower().endswith(".onion"),
+            is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+        )
+
         if "user_id" in session:
             data["user"] = db.session.get(User, session["user_id"])
+
         return data
+
+    @app.context_processor
+    def inject_logo() -> dict[str, str | None]:
+        val = None
+        if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO):
+            val = url_for("storage.public", path=setting.value)
+        return {"brand_logo_url": val}
 
 
 def register_commands(app: Flask) -> None:

@@ -1,3 +1,5 @@
+from base64 import b64decode
+from io import BytesIO
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
@@ -10,8 +12,8 @@ from hushline.config import AliasMode
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
-    HostOrganization,
     Message,
+    OrganizationSetting,
     SMTPEncryption,
     User,
     Username,
@@ -584,8 +586,9 @@ def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
     else:
         pytest.fail("Brand color CSS not updated in response <style>")
 
-    assert (host_org := HostOrganization.fetch())
-    assert host_org.brand_primary_hex_color == color
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_PRIMARY_COLOR)
+    assert setting is not None
+    assert setting.value == color
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
@@ -608,5 +611,42 @@ def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
     else:
         pytest.fail("Brand name not updated in header <h1>")
 
-    assert (host_org := HostOrganization.fetch())
-    assert host_org.brand_app_name == name
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_NAME)
+    assert setting is not None
+    assert setting.value == name
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
+    # 1x1 pixel white png
+    png = b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII="
+    )
+
+    resp = client.post(
+        url_for("settings.update_brand_logo"),
+        data={"logo": (BytesIO(png), "wat.png")},
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "Brand logo updated successfully" in resp.text
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    imgs = soup.select("header img")
+    assert imgs  # sensibility check
+    logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    for img in imgs:
+        if img.attrs.get("src") == logo_url:
+            break
+    else:
+        pytest.fail("Brand logo not updated in header <img>")
+
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO)
+    assert setting is not None
+    assert setting.value == OrganizationSetting.BRAND_LOGO_VALUE
+
+    # check the file got uploaded and is accessible
+    resp = client.get(logo_url, follow_redirects=True)
+    assert resp.status_code == 200
+    assert resp.data == png

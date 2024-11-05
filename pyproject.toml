@@ -8,6 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 aiohttp = "^3.10.5"
+boto3 = "^1.35.33"
 cryptography = "^43.0.1"
 email-validator = "^2.2.0"
 flask = { extras = ["async"], version = "^3.0.3" }
@@ -75,6 +76,7 @@ ignore = [
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0915", # too-many-statements
+    "RET505", # superfluous-else-return (can too easily lead to bugs)
 ]
 
 [tool.ruff.lint.per-file-ignores]

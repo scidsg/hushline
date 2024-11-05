@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from flask import current_app
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField, FileRequired, FileSize
 from wtforms import (
     BooleanField,
     FormField,
@@ -184,4 +185,15 @@ class UpdateBrandPrimaryColorForm(FlaskForm):
 class UpdateBrandAppNameForm(FlaskForm):
     brand_app_name = StringField(
         "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
+    )
+
+
+class UpdateBrandLogoForm(FlaskForm):
+    logo = FileField(
+        "Logo (.png only)",
+        validators=[
+            FileRequired(),
+            FileAllowed(["png"], "Only PNG files are allowed"),
+            FileSize(256 * 1000),  # 256 KB
+        ],
     )

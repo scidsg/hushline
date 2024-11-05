@@ -67,7 +67,7 @@
     <!-- prettier-ignore -->
     <style>
       :root {
-        --color-brand: oklch(from {{ host_org.brand_primary_hex_color }} l c h);
+        --color-brand: oklch(from {{ brand_primary_color }} l c h);
       }
     </style>
   </head>
@@ -101,7 +101,12 @@
 
     <header>
       <!-- Navigation bar, logo, etc. -->
-      <h1>{{ host_org.brand_app_name }}</h1>
+      <div class="brand-wrapper">
+        {% if brand_logo_url %}
+          <img class="brand-logo" src="{{ brand_logo_url }}" alt="Logo"/>
+        {% endif %}
+        <h1>{{ brand_name }}</h1>
+      </div>
       <nav>
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>

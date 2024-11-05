@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import flask_migrate
 import pytest
+from _pytest._py.path import LocalPath
 from flask import Flask
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -164,17 +165,27 @@ def _insecure_scrypt_params(mocker: MockFixture) -> None:
 
 
 @pytest.fixture()
-def env_var_modifier(mocker: MockFixture) -> Callable[[MockFixture], None]:
+def env_var_modifier() -> Callable[[MockFixture], None]:
     return lambda mocker: None
 
 
 @pytest.fixture()
 def app(
-    database: str, mocker: MockFixture, env_var_modifier: Callable[[MockFixture], None]
+    database: str,
+    mocker: MockFixture,
+    tmpdir: LocalPath,
+    env_var_modifier: Callable[[MockFixture], None],
 ) -> Generator[Flask, None, None]:
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "false"
-    os.environ["SQLALCHEMY_DATABASE_URI"] = CONN_FMT_STR.format(database=database)
-    os.environ["STRIPE_SECRET_KEY"] = "sk_test_123"  # For premium tests
+    mocker.patch.dict(
+        os.environ,
+        {
+            "REGISTRATION_CODES_REQUIRED": "false",
+            "SQLALCHEMY_DATABASE_URI": CONN_FMT_STR.format(database=database),
+            "STRIPE_SECRET_KEY": "sk_test_123",  # For premium tests
+            "BLOB_STORAGE_PUBLIC_DRIVER": "file-system",
+            "BLOB_STORAGE_PUBLIC_FS_ROOT": str(tmpdir),
+        },
+    )
 
     env_var_modifier(mocker)
 
