@@ -44,7 +44,8 @@
   );
   --color-dark-bg-alt: #272727;
   --color-dark-bg-alt-1: #353535;
-  --color-dark-bg-alt-transparent: rgba(39, 39, 39, 0.8);
+  --color-dark-bg-alt-transparent: rgba(39, 39, 39, 0.75);
+  --color-white-transparent: rgba(255, 255, 255, 0.8);
 
   --border: 1px solid var(--color-border);
   --border-dark: 1px solid var(--color-border-dark);
@@ -111,7 +112,7 @@
   }
 
   header {
-    background-color: white;
+    background-color: var(--color-white-transparent);
   }
 
   header nav a {
@@ -456,7 +457,7 @@
   }
 
   header {
-    background-color: var(--color-dark-bg-alt);
+    background-color: var(--color-dark-bg-alt-transparent);
     color: var(--color-text-dark);
   }
 
@@ -1158,6 +1159,8 @@ header {
   box-sizing: border-box;
   z-index: 11;
   min-height: 65px;
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
 }
 
 header h1 {
