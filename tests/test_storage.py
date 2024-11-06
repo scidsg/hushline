@@ -3,7 +3,7 @@ import random
 import string
 from io import BytesIO
 from typing import Callable, Generator, Mapping
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import requests
@@ -12,9 +12,24 @@ from flask import Flask
 from pytest_mock import MockFixture
 from werkzeug.exceptions import NotFound
 
-from hushline.storage import S3Driver, public_store
+from hushline.storage import FsDriver, S3Driver, StorageDriver, public_store
 
 PATH = "data.bin"
+
+
+def mock_drivers(skip: type, mocker: MockFixture) -> None:
+    for attr in ["put", "delete", "serve"]:
+        for subclass in StorageDriver.__subclasses__():
+            if subclass != skip:
+                mocker.patch.object(
+                    subclass,
+                    attr,
+                    Mock(
+                        side_effect=Exception(
+                            f"{subclass.__name__}.{attr} should not have been called"
+                        )
+                    ),
+                )
 
 
 class TestFsDriver:
@@ -28,6 +43,8 @@ class TestFsDriver:
                     "BLOB_STORAGE_PUBLIC_FS_ROOT": str(tmpdir),
                 },
             )
+
+            mock_drivers(FsDriver, mocker)
 
         return modifier
 
@@ -72,6 +89,8 @@ class TestS3Driver:
                     **self.static_configs,
                 },
             )
+
+            mock_drivers(S3Driver, mocker)
 
         return modifier
 
