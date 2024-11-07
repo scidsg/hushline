@@ -58,8 +58,10 @@ class FsDriver(StorageDriver):
     - BLOB_STORAGE_FS_ROOT
     """
 
-    def __init__(self, app: Flask, config_prefix: Optional[str] = None) -> None:
-        super().__init__(config_prefix)
+    def __init__(
+        self, app: Flask, config_prefix: Optional[str] = None, is_public: bool = False
+    ) -> None:
+        super().__init__(config_prefix, is_public)
 
         root = Path(app.config[self._config_name("FS_ROOT")])
         if root.absolute() != root:  # needed for security checks later
@@ -99,8 +101,10 @@ class S3Driver(StorageDriver):
     - BLOB_STORAGE_S3_CDN_ENDPOINT
     """
 
-    def __init__(self, app: Flask, config_prefix: Optional[str] = None) -> None:
-        super().__init__(config_prefix)
+    def __init__(
+        self, app: Flask, config_prefix: Optional[str] = None, is_public: bool = False
+    ) -> None:
+        super().__init__(config_prefix, is_public)
 
         self.__bucket = app.config[self._config_name("S3_BUCKET")]
         self.__cdn_endpoint = app.config[self._config_name("S3_CDN_ENDPOINT")]
@@ -125,21 +129,28 @@ class S3Driver(StorageDriver):
             Key=path,
             Body=readable,
             ContentType=self.mime_type(path),
-            ACL="public" if self._is_public else "private",
+            ACL="public-read" if self._is_public else "private",
         )
 
     def delete(self, path: str) -> None:
         self._client.delete_object(Bucket=self.__bucket, Key=path)
 
     def serve(self, path: str) -> Response:
-        url = self._client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={
-                "Bucket": self.__bucket,
-                "Key": path,
-            },
-            ExpiresIn=3600,
-        )
+        if self._is_public:
+            url = (
+                self.__cdn_endpoint
+                + ("" if self.__cdn_endpoint.endswith("/") or path.startswith("/") else "/")
+                + path
+            )
+        else:
+            url = self._client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={
+                    "Bucket": self.__bucket,
+                    "Key": path,
+                },
+                ExpiresIn=3600,
+            )
         return redirect(url)
 
 
@@ -157,9 +168,9 @@ class BlobStorage(StorageBase):
         driver: Optional[StorageDriver]
         match app.config.get(self._config_name("DRIVER")) or None:
             case "s3":
-                driver = S3Driver(app, self._config_prefix)
+                driver = S3Driver(app, self._config_prefix, self._is_public)
             case "file-system":
-                driver = FsDriver(app, self._config_prefix)
+                driver = FsDriver(app, self._config_prefix, self._is_public)
             case "none":
                 driver = None
             case None:
@@ -186,4 +197,4 @@ class BlobStorage(StorageBase):
         return self._driver.serve(path)
 
 
-public_store = BlobStorage("PUBLIC")
+public_store = BlobStorage("PUBLIC", is_public=True)

@@ -50,15 +50,8 @@
     >
       {{ update_brand_logo_form.hidden_tag() }}
       {{ update_brand_logo_form.logo(accept=".png") }}
-      <button type="submit" class="btn">Update Logo</button>
-    </form>
-
-    <form
-      method="POST"
-      action="{{ url_for('settings.delete_brand_logo') }}"
-      class="formBody"
-    >
-      <button type="submit" class="btn-danger">Delete Logo</button>
+      {{ update_brand_logo_form.submit(class="btn") }}
+      {{ delete_brand_logo_form.submit(class="btn-danger") }}
     </form>
   {% endif %}
 </div>

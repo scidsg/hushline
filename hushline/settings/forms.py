@@ -3,21 +3,40 @@ from typing import Any, Optional
 
 from flask import current_app
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileAllowed, FileField, FileRequired, FileSize
+from flask_wtf.file import FileAllowed, FileField, FileSize
+from markupsafe import Markup
 from wtforms import (
     BooleanField,
+    Field,
     FormField,
     IntegerField,
     PasswordField,
     SelectField,
     StringField,
+    SubmitField,
     TextAreaField,
 )
 from wtforms.validators import DataRequired, Email, Length
 from wtforms.validators import Optional as OptionalField
+from wtforms.widgets.core import html_params
 
 from ..forms import CanonicalHTML, ComplexPassword, HexColor
 from ..model import SMTPEncryption
+
+
+class Button:
+    html_params = staticmethod(html_params)
+
+    def __call__(self, field: Field, **kwargs: Any) -> Markup:
+        kwargs.setdefault("id", field.id)
+        kwargs.setdefault("type", "submit")
+        kwargs.setdefault("value", field.label.text)
+        if "value" not in kwargs:
+            kwargs["value"] = field._value()
+        if "required" not in kwargs and "required" in getattr(field, "flags", []):
+            kwargs["required"] = True
+        params = self.html_params(name=field.name, **kwargs)
+        return Markup(f"<button {params}>{kwargs['value']}</button>")
 
 
 class ChangePasswordForm(FlaskForm):
@@ -192,8 +211,14 @@ class UpdateBrandLogoForm(FlaskForm):
     logo = FileField(
         "Logo (.png only)",
         validators=[
-            FileRequired(),
+            # NOTE: not present because the same form w/ 2 submit buttonts is used for deletions
+            # FileRequired()
             FileAllowed(["png"], "Only PNG files are allowed"),
             FileSize(256 * 1000),  # 256 KB
         ],
     )
+    submit = SubmitField("Update Logo", name="update_logo", widget=Button())
+
+
+class DeleteBrandLogoForm(FlaskForm):
+    submit = SubmitField("Delete Logo", name="submit_logo", widget=Button())

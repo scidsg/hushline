@@ -85,7 +85,7 @@ class TestS3Driver:
                 os.environ,
                 {
                     "BLOB_STORAGE_PUBLIC_S3_BUCKET": bucket,
-                    "BLOB_STORAGE_PUBLIC_S3_CDN_ENDPOINT": f"http://localhost:4566/{bucket}/",
+                    "BLOB_STORAGE_PUBLIC_S3_CDN_ENDPOINT": f"http://blob-storage:4566/{bucket}/",
                     **self.static_configs,
                 },
             )

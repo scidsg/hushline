@@ -625,7 +625,10 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
     resp = client.post(
         url_for("settings.update_brand_logo"),
-        data={"logo": (BytesIO(png), "wat.png")},
+        data={
+            "logo": (BytesIO(png), "wat.png"),
+            "update_logo": "",
+        },
         follow_redirects=True,
         content_type="multipart/form-data",
     )
@@ -650,3 +653,16 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     resp = client.get(logo_url, follow_redirects=True)
     assert resp.status_code == 200
     assert resp.data == png
+
+    resp = client.post(
+        url_for("settings.update_brand_logo"),
+        data={"delete_logo": ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Brand logo deleted" in resp.text
+
+    # check the file is not accessible
+    resp = client.get(logo_url, follow_redirects=True)
+    # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
+    assert "That page doesn" in resp.text

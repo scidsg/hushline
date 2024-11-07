@@ -43,6 +43,7 @@ from ..storage import public_store
 from .forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
+    DeleteBrandLogoForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
@@ -344,6 +345,7 @@ def create_blueprint() -> Blueprint:
             update_brand_primary_color_form=UpdateBrandPrimaryColorForm(),
             update_brand_app_name_form=UpdateBrandAppNameForm(),
             update_brand_logo_form=UpdateBrandLogoForm(),
+            delete_brand_logo_form=DeleteBrandLogoForm(),
             email_forwarding_form=email_forwarding_form,
             change_password_form=change_password_form,
             change_username_form=change_username_form,
@@ -690,39 +692,35 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update-brand-logo", methods=["POST"])
     @admin_authentication_required
     def update_brand_logo() -> Response | str:
-        form = UpdateBrandLogoForm()
-        if form.validate_on_submit():
-            public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, form.logo.data)
+        update_form = UpdateBrandLogoForm()
+        delete_form = DeleteBrandLogoForm()
+        if update_form.validate_on_submit() and update_form.logo.data:
+            public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, update_form.logo.data)
             OrganizationSetting.upsert(
                 key=OrganizationSetting.BRAND_LOGO,
                 value=OrganizationSetting.BRAND_LOGO_VALUE,
             )
             flash("👍 Brand logo updated successfully.")
-            return redirect(url_for(".index"))
+        elif delete_form.validate_on_submit():
+            row_count = db.session.execute(
+                db.delete(OrganizationSetting).where(
+                    OrganizationSetting.key == OrganizationSetting.BRAND_LOGO
+                )
+            ).rowcount
+            if row_count > 1:
+                current_app.logger.error(
+                    "Would have deleted multiple rows for OrganizationSetting key="
+                    + OrganizationSetting.BRAND_LOGO
+                )
+                db.session.rollback()
+                abort(503)
+            db.session.commit()
 
-        flash("⛔ Invalid form data. Please try again.")
-        return redirect(url_for(".index"))
+            public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
 
-    @bp.route("/delete-brand-logo", methods=["POST"])
-    @admin_authentication_required
-    def delete_brand_logo() -> Response | str:
-        row_count = db.session.execute(
-            db.delete(OrganizationSetting).where(
-                OrganizationSetting.key == OrganizationSetting.BRAND_LOGO
-            )
-        ).rowcount
-        if row_count > 1:
-            current_app.logger.error(
-                "Would have deleted multiple rows for OrganizationSetting key="
-                + OrganizationSetting.BRAND_LOGO
-            )
-            db.session.rollback()
-            abort(503)
-        db.session.commit()
-
-        public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
-
-        flash("👍 Brand logo deleted.")
+            flash("👍 Brand logo deleted.")
+        else:
+            flash("⛔ Invalid form data. Please try again.")
         return redirect(url_for(".index"))
 
     @bp.route("/delete-account", methods=["POST"])
