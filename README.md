@@ -1,15 +1,22 @@
 # 🤫 Hush Line
 
-[Hush Line](https://hushline.app) is the first open-source whistleblowing suite for organizations or individuals. It's intended for journalists and newsrooms to offer a public tip line, by educators and school administrators to provide students with a safe way to report potentially sensitive information, or for executives and Board rooms for anonymous employee reporting.
+[Hush Line](https://hushline.app) is the first managed, open-source whistleblower management platform for lawyers, journalists, educators, business leaders and more. We take care of the tech so you can focus on the mission, not the machines.
 
-Hush Line meets users where they are by offering a variety of products that meet your security needs:
+![repo](https://github.com/user-attachments/assets/cb383ceb-b363-44e5-9118-9de1397274c2)
 
-- **Hush Line managed service** is for anyone who needs an effortless tip line. Just create an account. Tor-ready.
-- **Personal Server** is a custom-designed hardware device that runs a Tor-only version of the Hush Line platform for when owning and controlling your infrastructure is critical.
-- **Single-tenant instances** are for customers who want an easy-to-use managed platform just for their organization.
-- Users with their own unique needs **can freely install** the platform wherever they choose.
-
-![repo](https://github.com/user-attachments/assets/c76ff926-e34a-4b96-935c-230a0b98345d)
+## Hush Line Features
+- ⭐️ Verified accounts
+- 🙋 Opt-in user directory
+- 👁️ OCR Vision Assistant
+- 🧅 Tor Onion service support
+- 🔑 Proton key import
+- 🔒 End-to-end encryption using PGP
+- ✅ Self-authenticating URLs
+- 📤 Riseup.net email delivery
+- 💌 Mailvelope integration for in-app decryption
+- 💵 Paid plans for account aliases
+- ⏱️ TOTP-based two-factor authentication
+- 🎨 Custom branding for admins
 
 ## Contribution Guidelines
 
