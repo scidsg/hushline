@@ -5,6 +5,7 @@
 ![repo](https://github.com/user-attachments/assets/cb383ceb-b363-44e5-9118-9de1397274c2)
 
 ## Hush Line Features
+
 - ⭐️ Verified accounts
 - 🙋 Opt-in user directory
 - 👁️ OCR Vision Assistant
