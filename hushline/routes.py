@@ -288,25 +288,30 @@ def init_app(app: Flask) -> None:
     @app.route("/delete_message/<int:message_id>", methods=["POST"])
     @authentication_required
     def delete_message(message_id: int) -> Response:
+        # Check if the user is logged in
         if "user_id" not in session:
             flash("🔑 Please log in to continue.")
             return redirect(url_for("login"))
 
+        # Fetch the user based on session user_id
         user = db.session.get(User, session.get("user_id"))
         if not user:
             flash("🫥 User not found. Please log in again.")
             return redirect(url_for("login"))
 
+        # Dynamically fetch all username IDs associated with the user
+        usernames_ids = db.session.scalars(
+            db.select(Username.id).where(Username.user_id == user.id)
+        ).all()
+
+        # Attempt to delete the message for this user
         row_count = db.session.execute(
             db.delete(Message).where(
-                Message.id == message_id,
-                Message.username_id.in_(
-                    db.select(Username.user_id)
-                    .select_from(Username)
-                    .filter(Username.user_id == user.id)
-                ),
+                Message.id == message_id, Message.username_id.in_(usernames_ids)
             )
         ).rowcount
+
+        # Match case to determine action based on row count
         match row_count:
             case 1:
                 db.session.commit()
@@ -321,6 +326,7 @@ def init_app(app: Flask) -> None:
                 )
                 flash("Internal server error. Message not deleted.")
 
+        # Redirect to the inbox after deletion attempt
         return redirect(url_for("inbox"))
 
     @app.route("/register", methods=["GET", "POST"])
