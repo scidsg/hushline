@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
@@ -7,108 +5,45 @@ from flask.testing import FlaskClient
 from hushline.db import db
 from hushline.model import Message, User, Username
 
-# Define test passwords
-TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD", "TestPassword123!")
-OTHER_USER_PASSWORD = os.getenv("OTHER_USER_PASSWORD", "OtherUserPass456!")
 
-
-@pytest.fixture()
-def _setup_user_data(user: User) -> None:
-    """Fixture to create primary and alias usernames, and a message for the user."""
-    # Ensure only one primary username exists
-    primary_username = (
-        db.session.query(Username).filter_by(user_id=user.id, is_primary=True).one_or_none()
-    )
-    if not primary_username:
-        primary_username = Username(
-            user_id=user.id,
-            _username="primary_user",
-            is_primary=True,
-            show_in_directory=True,
-        )
-        db.session.add(primary_username)
-
-    alias_username = Username(
-        user_id=user.id,
-        _username="primary_user_alias",
-        is_primary=False,
-        show_in_directory=True,
-    )
-    db.session.add(alias_username)
-    db.session.flush()
-
-    # Create a test message for deletion
-    message = Message(
-        username_id=primary_username.id,
-        content="Test message for deletion.",
-    )
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_own_message(client: FlaskClient, user: User) -> None:
+    # Create a message for the authenticated user
+    message = Message(content="User's own message", username_id=user.primary_username.id)
     db.session.add(message)
     db.session.commit()
 
-
-@pytest.fixture()
-def other_user() -> User:
-    """Fixture to create another user for testing cross-user access."""
-    other_user = User(password=OTHER_USER_PASSWORD, is_admin=False)
-    db.session.add(other_user)
-    db.session.flush()
-
-    other_username = Username(
-        user_id=other_user.id,
-        _username="other_user",
-        is_primary=True,
-        show_in_directory=True,
-    )
-    db.session.add(other_username)
-    db.session.flush()
-
-    other_message = Message(
-        username_id=other_username.id,
-        content="Other user's message.",
-    )
-    db.session.add(other_message)
-    db.session.commit()
-
-    return other_user
-
-
-@pytest.mark.usefixtures("_authenticated_user", "_setup_user_data")
-def test_delete_message(client: FlaskClient, user: User, other_user: User) -> None:
-    # Retrieve primary username and message for the authenticated user
-    primary_username = (
-        db.session.query(Username).filter_by(user_id=user.id, is_primary=True).one_or_none()
-    )
-    assert primary_username, "Primary username not found."
-
-    message = db.session.query(Message).filter_by(username_id=primary_username.id).one_or_none()
-    assert message, "Message not found."
-
-    # Test deletion of authenticated user's own message
+    # Attempt to delete the user's own message
     response = client.post(
         url_for("delete_message", message_id=message.id),
         follow_redirects=True,
     )
     assert response.status_code == 200
     assert "Message deleted successfully" in response.text
+    assert db.session.get(Message, message.id) is None  # Ensure message was deleted
 
-    # Verify that the message is removed from the database
-    assert db.session.get(Message, message.id) is None
 
-    # Verify that User A cannot delete User B's message
-    other_username = (
-        db.session.query(Username).filter_by(user_id=other_user.id, is_primary=True).one_or_none()
-    )
-    assert other_username, "Other user's primary username not found."
+@pytest.mark.usefixtures("_authenticated_user")
+def test_cannot_delete_other_user_message(client: FlaskClient, user: User) -> None:
+    # Create another user within the test
+    other_user = User(password="Another-user-password")
+    db.session.add(other_user)
+    db.session.flush()
 
-    other_message = db.session.query(Message).filter_by(username_id=other_username.id).one_or_none()
-    assert other_message, "Other user's message not found."
+    other_username = Username(user_id=other_user.id, _username="otheruser", is_primary=True)
+    db.session.add(other_username)
+    db.session.commit()
 
+    # Create a message for the other user
+    other_user_message = Message(content="Another user's message", username_id=other_username.id)
+    db.session.add(other_user_message)
+    db.session.commit()
+
+    # Attempt to delete the other user's message
     response = client.post(
-        url_for("delete_message", message_id=other_message.id),
+        url_for("delete_message", message_id=other_user_message.id),
         follow_redirects=True,
     )
     assert response.status_code == 200
     assert "Message not found" in response.text
-
-    # Confirm other user's message still exists
-    assert db.session.get(Message, other_message.id) is not None
+    assert db.session.get(Message, other_user_message.id) is not None  # Ensure message was not deleted
