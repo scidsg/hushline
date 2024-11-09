@@ -1,9 +1,15 @@
+import os
+
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import Message, User, Username
+
+# Define test passwords
+TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD", "TestPassword123!")
+OTHER_USER_PASSWORD = os.getenv("OTHER_USER_PASSWORD", "OtherUserPass456!")
 
 
 @pytest.fixture()
@@ -22,7 +28,7 @@ def setup_user_data(user: User) -> None:
         show_in_directory=True,
     )
     db.session.add_all([primary_username, alias_username])
-    db.session.flush()  # Ensures primary_username.id is available
+    db.session.flush()
 
     message = Message(
         username_id=primary_username.id,
@@ -37,7 +43,7 @@ def setup_user_data(user: User) -> None:
 @pytest.fixture()
 def other_user() -> User:
     """Fixture to create another user for testing cross-user access."""
-    other_user = User(password="Other-User-Pass1", is_admin=False)
+    other_user = User(password=OTHER_USER_PASSWORD, is_admin=False)
     db.session.add(other_user)
     db.session.flush()
 
@@ -48,7 +54,7 @@ def other_user() -> User:
         show_in_directory=True,
     )
     db.session.add(other_username)
-    db.session.flush()  # Ensures other_username.id is available
+    db.session.flush()
 
     other_message = Message(
         username_id=other_username.id,
