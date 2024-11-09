@@ -1469,7 +1469,7 @@ img.upgrade {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .tab-list li {
