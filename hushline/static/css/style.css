@@ -2371,7 +2371,7 @@ p.bio + .extra-fields {
 }
 
 .settings-main .settings-content .tab-list li button {
-  padding: .25rem 0.625rem .25rem 0;
+  padding: 0.25rem 0.625rem 0.25rem 0;
 }
 
 .settings-main .settings-content .tab-list {
