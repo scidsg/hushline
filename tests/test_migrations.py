@@ -23,6 +23,7 @@ assert REVISIONS_ROOT.is_dir()
 FIRST_TESTABLE_REVISION = "46aedec8fd9b"
 SKIPPABLE_REVISIONS = [
     "5ffe5a5c8e9a",  # only renames indices and tables, no data changed
+    "06b343c38386",  # only renames indices and tables, no data changed
 ]
 
 

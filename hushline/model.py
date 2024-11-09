@@ -235,7 +235,7 @@ class User(Model):
     tier_id: Mapped[int | None] = mapped_column(db.ForeignKey("tiers.id"), nullable=True)
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
 
-    stripe_customer_id = mapped_column(db.String(255))
+    stripe_customer_id = mapped_column(db.String(255), index=True)
     stripe_subscription_id = mapped_column(db.String(255), nullable=True)
     stripe_subscription_cancel_at_period_end = mapped_column(db.Boolean, default=False)
     stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
