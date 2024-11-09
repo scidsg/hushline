@@ -24,9 +24,11 @@ def test_delete_own_message(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_cannot_delete_other_user_message(client: FlaskClient, user: User) -> None:
+def test_cannot_delete_other_user_message(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
     # Create another user within the test
-    other_user = User(password="Another-user-password")
+    other_user = User(password=user_password)
     db.session.add(other_user)
     db.session.flush()
 
@@ -46,4 +48,6 @@ def test_cannot_delete_other_user_message(client: FlaskClient, user: User) -> No
     )
     assert response.status_code == 200
     assert "Message not found" in response.text
-    assert db.session.get(Message, other_user_message.id) is not None  # Ensure message was not deleted
+    assert (
+        db.session.get(Message, other_user_message.id) is not None
+    )  # Ensure message was not deleted
