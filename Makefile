@@ -50,7 +50,8 @@ ifndef message
 endif
 	poetry run flask db revision -m "$(message)" --autogenerate
 
+TESTS ?= ./tests/
 .PHONY: test
 test: ## Run the test suite
 	docker compose run --rm app \
-		poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) tests/$(test)
+		poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)

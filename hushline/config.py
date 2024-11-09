@@ -41,6 +41,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
         _load_sqlalchemy,
         _load_smtp,
         _load_stripe,
+        _load_blob_storage,
         _load_hushline_misc,
         # load strings and JSON last as overrides
         _load_strings,
@@ -114,11 +115,13 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     if onion := env.get("ONION_HOSTNAME"):
         data["ONION_HOSTNAME"] = onion
 
-    for key, default in [
+    bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
+        ("FILE_UPLOADS_ENABLED", False),
         ("REGISTRATION_CODES_REQUIRED", True),
         ("REQUIRE_PGP", False),
-    ]:
+    ]
+    for key, default in bool_configs:
         if value := env.get(key):
             data[key] = parse_bool(value)
         else:
@@ -138,6 +141,16 @@ def _load_stripe(env: Mapping[str, str]) -> Mapping[str, Any]:
     for key in ["STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]:
         if (value := env.get(key)) and value != "":
             data[key] = value
+
+    return data
+
+
+def _load_blob_storage(env: Mapping[str, str]) -> Mapping[str, Any]:
+    data = {}
+
+    for k, v in env.items():
+        if k.startswith("BLOB_STORAGE"):
+            data[k] = v
 
     return data
 

@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
 from flask import current_app
 from flask_sqlalchemy.model import Model
 from passlib.hash import scrypt
+from sqlalchemy import JSON, Index
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import Index
+from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from stripe import Event, Invoice
 
@@ -32,44 +33,52 @@ class SMTPEncryption(enum.Enum):
         return cls.StartTLS
 
 
-class HostOrganization(Model):
-    __tablename__ = "host_organization"
+class OrganizationSetting(Model):
+    __tablename__ = "organization_settings"
 
-    _DEFAULT_ID: int = 1
-    _DEFAULT_BRAND_PRIMARY_HEX_COLOR: str = "#7d25c1"
-    _DEFAULT_BRAND_APP_NAME: str = "🤫 Hush Line"
+    # keys
+    BRAND_LOGO = "brand_logo"
+    BRAND_NAME = "brand_name"
+    BRAND_PRIMARY_COLOR = "brand_primary_color"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    brand_app_name: Mapped[str] = mapped_column(db.String(255), default=_DEFAULT_BRAND_APP_NAME)
-    brand_primary_hex_color: Mapped[str] = mapped_column(
-        db.String(7), default=_DEFAULT_BRAND_PRIMARY_HEX_COLOR
-    )
+    # non-default values
+    BRAND_LOGO_VALUE = "brand/logo.png"
+
+    _DEFAULT_VALUES: dict[str, Any] = {
+        BRAND_NAME: "🤫 Hush Line",
+        BRAND_PRIMARY_COLOR: "#7d25c1",
+    }
+
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[JSON] = mapped_column(type_=JSONB)
 
     @classmethod
-    def fetch(cls) -> Self | None:
-        return db.session.get(cls, cls._DEFAULT_ID)
-
-    @classmethod
-    def fetch_or_default(cls) -> Self:
-        return cls.fetch() or cls()
-
-    def __init__(self, **kwargs: Any) -> None:
-        # never allow setting of the ID. It should only ever be `1`
-        if "id" in kwargs:
-            raise ValueError(f"Cannot manually set {self.__class__.__name__} attribute `id`")
-
-        # always initialize all values so that the object is populated for use in templates
-        # even when it's not pulled from the DB.
-        # yes, we have to do this here and not rely on `mapped_column(default='...')` because
-        # that logic doesn't trigger until insert, and we want these here pre-insert
-        if "brand_app_name" not in kwargs:
-            kwargs["brand_app_name"] = self._DEFAULT_BRAND_APP_NAME
-        if "brand_primary_hex_color" not in kwargs:
-            kwargs["brand_primary_hex_color"] = self._DEFAULT_BRAND_PRIMARY_HEX_COLOR
-        super().__init__(
-            id=self._DEFAULT_ID,  # type: ignore[call-arg]
-            **kwargs,
+    def upsert(cls, key: str, value: Any) -> None:
+        db.session.execute(
+            insert(OrganizationSetting)
+            .values(key=key, value=value)
+            .on_conflict_do_update(
+                constraint=f"pk_{cls.__tablename__}",
+                set_={"value": value},
+            )
         )
+        db.session.commit()
+
+    @classmethod
+    def fetch(cls, *keys: str) -> dict[str, Any]:
+        rows = db.session.scalars(
+            db.select(OrganizationSetting).filter(OrganizationSetting.key.in_(keys))
+        ).all()
+
+        results = {key: cls._DEFAULT_VALUES.get(key) for key in keys}
+        for row in rows:
+            results[row.key] = row.value
+
+        return results
+
+    @classmethod
+    def fetch_one(cls, key: str) -> Any:
+        return db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
 
 
 @dataclass(frozen=True, repr=False, eq=False)

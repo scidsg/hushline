@@ -17,7 +17,7 @@
       type="color"
       name="brand_primary_hex_color"
       id="brand-primary-color"
-      value="{{ host_org.brand_primary_hex_color }}"
+      value="{{ brand_primary_color }}"
     />
     <button type="submit" class="btn">Update Color</button>
   </form>
@@ -34,9 +34,24 @@
       type="text"
       name="brand_app_name"
       id="brand-app-name"
-      value="{{ host_org.brand_app_name }}"
+      value="{{ brand_name }}"
       required
     />
     <button type="submit" class="btn">Update Name</button>
   </form>
+
+  {% if user.is_admin %}
+    <h3>Logo</h3>
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      action="{{ url_for('settings.update_brand_logo') }}"
+      class="formBody"
+    >
+      {{ update_brand_logo_form.hidden_tag() }}
+      {{ update_brand_logo_form.logo(accept=".png") }}
+      {{ update_brand_logo_form.submit(class="btn") }}
+      {{ delete_brand_logo_form.submit(class="btn-danger") }}
+    </form>
+  {% endif %}
 </div>

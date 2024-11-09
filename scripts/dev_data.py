@@ -1,17 +1,24 @@
 #!/usr/bin/env python
 from typing import cast
 
+from flask import current_app
 from sqlalchemy.sql import exists
 
 from hushline import create_app
 from hushline.db import db
 from hushline.model import Tier, User, Username
+from hushline.storage import S3Driver, public_store
 
 
 def main() -> None:
     print("Adding dev data")
     create_app().app_context().push()
+    create_users()
+    create_tiers()
+    create_localstack_buckets()
 
+
+def create_users() -> None:
     users = [
         {
             "username": "test",
@@ -50,6 +57,8 @@ def main() -> None:
 
         print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
 
+
+def create_tiers() -> None:
     tiers = [
         {
             "name": "Free",
@@ -71,6 +80,14 @@ def main() -> None:
         print(f"Tier:\n  name = {name}\n  monthly_amount = {monthly_amount}")
 
     print("Dev data added")
+
+
+def create_localstack_buckets() -> None:
+    driver = public_store._driver
+    if isinstance(driver, S3Driver):
+        bucket = current_app.config[driver._config_name("S3_BUCKET")]
+        driver._client.create_bucket(Bucket=bucket)
+        print(f"Public storage bucket: {bucket}")
 
 
 if __name__ == "__main__":

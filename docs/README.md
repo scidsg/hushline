@@ -176,6 +176,88 @@ These configs are needed for the web app.
       </td>
     </tr>
     <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_DRIVER</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        <code>file-system</code> for a file system based storage driver.
+        <code>s3</code> for an S3 compatible storage driver.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_FS_ROOT</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The canonical absolute path to the location on the file system.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_ACCESS_KEY</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The S3 access (public) key.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_BUCKET</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The name of the S3 bucket (or equivalent, e.g., Digital Ocean Space) for the storage backend.
+        It must already exist as it <strong>will not</strong> be created.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_CDN_ENDPOINT</code></td>
+      <td>false</td>
+      <td>URL</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The publicly accessible URL base (e.g., <code>https://cdn.example.com/public/</code>) where blobs can be fetched.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_ENDPOINT</code></td>
+      <td>false</td>
+      <td>URL</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The internal API endpoint for making S3 API requests.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_REGION</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The S3 region.
+      </td>
+    </tr>
+    <tr>
+      <td><code>BLOB_STORAGE_PUBLIC_S3_SECRET_KEY</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td></td>
+      <td>
+        For public blobs.
+        The S3 secret (private) key.
+      </td>
+    </tr>
+    <tr>
       <td><code>DIRECTORY_VERIFIED_TAB_ENABLED</code></td>
       <td>false</td>
       <td>boolean</td>
