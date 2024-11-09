@@ -159,12 +159,10 @@
 
   .tab,
   .subtab {
-    border: 1px solid transparent;
     background-color: transparent;
     color: var(--color-text);
     box-shadow: none;
     outline: none;
-    border-bottom: 1px solid transparent;
   }
 
   .tab:focus-within,
@@ -175,9 +173,7 @@
   /* Change background color of tabs on hover */
   .tab:hover,
   .subtab:hover {
-    background-color: oklch(
-      /* #fbf3ff */ from var(--color-brand-bg) 0.97 c h / 0.85
-    );
+    /* background-color: oklch(from var(--color-brand-bg) 0.97 c h / 0.85); */
   }
 
   .settings-main .settings-content .tab:hover {
@@ -188,17 +184,13 @@
   /* Create an active/current tablink class */
   .tab.active,
   .subtab.active {
-    box-shadow: 0 -2px 0 inset var(--color-brand);
-    border-bottom: 1px solid var(--color-brand);
+    box-shadow: 0 -3px 0 inset var(--color-brand);
   }
 
   .settings-main .settings-content .tab.active,
   .settings-main .settings-content .subtab.active {
     box-shadow: none;
-    border-left: none;
-    border-bottom: none;
-    box-shadow: 2px 0 0 inset var(--color-brand);
-    border-left: 1px solid var(--color-brand);
+    box-shadow: 3px 0 0 inset var(--color-brand);
   }
 
   .settings-main .settings-content .tab-list {
@@ -394,9 +386,7 @@
   @media (max-width: 640px) {
     .settings-main .settings-content .tab.active,
     .settings-main .settings-content .subtab.active {
-      box-shadow: 0 -2px 0 inset var(--color-brand);
-      border-bottom: 1px solid var(--color-brand);
-      border-left: unset;
+      box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
     .settings-main .settings-content .tab-list {
@@ -404,8 +394,7 @@
     }
 
     .settings-main .settings-content .tab:hover {
-      background-color: var(--color-brand-bg);
-      text-decoration: inherit;
+      text-decoration: underline;
     }
   }
   .settings-main .settings-content .tab-list li button {
@@ -510,12 +499,10 @@
 
   .tab,
   .subtab {
-    border: 1px solid transparent;
     background-color: transparent;
     color: var(--color-text-dark);
     box-shadow: none;
     outline: none;
-    border-bottom: 1px solid transparent;
   }
 
   .tab:focus-within,
@@ -537,15 +524,13 @@
   /* Create an active/current tablink class */
   .tab.active,
   .subtab.active {
-    box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
-    border-bottom: 1px solid var(--color-brand-dark-min-saturation);
+    box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
 
   .settings-main .settings-content .tab.active,
   .settings-main .settings-content .subtab.active {
     border-bottom: none;
-    box-shadow: 2px 0 0 inset var(--color-brand-dark-min-saturation);
-    border-left: 1px solid var(--color-brand-dark-min-saturation);
+    box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation);
   }
 
   .settings-main .settings-content .tab-list {
@@ -599,9 +584,7 @@
   @media (max-width: 640px) {
     .settings-main .settings-content .tab.active,
     .settings-main .settings-content .subtab.active {
-      box-shadow: 0 -2px 0 inset var(--color-brand-dark-min-saturation);
-      border-bottom: 1px solid var(--color-brand-dark-min-saturation);
-      border-left: none;
+      box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
     .settings-main .settings-content .tab-list {
@@ -609,8 +592,7 @@
     }
 
     .settings-main .settings-content .tab:hover {
-      background-color: var(--color-dark-bg-alt-1);
-      text-decoration: inherit;
+      text-decoration: underline;
     }
   }
 
@@ -1487,6 +1469,7 @@ img.upgrade {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  gap: 1rem;
 }
 
 .tab-list li {
@@ -1502,7 +1485,7 @@ img.upgrade {
 .subtab {
   min-height: 0px;
   min-width: auto;
-  padding: 1rem 0.625rem;
+  padding: 1rem 0;
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   white-space: nowrap;
@@ -2388,13 +2371,14 @@ p.bio + .extra-fields {
 }
 
 .settings-main .settings-content .tab-list li button {
-  padding: 0 0.625rem 0 0;
+  padding: 0.25rem 0.625rem 0.25rem 0;
 }
 
 .settings-main .settings-content .tab-list {
   display: flex;
   flex-direction: column;
   padding-top: 0.25rem;
+  gap: 0;
 }
 
 .settings-main .settings-content .settings-tabs + div {
@@ -2448,7 +2432,7 @@ p.bio + .extra-fields {
   }
 
   .settings-main .settings-content .tab-list li button {
-    padding: 1rem 0.625rem;
+    padding: 1rem 0;
     transition: none;
   }
 
@@ -2456,6 +2440,7 @@ p.bio + .extra-fields {
     display: flex;
     flex-direction: row;
     padding-top: 0.5rem;
+    gap: 1rem;
   }
 
   .settings-main .settings-content .settings-tabs + div {
@@ -2464,7 +2449,7 @@ p.bio + .extra-fields {
 
   .settings-main .settings-content .tab.active,
   .settings-main .settings-content .subtab.active {
-    padding: 1rem 0.625rem;
+    padding: 1rem 0;
   }
 
   .settings-main .settings-content .settings-tabs {
