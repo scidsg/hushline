@@ -1469,7 +1469,7 @@ img.upgrade {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .tab-list li {
@@ -2440,7 +2440,7 @@ p.bio + .extra-fields {
     display: flex;
     flex-direction: row;
     padding-top: 0.5rem;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   .settings-main .settings-content .settings-tabs + div {
