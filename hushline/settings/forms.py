@@ -225,7 +225,5 @@ class DeleteBrandLogoForm(FlaskForm):
 
 
 class UpdateDirectoryIntroTextForm(FlaskForm):
-    directory_intro_text = TextAreaField(
-        "Directory Introduction Text", validators=[DataRequired()]
-    )
+    directory_intro_text = TextAreaField("Directory Introduction Text", validators=[DataRequired()])
     submit = SubmitField("Update Intro Text")

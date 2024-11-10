@@ -326,9 +326,11 @@ def create_blueprint() -> Blueprint:
             raise Exception("Username was unexpectedly none")
 
         # Initialize the directory intro text form with existing value
-        directory_intro_text_value = OrganizationSetting.fetch_one(
-            OrganizationSetting.DIRECTORY_INTRO
-        ).value if OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO) else ""
+        directory_intro_text_value = (
+            OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO).value
+            if OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+            else ""
+        )
         update_directory_intro_text_form = UpdateDirectoryIntroTextForm(
             directory_intro_text=directory_intro_text_value
         )
@@ -794,18 +796,11 @@ def create_blueprint() -> Blueprint:
         form = UpdateDirectoryIntroTextForm()
         if form.validate_on_submit():
             intro_text = form.directory_intro_text.data
-            OrganizationSetting.upsert(
-                key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text
-            )
+            OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text)
             db.session.commit()
             flash("✅ Directory introduction text updated successfully.", "success")
         else:
             flash("❌ Failed to update introduction text. Please check your input.", "error")
-            # Re-render the form with the current input if validation fails
-            return render_template(
-                "settings/index.html",
-                update_directory_intro_text_form=form,
-            )
 
         return redirect(url_for("settings.index"))
 

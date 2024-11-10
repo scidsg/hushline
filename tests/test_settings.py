@@ -727,3 +727,45 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     resp = client.get(logo_url, follow_redirects=True)
     # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
     assert "That page doesn" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
+    """Test updating the directory intro text and ensure data integrity on failure."""
+
+    # Step 1: Set initial intro text and confirm it loads correctly
+    initial_intro_text = "Welcome to our directory!"
+    OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=initial_intro_text)
+    db.session.commit()
+
+    response = client.get(url_for("settings.index"))
+    assert response.status_code == 200
+    assert initial_intro_text in response.text
+
+    # Step 2: Update the intro text with valid data
+    updated_intro_text = "New introductory text for the directory."
+    response = client.post(
+        url_for("settings.update_directory_intro_text"),
+        data={"directory_intro_text": updated_intro_text},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "✅ Directory introduction text updated successfully." in response.text
+
+    # Confirm intro text was successfully updated in the database
+    setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+    assert setting.value == updated_intro_text
+
+    # Step 3: Test invalid update (e.g., empty intro text), confirm flash message,
+    # and verify unchanged value
+    response = client.post(
+        url_for("settings.update_directory_intro_text"),
+        data={"directory_intro_text": ""},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "❌ Failed to update introduction text. Please check your input." in response.text
+
+    # Verify intro text remains unchanged in the database after the failed update
+    retained_setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+    assert retained_setting.value == updated_intro_text
