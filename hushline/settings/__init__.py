@@ -55,6 +55,7 @@ from .forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryIntroTextForm,
 )
 
 
@@ -324,7 +325,13 @@ def create_blueprint() -> Blueprint:
         if username is None:
             raise Exception("Username was unexpectedly none")
 
-        display_name_form = DisplayNameForm(display_name=username.display_name)
+        # Initialize the directory intro text form with existing value
+        directory_intro_text_value = OrganizationSetting.fetch_one(
+            OrganizationSetting.DIRECTORY_INTRO
+        ).value if OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO) else ""
+        update_directory_intro_text_form = UpdateDirectoryIntroTextForm(
+            directory_intro_text=directory_intro_text_value
+        )
         directory_visibility_form = DirectoryVisibilityForm(
             show_in_directory=username.show_in_directory
         )
@@ -564,8 +571,13 @@ def create_blueprint() -> Blueprint:
             user_count=user_count,
             two_fa_count=two_fa_count,
             pgp_key_count=pgp_key_count,
-            two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
-            pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
+            two_fa_percentage=two_fa_percentage,
+            pgp_key_percentage=pgp_key_percentage,
+            directory_visibility_form=directory_visibility_form,
+            default_forwarding_enabled=bool(current_app.config.get("NOTIFICATIONS_ADDRESS")),
+            # Premium-specific data
+            business_tier_display_price=business_tier_display_price,
+            update_directory_intro_text_form=update_directory_intro_text_form,
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
@@ -775,5 +787,26 @@ def create_blueprint() -> Blueprint:
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
         )
+
+    @bp.route("/update-directory-intro", methods=["POST"])
+    @admin_authentication_required
+    def update_directory_intro_text() -> Response:
+        form = UpdateDirectoryIntroTextForm()
+        if form.validate_on_submit():
+            intro_text = form.directory_intro_text.data
+            OrganizationSetting.upsert(
+                key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text
+            )
+            db.session.commit()
+            flash("✅ Directory introduction text updated successfully.", "success")
+        else:
+            flash("❌ Failed to update introduction text. Please check your input.", "error")
+            # Re-render the form with the current input if validation fails
+            return render_template(
+                "settings/index.html",
+                update_directory_intro_text_form=form,
+            )
+
+        return redirect(url_for("settings.index"))
 
     return bp

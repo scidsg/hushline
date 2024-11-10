@@ -1239,6 +1239,7 @@ input[type="file"]::file-selector-button {
   padding: 0.725rem 1rem;
   margin: 0.5rem 0;
   line-height: 1;
+  width: fit-content;
 }
 
 input[type="file"]::file-selector-button {

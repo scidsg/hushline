@@ -222,3 +222,10 @@ class UpdateBrandLogoForm(FlaskForm):
 
 class DeleteBrandLogoForm(FlaskForm):
     submit = SubmitField("Delete Logo", name="submit_logo", widget=Button())
+
+
+class UpdateDirectoryIntroTextForm(FlaskForm):
+    directory_intro_text = TextAreaField(
+        "Directory Introduction Text", validators=[DataRequired()]
+    )
+    submit = SubmitField("Update Intro Text")

@@ -40,6 +40,7 @@ class OrganizationSetting(Model):
     BRAND_LOGO = "brand_logo"
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
+    DIRECTORY_INTRO = "directory_intro"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"

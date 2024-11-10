@@ -1,64 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}Settings{% endblock %}
+  <h3>Directory Introduction Text</h3>
+  <form
+    method="POST"
+    action="{{ url_for('settings.update_directory_intro_text') }}"
+    class="formBody"
+  >
+    {{ update_directory_intro_text_form.hidden_tag() }}
+    <label for="directory-intro-text">Introduction Text</label>
+    {{ update_directory_intro_text_form.directory_intro_text(rows=3, id="directory-intro-text") }}
+    {{ update_directory_intro_text_form.submit(class="btn") }}
+  </form>
 
-{% block main_class %}settings-main{% endblock %}
-
-{% block content %}
-  <h2>Settings</h2>
-  <div class="settings-content">
-    {% include "settings/nav.html" %}
-    <div class="tab-content">
-      <h3>Primary Color</h3>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_brand_primary_color_form.hidden_tag() }}
-        <label for="brand-primary-color">Choose Color</label>
-        <input
-          type="color"
-          name="brand_primary_hex_color"
-          id="brand-primary-color"
-          value="{{ brand_primary_color }}"
-        />
-        {{ update_brand_primary_color_form.submit }}
-      </form>
-
-      <h3>App Name</h3>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_brand_app_name_form.hidden_tag() }}
-        <label for="brand-app-name">Choose Name</label>
-        <input
-          type="text"
-          name="brand_app_name"
-          id="brand-app-name"
-          value="{{ brand_name }}"
-          required
-        />
-        {{ update_brand_app_name_form.submit }}
-      </form>
-
-      {% if user.is_admin %}
-        <h3>Logo</h3>
-        <form
-          method="POST"
-          enctype="multipart/form-data"
-          class="formBody"
-        >
-          {{ update_brand_logo_form.hidden_tag() }}
-          {{ update_brand_logo_form.logo(accept=".png") }}
-          {{ update_brand_logo_form.submit(class="btn") }}
-          {{ delete_brand_logo_form.submit(class="btn-danger") }}
-        </form>
-      {% endif %}
-    </div>
-  </div>
-{% endblock %}
-
-{% block scripts %}
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-{% endblock %}
+  {% if user.is_admin %}
+    <h3>Logo</h3>
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      action="{{ url_for('settings.update_brand_logo') }}"
+      class="formBody"
+    >
+      {{ update_brand_logo_form.hidden_tag() }}
+      {{ update_brand_logo_form.logo(accept=".png") }}
+      {{ update_brand_logo_form.submit(class="btn") }}
+      {{ delete_brand_logo_form.submit(class="btn-danger") }}
+    </form>
+  {% endif %}
+</div>

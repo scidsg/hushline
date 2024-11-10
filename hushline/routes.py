@@ -26,7 +26,15 @@ from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
 from .email import SMTPConfig, create_smtp_config, send_email
 from .forms import ComplexPassword
-from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User, Username
+from .model import (
+    AuthenticationLog,
+    InviteCode,
+    Message,
+    OrganizationSetting,
+    SMTPEncryption,
+    User,
+    Username,
+)
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -516,10 +524,13 @@ def init_app(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
+        # Fetch intro text from OrganizationSetting and get the value field
+        intro_text = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO).value
         return render_template(
             "directory.html",
             usernames=get_directory_usernames(),
             logged_in=logged_in,
+            intro_text=intro_text,
         )
 
     @app.route("/directory/get-session-user.json")
