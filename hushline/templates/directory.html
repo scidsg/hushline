@@ -1,80 +1,42 @@
 {% extends "base.html" %} {% block title %}Directory{% endblock %} {% block
 content %}
 <h2>User Directory</h2>
-{% if directory_verified_tab_enabled %} {% if not logged_in %}
-  {% if intro_text %}
-    <p class="helper section-intro">{{ intro_text }}</p>
-  {% else %}
-<p class="helper section-intro">
-    👋 <a href="https://hushline.app" target="_blank">Hush Line</a> connects whistleblowers with lawyers, journalists, business leaders, and more. We advise speaking to a legal professional before taking any confidential information from your workplace.
-</p>
-{% endif %}
+{% if intro_text %}
+<p class="helper section-intro">{{ intro_text }}</p>
 {% endif %}
 <div class="directory-tabs">
   <ul class="tab-list" role="tablist">
     <li role="presentation">
-      <button
-        type="button"
-        class="tab active"
-        data-tab="verified"
-        role="tab"
-        aria-selected="true"
-        aria-controls="verified"
-        id="verified-tab"
-      >
+      <button type="button" class="tab active" data-tab="verified" role="tab" aria-selected="true"
+        aria-controls="verified" id="verified-tab">
         Verified
       </button>
     </li>
     <li role="presentation">
-      <button
-        type="button"
-        class="tab"
-        data-tab="all"
-        role="tab"
-        aria-selected="false"
-        aria-controls="all"
-        id="all-tab"
-      >
+      <button type="button" class="tab" data-tab="all" role="tab" aria-selected="false" aria-controls="all"
+        id="all-tab">
         All
       </button>
     </li>
   </ul>
 </div>
-{% endif %}
 <div class="search-box">
   <label id="searchIcon" for="searchInput" aria-label="Search users">
-    <img
-      src="{{ url_for('static', filename='img/app/icon-search.png') }}"
-      alt=""
-    />
+    <img src="{{ url_for('static', filename='img/app/icon-search.png') }}" alt="" />
   </label>
   <input type="text" id="searchInput" placeholder="Search users..." />
-  <button
-    id="clearIcon"
-    type="button"
-    style="cursor: pointer"
-    aria-label="Clear search field"
-  >
+  <button id="clearIcon" type="button" style="cursor: pointer" aria-label="Clear search field">
     &times;
   </button>
 </div>
 {% if directory_verified_tab_enabled %}
-<div
-  id="verified"
-  class="tab-content active"
-  role="tabpanel"
-  aria-labelledby="verified-tab"
->
+<div id="verified" class="tab-content active" role="tabpanel" aria-labelledby="verified-tab">
   {% if not logged_in %}
   <p class="meta dirMeta">
     ⭐️ Verified accounts are offered to individuals who have manually verified
     their identities with a member of our staff.
-    <a
-      href="https://hushline.app/docs.html"
-      target="_blank"
-      rel="noopener noreferrer"
-      >Learn more about verification</a
-    >.
+    <a href="https://hushline.app/docs.html" target="_blank" rel="noopener noreferrer">Learn more about
+      verification</a>.
   </p>
   {% endif %}
   <div class="user-list">
@@ -96,18 +58,11 @@ content %}
       <p class="bio">{{ username.bio }}</p>
       {% endif %}
       <div class="user-actions">
-        <a href="{{ url_for('profile', username=username.username) }}"
-          >View Profile</a
-        >
+        <a href="{{ url_for('profile', username=username.username) }}">View Profile</a>
         {% if logged_in %}
-        <a
-          href="#"
-          class="report-link"
-          data-username="{{ username.username }}"
-          data-display-name="{{ username.display_name or username.username }}"
-          data-bio="{{ username.bio }}"
-          >Report Account</a
-        >
+        <a href="#" class="report-link" data-username="{{ username.username }}"
+          data-display-name="{{ username.display_name or username.username }}" data-bio="{{ username.bio }}">Report
+          Account</a>
         {% endif %}
       </div>
     </article>
@@ -119,12 +74,8 @@ content %}
   </div>
 </div>
 {% endif %}
-<div
-  id="all"
-  class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
-  role="tabpanel"
-  aria-labelledby="all-users-tab"
->
+<div id="all" class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}" role="tabpanel"
+  aria-labelledby="all-users-tab">
   <div class="user-list">
     {% for username in usernames %} {% if username.show_in_directory %}
     <article class="user">
@@ -143,18 +94,11 @@ content %}
       <p class="bio">{{ username.bio }}</p>
       {% endif %}
       <div class="user-actions">
-        <a href="{{ url_for('profile', username=username.username) }}"
-          >View Profile</a
-        >
+        <a href="{{ url_for('profile', username=username.username) }}">View Profile</a>
         {% if logged_in %}
-        <a
-          href="#"
-          class="report-link"
-          data-username="{{ username.username }}"
-          data-display-name="{{ username.display_name or username.username }}"
-          data-bio="{{ username.bio }}"
-          >Report Account</a
-        >
+        <a href="#" class="report-link" data-username="{{ username.username }}"
+          data-display-name="{{ username.display_name or username.username }}" data-bio="{{ username.bio }}">Report
+          Account</a>
         {% endif %}
       </div>
     </article>

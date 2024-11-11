@@ -524,8 +524,17 @@ def init_app(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
-        intro_text_setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-        intro_text = intro_text_setting.value if intro_text_setting else "Welcome to the directory."
+
+        intro_text = (
+            intro_text_setting.value
+            if (
+                intro_text_setting := OrganizationSetting.fetch_one(
+                    OrganizationSetting.DIRECTORY_INTRO
+                )
+            )
+            and intro_text_setting.value
+            else None
+        )
 
         return render_template(
             "directory.html",
