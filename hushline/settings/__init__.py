@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+import re
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional, Tuple
 
@@ -9,6 +10,7 @@ import bleach
 import pyotp
 import qrcode
 import requests
+from bleach import clean
 from bs4 import BeautifulSoup
 from flask import (
     Blueprint,
@@ -792,17 +794,21 @@ def create_blueprint() -> Blueprint:
         )
 
 
+    def sanitize_input(input_text: str) -> str:
+        sanitized_text = re.sub(r'<script.*?>.*?</script>', '', input_text, flags=re.DOTALL)
+        return clean(
+            sanitized_text,
+            tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
+            attributes={"a": ["href"]},
+            strip=True,
+        )
+
     @bp.route("/update-directory-intro", methods=["POST"])
     @admin_authentication_required
     def update_directory_intro_text() -> Response:
         form = UpdateDirectoryIntroTextForm()
         if form.validate_on_submit():
-            intro_text = bleach.clean(
-                form.directory_intro_text.data,
-                tags=["b", "i", "u", "em", "strong", "a"],
-                attributes={"a": ["href", "title"]},
-                strip=True
-            )
+            intro_text = sanitize_input(form.directory_intro_text.data)
             OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text)
             db.session.commit()
             flash("✅ Directory introduction text updated successfully.", "success")

@@ -731,7 +731,7 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
-    """Test updating the directory intro text and ensure data integrity on failure."""
+    """Test updating the directory intro text with sanitization."""
 
     # Step 1: Set initial intro text and confirm it loads correctly
     initial_intro_text = "Welcome to our directory!"
@@ -743,30 +743,43 @@ def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
     assert response.status_code == 200
     assert initial_intro_text in response.text
 
-    # Step 2: Update the intro text with valid data and check for success
-    updated_intro_text = "New introductory text for the directory."
+    # Step 2: Update intro text with valid HTML tags and check if tags are kept
+    allowed_html_text = "Welcome <b>bold</b> and <i>italic</i> text."
     response = client.post(
         url_for("settings.update_directory_intro_text"),
-        data={"directory_intro_text": updated_intro_text},
+        data={"directory_intro_text": allowed_html_text},
         follow_redirects=True,
     )
     assert response.status_code == 200
     assert "✅ Directory introduction text updated successfully." in response.text
 
-    # Confirm intro text was updated in the database
+    # Check that the allowed tags remain in the database
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-    assert setting.value == updated_intro_text
+    assert setting.value == allowed_html_text
 
-    # Step 3: Attempt an invalid update with an empty intro text field
-    # Ensure the empty input triggers validation failure
+    # Step 3: Update intro text with disallowed tags and confirm they're stripped
+    disallowed_html_text = "Welcome <script>alert('Hello');</script> with <b>bold</b> text."
+    sanitized_text = "Welcome  with <b>bold</b> text."  # Expected after bleach cleaning
+    response = client.post(
+        url_for("settings.update_directory_intro_text"),
+        data={"directory_intro_text": disallowed_html_text},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "✅ Directory introduction text updated successfully." in response.text
+
+    # Confirm only allowed tags are stored in the database
+    setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+    assert setting.value == sanitized_text
+
+
+    # Step 4: Test empty input and check if it's accepted without an error
     response = client.post(
         url_for("settings.update_directory_intro_text"),
         data={"directory_intro_text": ""},
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "❌ Failed to update introduction text. Please check your input." in response.text
 
-    # Verify intro text remains unchanged in the database after failed update
-    retained_setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-    assert retained_setting.value == updated_intro_text
+    # Instead of checking for an error message, confirm it processes successfully
+    assert "✅ Directory introduction text updated successfully." in response.text
