@@ -1,14 +1,12 @@
 {% extends "base.html" %}
-
-{% block title %}Settings{% endblock %}
-  <h3>Directory Introduction Text</h3>
+  <h3>Directory</h3>
   <form
     method="POST"
     action="{{ url_for('settings.update_directory_intro_text') }}"
     class="formBody"
   >
     {{ update_directory_intro_text_form.hidden_tag() }}
-    <label for="directory-intro-text">Introduction Text</label>
+    {{ update_directory_intro_text_form.directory_intro_text.label }}
     {{ update_directory_intro_text_form.directory_intro_text(rows=3, id="directory-intro-text") }}
     {{ update_directory_intro_text_form.submit(class="btn") }}
   </form>
