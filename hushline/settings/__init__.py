@@ -61,9 +61,14 @@ from .forms import (
 )
 
 
-def form_error() -> None:
-    flash("Your submitted form could not be processed.")
-
+def sanitize_input(input_text: str) -> str:
+    sanitized_text = re.sub(r"<script.*?>.*?</script>", "", input_text, flags=re.DOTALL)
+    return clean(
+        sanitized_text,
+        tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
+        attributes={"a": ["href"]},
+        strip=True,
+    )
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
     if input_field.render_kw is None:
@@ -790,15 +795,6 @@ def create_blueprint() -> Blueprint:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
-        )
-
-    def sanitize_input(input_text: str) -> str:
-        sanitized_text = re.sub(r"<script.*?>.*?</script>", "", input_text, flags=re.DOTALL)
-        return clean(
-            sanitized_text,
-            tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
-            attributes={"a": ["href"]},
-            strip=True,
         )
 
     @bp.route("/update-directory-intro", methods=["POST"])
