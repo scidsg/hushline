@@ -27,6 +27,7 @@ stripe = "^10.9.0"
 types-requests = "^2.32.0.20240712"
 types-setuptools = "^71.1.0.20240813"
 python = "^3.11"
+bleach = "^6.2.0"
 
 [tool.poetry.group.dev.dependencies]
 beautifulsoup4 = "^4.12.3"
