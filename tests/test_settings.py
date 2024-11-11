@@ -738,11 +738,12 @@ def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
     OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=initial_intro_text)
     db.session.commit()
 
+    # Confirm initial text appears in settings page
     response = client.get(url_for("settings.index"))
     assert response.status_code == 200
     assert initial_intro_text in response.text
 
-    # Step 2: Update the intro text with valid data
+    # Step 2: Update the intro text with valid data and check for success
     updated_intro_text = "New introductory text for the directory."
     response = client.post(
         url_for("settings.update_directory_intro_text"),
@@ -752,12 +753,12 @@ def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
     assert response.status_code == 200
     assert "✅ Directory introduction text updated successfully." in response.text
 
-    # Confirm intro text was successfully updated in the database
+    # Confirm intro text was updated in the database
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
     assert setting.value == updated_intro_text
 
-    # Step 3: Test invalid update (e.g., empty intro text), confirm flash message,
-    # and verify unchanged value
+    # Step 3: Attempt an invalid update with an empty intro text field
+    # Ensure the empty input triggers validation failure
     response = client.post(
         url_for("settings.update_directory_intro_text"),
         data={"directory_intro_text": ""},
@@ -766,6 +767,6 @@ def test_update_directory_intro_text(client: FlaskClient, admin: User) -> None:
     assert response.status_code == 200
     assert "❌ Failed to update introduction text. Please check your input." in response.text
 
-    # Verify intro text remains unchanged in the database after the failed update
+    # Verify intro text remains unchanged in the database after failed update
     retained_setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
     assert retained_setting.value == updated_intro_text

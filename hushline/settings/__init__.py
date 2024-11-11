@@ -794,8 +794,11 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     def update_directory_intro_text() -> Response:
         form = UpdateDirectoryIntroTextForm()
-        if form.validate_on_submit():
-            intro_text = form.directory_intro_text.data
+        intro_text = form.directory_intro_text.data
+
+        if intro_text.strip() == "":
+            flash("❌ Failed to update introduction text. Please check your input.", "error")
+        elif form.validate_on_submit():
             OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text)
             db.session.commit()
             flash("✅ Directory introduction text updated successfully.", "success")
