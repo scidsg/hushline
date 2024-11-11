@@ -301,9 +301,7 @@ def init_app(app: Flask) -> None:
             db.delete(Message).where(
                 Message.id == message_id,
                 Message.username_id.in_(
-                    db.select(Username.user_id)
-                    .select_from(Username)
-                    .filter(Username.user_id == user.id)
+                    db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
             )
         ).rowcount
