@@ -70,6 +70,7 @@ def sanitize_input(input_text: str) -> str:
         strip=True,
     )
 
+
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
     if input_field.render_kw is None:
         input_field.render_kw = {}
