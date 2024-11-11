@@ -5,6 +5,7 @@ from hmac import compare_digest as bytes_are_equal
 from typing import Optional, Tuple
 
 import aiohttp
+import bleach
 import pyotp
 import qrcode
 import requests
@@ -790,15 +791,18 @@ def create_blueprint() -> Blueprint:
             profile_form=profile_form,
         )
 
+
     @bp.route("/update-directory-intro", methods=["POST"])
     @admin_authentication_required
     def update_directory_intro_text() -> Response:
         form = UpdateDirectoryIntroTextForm()
-        intro_text = form.directory_intro_text.data
-
-        if intro_text.strip() == "":
-            flash("❌ Failed to update introduction text. Please check your input.", "error")
-        elif form.validate_on_submit():
+        if form.validate_on_submit():
+            intro_text = bleach.clean(
+                form.directory_intro_text.data,
+                tags=["b", "i", "u", "em", "strong", "a"],
+                attributes={"a": ["href", "title"]},
+                strip=True
+            )
             OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text)
             db.session.commit()
             flash("✅ Directory introduction text updated successfully.", "success")
