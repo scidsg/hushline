@@ -325,12 +325,12 @@ def create_blueprint() -> Blueprint:
         if username is None:
             raise Exception("Username was unexpectedly none")
 
-        # Initialize the directory intro text form with existing value
+        # Fetch the directory intro setting once and use a temporary variable
+        directory_intro_setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
         directory_intro_text_value = (
-            OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO).value
-            if OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-            else ""
+            directory_intro_setting.value if directory_intro_setting else ""
         )
+
         update_directory_intro_text_form = UpdateDirectoryIntroTextForm(
             directory_intro_text=directory_intro_text_value
         )
