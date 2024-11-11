@@ -6,7 +6,6 @@ from hmac import compare_digest as bytes_are_equal
 from typing import Optional, Tuple
 
 import aiohttp
-import bleach
 import pyotp
 import qrcode
 import requests
