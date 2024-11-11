@@ -10,7 +10,7 @@ env:
   GITHUB_TOKEN: ${{ github.token }}
   WORKSPACE_NAME: hushline-dev-${{ github.head_ref }}
   TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
-  DEV_TF_PATH: terraform/dev
+  DEV_TF_PATH: hushline-dev-env
   DO_APP_NAME: dev-${{ github.head_ref }}
   HUSHLINE_INFRA_REPO: scidsg/hushline-infra
   HUSHLINE_INFRA_REF: main
