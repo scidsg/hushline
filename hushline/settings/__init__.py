@@ -793,9 +793,8 @@ def create_blueprint() -> Blueprint:
             profile_form=profile_form,
         )
 
-
     def sanitize_input(input_text: str) -> str:
-        sanitized_text = re.sub(r'<script.*?>.*?</script>', '', input_text, flags=re.DOTALL)
+        sanitized_text = re.sub(r"<script.*?>.*?</script>", "", input_text, flags=re.DOTALL)
         return clean(
             sanitized_text,
             tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
