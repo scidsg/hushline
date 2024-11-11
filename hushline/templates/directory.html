@@ -2,9 +2,9 @@
 content %}
 <h2>User Directory</h2>
 {% if directory_verified_tab_enabled %} {% if not logged_in %}
-{% if intro_text %}
-<p class="helper section-intro">{{ intro_text }}</p>
-{% else %}
+  {% if intro_text %}
+    <p class="helper section-intro">{{ intro_text }}</p>
+  {% else %}
 <p class="helper section-intro">
     👋 <a href="https://hushline.app" target="_blank">Hush Line</a> connects whistleblowers with lawyers, journalists, business leaders, and more. We advise speaking to a legal professional before taking any confidential information from your workplace.
 </p>
