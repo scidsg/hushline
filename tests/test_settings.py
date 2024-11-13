@@ -730,21 +730,18 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
 
 def test_sanitize_input():
-    # Disallowed script tag should be removed
+    # Disallowed script tag should be removed, content remains
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
     assert "<script>" not in sanitized_text
-    assert sanitized_text == "Hello  World!"
+    assert sanitized_text == 'Hello alert("malicious") World!'
 
     # Allowed tags should be retained
     input_text = (
         'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
     )
     sanitized_text = sanitize_input(input_text)
-    assert (
-        sanitized_text
-        == 'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
-    )
+    assert sanitized_text == input_text
 
     # Disallowed attributes should be stripped
     input_text = 'Click <a href="https://example.com" onclick="malicious()">here</a>'
@@ -752,7 +749,7 @@ def test_sanitize_input():
     assert "onclick" not in sanitized_text
     assert sanitized_text == 'Click <a href="https://example.com">here</a>'
 
-    # Disallowed tags should be stripped
+    # Disallowed tags should be stripped, content kept
     input_text = "This is a <div>test</div>."
     sanitized_text = sanitize_input(input_text)
     assert sanitized_text == "This is a test."

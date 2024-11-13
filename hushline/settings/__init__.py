@@ -801,9 +801,18 @@ def create_blueprint() -> Blueprint:
     def update_directory_intro_text() -> Response:
         form = UpdateDirectoryIntroTextForm()
         if form.validate_on_submit():
-            intro_text = sanitize_input(form.directory_intro_text.data)
-            OrganizationSetting.upsert(key=OrganizationSetting.DIRECTORY_INTRO, value=intro_text)
+            # Get the raw input from the form
+            raw_intro_text = form.directory_intro_text.data
+
+            # Sanitize the input using the simplified sanitize_input function
+            sanitized_intro_text = sanitize_input(raw_intro_text)
+
+            # Update or insert the organization setting with the sanitized text
+            OrganizationSetting.upsert(
+                key=OrganizationSetting.DIRECTORY_INTRO, value=sanitized_intro_text
+            )
             db.session.commit()
+
             flash("✅ Directory introduction text updated successfully.", "success")
         else:
             flash("❌ Failed to update introduction text. Please check your input.", "error")
