@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import io
-import re
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional, Tuple
 
@@ -62,14 +61,12 @@ from .forms import (
 
 
 def sanitize_input(input_text: str) -> str:
-    sanitized_text = re.sub(r"<script.*?>.*?</script>", "", input_text, flags=re.DOTALL)
     return clean(
-        sanitized_text,
+        input_text,
         tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
         attributes={"a": ["href"]},
         strip=True,
     )
-
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
     if input_field.render_kw is None:
