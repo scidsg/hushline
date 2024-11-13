@@ -28,6 +28,7 @@ types-requests = "^2.32.0.20240712"
 types-setuptools = "^71.1.0.20240813"
 python = "^3.11"
 bleach = "^6.2.0"
+types-bleach = "^6.1.0.20240331"
 
 [tool.poetry.group.dev.dependencies]
 beautifulsoup4 = "^4.12.3"

@@ -1880,6 +1880,20 @@ requests = {version = ">=2.20", markers = "python_version >= \"3.0\""}
 typing-extensions = {version = ">=4.5.0", markers = "python_version >= \"3.7\""}
 
 [[package]]
+name = "types-bleach"
+version = "6.1.0.20240331"
+description = "Typing stubs for bleach"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-bleach-6.1.0.20240331.tar.gz", hash = "sha256:2ee858a84fb06fc2225ff56ba2f7f6c88b65638659efae0d7bfd6b24a1b5a524"},
+    {file = "types_bleach-6.1.0.20240331-py3-none-any.whl", hash = "sha256:399bc59bfd20a36a56595f13f805e56c8a08e5a5c07903e5cf6fafb5a5107dd4"},
+]
+
+[package.dependencies]
+types-html5lib = "*"
+
+[[package]]
 name = "types-flask-migrate"
 version = "4.0.0.20240311"
 description = "Typing stubs for Flask-Migrate"
@@ -1893,6 +1907,17 @@ files = [
 [package.dependencies]
 Flask = ">=2.0.0"
 Flask-SQLAlchemy = ">=3.0.1"
+
+[[package]]
+name = "types-html5lib"
+version = "1.1.11.20241018"
+description = "Typing stubs for html5lib"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-html5lib-1.1.11.20241018.tar.gz", hash = "sha256:98042555ff78d9e3a51c77c918b1041acbb7eb6c405408d8a9e150ff5beccafa"},
+    {file = "types_html5lib-1.1.11.20241018-py3-none-any.whl", hash = "sha256:3f1e064d9ed2c289001ae6392c84c93833abb0816165c6ff0abfc304a779f403"},
+]
 
 [[package]]
 name = "types-requests"
@@ -2102,4 +2127,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d6d167779f661c13498a6736a9c9c660b74f1f53dde6dcc4b9e5f0195893c839"
+content-hash = "ad2403734e790c63d32a2f98490702094dc09936529023cc505e97fe185d8313"
