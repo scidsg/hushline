@@ -729,7 +729,7 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     assert "That page doesn" in resp.text
 
 
-def test_sanitize_input():
+def test_sanitize_input() -> None:
     # Disallowed script tag should be removed, content remains
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
@@ -755,10 +755,8 @@ def test_sanitize_input():
     assert sanitized_text == "This is a test."
 
 
-def test_update_directory_intro_text(client) -> None:
-    # Assuming you have a test client and a way to authenticate as admin
-    client.login_as_admin()
-
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_directory_intro_text(client: FlaskClient) -> None:
     # Test with valid input
     response = client.post(
         url_for("settings.update_directory_intro_text"),
