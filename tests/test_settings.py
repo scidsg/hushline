@@ -753,3 +753,21 @@ def test_sanitize_input():
     input_text = "This is a <div>test</div>."
     sanitized_text = sanitize_input(input_text)
     assert sanitized_text == "This is a test."
+
+
+def test_update_directory_intro_text(client) -> None:
+    # Assuming you have a test client and a way to authenticate as admin
+    client.login_as_admin()
+
+    # Test with valid input
+    response = client.post(
+        url_for("settings.update_directory_intro_text"),
+        data={"directory_intro_text": "<p>Welcome to the directory!</p>"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "✅ Directory introduction text updated successfully." in response.get_data(as_text=True)
+
+    # Verify that the setting was updated in the database
+    setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+    assert setting.value == "<p>Welcome to the directory!</p>"
