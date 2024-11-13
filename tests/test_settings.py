@@ -733,21 +733,26 @@ def test_sanitize_input():
     # Disallowed script tag should be removed
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
-    assert '<script>' not in sanitized_text
-    assert sanitized_text == 'Hello  World!'
+    assert "<script>" not in sanitized_text
+    assert sanitized_text == "Hello  World!"
 
     # Allowed tags should be retained
-    input_text = 'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
+    input_text = (
+        'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
+    )
     sanitized_text = sanitize_input(input_text)
-    assert sanitized_text == 'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
+    assert (
+        sanitized_text
+        == 'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
+    )
 
     # Disallowed attributes should be stripped
     input_text = 'Click <a href="https://example.com" onclick="malicious()">here</a>'
     sanitized_text = sanitize_input(input_text)
-    assert 'onclick' not in sanitized_text
+    assert "onclick" not in sanitized_text
     assert sanitized_text == 'Click <a href="https://example.com">here</a>'
 
     # Disallowed tags should be stripped
-    input_text = 'This is a <div>test</div>.'
+    input_text = "This is a <div>test</div>."
     sanitized_text = sanitize_input(input_text)
-    assert sanitized_text == 'This is a test.'
+    assert sanitized_text == "This is a test."
