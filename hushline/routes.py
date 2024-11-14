@@ -60,7 +60,7 @@ def get_directory_usernames() -> Sequence[Username]:
     ).all()
 
 
-def directory():
+def directory() -> str:
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
     intro_text = Markup(setting.value) if setting and setting.value else Markup("")
 
