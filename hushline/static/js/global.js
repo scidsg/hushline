@@ -107,22 +107,3 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.style.display = "block";
     targetPanel.classList.add("active");
   };
-
-  function updateThemeColor() {
-    const themeColorMetaTag = document.querySelector(
-      'meta[name="theme-color"]',
-    );
-    const isDarkMode = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    themeColorMetaTag.setAttribute(
-      "content",
-      isDarkMode ? "#ECDAFA" : "#7D25C1",
-    );
-  }
-
-  updateThemeColor();
-  window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", updateThemeColor);
-});
