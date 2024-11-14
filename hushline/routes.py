@@ -22,6 +22,8 @@ from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
+from hushline.settings import sanitize_input
+
 from .auth import authentication_required
 from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
@@ -534,7 +536,11 @@ def init_app(app: Flask) -> None:
         logged_in = "user_id" in session
 
         setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-        intro_text = Markup(setting.value) if setting and setting.value else Markup("")
+        if setting and setting.value:
+            sanitized_intro_text = sanitize_input(setting.value)
+            intro_text = Markup(sanitized_intro_text)
+        else:
+            intro_text = Markup("")
 
         return render_template(
             "directory.html",

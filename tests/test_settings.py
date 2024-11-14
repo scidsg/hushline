@@ -763,10 +763,12 @@ def test_sanitize_input() -> None:
 
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_directory_intro_text(client: FlaskClient) -> None:
-    # Test with valid input
+    # Input containing disallowed tags and attributes
+    malicious_input = '<script>alert("XSS")</script><p onclick="stealCookies()">Safe content</p>'
+    expected_sanitized = 'alert("XSS")<p>Safe content</p>'
     response = client.post(
         url_for("settings.update_directory_intro_text"),
-        data={"directory_intro_text": "<p>Welcome to the directory!</p>"},
+        data={"directory_intro_text": malicious_input},
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -774,4 +776,11 @@ def test_update_directory_intro_text(client: FlaskClient) -> None:
 
     # Verify that the setting was updated in the database
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-    assert setting.value == "<p>Welcome to the directory!</p>"
+    assert setting.value == expected_sanitized
+
+    # Fetch the directory page and check that the intro text is rendered correctly
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+    assert expected_sanitized in response.get_data(as_text=True)
+    assert '<script>' not in response.get_data(as_text=True)
+    assert 'onclick' not in response.get_data(as_text=True)
