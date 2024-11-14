@@ -809,7 +809,7 @@ def create_blueprint() -> Blueprint:
             # Store the string representation in the database
             OrganizationSetting.upsert(
                 key=OrganizationSetting.DIRECTORY_INTRO,
-                value=str(sanitized_intro_text)  # Convert Markup to string
+                value=str(sanitized_intro_text),  # Convert Markup to string
             )
             db.session.commit()
 

@@ -59,11 +59,13 @@ def get_directory_usernames() -> Sequence[Username]:
         )
     ).all()
 
+
 def directory():
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
     intro_text = Markup(setting.value) if setting and setting.value else Markup("")
 
     return render_template("directory.html", intro_text=intro_text)
+
 
 class TwoFactorForm(FlaskForm):
     verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
