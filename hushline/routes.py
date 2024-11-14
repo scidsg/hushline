@@ -24,7 +24,7 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .auth import authentication_required
 from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
-from .email import SMTPConfig, create_smtp_config, send_email
+from .email import create_smtp_config, send_email
 from .forms import ComplexPassword
 from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User, Username
 
@@ -108,6 +108,33 @@ def get_ip_address() -> str:
     finally:
         s.close()
     return ip_address
+
+
+def do_send_email(user: User, content_to_save: str) -> None:
+    if user.email and content_to_save:
+        try:
+            if user.smtp_server:
+                smtp_config = create_smtp_config(
+                    user.smtp_username,  # type: ignore[arg-type]
+                    user.smtp_server,  # type: ignore[arg-type]
+                    user.smtp_port,  # type: ignore[arg-type]
+                    user.smtp_password,  # type: ignore[arg-type]
+                    user.smtp_sender,  # type: ignore[arg-type]
+                    encryption=user.smtp_encryption,
+                )
+            else:
+                smtp_config = create_smtp_config(
+                    current_app.config["SMTP_USERNAME"],
+                    current_app.config["SMTP_SERVER"],
+                    current_app.config["SMTP_PORT"],
+                    current_app.config["SMTP_PASSWORD"],
+                    current_app.config["NOTIFICATIONS_ADDRESS"],
+                    encryption=SMTPEncryption[current_app.config["SMTP_ENCRYPTION"]],
+                )
+
+            send_email(user.email, "New Message", content_to_save, smtp_config)
+        except Exception as e:
+            current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
 
 
 def init_app(app: Flask) -> None:
@@ -243,40 +270,8 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if uname.user.email and content_to_save:
-                try:
-                    smtp_config: SMTPConfig = create_smtp_config(
-                        app.config["SMTP_USERNAME"],
-                        app.config["SMTP_SERVER"],
-                        app.config["SMTP_PORT"],
-                        app.config["SMTP_PASSWORD"],
-                        app.config["NOTIFICATIONS_ADDRESS"],
-                        encryption=SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
-                    )
-                    if uname.user.smtp_server:
-                        smtp_config = create_smtp_config(
-                            uname.user.smtp_username,
-                            uname.user.smtp_server,
-                            uname.user.smtp_port,
-                            uname.user.smtp_password,
-                            uname.user.smtp_sender,
-                            encryption=uname.user.smtp_encryption,
-                        )
-
-                    email_sent = send_email(
-                        uname.user.email, "New Message", content_to_save, smtp_config
-                    )
-                    flash_message = (
-                        "👍 Message submitted successfully."
-                        if email_sent
-                        else "👍 Message submitted successfully."
-                    )
-                    flash(flash_message)
-                except Exception as e:
-                    app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash("👍 Message submitted successfully.", "warning")
-            else:
-                flash("👍 Message submitted successfully.")
+            do_send_email(uname.user, content_to_save)
+            flash("👍 Message submitted successfully.")
 
         return redirect(url_for("profile", username=username))
 
