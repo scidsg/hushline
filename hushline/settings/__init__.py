@@ -649,9 +649,9 @@ def create_blueprint() -> Blueprint:
         flash("🔓 2FA has been disabled.")
         return redirect(url_for(".index"))
 
-    @bp.route("/confirm-disable-2fa", methods=["GET"])
+    @bp.route("/confirm-disable-2fa")
     @authentication_required
-    def confirm_disable_2fa() -> Response | str:
+    def confirm_disable_2fa() -> str:
         return render_template("confirm_disable_2fa.html")
 
     @bp.route("/verify-2fa-setup", methods=["POST"])

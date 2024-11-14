@@ -141,7 +141,7 @@ def init_app(app: Flask) -> None:
             user_has_aliases=user_alias_count > 1,
         )
 
-    @app.route("/to/<username>", methods=["GET"])
+    @app.route("/to/<username>")
     def profile(username: str) -> Response | str:
         form = MessageForm()
         uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
@@ -280,8 +280,7 @@ def init_app(app: Flask) -> None:
 
         return redirect(url_for("profile", username=username))
 
-    # Redirect from the old route, /submit_message/<username>, to the new route, /to/<username>
-    @app.route("/submit_message/<username>", methods=["GET"])
+    @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:
         return redirect(url_for("profile", username=username), 301)
 
@@ -540,7 +539,7 @@ def init_app(app: Flask) -> None:
             for username in get_directory_usernames()
         ]
 
-    @app.route("/vision", methods=["GET"])
+    @app.route("/vision")
     def vision() -> str:
         return render_template("vision.html")
 
