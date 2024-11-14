@@ -17,6 +17,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import FlaskForm
+from markupsafe import Markup
 from werkzeug.wrappers.response import Response
 from wtforms import Field, Form, PasswordField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
@@ -58,6 +59,11 @@ def get_directory_usernames() -> Sequence[Username]:
         )
     ).all()
 
+def directory():
+    setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+    intro_text = Markup(setting.value) if setting and setting.value else Markup("")
+
+    return render_template("directory.html", intro_text=intro_text)
 
 class TwoFactorForm(FlaskForm):
     verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
@@ -525,16 +531,8 @@ def init_app(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
 
-        intro_text = (
-            intro_text_setting.value
-            if (
-                intro_text_setting := OrganizationSetting.fetch_one(
-                    OrganizationSetting.DIRECTORY_INTRO
-                )
-            )
-            and intro_text_setting.value
-            else None
-        )
+        setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
+        intro_text = Markup(setting.value) if setting and setting.value else Markup("")
 
         return render_template(
             "directory.html",

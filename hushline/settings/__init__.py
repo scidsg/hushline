@@ -21,6 +21,7 @@ from flask import (
     session,
     url_for,
 )
+from markupsafe import Markup
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
@@ -60,13 +61,14 @@ from .forms import (
 )
 
 
-def sanitize_input(input_text: str) -> str:
-    return clean(
+def sanitize_input(input_text: str) -> Markup:
+    sanitized_html = clean(
         input_text,
         tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
         attributes={"a": ["href"]},
         strip=True,
     )
+    return Markup(sanitized_html)
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
@@ -801,15 +803,13 @@ def create_blueprint() -> Blueprint:
     def update_directory_intro_text() -> Response:
         form = UpdateDirectoryIntroTextForm()
         if form.validate_on_submit():
-            # Get the raw input from the form
             raw_intro_text = form.directory_intro_text.data
-
-            # Sanitize the input using the simplified sanitize_input function
             sanitized_intro_text = sanitize_input(raw_intro_text)
 
-            # Update or insert the organization setting with the sanitized text
+            # Store the string representation in the database
             OrganizationSetting.upsert(
-                key=OrganizationSetting.DIRECTORY_INTRO, value=sanitized_intro_text
+                key=OrganizationSetting.DIRECTORY_INTRO,
+                value=str(sanitized_intro_text)  # Convert Markup to string
             )
             db.session.commit()
 

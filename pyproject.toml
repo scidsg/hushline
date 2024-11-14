@@ -7,7 +7,8 @@ license = "AGPL 3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-aiohttp = "^3.10.11"
+aiohttp = "^3.10.5"
+bleach = "^6.2.0"
 boto3 = "^1.35.33"
 cryptography = "^43.0.1"
 email-validator = "^2.2.0"
@@ -16,6 +17,7 @@ flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
 gunicorn = "^22.0.0"
+markupsafe = "^3.0.2"
 passlib = "^1.7.4"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
 pyotp = "^2.9.0"
@@ -27,8 +29,6 @@ stripe = "^10.9.0"
 types-requests = "^2.32.0.20240712"
 types-setuptools = "^71.1.0.20240813"
 python = "^3.11"
-bleach = "^6.2.0"
-types-bleach = "^6.1.0.20240331"
 
 [tool.poetry.group.dev.dependencies]
 beautifulsoup4 = "^4.12.3"

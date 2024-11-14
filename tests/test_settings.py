@@ -730,29 +730,35 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
 
 def test_sanitize_input() -> None:
+    from markupsafe import Markup
+
     # Disallowed script tag should be removed, content remains
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
-    assert "<script>" not in sanitized_text
-    assert sanitized_text == 'Hello alert("malicious") World!'
+    assert isinstance(sanitized_text, Markup)
+    assert "<script>" not in str(sanitized_text)
+    assert str(sanitized_text) == 'Hello alert("malicious") World!'
 
     # Allowed tags should be retained
     input_text = (
         'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
     )
     sanitized_text = sanitize_input(input_text)
-    assert sanitized_text == input_text
+    assert isinstance(sanitized_text, Markup)
+    assert str(sanitized_text) == input_text
 
     # Disallowed attributes should be stripped
     input_text = 'Click <a href="https://example.com" onclick="malicious()">here</a>'
     sanitized_text = sanitize_input(input_text)
-    assert "onclick" not in sanitized_text
-    assert sanitized_text == 'Click <a href="https://example.com">here</a>'
+    assert isinstance(sanitized_text, Markup)
+    assert "onclick" not in str(sanitized_text)
+    assert str(sanitized_text) == 'Click <a href="https://example.com">here</a>'
 
     # Disallowed tags should be stripped, content kept
     input_text = "This is a <div>test</div>."
     sanitized_text = sanitize_input(input_text)
-    assert sanitized_text == "This is a test."
+    assert isinstance(sanitized_text, Markup)
+    assert str(sanitized_text) == "This is a test."
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
