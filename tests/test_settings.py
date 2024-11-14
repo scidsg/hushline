@@ -782,5 +782,5 @@ def test_update_directory_intro_text(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
     assert expected_sanitized in response.get_data(as_text=True)
-    assert '<script>' not in response.get_data(as_text=True)
-    assert 'onclick' not in response.get_data(as_text=True)
+    assert "<script>" not in response.get_data(as_text=True)
+    assert "onclick" not in response.get_data(as_text=True)
