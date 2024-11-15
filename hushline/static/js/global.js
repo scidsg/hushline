@@ -127,20 +127,29 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateThemeColor() {
-    const themeColorMetaTag = document.querySelector('meta[name="theme-color"]');
+    const themeColorMetaTag = document.querySelector(
+      'meta[name="theme-color"]',
+    );
 
     // Retrieve hex values of CSS variables
     const lightModeColor = getHexColorFromCSSVariable("--theme-color-light");
     const darkModeColor = getHexColorFromCSSVariable("--theme-color-dark");
 
     // Detect if user prefers dark mode
-    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDarkMode = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
 
     // Set the meta tag with the appropriate color
-    themeColorMetaTag.setAttribute("content", isDarkMode ? darkModeColor : lightModeColor);
+    themeColorMetaTag.setAttribute(
+      "content",
+      isDarkMode ? darkModeColor : lightModeColor,
+    );
   }
 
   // Initialize and add event listener for theme changes
   updateThemeColor();
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateThemeColor);
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", updateThemeColor);
 });
