@@ -1,4 +1,6 @@
 :root {
+  --theme-color-light: var(--color-brand);
+  --theme-color-dark: var(--color-brand-dark-min-saturation);
   --color-border: rgba(0, 0, 0, 0.18);
   --color-border-dark: #787878;
   --color-border-dark-1: #505050;

@@ -107,3 +107,40 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.style.display = "block";
     targetPanel.classList.add("active");
   };
+
+  function getHexColorFromCSSVariable(variableName) {
+    // Create a temporary element
+    const tempElement = document.createElement("div");
+    tempElement.style.display = "none";
+    document.body.appendChild(tempElement);
+
+    // Apply the CSS variable as a color
+    tempElement.style.color = `var(${variableName})`;
+
+    // Get the computed color (resolved to hex)
+    const color = getComputedStyle(tempElement).color;
+
+    // Remove the temporary element
+    document.body.removeChild(tempElement);
+
+    return color;
+  }
+
+  function updateThemeColor() {
+    const themeColorMetaTag = document.querySelector('meta[name="theme-color"]');
+
+    // Retrieve hex values of CSS variables
+    const lightModeColor = getHexColorFromCSSVariable("--theme-color-light");
+    const darkModeColor = getHexColorFromCSSVariable("--theme-color-dark");
+
+    // Detect if user prefers dark mode
+    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    // Set the meta tag with the appropriate color
+    themeColorMetaTag.setAttribute("content", isDarkMode ? darkModeColor : lightModeColor);
+  }
+
+  // Initialize and add event listener for theme changes
+  updateThemeColor();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateThemeColor);
+});
