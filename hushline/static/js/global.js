@@ -17,7 +17,9 @@ function navController() {
       dropdownToggle.addEventListener("click", function (event) {
         event.preventDefault();
         dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains("show")
+        dropdownContent.style.animation = dropdownContent.classList.contains(
+          "show",
+        )
           ? "fadeInSlideDown 0.3s ease forwards"
           : "fadeOutSlideUp 0.3s ease forwards";
         dropdownIcon.classList.toggle("rotate-icon");
@@ -54,7 +56,9 @@ document.addEventListener("DOMContentLoaded", function () {
     switch (key) {
       case "ArrowLeft":
         newTab =
-          currentTab.parentElement.previousElementSibling?.querySelector(".tab");
+          currentTab.parentElement.previousElementSibling?.querySelector(
+            ".tab",
+          );
         break;
       case "ArrowRight":
         newTab =
@@ -80,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.activateTab = function (event, tabs, tabPanels) {
     const selectedTab = event.target;
     const targetPanel = document.getElementById(
-      selectedTab.getAttribute("aria-controls")
+      selectedTab.getAttribute("aria-controls"),
     );
 
     tabPanels.forEach((panel) => {
@@ -130,12 +134,14 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Dark mode color:", darkModeColor);
 
     // Detect user preference for dark mode
-    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDarkMode = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
 
     // Set the appropriate color in the meta tag
     themeColorMetaTag.setAttribute(
       "content",
-      isDarkMode ? darkModeColor : lightModeColor
+      isDarkMode ? darkModeColor : lightModeColor,
     );
   }
 
