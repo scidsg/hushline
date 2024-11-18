@@ -17,9 +17,7 @@ function navController() {
       dropdownToggle.addEventListener("click", function (event) {
         event.preventDefault();
         dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains(
-          "show",
-        )
+        dropdownContent.style.animation = dropdownContent.classList.contains("show")
           ? "fadeInSlideDown 0.3s ease forwards"
           : "fadeOutSlideUp 0.3s ease forwards";
         dropdownIcon.classList.toggle("rotate-icon");
@@ -56,9 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
     switch (key) {
       case "ArrowLeft":
         newTab =
-          currentTab.parentElement.previousElementSibling?.querySelector(
-            ".tab",
-          );
+          currentTab.parentElement.previousElementSibling?.querySelector(".tab");
         break;
       case "ArrowRight":
         newTab =
@@ -84,7 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.activateTab = function (event, tabs, tabPanels) {
     const selectedTab = event.target;
     const targetPanel = document.getElementById(
-      selectedTab.getAttribute("aria-controls"),
+      selectedTab.getAttribute("aria-controls")
     );
 
     tabPanels.forEach((panel) => {
@@ -108,42 +104,38 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.classList.add("active");
   };
 
-  function getHexColorFromCSSVariable(variableName) {
-    // Create a temporary element
-    const tempElement = document.createElement("div");
-    tempElement.style.display = "none";
-    document.body.appendChild(tempElement);
-
-    // Apply the CSS variable as a color
-    tempElement.style.color = `var(${variableName})`;
-
-    // Get the computed color (resolved to hex)
-    const color = getComputedStyle(tempElement).color;
-
-    // Remove the temporary element
-    document.body.removeChild(tempElement);
-
-    return color;
+  function getCSSVariableValue(variableName) {
+    // Fetch the CSS variable value directly from the :root element
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(variableName)
+      .trim();
   }
 
   function updateThemeColor() {
-    const themeColorMetaTag = document.querySelector(
-      'meta[name="theme-color"]',
-    );
+    let themeColorMetaTag = document.querySelector('meta[name="theme-color"]');
 
-    // Retrieve hex values of CSS variables
-    const lightModeColor = getHexColorFromCSSVariable("--theme-color-light");
-    const darkModeColor = getHexColorFromCSSVariable("--theme-color-dark");
+    // Ensure the meta tag exists; create it if missing
+    if (!themeColorMetaTag) {
+      themeColorMetaTag = document.createElement("meta");
+      themeColorMetaTag.setAttribute("name", "theme-color");
+      document.head.appendChild(themeColorMetaTag);
+    }
 
-    // Detect if user prefers dark mode
-    const isDarkMode = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
+    // Fetch the CSS variables for light and dark mode
+    const lightModeColor = getCSSVariableValue("--theme-color-light");
+    const darkModeColor = getCSSVariableValue("--theme-color-dark");
 
-    // Set the meta tag with the appropriate color
+    // Debugging output to confirm color values
+    console.log("Light mode color:", lightModeColor);
+    console.log("Dark mode color:", darkModeColor);
+
+    // Detect user preference for dark mode
+    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    // Set the appropriate color in the meta tag
     themeColorMetaTag.setAttribute(
       "content",
-      isDarkMode ? darkModeColor : lightModeColor,
+      isDarkMode ? darkModeColor : lightModeColor
     );
   }
 
