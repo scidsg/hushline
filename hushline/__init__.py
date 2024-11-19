@@ -10,6 +10,7 @@ from werkzeug.wrappers.response import Response
 from . import admin, premium, routes, settings, storage
 from .config import AliasMode, load_config
 from .db import db, migrate
+from .md import md_to_html
 from .model import OrganizationSetting, Tier, User
 from .storage import public_store
 from .version import __version__
@@ -62,6 +63,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
 def configure_jinja(app: Flask) -> None:
     app.jinja_env.globals["hushline_version"] = __version__
     app.jinja_env.globals["AliasMode"] = AliasMode
+
+    app.jinja_env.filters["markdown"] = md_to_html
 
     if app.config.get("FLASK_ENV") == "development":
         app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")

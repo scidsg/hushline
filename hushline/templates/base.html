@@ -122,9 +122,7 @@
             <li><a href="{{ url_for('vision') }}">Vision</a></li>
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
               <li>
-                <a href="{{ url_for('inbox', username=session.username) }}"
-                  >Inbox</a
-                >
+                <a href="{{ url_for('inbox') }}">Inbox</a>
               </li>
               <li>
                 <a href="{{ url_for('profile', username=session.username) }}"

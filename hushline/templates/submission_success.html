@@ -8,7 +8,7 @@
     You should expect a response within a few days.
     You can check the status of your submissions using the following information:
   </p>
-  
+
   <p>
     <strong>Reply Address</strong><br>
     {% with reply_url = url_for('message_reply', slug=message.reply_slug, _external=True) %}
@@ -19,17 +19,17 @@
   <p>
     <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
   </p>
-  
+
   <p>
     <strong>Do not</strong> share this linkt with anyone else.
     If you do, anyone who has it can see if your message has been replied to or not.
   </p>
-  
+
   <p>
     Make sure you copy this link before closing this window or navigating to another page.
     Once you do, this link will not be displayed again.
   </p>
-  
+
   <p>
     <a class="btn" href="{{ url_for('directory') }}">Continue</a>
   </p>
