@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}{{ message.username.display_name or message.username.username }}{% endblock %}
+
+{% block content %}
+  <div class="reply-header">
+    <h1>{{ message.username.display_name or message.username.username }}</h1>
+    <div>
+      Status: {{ message.status.display_str }}
+    </div>
+  </div>
+{% endblock %}

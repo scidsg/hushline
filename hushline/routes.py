@@ -8,6 +8,7 @@ from typing import Sequence
 import pyotp
 from flask import (
     Flask,
+    abort,
     current_app,
     flash,
     redirect,
@@ -272,8 +273,35 @@ def init_app(app: Flask) -> None:
 
             do_send_email(uname.user, content_to_save)
             flash("👍 Message submitted successfully.")
+            session["reply_slug"] = new_message.reply_slug
+            return redirect(url_for("submission_success"))
 
         return redirect(url_for("profile", username=username))
+
+    @app.route("/submit/success")
+    def submission_success() -> Response | str:
+        reply_slug = session.pop("reply_slug", None)
+        if not reply_slug:
+            current_app.logger.debug(
+                "Attempted to access submission_success endpoint without a reply_slug in session"
+            )
+            return redirect(url_for("directory"))
+
+        msg = db.session.scalars(
+            db.session.query(Message).filter_by(reply_slug=reply_slug)
+        ).one_or_none()
+        if msg is None:
+            abort(404)
+
+        return render_template("submission_success.html", message=msg)
+
+    @app.route("/reply/<slug>")
+    def message_reply(slug: str) -> str:
+        msg = db.session.scalars(db.session.query(Message).filter_by(reply_slug=slug)).one_or_none()
+        if msg is None:
+            abort(404)
+
+        return render_template("reply.html", message=msg)
 
     @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:
