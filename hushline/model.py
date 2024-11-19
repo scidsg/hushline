@@ -1,13 +1,14 @@
 import enum
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence
+from datetime import date, datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence, Tuple
 
-from flask import current_app
+from flask import abort, current_app
 from flask_sqlalchemy.model import Model
+from markupsafe import Markup
 from passlib.hash import scrypt
-from sqlalchemy import JSON, Index
+from sqlalchemy import JSON, Index, UniqueConstraint, and_, text
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,10 +36,10 @@ class SMTPEncryption(enum.Enum):
 
 @enum.unique
 class MessageStatus(enum.Enum):
-    PENDING = enum.auto()
-    ACCEPTED = enum.auto()
-    DECLINED = enum.auto()
-    ARCHIVED = enum.auto()
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    ARCHIVED = "archived"
 
     @classmethod
     def default(cls) -> "MessageStatus":
@@ -48,13 +49,39 @@ class MessageStatus(enum.Enum):
     def display_str(self) -> str:
         match self:
             case self.PENDING:
-                return "Waiting for Response"
+                return "⏳ Waiting for Response"
             case self.ACCEPTED:
-                return "Accepted"
+                return "✅ Accepted"
             case self.DECLINED:
-                return "Declined"
+                return "⛔ Declined"
             case self.ARCHIVED:
-                return "Archived"
+                return "😴 Archived"
+            case x:
+                raise Exception(f"Programming error. MessageStatus {x!r} not handled")
+
+    @property
+    def default_text(self) -> Markup:
+        match self:
+            case self.PENDING:
+                return Markup.escape(
+                    "Your message has been received. Please allow 24-72 hours for a reply. You "
+                    "can check this page any time for an update. Messages expire after 30 days."
+                )
+            case self.ACCEPTED:
+                return Markup.escape(
+                    "Thank you for contacting us. We're looking more into your case. If you left "
+                    "a contact method we'll reach out to you there, too."
+                )
+            case self.DECLINED:
+                return Markup.escape(
+                    "Thank you for contacting us. Unfortunately we aren't able to move forward "
+                    "with your case. Please check the Hush Line user directory to find someone "
+                    "else who might be able to help."
+                )
+            case self.ARCHIVED:
+                return Markup.escape(
+                    "Your case has been archived. Contact us again if you need more help."
+                )
             case x:
                 raise Exception(f"Programming error. MessageStatus {x!r} not handled")
 
@@ -88,7 +115,6 @@ class OrganizationSetting(Model):
                 set_={"value": value},
             )
         )
-        db.session.commit()
 
     @classmethod
     def fetch(cls, *keys: str) -> dict[str, Any]:
@@ -436,12 +462,14 @@ class Message(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
+    created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
     username: Mapped["Username"] = relationship(uselist=False)
     reply_slug: Mapped[str] = mapped_column(index=True)
     status: Mapped[MessageStatus] = mapped_column(
         SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING
     )
+    status_changed_date: Mapped[date] = mapped_column(server_default=text("CURRENT_DATE"))
 
     def __init__(self, content: str, username_id: int) -> None:
         super().__init__(
@@ -461,6 +489,72 @@ class Message(Model):
             self._content = val
         else:
             self._content = ""
+
+    # using a plain property because the mapper/join was too complicated.
+    # a better coder than me should properly configure this in the future.
+    @property
+    def status_text(self) -> str | Markup:
+        if status_text := db.session.scalars(
+            db.select(MessageStatusText)
+            .join(User, User.id == MessageStatusText.user_id)
+            .join(Username, and_(Username.user_id == User.id, Username.id == self.username_id))
+            .join(Message, and_(Message.username_id == Username.id, Message.id == self.id))
+            .filter(MessageStatusText.status == Message.status)
+        ).one_or_none():
+            return status_text.markdown
+        else:
+            return self.status.default_text
+
+
+class MessageStatusText(Model):
+    """
+    The text representing a user's "response" (bulk applied) to a message for its current state
+    """
+
+    __tablename__ = "message_status_text"
+    __table_args__ = (UniqueConstraint("user_id", "status"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
+    status: Mapped[MessageStatus] = mapped_column(SQLAlchemyEnum(MessageStatus))
+    markdown: Mapped[str] = mapped_column()
+
+    @classmethod
+    def statuses_for_user(cls, user_id: int) -> list[Tuple[MessageStatus, Optional[Self]]]:
+        statuses = {
+            x.status: x
+            for x in db.session.scalars(
+                db.select(MessageStatusText).filter_by(user_id=user_id)
+            ).all()
+        }
+        return [(x, statuses.get(x)) for x in MessageStatus]
+
+    @classmethod
+    def upsert(cls, user_id: int, status: MessageStatus, markdown: str) -> None:
+        markdown = markdown.strip()
+        if markdown:
+            db.session.execute(
+                insert(MessageStatusText)
+                .values(user_id=user_id, status=status, markdown=markdown)
+                .on_conflict_do_update(
+                    constraint=f"uq_{cls.__tablename__}_user_id",
+                    set_={"markdown": markdown},
+                )
+            )
+        else:
+            row_count = db.session.execute(
+                db.delete(MessageStatusText).where(
+                    MessageStatusText.user_id == user_id,
+                    MessageStatusText.status == status,
+                )
+            ).rowcount
+            if row_count > 1:
+                current_app.logger.error(
+                    f"Would have deleted multiple rows for MessageStatus user_id={user_id} "
+                    f"status={status.value}"
+                )
+                db.session.rollback()
+                abort(503)
 
 
 class InviteCode(Model):

@@ -210,8 +210,7 @@ def user_password() -> str:
     return "Test-testtesttesttest-1"
 
 
-@pytest.fixture()
-def user(app: Flask, user_password: str, database: str) -> User:
+def make_user(user_password: str) -> User:
     user = User(password=user_password)
     user.tier_id = 1
     db.session.add(user)
@@ -223,6 +222,16 @@ def user(app: Flask, user_password: str, database: str) -> User:
     db.session.commit()
 
     return user
+
+
+@pytest.fixture()
+def user(app: Flask, user_password: str, database: str) -> User:
+    return make_user(user_password)
+
+
+@pytest.fixture()
+def user2(app: Flask, user_password: str, database: str) -> User:
+    return make_user(user_password)
 
 
 @pytest.fixture()
@@ -272,12 +281,21 @@ def user_alias(app: Flask, user: User) -> Username:
     return username
 
 
-@pytest.fixture()
-def message(app: Flask, user: User) -> Message:
+def make_message(user: User) -> Message:
     msg = Message(content=str(uuid4()), username_id=user.primary_username.id)
     db.session.add(msg)
     db.session.commit()
     return msg
+
+
+@pytest.fixture()
+def message(app: Flask, user: User) -> Message:
+    return make_message(user)
+
+
+@pytest.fixture()
+def message2(app: Flask, user2: User) -> Message:
+    return make_message(user2)
 
 
 @pytest.fixture()

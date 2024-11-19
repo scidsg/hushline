@@ -5,8 +5,41 @@
 {% block content %}
   <div class="reply-header">
     <h1>{{ message.username.display_name or message.username.username }}</h1>
+    Status: {{ message.status.display_str }}
+  </div>
+
+  {# status #}
+  <div class="message-container">
+    <div class="message-meta">
+      <p>
+        <strong>Received</strong><br>
+        {{ message.status_changed_date }}
+      </p>
+      <p>
+        <strong>From</strong><br>
+        <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
+      </p>
+    </div>
     <div>
-      Status: {{ message.status.display_str }}
+      <p><strong>Message</strong></p>
+      {{ message.status_text|markdown }}
+    </div>
+  </div>
+
+  {# original #}
+  <div class="message-container">
+    <div class="message-meta">
+      <p>
+        <strong>Sent</strong><br>
+        {{ message.created_at.date() }}
+      </p>
+      <p>
+        <strong>To</strong><br>
+        <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
+      </p>
+    </div>
+    <div>
+      <p><em>Your message was encrypted to the recipient and cannot be displayed here.</em></p>
     </div>
   </div>
 {% endblock %}
