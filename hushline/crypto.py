@@ -1,10 +1,15 @@
 import os
+import secrets
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from pathlib import Path
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app
 from pysequoia import Cert, encrypt
+
+with open(Path(__file__).parent / "files" / "diceware.txt") as f:
+    DICEWARE_WORDS = [x.strip() for x in f]
 
 # https://cryptography.io/en/latest/hazmat/primitives/key-derivation-functions/#scrypt
 SCRYPT_LENGTH = 32  # The desired length of the derived key in bytes.
@@ -119,3 +124,8 @@ def encrypt_message(message: str, user_pgp_key: str) -> str | None:
     except Exception as e:
         current_app.logger.error(f"Error during encryption: {e}")
         return None
+
+
+def gen_reply_slug() -> str:
+    # 4 words = 7776**4 = 51.7 bits of entropy
+    return "-".join(secrets.choice(DICEWARE_WORDS) for _ in range(4))

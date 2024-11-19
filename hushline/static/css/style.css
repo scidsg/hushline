@@ -2569,3 +2569,10 @@ h3 {
   max-width: 80px;
   max-height: 24px;
 }
+
+.reply-header {
+  display: flex;
+  flex-direction: row;
+  align-items: top;
+  justify-content: space-between;
+}

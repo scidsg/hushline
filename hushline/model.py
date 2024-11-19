@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from stripe import Event, Invoice
 
 from .config import AliasMode
-from .crypto import decrypt_field, encrypt_field
+from .crypto import decrypt_field, encrypt_field, gen_reply_slug
 from .db import db
 
 if TYPE_CHECKING:
@@ -31,6 +31,32 @@ class SMTPEncryption(enum.Enum):
     @classmethod
     def default(cls) -> "SMTPEncryption":
         return cls.StartTLS
+
+
+@enum.unique
+class MessageStatus(enum.Enum):
+    PENDING = enum.auto()
+    ACCEPTED = enum.auto()
+    DECLINED = enum.auto()
+    ARCHIVED = enum.auto()
+
+    @classmethod
+    def default(cls) -> "MessageStatus":
+        return cls.PENDING
+
+    @property
+    def display_str(self) -> str:
+        match self:
+            case self.PENDING:
+                return "Waiting for Response"
+            case self.ACCEPTED:
+                return "Accepted"
+            case self.DECLINED:
+                return "Declined"
+            case self.ARCHIVED:
+                return "Archived"
+            case x:
+                raise Exception(f"Programming error. MessageStatus {x!r} not handled")
 
 
 class OrganizationSetting(Model):
@@ -412,13 +438,16 @@ class Message(Model):
     _content: Mapped[str] = mapped_column("content", db.Text)  # Encrypted content stored here
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
     username: Mapped["Username"] = relationship(uselist=False)
+    reply_slug: Mapped[str] = mapped_column(index=True)
+    status: Mapped[MessageStatus] = mapped_column(
+        SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING
+    )
 
-    def __init__(self, content: str, **kwargs: Any) -> None:
-        if "_content" in kwargs:
-            raise ValueError("Cannot set '_content' directly. Use 'content'")
+    def __init__(self, content: str, username_id: int) -> None:
         super().__init__(
             content=content,  # type: ignore[call-arg]
-            **kwargs,
+            username_id=username_id,  # type: ignore[call-arg]
+            reply_slug=gen_reply_slug(),  # type: ignore[call-arg]
         )
 
     @property
@@ -451,8 +480,9 @@ class InviteCode(Model):
         return f"<InviteCode {self.code}>"
 
 
-# Paid tiers
 class Tier(Model):
+    """User (payment) tier"""
+
     __tablename__ = "tiers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
