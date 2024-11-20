@@ -1,30 +1,35 @@
-<div
-  id="advanced"
-  class="tab-content"
-  role="tabpanel"
-  aria-labelledby="advanced-tab"
-  hidden
->
-  {% if is_premium_enabled %}
-  <div class="adv-form">
-    <h3>Paid Features</h3>
-    <div>
-      <a href="{{ url_for('premium.index') }}">Manage my plan</a>
-    </div>
-  </div>
-  {% endif %}
+{% extends "base.html" %}
 
-  <h3>Delete Account</h3>
-  <p class="meta">
-    ⚠️ Deleting your account is a permanent action that cannot be undone!
-  </p>
-  <form
-    method="POST"
-    action="{{ url_for('settings.delete_account') }}"
-    class="formBody"
-  >
-    <button type="submit" class="btn-danger" id="deleteAccountButton">
-      Delete Account
-    </button>
-  </form>
-</div>
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+    {% if is_premium_enabled %}
+    <div class="adv-form">
+      <h3>Paid Features</h3>
+      <div>
+        <a href="{{ url_for('premium.index') }}">Manage my plan</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <h3>Delete Account</h3>
+    <p class="meta">
+      ⚠️ Deleting your account is a permanent action that cannot be undone!
+    </p>
+    <form
+      method="POST"
+      action="{{ url_for('settings.delete_account') }}"
+      class="formBody"
+    >
+      <button type="submit" class="btn-danger" id="deleteAccountButton">
+        Delete Account
+      </button>
+    </form>
+  </div>
+{% endblock %}

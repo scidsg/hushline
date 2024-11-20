@@ -2,6 +2,8 @@ import random
 import string
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
 
+from flask_wtf import FlaskForm
+
 T = TypeVar("T")
 
 
@@ -38,6 +40,10 @@ def random_optional_string(length: int) -> Optional[str]:
 
 def format_param_dict(params: Mapping[str, Any]) -> Tuple[str, str]:
     return (", ".join(params.keys()), ", ".join(f":{x}" for x in params))
+
+
+def form_to_data(form: FlaskForm) -> dict[str, Any]:
+    return {field.name: field.data for field in form}
 
 
 class Missing:

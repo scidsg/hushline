@@ -49,10 +49,12 @@ class ChangePasswordForm(FlaskForm):
             ComplexPassword(),
         ],
     )
+    submit = SubmitField("Change Password", name="change_password", widget=Button())
 
 
 class ChangeUsernameForm(FlaskForm):
-    new_username = StringField("New Username", validators=[DataRequired(), Length(min=4, max=25)])
+    new_username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+    submit = SubmitField("Change Username", name="update_display_name", widget=Button())
 
 
 class SMTPSettingsForm(FlaskForm):
@@ -74,6 +76,7 @@ class EmailForwardingForm(FlaskForm):
     email_address = StringField("Email Address", validators=[OptionalField(), Length(max=255)])
     custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[OptionalField()])
     smtp_settings = FormField(SMTPSettingsForm)
+    submit = SubmitField("Update Email Forwarding", name="update_email_forwarding", widget=Button())
 
     def validate(self, extra_validators: list | None = None) -> bool:
         if not FlaskForm.validate(self, extra_validators):
@@ -108,16 +111,6 @@ class EmailForwardingForm(FlaskForm):
                     rv = False
         return rv
 
-    def flattened_errors(self, input: Optional[dict | list] = None) -> list[str]:
-        errors = input if input else self.errors
-        if isinstance(errors, list):
-            return errors
-        ret = []
-        if isinstance(errors, dict):
-            for error in errors.values():
-                ret.extend(self.flattened_errors(error))
-        return ret
-
 
 class PGPProtonForm(FlaskForm):
     email = StringField(
@@ -133,18 +126,22 @@ class PGPProtonForm(FlaskForm):
 
 class PGPKeyForm(FlaskForm):
     pgp_key = TextAreaField("Or, Add Your Public PGP Key Manually", validators=[Length(max=100000)])
+    submit = SubmitField("Update PGP Key", name="update_pgp_key", widget=Button())
 
 
 class DisplayNameForm(FlaskForm):
-    display_name = StringField("Display Name", validators=[Length(max=100)])
+    display_name = StringField("Display Name", validators=[OptionalField(), Length(max=100)])
+    submit = SubmitField("Update Display Name", name="update_display_name", widget=Button())
 
 
 class NewAliasForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+    username = StringField("Alias Username", validators=[DataRequired(), Length(min=4, max=25)])
+    submit = SubmitField("Add Alias", name="new_alias", widget=Button())
 
 
 class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
+    submit = SubmitField("Update Visibilty", name="update_directory_visibility", widget=Button())
 
 
 def strip_whitespace(value: Optional[Any]) -> Optional[str]:
@@ -156,62 +153,65 @@ def strip_whitespace(value: Optional[Any]) -> Optional[str]:
 class ProfileForm(FlaskForm):
     bio = TextAreaField("Bio", filters=[strip_whitespace], validators=[Length(max=250)])
     extra_field_label1 = StringField(
-        "Extra Field Label 1",
+        "Label",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value1 = StringField(
-        "Extra Field Value 1",
+        "Content",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label2 = StringField(
-        "Extra Field Label 2",
+        "Label",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value2 = StringField(
-        "Extra Field Value 2",
+        "Content",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label3 = StringField(
-        "Extra Field Label 3",
+        "Label",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value3 = StringField(
-        "Extra Field Value 3",
+        "Content",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=4096)],
     )
     extra_field_label4 = StringField(
-        "Extra Field Label 4",
+        "Label",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=50)],
     )
     extra_field_value4 = StringField(
-        "Extra Field Value 4",
+        "Content",
         filters=[strip_whitespace],
         validators=[OptionalField(), Length(max=4096)],
     )
+    submit = SubmitField("Update Bio", name="update_bio", widget=Button())
 
 
 class UpdateBrandPrimaryColorForm(FlaskForm):
-    brand_primary_hex_color = StringField("Hex Color", validators=[DataRequired(), HexColor()])
+    brand_primary_hex_color = StringField("Choose Color", validators=[DataRequired(), HexColor()])
+    submit = SubmitField("Update Color", name="update_color", widget=Button())
 
 
 class UpdateBrandAppNameForm(FlaskForm):
     brand_app_name = StringField(
         "App Name", validators=[CanonicalHTML(), DataRequired(), Length(min=2, max=30)]
     )
+    submit = SubmitField("Update Name", name="update_name", widget=Button())
 
 
 class UpdateBrandLogoForm(FlaskForm):
     logo = FileField(
         "Logo (.png only)",
         validators=[
-            # NOTE: not present because the same form w/ 2 submit buttonts is used for deletions
+            # NOTE: not present because the same form w/ 2 submit buttons is used for deletions
             # FileRequired()
             FileAllowed(["png"], "Only PNG files are allowed"),
             FileSize(256 * 1000),  # 256 KB
