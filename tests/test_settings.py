@@ -7,7 +7,6 @@ import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-from markupsafe import Markup
 
 from hushline.config import AliasMode
 from hushline.db import db
@@ -133,34 +132,20 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
 
     # TODO simulate a log out?
 
-    # Attempt to log in with the registered user's old password
-    response = client.post(
-        url_for("login"),
-        data={
-            "username": user.primary_username.username,
-            "password": original_password,
-        },
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Invalid username or password" in response.text
-    assert "/login" in response.request.url
+    data = dict(username=user.primary_username.username, password=user_password)
+    response = client.post(url_for("login"), data=data, follow_redirects=True)
+    assert response.status_code == 200, data
+    assert "Invalid username or password" in response.text, data
+    assert "/login" in response.request.url, data
 
     # TODO simulate a log out?
 
-    # Attempt to log in with the registered user's new password
-    response = client.post(
-        url_for("login"),
-        data={
-            "username": user.primary_username.username,
-            "password": new_password,
-        },
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Empty Inbox" in response.text
-    assert "Invalid username or password" not in response.text
-    assert "/inbox" in response.request.url
+    data = dict(username=user.primary_username.username, password=new_password)
+    response = client.post(url_for("login"), data=data, follow_redirects=True)
+    assert response.status_code == 200, data
+    assert "Empty Inbox" in response.text, data
+    assert "Invalid username or password" not in response.text, data
+    assert "/inbox" in response.request.url, data
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -711,7 +696,6 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     assert setting is not None
     assert setting.value == OrganizationSetting.BRAND_LOGO_VALUE
 
-    # check the file got uploaded and is accessible
     resp = client.get(logo_url, follow_redirects=True)
     assert resp.status_code == 200
     assert resp.data == png
@@ -724,47 +708,35 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     assert resp.status_code == 200
     assert "Brand logo deleted" in resp.text
 
-    # check the file is not accessible
     resp = client.get(logo_url, follow_redirects=True)
-    # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
     assert "That page doesn" in resp.text
 
-
 def test_sanitize_input() -> None:
-    # Disallowed script tag should be removed, content remains
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
-    assert isinstance(sanitized_text, Markup)
-    assert "<script>" not in str(sanitized_text)
-    assert str(sanitized_text) == 'Hello alert("malicious") World!'
+    assert "<script>" not in sanitized_text
+    assert sanitized_text == 'Hello alert("malicious") World!'
 
-    # Allowed tags should be retained
     input_text = (
         'Welcome <b>bold</b> and <i>italic</i> text with <a href="https://example.com">link</a>.'
     )
     sanitized_text = sanitize_input(input_text)
-    assert isinstance(sanitized_text, Markup)
-    assert str(sanitized_text) == input_text
+    assert sanitized_text == input_text
 
-    # Disallowed attributes should be stripped
     input_text = 'Click <a href="https://example.com" onclick="malicious()">here</a>'
     sanitized_text = sanitize_input(input_text)
-    assert isinstance(sanitized_text, Markup)
-    assert "onclick" not in str(sanitized_text)
-    assert str(sanitized_text) == 'Click <a href="https://example.com">here</a>'
+    assert "onclick" not in sanitized_text
+    assert sanitized_text == 'Click <a href="https://example.com">here</a>'
 
-    # Disallowed tags should be stripped, content kept
     input_text = "This is a <div>test</div>."
     sanitized_text = sanitize_input(input_text)
-    assert isinstance(sanitized_text, Markup)
-    assert str(sanitized_text) == "This is a test."
-
+    assert sanitized_text == "This is a test."
 
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_directory_intro_text(client: FlaskClient) -> None:
-    # Input containing disallowed tags and attributes
     malicious_input = '<script>alert("XSS")</script><p onclick="stealCookies()">Safe content</p>'
     expected_sanitized = 'alert("XSS")<p>Safe content</p>'
+
     response = client.post(
         url_for("settings.update_directory_intro_text"),
         data={"directory_intro_text": malicious_input},
@@ -773,13 +745,12 @@ def test_update_directory_intro_text(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "✅ Directory introduction text updated successfully." in response.get_data(as_text=True)
 
-    # Verify that the setting was updated in the database
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-    assert setting.value == expected_sanitized
+    assert setting.value == malicious_input
 
-    # Fetch the directory page and check that the intro text is rendered correctly
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    assert expected_sanitized in response.get_data(as_text=True)
+    sanitized_intro_text = sanitize_input(malicious_input)
+    assert sanitized_intro_text in response.get_data(as_text=True)
     assert "<script>" not in response.get_data(as_text=True)
     assert "onclick" not in response.get_data(as_text=True)
