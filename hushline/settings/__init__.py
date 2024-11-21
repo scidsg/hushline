@@ -21,7 +21,6 @@ from flask import (
     session,
     url_for,
 )
-from markupsafe import Markup
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
