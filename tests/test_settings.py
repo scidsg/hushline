@@ -711,6 +711,8 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     resp = client.get(logo_url, follow_redirects=True)
     assert "That page doesn" in resp.text
 
+
+@pytest.mark.usefixtures("_authenticated_admin")
 def test_sanitize_input() -> None:
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
@@ -732,10 +734,10 @@ def test_sanitize_input() -> None:
     sanitized_text = sanitize_input(input_text)
     assert sanitized_text == "This is a test."
 
+
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_directory_intro_text(client: FlaskClient) -> None:
     malicious_input = '<script>alert("XSS")</script><p onclick="stealCookies()">Safe content</p>'
-    expected_sanitized = 'alert("XSS")<p>Safe content</p>'
 
     response = client.post(
         url_for("settings.update_directory_intro_text"),
@@ -746,7 +748,7 @@ def test_update_directory_intro_text(client: FlaskClient) -> None:
     assert "✅ Directory introduction text updated successfully." in response.get_data(as_text=True)
 
     setting = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO)
-    assert setting.value == malicious_input
+    assert setting.value == malicious_input  # Raw input is stored
 
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
