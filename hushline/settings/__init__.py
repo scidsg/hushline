@@ -61,13 +61,12 @@ from .forms import (
 
 
 def sanitize_input(input_text: str) -> str:
-    sanitized_html = clean(
+    return clean(
         input_text,
         tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
         attributes={"a": ["href"]},
         strip=True,
     )
-    return sanitized_html
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
