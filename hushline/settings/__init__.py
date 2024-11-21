@@ -61,14 +61,14 @@ from .forms import (
 )
 
 
-def sanitize_input(input_text: str) -> Markup:
+def sanitize_input(input_text: str) -> str:
     sanitized_html = clean(
         input_text,
         tags=["b", "i", "u", "em", "strong", "p", "br", "a"],
         attributes={"a": ["href"]},
         strip=True,
     )
-    return Markup(sanitized_html)
+    return sanitized_html
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
@@ -804,12 +804,11 @@ def create_blueprint() -> Blueprint:
         form = UpdateDirectoryIntroTextForm()
         if form.validate_on_submit():
             raw_intro_text = form.directory_intro_text.data
-            sanitized_intro_text = sanitize_input(raw_intro_text)
 
-            # Store the string representation in the database
+            # Store the raw input in the database without sanitizing
             OrganizationSetting.upsert(
                 key=OrganizationSetting.DIRECTORY_INTRO,
-                value=str(sanitized_intro_text),  # Convert Markup to string
+                value=raw_intro_text,
             )
             db.session.commit()
 
