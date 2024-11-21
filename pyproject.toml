@@ -102,3 +102,5 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 warn_unused_configs = true
 exclude = "^migrations/env\\.py$"
+explicit_package_bases = false
+no_namespace_packages = true

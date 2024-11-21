@@ -1,29 +1,27 @@
 {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
-<div class="settings-tabs {% if user.is_admin %}is-admin{% endif %}">
+<div class="settings-tabs">
   <ul class="tab-list" role="tablist">
     {% with buttons = [
-      ('profile', 'Profile', False, False),
-      ('aliases', 'Aliases', False, True),
-      ('auth', 'Authentication', False, False),
-      ('email', 'Email & Encryption', False, False),
-      ('branding', 'Branding', True, False),
-      ('advanced', 'Advanced', False, False),
-      ('admin', 'Admin', True, False)
+      ('settings.profile', 'Profile', True),
+      ('settings.aliases', 'Aliases', aliases_enabled),
+      ('settings.auth', 'Authentication', True),
+      ('settings.email', 'Email & Encryption', True),
+      ('settings.branding', 'Branding', user.is_admin),
+      ('settings.advanced', 'Advanced', True),
+      ('settings.admin', 'Admin', user.is_admin)
     ] %}
-      {% for (id, display, requires_admin, requires_paying_customer) in buttons %}
-        {% if (not requires_admin or user.is_admin) and (not requires_paying_customer or aliases_enabled) %}
+      {% for (endpoint, display_name, show) in buttons %}
+        {% if show %}
           <li role="presentation">
-            <button
+            <a
               type="button"
-              class="tab{% if loop.first %} active{% endif %}{% if requires_admin %} admin-only{% endif %}"
-              data-tab="{{ id }}"
+              class="tab{% if endpoint == request.endpoint %} active{% endif %}"
               role="tab"
               aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
-              aria-controls="{{ id }}"
-              id="{{ id }}-tab"
+              href="{{ url_for(endpoint) }}"
             >
-              {{ display }}
-            </button>
+              {{ display_name }}
+            </a>
           </li>
         {% endif %}
       {% endfor %}

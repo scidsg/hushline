@@ -145,6 +145,33 @@ document.addEventListener("DOMContentLoaded", function () {
     handleSearchInput();
   });
 
+  window.activateTab = function (event, tabs, tabPanels) {
+    const selectedTab = event.target;
+    const targetPanel = document.getElementById(
+      selectedTab.getAttribute("aria-controls"),
+    );
+
+    tabPanels.forEach((panel) => {
+      panel.hidden = true;
+      panel.style.display = "none";
+      panel.classList.remove("active");
+    });
+
+    tabs.forEach((tab) => {
+      tab.setAttribute("aria-selected", "false");
+      tab.classList.remove("active");
+      const panel = document.getElementById(tab.getAttribute("aria-controls"));
+      panel.hidden = true;
+      panel.style.display = "none";
+    });
+
+    selectedTab.setAttribute("aria-selected", "true");
+    selectedTab.classList.add("active");
+    targetPanel.hidden = false;
+    targetPanel.style.display = "block";
+    targetPanel.classList.add("active");
+  };
+
   tabs.forEach((tab) => {
     tab.addEventListener("click", function (e) {
       window.activateTab(e, tabs, tabPanels);

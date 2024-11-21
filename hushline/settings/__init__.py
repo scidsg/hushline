@@ -2,7 +2,7 @@ import asyncio
 import base64
 import io
 from hmac import compare_digest as bytes_are_equal
-from typing import Optional
+from typing import Optional, Tuple
 
 import aiohttp
 import pyotp
@@ -40,6 +40,7 @@ from ..model import (
     Username,
 )
 from ..storage import public_store
+from ..utils import redirect_to_self
 from .forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -55,6 +56,10 @@ from .forms import (
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
 )
+
+
+def form_error() -> None:
+    flash("Your submitted form could not be processed.")
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
@@ -106,7 +111,7 @@ async def verify_url(
         setattr(username, f"extra_field_verified{i}", False)
 
 
-async def handle_update_bio(username: Username, form: ProfileForm, redirect_url: str) -> Response:
+async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     username.bio = form.bio.data.strip()
 
     # Define base_url from the environment or config
@@ -139,22 +144,18 @@ async def handle_update_bio(username: Username, form: ProfileForm, redirect_url:
 
     db.session.commit()
     flash("👍 Bio and fields updated successfully.")
-    return redirect(redirect_url)
+    return redirect_to_self()
 
 
-def handle_update_directory_visibility(
-    user: Username, form: DirectoryVisibilityForm, redirect_url: str
-) -> Response:
+def handle_update_directory_visibility(user: Username, form: DirectoryVisibilityForm) -> Response:
     user.show_in_directory = form.show_in_directory.data
     db.session.commit()
     flash("👍 Directory visibility updated successfully.")
-    return redirect(redirect_url)
+    return redirect_to_self()
 
 
-def handle_display_name_form(
-    username: Username, form: DisplayNameForm, redirect_url: str
-) -> Response:
-    username.display_name = form.display_name.data.strip()
+def handle_display_name_form(username: Username, form: DisplayNameForm) -> Response:
+    username.display_name = (form.display_name.data or "").strip() or None
     db.session.commit()
 
     flash("👍 Display name updated successfully.")
@@ -162,12 +163,10 @@ def handle_display_name_form(
         f"Display name updated to {username.display_name}, "
         f"Verification status: {username.is_verified}"
     )
-    return redirect(redirect_url)
+    return redirect_to_self()
 
 
-def handle_change_username_form(
-    username: Username, form: ChangeUsernameForm, redirect_url: str
-) -> Response:
+def handle_change_username_form(username: Username, form: ChangeUsernameForm) -> Response:
     new_username = form.new_username.data
 
     # TODO a better pattern would be to try to commit, catch the exception, and match
@@ -184,12 +183,10 @@ def handle_change_username_form(
             f"Username updated to {username.username}, "
             f"Verification status: {username.is_verified}"
         )
-    return redirect(redirect_url)
+    return redirect_to_self()
 
 
-def handle_new_alias_form(
-    user: User, new_alias_form: NewAliasForm, redirect_url: str
-) -> Optional[Response]:
+def handle_new_alias_form(user: User, new_alias_form: NewAliasForm) -> Optional[Response]:
     current_app.logger.debug(f"Attempting to create alias for user_id={user.id}")
 
     count = db.session.scalar(
@@ -217,101 +214,137 @@ def handle_new_alias_form(
         return None
     else:
         flash("👍 Alias created successfully.")
-    return redirect(redirect_url)
+    return redirect_to_self()
+
+
+def handle_change_password_form(
+    user: User, change_password_form: ChangePasswordForm
+) -> Optional[Response]:
+    if not user.check_password(change_password_form.old_password.data):
+        change_password_form.old_password.errors.append("Incorrect old password.")
+        return None
+
+    # SECURITY: only check equality after successful old password check
+    if bytes_are_equal(
+        change_password_form.old_password.data.encode(),
+        change_password_form.new_password.data.encode(),
+    ):
+        change_password_form.new_password.errors.append("Cannot choose a repeat password.")
+        return None
+
+    user.password_hash = change_password_form.new_password.data
+    db.session.commit()
+    session.clear()
+    flash("👍 Password successfully changed. Please log in again.", "success")
+    return redirect(url_for("login"))
+
+
+def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
+    if not (pgp_key := (form.pgp_key.data or "").strip()):
+        user.pgp_key = None
+        user.email = None
+        db.session.commit()
+    elif is_valid_pgp_key(pgp_key):
+        user.pgp_key = pgp_key
+        db.session.commit()
+    else:
+        flash("⛔️ Invalid PGP key format or import failed.")
+        return redirect(url_for(".email"))
+
+    flash("👍 PGP key updated successfully.")
+    return redirect(url_for(".email"))
+
+
+def handle_email_forwarding_form(
+    user: User, form: EmailForwardingForm, default_forwarding_enabled: bool
+) -> Optional[Response]:
+    if form.email_address.data and not user.pgp_key:
+        flash("⛔️ Email forwarding requires a configured PGP key")
+        return None
+
+    forwarding_enabled = form.forwarding_enabled.data
+    custom_smtp_settings = forwarding_enabled and (
+        form.custom_smtp_settings.data or not default_forwarding_enabled
+    )
+
+    if custom_smtp_settings:
+        try:
+            smtp_config = create_smtp_config(
+                form.smtp_settings.smtp_username.data,
+                form.smtp_settings.smtp_server.data,
+                form.smtp_settings.smtp_port.data,
+                form.smtp_settings.smtp_password.data or user.smtp_password or "",
+                form.smtp_settings.smtp_sender.data,
+                encryption=SMTPEncryption[form.smtp_settings.smtp_encryption.data],
+            )
+            with smtp_config.smtp_login():
+                pass
+        except Exception as e:
+            current_app.logger.debug(e)
+            flash("⛔️ Unable to validate SMTP connection settings")
+            return None
+
+    user.email = form.email_address.data if forwarding_enabled else None
+    user.smtp_server = form.smtp_settings.smtp_server.data if custom_smtp_settings else None
+    user.smtp_port = form.smtp_settings.smtp_port.data if custom_smtp_settings else None
+    user.smtp_username = form.smtp_settings.smtp_username.data if custom_smtp_settings else None
+
+    # Since passwords aren't pre-populated in the form, don't unset it if not provided
+    user.smtp_password = (
+        form.smtp_settings.smtp_password.data
+        if custom_smtp_settings and form.smtp_settings.smtp_password.data
+        else user.smtp_password
+    )
+    user.smtp_sender = (
+        form.smtp_settings.smtp_sender.data
+        if custom_smtp_settings and form.smtp_settings.smtp_sender.data
+        else None
+    )
+    user.smtp_encryption = (
+        form.smtp_settings.smtp_encryption.data
+        if custom_smtp_settings
+        else SMTPEncryption.default()
+    )
+
+    db.session.commit()
+    flash("👍 SMTP settings updated successfully")
+    return redirect_to_self()
 
 
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
     @authentication_required
-    @bp.route("/", methods=["GET", "POST"])
-    async def index() -> str | Response:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
+    @bp.route("/profile", methods=["GET", "POST"])
+    async def profile() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        username = user.primary_username
 
-        user = db.session.get(User, user_id)
-        if not user:
-            flash("🫥 User not found.")
-            return redirect(url_for("login"))
+        # hush, mypy.
+        if username is None:
+            raise Exception("Username was unexpectedly none")
 
+        display_name_form = DisplayNameForm(display_name=username.display_name)
         directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=user.primary_username.show_in_directory
+            show_in_directory=username.show_in_directory
         )
-        change_password_form = ChangePasswordForm()
-        change_username_form = ChangeUsernameForm()
-        pgp_proton_form = PGPProtonForm()
-        pgp_key_form = PGPKeyForm()
-        email_forwarding_form = EmailForwardingForm()
-        display_name_form = DisplayNameForm()
-        directory_visibility_form = DirectoryVisibilityForm()
-        new_alias_form = NewAliasForm()
-        profile_form = ProfileForm()
+        profile_form = ProfileForm(obj=user)
 
+        status_code = 200
         if request.method == "POST":
-            if "update_bio" in request.form and profile_form.validate_on_submit():
-                return await handle_update_bio(
-                    user.primary_username, profile_form, url_for(".index")
-                )
+            if display_name_form.submit.name in request.form and display_name_form.validate():
+                return handle_display_name_form(username, display_name_form)
             elif (
-                "update_directory_visibility" in request.form
-                and directory_visibility_form.validate_on_submit()
+                directory_visibility_form.submit.name in request.form
+                and directory_visibility_form.validate()
             ):
-                return handle_update_directory_visibility(
-                    user.primary_username, directory_visibility_form, url_for(".index")
-                )
-            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
-                return handle_display_name_form(
-                    user.primary_username, display_name_form, url_for(".index")
-                )
-            elif "change_username" in request.form and change_username_form.validate_on_submit():
-                return handle_change_username_form(
-                    user.primary_username, change_username_form, url_for(".index")
-                )
-            elif (
-                "new_alias" in request.form
-                and new_alias_form.validate_on_submit()
-                and (resp := handle_new_alias_form(user, new_alias_form, url_for(".index")))
-            ):
-                return resp
+                return handle_update_directory_visibility(username, directory_visibility_form)
+            elif profile_form.submit.name in request.form and profile_form.validate():
+                return await handle_update_bio(username, profile_form)
             else:
-                current_app.logger.error(
-                    f"Unable to handle form submission on endpoint {request.endpoint!r}, "
-                    f"form fields: {request.form.keys()}"
-                )
-                flash("Uh oh. There was an error handling your data. Please notify the admin.")
+                form_error()
+                status_code = 400
 
-        aliases = db.session.scalars(
-            db.select(Username)
-            .filter_by(is_primary=False, user_id=user.id)
-            .order_by(db.func.coalesce(Username._display_name, Username._username))
-        ).all()
-        # Additional admin-specific data initialization
-        user_count = two_fa_count = pgp_key_count = two_fa_percentage = pgp_key_percentage = None
-        all_users: list[User] = []
-
-        # Check if user is admin and add admin-specific data
-        if user.is_admin:
-            all_users = list(
-                db.session.scalars(
-                    db.select(User).join(Username).order_by(Username._username)
-                ).all()
-            )
-            user_count = len(all_users)
-            two_fa_count = db.session.scalar(
-                db.select(db.func.count(User.id).filter(User._totp_secret.isnot(None)))
-            )
-            pgp_key_count = db.session.scalar(
-                db.select(
-                    db.func.count(User.id)
-                    .filter(User._pgp_key.isnot(None))
-                    .filter(User._pgp_key != "")
-                )
-            )
-            two_fa_percentage = (two_fa_count / user_count * 100) if user_count else 0
-            pgp_key_percentage = (pgp_key_count / user_count * 100) if user_count else 0
-
-        # Load the business tier price
         business_tier = Tier.business_tier()
         business_tier_display_price = ""
         if business_tier:
@@ -321,51 +354,218 @@ def create_blueprint() -> Blueprint:
             else:
                 business_tier_display_price = f"{price_usd:.2f}"
 
-        # Prepopulate form fields
-        email_forwarding_form.forwarding_enabled.data = user.email is not None
-        if not user.pgp_key:
-            set_input_disabled(email_forwarding_form.forwarding_enabled)
-        email_forwarding_form.email_address.data = user.email
-        email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
-        email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
-        email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
-        email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
-        email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption.value
-        email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
-        pgp_key_form.pgp_key.data = user.pgp_key
-        display_name_form.display_name.data = (
-            user.primary_username.display_name or user.primary_username.username
-        )
-        directory_visibility_form.show_in_directory.data = user.primary_username.show_in_directory
+        return render_template(
+            "settings/profile.html",
+            username=username,
+            display_name_form=display_name_form,
+            directory_visibility_form=directory_visibility_form,
+            profile_form=profile_form,
+            business_tier_display_price=business_tier_display_price,
+        ), status_code
+
+    @authentication_required
+    @bp.route("/aliases", methods=["GET", "POST"])
+    def aliases() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        new_alias_form = NewAliasForm()
+
+        status_code = 200
+        if request.method == "POST":
+            if new_alias_form.validate() and (resp := handle_new_alias_form(user, new_alias_form)):
+                return resp
+            else:
+                form_error()
+                status_code = 400
+
+        aliases = db.session.scalars(
+            db.select(Username)
+            .filter_by(is_primary=False, user_id=user.id)
+            .order_by(db.func.coalesce(Username._display_name, Username._username))
+        ).all()
 
         return render_template(
-            "settings/index.html",
+            "settings/aliases.html",
             user=user,
-            all_users=all_users,
-            update_brand_primary_color_form=UpdateBrandPrimaryColorForm(),
-            update_brand_app_name_form=UpdateBrandAppNameForm(),
-            update_brand_logo_form=UpdateBrandLogoForm(),
-            delete_brand_logo_form=DeleteBrandLogoForm(),
-            email_forwarding_form=email_forwarding_form,
-            change_password_form=change_password_form,
+            aliases=aliases,
+            new_alias_form=new_alias_form,
+        ), status_code
+
+    @authentication_required
+    @bp.route("/auth", methods=["GET", "POST"])
+    def auth() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        change_username_form = ChangeUsernameForm()
+        change_password_form = ChangePasswordForm()
+
+        status_code = 200
+        if request.method == "POST":
+            if change_username_form.submit.name in request.form and change_username_form.validate():
+                return handle_change_username_form(user.primary_username, change_username_form)
+            elif (
+                change_password_form.submit.name in request.form
+                and change_password_form.validate()
+                and (resp := handle_change_password_form(user, change_password_form))
+            ):
+                return resp
+            else:
+                form_error()
+                status_code = 400
+
+        return render_template(
+            "settings/auth.html",
+            user=user,
             change_username_form=change_username_form,
+            change_password_form=change_password_form,
+        ), status_code
+
+    @authentication_required
+    @bp.route("/email", methods=["GET", "POST"])
+    def email() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
+
+        pgp_proton_form = PGPProtonForm()
+        pgp_key_form = PGPKeyForm(pgp_key=user.pgp_key)
+
+        email_forwarding_form = EmailForwardingForm(
+            data=dict(
+                email_address=user.email,
+                custom_smtp_settings=user.smtp_server or None,
+            )
+        )
+
+        status_code = 200
+        if request.method == "POST":
+            if pgp_key_form.submit.name in request.form and pgp_key_form.validate():
+                return handle_pgp_key_form(user, pgp_key_form)
+            elif (
+                email_forwarding_form.submit.name in request.form
+                and email_forwarding_form.validate()
+                and (
+                    resp := handle_email_forwarding_form(
+                        user, email_forwarding_form, default_forwarding_enabled
+                    )
+                )
+            ):
+                return resp
+            else:
+                form_error()
+                status_code = 400
+        else:
+            # we have to manually populate this because of subforms.
+            # only when request isn't a POST so that failed submissions can be easily recreated
+            email_forwarding_form.forwarding_enabled.data = user.email is not None
+            if not user.pgp_key:
+                set_input_disabled(email_forwarding_form.forwarding_enabled)
+            email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
+            email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
+            email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
+            email_forwarding_form.smtp_settings.smtp_username.data = user.smtp_username
+            email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption.value
+            email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
+
+        return render_template(
+            "settings/email.html",
             pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
-            display_name_form=display_name_form,
-            profile_form=profile_form,
-            new_alias_form=new_alias_form,
-            aliases=aliases,
-            # Admin-specific data passed to the template
-            is_admin=user.is_admin,
+            email_forwarding_form=email_forwarding_form,
+            default_forwarding_enabled=default_forwarding_enabled,
+        ), status_code
+
+    @admin_authentication_required
+    @bp.route("/branding", methods=["GET", "POST"])
+    def branding() -> Tuple[str, int]:
+        update_brand_logo_form = UpdateBrandLogoForm()
+        delete_brand_logo_form = DeleteBrandLogoForm()
+        update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
+        update_brand_app_name_form = UpdateBrandAppNameForm()
+
+        status_code = 200
+        if request.method == "POST":
+            if (
+                update_brand_logo_form.submit.name in request.form
+                and update_brand_logo_form.validate()
+            ):
+                public_store.put(
+                    OrganizationSetting.BRAND_LOGO_VALUE, update_brand_logo_form.logo.data
+                )
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_LOGO,
+                    value=OrganizationSetting.BRAND_LOGO_VALUE,
+                )
+                flash("👍 Brand logo updated successfully.")
+            elif (
+                delete_brand_logo_form.submit.name in request.form
+                and delete_brand_logo_form.validate()
+            ):
+                row_count = db.session.execute(
+                    db.delete(OrganizationSetting).where(
+                        OrganizationSetting.key == OrganizationSetting.BRAND_LOGO
+                    )
+                ).rowcount
+                if row_count > 1:
+                    current_app.logger.error(
+                        "Would have deleted multiple rows for OrganizationSetting key="
+                        + OrganizationSetting.BRAND_LOGO
+                    )
+                    db.session.rollback()
+                    abort(503)
+                db.session.commit()
+                public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
+                flash("👍 Brand logo deleted.")
+            elif (
+                update_brand_primary_color_form.submit.name in request.form
+                and update_brand_primary_color_form.validate()
+            ):
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_PRIMARY_COLOR,
+                    value=update_brand_primary_color_form.brand_primary_hex_color.data,
+                )
+                flash("👍 Brand primary color updated successfully.")
+            elif (
+                update_brand_app_name_form.submit.name in request.form
+                and update_brand_app_name_form.validate()
+            ):
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_NAME,
+                    value=update_brand_app_name_form.brand_app_name.data,
+                )
+                flash("👍 Brand app name updated successfully.")
+            else:
+                form_error()
+                status_code = 400
+
+        return render_template(
+            "settings/branding.html",
+            update_brand_logo_form=update_brand_logo_form,
+            delete_brand_logo_form=delete_brand_logo_form,
+            update_brand_primary_color_form=update_brand_primary_color_form,
+            update_brand_app_name_form=update_brand_app_name_form,
+        ), status_code
+
+    @authentication_required
+    @bp.route("/advanced")
+    def advanced() -> str:
+        return render_template("settings/advanced.html")
+
+    @admin_authentication_required
+    @bp.route("/admin")
+    def admin() -> str:
+        all_users = list(
+            db.session.scalars(db.select(User).join(Username).order_by(Username._username)).all()
+        )
+        user_count = len(all_users)
+        two_fa_count = sum(1 for _ in filter(lambda x: x._totp_secret, all_users))
+        pgp_key_count = sum(1 for _ in filter(lambda x: x._pgp_key, all_users))
+
+        return render_template(
+            "settings/admin.html",
+            all_users=all_users,
             user_count=user_count,
             two_fa_count=two_fa_count,
             pgp_key_count=pgp_key_count,
-            two_fa_percentage=two_fa_percentage,
-            pgp_key_percentage=pgp_key_percentage,
-            directory_visibility_form=directory_visibility_form,
-            default_forwarding_enabled=bool(current_app.config.get("NOTIFICATIONS_ADDRESS")),
-            # Premium-specific data
-            business_tier_display_price=business_tier_display_price,
+            two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
+            pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
         )
 
     @bp.route("/toggle-2fa", methods=["POST"])
@@ -380,42 +580,6 @@ def create_blueprint() -> Blueprint:
             return redirect(url_for(".disable_2fa"))
 
         return redirect(url_for(".enable_2fa"))
-
-    @bp.route("/change-password", methods=["POST"])
-    @authentication_required
-    def change_password() -> str | Response:
-        user_id = session.get("user_id")
-        if not user_id:
-            flash("Session expired, please log in again.", "info")
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
-        if not user:
-            flash("User not found.", "error")
-            return redirect(url_for("login"))
-
-        change_password_form = ChangePasswordForm(request.form)
-        if not change_password_form.validate_on_submit():
-            flash("⛔️ Invalid form data. Please try again.", "error")
-            return redirect(url_for("settings.index"))
-
-        if not user.check_password(change_password_form.old_password.data):
-            flash("⛔️ Incorrect old password.", "error")
-            return redirect(url_for("settings.index"))
-
-        # SECURITY: only check equality after successful old password check
-        if bytes_are_equal(
-            change_password_form.old_password.data.encode(),
-            change_password_form.new_password.data.encode(),
-        ):
-            flash("⛔️ Cannot choose a repeat password.", "error")
-            return redirect(url_for("settings.index"))
-
-        user.password_hash = change_password_form.new_password.data
-        db.session.commit()
-        session.clear()
-        flash("👍 Password successfully changed. Please log in again.", "success")
-        return redirect(url_for("login"))
 
     @bp.route("/enable-2fa", methods=["GET", "POST"])
     @authentication_required
@@ -505,16 +669,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/update_pgp_key_proton", methods=["POST"])
     @authentication_required
     def update_pgp_key_proton() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            flash("⛔️ User not authenticated.")
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
-        if not user:
-            session.clear()
-            return redirect(url_for("login"))
-
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         form = PGPProtonForm()
 
         if not form.validate_on_submit():
@@ -525,203 +680,30 @@ def create_blueprint() -> Blueprint:
 
         # Try to fetch the PGP key from ProtonMail
         try:
-            r = requests.get(
-                f"https://mail-api.proton.me/pks/lookup?op=get&search={email}", timeout=5
+            resp = requests.get(
+                # TODO email needs to be URL escaped
+                f"https://mail-api.proton.me/pks/lookup?op=get&search={email}",
+                timeout=5,
             )
         except requests.exceptions.RequestException as e:
             current_app.logger.error(f"Error fetching PGP key from Proton Mail: {e}")
             flash("⛔️ Error fetching PGP key from Proton Mail.")
-            return redirect(url_for(".index"))
-        if r.status_code == 200:  # noqa: PLR2004
-            pgp_key = r.text
+            return redirect(url_for(".email"))
+
+        if resp.status_code == 200:  # noqa: PLR2004
+            pgp_key = resp.text
             if is_valid_pgp_key(pgp_key):
                 user.pgp_key = pgp_key
+                db.session.commit()
             else:
                 flash("⛔️ No PGP key found for the email address.")
-                return redirect(url_for(".index"))
+                return redirect(url_for(".email"))
         else:
             flash("⛔️ This isn't a Proton Mail email address.")
-            return redirect(url_for(".index"))
+            return redirect(url_for(".email"))
 
-        db.session.commit()
         flash("👍 PGP key updated successfully.")
-        return redirect(url_for(".index"))
-
-    @bp.route("/update-pgp-key", methods=["POST"])
-    @authentication_required
-    def update_pgp_key() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            flash("⛔️ User not authenticated.")
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
-        if not user:
-            session.clear()
-            return redirect(url_for("login"))
-
-        form = PGPKeyForm()
-        if form.validate_on_submit():
-            pgp_key = form.pgp_key.data
-
-            if pgp_key is None or pgp_key.strip() == "":
-                # If the field is empty, remove the PGP key
-                user.pgp_key = None
-                user.email = None  # remove the forwarding email if the PGP key is removed
-            elif is_valid_pgp_key(pgp_key):
-                # If the field is not empty and the key is valid, update the PGP key
-                user.pgp_key = pgp_key
-            else:
-                # If the PGP key is invalid
-                flash("⛔️ Invalid PGP key format or import failed.")
-                return redirect(url_for(".index"))
-
-            db.session.commit()
-            flash("👍 PGP key updated successfully.")
-            return redirect(url_for(".index"))
-
-        return redirect(url_for(".index"))
-
-    @bp.route("/update-smtp-settings", methods=["POST"])
-    @authentication_required
-    def update_smtp_settings() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
-        if not user:
-            flash("⛔️ User not found")
-            return redirect(url_for(".index"))
-
-        email_forwarding_form = EmailForwardingForm()
-        default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS", False))
-
-        # Handling SMTP settings form submission
-        if not email_forwarding_form.validate_on_submit():
-            flash(email_forwarding_form.flattened_errors().pop(0))
-            return redirect(url_for(".index"))
-        elif email_forwarding_form.email_address.data and not user.pgp_key:
-            flash("⛔️ Email forwarding requires a configured PGP key")
-            return redirect(url_for(".index"))
-
-        # Updating SMTP settings from form data
-        forwarding_enabled = email_forwarding_form.forwarding_enabled.data
-        custom_smtp_settings = forwarding_enabled and (
-            email_forwarding_form.custom_smtp_settings.data or not default_forwarding_enabled
-        )
-        if custom_smtp_settings:
-            try:
-                smtp_config = create_smtp_config(
-                    email_forwarding_form.smtp_settings.smtp_username.data,
-                    email_forwarding_form.smtp_settings.smtp_server.data,
-                    email_forwarding_form.smtp_settings.smtp_port.data,
-                    email_forwarding_form.smtp_settings.smtp_password.data
-                    or user.smtp_password
-                    or "",
-                    email_forwarding_form.smtp_settings.smtp_sender.data,
-                    encryption=SMTPEncryption[
-                        email_forwarding_form.smtp_settings.smtp_encryption.data
-                    ],
-                )
-                with smtp_config.smtp_login():
-                    pass
-            except Exception as e:
-                current_app.logger.debug(e)
-                flash("⛔️ Unable to validate SMTP connection settings")
-                return redirect(url_for(".index"))
-        user.email = email_forwarding_form.email_address.data if forwarding_enabled else None
-        user.smtp_server = (
-            email_forwarding_form.smtp_settings.smtp_server.data if custom_smtp_settings else None
-        )
-        user.smtp_port = (
-            email_forwarding_form.smtp_settings.smtp_port.data if custom_smtp_settings else None
-        )
-        user.smtp_username = (
-            email_forwarding_form.smtp_settings.smtp_username.data if custom_smtp_settings else None
-        )
-        # Since passwords aren't pre-populated in the form, don't unset it if not provided
-        user.smtp_password = (
-            email_forwarding_form.smtp_settings.smtp_password.data
-            if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_password.data
-            else user.smtp_password
-        )
-        user.smtp_sender = (
-            email_forwarding_form.smtp_settings.smtp_sender.data
-            if custom_smtp_settings and email_forwarding_form.smtp_settings.smtp_sender.data
-            else None
-        )
-        user.smtp_encryption = (
-            email_forwarding_form.smtp_settings.smtp_encryption.data
-            if custom_smtp_settings
-            else SMTPEncryption.default()
-        )
-
-        db.session.commit()
-        flash("👍 SMTP settings updated successfully")
-        return redirect(url_for(".index"))
-
-    @bp.route("/update-brand-primary-color", methods=["POST"])
-    @admin_authentication_required
-    def update_brand_primary_color() -> Response | str:
-        form = UpdateBrandPrimaryColorForm()
-        if form.validate_on_submit():
-            OrganizationSetting.upsert(
-                key=OrganizationSetting.BRAND_PRIMARY_COLOR, value=form.brand_primary_hex_color.data
-            )
-            flash("👍 Brand primary color updated successfully.")
-            return redirect(url_for(".index"))
-
-        flash("⛔ Invalid form data. Please try again.")
-        return redirect(url_for(".index"))
-
-    @bp.route("/update-brand-app-name", methods=["POST"])
-    @admin_authentication_required
-    def update_brand_app_name() -> Response | str:
-        form = UpdateBrandAppNameForm()
-        if form.validate_on_submit():
-            OrganizationSetting.upsert(
-                key=OrganizationSetting.BRAND_NAME, value=form.brand_app_name.data
-            )
-            flash("👍 Brand app name updated successfully.")
-            return redirect(url_for(".index"))
-
-        flash("⛔ Invalid form data. Please try again.")
-        return redirect(url_for(".index"))
-
-    @bp.route("/update-brand-logo", methods=["POST"])
-    @admin_authentication_required
-    def update_brand_logo() -> Response | str:
-        update_form = UpdateBrandLogoForm()
-        delete_form = DeleteBrandLogoForm()
-        if update_form.validate_on_submit() and update_form.logo.data:
-            public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, update_form.logo.data)
-            OrganizationSetting.upsert(
-                key=OrganizationSetting.BRAND_LOGO,
-                value=OrganizationSetting.BRAND_LOGO_VALUE,
-            )
-            flash("👍 Brand logo updated successfully.")
-        elif delete_form.validate_on_submit():
-            row_count = db.session.execute(
-                db.delete(OrganizationSetting).where(
-                    OrganizationSetting.key == OrganizationSetting.BRAND_LOGO
-                )
-            ).rowcount
-            if row_count > 1:
-                current_app.logger.error(
-                    "Would have deleted multiple rows for OrganizationSetting key="
-                    + OrganizationSetting.BRAND_LOGO
-                )
-                db.session.rollback()
-                abort(503)
-            db.session.commit()
-
-            public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
-
-            flash("👍 Brand logo deleted.")
-        else:
-            flash("⛔ Invalid form data. Please try again.")
-        return redirect(url_for(".index"))
+        return redirect(url_for(".email"))
 
     @bp.route("/delete-account", methods=["POST"])
     @authentication_required
@@ -770,20 +752,14 @@ def create_blueprint() -> Blueprint:
 
         if request.method == "POST":
             if "update_bio" in request.form and profile_form.validate_on_submit():
-                return await handle_update_bio(
-                    alias, profile_form, url_for(".alias", username_id=username_id)
-                )
+                return await handle_update_bio(alias, profile_form)
             elif (
                 "update_directory_visibility" in request.form
                 and directory_visibility_form.validate_on_submit()
             ):
-                return handle_update_directory_visibility(
-                    alias, directory_visibility_form, url_for(".alias", username_id=username_id)
-                )
+                return handle_update_directory_visibility(alias, directory_visibility_form)
             elif "update_display_name" in request.form and display_name_form.validate_on_submit():
-                return handle_display_name_form(
-                    alias, display_name_form, url_for(".alias", username_id=username_id)
-                )
+                return handle_display_name_form(alias, display_name_form)
             else:
                 current_app.logger.error(
                     f"Unable to handle form submission on endpoint {request.endpoint!r}, "

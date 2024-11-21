@@ -4,7 +4,7 @@
   --color-border: rgba(0, 0, 0, 0.18);
   --color-border-dark: #787878;
   --color-border-dark-1: #505050;
-  --color-brand: oklch(48.55% 0.222 304.47); /* #7d25c1 */
+  --color-brand: oklch(48.55% 0.222 304.47);
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
   );
@@ -29,20 +29,17 @@
   --color-text-dark-alt: #c4c4c4;
   --color-text-dark: #dcdcdc;
   --color-text-light: #595959;
-  --color-highlight: oklch(
-    /* rgba(125, 37, 193, 0.1) */ from var(--color-brand) l c h / 0.1
-  );
+  --color-highlight: oklch(from var(--color-brand) l c h / 0.1);
   --color-highlight-dark: oklch(
-    /* rgba(220, 198, 237, 0.2) */ from var(--color-brand-dark-mid-saturation) l
-      c h / 0.2
+    from var(--color-brand-dark-mid-saturation) l c h / 0.2
   );
   --color-brand-bg: oklch(
-    /* #fbf3ff */ from var(--color-brand) clamp(0.8, l + 0.4883, 0.98)
-      min(c, 0.0179) calc(h + 10.26)
+    from var(--color-brand) clamp(0.8, l + 0.4883, 0.98) min(c, 0.0179)
+      calc(h + 10.26)
   );
   --color-dark-bg: oklch(
-    /* was #222 now with brand hue */ from var(--color-brand)
-      clamp(0.18, l - 0.275, 0.2) min(c, 0.01) calc(h + 10.26)
+    from var(--color-brand) clamp(0.18, l - 0.275, 0.2) min(c, 0.01)
+      calc(h + 10.26)
   );
   --color-dark-bg-alt: #272727;
   --color-dark-bg-alt-1: #353535;
@@ -159,23 +156,15 @@
     border-bottom: var(--border);
   }
 
-  .tab,
-  .subtab {
+  .tab {
     background-color: transparent;
     color: var(--color-text);
     box-shadow: none;
     outline: none;
   }
 
-  .tab:focus-within,
-  .subtab:focus-within {
+  .tab:focus-within {
     outline: none;
-  }
-
-  /* Change background color of tabs on hover */
-  .tab:hover,
-  .subtab:hover {
-    /* background-color: oklch(from var(--color-brand-bg) 0.97 c h / 0.85); */
   }
 
   .settings-main .settings-content .tab:hover {
@@ -184,13 +173,11 @@
   }
 
   /* Create an active/current tablink class */
-  .tab.active,
-  .subtab.active {
+  .tab.active {
     box-shadow: 0 -3px 0 inset var(--color-brand);
   }
 
-  .settings-main .settings-content .tab.active,
-  .settings-main .settings-content .subtab.active {
+  .settings-main .settings-content .tab.active {
     box-shadow: none;
     box-shadow: 3px 0 0 inset var(--color-brand);
   }
@@ -236,10 +223,7 @@
     color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-min-contrast);
     box-shadow: 0px 2px 0px 0px
-      oklch(
-        /* rgba(125, 37, 193, 0.25) */ from var(--color-brand) min(l, 0.95) c h /
-          0.25
-      );
+      oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
   }
 
   .formBody input[type="submit"]:hover,
@@ -255,10 +239,7 @@
   input[type="file"]::file-selector-button:active,
   select:active {
     box-shadow: inset 0px 2px 0px 0px
-      oklch(
-        /* rgba(125, 37, 193, 0.25) */ from var(--color-brand) min(l, 0.95) c h /
-          0.25
-      );
+      oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
   }
 
   .btn-danger,
@@ -386,8 +367,7 @@
   }
 
   @media (max-width: 640px) {
-    .settings-main .settings-content .tab.active,
-    .settings-main .settings-content .subtab.active {
+    .settings-main .settings-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
@@ -499,22 +479,19 @@
     border-bottom: var(--border-dark);
   }
 
-  .tab,
-  .subtab {
+  .tab {
     background-color: transparent;
     color: var(--color-text-dark);
     box-shadow: none;
     outline: none;
   }
 
-  .tab:focus-within,
-  .subtab:focus-within {
+  .tab:focus-within {
     outline: none;
   }
 
   /* Change background color of tabs on hover */
-  .tab:hover,
-  .subtab:hover {
+  .tab:hover {
     background-color: var(--color-dark-bg-alt-1);
   }
 
@@ -524,13 +501,11 @@
   }
 
   /* Create an active/current tablink class */
-  .tab.active,
-  .subtab.active {
+  .tab.active {
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
 
-  .settings-main .settings-content .tab.active,
-  .settings-main .settings-content .subtab.active {
+  .settings-main .settings-content .tab.active {
     border-bottom: none;
     box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation);
   }
@@ -577,15 +552,11 @@
     color: var(--color-brand-dark-min-saturation);
     border: 1px solid var(--color-brand-dark-min-saturation);
     box-shadow: 0px 2px 0px 0px
-      oklch(
-        /* rgba(125, 37, 193, 0.25) */ from
-          var(--color-brand-dark-max-saturation) l c h / 0.25
-      );
+      oklch(from var(--color-brand-dark-max-saturation) l c h / 0.25);
   }
 
   @media (max-width: 640px) {
-    .settings-main .settings-content .tab.active,
-    .settings-main .settings-content .subtab.active {
+    .settings-main .settings-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
@@ -610,7 +581,7 @@
   .btn:active,
   input[type="file"]::file-selector-button:active {
     box-shadow: inset 0px 2px 0px 0px
-      oklch(/* rgba(125, 37, 193, 0.25) */ from var(--color-brand) l c h / 0.25);
+      oklch(from var(--color-brand) l c h / 0.25);
   }
 
   .btn-danger,
@@ -735,7 +706,7 @@
   }
 
   .banner {
-    background-color: var(--color-brand-dark-min-saturation); /* #ecdafa */
+    background-color: var(--color-brand-dark-min-saturation);
     color: #333;
   }
 
@@ -1338,8 +1309,7 @@ button,
 input[type="file"]::file-selector-button {
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0px 2px 0px 0px
-    oklch(/* rgba(125, 37, 193, 0.25) */ from var(--color-brand) l c h / 0.25);
+  box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
 }
 
 textarea {
@@ -1478,13 +1448,17 @@ img.upgrade {
   display: flex;
 }
 
+.tab-list li a {
+  padding: 0.25rem 0.625rem 0.25rem 0;
+  text-decoration: none;
+}
+
 .tab-list::-webkit-scrollbar {
   display: none;
 }
 
 /* Tab button styling */
-.tab,
-.subtab {
+.tab {
   min-height: 0px;
   min-width: auto;
   padding: 1rem 0;
@@ -1496,32 +1470,18 @@ img.upgrade {
   box-sizing: content-box;
 }
 
-.tab.active,
-.subtab.active {
+.tab.active {
   font-family: var(--font-sans-bold);
 }
 
-/* Style the tab content (and hide it by default) */
-.tab-content,
-.subtab-content {
-  display: none;
+/* Style the tab content */
+.tab-content {
   border-top: none;
 }
 
 /* Style the active content */
-.tab-content.active,
-.subtab-content.active {
+.tab-content.active {
   display: block;
-}
-
-.admin-only {
-  display: none;
-  /* Hide admin elements by default */
-}
-
-.is-admin .admin-only {
-  display: block;
-  /* Show admin elements when inside an .is-admin container */
 }
 
 .user {
@@ -2391,8 +2351,7 @@ p.bio + .extra-fields {
   max-width: 768px;
 }
 
-.settings-main .settings-content .tab.active,
-.settings-main .settings-content .subtab.active {
+.settings-main .settings-content .tab.active {
   padding: 0 0.625rem;
 }
 
@@ -2449,8 +2408,7 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab.active,
-  .settings-main .settings-content .subtab.active {
+  .settings-main .settings-content .tab.active {
     padding: 1rem 0;
   }
 
@@ -2500,11 +2458,11 @@ p.bio + .extra-fields {
   content: "";
 }
 
-#aliases form + h3 {
+form + h3 {
   margin-top: 2rem;
 }
 
-#aliases h3 {
+h3 {
   margin-bottom: 0;
 }
 
