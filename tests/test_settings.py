@@ -7,6 +7,7 @@ import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from markupsafe import Markup
 
 from hushline.config import AliasMode
 from hushline.db import db
@@ -730,8 +731,6 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
 
 def test_sanitize_input() -> None:
-    from markupsafe import Markup
-
     # Disallowed script tag should be removed, content remains
     input_text = 'Hello <script>alert("malicious")</script> World!'
     sanitized_text = sanitize_input(input_text)
