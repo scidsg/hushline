@@ -10,9 +10,7 @@ function navController() {
       dropdownToggle.addEventListener("click", function (event) {
         event.preventDefault();
         dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains(
-          "show",
-        )
+        dropdownContent.style.animation = dropdownContent.classList.contains("show")
           ? "fadeInSlideDown 0.3s ease forwards"
           : "fadeOutSlideUp 0.3s ease forwards";
         dropdownIcon.classList.toggle("rotate-icon");
@@ -35,7 +33,22 @@ function navController() {
     }
   }
 
+  function setupMobileNav() {
+    const mobileNavToggle = document.querySelector(".mobileNav");
+    const navList = document.querySelector("header nav ul");
+
+    if (mobileNavToggle && navList) {
+      mobileNavToggle.addEventListener("click", function (event) {
+        event.preventDefault();
+        navList.classList.toggle("show");
+        const expanded = this.getAttribute("aria-expanded") === "true" || false;
+        this.setAttribute("aria-expanded", !expanded);
+      });
+    }
+  }
+
   setupDropdown();
+  setupMobileNav();
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -63,14 +76,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const darkModeColor = getCSSVariableValue("--theme-color-dark");
 
     // Detect user preference for dark mode
-    const isDarkMode = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
+    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
     // Set the appropriate color in the meta tag
     themeColorMetaTag.setAttribute(
       "content",
-      isDarkMode ? darkModeColor : lightModeColor,
+      isDarkMode ? darkModeColor : lightModeColor
     );
   }
 
