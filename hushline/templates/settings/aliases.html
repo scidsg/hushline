@@ -1,37 +1,51 @@
-<div
-  id="aliases"
-  class="tab-content"
-  role="tabpanel"
-  aria-labelledby="aliases-tab"
->
-  <h3>Add an Alias</h3>
-  {% set alias_count = aliases.__len__() %}
-    {% if alias_count < user.max_aliases %}
-      <form method="POST" action="{{ url_for('settings.index') }}" class="formBody">
-        {{ new_alias_form.hidden_tag() }}
-        <label for="alias_username">Alias Username</label>
-        {{ new_alias_form.username(id='alias_username') }}
-        <button type="submit" name="new_alias">Add Alias</button>
-      </form>
-    {% else %}
-      <p>Alias limit reached.</p>
-    {% endif %}
+{% extends "base.html" %}
 
-  <h3>Current Aliases</h3>
-  {% if aliases %}
-    <div class="alias-list">
-      {% for username in aliases %}
-        <div class="alias-entry">
-          <div>
-              <a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+      <h3>Add an Alias</h3>
+      {% set alias_count = aliases.__len__() %}
+      {% if alias_count < user.max_aliases %}
+        <form
+          method="POST"
+          class="formBody"
+        >
+          {{ new_alias_form.hidden_tag() }}
+          {{ new_alias_form.username.label }}
+          {{ new_alias_form.username }}
+          {{ new_alias_form.submit }}
+        </form>
+      {% else %}
+        <p>Alias limit reached.</p>
+      {% endif %}
+
+      <h3>Current Aliases</h3>
+      {% if aliases %}
+        <div class="alias-list">
+          {% for username in aliases %}
+            <div class="alias-entry">
+              <div>
+                <a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">
                   {{ username.display_name or username.username }}
-              </a>
-          </div>
-          <div class="icon chevron"></div>
+                </a>
+              </div>
+              <div class="icon chevron"></div>
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      {% else %}
+        <p>🙊 No aliases configured.</p>
+      {% endif %}
     </div>
-  {% else %}
-    <p>🙊 No alises configured.</p>
-  {% endif %}
-</div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

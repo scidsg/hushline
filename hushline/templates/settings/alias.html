@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="drill-in">
-  <a href="{{ url_for('.index') }}" class="back-button"><span class="icon chevron back"></span> Back to Settings</a>
+  <a href="{{ url_for('.aliases') }}" class="back-button"><span class="icon chevron back"></span> Back to Aliases</a>
   <h2 class="alias-heading">{{ alias.display_name or alias.username }}</h2>
   <a href="{{ url_for('profile', username=alias.username) }}">Alias tip line</a>
 

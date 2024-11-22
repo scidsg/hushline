@@ -19,7 +19,7 @@ def create_blueprint() -> Blueprint:
         user.primary_username.is_verified = not user.primary_username.is_verified
         db.session.commit()
         flash("✅ User verification status toggled.", "success")
-        return redirect(url_for("settings.index"))
+        return redirect(url_for("settings.admin"))
 
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
     @admin_authentication_required
@@ -30,7 +30,7 @@ def create_blueprint() -> Blueprint:
         user.is_admin = not user.is_admin
         db.session.commit()
         flash("✅ User admin status toggled.", "success")
-        return redirect(url_for("settings.index"))
+        return redirect(url_for("settings.admin"))
 
     @bp.route("/update_tier/<int:tier_id>", methods=["POST"])
     @admin_authentication_required
@@ -43,14 +43,14 @@ def create_blueprint() -> Blueprint:
         monthly_price = request.form.get("monthly_price")
         if not monthly_price:
             flash("❌ Monthly price is required.", "danger")
-            return redirect(url_for("settings.index"))
+            return redirect(url_for("settings.admin"))
 
         # Convert the monthly_price to a float
         try:
             monthly_price_number = float(monthly_price)
         except ValueError:
             flash("❌ Monthly price must be a number.", "danger")
-            return redirect(url_for("settings.index"))
+            return redirect(url_for("settings.admin"))
 
         # Convert to cents
         monthly_amount = int(monthly_price_number * 100)
@@ -63,6 +63,6 @@ def create_blueprint() -> Blueprint:
         update_price(tier)
 
         flash("✅ Price updated.", "success")
-        return redirect(url_for("settings.index"))
+        return redirect(url_for("settings.admin"))
 
     return bp

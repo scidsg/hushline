@@ -1,60 +1,65 @@
-<div
-  id="admin"
-  class="tab-content admin-only"
-  role="tabpanel"
-  aria-labelledby="admin-tab"
-  hidden
->
-  <div class="admin-highlights">
-    <div class="metric">
-      <p>Users</p>
-      <p>{{ user_count }}</p>
-    </div>
-    <div class="metric">
-      <p>2FA Enabled</p>
-      <p>{{ two_fa_count }}</p>
-      <p>{{ two_fa_percentage | round(2) }}%</p>
-    </div>
-    <div class="metric">
-      <p>PGP Enabled</p>
-      <p>{{ pgp_key_count }}</p>
-      <p>{{ pgp_key_percentage | round(2) }}%</p>
-    </div>
-  </div>
+{% extends "base.html" %}
 
-  <h3>All Users</h3>
-  {% if all_users %}
-    {% for user in all_users %}
-      <div class="user">
-        <h4>{{ user.primary_username.username }}</h4>
-        <p class="meta">
-          Display Name: {{ user.primary_username.display_name or 'No display name' }}
-        </p>
-        <p class="meta">
-          Verified: {{ "✅ Yes" if user.primary_username.is_verified else "👎 No" }}
-        </p>
-        <p class="meta">
-          Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}
-        </p>
-        <div class="tableActions">
-          <form
-            action="{{ url_for('admin.toggle_verified', user_id=user.id) }}"
-            method="POST"
-            class="formBody"
-          >
-            <button type="submit">Toggle Verified</button>
-          </form>
-          <form
-            action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
-            method="POST"
-            class="formBody"
-          >
-            <button type="submit">Toggle Admin</button>
-          </form>
-        </div>
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+    <div class="admin-highlights">
+      <div class="metric">
+        <p>Users</p>
+        <p>{{ user_count }}</p>
       </div>
-    {% endfor %}
-  {% else %}
-    <p>No users found.</p>
-  {% endif %}
-</div>
+      <div class="metric">
+        <p>2FA Enabled</p>
+        <p>{{ two_fa_count }}</p>
+        <p>{{ two_fa_percentage | round(2) }}%</p>
+      </div>
+      <div class="metric">
+        <p>PGP Enabled</p>
+        <p>{{ pgp_key_count }}</p>
+        <p>{{ pgp_key_percentage | round(2) }}%</p>
+      </div>
+    </div>
+
+    <h3>All Users</h3>
+    {% if all_users %}
+      {% for user in all_users %}
+        <div class="user">
+          <h4>{{ user.primary_username.username }}</h4>
+          <p class="meta">
+            Display Name: {{ user.primary_username.display_name or 'No display name' }}
+          </p>
+          <p class="meta">
+            Verified: {{ "✅ Yes" if user.primary_username.is_verified else "👎 No" }}
+          </p>
+          <p class="meta">
+            Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}
+          </p>
+          <div class="tableActions">
+            <form
+              action="{{ url_for('admin.toggle_verified', user_id=user.id) }}"
+              method="POST"
+              class="formBody"
+            >
+              <button type="submit">Toggle Verified</button>
+            </form>
+            <form
+              action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
+              method="POST"
+              class="formBody"
+            >
+              <button type="submit">Toggle Admin</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>No users found.</p>
+    {% endif %}
+  </div>
+{% endblock %}

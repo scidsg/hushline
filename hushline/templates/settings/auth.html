@@ -1,77 +1,76 @@
-<div
-  id="auth"
-  class="tab-content"
-  role="tabpanel"
-  aria-labelledby="auth-tab"
-  hidden
->
-  <!-- Change Username Section -->
-  <h3>Change Username</h3>
-  {% if user.primary_username.is_verified %}
-    <p class="meta">
-      ⚠️ Changing your username will result in losing your verification
-      status.
-    </p>
-  {% endif %}
-  <form
-    method="POST"
-    action="{{ url_for('settings.index') }}"
-    class="formBody"
-  >
-    {{ change_username_form.hidden_tag() }}
-    <label for="new_username">Username</label>
-    {{ change_username_form.new_username(id='new_username', value=session['username']) }}
-    {% if change_username_form.new_username.errors %}
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+
+    <h3>Change Username</h3>
+    {% if user.primary_username.is_verified %}
+      <p class="meta">
+        ⚠️ Changing your username will result in losing your verification status.
+      </p>
+    {% endif %}
+    <form
+      method="POST"
+      class="formBody"
+    >
+      {{ change_username_form.hidden_tag() }}
+      {{ change_username_form.new_username.label }}
+      {{ change_username_form.new_username(id='new_username', value=session['username']) }}
       {% for error in change_username_form.new_username.errors %}
         <span class="error">{{ error }}</span>
       {% endfor %}
-    {% endif %}
-    <button type="submit" name="change_username">Change Username</button>
-  </form>
-
-  <!-- Two-Factor Authentication Section -->
-  <h3>Two-Factor Authentication</h3>
-  {% if user.totp_secret %}
-    <!-- If 2FA is enabled, show the Disable 2FA button -->
-    <form
-      method="GET"
-      action="{{ url_for('settings.confirm_disable_2fa') }}"
-      class="formBody"
-    >
-      <button type="submit">Disable 2FA</button>
+      {{ change_username_form.submit }}
     </form>
-  {% else %}
-    <!-- If 2FA is disabled, show the Enable 2FA button -->
+
+    <h3>Two-Factor Authentication</h3>
+    {% if user.totp_secret %}
+      <!-- If 2FA is enabled, show the Disable 2FA button -->
+      <form
+        method="GET"
+        action="{{ url_for('settings.confirm_disable_2fa') }}"
+        class="formBody"
+      >
+        <button type="submit">Disable 2FA</button>
+      </form>
+    {% else %}
+      <!-- If 2FA is disabled, show the Enable 2FA button -->
+      <form
+        method="POST"
+        action="{{ url_for('settings.toggle_2fa') }}"
+        class="formBody"
+      >
+        <button type="submit">Enable 2FA</button>
+      </form>
+    {% endif %}
+
+    <h3>Change Password</h3>
     <form
       method="POST"
-      action="{{ url_for('settings.toggle_2fa') }}"
       class="formBody"
     >
-      <button type="submit">Enable 2FA</button>
-    </form>
-  {% endif %}
-  <!-- Change Password Section in settings.html -->
-  <h3>Change Password</h3>
-  <form
-    method="POST"
-    action="{{ url_for('settings.change_password') }}"
-    class="formBody"
-  >
-    {{ change_password_form.hidden_tag() }}
-    <label for="old_password">Old Password</label>
-    {{ change_password_form.old_password(id='old_password') }}
-    {% if change_password_form.old_password.errors %}
+      {{ change_password_form.hidden_tag() }}
+      {{ change_password_form.old_password.label }}
+      {{ change_password_form.old_password(id='old_password') }}
       {% for error in change_password_form.old_password.errors %}
         <span class="error">{{ error }}</span>
       {% endfor %}
-    {% endif %}
-    <label for="new_password">New Password</label>
-    {{ change_password_form.new_password(id="new_password") }}
-    {% if change_password_form.new_password.errors %}
+      {{ change_password_form.new_password.label }}
+      {{ change_password_form.new_password(id='new_password') }}
       {% for error in change_password_form.new_password.errors %}
         <span class="error">{{ error }}</span>
       {% endfor %}
-    {% endif %}
-    <button type="submit">Change Password</button>
-  </form>
-</div>
+      {{ change_password_form.submit }}
+    </form>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

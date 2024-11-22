@@ -18,11 +18,24 @@ from hushline.model import (
     User,
     Username,
 )
+from hushline.settings import (
+    ChangePasswordForm,
+    ChangeUsernameForm,
+    DeleteBrandLogoForm,
+    DisplayNameForm,
+    EmailForwardingForm,
+    NewAliasForm,
+    PGPKeyForm,
+    UpdateBrandAppNameForm,
+    UpdateBrandLogoForm,
+    UpdateBrandPrimaryColorForm,
+)
+from tests.helpers import form_to_data
 
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_settings_page_loads(client: FlaskClient, user: User) -> None:
-    response = client.get(url_for("settings.index"), follow_redirects=True)
+    response = client.get(url_for("settings.profile"), follow_redirects=True)
     assert response.status_code == 200
     assert "Settings" in response.text
 
@@ -32,11 +45,14 @@ def test_change_display_name(client: FlaskClient, user: User) -> None:
     new_display_name = (user.primary_username.display_name or "") + "_NEW"
 
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "display_name": new_display_name,
-            "update_display_name": "Update Display Name",
-        },
+        url_for("settings.profile"),
+        data=form_to_data(
+            DisplayNameForm(
+                data={
+                    "display_name": new_display_name,
+                }
+            )
+        ),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -53,11 +69,14 @@ def test_change_username(client: FlaskClient, user: User) -> None:
     new_username = user.primary_username.username + "-new"
 
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "new_username": new_username,
-            "change_username": "Change Username",  # html submit button
-        },
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangeUsernameForm(
+                data={
+                    "new_username": new_username,
+                }
+            )
+        ),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -69,70 +88,91 @@ def test_change_username(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_change_password(client: FlaskClient, user: User, user_password: str) -> None:
+def test_change_password(app: Flask, client: FlaskClient, user: User, user_password: str) -> None:
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
     assert user_password not in original_password_hash
+    original_password = user_password
 
-    url = url_for("settings.change_password")
+    url = url_for("settings.auth")
     for new_password in [user_password, "", "aB!!", "aB3!", (33 * "aB3!")[:129], 5 * "aB3!"]:
-        data = dict(old_password=user_password, new_password=new_password)
-        response = client.post(url, data=data, follow_redirects=True)
+        print(f"Testing: {new_password}")
+
+        # have to use a test request context to "reset" the form fields
+        with app.test_request_context():
+            form = ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+
+        response = client.post(url, data=form_to_data(form), follow_redirects=True)
         if (
             user_password != new_password
             and 17 < len(user_password) < 129
             and 17 < len(new_password) < 129
         ):
-            assert response.status_code == 200, data
-            assert "Password successfully changed. Please log in again." in response.text, data
-            assert "/login" in response.request.url, data
-            assert len(new_password_hash := user.password_hash) > 32, data
-            assert new_password_hash.startswith("$scrypt$"), data
-            assert original_password_hash not in new_password_hash, data
-            assert user_password not in new_password_hash, data
-            assert new_password not in new_password_hash, data
+            assert response.status_code == 200, response.text
+            assert "Password successfully changed. Please log in again." in response.text
+            assert len(new_password_hash := user.password_hash) > 32
+            assert new_password_hash.startswith("$scrypt$")
+            assert original_password_hash not in new_password_hash
+            assert user_password not in new_password_hash
+            assert new_password not in new_password_hash
+            user_password = new_password
         elif user_password == new_password:
-            assert "Cannot choose a repeat password." in response.text, data
-            assert "/settings" in response.request.url, data
-            assert original_password_hash == user.password_hash, data
+            assert "Cannot choose a repeat password." in response.text
+            assert original_password_hash == user.password_hash
         else:
-            assert "Invalid form data. Please try again." in response.text, data
-            assert "/settings" in response.request.url, data
-            assert original_password_hash == user.password_hash, data
+            assert "Your submitted form could not be processed" in response.text
+            assert original_password_hash == user.password_hash
 
     assert original_password_hash != user.password_hash
 
     # TODO simulate a log out?
 
     # Attempt to log in with the registered user's old password
-    data = dict(username=user.primary_username.username, password=user_password)
-    response = client.post(url_for("login"), data=data, follow_redirects=True)
-    assert response.status_code == 200, data
-    assert "Invalid username or password" in response.text, data
-    assert "/login" in response.request.url, data
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": original_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Invalid username or password" in response.text
+    assert "/login" in response.request.url
 
     # TODO simulate a log out?
 
     # Attempt to log in with the registered user's new password
-    data = dict(username=user.primary_username.username, password=new_password)
-    response = client.post(url_for("login"), data=data, follow_redirects=True)
-    assert response.status_code == 200, data
-    assert "Empty Inbox" in response.text, data
-    assert "Invalid username or password" not in response.text, data
-    assert "/inbox" in response.request.url, data
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
+    assert "Invalid username or password" not in response.text
+    assert "/inbox" in response.request.url
 
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_add_pgp_key(client: FlaskClient, user: User, user_password: str) -> None:
     with open("tests/test_pgp_key.txt") as file:
-        new_pgp_key = file.read()
+        new_pgp_key = file.read().strip()
 
     response = client.post(
-        url_for("settings.update_pgp_key"),
-        data={"pgp_key": new_pgp_key},
+        url_for("settings.email"),
+        data=form_to_data(PGPKeyForm(data={"pgp_key": new_pgp_key})),
         follow_redirects=True,
     )
-    assert response.status_code == 200, "Failed to update PGP key"
+    assert response.status_code == 200
     assert "PGP key updated successfully" in response.text
 
     updated_user = db.session.scalars(
@@ -146,8 +186,8 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
     invalid_pgp_key = "NOT A VALID PGP KEY BLOCK"
 
     response = client.post(
-        url_for("settings.update_pgp_key"),
-        data={"pgp_key": invalid_pgp_key},
+        url_for("settings.email"),
+        data=form_to_data(PGPKeyForm(data={"pgp_key": invalid_pgp_key})),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -163,7 +203,8 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     response = client.post(
-        url_for("settings.update_smtp_settings"),
+        url_for("settings.email"),
+        # for some reason using the Form class doesn't work here. why? fuck if i know.
         data={
             "forwarding_enabled": True,
             "email_address": "primary@example.com",
@@ -174,11 +215,12 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
             "smtp_settings-smtp_password": "securepassword123",
             "smtp_settings-smtp_encryption": "StartTLS",
             "smtp_settings-smtp_sender": "sender@example.com",
+            EmailForwardingForm.submit.name: "",
         },
         follow_redirects=True,
     )
-    assert response.status_code == 200
-    assert "Email forwarding requires a configured PGP key" in response.text
+    assert response.status_code == 400
+    assert "Email forwarding requires a configured PGP key" in response.text, response.text
 
     updated_user = (
         db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
@@ -206,10 +248,11 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
         "smtp_settings-smtp_password": "securepassword123",
         "smtp_settings-smtp_encryption": "StartTLS",
         "smtp_settings-smtp_sender": "sender@example.com",
+        EmailForwardingForm.submit.name: "",
     }
 
     response = client.post(
-        url_for("settings.update_smtp_settings"),
+        url_for("settings.email"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -250,10 +293,11 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: Us
         "smtp_settings-smtp_password": "securepassword123",
         "smtp_settings-smtp_encryption": "SSL",
         "smtp_settings-smtp_sender": "sender@example.com",
+        EmailForwardingForm.submit.name: "",
     }
 
     response = client.post(
-        url_for("settings.update_smtp_settings"),
+        url_for("settings.email"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -290,10 +334,11 @@ def test_update_smtp_settings_default_forwarding(
         "forwarding_enabled": True,
         "email_address": "primary@example.com",
         "smtp_settings-smtp_encryption": "StartTLS",
+        EmailForwardingForm.submit.name: "",
     }
 
     response = client.post(
-        url_for("settings.update_smtp_settings"),
+        url_for("settings.email"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -324,11 +369,14 @@ def test_add_alias(app: Flask, client: FlaskClient, user: User) -> None:
 
     alias_username = str(uuid4())[0:12]
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "username": alias_username,
-            "new_alias": "",  # html form
-        },
+        url_for("settings.aliases"),
+        data=form_to_data(
+            NewAliasForm(
+                data={
+                    "username": alias_username,
+                }
+            )
+        ),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -347,14 +395,17 @@ def test_add_alias_fails_when_alias_mode_is_never(
 
     alias_username = str(uuid4())[0:12]
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "username": alias_username,
-            "new_alias": "",  # html form
-        },
+        url_for("settings.aliases"),
+        data=form_to_data(
+            NewAliasForm(
+                data={
+                    "username": alias_username,
+                }
+            )
+        ),
         follow_redirects=True,
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assert not db.session.scalars(
         db.select(Username).filter_by(_username=alias_username)
     ).one_or_none()
@@ -374,12 +425,16 @@ def test_add_alias_not_exceed_max(
     max_alises = user.max_aliases
     for _ in range(max_alises):
         alias_username = str(uuid4())[0:12]
+        with app.test_request_context():
+            form = NewAliasForm(
+                data={
+                    "username": alias_username,
+                }
+            )
+
         response = client.post(
-            url_for("settings.index"),
-            data={
-                "username": alias_username,
-                "new_alias": "",  # html form
-            },
+            url_for("settings.aliases"),
+            data=form_to_data(form),
             follow_redirects=True,
         )
         assert response.status_code == 200
@@ -390,14 +445,17 @@ def test_add_alias_not_exceed_max(
     # try adding one more
     alias_username = str(uuid4())[0:12]
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "username": alias_username,
-            "new_alias": "",  # html form
-        },
+        url_for("settings.aliases"),
+        data=form_to_data(
+            NewAliasForm(
+                data={
+                    "username": alias_username,
+                }
+            )
+        ),
         follow_redirects=True,
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assert (
         "Your current subscription level does not allow the creation of more aliases"
         in response.text
@@ -410,11 +468,14 @@ def test_add_alias_not_exceed_max(
 @pytest.mark.usefixtures("_authenticated_user")
 def test_add_alias_duplicate(client: FlaskClient, user: User) -> None:
     response = client.post(
-        url_for("settings.index"),
-        data={
-            "username": user.primary_username.username,
-            "new_alias": "",  # html form
-        },
+        url_for("settings.aliases"),
+        data=form_to_data(
+            NewAliasForm(
+                data={
+                    "username": user.primary_username.username,
+                }
+            )
+        ),
         follow_redirects=True,
     )
     assert "This username is already taken." in response.text
@@ -480,7 +541,7 @@ def test_change_bio(client: FlaskClient, user: User) -> None:
         data[f"extra_field_value{i}"] = str(uuid4())
 
     response = client.post(
-        url_for("settings.index"),
+        url_for("settings.profile"),
         data=data,
         follow_redirects=True,
     )
@@ -534,7 +595,7 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
 def test_change_directory_visibility(client: FlaskClient, user: User) -> None:
     original_visibility = user.primary_username.show_in_directory
     resp = client.post(
-        url_for("settings.index"),
+        url_for("settings.profile"),
         data={
             "show_in_directory": not original_visibility,
             "update_directory_visibility": "",  # html form
@@ -570,8 +631,8 @@ def test_alias_change_directory_visibility(
 def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
     color = "#acab00"
     resp = client.post(
-        url_for("settings.update_brand_primary_color"),
-        data={"brand_primary_hex_color": color},
+        url_for("settings.branding"),
+        data=form_to_data(UpdateBrandPrimaryColorForm(data={"brand_primary_hex_color": color})),
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -595,8 +656,8 @@ def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
 def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
     name = "h4cK3rZ"
     resp = client.post(
-        url_for("settings.update_brand_app_name"),
-        data={"brand_app_name": name},
+        url_for("settings.branding"),
+        data=form_to_data(UpdateBrandAppNameForm(data={"brand_app_name": name})),
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -624,10 +685,10 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     )
 
     resp = client.post(
-        url_for("settings.update_brand_logo"),
+        url_for("settings.branding"),
         data={
             "logo": (BytesIO(png), "wat.png"),
-            "update_logo": "",
+            UpdateBrandLogoForm.submit.name: "",
         },
         follow_redirects=True,
         content_type="multipart/form-data",
@@ -655,8 +716,8 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     assert resp.data == png
 
     resp = client.post(
-        url_for("settings.update_brand_logo"),
-        data={"delete_logo": ""},
+        url_for("settings.branding"),
+        data=form_to_data(DeleteBrandLogoForm()),
         follow_redirects=True,
     )
     assert resp.status_code == 200
