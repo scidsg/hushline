@@ -10,7 +10,9 @@ function navController() {
       dropdownToggle.addEventListener("click", function (event) {
         event.preventDefault();
         dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains("show")
+        dropdownContent.style.animation = dropdownContent.classList.contains(
+          "show",
+        )
           ? "fadeInSlideDown 0.3s ease forwards"
           : "fadeOutSlideUp 0.3s ease forwards";
         dropdownIcon.classList.toggle("rotate-icon");
@@ -76,12 +78,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const darkModeColor = getCSSVariableValue("--theme-color-dark");
 
     // Detect user preference for dark mode
-    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDarkMode = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
 
     // Set the appropriate color in the meta tag
     themeColorMetaTag.setAttribute(
       "content",
-      isDarkMode ? darkModeColor : lightModeColor
+      isDarkMode ? darkModeColor : lightModeColor,
     );
   }
 

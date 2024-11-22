@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
   async function checkIfSessionUser() {
     try {
       const response = await fetch(
-        `${pathPrefix}/directory/get-session-user.json`
+        `${pathPrefix}/directory/get-session-user.json`,
       );
       const { logged_in } = await response.json();
       isSessionUser = logged_in;
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function displayUsers(users, query) {
     const userListContainer = document.querySelector(
-      ".tab-content.active .user-list"
+      ".tab-content.active .user-list",
     );
     const activeTabElement = document.querySelector(".tab.active");
     const activeTab = activeTabElement
@@ -89,15 +89,13 @@ document.addEventListener("DOMContentLoaded", function () {
       users.forEach((user) => {
         const displayNameHighlighted = highlightMatch(
           user.display_name || user.primary_username,
-          query
+          query,
         );
         const usernameHighlighted = highlightMatch(
           user.primary_username,
-          query
+          query,
         );
-        const bioHighlighted = user.bio
-          ? highlightMatch(user.bio, query)
-          : "";
+        const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
         let badgeContainer = "";
 
@@ -119,9 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
           "aria-label",
           `${userType}, Display name:${
             user.display_name || user.primary_username
-          }, Username: ${user.primary_username}, Bio: ${
-            user.bio || "No bio"
-          }`
+          }, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}`,
         );
         userDiv.innerHTML = `
                           <h3>${displayNameHighlighted}</h3>
@@ -173,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   window.activateTab = function (selectedTab) {
     const targetPanel = document.getElementById(
-      selectedTab.getAttribute("aria-controls")
+      selectedTab.getAttribute("aria-controls"),
     );
 
     tabPanels.forEach((panel) => {
