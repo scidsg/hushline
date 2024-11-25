@@ -8,6 +8,7 @@
       ('settings.email', 'Email & Encryption', True),
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.advanced', 'Advanced', True),
+      ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.admin', 'Admin', user.is_admin)
     ] %}
       {% for (endpoint, display_name, show) in buttons %}

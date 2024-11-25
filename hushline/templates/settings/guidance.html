@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+      <h3>User Guidance</h3>
+      <p>
+        User Guidance enables you to present information to visitors before they send a 
+        message. This can include cautions about submitting a message using a work 
+        device, using Tor Browser, or anything else important for your community.
+      </p>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ user_guidance_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+          {{ user_guidance_form.show_user_guidance() }}
+          <label for="show_user_guidance" class="toggle-label">
+            Show User Guidance
+            <div class="toggle">
+              <div class="toggle__ball"></div>
+            </div>
+          </label>
+        </div>
+        {{ user_guidance_form.submit }}
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

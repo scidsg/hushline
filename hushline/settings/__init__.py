@@ -55,6 +55,7 @@ from .forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceForm,
 )
 
 
@@ -547,6 +548,16 @@ def create_blueprint() -> Blueprint:
     @bp.route("/advanced")
     def advanced() -> str:
         return render_template("settings/advanced.html")
+
+    @admin_authentication_required
+    @bp.route("/guidance", methods=["GET", "POST"])
+    def guidance() -> Tuple[str, int]:
+        user_guidance_form = UserGuidanceForm()
+
+        status_code = 200
+        return render_template(
+            "settings/guidance.html", user_guidance_form=user_guidance_form
+        ), status_code
 
     @admin_authentication_required
     @bp.route("/admin")

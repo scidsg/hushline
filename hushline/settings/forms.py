@@ -222,3 +222,8 @@ class UpdateBrandLogoForm(FlaskForm):
 
 class DeleteBrandLogoForm(FlaskForm):
     submit = SubmitField("Delete Logo", name="submit_logo", widget=Button())
+
+
+class UserGuidanceForm(FlaskForm):
+    show_user_guidance = BooleanField("Show user guidance")
+    submit = SubmitField("Update User Guidance", name="update_user_guidance", widget=Button())
