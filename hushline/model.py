@@ -41,6 +41,8 @@ class OrganizationSetting(Model):
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
     GUIDANCE_ENABLED = "guidance_enabled"
+    GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
+    GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
@@ -49,6 +51,8 @@ class OrganizationSetting(Model):
         BRAND_NAME: "🤫 Hush Line",
         BRAND_PRIMARY_COLOR: "#7d25c1",
         GUIDANCE_ENABLED: False,
+        GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
+        GUIDANCE_EXIT_BUTTON_LINK: "https://www.google.com/",
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
@@ -80,7 +84,10 @@ class OrganizationSetting(Model):
 
     @classmethod
     def fetch_one(cls, key: str) -> Any:
-        return db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
+        result = db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
+        if not result:
+            return cls._DEFAULT_VALUES.get(key)
+        return result
 
 
 @dataclass(frozen=True, repr=False, eq=False)
