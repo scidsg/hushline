@@ -31,6 +31,43 @@
         </div>
         {{ user_guidance_form.submit }}
       </form>
+
+      {% if guidance_enabled %}
+      <h3>Prompts</h3>
+
+      <h4>Emergency Exit</h4>
+      <p>
+        You can include a button that, if clicked, brings the user to a generic,
+        popular website to obfuscate the fact that they're visiting Hush Line.
+      </p>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ user_guidance_emergency_exit_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+          <label for="exit-button-text">Exit Button Text</label>
+          <input
+            type="text"
+            name="exit_button_text"
+            id="exit-button-text"
+            value="{{ exit_button_text }}"
+            required
+          />
+        </div>
+        <div class="checkbox-group toggle-ui">
+          <label for="exit-button-link">Exit Button Link</label>
+          <input
+            type="text"
+            name="exit_button_link"
+            id="exit-button-link"
+            value="{{ exit_button_link }}"
+            required
+          />
+        </div>
+        {{ user_guidance_emergency_exit_form.submit }}
+      </form>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

@@ -227,3 +227,13 @@ class DeleteBrandLogoForm(FlaskForm):
 class UserGuidanceForm(FlaskForm):
     show_user_guidance = BooleanField("Show user guidance")
     submit = SubmitField("Update User Guidance", name="update_user_guidance", widget=Button())
+
+
+class UserGuidanceEmergencyExitForm(FlaskForm):
+    exit_button_text = StringField(
+        "Exit Button Text", validators=[DataRequired(), Length(min=1, max=50)]
+    )
+    exit_button_link = StringField(
+        "Exit Button Link", validators=[DataRequired(), Length(min=1, max=2000)]
+    )
+    submit = SubmitField("Update Exit Button", name="update_exit_button", widget=Button())

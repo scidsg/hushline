@@ -55,6 +55,7 @@ from .forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
 )
 
@@ -553,6 +554,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/guidance", methods=["GET", "POST"])
     def guidance() -> Tuple[str, int]:
         user_guidance_form = UserGuidanceForm()
+        user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm()
 
         status_code = 200
         if request.method == "POST":
@@ -565,12 +567,35 @@ def create_blueprint() -> Blueprint:
                     flash("👍 User guidance enabled.")
                 else:
                     flash("👍 User guidance disabled.")
+            elif (
+                user_guidance_emergency_exit_form.submit.name in request.form
+            ) and user_guidance_emergency_exit_form.validate():
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
+                    value=user_guidance_emergency_exit_form.exit_button_text.data,
+                )
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
+                    value=user_guidance_emergency_exit_form.exit_button_link.data,
+                )
+                flash("👍 Emergency exit button updated successfully.")
             else:
                 form_error()
                 status_code = 400
 
         return render_template(
-            "settings/guidance.html", user_guidance_form=user_guidance_form
+            "settings/guidance.html",
+            user_guidance_form=user_guidance_form,
+            user_guidance_emergency_exit_form=user_guidance_emergency_exit_form,
+            guidance_enabled=OrganizationSetting.fetch_one(
+                OrganizationSetting.GUIDANCE_ENABLED
+            ).value,
+            exit_button_text=OrganizationSetting.fetch_one(
+                OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT
+            ).value,
+            exit_button_link=OrganizationSetting.fetch_one(
+                OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK
+            ).value,
         ), status_code
 
     @admin_authentication_required
