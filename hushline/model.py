@@ -40,6 +40,7 @@ class OrganizationSetting(Model):
     BRAND_LOGO = "brand_logo"
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
+    GUIDANCE_ENABLED = "guidance_enabled"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
@@ -47,6 +48,7 @@ class OrganizationSetting(Model):
     _DEFAULT_VALUES: dict[str, Any] = {
         BRAND_NAME: "🤫 Hush Line",
         BRAND_PRIMARY_COLOR: "#7d25c1",
+        GUIDANCE_ENABLED: False,
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)

@@ -555,6 +555,20 @@ def create_blueprint() -> Blueprint:
         user_guidance_form = UserGuidanceForm()
 
         status_code = 200
+        if request.method == "POST":
+            if (user_guidance_form.submit.name in request.form) and user_guidance_form.validate():
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.GUIDANCE_ENABLED,
+                    value=user_guidance_form.show_user_guidance.data,
+                )
+                if user_guidance_form.show_user_guidance.data:
+                    flash("👍 User guidance enabled.")
+                else:
+                    flash("👍 User guidance disabled.")
+            else:
+                form_error()
+                status_code = 400
+
         return render_template(
             "settings/guidance.html", user_guidance_form=user_guidance_form
         ), status_code
