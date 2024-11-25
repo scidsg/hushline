@@ -12,3 +12,4 @@ hushline/static/data/users_directory.json
 .coverage
 htmlcov
 .env.stripe
+.vscode
