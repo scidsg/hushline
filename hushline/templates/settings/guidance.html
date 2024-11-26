@@ -45,7 +45,7 @@
         class="formBody"
       >
         {{ user_guidance_emergency_exit_form.hidden_tag() }}
-        <div class="checkbox-group toggle-ui">
+        <div>
           <label for="exit-button-text">Exit Button Text</label>
           <input
             type="text"
@@ -55,7 +55,7 @@
             required
           />
         </div>
-        <div class="checkbox-group toggle-ui">
+        <div>
           <label for="exit-button-link">Exit Button Link</label>
           <input
             type="text"
@@ -67,6 +67,37 @@
         </div>
         {{ user_guidance_emergency_exit_form.submit }}
       </form>
+
+      <h4>Prompt Content</h4>
+      {% for prompt in guidance_prompt_values %}
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ user_guidance_prompt_forms[loop.index-1].hidden_tag() }}
+        <input type="hidden" name="prompt_index" value="{{ prompt.index }}" />
+        <div>
+          <label for="heading-text-{{ loop.index-1 }}">Prompt Heading</label>
+          <input
+            type="text"
+            name="heading_text"
+            id="heading-text-{{ loop.index-1 }}"
+            value="{{ prompt.heading_text }}"
+            required
+          />
+        </div>
+        <div>
+          <label for="prompt-text-{{ loop.index-1 }}">Prompt</label>
+          <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024">{{ prompt.prompt_text or '' }}</textarea>
+        </div>
+        {{ user_guidance_prompt_forms[loop.index-1].submit }}
+        {{ user_guidance_prompt_forms[loop.index-1].add_submit }}
+        {% if loop.index - 1 != 0 %}
+        {{ user_guidance_prompt_forms[loop.index-1].delete_submit }}
+        {% endif %}
+      </form>
+      {% endfor %}
+
       {% endif %}
     </div>
   </div>

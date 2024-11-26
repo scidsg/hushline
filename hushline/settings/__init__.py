@@ -57,6 +57,7 @@ from .forms import (
     UpdateBrandPrimaryColorForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
+    UserGuidancePromptContentForm,
 )
 
 
@@ -556,6 +557,11 @@ def create_blueprint() -> Blueprint:
         user_guidance_form = UserGuidanceForm()
         user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm()
 
+        guidance_prompt_values = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+        user_guidance_prompt_forms = [
+            UserGuidancePromptContentForm() for _ in range(len(guidance_prompt_values))
+        ]
+
         status_code = 200
         if request.method == "POST":
             if (user_guidance_form.submit.name in request.form) and user_guidance_form.validate():
@@ -587,6 +593,8 @@ def create_blueprint() -> Blueprint:
             "settings/guidance.html",
             user_guidance_form=user_guidance_form,
             user_guidance_emergency_exit_form=user_guidance_emergency_exit_form,
+            user_guidance_prompt_forms=user_guidance_prompt_forms,
+            guidance_prompt_values=guidance_prompt_values,
             guidance_enabled=OrganizationSetting.fetch_one(
                 OrganizationSetting.GUIDANCE_ENABLED
             ).value,

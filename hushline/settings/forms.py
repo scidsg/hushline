@@ -237,3 +237,12 @@ class UserGuidanceEmergencyExitForm(FlaskForm):
         "Exit Button Link", validators=[DataRequired(), Length(min=1, max=2000), URL()]
     )
     submit = SubmitField("Update Exit Button", name="update_exit_button", widget=Button())
+
+
+class UserGuidancePromptContentForm(FlaskForm):
+    heading_text = StringField("Prompt Heading", validators=[DataRequired(), Length(min=1, max=50)])
+    prompt_text = StringField("Prompt Text", validators=[DataRequired(), Length(min=1, max=1024)])
+    index = IntegerField("Index", validators=[DataRequired()])
+    submit = SubmitField("Update", name="update_prompt", widget=Button())
+    add_submit = SubmitField("Add Another Prompt", name="add_new_prompt", widget=Button())
+    delete_submit = SubmitField("Delete This Prompt", name="delete_prompt", widget=Button())

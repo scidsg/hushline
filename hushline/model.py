@@ -43,6 +43,7 @@ class OrganizationSetting(Model):
     GUIDANCE_ENABLED = "guidance_enabled"
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
     GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"
+    GUIDANCE_PROMPTS = "guidance_prompts"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
@@ -53,6 +54,7 @@ class OrganizationSetting(Model):
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://www.google.com/",
+        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
