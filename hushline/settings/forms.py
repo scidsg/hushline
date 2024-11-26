@@ -16,7 +16,7 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Email, Length
+from wtforms.validators import DataRequired, Email, Length, URL
 from wtforms.validators import Optional as OptionalField
 from wtforms.widgets.core import html_params
 
@@ -234,6 +234,6 @@ class UserGuidanceEmergencyExitForm(FlaskForm):
         "Exit Button Text", validators=[DataRequired(), Length(min=1, max=50)]
     )
     exit_button_link = StringField(
-        "Exit Button Link", validators=[DataRequired(), Length(min=1, max=2000)]
+        "Exit Button Link", validators=[DataRequired(), Length(min=1, max=2000), URL()]
     )
     submit = SubmitField("Update Exit Button", name="update_exit_button", widget=Button())
