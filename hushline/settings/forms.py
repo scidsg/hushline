@@ -16,7 +16,7 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Email, Length, URL
+from wtforms.validators import URL, DataRequired, Email, Length
 from wtforms.validators import Optional as OptionalField
 from wtforms.widgets.core import html_params
 
