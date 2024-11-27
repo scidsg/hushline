@@ -2619,7 +2619,7 @@ h3 {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: .5rem;
+  gap: 0.5rem;
 }
 
 .action-model form,
@@ -2641,6 +2641,6 @@ h3 {
   align-items: center;
   justify-content: center;
   padding: 0;
-  padding-bottom: .125rem;
+  padding-bottom: 0.125rem;
   width: fit-content;
 }
