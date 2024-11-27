@@ -28,7 +28,11 @@ def test_custom_replies(client: FlaskClient, user: User, message: Message) -> No
     for status in MessageStatus:
         text = str(uuid4())
         message.status = status
-        msg_status_txt = MessageStatusText(user_id=user.id, status=status, markdown=text)
+        msg_status_txt = MessageStatusText(
+            user_id=user.id,  # type: ignore[call-arg]
+            status=status,  # type: ignore[call-arg]
+            markdown=text,  # type: ignore[call-arg]
+        )
         db.session.add(msg_status_txt)
         db.session.commit()
 
@@ -45,7 +49,9 @@ def test_set_custom_replies(client: FlaskClient, user: User) -> None:
     status = MessageStatus.PENDING
     resp = client.post(
         url_for("settings.replies"),
-        data=form_to_data(SetMessageStatusTextForm(data={"status": status.value, "markdown": text})),
+        data=form_to_data(
+            SetMessageStatusTextForm(data={"status": status.value, "markdown": text})
+        ),
         follow_redirects=True,
     )
     assert resp.status_code == 200
