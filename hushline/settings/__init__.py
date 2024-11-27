@@ -314,8 +314,8 @@ def handle_email_forwarding_form(
 def create_blueprint() -> Blueprint:
     bp = Blueprint("settings", __file__, url_prefix="/settings")
 
-    @authentication_required
     @bp.route("/profile", methods=["GET", "POST"])
+    @authentication_required
     async def profile() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         username = user.primary_username
@@ -741,8 +741,8 @@ def create_blueprint() -> Blueprint:
         flash("User not found. Please log in again.")
         return redirect(url_for("login"))
 
-    @authentication_required
     @bp.route("/alias/<int:username_id>", methods=["GET", "POST"])
+    @authentication_required
     async def alias(username_id: int) -> Response | str:
         alias = db.session.scalars(
             db.select(Username).filter_by(
