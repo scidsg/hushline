@@ -3,6 +3,7 @@
 {% block title %}Message Submitted{% endblock %}
 
 {% block content %}
+<h1>👍 Message Submitted!</h1>
   <p>
     Thank you for submitting your mesasge to {{ message.username.display_name or message.username.username }}!
     You should expect a response within a few days.
@@ -16,9 +17,7 @@
     {% endwith %}
   </p>
 
-  <p>
-    <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
-  </p>
+  <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
 
   <p>
     <strong>Do not</strong> share this linkt with anyone else.
@@ -28,10 +27,6 @@
   <p>
     Make sure you copy this link before closing this window or navigating to another page.
     Once you do, this link will not be displayed again.
-  </p>
-
-  <p>
-    <a class="btn" href="{{ url_for('directory') }}">Continue</a>
   </p>
 {% endblock %}
 

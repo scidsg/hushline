@@ -5,7 +5,7 @@
 {% block content %}
   <div class="message-header">
     <h1>Message</h1>
-    <div>
+    <div class="action-model">
       <form
         class="formBody"
         method="POST"
@@ -13,7 +13,7 @@
       >
         {{ update_status_form.hidden_tag() }}
         {{ update_status_form.status }}
-        {{ update_status_form.submit }}
+        <!-- {{ update_status_form.submit }} -->
       </form>
       <form
         class="formBody"
@@ -25,19 +25,18 @@
     </div>
   </div>
 
-  <div class="message-meta">
-    <p>
-      <strong>Sent</strong><br>
-      {{ message.created_at.date() }}
-    </p>
-    <p>
-      <strong>To</strong><br>
-      <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
-    </p>
-  </div>
-
-
-  <article
+  <div class="message-container">
+    <div class="message-meta">
+      <p>
+        <strong>Sent</strong><br>
+        {{ message.created_at.date() }}
+      </p>
+      <p>
+        <strong>To</strong><br>
+        <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
+      </p>
+    </div>
+    <article
     class="message {% if 'BEGIN PGP MESSAGE' in message.content %}encrypted{% endif %}"
     data-encrypted-content="{{ message.content }}"
     aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
@@ -45,4 +44,8 @@
     <p class="decrypted-content">{{ message.content }}</p>
     <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
   </article>
+  </div>
+
+
+  
 {% endblock %}
