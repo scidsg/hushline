@@ -187,6 +187,7 @@
   }
 
   .user,
+  .message-container,
   #results > div {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
@@ -268,7 +269,7 @@
     outline: var(--border);
   }
 
-  .message {
+  .message:not(.message-container .message) {
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     background-color: white;
@@ -1056,7 +1057,8 @@ img.empty {
   }
 }
 
-.message {
+.message:not(.message-container .message),
+.message-container {
   padding: 1.125rem;
   border-radius: 0.25rem;
   margin: 0.5rem 0;
@@ -1484,7 +1486,8 @@ img.upgrade {
   display: block;
 }
 
-.user {
+.user,
+.message-container {
   border-radius: 0.25rem;
   padding: 1rem;
   margin-bottom: 0.75rem;
@@ -1688,7 +1691,8 @@ a.dropbtn:hover {
   margin-right: 0.425rem;
 }
 
-.user {
+.user,
+.message-container {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
   display: flex;
@@ -2573,7 +2577,7 @@ h3 {
 .reply-header {
   display: flex;
   flex-direction: row;
-  align-items: top;
+  align-items: center;
   justify-content: space-between;
 }
 
@@ -2586,11 +2590,57 @@ h3 {
   }
 }
 
-.message-container {
-  padding: 0.625rem 0.5rem 1rem 0.5rem;
-  margin: 0.5rem 0;
-  border: var(--border);
-  box-sizing: border-box;
-  border-radius: 0.5rem;
-  box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+.message-meta p {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-smaller);
+}
+
+.message-meta p strong {
+  font-family: var(--font-sans-bold);
+  font-size: var(--font-size-small);
+  font-weight: normal;
+}
+
+.message-container .message-meta + div strong {
+  font-family: var(--font-sans-bold);
+  font-size: var(--font-size-small);
+  font-weight: normal;
+}
+
+.message-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-model {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.action-model form,
+.action-model select {
+  margin: 0;
+}
+
+.action-model select {
+  width: fit-content;
+}
+
+.message-container .message {
+  margin-top: 1rem;
+}
+
+#copy-link-button {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  padding-bottom: .125rem;
+  width: fit-content;
 }
