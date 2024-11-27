@@ -356,6 +356,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/profile.html",
+            user=user,
             username=username,
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
@@ -466,6 +467,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/email.html",
+            user=user,
             pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
             email_forwarding_form=email_forwarding_form,
@@ -475,6 +477,8 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     @bp.route("/branding", methods=["GET", "POST"])
     def branding() -> Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
@@ -537,6 +541,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/branding.html",
+            user=user,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
@@ -546,11 +551,14 @@ def create_blueprint() -> Blueprint:
     @authentication_required
     @bp.route("/advanced")
     def advanced() -> str:
-        return render_template("settings/advanced.html")
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        return render_template("settings/advanced.html", user=user)
 
     @admin_authentication_required
     @bp.route("/admin")
     def admin() -> str:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+
         all_users = list(
             db.session.scalars(db.select(User).join(Username).order_by(Username._username)).all()
         )
@@ -560,6 +568,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/admin.html",
+            user=user,
             all_users=all_users,
             user_count=user_count,
             two_fa_count=two_fa_count,
