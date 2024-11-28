@@ -59,12 +59,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function setupStatusForm() {
     const statusForm = document.getElementById("statusForm");
     if (!statusForm) return;
-  
+
     const statusField = statusForm.querySelector('[name="status"]');
     if (statusField) {
       statusField.addEventListener("change", function () {
         const formData = new FormData(statusForm);
-  
+
         fetch(statusForm.action, {
           method: "POST",
           body: formData,
@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
               } else {
                 document.body.insertBefore(
                   flashMessages,
-                  document.body.firstChild
+                  document.body.firstChild,
                 );
               }
             }
