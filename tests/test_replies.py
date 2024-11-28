@@ -45,6 +45,10 @@ def test_custom_replies(client: FlaskClient, user: User, message: Message) -> No
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_set_custom_replies(client: FlaskClient, user: User) -> None:
+    # Make the user an admin for this test
+    user.is_admin = True
+    db.session.commit()
+
     text = str(uuid4())
     status = MessageStatus.PENDING
     resp = client.post(
