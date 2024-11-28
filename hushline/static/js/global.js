@@ -56,51 +56,6 @@ function navController() {
 document.addEventListener("DOMContentLoaded", function () {
   navController();
 
-  function setupStatusForm() {
-    const statusForm = document.getElementById("statusForm");
-    if (!statusForm) return;
-  
-    const statusField = statusForm.querySelector('[name="status"]');
-    if (statusField) {
-      statusField.addEventListener("change", function () {
-        const formData = new FormData(statusForm);
-  
-        fetch(statusForm.action, {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Failed to update status");
-            }
-            return response.text(); // Expecting the server to return HTML
-          })
-          .then((html) => {
-            // Parse and update flash messages without reload
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-            const flashMessages = doc.querySelector(".flash-messages");
-            if (flashMessages) {
-              const existingFlash = document.querySelector(".flash-messages");
-              if (existingFlash) {
-                existingFlash.replaceWith(flashMessages);
-              } else {
-                document.body.insertBefore(
-                  flashMessages,
-                  document.body.firstChild
-                );
-              }
-            }
-          })
-          .catch((error) => {
-            console.error("Error updating status:", error);
-          });
-      });
-    }
-  }
-
-  setupStatusForm();
-
   function getCSSVariableValue(variableName) {
     // Fetch the CSS variable value directly from the :root element
     return getComputedStyle(document.documentElement)

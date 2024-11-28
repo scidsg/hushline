@@ -388,7 +388,7 @@ def init_app(app: Flask) -> None:
         match row_count:
             case 1:
                 db.session.commit()
-                flash("👍 Message status updated.")
+                flash("Status updated.")
             case 0:
                 db.session.rollback()
                 flash("⛔️ Message not found.")

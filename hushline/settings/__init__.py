@@ -590,19 +590,16 @@ def create_blueprint() -> Blueprint:
         status_code = 200
         if request.method == "POST":
             if form.validate():
-                try:
-                    MessageStatusText.upsert(
-                        session["user_id"], MessageStatus[form.status.data.upper()], form.markdown.data
-                    )
-                    db.session.commit()
-                    flash("Reply text set successfully.", "success")
-                except Exception as e:
-                    flash(f"Error updating reply text: {e}", "error")
-                    status_code = 400
+                MessageStatusText.upsert(
+                    session["user_id"], MessageStatus[form.status.data.upper()], form.markdown.data
+                )
+                db.session.commit()
+                flash("Reply text set")
+                return redirect_to_self()
             else:
-                flash("Form validation failed.", "error")
+                flash(form.errors)
+                form_error()
                 status_code = 400
-            return redirect_to_self(), status_code
 
         return render_template(
             "settings/replies.html",

@@ -7,13 +7,13 @@
     <h1>Message</h1>
     <div class="action-model">
       <form
-        id="statusForm"
         class="formBody"
         method="POST"
         action="{{ url_for('set_message_status', id=message.id) }}"
       >
         {{ update_status_form.hidden_tag() }}
         {{ update_status_form.status }}
+        <!-- {{ update_status_form.submit }} -->
       </form>
       <form
         class="formBody"
