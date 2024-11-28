@@ -8,19 +8,12 @@
   <h2>Settings</h2>
   <div class="settings-content">
     {% include "settings/nav.html" %}
-    <div class="tab-content">
+    <div class="tab-content replies">
+      <p>When you receive a new message, the person who sent it receives a temporary address where they will be able to see their message's status. When you change statuses, the temporary address will show the latest updates. There are pre-defined replies already set, but you can create custom messages below.</p>
       {% for (status, msg_status_text) in status_tuples %}
         {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}
-        <div>
+        <div class="response">
           <h3>{{ status.display_str }}</h3>
-          {% if msg_status_text and msg_status_text.markdown %}
-            <p><strong>Preview:</strong></p>
-            <div>
-              {{ msg_status_text.markdown | markdown }}
-            </div>
-          {% else %}
-            <p><em>A reply is not currently configured for this message status.</em></p>
-          {% endif %}
           <form method="POST" class="formBody">
             {{ form.hidden_tag() }}
             {{ form.markdown.label }}

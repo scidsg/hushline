@@ -2396,7 +2396,7 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab-list li button {
+  .settings-main .settings-content .tab-list li a {
     padding: 1rem 0;
     transition: none;
   }
@@ -2643,4 +2643,12 @@ h3 {
   padding: 0;
   padding-bottom: 0.125rem;
   width: fit-content;
+}
+
+.response:not(:last-of-type) {
+  margin-bottom: 2rem;
+}
+
+.replies p {
+  margin-bottom: 2rem;
 }
