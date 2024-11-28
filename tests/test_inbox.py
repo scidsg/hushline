@@ -15,7 +15,7 @@ def test_delete_own_message(client: FlaskClient, user: User) -> None:
 
     # Attempt to delete the user's own message
     response = client.post(
-        url_for("delete_message", message_id=message.id),
+        url_for("delete_message", id=message.id),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -43,7 +43,7 @@ def test_cannot_delete_other_user_message(
 
     # Attempt to delete the other user's message
     response = client.post(
-        url_for("delete_message", message_id=other_user_message.id),
+        url_for("delete_message", id=other_user_message.id),
         follow_redirects=True,
     )
     assert response.status_code == 200

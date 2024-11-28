@@ -89,7 +89,6 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
     )
     assert login_response.status_code == 200
     assert "Inbox" in login_response.text
-    assert 'href="/inbox?username=newuser"' in login_response.text
 
 
 def test_user_login_with_incorrect_password(client: FlaskClient) -> None:

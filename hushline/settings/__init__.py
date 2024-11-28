@@ -33,6 +33,8 @@ from ..forms import TwoFactorForm
 from ..model import (
     AuthenticationLog,
     Message,
+    MessageStatus,
+    MessageStatusText,
     OrganizationSetting,
     SMTPEncryption,
     Tier,
@@ -52,6 +54,7 @@ from .forms import (
     PGPKeyForm,
     PGPProtonForm,
     ProfileForm,
+    SetMessageStatusTextForm,
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
@@ -497,6 +500,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.BRAND_LOGO,
                     value=OrganizationSetting.BRAND_LOGO_VALUE,
                 )
+                db.session.commit()
                 flash("👍 Brand logo updated successfully.")
             elif (
                 delete_brand_logo_form.submit.name in request.form
@@ -525,6 +529,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.BRAND_PRIMARY_COLOR,
                     value=update_brand_primary_color_form.brand_primary_hex_color.data,
                 )
+                db.session.commit()
                 flash("👍 Brand primary color updated successfully.")
             elif (
                 update_brand_app_name_form.submit.name in request.form
@@ -534,6 +539,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.BRAND_NAME,
                     value=update_brand_app_name_form.brand_app_name.data,
                 )
+                db.session.commit()
                 flash("👍 Brand app name updated successfully.")
             else:
                 form_error()
@@ -576,6 +582,32 @@ def create_blueprint() -> Blueprint:
             two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
             pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
         )
+
+    @bp.route("/replies", methods=["GET", "POST"])
+    @authentication_required
+    def replies() -> Response | Tuple[str, int]:
+        form = SetMessageStatusTextForm()
+        status_code = 200
+        if request.method == "POST":
+            if form.validate():
+                MessageStatusText.upsert(
+                    session["user_id"], MessageStatus[form.status.data.upper()], form.markdown.data
+                )
+                db.session.commit()
+                flash("Reply text set")
+                return redirect_to_self()
+            else:
+                flash(form.errors)
+                form_error()
+                status_code = 400
+
+        return render_template(
+            "settings/replies.html",
+            form_maker=lambda status, text: SetMessageStatusTextForm(
+                status=status.value, markdown=text
+            ),
+            status_tuples=MessageStatusText.statuses_for_user(session["user_id"]),
+        ), status_code
 
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required
@@ -649,9 +681,9 @@ def create_blueprint() -> Blueprint:
         flash("🔓 2FA has been disabled.")
         return redirect(url_for(".index"))
 
-    @bp.route("/confirm-disable-2fa", methods=["GET"])
+    @bp.route("/confirm-disable-2fa")
     @authentication_required
-    def confirm_disable_2fa() -> Response | str:
+    def confirm_disable_2fa() -> str:
         return render_template("confirm_disable_2fa.html")
 
     @bp.route("/verify-2fa-setup", methods=["POST"])

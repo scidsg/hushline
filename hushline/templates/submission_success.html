@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Message Submitted{% endblock %}
+
+{% block content %}
+<h1>👍 Message Submitted!</h1>
+  <p>
+    Thank you for submitting your mesasge to {{ message.username.display_name or message.username.username }}!
+    You should expect a response within a few days.
+    You can check the status of your submissions using the following information:
+  </p>
+
+  <p>
+    <strong>Reply Address</strong><br>
+    {% with reply_url = url_for('message_reply', slug=message.reply_slug, _external=True) %}
+      <a id="reply-url" href="{{ reply_url }}">{{ reply_url }}</a>
+    {% endwith %}
+  </p>
+
+  <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
+
+  <p>
+    <strong>Do not</strong> share this linkt with anyone else.
+    If you do, anyone who has it can see if your message has been replied to or not.
+  </p>
+
+  <p>
+    Make sure you copy this link before closing this window or navigating to another page.
+    Once you do, this link will not be displayed again.
+  </p>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/message_success.js') }}"></script>
+{% endblock %}

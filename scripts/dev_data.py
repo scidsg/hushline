@@ -44,12 +44,14 @@ def create_users() -> None:
                 _username=data["username"],  # type: ignore
                 is_primary=True,
                 show_in_directory=True,
+                is_verified=True,
             )
             un2 = Username(
                 user_id=user.id,
                 _username=data["username"] + "-alias",  # type: ignore
                 is_primary=False,
                 show_in_directory=True,
+                is_verified=False,
             )
             db.session.add(un1)
             db.session.add(un2)
