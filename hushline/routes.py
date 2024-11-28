@@ -383,7 +383,7 @@ def init_app(app: Flask) -> None:
                     db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
             )
-            .values(status=form.status.data)
+            .values(status=form.status.data, status_changed_at=datetime.now(UTC))
         ).rowcount
         match row_count:
             case 1:

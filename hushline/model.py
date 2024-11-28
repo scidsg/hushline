@@ -1,7 +1,7 @@
 import enum
 import secrets
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Generator, Optional, Self, Sequence, Tuple
 
 from flask import abort, current_app
@@ -469,7 +469,9 @@ class Message(Model):
     status: Mapped[MessageStatus] = mapped_column(
         SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING
     )
-    status_changed_date: Mapped[date] = mapped_column(server_default=text("CURRENT_DATE"))
+    status_changed_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()")
+    )
 
     def __init__(self, content: str, username_id: int) -> None:
         super().__init__(
