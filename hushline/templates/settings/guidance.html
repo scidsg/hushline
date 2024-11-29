@@ -33,71 +33,75 @@
       </form>
 
       {% if guidance_enabled %}
-      <h3>Prompts</h3>
+        <h3>Prompts</h3>
 
-      <h4>Emergency Exit</h4>
-      <p>
-        You can include a button that, if clicked, brings the user to a generic,
-        popular website to obfuscate the fact that they're visiting Hush Line.
-      </p>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ user_guidance_emergency_exit_form.hidden_tag() }}
-        <div>
-          <label for="exit-button-text">Exit Button Text</label>
-          <input
-            type="text"
-            name="exit_button_text"
-            id="exit-button-text"
-            value="{{ exit_button_text }}"
-            required
-          />
-        </div>
-        <div>
-          <label for="exit-button-link">Exit Button Link</label>
-          <input
-            type="text"
-            name="exit_button_link"
-            id="exit-button-link"
-            value="{{ exit_button_link }}"
-            required
-          />
-        </div>
-        {{ user_guidance_emergency_exit_form.submit }}
-      </form>
+        <h4>Emergency Exit</h4>
+        <p>
+          You can include a button that, if clicked, brings the user to a generic,
+          popular website to obfuscate the fact that they're visiting Hush Line.
+        </p>
+        <form
+          method="POST"
+          class="formBody"
+        >
+          {{ user_guidance_emergency_exit_form.hidden_tag() }}
+          <div>
+            <label for="exit-button-text">Exit Button Text</label>
+            <input
+              type="text"
+              name="exit_button_text"
+              id="exit-button-text"
+              value="{{ exit_button_text }}"
+              required
+            />
+          </div>
+          <div>
+            <label for="exit-button-link">Exit Button Link</label>
+            <input
+              type="text"
+              name="exit_button_link"
+              id="exit-button-link"
+              value="{{ exit_button_link }}"
+              required
+            />
+          </div>
+          {{ user_guidance_emergency_exit_form.submit }}
+        </form>
 
-      <h4>Prompt Content</h4>
-      {% for prompt in guidance_prompt_values %}
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ user_guidance_prompt_forms[loop.index-1].hidden_tag() }}
-        <input type="hidden" name="prompt_index" value="{{ prompt.index }}" />
-        <div>
-          <label for="heading-text-{{ loop.index-1 }}">Prompt Heading</label>
-          <input
-            type="text"
-            name="heading_text"
-            id="heading-text-{{ loop.index-1 }}"
-            value="{{ prompt.heading_text }}"
-            required
-          />
-        </div>
-        <div>
-          <label for="prompt-text-{{ loop.index-1 }}">Prompt</label>
-          <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024">{{ prompt.prompt_text or '' }}</textarea>
-        </div>
-        {{ user_guidance_prompt_forms[loop.index-1].submit }}
-        {{ user_guidance_prompt_forms[loop.index-1].add_submit }}
-        {% if loop.index - 1 != 0 %}
-        {{ user_guidance_prompt_forms[loop.index-1].delete_submit }}
-        {% endif %}
-      </form>
-      {% endfor %}
+        <h4>Prompt Content</h4>
+        {% for prompt in guidance_prompt_values %}
+          <form
+            method="POST"
+            class="formBody"
+          >
+            {{ user_guidance_prompt_forms[loop.index-1].hidden_tag() }}
+            <div>
+              <label for="heading-text-{{ loop.index-1 }}">Prompt Heading</label>
+              <input
+                type="text"
+                name="heading_text"
+                id="heading-text-{{ loop.index-1 }}"
+                value="{{ prompt.heading_text }}"
+              />
+            </div>
+            <div>
+              <label for="prompt-text-{{ loop.index-1 }}">Prompt</label>
+              <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024">{{ prompt.prompt_text or '' }}</textarea>
+            </div>
+            {{ user_guidance_prompt_forms[loop.index-1].submit }}
+            {% if loop.index - 1 != 0 %}
+            {{ user_guidance_prompt_forms[loop.index-1].delete_submit }}
+            {% endif %}
+          </form>
+        {% endfor %}
 
+        <form
+          method="POST"
+          class="formBody"
+        >
+          {{ user_guidance_add_prompt_form.hidden_tag() }}
+          {{ user_guidance_add_prompt_form.submit }}
+        </form>
       {% endif %}
     </div>
   </div>

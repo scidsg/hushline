@@ -16,7 +16,12 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import URL, DataRequired, Email, Length
+from wtforms.validators import (
+    URL,
+    DataRequired,
+    Email,
+    Length,
+)
 from wtforms.validators import Optional as OptionalField
 from wtforms.widgets.core import html_params
 
@@ -240,9 +245,11 @@ class UserGuidanceEmergencyExitForm(FlaskForm):
 
 
 class UserGuidancePromptContentForm(FlaskForm):
-    heading_text = StringField("Prompt Heading", validators=[DataRequired(), Length(min=1, max=50)])
-    prompt_text = StringField("Prompt Text", validators=[DataRequired(), Length(min=1, max=1024)])
-    index = IntegerField("Index", validators=[DataRequired()])
+    heading_text = StringField("Prompt Heading", validators=[Length(min=0, max=50)])
+    prompt_text = StringField("Prompt Text", validators=[Length(min=0, max=1024)])
     submit = SubmitField("Update", name="update_prompt", widget=Button())
-    add_submit = SubmitField("Add Another Prompt", name="add_new_prompt", widget=Button())
     delete_submit = SubmitField("Delete This Prompt", name="delete_prompt", widget=Button())
+
+
+class UserGuidanceAddPromptForm(FlaskForm):
+    submit = SubmitField("Add New Prompt", name="add_prompt", widget=Button())

@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+import json
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional, Tuple
 
@@ -55,6 +56,7 @@ from .forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
     UserGuidancePromptContentForm,
@@ -557,13 +559,20 @@ def create_blueprint() -> Blueprint:
         user_guidance_form = UserGuidanceForm()
         user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm()
 
-        guidance_prompt_values = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+        guidance_prompt_values = OrganizationSetting.fetch_one(
+            OrganizationSetting.GUIDANCE_PROMPTS
+        ).value
         user_guidance_prompt_forms = [
             UserGuidancePromptContentForm() for _ in range(len(guidance_prompt_values))
         ]
 
+        user_guidance_add_prompt_form = UserGuidanceAddPromptForm()
+
         status_code = 200
         if request.method == "POST":
+            current_app.logger.info(json.dumps(request.form, indent=2))
+
+            # Show user guidance form
             if (user_guidance_form.submit.name in request.form) and user_guidance_form.validate():
                 OrganizationSetting.upsert(
                     key=OrganizationSetting.GUIDANCE_ENABLED,
@@ -573,6 +582,8 @@ def create_blueprint() -> Blueprint:
                     flash("👍 User guidance enabled.")
                 else:
                     flash("👍 User guidance disabled.")
+
+            # Emergency exit form
             elif (
                 user_guidance_emergency_exit_form.submit.name in request.form
             ) and user_guidance_emergency_exit_form.validate():
@@ -585,15 +596,73 @@ def create_blueprint() -> Blueprint:
                     value=user_guidance_emergency_exit_form.exit_button_link.data,
                 )
                 flash("👍 Emergency exit button updated successfully.")
+
+            # Add prompt form
+            elif (
+                user_guidance_add_prompt_form.submit.name in request.form
+            ) and user_guidance_add_prompt_form.validate():
+                new_prompt_value = {
+                    "heading_text": "",
+                    "prompt_text": "",
+                }
+                guidance_prompt_values.append(new_prompt_value)
+                user_guidance_prompt_forms.append(UserGuidancePromptContentForm())
+
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.GUIDANCE_PROMPTS,
+                    value=guidance_prompt_values,
+                )
+
+                flash("👍 Prompt added.")
+
+            # Guidance prompt forms
             else:
-                form_error()
-                status_code = 400
+                form_submitted = False
+                for i, form in enumerate(user_guidance_prompt_forms):
+                    if (
+                        form.submit.name in request.form or form.delete_submit.name in request.form
+                    ) and form.validate():
+                        form_submitted = True
+
+                        # Update
+                        if form.submit.name in request.form:
+                            guidance_prompt_values[i] = {
+                                "heading_text": form.heading_text.data,
+                                "prompt_text": form.prompt_text.data,
+                            }
+                            flash("👍 Prompt updated.")
+
+                        # Delete
+                        elif form.delete_submit.name in request.form:
+                            guidance_prompt_values.pop(i)
+                            user_guidance_prompt_forms.pop(i)
+
+                            OrganizationSetting.upsert(
+                                key=OrganizationSetting.GUIDANCE_PROMPTS,
+                                value=guidance_prompt_values,
+                            )
+
+                            flash("👍 Prompt deleted.")
+
+                        # Save the updated values
+                        OrganizationSetting.upsert(
+                            key=OrganizationSetting.GUIDANCE_PROMPTS,
+                            value=guidance_prompt_values,
+                        )
+
+                # Invalid form?
+                if not form_submitted:
+                    current_app.logger.info(json.dumps(form.errors, indent=2))
+
+                    form_error()
+                    status_code = 400
 
         return render_template(
             "settings/guidance.html",
             user_guidance_form=user_guidance_form,
             user_guidance_emergency_exit_form=user_guidance_emergency_exit_form,
             user_guidance_prompt_forms=user_guidance_prompt_forms,
+            user_guidance_add_prompt_form=user_guidance_add_prompt_form,
             guidance_prompt_values=guidance_prompt_values,
             guidance_enabled=OrganizationSetting.fetch_one(
                 OrganizationSetting.GUIDANCE_ENABLED

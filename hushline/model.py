@@ -54,7 +54,7 @@ class OrganizationSetting(Model):
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://www.google.com/",
-        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
+        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": ""}],
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
