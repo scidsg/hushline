@@ -584,7 +584,7 @@ def create_blueprint() -> Blueprint:
         )
 
     @bp.route("/replies", methods=["GET", "POST"])
-    @admin_authentication_required
+    @authentication_required
     def replies() -> Response | Tuple[str, int]:
         form = SetMessageStatusTextForm()
         status_code = 200

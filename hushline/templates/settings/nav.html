@@ -4,7 +4,7 @@
     {% with buttons = [
       ('settings.profile', 'Profile', True),
       ('settings.aliases', 'Aliases', aliases_enabled),
-      ('settings.replies', 'Replies', user.is_admin),
+      ('settings.replies', 'Replies', True),
       ('settings.auth', 'Authentication', True),
       ('settings.email', 'Email & Encryption', True),
       ('settings.branding', 'Branding', user.is_admin),
