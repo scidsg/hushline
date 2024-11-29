@@ -54,7 +54,7 @@ class OrganizationSetting(Model):
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://www.google.com/",
-        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": ""}],
+        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
@@ -89,7 +89,7 @@ class OrganizationSetting(Model):
         result = db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
         if not result:
             return cls._DEFAULT_VALUES.get(key)
-        return result
+        return result.value
 
 
 @dataclass(frozen=True, repr=False, eq=False)

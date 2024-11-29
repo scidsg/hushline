@@ -82,11 +82,12 @@
                 name="heading_text"
                 id="heading-text-{{ loop.index-1 }}"
                 value="{{ prompt.heading_text }}"
+                placeholder="Header"
               />
             </div>
             <div>
               <label for="prompt-text-{{ loop.index-1 }}">Prompt</label>
-              <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024">{{ prompt.prompt_text or '' }}</textarea>
+              <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024" placeholder="Add important information here">{{ prompt.prompt_text or '' }}</textarea>
             </div>
             {{ user_guidance_prompt_forms[loop.index-1].submit }}
             {% if loop.index - 1 != 0 %}

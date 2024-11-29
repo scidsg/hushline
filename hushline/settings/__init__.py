@@ -559,19 +559,19 @@ def create_blueprint() -> Blueprint:
         user_guidance_form = UserGuidanceForm()
         user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm()
 
-        guidance_prompt_values = OrganizationSetting.fetch_one(
-            OrganizationSetting.GUIDANCE_PROMPTS
-        ).value
+        guidance_prompt_values = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+        if guidance_prompt_values is None:
+            guidance_prompt_values = []
         user_guidance_prompt_forms = [
             UserGuidancePromptContentForm() for _ in range(len(guidance_prompt_values))
         ]
+        for i, form in enumerate(user_guidance_prompt_forms):
+            form.index.data = str(i)
 
         user_guidance_add_prompt_form = UserGuidanceAddPromptForm()
 
         status_code = 200
         if request.method == "POST":
-            current_app.logger.info(json.dumps(request.form, indent=2))
-
             # Show user guidance form
             if (user_guidance_form.submit.name in request.form) and user_guidance_form.validate():
                 OrganizationSetting.upsert(
@@ -604,6 +604,7 @@ def create_blueprint() -> Blueprint:
                 new_prompt_value = {
                     "heading_text": "",
                     "prompt_text": "",
+                    "index": guidance_prompt_values[-1]["index"] + 1,
                 }
                 guidance_prompt_values.append(new_prompt_value)
                 user_guidance_prompt_forms.append(UserGuidancePromptContentForm())
@@ -617,18 +618,27 @@ def create_blueprint() -> Blueprint:
 
             # Guidance prompt forms
             else:
+                current_app.logger.info(json.dumps(request.form, indent=2))
+
                 form_submitted = False
                 for i, form in enumerate(user_guidance_prompt_forms):
                     if (
-                        form.submit.name in request.form or form.delete_submit.name in request.form
-                    ) and form.validate():
+                        (
+                            form.submit.name in request.form
+                            or form.delete_submit.name in request.form
+                        )
+                        and form.validate()
+                        and request.form.get("index") == str(i)
+                    ):
                         form_submitted = True
+                        current_app.logger.info(f"form for index {i}: {form.index.data}")
 
                         # Update
                         if form.submit.name in request.form:
                             guidance_prompt_values[i] = {
                                 "heading_text": form.heading_text.data,
                                 "prompt_text": form.prompt_text.data,
+                                "index": i,
                             }
                             flash("👍 Prompt updated.")
 
@@ -636,12 +646,6 @@ def create_blueprint() -> Blueprint:
                         elif form.delete_submit.name in request.form:
                             guidance_prompt_values.pop(i)
                             user_guidance_prompt_forms.pop(i)
-
-                            OrganizationSetting.upsert(
-                                key=OrganizationSetting.GUIDANCE_PROMPTS,
-                                value=guidance_prompt_values,
-                            )
-
                             flash("👍 Prompt deleted.")
 
                         # Save the updated values
@@ -664,15 +668,13 @@ def create_blueprint() -> Blueprint:
             user_guidance_prompt_forms=user_guidance_prompt_forms,
             user_guidance_add_prompt_form=user_guidance_add_prompt_form,
             guidance_prompt_values=guidance_prompt_values,
-            guidance_enabled=OrganizationSetting.fetch_one(
-                OrganizationSetting.GUIDANCE_ENABLED
-            ).value,
+            guidance_enabled=OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED),
             exit_button_text=OrganizationSetting.fetch_one(
                 OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT
-            ).value,
+            ),
             exit_button_link=OrganizationSetting.fetch_one(
                 OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK
-            ).value,
+            ),
         ), status_code
 
     @admin_authentication_required
