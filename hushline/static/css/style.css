@@ -2594,7 +2594,7 @@ h3 {
   font-family: var(--font-mono);
   font-size: var(--font-size-smaller);
   margin-top: 0;
-  margin-bottom: .125rem;
+  margin-bottom: 0.125rem;
 }
 
 .message-meta p:first-of-type {
@@ -2660,5 +2660,5 @@ h3 {
 }
 
 .auto-reply {
-  margin-bottom: .125rem;
+  margin-bottom: 0.125rem;
 }
