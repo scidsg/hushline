@@ -2664,6 +2664,6 @@ h3 {
   .reply-header {
     flex-direction: column;
     align-items: start;
-    margin-bottom: .5rem;
+    margin-bottom: 0.5rem;
   }
 }
