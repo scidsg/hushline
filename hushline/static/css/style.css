@@ -2583,7 +2583,7 @@ h3 {
 
 .message-meta {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
 
   p {
     width: 50%;
@@ -2594,6 +2594,11 @@ h3 {
   font-family: var(--font-mono);
   font-size: var(--font-size-smaller);
   margin-top: 0;
+  margin-bottom: .125rem;
+}
+
+.message-meta p:first-of-type {
+  font-size: var(--font-size-small);
 }
 
 .message-meta p strong {
@@ -2652,4 +2657,8 @@ h3 {
 
 .replies p {
   margin-bottom: 2rem;
+}
+
+.auto-reply {
+  margin-bottom: .125rem;
 }
