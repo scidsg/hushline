@@ -761,6 +761,7 @@ def create_blueprint() -> Blueprint:
                     Message.username_id.in_(db.select(Username.id).filter_by(user_id=user.id))
                 )
             )
+            db.session.execute(db.delete(MessageStatusText).filter_by(user_id=user.id))
             db.session.execute(db.delete(AuthenticationLog).filter_by(user_id=user.id))
             db.session.execute(db.delete(Username).filter_by(user_id=user.id))
             db.session.delete(user)
