@@ -2576,10 +2576,6 @@ h3 {
 .message-meta {
   display: flex;
   flex-direction: column;
-
-  p {
-    width: 50%;
-  }
 }
 
 .message-meta p {
