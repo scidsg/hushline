@@ -17,8 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
           successMessage.classList.remove("show");
         }, 3000);
       },
-      () => {
-      }
+      () => {},
     );
 
     return false;

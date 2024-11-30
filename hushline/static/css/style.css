@@ -2641,8 +2641,8 @@ h3 {
 }
 
 #copy-link-button {
-  margin-top: .25rem;
-  margin-bottom: .25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2671,11 +2671,13 @@ h3 {
 
 .copy-container .copy-success {
   font-size: var(--font-size-small);
-  color: #25631D;
+  color: #25631d;
   font-style: italic;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
 }
 
 .copy-container .copy-success.show {
