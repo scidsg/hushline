@@ -411,6 +411,10 @@
   #invoice-wrapper {
     border: var(--border);
   }
+
+  .copy-container .copy-success {
+    color: #25631d;
+  }
 }
 
 /* Dark Mode */
@@ -761,6 +765,10 @@
 
   #invoice-wrapper {
     border: var(--border-dark);
+  }
+
+  .copy-container .copy-success {
+    color: #7CD671;
   }
 }
 
@@ -2671,7 +2679,6 @@ h3 {
 
 .copy-container .copy-success {
   font-size: var(--font-size-small);
-  color: #25631d;
   font-style: italic;
   opacity: 0;
   visibility: hidden;
