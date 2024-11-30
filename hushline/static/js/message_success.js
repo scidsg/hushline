@@ -1,30 +1,23 @@
 document.addEventListener("DOMContentLoaded", function () {
   const button = document.getElementById("copy-link-button");
-  if (!button) {
-    console.debug("No button");
-    return;
-  }
+  if (!button) return;
 
   const target = document.getElementById(button.dataset.target);
-  if (!target) {
-    console.debug("No target");
-    return;
-  }
+  const successMessage = document.getElementById("copy-link-success");
+
+  if (!target || !successMessage) return;
 
   button.onclick = () => {
-    const data = new ClipboardItem({
-      "text/plain": Promise.resolve(
-        new Blob([target.innerText], { type: "text/plain" }),
-      ),
-    });
+    const textToCopy = target.innerText;
+    navigator.clipboard.writeText(textToCopy).then(
+      () => {
+        successMessage.classList.add("show");
 
-    navigator.clipboard.write([data]).then(
-      function () {
-        console.debug("Address copied");
+        setTimeout(() => {
+          successMessage.classList.remove("show");
+        }, 3000);
       },
-      function () {
-        console.error("Address could not be copied to the clipboard");
-      },
+      () => {},
     );
 
     return false;
