@@ -1244,14 +1244,14 @@ input[type="file"]::file-selector-button {
 }
 
 .message-header button {
-    padding: .5rem 1rem;
-    min-width: 0;
-    min-height: 0;
-    font-size: calc(var(--font-size-base) * .925);
+  padding: 0.5rem 1rem;
+  min-width: 0;
+  min-height: 0;
+  font-size: calc(var(--font-size-base) * 0.925);
 }
 
 .message-header select {
-    font-size: calc(var(--font-size-base) * .925);
+  font-size: calc(var(--font-size-base) * 0.925);
 }
 
 input[type="file"]::file-selector-button {
