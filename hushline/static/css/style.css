@@ -2641,7 +2641,8 @@ h3 {
 }
 
 #copy-link-button {
-  margin-bottom: 1rem;
+  margin-top: .25rem;
+  margin-bottom: .25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2659,6 +2660,32 @@ h3 {
 
 .auto-reply {
   margin-bottom: 0.125rem;
+}
+
+.copy-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.copy-container .copy-success {
+  font-size: var(--font-size-small);
+  color: #25631D;
+  font-style: italic;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.copy-container .copy-success.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+strong {
+  font-family: var(--font-sans-bold);
+  font-weight: normal;
 }
 
 @media (max-width: 640px) {

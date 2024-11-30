@@ -16,8 +16,11 @@
       <a id="reply-url" href="{{ reply_url }}">{{ reply_url }}</a>
     {% endwith %}
   </p>
-
-  <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
+  <div class="copy-container">
+    <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
+    <span id="copy-link-success" class="copy-success">Link copied!</span>
+  </div>
+  
 
   <p>
     <strong>Do not</strong> share this linkt with anyone else.
