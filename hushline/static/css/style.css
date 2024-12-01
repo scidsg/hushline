@@ -2710,4 +2710,8 @@ strong {
     align-items: start;
     margin-bottom: 0.5rem;
   }
+
+  .message-header button {
+    margin: 0;
+  }
 }
