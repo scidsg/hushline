@@ -1,14 +1,16 @@
 ---
-name: Run Tests
+name: Run Linter and Tests
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
 
 jobs:
-  run-lint-and-tests:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +29,18 @@ jobs:
       - name: Lint
         run: poetry run make lint
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Test
         run: make test
+
+  test-with-alembic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Test with alembic
         run: make test
