@@ -29,6 +29,7 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceForm,
 )
 from tests.helpers import form_to_data
 
@@ -727,3 +728,57 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     resp = client.get(logo_url, follow_redirects=True)
     # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
     assert "That page doesn" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_enable_disable_guidance(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "User guidance enabled" in resp.text
+
+    # Check that it's enabled in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED) is True
+
+    # Check that the guidance settings are show
+    resp = client.get(url_for("settings.guidance"))
+    assert resp.status_code == 200
+    assert "Prompt Content" in resp.text
+
+    # Disable guidance
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "User guidance disabled" in resp.text
+
+    # Check that it's disabled in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED) is False
+
+    # Check that the guidance settings are not shown
+    resp = client.get(url_for("settings.guidance"))
+    assert resp.status_code == 200
+    assert "Prompt Content" not in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_emergency_exit(client: FlaskClient, admin: User) -> None:
+    pass
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_prompts(client: FlaskClient, admin: User) -> None:
+    pass
