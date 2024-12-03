@@ -556,14 +556,28 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     @bp.route("/guidance", methods=["GET", "POST"])
     def guidance() -> Tuple[str, int]:
-        user_guidance_form = UserGuidanceForm()
-        user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm()
+        show_user_guidance = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED)
+
+        user_guidance_form = UserGuidanceForm(show_user_guidance=show_user_guidance)
+        user_guidance_emergency_exit_form = UserGuidanceEmergencyExitForm(
+            exit_button_text=OrganizationSetting.fetch_one(
+                OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT
+            ),
+            exit_button_link=OrganizationSetting.fetch_one(
+                OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK
+            ),
+        )
 
         guidance_prompt_values = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
         if guidance_prompt_values is None:
             guidance_prompt_values = []
         user_guidance_prompt_forms = [
-            UserGuidancePromptContentForm() for _ in range(len(guidance_prompt_values))
+            UserGuidancePromptContentForm(
+                heading_text=guidance_prompt_values[i].get("heading_text", ""),
+                prompt_text=guidance_prompt_values[i].get("prompt_text", ""),
+                index=guidance_prompt_values[i].get("index", ""),
+            )
+            for i in range(len(guidance_prompt_values))
         ]
         for i, form in enumerate(user_guidance_prompt_forms):
             form.index.data = str(i)
@@ -667,14 +681,7 @@ def create_blueprint() -> Blueprint:
             user_guidance_emergency_exit_form=user_guidance_emergency_exit_form,
             user_guidance_prompt_forms=user_guidance_prompt_forms,
             user_guidance_add_prompt_form=user_guidance_add_prompt_form,
-            guidance_prompt_values=guidance_prompt_values,
-            guidance_enabled=OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED),
-            exit_button_text=OrganizationSetting.fetch_one(
-                OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT
-            ),
-            exit_button_link=OrganizationSetting.fetch_one(
-                OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK
-            ),
+            show_user_guidance=show_user_guidance,
         ), status_code
 
     @admin_authentication_required

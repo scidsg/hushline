@@ -21,8 +21,8 @@
       >
         {{ user_guidance_form.hidden_tag() }}
         <div class="checkbox-group toggle-ui">
-          {{ user_guidance_form.show_user_guidance() }}
-          <label for="show_user_guidance" class="toggle-label">
+          <input checked="{% if show_user_guidance %}checked{% endif %}" id="{{ user_guidance_form.show_user_guidance.name }}" name="{{ user_guidance_form.show_user_guidance.name }}" type="checkbox" value="y">
+          <label for="{{ user_guidance_form.show_user_guidance.name }}" class="toggle-label">
             Show User Guidance
             <div class="toggle">
               <div class="toggle__ball"></div>
@@ -32,7 +32,7 @@
         {{ user_guidance_form.submit }}
       </form>
 
-      {% if guidance_enabled %}
+      {% if show_user_guidance %}
         <h3>Prompts</h3>
 
         <h4>Emergency Exit</h4>
@@ -46,52 +46,34 @@
         >
           {{ user_guidance_emergency_exit_form.hidden_tag() }}
           <div>
-            <label for="exit-button-text">Exit Button Text</label>
-            <input
-              type="text"
-              name="exit_button_text"
-              id="exit-button-text"
-              value="{{ exit_button_text }}"
-              required
-            />
+            <label for="{{ user_guidance_emergency_exit_form.exit_button_text.name }}">Exit Button Text</label>
+            {{ user_guidance_emergency_exit_form.exit_button_text() }}
           </div>
           <div>
-            <label for="exit-button-link">Exit Button Link</label>
-            <input
-              type="text"
-              name="exit_button_link"
-              id="exit-button-link"
-              value="{{ exit_button_link }}"
-              required
-            />
+            <label for="{{ user_guidance_emergency_exit_form.exit_button_link.name }}">Exit Button Link</label>
+            {{ user_guidance_emergency_exit_form.exit_button_link() }}
           </div>
           {{ user_guidance_emergency_exit_form.submit }}
         </form>
 
         <h4>Prompt Content</h4>
-        {% for prompt in guidance_prompt_values %}
+        {% for form in user_guidance_prompt_forms %}
           <form
             method="POST"
             class="formBody"
           >
-            {{ user_guidance_prompt_forms[loop.index-1].hidden_tag() }}
+            {{ form.hidden_tag() }}
             <div>
-              <label for="heading-text-{{ loop.index-1 }}">Prompt Heading</label>
-              <input
-                type="text"
-                name="heading_text"
-                id="heading-text-{{ loop.index-1 }}"
-                value="{{ prompt.heading_text }}"
-                placeholder="Header"
-              />
+              <label for="{{ form.heading_text.name }}">Prompt Heading</label>
+              {{ form.heading_text() }}
             </div>
             <div>
-              <label for="prompt-text-{{ loop.index-1 }}">Prompt</label>
-              <textarea id="prompt-text-{{ loop.index-1 }}" name="prompt_text" rows="4" maxlength="1024" placeholder="Add important information here">{{ prompt.prompt_text or '' }}</textarea>
+              <label for="{{ form.prompt_text.name }}">Prompt</label>
+              {{ form.prompt_text() }}
             </div>
-            {{ user_guidance_prompt_forms[loop.index-1].submit }}
-            {% if loop.index - 1 != 0 %}
-            {{ user_guidance_prompt_forms[loop.index-1].delete_submit }}
+            {{ form.submit }}
+            {% if loop.index != 1 %}
+            {{ form.delete_submit }}
             {% endif %}
           </form>
         {% endfor %}
