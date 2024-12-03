@@ -29,6 +29,7 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
 )
 from tests.helpers import form_to_data
@@ -776,7 +777,70 @@ def test_enable_disable_guidance(client: FlaskClient, admin: User) -> None:
 
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_guidance_emergency_exit(client: FlaskClient, admin: User) -> None:
-    pass
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update exit button
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "exit_button_text": "wikipedia!",
+            "exit_button_link": "https://wikipedia.org",
+            UserGuidanceEmergencyExitForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "Emergency exit button updated successfully" in resp.text
+
+    # Check that it's updated in org settings
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT) == "wikipedia!"
+    )
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK)
+        == "https://wikipedia.org"
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_emergency_exit_requires_url(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update exit button with invalid link
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "exit_button_text": "foo",
+            "exit_button_link": "bar",
+            UserGuidanceEmergencyExitForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 400
+
+    # Check that it's not updated in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT) != "foo"
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK) != "bar"
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
