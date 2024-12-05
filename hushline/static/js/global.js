@@ -183,7 +183,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const sanitizedUrl = new URL(exitButtonLinkValue);
             document.location.href = sanitizedUrl.href;
           } catch (e) {
-            console.error("Invalid URL in exit button link:", exitButtonLinkValue);
+            console.error(
+              "Invalid URL in exit button link:",
+              exitButtonLinkValue,
+            );
           }
         } else {
           console.error("No exit button link found");
