@@ -555,7 +555,7 @@ def create_blueprint() -> Blueprint:
 
     @admin_authentication_required
     @bp.route("/guidance", methods=["GET", "POST"])
-    def guidance() -> Tuple[str, int]:
+    def guidance() -> Tuple[str, int] | Response:
         show_user_guidance = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED)
 
         user_guidance_form = UserGuidanceForm(show_user_guidance=show_user_guidance)
@@ -575,12 +575,9 @@ def create_blueprint() -> Blueprint:
             UserGuidancePromptContentForm(
                 heading_text=guidance_prompt_values[i].get("heading_text", ""),
                 prompt_text=guidance_prompt_values[i].get("prompt_text", ""),
-                index=guidance_prompt_values[i].get("index", ""),
             )
             for i in range(len(guidance_prompt_values))
         ]
-        for i, form in enumerate(user_guidance_prompt_forms):
-            form.index.data = str(i)
 
         user_guidance_add_prompt_form = UserGuidanceAddPromptForm()
 
@@ -593,9 +590,12 @@ def create_blueprint() -> Blueprint:
                     value=user_guidance_form.show_user_guidance.data,
                 )
                 if user_guidance_form.show_user_guidance.data:
+                    show_user_guidance = True
                     flash("👍 User guidance enabled.")
                 else:
+                    show_user_guidance = False
                     flash("👍 User guidance disabled.")
+                return redirect(url_for(".guidance"))
 
             # Emergency exit form
             elif (
@@ -610,6 +610,7 @@ def create_blueprint() -> Blueprint:
                     value=user_guidance_emergency_exit_form.exit_button_link.data,
                 )
                 flash("👍 Emergency exit button updated successfully.")
+                return redirect(url_for(".guidance"))
 
             # Add prompt form
             elif (
@@ -618,7 +619,6 @@ def create_blueprint() -> Blueprint:
                 new_prompt_value = {
                     "heading_text": "",
                     "prompt_text": "",
-                    "index": guidance_prompt_values[-1]["index"] + 1,
                 }
                 guidance_prompt_values.append(new_prompt_value)
                 user_guidance_prompt_forms.append(UserGuidancePromptContentForm())
@@ -629,23 +629,22 @@ def create_blueprint() -> Blueprint:
                 )
 
                 flash("👍 Prompt added.")
+                return redirect(url_for(".guidance"))
 
             # Guidance prompt forms
             else:
-                current_app.logger.info(json.dumps(request.form, indent=2))
-
                 form_submitted = False
                 for i, form in enumerate(user_guidance_prompt_forms):
                     if (
-                        (
+                        request.form.get("index") == str(i)
+                        and (
                             form.submit.name in request.form
                             or form.delete_submit.name in request.form
                         )
                         and form.validate()
-                        and request.form.get("index") == str(i)
                     ):
                         form_submitted = True
-                        current_app.logger.info(f"form for index {i}: {form.index.data}")
+                        current_app.logger.info(json.dumps(request.form, indent=2))
 
                         # Update
                         if form.submit.name in request.form:
@@ -667,6 +666,7 @@ def create_blueprint() -> Blueprint:
                             key=OrganizationSetting.GUIDANCE_PROMPTS,
                             value=guidance_prompt_values,
                         )
+                        return redirect(url_for(".guidance"))
 
                 # Invalid form?
                 if not form_submitted:

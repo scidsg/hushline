@@ -29,8 +29,10 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
+    UserGuidancePromptContentForm,
 )
 from tests.helpers import form_to_data
 
@@ -845,4 +847,105 @@ def test_update_guidance_emergency_exit_requires_url(client: FlaskClient, admin:
 
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_guidance_prompts(client: FlaskClient, admin: User) -> None:
-    pass
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update the first prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 1",
+            "prompt_text": "prompt 1",
+            "index": 0,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Check that it's updated in org settings
+    assert len(OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)) == 1
+
+    # Add a new prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceAddPromptForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Check that it's updated in org settings
+    assert len(OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)) == 2
+
+    # Update the second prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 2",
+            "prompt_text": "prompt 2",
+            "index": 1,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Add a new prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceAddPromptForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update the third prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 3",
+            "prompt_text": "prompt 3",
+            "index": 2,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Check that it's updated in org settings
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert len(prompts) == 3
+    assert prompts[0]["heading_text"] == "prompt 1"
+    assert prompts[1]["heading_text"] == "prompt 2"
+    assert prompts[2]["heading_text"] == "prompt 3"
+
+    # Delete the second prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "index": 1,
+            UserGuidancePromptContentForm.delete_submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Check that it's updated in org settings
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert len(prompts) == 2
+    assert prompts[0]["heading_text"] == "prompt 1"
+    assert prompts[1]["heading_text"] == "prompt 3"

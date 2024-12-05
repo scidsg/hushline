@@ -21,7 +21,7 @@
       >
         {{ user_guidance_form.hidden_tag() }}
         <div class="checkbox-group toggle-ui">
-          <input checked="{% if show_user_guidance %}checked{% endif %}" id="{{ user_guidance_form.show_user_guidance.name }}" name="{{ user_guidance_form.show_user_guidance.name }}" type="checkbox" value="y">
+          {{ user_guidance_form.show_user_guidance() }}
           <label for="{{ user_guidance_form.show_user_guidance.name }}" class="toggle-label">
             Show User Guidance
             <div class="toggle">
@@ -32,7 +32,7 @@
         {{ user_guidance_form.submit }}
       </form>
 
-      {% if show_user_guidance %}
+      {% if user_guidance_form.show_user_guidance.data %}
         <h3>Prompts</h3>
 
         <h4>Emergency Exit</h4>
@@ -63,6 +63,7 @@
             class="formBody"
           >
             {{ form.hidden_tag() }}
+            <input type="hidden" name="index" value="{{ loop.index - 1 }}">
             <div>
               <label for="{{ form.heading_text.name }}">Prompt Heading</label>
               {{ form.heading_text() }}
@@ -72,9 +73,7 @@
               {{ form.prompt_text() }}
             </div>
             {{ form.submit }}
-            {% if loop.index != 1 %}
             {{ form.delete_submit }}
-            {% endif %}
           </form>
         {% endfor %}
 

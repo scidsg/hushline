@@ -9,7 +9,6 @@ from wtforms import (
     BooleanField,
     Field,
     FormField,
-    HiddenField,
     IntegerField,
     PasswordField,
     SelectField,
@@ -248,7 +247,6 @@ class UserGuidanceEmergencyExitForm(FlaskForm):
 class UserGuidancePromptContentForm(FlaskForm):
     heading_text = StringField("Prompt Heading", validators=[Length(min=0, max=50)])
     prompt_text = TextAreaField("Prompt Text", validators=[Length(min=0, max=1024)])
-    index = HiddenField("Index", validators=[DataRequired()], default=0)
     submit = SubmitField("Update", name="update_prompt", widget=Button())
     delete_submit = SubmitField("Delete This Prompt", name="delete_prompt", widget=Button())
 
