@@ -644,7 +644,6 @@ def create_blueprint() -> Blueprint:
                         and form.validate()
                     ):
                         form_submitted = True
-                        current_app.logger.info(json.dumps(request.form, indent=2))
 
                         # Update
                         if form.submit.name in request.form:
@@ -670,7 +669,7 @@ def create_blueprint() -> Blueprint:
 
                 # Invalid form?
                 if not form_submitted:
-                    current_app.logger.info(json.dumps(form.errors, indent=2))
+                    current_app.logger.debug(json.dumps(form.errors, indent=2))
 
                     form_error()
                     status_code = 400

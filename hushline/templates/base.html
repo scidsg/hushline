@@ -198,6 +198,29 @@
         >
       </p>
     </footer>
+
+    {% if guidance_enabled %}
+      <input type="hidden" id="guidance-exit-button-link" value="{{ guidance_exit_button_link }}" />
+      <div id="guidance-modal" class="modal">
+        {% for prompt in guidance_prompts %}
+          <div class="modal-content guidance-prompt-{{ loop.index - 1 }}">
+            <h2>{{ prompt.heading_text }}</h2>
+            {{ prompt.prompt_text }}
+            <div class="modal-buttons">
+              <button class="leave">Leave</button>
+              <button class="back">Back</button>
+              <button class="continue">Continue</button>
+              <button class="done">Done</button>
+              <span class="page-bullets">
+                {% for prompt in guidance_prompts %}
+                  <span class="page-bullet-{{ loop.index - 1 }}">•</span>
+                {% endfor %}
+              </span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
     {% block scripts %}
     {% endblock %}
     <script src="{{ url_for('static', filename='js/global.js') }}"></script>

@@ -80,6 +80,10 @@ def configure_jinja(app: Flask) -> None:
         data = OrganizationSetting.fetch(
             OrganizationSetting.BRAND_NAME,
             OrganizationSetting.BRAND_PRIMARY_COLOR,
+            OrganizationSetting.GUIDANCE_ENABLED,
+            OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
+            OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
+            OrganizationSetting.GUIDANCE_PROMPTS,
         )
 
         data.update(
