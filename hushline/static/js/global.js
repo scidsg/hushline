@@ -157,20 +157,26 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 0; i < pagesCount; i++) {
           if (i == activePage) {
             guidancePages[i].classList.add("show");
-            guidanceDiv.querySelectorAll(".page-bullet-" + i).forEach((bullet) => {
-              bullet.classList.add("active");
-            });
+            guidanceDiv
+              .querySelectorAll(".page-bullet-" + i)
+              .forEach((bullet) => {
+                bullet.classList.add("active");
+              });
           } else {
             guidancePages[i].classList.remove("show");
-            guidanceDiv.querySelectorAll(".page-bullet-" + i).forEach((bullet) => {
-              bullet.classList.remove("active");
-            });
+            guidanceDiv
+              .querySelectorAll(".page-bullet-" + i)
+              .forEach((bullet) => {
+                bullet.classList.remove("active");
+              });
           }
         }
       }
 
       function leaveClicked() {
-        const exitButtonLink = document.querySelector("#guidance-exit-button-link");
+        const exitButtonLink = document.querySelector(
+          "#guidance-exit-button-link",
+        );
         if (exitButtonLink) {
           const exitButtonLinkValue = exitButtonLink.value;
           document.location.href = exitButtonLinkValue;
