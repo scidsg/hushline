@@ -15,18 +15,8 @@
           <p>To: @{{ message.username.username }}</p>
         {% endif %}
         <p class="decrypted-content">{{ message.content }}</p>
-        <div
-          class="mailvelope-decryption-container"
-          id="decryption-container-{{ message.id }}"
-        ></div>
-        <form
-          action="{{ url_for('delete_message', message_id=message.id) }}"
-          method="POST"
-        >
-          <button type="submit" class="btn btn-danger" id="deleteMessageButton">
-            Delete
-          </button>
-        </form>
+        <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
+        <p><a class="stretched-link" href="{{ url_for('message', id=message.id) }}">Go to message</a></p>
       </article>
     {% endfor %}
   {% else %}

@@ -1,9 +1,29 @@
 import html
 import re
+from typing import Any
 
 from flask_wtf import FlaskForm
-from wtforms import Field, Form, StringField
+from markupsafe import Markup
+from wtforms import Field, Form, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms.widgets.core import html_params
+
+from .model import MessageStatus
+
+
+class Button:
+    html_params = staticmethod(html_params)
+
+    def __call__(self, field: Field, **kwargs: Any) -> Markup:
+        kwargs.setdefault("id", field.id)
+        kwargs.setdefault("type", "submit")
+        kwargs.setdefault("value", field.label.text)
+        if "value" not in kwargs:
+            kwargs["value"] = field._value()
+        if "required" not in kwargs and "required" in getattr(field, "flags", []):
+            kwargs["required"] = True
+        params = self.html_params(name=field.name, **kwargs)
+        return Markup(f"<button {params}>{kwargs['value']}</button>")
 
 
 class ComplexPassword:
@@ -45,3 +65,22 @@ class CanonicalHTML:
 
 class TwoFactorForm(FlaskForm):
     verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
+
+
+def coerce_status(status: str | MessageStatus) -> MessageStatus:
+    if isinstance(status, MessageStatus):
+        return status
+    return MessageStatus[status.upper()]
+
+
+class UpdateMessageStatusForm(FlaskForm):
+    status = SelectField(
+        choices=[(x.name, x.display_str) for x in MessageStatus],
+        validators=[DataRequired()],
+        coerce=coerce_status,
+    )
+    submit = SubmitField("Update", widget=Button())
+
+
+class DeleteMessageForm(FlaskForm):
+    submit = SubmitField("Delete", widget=Button())

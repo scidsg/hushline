@@ -8,6 +8,7 @@ from typing import Sequence
 import pyotp
 from flask import (
     Flask,
+    abort,
     current_app,
     flash,
     redirect,
@@ -24,9 +25,16 @@ from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from .auth import authentication_required
 from .crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
 from .db import db
-from .email import SMTPConfig, create_smtp_config, send_email
-from .forms import ComplexPassword
-from .model import AuthenticationLog, InviteCode, Message, SMTPEncryption, User, Username
+from .email import create_smtp_config, send_email
+from .forms import ComplexPassword, DeleteMessageForm, UpdateMessageStatusForm
+from .model import (
+    AuthenticationLog,
+    InviteCode,
+    Message,
+    SMTPEncryption,
+    User,
+    Username,
+)
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
@@ -110,6 +118,33 @@ def get_ip_address() -> str:
     return ip_address
 
 
+def do_send_email(user: User, content_to_save: str) -> None:
+    if user.email and content_to_save:
+        try:
+            if user.smtp_server:
+                smtp_config = create_smtp_config(
+                    user.smtp_username,  # type: ignore[arg-type]
+                    user.smtp_server,  # type: ignore[arg-type]
+                    user.smtp_port,  # type: ignore[arg-type]
+                    user.smtp_password,  # type: ignore[arg-type]
+                    user.smtp_sender,  # type: ignore[arg-type]
+                    encryption=user.smtp_encryption,
+                )
+            else:
+                smtp_config = create_smtp_config(
+                    current_app.config["SMTP_USERNAME"],
+                    current_app.config["SMTP_SERVER"],
+                    current_app.config["SMTP_PORT"],
+                    current_app.config["SMTP_PASSWORD"],
+                    current_app.config["NOTIFICATIONS_ADDRESS"],
+                    encryption=SMTPEncryption[current_app.config["SMTP_ENCRYPTION"]],
+                )
+
+            send_email(user.email, "New Message", content_to_save, smtp_config)
+        except Exception as e:
+            current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
+
+
 def init_app(app: Flask) -> None:
     @app.route("/")
     def index() -> Response:
@@ -141,7 +176,7 @@ def init_app(app: Flask) -> None:
             user_has_aliases=user_alias_count > 1,
         )
 
-    @app.route("/to/<username>", methods=["GET"])
+    @app.route("/to/<username>")
     def profile(username: str) -> Response | str:
         form = MessageForm()
         uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
@@ -243,63 +278,72 @@ def init_app(app: Flask) -> None:
             db.session.add(new_message)
             db.session.commit()
 
-            if uname.user.email and content_to_save:
-                try:
-                    smtp_config: SMTPConfig = create_smtp_config(
-                        app.config["SMTP_USERNAME"],
-                        app.config["SMTP_SERVER"],
-                        app.config["SMTP_PORT"],
-                        app.config["SMTP_PASSWORD"],
-                        app.config["NOTIFICATIONS_ADDRESS"],
-                        encryption=SMTPEncryption[app.config["SMTP_ENCRYPTION"]],
-                    )
-                    if uname.user.smtp_server:
-                        smtp_config = create_smtp_config(
-                            uname.user.smtp_username,
-                            uname.user.smtp_server,
-                            uname.user.smtp_port,
-                            uname.user.smtp_password,
-                            uname.user.smtp_sender,
-                            encryption=uname.user.smtp_encryption,
-                        )
-
-                    email_sent = send_email(
-                        uname.user.email, "New Message", content_to_save, smtp_config
-                    )
-                    flash_message = (
-                        "👍 Message submitted successfully."
-                        if email_sent
-                        else "👍 Message submitted successfully."
-                    )
-                    flash(flash_message)
-                except Exception as e:
-                    app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
-                    flash("👍 Message submitted successfully.", "warning")
-            else:
-                flash("👍 Message submitted successfully.")
+            do_send_email(uname.user, content_to_save)
+            flash("👍 Message submitted successfully.")
+            session["reply_slug"] = new_message.reply_slug
+            return redirect(url_for("submission_success"))
 
         return redirect(url_for("profile", username=username))
 
-    # Redirect from the old route, /submit_message/<username>, to the new route, /to/<username>
-    @app.route("/submit_message/<username>", methods=["GET"])
+    @app.route("/submit/success")
+    def submission_success() -> Response | str:
+        reply_slug = session.pop("reply_slug", None)
+        if not reply_slug:
+            current_app.logger.debug(
+                "Attempted to access submission_success endpoint without a reply_slug in session"
+            )
+            return redirect(url_for("directory"))
+
+        msg = db.session.scalars(
+            db.session.query(Message).filter_by(reply_slug=reply_slug)
+        ).one_or_none()
+        if msg is None:
+            abort(404)
+
+        return render_template("submission_success.html", message=msg)
+
+    @app.route("/reply/<slug>")
+    def message_reply(slug: str) -> str:
+        msg = db.session.scalars(db.select(Message).filter_by(reply_slug=slug)).one_or_none()
+        if msg is None:
+            abort(404)
+
+        return render_template("reply.html", message=msg)
+
+    @app.route("/message/<int:id>")
+    @authentication_required
+    def message(id: int) -> str:
+        msg = db.session.scalars(
+            db.select(Message)
+            .join(Username)
+            .filter(Username.user_id == session["user_id"], Message.id == id)
+        ).one_or_none()
+
+        if not msg:
+            abort(404)
+
+        update_status_form = UpdateMessageStatusForm(data={"status": msg.status.value})
+        delete_message_form = DeleteMessageForm()
+
+        return render_template(
+            "message.html",
+            message=msg,
+            update_status_form=update_status_form,
+            delete_message_form=delete_message_form,
+        )
+
+    @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:
         return redirect(url_for("profile", username=username), 301)
 
-    @app.route("/delete_message/<int:message_id>", methods=["POST"])
+    @app.route("/message/<int:id>/delete", methods=["POST"])
     @authentication_required
-    def delete_message(message_id: int) -> Response:
-        if "user_id" not in session:
-            flash("🔑 Please log in to continue.")
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, session.get("user_id"))
-        if not user:
-            flash("🫥 User not found. Please log in again.")
-            return redirect(url_for("login"))
+    def delete_message(id: int) -> Response:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         row_count = db.session.execute(
             db.delete(Message).where(
-                Message.id == message_id,
+                Message.id == id,
                 Message.username_id.in_(
                     db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
@@ -315,11 +359,46 @@ def init_app(app: Flask) -> None:
             case _:
                 db.session.rollback()
                 current_app.logger.error(
-                    f"Multiple messages would have been deleted. Message.id={message_id}"
+                    f"Multiple messages would have been deleted. Message.id={id} User.id={user.id}"
                 )
                 flash("Internal server error. Message not deleted.")
 
         return redirect(url_for("inbox"))
+
+    @app.route("/message/<int:id>/status", methods=["POST"])
+    @authentication_required
+    def set_message_status(id: int) -> Response:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+
+        form = UpdateMessageStatusForm()
+        if not form.validate():
+            flash(f"Invalid status: {form.status.data}")
+            return redirect(url_for("message", id=id))
+
+        row_count = db.session.execute(
+            db.update(Message)
+            .where(
+                Message.id == id,
+                Message.username_id.in_(
+                    db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
+                ),
+            )
+            .values(status=form.status.data, status_changed_at=datetime.now(UTC))
+        ).rowcount
+        match row_count:
+            case 1:
+                db.session.commit()
+                flash("👍 Message status updated.")
+            case 0:
+                db.session.rollback()
+                flash("⛔️ Message not found.")
+            case _:
+                db.session.rollback()
+                current_app.logger.error(
+                    f"Multiple messages would have been updated. Message.id={id} User.id={user.id}"
+                )
+                flash("Internal server error. Message not updated.")
+        return redirect(url_for("message", id=id))
 
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str | tuple[Response | str, int]:
@@ -540,7 +619,7 @@ def init_app(app: Flask) -> None:
             for username in get_directory_usernames()
         ]
 
-    @app.route("/vision", methods=["GET"])
+    @app.route("/vision")
     def vision() -> str:
         return render_template("vision.html")
 

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content replies">
+      <p>These are your personal, automated message replies. When you receive a new message, the sender receives a 
+        temporary address where they can view the status of their message. Upon changing the status, the temporary 
+        address will display the most recent updates. While there are pre-defined replies included by default, you 
+        can also create custom messages below.</p>
+      {% for (status, msg_status_text) in status_tuples %}
+        {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}
+        <div class="response">
+          <h3>{{ status.display_str }}</h3>
+          <form method="POST" class="formBody">
+            {{ form.hidden_tag() }}
+            {{ form.markdown.label }}
+            {{ form.markdown }}
+            {% for error in form.markdown.errors %}
+              <span class="error">{{ error }}</span>
+            {% endfor %}
+            {{ form.submit }}
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

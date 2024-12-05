@@ -166,6 +166,7 @@
   }
 
   .user,
+  .message-container,
   #results>div {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
@@ -245,7 +246,7 @@
     outline: var(--border);
   }
 
-  .message {
+  .message:not(.message-container .message) {
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     background-color: white;
@@ -387,6 +388,10 @@
 
   #invoice-wrapper {
     border: var(--border);
+  }
+
+  .copy-container .copy-success {
+    color: #25631d;
   }
 }
 
@@ -737,6 +742,10 @@
   #invoice-wrapper {
     border: var(--border-dark);
   }
+
+  .copy-container .copy-success {
+    color: #7cd671;
+  }
 }
 
 body {
@@ -1030,7 +1039,8 @@ img.empty {
   }
 }
 
-.message {
+.message:not(.message-container .message),
+.message-container {
   padding: 1.125rem;
   border-radius: 0.25rem;
   margin: 0.5rem 0;
@@ -1213,6 +1223,17 @@ input[type="file"]::file-selector-button {
   padding: 0.725rem 1rem;
   margin: 0.5rem 0;
   line-height: 1;
+}
+
+.message-header button {
+  padding: 0.5rem 1rem;
+  min-width: 0;
+  min-height: 0;
+  font-size: calc(var(--font-size-base) * 0.925);
+}
+
+.message-header select {
+  font-size: calc(var(--font-size-base) * 0.925);
 }
 
 input[type="file"]::file-selector-button {
@@ -1458,7 +1479,8 @@ img.upgrade {
   display: block;
 }
 
-.user {
+.user,
+.message-container {
   border-radius: 0.25rem;
   padding: 1rem;
   margin-bottom: 0.75rem;
@@ -1662,7 +1684,8 @@ a.dropbtn:hover {
   margin-right: 0.425rem;
 }
 
-.user {
+.user,
+.message-container {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
   display: flex;
@@ -2369,7 +2392,7 @@ p.bio+.extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab-list li button {
+  .settings-main .settings-content .tab-list li a {
     padding: 1rem 0;
     transition: none;
   }
@@ -2399,14 +2422,6 @@ p.bio+.extra-fields {
 
   .settings-content {
     padding-top: 0;
-  }
-}
-
-@media (max-width: 480px) {
-  .upgrade {
-    flex-direction: column;
-    align-items: start;
-    gap: 0.75rem;
   }
 }
 
@@ -2546,6 +2561,137 @@ h3 {
 .brand-logo {
   max-width: 80px;
   max-height: 24px;
+}
+
+.reply-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-meta p {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-smaller);
+  margin-top: 0;
+  margin-bottom: 0.125rem;
+}
+
+.message-meta p:first-of-type {
+  font-size: var(--font-size-small);
+}
+
+.message-meta p strong {
+  font-family: var(--font-sans-bold);
+  font-size: var(--font-size-small);
+  font-weight: normal;
+}
+
+.message-container .message-meta+div strong {
+  font-family: var(--font-sans-bold);
+  font-size: var(--font-size-small);
+  font-weight: normal;
+}
+
+.message-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-model {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.action-model form,
+.action-model select {
+  margin: 0;
+}
+
+.action-model select {
+  width: fit-content;
+}
+
+.message-container .message {
+  margin-top: 1rem;
+}
+
+#copy-link-button {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: fit-content;
+}
+
+.response:not(:last-of-type) {
+  margin-bottom: 2rem;
+}
+
+.replies p {
+  margin-bottom: 2rem;
+}
+
+.auto-reply {
+  margin-bottom: 0.125rem;
+}
+
+.copy-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.copy-container .copy-success {
+  font-size: var(--font-size-small);
+  font-style: italic;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.copy-container .copy-success.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+strong {
+  font-family: var(--font-sans-bold);
+  font-weight: normal;
+}
+
+@media (max-width: 640px) {
+  .upgrade {
+    flex-direction: column;
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  .reply-header,
+  .message-header {
+    flex-direction: column;
+    align-items: start;
+    margin-bottom: 0.5rem;
+  }
+
+  .message-header button {
+    margin: 0;
+  }
 }
 
 /* Guidance modal */

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ message.username.display_name or message.username.username }}{% endblock %}
+
+{% block content %}
+  <div class="reply-header">
+    <h1>Message Status</h1>
+    <p class="message-status badge">
+      {{ message.status.display_str }}
+    </p>
+  </div>
+
+  {# status #}
+  <div class="message-container">
+    <div class="message-meta">
+      <p>
+        From:
+        <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
+      </p>
+      <p class="meta">
+        {{ message.status_changed_at.date() }}
+      </p>
+    </div>
+    <div>
+      <p class="auto-reply"><strong>Message</strong></p>
+      {{ message.status_text|markdown }}
+    </div>
+  </div>
+
+{% endblock %}

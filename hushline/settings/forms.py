@@ -4,11 +4,10 @@ from typing import Any, Optional
 from flask import current_app
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField, FileSize
-from markupsafe import Markup
 from wtforms import (
     BooleanField,
-    Field,
     FormField,
+    HiddenField,
     IntegerField,
     PasswordField,
     SelectField,
@@ -18,30 +17,15 @@ from wtforms import (
 )
 from wtforms.validators import (
     URL,
+    AnyOf,
     DataRequired,
     Email,
     Length,
 )
 from wtforms.validators import Optional as OptionalField
-from wtforms.widgets.core import html_params
 
-from ..forms import CanonicalHTML, ComplexPassword, HexColor
-from ..model import SMTPEncryption
-
-
-class Button:
-    html_params = staticmethod(html_params)
-
-    def __call__(self, field: Field, **kwargs: Any) -> Markup:
-        kwargs.setdefault("id", field.id)
-        kwargs.setdefault("type", "submit")
-        kwargs.setdefault("value", field.label.text)
-        if "value" not in kwargs:
-            kwargs["value"] = field._value()
-        if "required" not in kwargs and "required" in getattr(field, "flags", []):
-            kwargs["required"] = True
-        params = self.html_params(name=field.name, **kwargs)
-        return Markup(f"<button {params}>{kwargs['value']}</button>")
+from ..forms import Button, CanonicalHTML, ComplexPassword, HexColor
+from ..model import MessageStatus, SMTPEncryption
 
 
 class ChangePasswordForm(FlaskForm):
@@ -253,3 +237,10 @@ class UserGuidancePromptContentForm(FlaskForm):
 
 class UserGuidanceAddPromptForm(FlaskForm):
     submit = SubmitField("Add New Prompt", name="add_prompt", widget=Button())
+
+
+class SetMessageStatusTextForm(FlaskForm):
+    markdown = TextAreaField("Reply Text (markdown)", validators=[OptionalField()])
+    # WTForms errors on SelectField(..., widget=HiddenInput()), so we have this instead
+    status = HiddenField(validators=[DataRequired(), AnyOf([x.value for x in MessageStatus])])
+    submit = SubmitField("Update Reply Text", widget=Button())

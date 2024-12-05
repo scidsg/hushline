@@ -8,6 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 aiohttp = "^3.10.11"
+bleach = "^6.2.0"
 boto3 = "^1.35.33"
 cryptography = "^43.0.1"
 email-validator = "^2.2.0"
@@ -16,6 +17,7 @@ flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
 gunicorn = "^22.0.0"
+markdown = "^3.7"
 passlib = "^1.7.4"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
 pyotp = "^2.9.0"
@@ -27,7 +29,6 @@ stripe = "^10.9.0"
 types-requests = "^2.32.0.20240712"
 types-setuptools = "^71.1.0.20240813"
 python = "^3.11"
-markdown = "^3.7"
 types-markdown = "^3.7.0.20241204"
 
 [tool.poetry.group.dev.dependencies]
@@ -36,7 +37,9 @@ mypy = "^1.10.0"
 pytest = "^8.1.1"
 pytest-cov = "^5.0.0"
 pytest-mock = "^3.12.0"
+types-bleach = "^6.2.0.20241123"
 types-flask-migrate = "^4.0.0.20240311"
+types-markdown = "^3.7.0.20240822"
 types-requests = "^2.32.0.20240712"
 
 [[tool.poetry.packages]]
@@ -59,26 +62,26 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "E", # pycodestyle errors
-    "F", # pyflakes
-    "I", # isort
-    "INT", # flake8-gettext
-    "PIE", # flake8-pie
-    "PL", # pylint
-    "PT", # flake8-pytest-style
-    "PYI", # flake8-pyi
-    "RET", # flake8-return
-    "S", # flake8-bandit
-    "SIM", # flake8-simplify
-    "UP", # pyupgrade
-    "W", # pycodestyle warnings
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "INT",    # flake8-gettext
+    "PIE",    # flake8-pie
+    "PL",     # pylint
+    "PT",     # flake8-pytest-style
+    "PYI",    # flake8-pyi
+    "RET",    # flake8-return
+    "S",      # flake8-bandit
+    "SIM",    # flake8-simplify
+    "UP",     # pyupgrade
+    "W",      # pycodestyle warnings
     "RUF100", # Unused noqa directive
 ]
 ignore = [
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0915", # too-many-statements
-    "RET505", # superfluous-else-return (can too easily lead to bugs)
+    "RET505",  # superfluous-else-return (can too easily lead to bugs)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -88,9 +91,9 @@ ignore = [
 ]
 "tests/*.py" = [
     "PLR2004", # magic-value-comparison
-    "S101", # assert
-    "S105",  # hardcoded-password-string
-    "S311", # suspicious-non-cryptographic-random-usage
+    "S101",    # assert
+    "S105",    # hardcoded-password-string
+    "S311",    # suspicious-non-cryptographic-random-usage
 ]
 "tests/migrations/*.py" = [
     "S608", # hardcoded-sql-expression
