@@ -103,3 +103,28 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  const userGuidanceToggle = document.querySelector(
+    "input[name='show_user_guidance']"
+  );
+
+  if (userGuidanceToggle) {
+    userGuidanceToggle.addEventListener("change", function () {
+      setTimeout(() => {
+        const form = userGuidanceToggle.closest("form");
+
+        if (form) {
+          // Debugging: Log form submission for troubleshooting
+          const formData = new FormData(form);
+          console.debug("Submitting form data:", Object.fromEntries(formData));
+
+          // Submit the form
+          form.submit();
+        } else {
+          console.error("Form not found for user guidance toggle.");
+        }
+      }, 200); // Allow for animations or visual feedback
+    });
+  }
+});

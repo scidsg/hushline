@@ -205,15 +205,17 @@
             <h2 class="heading-text">{{ prompt.heading_text }}</h2>
             <div class="prompt-text">{{ prompt.prompt_text|markdown }}</div>
             <div class="modal-buttons">
-              <button class="leave">{{ guidance_exit_button_text }}</button>
-              <button class="back">Back</button>
-              <button class="continue">Continue</button>
-              <button class="done">Done</button>
               <span class="page-bullets">
                 {% for prompt in guidance_prompts %}
                   <span class="page-bullet-{{ loop.index - 1 }}">•</span>
                 {% endfor %}
               </span>
+              <div clas="button-group">
+                <button class="leave btn-danger">{{ guidance_exit_button_text }}</button>
+                <button class="btn back">Back</button>
+                <button class="continue">Next</button>
+                <button class="done">Continue</button>
+              </div>
             </div>
           </div>
         {% endfor %}
