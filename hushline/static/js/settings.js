@@ -32,6 +32,15 @@ document.addEventListener("DOMContentLoaded", function () {
       }, 200);
     });
 
+  document
+    .querySelector("input[name='show_user_guidance']")
+    ?.addEventListener("change", function (e) {
+      // time out to let animation finish
+      setTimeout(() => {
+        document.querySelector("button[name='update_user_guidance']").click();
+      }, 200);
+    });
+
   document.getElementById("bio")?.addEventListener("keyup", function (e) {
     bioCountEl.textContent = e.target.value.length;
   });

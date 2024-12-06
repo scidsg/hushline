@@ -283,3 +283,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("guidance-modal");
+  const firstModalContent = modal.querySelector(".modal-content");
+
+  if (modal && firstModalContent) {
+    firstModalContent.classList.add("animate");
+
+    firstModalContent.addEventListener("animationend", () => {
+      firstModalContent.classList.remove("animate");
+      firstModalContent.style.opacity = "1";
+    });
+  }
+});
