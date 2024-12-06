@@ -32,6 +32,17 @@ document.addEventListener("DOMContentLoaded", function () {
       }, 200);
     });
 
+  document
+    .querySelector("input[name='show_user_guidance']")
+    ?.addEventListener("change", function (e) {
+      // time out to let animation finish
+      setTimeout(() => {
+        document
+          .querySelector("button[name='update_user_guidance']")
+          .click();
+      }, 200);
+    });
+
   document.getElementById("bio")?.addEventListener("keyup", function (e) {
     bioCountEl.textContent = e.target.value.length;
   });
@@ -100,31 +111,6 @@ document.addEventListener("DOMContentLoaded", function () {
     resetGuidanceButton.addEventListener("click", function (event) {
       localStorage.removeItem("hasFinishedGuidance");
       location.reload();
-    });
-  }
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-  const userGuidanceToggle = document.querySelector(
-    "input[name='show_user_guidance']"
-  );
-
-  if (userGuidanceToggle) {
-    userGuidanceToggle.addEventListener("change", function () {
-      setTimeout(() => {
-        const form = userGuidanceToggle.closest("form");
-
-        if (form) {
-          // Debugging: Log form submission for troubleshooting
-          const formData = new FormData(form);
-          console.debug("Submitting form data:", Object.fromEntries(formData));
-
-          // Submit the form
-          form.submit();
-        } else {
-          console.error("Form not found for user guidance toggle.");
-        }
-      }, 200); // Allow for animations or visual feedback
     });
   }
 });

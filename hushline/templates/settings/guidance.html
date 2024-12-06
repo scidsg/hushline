@@ -17,7 +17,7 @@
       </p>
       <form
         method="POST"
-        class="formBody"
+        class="formBody user-guidance"
       >
         {{ user_guidance_form.hidden_tag() }}
         <div class="checkbox-group toggle-ui">
@@ -29,7 +29,7 @@
             </div>
           </label>
         </div>
-        <!-- {{ user_guidance_form.submit }} -->
+        {{ user_guidance_form.submit }}
         {% if user_guidance_form.show_user_guidance.data and user_guidance_prompt_forms|length > 0 and user_guidance_prompt_forms[0].heading_text.data != '' and user_guidance_prompt_forms[0].prompt_text.data != '' %}
           <button type="button" class="reset-guidance-button">Test User Guidance</button>
         {% endif %}

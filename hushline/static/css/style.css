@@ -2835,3 +2835,7 @@ strong {
 .modal-buttons .page-bullets.hide {
   display: none;
 }
+
+.user-guidance button[type="submit"] {
+  display: none;
+}
