@@ -647,6 +647,9 @@ def create_blueprint() -> Blueprint:
 
             # Guidance prompt forms
             else:
+                # Since we have an unknown number of prompt forms, we need to loop through them and
+                # see which if any were submitted. We handle the case where an invalid form is
+                # submitted at the end, after we conclude that none of these forms were submitted.
                 form_submitted = False
                 for i, form in enumerate(user_guidance_prompt_forms):
                     if (
