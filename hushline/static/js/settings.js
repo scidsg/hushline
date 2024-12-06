@@ -93,4 +93,14 @@ document.addEventListener("DOMContentLoaded", function () {
         ).hidden = !e.target.checked;
       }, 200);
     });
+
+  // Reset guidance
+  const hasFinishedGuidance = localStorage.getItem("hasFinishedGuidance");
+  const resetGuidanceButton = document.querySelector(".reset-guidance-button");
+  if (hasFinishedGuidance && resetGuidanceButton) {
+    resetGuidanceButton.addEventListener("click", function (event) {
+      localStorage.removeItem("hasFinishedGuidance");
+      location.reload();
+    });
+  }
 });
