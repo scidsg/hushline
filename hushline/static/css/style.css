@@ -259,7 +259,7 @@
   .modal-buttons .page-bullets span {
     color: var(--color-text-dark);
   }
-  
+
   .modal-buttons .page-bullets span.active {
     color: var(--color-brand);
   }

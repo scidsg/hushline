@@ -37,9 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ?.addEventListener("change", function (e) {
       // time out to let animation finish
       setTimeout(() => {
-        document
-          .querySelector("button[name='update_user_guidance']")
-          .click();
+        document.querySelector("button[name='update_user_guidance']").click();
       }, 200);
     });
 
