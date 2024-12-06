@@ -95,9 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
   // Reset guidance
-  const hasFinishedGuidance = localStorage.getItem("hasFinishedGuidance");
   const resetGuidanceButton = document.querySelector(".reset-guidance-button");
-  if (hasFinishedGuidance && resetGuidanceButton) {
+  if (resetGuidanceButton) {
     resetGuidanceButton.addEventListener("click", function (event) {
       localStorage.removeItem("hasFinishedGuidance");
       location.reload();
