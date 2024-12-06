@@ -601,6 +601,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.GUIDANCE_ENABLED,
                     value=user_guidance_form.show_user_guidance.data,
                 )
+                db.session.commit()
                 if user_guidance_form.show_user_guidance.data:
                     show_user_guidance = True
                     flash("👍 User guidance enabled.")
@@ -621,6 +622,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
                     value=user_guidance_emergency_exit_form.exit_button_link.data,
                 )
+                db.session.commit()
                 flash("👍 Emergency exit button updated successfully.")
                 return redirect(url_for(".guidance"))
 
@@ -639,7 +641,7 @@ def create_blueprint() -> Blueprint:
                     key=OrganizationSetting.GUIDANCE_PROMPTS,
                     value=guidance_prompt_values,
                 )
-
+                db.session.commit()
                 flash("👍 Prompt added.")
                 return redirect(url_for(".guidance"))
 
@@ -677,6 +679,7 @@ def create_blueprint() -> Blueprint:
                             key=OrganizationSetting.GUIDANCE_PROMPTS,
                             value=guidance_prompt_values,
                         )
+                        db.session.commit()
                         return redirect(url_for(".guidance"))
 
                 # Invalid form?
