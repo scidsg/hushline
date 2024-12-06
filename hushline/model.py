@@ -106,7 +106,7 @@ class OrganizationSetting(Model):
         BRAND_PRIMARY_COLOR: "#7d25c1",
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
-        GUIDANCE_EXIT_BUTTON_LINK: "https://www.google.com/",
+        GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
     }
 
