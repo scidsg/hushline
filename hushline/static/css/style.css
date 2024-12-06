@@ -619,6 +619,7 @@
   .modal-content {
     background: var(--color-dark-bg-alt);
     color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .modal {
@@ -635,6 +636,14 @@
 
   .modal-buttons .btn-danger {
     border: 1px solid var(--color-brand-dark-min-saturation);
+  }
+
+  .modal-buttons .page-bullets span {
+    color: var(--color-border-dark);
+  }
+
+  .modal-buttons .page-bullets span.active {
+    color: var(--color-brand-dark-min-saturation);
   }
 
   p.badge {
