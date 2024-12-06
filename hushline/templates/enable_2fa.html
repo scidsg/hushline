@@ -2,6 +2,7 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
+  <a href="{{ url_for('.auth') }}" class="back-button"><span class="icon chevron back"></span> Back to Authentication</a>
   <h2>Enable Two-Factor Authentication</h2>
   <p>
     Scan the QR code with your 2FA app or enter the text code below to enable
