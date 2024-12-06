@@ -5,7 +5,6 @@ from typing import Any, Mapping, Optional
 from flask import Flask, flash, redirect, request, session, url_for
 from flask.cli import AppGroup
 from jinja2 import StrictUndefined
-from markdown import markdown
 from werkzeug.wrappers.response import Response
 
 from . import admin, premium, routes, settings, storage
@@ -95,7 +94,7 @@ def configure_jinja(app: Flask) -> None:
             data["guidance_prompts"] = [
                 {
                     "heading_text": prompt["heading_text"],
-                    "prompt_text": markdown(prompt["prompt_text"]),
+                    "prompt_text": md_to_html(prompt["prompt_text"]),
                 }
                 for prompt in data["guidance_prompts"]
             ]
