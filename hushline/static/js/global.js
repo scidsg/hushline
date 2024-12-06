@@ -216,10 +216,21 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.setItem("hasFinishedGuidance", "true");
       }
 
-      // If there are no pages, hide the modal and don't show it again
-      if (pagesCount == 0) {
+      // If there are no pages, or if there's one page and it's blank, hide the modal
+      if (
+        pagesCount == 0 ||
+        (pagesCount == 1 &&
+          guidancePages[0].querySelector(".heading-text").textContent.trim() ==
+            "" &&
+          guidancePages[0].querySelector(".prompt-text").textContent.trim() ==
+            "")
+      ) {
         guidanceDiv.classList.remove("show");
-        localStorage.setItem("hasFinishedGuidance", "true");
+      }
+
+      // If there's just 1 page, hide the bullets
+      if (pagesCount == 1) {
+        guidanceDiv.querySelector(".page-bullets").classList.add("hide");
       }
 
       // Choose which buttons should be shown, and also attach event listeners

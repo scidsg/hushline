@@ -2783,3 +2783,7 @@ strong {
 .modal-buttons .page-bullets span.active {
   color: rgba(128, 0, 128);
 }
+
+.modal-buttons .page-bullets.hide {
+  display: none;
+}
