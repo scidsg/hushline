@@ -12,11 +12,11 @@ install:
 
 .PHONY: run
 run: ## Run the app in a limited mode
-	docker compose up
+	docker compose up --build
 
 .PHONY: run-full
 run-full: ## Run the app with all features enabled
-	docker compose -f docker-compose.stripe.yaml up
+	docker compose -f docker-compose.stripe.yaml up --build
 
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations
