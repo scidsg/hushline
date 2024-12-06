@@ -93,4 +93,13 @@ document.addEventListener("DOMContentLoaded", function () {
         ).hidden = !e.target.checked;
       }, 200);
     });
+
+  // Reset guidance
+  const resetGuidanceButton = document.querySelector(".reset-guidance-button");
+  if (resetGuidanceButton) {
+    resetGuidanceButton.addEventListener("click", function (event) {
+      localStorage.removeItem("hasFinishedGuidance");
+      location.reload();
+    });
+  }
 });

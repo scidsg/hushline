@@ -83,6 +83,10 @@ def configure_jinja(app: Flask) -> None:
         data = OrganizationSetting.fetch(
             OrganizationSetting.BRAND_NAME,
             OrganizationSetting.BRAND_PRIMARY_COLOR,
+            OrganizationSetting.GUIDANCE_ENABLED,
+            OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
+            OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
+            OrganizationSetting.GUIDANCE_PROMPTS,
         )
 
         data.update(
@@ -101,7 +105,7 @@ def configure_jinja(app: Flask) -> None:
     def inject_logo() -> dict[str, str | None]:
         val = None
         if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO):
-            val = url_for("storage.public", path=setting.value)
+            val = url_for("storage.public", path=setting)
         return {"brand_logo_url": val}
 
 

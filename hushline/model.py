@@ -93,6 +93,10 @@ class OrganizationSetting(Model):
     BRAND_LOGO = "brand_logo"
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
+    GUIDANCE_ENABLED = "guidance_enabled"
+    GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
+    GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"
+    GUIDANCE_PROMPTS = "guidance_prompts"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
@@ -100,6 +104,10 @@ class OrganizationSetting(Model):
     _DEFAULT_VALUES: dict[str, Any] = {
         BRAND_NAME: "🤫 Hush Line",
         BRAND_PRIMARY_COLOR: "#7d25c1",
+        GUIDANCE_ENABLED: False,
+        GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
+        GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
+        GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
@@ -130,7 +138,10 @@ class OrganizationSetting(Model):
 
     @classmethod
     def fetch_one(cls, key: str) -> Any:
-        return db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
+        result = db.session.scalars(db.select(OrganizationSetting).filter_by(key=key)).one_or_none()
+        if not result:
+            return cls._DEFAULT_VALUES.get(key)
+        return result.value
 
 
 @dataclass(frozen=True, repr=False, eq=False)

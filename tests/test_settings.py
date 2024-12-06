@@ -29,6 +29,10 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UserGuidanceAddPromptForm,
+    UserGuidanceEmergencyExitForm,
+    UserGuidanceForm,
+    UserGuidancePromptContentForm,
 )
 from tests.helpers import form_to_data
 
@@ -727,3 +731,221 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     resp = client.get(logo_url, follow_redirects=True)
     # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
     assert "That page doesn" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_enable_disable_guidance(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "User guidance enabled" in resp.text
+
+    # Check that it's enabled in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED) is True
+
+    # Check that the guidance settings are show
+    resp = client.get(url_for("settings.guidance"))
+    assert resp.status_code == 200
+    assert "Prompt Content" in resp.text
+
+    # Disable guidance
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "User guidance disabled" in resp.text
+
+    # Check that it's disabled in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED) is False
+
+    # Check that the guidance settings are not shown
+    resp = client.get(url_for("settings.guidance"))
+    assert resp.status_code == 200
+    assert "Prompt Content" not in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_emergency_exit(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update exit button
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "exit_button_text": "wikipedia!",
+            "exit_button_link": "https://wikipedia.org",
+            UserGuidanceEmergencyExitForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "Emergency exit button updated successfully" in resp.text
+
+    # Check that it's updated in org settings
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT) == "wikipedia!"
+    )
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK)
+        == "https://wikipedia.org"
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_emergency_exit_requires_url(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update exit button with invalid link
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "exit_button_text": "foo",
+            "exit_button_link": "bar",
+            UserGuidanceEmergencyExitForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 400
+
+    # Check that it's not updated in org settings
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT) != "foo"
+    assert OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK) != "bar"
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_prompts(client: FlaskClient, admin: User) -> None:
+    # Enable guidance
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update the first prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 1",
+            "prompt_text": "prompt 1",
+            "index": 0,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Check that it's updated in org settings
+    assert len(OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)) == 1
+
+    # Add a new prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceAddPromptForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Check that it's updated in org settings
+    assert len(OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)) == 2
+
+    # Update the second prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 2",
+            "prompt_text": "prompt 2",
+            "index": 1,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Add a new prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            UserGuidanceAddPromptForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Update the third prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 3",
+            "prompt_text": "prompt 3",
+            "index": 2,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    # Check that it's updated in org settings
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert len(prompts) == 3
+    assert prompts[0]["heading_text"] == "prompt 1"
+    assert prompts[1]["heading_text"] == "prompt 2"
+    assert prompts[2]["heading_text"] == "prompt 3"
+
+    # Delete the second prompt
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "index": 1,
+            UserGuidancePromptContentForm.delete_submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    # Check that it's updated in org settings
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert len(prompts) == 2
+    assert prompts[0]["heading_text"] == "prompt 1"
+    assert prompts[1]["heading_text"] == "prompt 3"

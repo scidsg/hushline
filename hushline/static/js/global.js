@@ -139,4 +139,147 @@ document.addEventListener("DOMContentLoaded", function () {
   window
     .matchMedia("(prefers-color-scheme: dark)")
     .addEventListener("change", updateThemeColor);
+
+  // Handle user guidance
+  const guidanceDiv = document.querySelector("#guidance-modal.modal");
+  if (guidanceDiv) {
+    let activePage = 0;
+
+    const hasFinishedGuidance = localStorage.getItem("hasFinishedGuidance");
+    if (!hasFinishedGuidance) {
+      guidanceDiv.classList.add("show");
+
+      // Count the child divs of guidanceDiv, these are the pages
+      const guidancePages = guidanceDiv.querySelectorAll(":scope > div");
+      const pagesCount = guidancePages.length;
+
+      function showActivePage() {
+        for (let i = 0; i < pagesCount; i++) {
+          if (i == activePage) {
+            guidancePages[i].classList.add("show");
+            guidanceDiv
+              .querySelectorAll(".page-bullet-" + i)
+              .forEach((bullet) => {
+                bullet.classList.add("active");
+              });
+          } else {
+            guidancePages[i].classList.remove("show");
+            guidanceDiv
+              .querySelectorAll(".page-bullet-" + i)
+              .forEach((bullet) => {
+                bullet.classList.remove("active");
+              });
+          }
+        }
+      }
+
+      function leaveClicked() {
+        const exitButtonLink = document.querySelector(
+          "#guidance-exit-button-link",
+        );
+        if (exitButtonLink) {
+          const exitButtonLinkValue = exitButtonLink.value;
+          try {
+            const sanitizedUrl = new URL(exitButtonLinkValue);
+            document.location.href = sanitizedUrl.href;
+          } catch (e) {
+            console.error(
+              "Invalid URL in exit button link:",
+              exitButtonLinkValue,
+            );
+          }
+        } else {
+          console.error("No exit button link found");
+        }
+      }
+
+      function continueClicked() {
+        if (activePage < pagesCount - 1) {
+          activePage++;
+          showActivePage();
+        } else {
+          console.error("No more pages to show");
+        }
+      }
+
+      function backClicked() {
+        if (activePage > 0) {
+          activePage--;
+          showActivePage();
+        } else {
+          console.error("No more pages to show");
+        }
+      }
+
+      function doneClicked() {
+        guidanceDiv.classList.remove("show");
+        localStorage.setItem("hasFinishedGuidance", "true");
+      }
+
+      // If there are no pages, or if there's one page and it's blank, hide the modal
+      if (
+        pagesCount == 0 ||
+        (pagesCount == 1 &&
+          guidancePages[0].querySelector(".heading-text").textContent.trim() ==
+            "" &&
+          guidancePages[0].querySelector(".prompt-text").textContent.trim() ==
+            "")
+      ) {
+        guidanceDiv.classList.remove("show");
+      }
+
+      // If there's just 1 page, hide the bullets
+      if (pagesCount == 1) {
+        guidanceDiv.querySelector(".page-bullets").classList.add("hide");
+      }
+
+      // Choose which buttons should be shown, and also attach event listeners
+      for (let i = 0; i < pagesCount; i++) {
+        const page = guidancePages[i];
+
+        const leaveButton = page.querySelector(".leave");
+        if (leaveButton) {
+          leaveButton.addEventListener("click", leaveClicked);
+          leaveButton.classList.add("show");
+        }
+
+        // Show done on the last page
+        if (i == pagesCount - 1) {
+          const doneButton = page.querySelector(".done");
+          if (doneButton) {
+            doneButton.addEventListener("click", doneClicked);
+            doneButton.classList.add("show");
+          }
+        }
+        // Show continue on any non-last pages
+        else {
+          const continueButton = page.querySelector(".continue");
+          if (continueButton) {
+            continueButton.addEventListener("click", continueClicked);
+            continueButton.classList.add("show");
+          }
+        }
+
+        // She back on any non-first pages
+        if (i > 0) {
+          const backButton = page.querySelector(".back");
+          if (backButton) {
+            backButton.addEventListener("click", backClicked);
+            backButton.classList.add("show");
+          }
+        }
+
+        // Attach listener for the bullets
+        guidanceDiv.querySelectorAll(".page-bullet-" + i).forEach((bullet) => {
+          bullet.addEventListener("click", function () {
+            activePage = i;
+            showActivePage();
+          });
+        });
+      }
+
+      // Show the first page
+      showActivePage();
+    }
+  }
 });

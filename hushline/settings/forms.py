@@ -15,7 +15,13 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import AnyOf, DataRequired, Email, Length
+from wtforms.validators import (
+    URL,
+    AnyOf,
+    DataRequired,
+    Email,
+    Length,
+)
 from wtforms.validators import Optional as OptionalField
 
 from ..forms import Button, CanonicalHTML, ComplexPassword, HexColor
@@ -205,6 +211,32 @@ class UpdateBrandLogoForm(FlaskForm):
 
 class DeleteBrandLogoForm(FlaskForm):
     submit = SubmitField("Delete Logo", name="submit_logo", widget=Button())
+
+
+class UserGuidanceForm(FlaskForm):
+    show_user_guidance = BooleanField("Show user guidance")
+    submit = SubmitField("Update User Guidance", name="update_user_guidance", widget=Button())
+
+
+class UserGuidanceEmergencyExitForm(FlaskForm):
+    exit_button_text = StringField(
+        "Exit Button Text", validators=[DataRequired(), Length(min=1, max=50)]
+    )
+    exit_button_link = StringField(
+        "Exit Button Link", validators=[DataRequired(), Length(min=1, max=2000), URL()]
+    )
+    submit = SubmitField("Update Exit Button", name="update_exit_button", widget=Button())
+
+
+class UserGuidancePromptContentForm(FlaskForm):
+    heading_text = StringField("Prompt Heading", validators=[Length(min=0, max=50)])
+    prompt_text = TextAreaField("Prompt Text", validators=[Length(min=0, max=1024)])
+    submit = SubmitField("Update", name="update_prompt", widget=Button())
+    delete_submit = SubmitField("Delete This Prompt", name="delete_prompt", widget=Button())
+
+
+class UserGuidanceAddPromptForm(FlaskForm):
+    submit = SubmitField("Add New Prompt", name="add_prompt", widget=Button())
 
 
 class SetMessageStatusTextForm(FlaskForm):

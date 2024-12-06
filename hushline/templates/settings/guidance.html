@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block main_class %}settings-main{% endblock %}
+
+{% block content %}
+  <h2>Settings</h2>
+  <div class="settings-content">
+    {% include "settings/nav.html" %}
+    <div class="tab-content">
+      <h3>User Guidance</h3>
+      <p>
+        User Guidance enables you to present information to visitors before they send a 
+        message. This can include cautions about submitting a message using a work 
+        device, using Tor Browser, or anything else important for your community.
+      </p>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ user_guidance_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+          {{ user_guidance_form.show_user_guidance() }}
+          <label for="{{ user_guidance_form.show_user_guidance.name }}" class="toggle-label">
+            Show User Guidance
+            <div class="toggle">
+              <div class="toggle__ball"></div>
+            </div>
+          </label>
+        </div>
+        {{ user_guidance_form.submit }}
+        {% if user_guidance_form.show_user_guidance.data and user_guidance_prompt_forms|length > 0 and user_guidance_prompt_forms[0].heading_text.data != '' and user_guidance_prompt_forms[0].prompt_text.data != '' %}
+          <button type="button" class="reset-guidance-button">Test User Guidance</button>
+        {% endif %}
+      </form>
+
+      {% if user_guidance_form.show_user_guidance.data %}
+        <h3>Prompts</h3>
+
+        <h4>Emergency Exit</h4>
+        <p>
+          You can include a button that, if clicked, brings the user to a generic,
+          popular website to obfuscate the fact that they're visiting Hush Line.
+        </p>
+        <form
+          method="POST"
+          class="formBody"
+        >
+          {{ user_guidance_emergency_exit_form.hidden_tag() }}
+          <div>
+            <label for="{{ user_guidance_emergency_exit_form.exit_button_text.name }}">Exit Button Text</label>
+            {{ user_guidance_emergency_exit_form.exit_button_text() }}
+          </div>
+          <div>
+            <label for="{{ user_guidance_emergency_exit_form.exit_button_link.name }}">Exit Button Link</label>
+            {{ user_guidance_emergency_exit_form.exit_button_link() }}
+          </div>
+          {{ user_guidance_emergency_exit_form.submit }}
+        </form>
+
+        <h4>Prompt Content</h4>
+        {% for form in user_guidance_prompt_forms %}
+          <form
+            method="POST"
+            class="formBody"
+          >
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="index" value="{{ loop.index - 1 }}">
+            <div>
+              <label for="{{ form.heading_text.name }}">Prompt Heading</label>
+              {{ form.heading_text() }}
+            </div>
+            <div>
+              <label for="{{ form.prompt_text.name }}">Prompt</label>
+              {{ form.prompt_text() }}
+            </div>
+            {{ form.submit }}
+            {{ form.delete_submit }}
+          </form>
+        {% endfor %}
+
+        <form
+          method="POST"
+          class="formBody"
+        >
+          {{ user_guidance_add_prompt_form.hidden_tag() }}
+          {{ user_guidance_add_prompt_form.submit }}
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

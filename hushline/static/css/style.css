@@ -380,6 +380,7 @@
       text-decoration: underline;
     }
   }
+
   .settings-main .settings-content .tab-list li button {
     padding: 1rem;
   }
@@ -2124,13 +2125,16 @@ button[name="update_directory_visibility"] {
 }
 
 .input-pair input {
-  flex: 1; /* Make all inputs take equal space */
+  flex: 1;
+  /* Make all inputs take equal space */
   margin-bottom: 0;
-  box-sizing: border-box; /* Ensure padding is included in width calculation */
+  box-sizing: border-box;
+  /* Ensure padding is included in width calculation */
 }
 
 .input-pair input:has(+ .verifiedURL) {
-  padding-right: 2.125rem; /* Add padding only when the input has a verifiedURL next to it */
+  padding-right: 2.125rem;
+  /* Add padding only when the input has a verifiedURL next to it */
 }
 
 .input-pair div:last-child {
@@ -2460,7 +2464,8 @@ p.bio + .extra-fields {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  position: relative; /* needed for stretched-link */
+  position: relative;
+  /* needed for stretched-link */
 }
 
 .stretched-link::after {
@@ -2714,4 +2719,71 @@ strong {
   .message-header button {
     margin: 0;
   }
+}
+
+/* Guidance modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(128, 0, 128, 0.5);
+  backdrop-filter: blur(5px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  color: black;
+  border-radius: 10px;
+  padding: 20px;
+  width: 80%;
+  max-width: 500px;
+  text-align: left;
+  display: none;
+}
+
+.modal-content.show {
+  display: block;
+}
+
+.modal-content h2 {
+  text-align: center;
+}
+
+.modal-buttons {
+  margin-top: 20px;
+}
+
+.modal-buttons button {
+  display: none;
+}
+
+.modal-buttons button.show {
+  display: inline-block;
+}
+
+.modal-buttons .page-bullets {
+  margin-left: 20px;
+}
+
+.modal-buttons .page-bullets span {
+  cursor: pointer;
+  color: rgba(128, 0, 128, 0.5);
+}
+
+.modal-buttons .page-bullets span.active {
+  color: rgba(128, 0, 128);
+}
+
+.modal-buttons .page-bullets.hide {
+  display: none;
 }
