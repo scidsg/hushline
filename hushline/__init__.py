@@ -89,16 +89,6 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_PROMPTS,
         )
 
-        # If guidance is enabled, parse the markdown
-        if data.get("guidance_enabled"):
-            data["guidance_prompts"] = [
-                {
-                    "heading_text": prompt["heading_text"],
-                    "prompt_text": md_to_html(prompt["prompt_text"]),
-                }
-                for prompt in data["guidance_prompts"]
-            ]
-
         data.update(
             alias_mode=app.config["ALIAS_MODE"],
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],

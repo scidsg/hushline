@@ -203,7 +203,7 @@
         {% for prompt in guidance_prompts %}
           <div class="modal-content guidance-prompt-{{ loop.index - 1 }}">
             <h2 class="heading-text">{{ prompt.heading_text }}</h2>
-            <div class="prompt-text">{{ prompt.prompt_text | safe }}</div>
+            <div class="prompt-text">{{ prompt.prompt_text|markdown }}</div>
             <div class="modal-buttons">
               <button class="leave">{{ guidance_exit_button_text }}</button>
               <button class="back">Back</button>
