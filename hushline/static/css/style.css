@@ -2835,7 +2835,7 @@ strong {
   display: none;
   box-shadow: var(--shadow);
   box-sizing: border-box;
-  max-height: 90vh;
+  max-height: 80vh;
   overflow: hidden;
   overflow-y: scroll;
   scrollbar-width: none;
@@ -2871,6 +2871,9 @@ strong {
 
 .modal-buttons button {
   display: none;
+  padding: .5rem 1rem;
+  min-height: 0;
+  min-width: 0;
 }
 
 .modal-buttons button.show {
