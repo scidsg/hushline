@@ -2836,6 +2836,10 @@ strong {
   scrollbar-width: none;
 }
 
+.modal-content ul {
+    padding-left: 1.25rem
+}
+
 .modal-content li {
   margin-bottom: 0.5rem;
 }
