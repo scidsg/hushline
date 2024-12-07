@@ -9,28 +9,29 @@
   <div class="settings-content">
     {% include "settings/nav.html" %}
     <div class="tab-content">
-    <div class="admin-highlights">
-      <div class="metric">
-        <p>Users</p>
-        <p>{{ user_count }}</p>
+      <h3>Admin</h3>
+      <div class="admin-highlights">
+        <div class="metric">
+          <p>Users</p>
+          <p>{{ user_count }}</p>
+        </div>
+        <div class="metric">
+          <p>2FA Enabled</p>
+          <p>{{ two_fa_count }}</p>
+          <p>{{ two_fa_percentage | round(2) }}%</p>
+        </div>
+        <div class="metric">
+          <p>PGP Enabled</p>
+          <p>{{ pgp_key_count }}</p>
+          <p>{{ pgp_key_percentage | round(2) }}%</p>
+        </div>
       </div>
-      <div class="metric">
-        <p>2FA Enabled</p>
-        <p>{{ two_fa_count }}</p>
-        <p>{{ two_fa_percentage | round(2) }}%</p>
-      </div>
-      <div class="metric">
-        <p>PGP Enabled</p>
-        <p>{{ pgp_key_count }}</p>
-        <p>{{ pgp_key_percentage | round(2) }}%</p>
-      </div>
-    </div>
 
-    <h3>All Users</h3>
+    <h4>All Users</h4>
     {% if all_users %}
       {% for user in all_users %}
         <div class="user">
-          <h4>{{ user.primary_username.username }}</h4>
+          <h5>{{ user.primary_username.username }}</h5>
           <p class="meta">
             Display Name: {{ user.primary_username.display_name or 'No display name' }}
           </p>

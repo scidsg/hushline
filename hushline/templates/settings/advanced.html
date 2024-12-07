@@ -9,16 +9,17 @@
   <div class="settings-content">
     {% include "settings/nav.html" %}
     <div class="tab-content">
+      <h3>Advanced</h3>
     {% if is_premium_enabled %}
     <div class="adv-form">
-      <h3>Paid Features</h3>
+      <h4>Paid Features</h4>
       <div>
         <a href="{{ url_for('premium.index') }}">Manage my plan</a>
       </div>
     </div>
     {% endif %}
 
-    <h3>Delete Account</h3>
+    <h4>Delete Account</h4>
     <p class="meta">
       ⚠️ Deleting your account is a permanent action that cannot be undone!
     </p>

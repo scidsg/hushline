@@ -9,7 +9,8 @@
   <div class="settings-content">
     {% include "settings/nav.html" %}
     <div class="tab-content">
-      <h3>Primary Color</h3>
+      <h3>Branding</h3>
+      <h4>Primary Color</h4>
       <form
         method="POST"
         class="formBody"
@@ -25,7 +26,7 @@
         {{ update_brand_primary_color_form.submit }}
       </form>
 
-      <h3>App Name</h3>
+      <h4>App Name</h4>
       <form
         method="POST"
         class="formBody"
@@ -43,7 +44,7 @@
       </form>
 
       {% if user.is_admin %}
-        <h3>Logo</h3>
+        <h4>Logo</h4>
         <form
           method="POST"
           enctype="multipart/form-data"
@@ -52,7 +53,9 @@
           {{ update_brand_logo_form.hidden_tag() }}
           {{ update_brand_logo_form.logo(accept=".png") }}
           {{ update_brand_logo_form.submit(class="btn") }}
-          {{ delete_brand_logo_form.submit(class="btn-danger") }}
+          {% if brand_logo_url %}
+            {{ delete_brand_logo_form.submit(class="btn-danger") }}
+          {% endif %}
         </form>
       {% endif %}
     </div>

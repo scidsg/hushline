@@ -36,9 +36,9 @@
       </form>
 
       {% if user_guidance_form.show_user_guidance.data %}
-        <h3>Prompts</h3>
+        <h4>Prompts</h4>
 
-        <h4>Emergency Exit</h4>
+        <h5>Emergency Exit</h5>
         <p>
           You can include a button that, if clicked, brings the user to a generic,
           popular website to obfuscate the fact that they're visiting Hush Line.
@@ -59,7 +59,7 @@
           {{ user_guidance_emergency_exit_form.submit }}
         </form>
 
-        <h4>Prompt Content</h4>
+        <h5>Prompt Content</h5>
         {% for form in user_guidance_prompt_forms %}
           <form
             method="POST"

@@ -9,10 +9,11 @@
   <div class="settings-content">
     {% include "settings/nav.html" %}
     <div class="tab-content">
+      <h3>Profile</h3>
       {% if is_premium_enabled and user.is_free_tier %}
         <div class="upgrade">
           <div>
-            <h3>Business User?</h3>
+            <h4>Business User?</h4>
             <p class="info">
               🚀 Upgrade to Super User for
               ${{ business_tier_display_price }}/mo to unlock more features!
@@ -24,7 +25,7 @@
 
       {# TODO: much of this was copy/pasted to "settings/alias.html" and will need to have updates synced there #}
 
-      <h3>Update Display Name</h3>
+      <h4>Update Display Name</h4>
       {% if user.primary_username.is_verified %}
         <p class="meta">
           ⚠️ Changing your display name will result in losing your verification status.
@@ -45,7 +46,7 @@
         {{ display_name_form.submit }}
       </form>
 
-      <h3>Public User Directory</h3>
+      <h4>Public User Directory</h4>
       <form
         method="POST"
         class="formBody"
@@ -63,7 +64,7 @@
         {{ directory_visibility_form.submit }}
       </form>
 
-      <h3>Add Your Bio</h3>
+      <h4>Add Your Bio</h4>
       <form
         method="POST"
         class="formBody"
@@ -77,7 +78,7 @@
           <textarea id="bio" name="bio" rows="4" maxlength="250">{{ user.primary_username.bio or '' }}</textarea>
         </div>
 
-        <h4>Extra Fields</h4>
+        <h5>Extra Fields</h5>
         <p class="info">
           Add links to social media, your Signal username, your pronouns, or
           anything else you want on your profile.
