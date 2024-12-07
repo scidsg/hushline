@@ -1701,6 +1701,7 @@ a.dropbtn:hover {
   display: flex;
   gap: 1.125rem;
   margin-bottom: 1.5rem;
+  margin-top: 1rem;
 }
 
 .admin-highlights .metric {
