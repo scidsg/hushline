@@ -2834,7 +2834,7 @@ strong {
 
 .modal-content {
   border-radius: 10px;
-  padding: 2rem 1.5rem 0 1.5rem;
+  padding: 2rem 0 0 0;
   max-width: 580px;
   width: 90%;
   text-align: left;
@@ -2854,6 +2854,16 @@ strong {
 
 .modal-content li {
   margin-bottom: 0.5rem;
+}
+
+.modal-content .heading-text {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;  
+}
+
+.modal-content .prompt-text {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .modal-content::-webkit-scrollbar {
