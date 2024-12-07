@@ -909,6 +909,11 @@ h4 {
   margin-top: 1.325rem;
 }
 
+.upgrade h4 {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
 .user h4 {
   margin-top: 0;
 }
@@ -1307,7 +1312,7 @@ input[type="file"]::file-selector-button {
   border-radius: 50vw;
   padding: 0.725rem 1rem;
   margin: 0.5rem 0;
-  line-height: 1;
+  line-height: 1.5;
 }
 
 .message-header button {
@@ -1339,8 +1344,7 @@ header .btn {
   min-height: initial;
   margin-top: 0;
   margin-bottom: 0;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .formBody input[type="submit"],
