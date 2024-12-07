@@ -261,6 +261,10 @@
     color: black;
   }
 
+  .modal-buttons-container {
+    background-color: var(--color-white-transparent);
+  }
+
   .modal-buttons .page-bullets span {
     color: var(--color-text-dark);
   }
@@ -629,6 +633,10 @@
 
   .modal {
     background: var(--color-brand-modal-dark);
+  }
+
+  .modal-buttons-container {
+    background-color: var(--color-dark-bg-alt);
   }
 
   .btn-danger,
@@ -2826,7 +2834,7 @@ strong {
 
 .modal-content {
   border-radius: 10px;
-  padding: 2rem 1.5rem 1rem 1.5rem;
+  padding: 2rem 1.5rem 0 1.5rem;
   max-width: 580px;
   width: 90%;
   text-align: left;
@@ -2837,6 +2845,7 @@ strong {
   overflow: hidden;
   overflow-y: scroll;
   scrollbar-width: none;
+  position: relative;
 }
 
 .modal-content ul {
@@ -2860,18 +2869,24 @@ strong {
   margin-bottom: 1.25rem;
 }
 
+.modal-buttons-container {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+}
+
 .modal-buttons {
   margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 0.5rem;
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
 }
 
 .modal-buttons button {
   display: none;
-  padding: 0.5rem 1rem;
-  min-height: 0;
-  min-width: 0;
 }
 
 .modal-buttons button.show {
