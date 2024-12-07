@@ -5,8 +5,6 @@
   --color-border-dark: #787878;
   --color-border-dark-1: #505050;
   --color-brand: oklch(48.55% 0.222 304.47);
-  --color-brand-modal: oklch(48.55% 0.222 304.47 / 0.75);
-  --color-brand-modal-dark: oklch(30% 0.222 304.47 / 0.75);
   --color-brand-min-contrast: oklch(
     from var(--color-brand) clamp(0.1, l, 0.6) c h
   );
@@ -26,6 +24,8 @@
     from var(--color-brand) clamp(0.8, l + 0.175, 0.94) calc(1.5 * c)
       calc(h - 6)
   );
+  --color-brand-modal: color-mix(in oklch, var(--color-brand) 75%, transparent);
+  --color-brand-modal-dark: color-mix(in oklch, var(--color-brand-dark-min-saturation) 75%, transparent);
   --color-text: #333;
   --color-text-dark-alt-2: #e6e6e6;
   --color-text-dark-alt: #c4c4c4;
