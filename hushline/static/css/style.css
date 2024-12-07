@@ -1344,8 +1344,7 @@ header .btn {
   min-height: initial;
   margin-top: 0;
   margin-bottom: 0;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .formBody input[type="submit"],
