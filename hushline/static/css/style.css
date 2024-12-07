@@ -1305,12 +1305,10 @@ input[type="submit"],
 button,
 .btn,
 input[type="file"]::file-selector-button {
-  min-height: 44px;
-  min-width: 120px;
   font-size: 1rem;
   font-family: var(--font-sans-bold);
   border-radius: 50vw;
-  padding: 0.725rem 1rem;
+  padding: 0.5rem 1rem;
   margin: 0.5rem 0;
   line-height: 1.5;
 }
