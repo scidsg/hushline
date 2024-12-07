@@ -9,7 +9,8 @@
   <div class="settings-content">
     {% include "settings/nav.html" %}
     <div class="tab-content">
-      <h3>Add an Alias</h3>
+      <h3>Aliases</h3>
+      <h4>Add an Alias</h4>
       {% set alias_count = aliases.__len__() %}
       {% if alias_count < user.max_aliases %}
         <form
@@ -25,7 +26,7 @@
         <p>Alias limit reached.</p>
       {% endif %}
 
-      <h3>Current Aliases</h3>
+      <h4>Current Aliases</h4>
       {% if aliases %}
         <div class="alias-list">
           {% for username in aliases %}
