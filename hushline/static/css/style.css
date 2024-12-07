@@ -25,7 +25,11 @@
       calc(h - 6)
   );
   --color-brand-modal: color-mix(in oklch, var(--color-brand) 75%, transparent);
-  --color-brand-modal-dark: color-mix(in oklch, var(--color-brand-dark-min-saturation) 75%, transparent);
+  --color-brand-modal-dark: color-mix(
+    in oklch,
+    var(--color-brand-dark-min-saturation) 75%,
+    transparent
+  );
   --color-text: #333;
   --color-text-dark-alt-2: #e6e6e6;
   --color-text-dark-alt: #c4c4c4;
@@ -2868,7 +2872,6 @@ strong {
 .user-guidance button[type="submit"] {
   display: none;
 }
-
 
 .tab-content #searchInput {
   margin-top: 0;
