@@ -170,9 +170,6 @@
   .tab {
     background-color: transparent;
     color: var(--color-text);
-    box-shadow: none;
-    outline: none;
-    border: none;
   }
 
   .tab:focus-within {
@@ -2923,4 +2920,10 @@ strong {
 .tab-content #searchInput {
   margin-top: 0;
   margin-bottom: 0.75rem;
+}
+
+.tab {
+  box-shadow: none;
+  outline: none;
+  border: none;
 }
