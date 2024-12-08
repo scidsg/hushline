@@ -53,6 +53,8 @@
   --color-white-transparent: rgba(255, 255, 255, 0.8);
 
   --border: 1px solid var(--color-border);
+  --border-danger: 1px solid darkred;
+  --border-danger-dark: 1px solid pink;
   --border-dark: 1px solid var(--color-border-dark);
   --border-dark-1: 1px solid var(--color-border-dark-1);
 
@@ -213,7 +215,6 @@
   input[type="file"]::file-selector-button:focus,
   select:focus {
     outline: 4px double var(--color-brand-min-contrast);
-    border: 1px solid var(--color-brand-min-contrast);
     box-shadow: none;
   }
 
@@ -221,8 +222,8 @@
   button,
   .btn,
   input[type="file"]::file-selector-button {
-    border: 0px;
     background-color: var(--color-brand-mid-contrast);
+    border: var(--border);
     color: white;
   }
 
@@ -231,7 +232,7 @@
   .btn {
     background-color: white;
     color: var(--color-brand-mid-contrast);
-    border: 1px solid var(--color-brand-min-contrast);
+    border: var(--border);
     box-shadow: 0px 2px 0px 0px
       oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
   }
@@ -276,12 +277,12 @@
   .btn-danger,
   .formBody .btn-danger {
     color: darkred;
-    border-color: darkred;
+    border: var(--border-danger);
   }
 
   .modal-buttons .btn-danger {
     background-color: white;
-    border: 1px solid darkred;
+    border: var(--border-danger);
   }
 
   p.badge {
@@ -573,7 +574,6 @@
   input[type="file"]::file-selector-button:focus,
   select:focus {
     outline: 4px double var(--color-brand-dark-min-saturation);
-    border: 1px solid var(--color-brand-dark-min-saturation);
     box-shadow: none;
   }
 
@@ -581,7 +581,7 @@
   button,
   .btn,
   input[type="file"]::file-selector-button {
-    border: 0px;
+    border: var(--border-dark);
     background-color: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
   }
@@ -643,7 +643,7 @@
   .formBody .btn-danger {
     background-color: transparent;
     color: var(--color-brand-dark-min-saturation);
-    border: 1px solid var(--color-brand-dark-min-saturation);
+    border: var(--border-danger-dark);
     box-shadow: 0px 4px 8px -4px oklch(1 0 0 / 0.25);
   }
 
@@ -2864,6 +2864,10 @@ strong {
 .modal-content .prompt-text {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+}
+
+.modal-content .prompt-text p {
+  margin: 0.75rem 0;
 }
 
 .modal-content::-webkit-scrollbar {
