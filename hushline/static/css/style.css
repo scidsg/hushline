@@ -2866,6 +2866,10 @@ strong {
   padding-right: 1.5rem;
 }
 
+.modal-content .prompt-text p {
+  margin: 0.75rem 0;
+}
+
 .modal-content::-webkit-scrollbar {
   display: none;
 }
