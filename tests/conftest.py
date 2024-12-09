@@ -94,7 +94,6 @@ def init_db_via_create_all(db_uri: str) -> None:
     # dumb hack to easily get the create_all() functionality
     os.environ["SQLALCHEMY_DATABASE_URI"] = db_uri
     app = create_app()
-
     with app.app_context():
         db.session.commit()
         db.create_all()
@@ -103,7 +102,7 @@ def init_db_via_create_all(db_uri: str) -> None:
 
 
 def init_db_via_alembic(db_uri: str) -> None:
-    # dumb hack to easily get the create_all() functionality
+    # dumb hack to easily get the Migrate extension correctly configured
     os.environ["SQLALCHEMY_DATABASE_URI"] = db_uri
     app = create_app()
     with app.app_context():
