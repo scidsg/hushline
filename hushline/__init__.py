@@ -12,12 +12,14 @@ from .config import AliasMode, load_config
 from .db import db, migrate
 from .md import md_to_html
 from .model import OrganizationSetting, Tier, User
+from .secure_session import EncryptedSessionInterface
 from .storage import public_store
 from .version import __version__
 
 
 def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     app = Flask(__name__)
+    app.session_interface = EncryptedSessionInterface()
     app.logger.setLevel(logging.DEBUG)
 
     if not config:

@@ -317,6 +317,13 @@ These configs are needed for the web app.
       <td>Set the server/host name in Flask</td>
     </tr>
     <tr>
+      <td><code>SESSION_FERNET_KEY</code></td>
+      <td>true</td>
+      <td>b64 encoded Fernet key</td>
+      <td></td>
+      <td>The key uses for en/decryption of sessions.</td>
+    </tr>
+    <tr>
       <td><code>SMTP_ENCRYPTION</code></td>
       <td>false</td>
       <td>string</td>
