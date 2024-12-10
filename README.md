@@ -1,6 +1,6 @@
 # 🤫 Hush Line
 
-[Hush Line](https://hushline.app) is the first managed, open-source whistleblower management platform for lawyers, journalists, educators, business leaders and more. We take care of the tech so you can focus on the mission, not the machines.
+[Hush Line](https://hushline.app) is the first software-as-a-service and platform-as-a-service, open-source whistleblower management system for lawyers, journalists, educators, business leaders and more. We take care of the tech so you can focus on the mission, not the machines.
 
 <img width="1200" alt="social" src="https://github.com/user-attachments/assets/3f4af638-416c-47c1-bb64-edfd876c1c7b">
 
@@ -9,15 +9,20 @@
 - ⭐️ Verified accounts
 - 🙋 Opt-in user directory
 - 👁️ OCR Vision Assistant
-- 🧅 Tor Onion service support
-- 🔑 Proton key import
-- 🔒 End-to-end encryption using PGP
+- 🧅 Tor Onion Service
+- 🔑 Proton Mail key import
+- 🔒 End-to-end encryption
 - ✅ Self-authenticating URLs
 - 📤 Riseup.net email delivery
 - 💌 Mailvelope integration for in-app decryption
-- 💵 Paid plans for account aliases
+- 🥸 Aliases
 - ⏱️ TOTP-based two-factor authentication
-- 🎨 Custom branding for admins
+- 🎨 Custom branding
+- 🪧 Custom onboarding & whistleblower guidance
+- 🏷️ Message statuses
+- 🧠 Automated message replies based on status
+- 💬 Unique reply status URL for submitters
+- 🤖 Local CAPTCHA
 
 ## Contribution Guidelines
 
