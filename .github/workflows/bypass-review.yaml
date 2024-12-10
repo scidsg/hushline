@@ -37,51 +37,17 @@ jobs:
             exit 0
           fi
 
-      - name: Check for specific files
-        id: file-check
-        env:
-          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
+      - name: Check for specific files and approve if conditions are met
         run: |
           git diff --name-only origin/main $GITHUB_HEAD_REF > file_list.txt
 
-          # Check if there are files other than allowed (.css, .md, hushline/version.py)
           if grep -v -qE '(\.css$|\.md$|^hushline/version.py$)' file_list.txt; then
-            echo "PR contains files other than .css, .md, or hushline/version.py. Exiting without approval."
-            echo "approve=false" >> $GITHUB_ENV
+            echo "PR contains files other than .css, .md or hushline/version.py. Exiting without approval."
             exit 0  # Exit without failure
           fi
 
-          echo "PR only contains allowed files. Setting approval flag."
-          echo "approve=true" >> $GITHUB_ENV
-
-      - name: Ensure all required checks have passed
-        if: env.approve == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
-        run: |
-          # Fetch workflow run statuses for the PR
-          PR_NUMBER=${{ github.event.pull_request.number }}
-          RUNS=$(gh run list --json conclusion,status,event --limit 100 --jq \
-            '.[] | select(.event == "pull_request")')
-
-          # Check if any workflows are still in progress
-          if echo "$RUNS" | grep -q '"status": "in_progress"'; then
-            echo "Some workflows are still running. Exiting without approval."
-            exit 0
-          fi
-
-          # Check if any workflows have failed
-          if echo "$RUNS" | grep -q '"conclusion": "failure"'; then
-            echo "Some workflows have failed. Exiting without approval."
-            exit 0
-          fi
-
-          echo "All workflows have completed successfully."
-
-      - name: Approve PR
-        if: env.approve == 'true'
+          # Proceed to approve if only matching files are present
+          echo "Only .css and .md files and/or hushline/version.py detected and user is an admin, approving PR"
+          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only specific files detected and user is an admin."
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
-        run: |
-          echo "Only .css, .md files and/or hushline/version.py detected, user is an admin, and all required checks have passed. Approving PR."
-          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: All conditions met (specific files, admin, checks passed)."

@@ -2195,10 +2195,8 @@ button[name="update_directory_visibility"] {
 
 .input-pair input {
   flex: 1;
-  /* Make all inputs take equal space */
   margin-bottom: 0;
   box-sizing: border-box;
-  /* Ensure padding is included in width calculation */
 }
 
 .input-pair input:has(+ .verifiedURL) {
