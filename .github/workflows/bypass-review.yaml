@@ -59,24 +59,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ADMIN_PAT }}
         run: |
-          # Fetch workflow run statuses for the PR
           PR_NUMBER=${{ github.event.pull_request.number }}
-          RUNS=$(gh run list --json conclusion,status,event --limit 100 --jq \
-            '.[] | select(.event == "pull_request")')
 
-          # Check if any workflows are still in progress
-          if echo "$RUNS" | grep -q '"status": "in_progress"'; then
-            echo "Some workflows are still running. Exiting without approval."
+          # Wait for all checks to complete
+          while true; do
+            STATUS=$(gh pr checks $PR_NUMBER --json checks --jq \
+              '[.checks[] | .status] | unique | join(", ")')
+            
+            echo "Current check statuses: $STATUS"
+            
+            if [[ "$STATUS" == "completed" ]]; then
+              echo "All checks have completed successfully."
+              break
+            fi
+            
+            echo "Waiting for checks to complete..."
+            sleep 10
+          done
+
+          # Verify all conclusions are successful
+          CONCLUSIONS=$(gh pr checks $PR_NUMBER --json checks --jq \
+            '[.checks[] | .conclusion] | unique | join(", ")')
+
+          echo "Check conclusions: $CONCLUSIONS"
+
+          if echo "$CONCLUSIONS" | grep -qv "success"; then
+            echo "One or more checks failed. Exiting without approval."
             exit 0
           fi
-
-          # Check if any workflows have failed
-          if echo "$RUNS" | grep -q '"conclusion": "failure"'; then
-            echo "Some workflows have failed. Exiting without approval."
-            exit 0
-          fi
-
-          echo "All workflows have completed successfully."
 
       - name: Approve PR
         if: env.approve == 'true'
