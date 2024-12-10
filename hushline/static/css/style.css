@@ -1625,7 +1625,6 @@ a.dropbtn:hover {
   text-decoration: none;
 }
 
-/* Dropdown content (hidden by default) */
 .dropdown-content {
   display: none;
   position: absolute;
@@ -1636,7 +1635,6 @@ a.dropbtn:hover {
   opacity: 0;
 }
 
-/* Links inside the dropdown */
 .dropdown-content a {
   padding: 12px 16px;
   text-decoration: none;
@@ -1653,21 +1651,18 @@ a.dropbtn:hover {
   width: 100%;
 }
 
-/* Style the dropdown button */
 .dropbtn {
   cursor: pointer;
   display: flex;
   align-items: center;
 }
 
-/* Style the dropdown icon */
 .dropdown-icon {
   width: 0.5rem;
   margin-left: 0.325rem;
   transition: transform 0.3s ease;
 }
 
-/* Fade-in and slide-down animation */
 @keyframes fadeInSlideDown {
   from {
     opacity: 0;
@@ -1680,7 +1675,6 @@ a.dropbtn:hover {
   }
 }
 
-/* Fade-out and slide-up animation */
 @keyframes fadeOutSlideUp {
   from {
     opacity: 1;
