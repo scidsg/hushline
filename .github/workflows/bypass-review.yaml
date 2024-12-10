@@ -70,8 +70,6 @@ jobs:
 
           # If no failures and all are completed, proceed
           echo "All workflows are completed and successful. Proceeding with approval."
-          env:
-            GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
 
       - name: Approve PR
         run: |
