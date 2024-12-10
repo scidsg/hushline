@@ -51,23 +51,23 @@ jobs:
       - name: Ensure all required checks have passed
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
-          
+
           # Fetch the list of workflow runs for the PR
           WORKFLOW_RUNS=$(gh run list --json conclusion,status,event --limit 100 --jq \
             '.[] | select(.event == "pull_request") | {status: .status, conclusion: .conclusion}')
-          
+
           # Check if any workflows are still running
           if echo "$WORKFLOW_RUNS" | grep -q '"status": "in_progress"'; then
             echo "Some workflows are still running. Exiting without approval."
             exit 0
           fi
-          
+
           # Check if any workflows have failed
           if echo "$WORKFLOW_RUNS" | grep -q '"conclusion": "failure"'; then
             echo "Some workflows have failed. Exiting without approval."
             exit 0
           fi
-          
+
           # If no failures and all are completed, proceed
           echo "All workflows are completed and successful. Proceeding with approval."
           env:
