@@ -48,7 +48,24 @@ jobs:
             exit 0  # Exit without failure
           fi
 
+          - name: Check for specific files
+          id: file-check
+          env:
+            GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
+          run: |
+            git diff --name-only origin/main $GITHUB_HEAD_REF > file_list.txt
+  
+            # Check if there are files other than allowed (.css, .md, hushline/version.py)
+            if grep -v -qE '(\.css$|\.md$|^hushline/version.py$)' file_list.txt; then
+              echo "PR contains files other than .css, .md, or hushline/version.py. Exiting without approval."
+              echo "approve=false" >> $GITHUB_ENV
+              exit 0  # Exit without failure
+            fi
+  
+            echo "approve=true" >> $GITHUB_ENV
+  
       - name: Ensure all required checks have passed
+        if: env.approve == 'true'
         env:
           GH_TOKEN: ${{ secrets.ADMIN_PAT }}
         run: |
@@ -72,6 +89,7 @@ jobs:
           echo "All workflows have completed successfully."
 
       - name: Approve PR
+        if: env.approve == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
         run: |
