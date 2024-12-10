@@ -568,6 +568,8 @@ def create_blueprint() -> Blueprint:
     @admin_authentication_required
     @bp.route("/guidance", methods=["GET", "POST"])
     def guidance() -> Tuple[str, int] | Response:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+
         show_user_guidance = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_ENABLED)
 
         user_guidance_form = UserGuidanceForm(show_user_guidance=show_user_guidance)
@@ -694,6 +696,7 @@ def create_blueprint() -> Blueprint:
 
         return render_template(
             "settings/guidance.html",
+            user=user,
             user_guidance_form=user_guidance_form,
             user_guidance_emergency_exit_form=user_guidance_emergency_exit_form,
             user_guidance_prompt_forms=user_guidance_prompt_forms,
