@@ -372,8 +372,8 @@ def create_blueprint() -> Blueprint:
             business_tier_display_price=business_tier_display_price,
         ), status_code
 
-    @authentication_required
     @bp.route("/aliases", methods=["GET", "POST"])
+    @authentication_required
     def aliases() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         new_alias_form = NewAliasForm()
@@ -399,8 +399,8 @@ def create_blueprint() -> Blueprint:
             new_alias_form=new_alias_form,
         ), status_code
 
-    @authentication_required
     @bp.route("/auth", methods=["GET", "POST"])
+    @authentication_required
     def auth() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         change_username_form = ChangeUsernameForm()
@@ -427,8 +427,8 @@ def create_blueprint() -> Blueprint:
             change_password_form=change_password_form,
         ), status_code
 
-    @authentication_required
     @bp.route("/email", methods=["GET", "POST"])
+    @authentication_required
     def email() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
@@ -482,8 +482,8 @@ def create_blueprint() -> Blueprint:
             default_forwarding_enabled=default_forwarding_enabled,
         ), status_code
 
-    @admin_authentication_required
     @bp.route("/branding", methods=["GET", "POST"])
+    @admin_authentication_required
     def branding() -> Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
@@ -559,14 +559,14 @@ def create_blueprint() -> Blueprint:
             update_brand_app_name_form=update_brand_app_name_form,
         ), status_code
 
-    @authentication_required
     @bp.route("/advanced")
+    @authentication_required
     def advanced() -> str:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         return render_template("settings/advanced.html", user=user)
 
-    @admin_authentication_required
     @bp.route("/guidance", methods=["GET", "POST"])
+    @admin_authentication_required
     def guidance() -> Tuple[str, int] | Response:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
@@ -704,8 +704,8 @@ def create_blueprint() -> Blueprint:
             show_user_guidance=show_user_guidance,
         ), status_code
 
-    @admin_authentication_required
     @bp.route("/admin")
+    @admin_authentication_required
     def admin() -> str:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
