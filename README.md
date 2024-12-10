@@ -22,7 +22,7 @@
 - 🏷️ Message statuses
 - 🧠 Automated message replies based on status
 - 💬 Unique reply status URL for submitters
-- 🤖 Local CAPTCHA
+- 🤖 Local, Private CAPTCHA
 
 ## Contribution Guidelines
 
