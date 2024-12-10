@@ -41,13 +41,34 @@ jobs:
         run: |
           git diff --name-only origin/main $GITHUB_HEAD_REF > file_list.txt
 
-          if grep -v -qE '(\.css$|^hushline/version.py$)' file_list.txt; then
-            echo "PR contains files other than .css or hushline/version.py. Exiting without approval."
+          if grep -v -qE '(\.css$|\.md$|^hushline/version.py$)' file_list.txt; then
+            echo "PR contains files other than .css, .md, or hushline/version.py. Exiting without approval."
             exit 0  # Exit without failure
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
 
-          # Proceed to approve if only matching files are present
-          echo "Only .css files and/or hushline/version.py detected and user is an admin, approving PR"
-          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: Only specific files detected and user is an admin."
+      - name: Ensure all required checks have passed
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          STATUS=$(gh pr checks $PR_NUMBER --json checks --jq '.checks[].status')
+          
+          if echo "$STATUS" | grep -qv "completed"; then
+            echo "Not all required checks have passed. Exiting without approval."
+            exit 0
+          fi
+          
+          CONCLUSION=$(gh pr checks $PR_NUMBER --json checks --jq '.checks[].conclusion')
+          if echo "$CONCLUSION" | grep -qv "success"; then
+            echo "Some required checks failed. Exiting without approval."
+            exit 0
+          fi
+          
+          echo "All required checks have passed. Proceeding with approval."
+
+      - name: Approve PR
+        run: |
+          echo "Only .css and .md files and/or hushline/version.py detected, user is an admin, and all required checks have passed. Approving PR."
+          gh pr review ${{ github.event.pull_request.number }} --approve --body "Approved: All conditions met (specific files, admin, checks passed)."
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
