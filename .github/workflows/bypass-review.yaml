@@ -52,18 +52,18 @@ jobs:
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           STATUS=$(gh pr checks $PR_NUMBER --json checks --jq '.checks[].status')
-          
+
           if echo "$STATUS" | grep -qv "completed"; then
             echo "Not all required checks have passed. Exiting without approval."
             exit 0
           fi
-          
+
           CONCLUSION=$(gh pr checks $PR_NUMBER --json checks --jq '.checks[].conclusion')
           if echo "$CONCLUSION" | grep -qv "success"; then
             echo "Some required checks failed. Exiting without approval."
             exit 0
           fi
-          
+
           echo "All required checks have passed. Proceeding with approval."
 
       - name: Approve PR
