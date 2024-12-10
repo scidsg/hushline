@@ -65,6 +65,8 @@ jobs:
           fi
 
           echo "All required checks have passed. Proceeding with approval."
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
 
       - name: Approve PR
         run: |
