@@ -48,6 +48,21 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         flash("⛓️‍💥 That page doesn't exist.", "warning")
         return redirect(url_for("index"))
 
+    # Add Content-Security-Policy header to all responses
+    @app.after_request
+    def add_csp_header(response: Response) -> Response:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self';"
+            "script-src 'self' https://js.stripe.com;"
+            "img-src 'self' data: https:;"
+            "style-src 'self';"
+            "frame-ancestors 'none';"
+            "connect-src 'self' https://api.stripe.com;"
+            "child-src https://js.stripe.com;"
+            "frame-src https://js.stripe.com;"
+        )
+        return response
+
     # Add Onion-Location header to all responses
     if onion := app.config.get("ONION_HOSTNAME"):
 
