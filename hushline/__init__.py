@@ -50,7 +50,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
 
     # Add Content-Security-Policy header to all responses
     @app.after_request
-    def add_csp_header(response: Response) -> Response:
+    def add_security_header(response: Response) -> Response:
         response.headers["Content-Security-Policy"] = (
             "default-src 'self';"
             "script-src 'self' https://js.stripe.com;"
@@ -61,6 +61,13 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             "child-src https://js.stripe.com;"
             "frame-src https://js.stripe.com;"
         )
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501
+        )
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
         return response
 
     # Add Onion-Location header to all responses
