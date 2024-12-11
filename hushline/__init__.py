@@ -68,6 +68,11 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         )
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # If SERVER_NAME does not end in .onion, add Strict-Transport-Security
+        if not app.config.get("SERVER_NAME", "").endswith(".onion"):
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubdomains"
+
         return response
 
     # Add Onion-Location header to all responses

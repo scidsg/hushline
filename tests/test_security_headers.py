@@ -1,4 +1,4 @@
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 
@@ -53,3 +53,20 @@ def test_x_xss_protection(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "X-XSS-Protection" in response.headers
     assert response.headers["X-XSS-Protection"] == "1; mode=block"
+
+
+def test_strict_transport_security(client: FlaskClient, app: Flask) -> None:
+    app.config["SERVER_NAME"] = "example.com"
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+    assert "Strict-Transport-Security" in response.headers
+    assert response.headers["Strict-Transport-Security"] == (
+        "max-age=31536000; includeSubDomains; preload"
+    )
+
+
+def test_no_strict_transport_security_onion(client: FlaskClient, app: Flask) -> None:
+    app.config["SERVER_NAME"] = "example.onion"
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+    assert "Strict-Transport-Security" not in response.headers
