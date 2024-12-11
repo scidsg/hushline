@@ -920,7 +920,8 @@ h4 {
   margin-bottom: 0.25rem;
 }
 
-.user h4 {
+.user h4,
+.user h5 {
   margin-top: 0;
 }
 
