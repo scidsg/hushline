@@ -48,6 +48,33 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         flash("⛓️‍💥 That page doesn't exist.", "warning")
         return redirect(url_for("index"))
 
+    # Add Content-Security-Policy header to all responses
+    @app.after_request
+    def add_security_header(response: Response) -> Response:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self';"
+            "script-src 'self' https://js.stripe.com;"
+            "img-src 'self' data: https:;"
+            "style-src 'self';"
+            "frame-ancestors 'none';"
+            "connect-src 'self' https://api.stripe.com;"
+            "child-src https://js.stripe.com;"
+            "frame-src https://js.stripe.com;"
+        )
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501
+        )
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # If SERVER_NAME does not end in .onion, add Strict-Transport-Security
+        if not app.config.get("SERVER_NAME", "").endswith(".onion"):
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubdomains"
+
+        return response
+
     # Add Onion-Location header to all responses
     if onion := app.config.get("ONION_HOSTNAME"):
 
