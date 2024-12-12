@@ -60,9 +60,7 @@ def test_strict_transport_security(client: FlaskClient, app: Flask) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
     assert "Strict-Transport-Security" in response.headers
-    assert response.headers["Strict-Transport-Security"] == (
-        "max-age=31536000; includeSubDomains; preload"
-    )
+    assert response.headers["Strict-Transport-Security"] == ("max-age=63072000; includeSubdomains")
 
 
 def test_no_strict_transport_security_onion(client: FlaskClient, app: Flask) -> None:
