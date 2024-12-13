@@ -49,7 +49,7 @@ The Content-Security-Policy (CSP) header is a powerful tool used by web applicat
 - `default-src 'self';` Only allow content from the site's own origin. This is the default policy for loading resources such as JavaScript, images, CSS, fonts, AJAX requests, frames, HTML5 media, and other data.
 - `script-src 'self' https://js.stripe.com;` Allow scripts to be loaded from the site's own origin and Stripe (for payment processing).
 - `img-src 'self' data: https:;` Allow images from the site's origin, inline images using data URIs, and images loaded over HTTPS from any origin.
-- `style-src 'self';` Only allow stylesheets from the site's own origin.
+- `style-src 'self' 'unsafe-inline';` Only the stylesheets from the site's own origin, and dynamically loaded styles for customer instances.
 - `frame-ancestors 'none';` Prevent the site from being framed (embedded within an <iframe>) by other sites, mitigating Clickjacking attacks.
 - `connect-src 'self' https://api.stripe.com;` Restrict the origins to which you can connect (via XHR, WebSockets, and EventSource).
 - `child-src https://js.stripe.com;` Define valid sources for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>.
