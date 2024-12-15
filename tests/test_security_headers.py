@@ -9,7 +9,7 @@ def test_csp(client: FlaskClient) -> None:
 
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self';" in csp
-    assert "script-src 'self' https://js.stripe.com;" in csp
+    assert "script-src 'self' https://js.stripe.com https://cdn.jsdelivr.net;" in csp
     assert "img-src 'self' data: https:;" in csp
     assert "style-src 'self' 'unsafe-inline';" in csp
     assert "frame-ancestors 'none';" in csp
