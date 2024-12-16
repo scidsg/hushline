@@ -58,7 +58,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             "style-src 'self' 'unsafe-inline';"
             "worker-src 'self' blob:;"
             "frame-ancestors 'none';"
-            "connect-src 'self' https://api.stripe.com data:;"
+            "connect-src 'self' https://api.stripe.com https://cdn.jsdelivr.net data:;"
             "child-src https://js.stripe.com;"
             "frame-src https://js.stripe.com;"
         )

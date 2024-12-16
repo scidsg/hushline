@@ -16,7 +16,7 @@ def test_csp(client: FlaskClient) -> None:
     assert "img-src 'self' data: https:;" in csp
     assert "style-src 'self' 'unsafe-inline';" in csp
     assert "frame-ancestors 'none';" in csp
-    assert "connect-src 'self' https://api.stripe.com data:;" in csp
+    assert "connect-src 'self' https://api.stripe.com https://cdn.jsdelivr.net data:;" in csp
     assert "child-src https://js.stripe.com;" in csp
     assert "frame-src https://js.stripe.com;" in csp
 
