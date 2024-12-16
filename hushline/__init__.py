@@ -53,7 +53,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     def add_security_header(response: Response) -> Response:
         response.headers["Content-Security-Policy"] = (
             "default-src 'self';"
-            "script-src 'self' https://js.stripe.com;"
+            "script-src 'self' https://js.stripe.com https://cdn.jsdelivr.net;"
             "img-src 'self' data: https:;"
             "style-src 'self' 'unsafe-inline';"
             "frame-ancestors 'none';"
