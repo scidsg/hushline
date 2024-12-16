@@ -56,6 +56,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             "script-src 'self' https://js.stripe.com https://cdn.jsdelivr.net;"
             "img-src 'self' data: https:;"
             "style-src 'self' 'unsafe-inline';"
+            "worker-src 'self' blob:;"
             "frame-ancestors 'none';"
             "connect-src 'self' https://api.stripe.com;"
             "child-src https://js.stripe.com;"
