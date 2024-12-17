@@ -71,7 +71,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
         # If SERVER_NAME does not end in .onion, add Strict-Transport-Security
-        if not app.config.get("SERVER_NAME", "").endswith(".onion"):
+        if not (app.config.get("SERVER_NAME") or "").endswith(".onion"):
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubdomains"
 
         return response
