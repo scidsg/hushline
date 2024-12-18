@@ -620,7 +620,17 @@ def init_app(app: Flask) -> None:
         ]
 
     @app.route("/vision")
-    def vision() -> str:
+    @authentication_required
+    def vision() -> str | Response:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            flash("⛔️ Please log in to access this feature.")
+            return redirect(url_for("login"))
+
+        if not user.tier_id:  # Assuming tier_id is None for unpaid users
+            flash("⛔️ This feature is only available to paid users.")
+            return redirect(url_for("premium.select_tier"))
+
         return render_template("vision.html")
 
     @app.route("/info")

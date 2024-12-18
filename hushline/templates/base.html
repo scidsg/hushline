@@ -91,10 +91,10 @@
             href="https://www.torproject.org/download/"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Use Tor Browser for increased anonymity. This link opens a new browser tab."
+            aria-label="Use Tor Browser for greater anonymity. This link opens a new browser tab."
             >Tor Browser</a
           >
-          for increased anonymity.
+          for greater anonymity.
         </p>
       </div>
     {% endif %}
@@ -111,15 +111,16 @@
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
           <ul>
-            {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
-              {% if is_premium_enabled and user.is_free_tier %}
-              <li>
-                <a href="{{ url_for('premium.index') }}">Upgrade</a>
-              </li>
+            {% if 'user_id' in session and session.get('is_authenticated', False) %}
+              {% if is_premium_enabled %}
+                {% if user and not user.is_free_tier %}
+                  <li><a href="{{ url_for('vision') }}">Vision</a></li>
+                {% else %}
+                  <li><a href="{{ url_for('premium.index') }}">Upgrade</a></li>
+                {% endif %}
               {% endif %}
             {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>
-            <li><a href="{{ url_for('vision') }}">Vision</a></li>
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
               <li>
                 <a href="{{ url_for('inbox') }}">Inbox</a>
