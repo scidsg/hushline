@@ -93,6 +93,7 @@ class OrganizationSetting(Model):
     BRAND_LOGO = "brand_logo"
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
+    DIRECTORY_INTRO_TEXT = "directory_intro_text"
     GUIDANCE_ENABLED = "guidance_enabled"
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
     GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"

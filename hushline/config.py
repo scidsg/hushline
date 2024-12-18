@@ -28,7 +28,7 @@ class AliasMode(Enum):
         for var in cls:
             if var.value == string:
                 return var
-        raise ConfigParseError(f"Not a valid value for {cls.__name__}: {var!r}")
+        raise ConfigParseError(f"Not a valid value for {cls.__name__}: {string!r}")
 
 
 def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
