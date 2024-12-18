@@ -29,6 +29,7 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryTextForm,
     UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
@@ -949,3 +950,28 @@ def test_update_guidance_prompts(client: FlaskClient, admin: User) -> None:
     assert len(prompts) == 2
     assert prompts[0]["heading_text"] == "prompt 1"
     assert prompts[1]["heading_text"] == "prompt 3"
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
+    alert = "<script>alert(1)</stript>"
+    uuid = str(uuid4())
+    data = alert + " " + uuid
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "markdown": data,
+            UpdateDirectoryTextForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Directory intro text updated" in resp.text
+
+    val = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT)
+    assert val == data
+
+    resp = client.get(url_for("directory"))
+    assert resp.status_code == 200
+    assert uuid in resp.text
+    assert alert not in resp.text
+    assert "&lt;script&gt;" in resp.text

@@ -31,6 +31,7 @@ from .model import (
     AuthenticationLog,
     InviteCode,
     Message,
+    OrganizationSetting,
     SMTPEncryption,
     User,
     Username,
@@ -597,6 +598,7 @@ def init_app(app: Flask) -> None:
         logged_in = "user_id" in session
         return render_template(
             "directory.html",
+            intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
             usernames=get_directory_usernames(),
             logged_in=logged_in,
         )

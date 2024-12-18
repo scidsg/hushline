@@ -244,3 +244,8 @@ class SetMessageStatusTextForm(FlaskForm):
     # WTForms errors on SelectField(..., widget=HiddenInput()), so we have this instead
     status = HiddenField(validators=[DataRequired(), AnyOf([x.value for x in MessageStatus])])
     submit = SubmitField("Update Reply Text", widget=Button())
+
+
+class UpdateDirectoryTextForm(FlaskForm):
+    markdown = TextAreaField("Directory Intro Text (markdown)", validators=[DataRequired()])
+    submit = SubmitField("Update Text", name="update_directory_text", widget=Button())

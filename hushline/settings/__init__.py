@@ -59,6 +59,7 @@ from .forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryTextForm,
     UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
@@ -487,6 +488,9 @@ def create_blueprint() -> Blueprint:
     def branding() -> Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
+        update_directory_text_form = UpdateDirectoryTextForm(
+            markdown=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT) or ""
+        )
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
@@ -495,6 +499,31 @@ def create_blueprint() -> Blueprint:
         status_code = 200
         if request.method == "POST":
             if (
+                update_directory_text_form.submit.name in request.form
+                and update_directory_text_form.validate()
+            ):
+                if md := update_directory_text_form.markdown.data.strip():
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.DIRECTORY_INTRO_TEXT, value=md
+                    )
+                    db.session.commit()
+                    flash("👍 Directory intro text updated")
+                else:
+                    row_count = db.session.execute(
+                        db.delete(OrganizationSetting).where(
+                            OrganizationSetting.key == OrganizationSetting.DIRECTORY_INTRO_TEXT
+                        )
+                    ).rowcount
+                    if row_count > 1:
+                        current_app.logger.error(
+                            "Would have deleted multiple rows for OrganizationSetting key="
+                            + OrganizationSetting.DIRECTORY_INTRO_TEXT
+                        )
+                        db.session.rollback()
+                        abort(503)
+                    db.session.commit()
+                    flash("👍 Directory intro text was reset to defaults")
+            elif (
                 update_brand_logo_form.submit.name in request.form
                 and update_brand_logo_form.validate()
             ):
@@ -553,6 +582,7 @@ def create_blueprint() -> Blueprint:
         return render_template(
             "settings/branding.html",
             user=user,
+            update_directory_text_form=update_directory_text_form,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
             update_brand_primary_color_form=update_brand_primary_color_form,

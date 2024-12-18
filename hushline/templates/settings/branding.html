@@ -10,6 +10,18 @@
     {% include "settings/nav.html" %}
     <div class="tab-content">
       <h3>Branding</h3>
+
+      <h4>Diretory Intro Text</h4>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ update_directory_text_form.hidden_tag() }}
+        {{ update_directory_text_form.markdown.label }}
+        {{ update_directory_text_form.markdown }}
+        {{ update_directory_text_form.submit }}
+      </form>
+
       <h4>Primary Color</h4>
       <form
         method="POST"

@@ -4,6 +4,11 @@
 
 {% block content %}
   <h2>User Directory</h2>
+
+  {% if intro_text %}
+    {{ intro_text | markdown }}
+  {% endif %}
+
   {% if directory_verified_tab_enabled %}
     {% if not logged_in %}
       <p class="helper section-intro">
