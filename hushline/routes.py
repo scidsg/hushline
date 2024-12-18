@@ -621,7 +621,7 @@ def init_app(app: Flask) -> None:
 
     @app.route("/vision")
     @authentication_required
-    def vision() -> str:
+    def vision() -> str | Response:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             flash("⛔️ Please log in to access this feature.")
