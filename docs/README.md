@@ -1,6 +1,6 @@
 # Hush Line Documentation
 
-For the most up-to-date end-user documentation visit https://hushline.app/docs.html.
+For the most up-to-date end-user documentation visit https://hushline.app/start-here.html.
 
 ## Contents
 
