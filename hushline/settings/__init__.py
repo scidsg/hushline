@@ -329,7 +329,6 @@ def create_blueprint() -> Blueprint:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         username = user.primary_username
 
-        # hush, mypy.
         if username is None:
             raise Exception("Username was unexpectedly none")
 
