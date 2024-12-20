@@ -337,7 +337,17 @@ def create_blueprint() -> Blueprint:
         directory_visibility_form = DirectoryVisibilityForm(
             show_in_directory=username.show_in_directory
         )
-        profile_form = ProfileForm(obj=user)
+        profile_form = ProfileForm(
+            bio=username.bio or "",
+            **{
+                f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
+                for i in range(1, 5)
+            },
+            **{
+                f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
+                for i in range(1, 5)
+            }
+        )
 
         status_code = 200
         if request.method == "POST":
