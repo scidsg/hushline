@@ -346,7 +346,7 @@ def create_blueprint() -> Blueprint:
             **{
                 f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
                 for i in range(1, 5)
-            }
+            },
         )
 
         status_code = 200
