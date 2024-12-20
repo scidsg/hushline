@@ -101,20 +101,18 @@
             <div class="input-pair">
               <div>
                 {{ label.label }}
-                {{ label(placeholder=label_placeholder) if label is not none else '' }}
+                {{ label(placeholder=label_placeholder) }}
               </div>
               <div>
                 {{ value.label }}
-                {{ value(placeholder=value_placeholder) if value is not none else '' }}
+                {{ value(placeholder=value_placeholder) }}
                 {% if verified %}
                   <span class="icon verifiedURL" title="Verified Address"></span>
                 {% endif %}
               </div>
-              {% if label and value %}
                 {% for error in label.errors + value.errors %}
                   <span class="error">{{ error }}</span>
                 {% endfor %}
-              {% endif %}
             </div>
           {% endfor %}
         </div>
