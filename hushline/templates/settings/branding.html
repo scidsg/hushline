@@ -55,21 +55,40 @@
         {{ update_brand_app_name_form.submit }}
       </form>
 
-      {% if user.is_admin %}
-        <h4>Logo</h4>
-        <form
-          method="POST"
-          enctype="multipart/form-data"
-          class="formBody"
-        >
-          {{ update_brand_logo_form.hidden_tag() }}
-          {{ update_brand_logo_form.logo(accept=".png") }}
-          {{ update_brand_logo_form.submit(class="btn") }}
-          {% if brand_logo_url %}
-            {{ delete_brand_logo_form.submit(class="btn-danger") }}
-          {% endif %}
-        </form>
-      {% endif %}
+      <h4>Logo</h4>
+      <form
+        method="POST"
+        enctype="multipart/form-data"
+        class="formBody"
+      >
+        {{ update_brand_logo_form.hidden_tag() }}
+        {{ update_brand_logo_form.logo(accept=".png") }}
+        {{ update_brand_logo_form.submit(class="btn") }}
+        {% if brand_logo_url %}
+          {{ delete_brand_logo_form.submit(class="btn-danger") }}
+        {% endif %}
+      </form>
+
+      <h4>Homepage</h4>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ set_homepage_username_form.hidden_tag() }}
+        {{ set_homepage_username_form.username.label }}
+        {{ set_homepage_username_form.username }}
+        {% if set_homepage_username_form.username.errors %}
+          <div>
+            {% for error in set_homepage_username_form.username.errors %}
+              <span class="error">{{ error }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {{ set_homepage_username_form.submit(class="btn") }}
+        {% if set_homepage_username_form.username.data %}
+          {{ set_homepage_username_form.delete_submit(class="btn-danger") }}
+        {% endif %}
+      </form>
     </div>
   </div>
 {% endblock %}

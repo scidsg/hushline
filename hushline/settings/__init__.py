@@ -55,6 +55,7 @@ from .forms import (
     PGPKeyForm,
     PGPProtonForm,
     ProfileForm,
+    SetHomepageUsernameForm,
     SetMessageStatusTextForm,
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
@@ -498,12 +499,15 @@ def create_blueprint() -> Blueprint:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         update_directory_text_form = UpdateDirectoryTextForm(
-            markdown=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT) or ""
+            markdown=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT)
         )
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
         update_brand_app_name_form = UpdateBrandAppNameForm()
+        set_homepage_username_form = SetHomepageUsernameForm(
+            username=OrganizationSetting.fetch_one(OrganizationSetting.HOMEPAGE_USER_NAME)
+        )
 
         status_code = 200
         if request.method == "POST":
@@ -584,6 +588,37 @@ def create_blueprint() -> Blueprint:
                 )
                 db.session.commit()
                 flash("👍 Brand app name updated successfully.")
+            elif set_homepage_username_form.delete_submit.name in request.form:
+                row_count = db.session.execute(
+                    db.delete(OrganizationSetting).filter_by(
+                        key=OrganizationSetting.HOMEPAGE_USER_NAME
+                    )
+                ).rowcount
+                match row_count:
+                    case 0:
+                        flash("👍 Homepage reset to default")
+                    case 1:
+                        db.session.commit()
+                        set_homepage_username_form.username.data = None
+                        flash("👍 Homepage reset to default")
+                    case _:
+                        current_app.logger.error(
+                            f"Deleting OrganizationSetting {OrganizationSetting.HOMEPAGE_USER_NAME}"
+                            " would have deleted multiple rows"
+                        )
+                        status_code = 500
+                        db.session.rollback()
+                        flash("There was an error and the setting could not reset")
+            elif (
+                set_homepage_username_form.submit.name in request.form
+                and set_homepage_username_form.validate()
+            ):
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.HOMEPAGE_USER_NAME,
+                    value=set_homepage_username_form.username.data,
+                )
+                db.session.commit()
+                flash(f"👍 Homepage set to user {set_homepage_username_form.username.data!r}")
             else:
                 form_error()
                 status_code = 400
@@ -596,6 +631,7 @@ def create_blueprint() -> Blueprint:
             delete_brand_logo_form=delete_brand_logo_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,
+            set_homepage_username_form=set_homepage_username_form,
         ), status_code
 
     @bp.route("/advanced")
