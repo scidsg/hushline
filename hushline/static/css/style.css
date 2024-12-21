@@ -2497,6 +2497,7 @@ p.bio + .extra-fields {
     flex-direction: column;
     gap: 0;
     width: 100%;
+    margin-top: 0;
   }
 
   .settings-main .settings-content .tab-list li a {
@@ -2507,8 +2508,8 @@ p.bio + .extra-fields {
   .settings-main .settings-content .tab-list {
     display: flex;
     flex-direction: row;
-    padding-top: 0.5rem;
     gap: 1.25rem;
+    padding-top: 0;
   }
 
   .settings-main .settings-content .settings-tabs + div {
