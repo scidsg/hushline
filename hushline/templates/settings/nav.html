@@ -3,7 +3,7 @@
   <ul class="tab-list" role="tablist">
     {% with buttons = [
       ('settings.profile', 'Profile', True),
-      ('settings.aliases', 'Aliases', aliases_enabled),
+      ('settings.aliases', 'Aliases', aliases_enabled and user.pgp_key is not none),
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.email', 'Email & Encryption', True),

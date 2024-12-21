@@ -845,6 +845,8 @@ body {
 main {
   max-width: 640px;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 main.tier-select {
@@ -1525,13 +1527,13 @@ img.upgrade {
 .tab-list {
   list-style-type: none;
   margin: 0 0 1.75rem 0;
-  padding: 0.5rem 0 0 0;
+  padding: 0;
   overflow-x: auto;
   display: flex;
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: 1.25rem;
+  gap: .75rem;
 }
 
 .tab-list li {
@@ -1539,8 +1541,12 @@ img.upgrade {
 }
 
 .tab-list li a {
-  padding: 0.25rem 0.625rem 0.25rem 0;
+  padding: 1rem 0;
   text-decoration: none;
+}
+
+.settings-main .tab-list li a {
+  padding: 0;
 }
 
 .tab-list::-webkit-scrollbar {
@@ -2464,7 +2470,11 @@ p.bio + .extra-fields {
 }
 
 .settings-content {
-  padding-top: 1rem;
+  padding-top: 0;
+}
+
+.settings-main .settings-content {
+  margin-top: 1rem;
 }
 
 @media (max-width: 640px) {
