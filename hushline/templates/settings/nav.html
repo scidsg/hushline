@@ -4,13 +4,13 @@
     {% with buttons = [
       ('settings.profile', 'Profile', True),
       ('settings.aliases', 'Aliases', aliases_enabled),
-      ('settings.replies', 'Replies', True),
       ('settings.auth', 'Authentication', True),
-      ('settings.email', 'Email & Encryption', True),
       ('settings.branding', 'Branding', user.is_admin),
-      ('settings.advanced', 'Advanced', True),
+      ('settings.email', 'Email & Encryption', True),
+      ('settings.replies', 'Replies', user.pgp_key is not none),
       ('settings.guidance', 'User Guidance', user.is_admin),
-      ('settings.admin', 'Admin', user.is_admin)
+      ('settings.admin', 'Admin', user.is_admin),
+      ('settings.advanced', 'Advanced', True)
     ] %}
       {% for (endpoint, display_name, show) in buttons %}
         {% if show %}
