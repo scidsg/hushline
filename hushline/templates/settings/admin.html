@@ -2,8 +2,6 @@
 
 {% block title %}Settings{% endblock %}
 
-{% block main_class %}settings-main{% endblock %}
-
 {% block content %}
   <h2>Settings</h2>
   <div class="settings-content">
@@ -63,4 +61,8 @@
       <p>No users found.</p>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}
