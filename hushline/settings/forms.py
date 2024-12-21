@@ -6,6 +6,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField, FileSize
 from wtforms import (
     BooleanField,
+    Field,
     FormField,
     HiddenField,
     IntegerField,
@@ -21,11 +22,13 @@ from wtforms.validators import (
     DataRequired,
     Email,
     Length,
+    ValidationError,
 )
 from wtforms.validators import Optional as OptionalField
 
+from ..db import db
 from ..forms import Button, CanonicalHTML, ComplexPassword, HexColor
-from ..model import MessageStatus, SMTPEncryption
+from ..model import MessageStatus, SMTPEncryption, Username
 
 
 class ChangePasswordForm(FlaskForm):
@@ -249,3 +252,16 @@ class SetMessageStatusTextForm(FlaskForm):
 class UpdateDirectoryTextForm(FlaskForm):
     markdown = TextAreaField("Directory Intro Text (markdown)", validators=[DataRequired()])
     submit = SubmitField("Update Text", name="update_directory_text", widget=Button())
+
+
+class SetHomepageUsernameForm(FlaskForm):
+    username = StringField(validators=[DataRequired()])
+    submit = SubmitField("Set Username", name="set_homepage_user", widget=Button())
+    delete_submit = SubmitField("Reset", name="delete_homepage_user", widget=Button())
+
+    def validate_username(self, field: Field) -> None:
+        username = field.data.strip()
+        if not db.session.scalar(
+            db.exists(Username).where(Username._username == username).select()
+        ):
+            raise ValidationError(f"Username {username!r} does not exist")

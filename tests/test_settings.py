@@ -26,6 +26,7 @@ from hushline.settings import (
     EmailForwardingForm,
     NewAliasForm,
     PGPKeyForm,
+    SetHomepageUsernameForm,
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
@@ -975,3 +976,54 @@ def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
     assert uuid in resp.text
     assert alert not in resp.text
     assert "&lt;script&gt;" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_homepage_user(client: FlaskClient, user: User, admin: User) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "username": user.primary_username.username,
+            SetHomepageUsernameForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Homepage set to user " in resp.text
+
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.HOMEPAGE_USER_NAME)
+        == user.primary_username.username
+    )
+
+    # "log out" the user
+    with client.session_transaction() as session:
+        session.clear()
+
+    resp = client.get(url_for("index"))
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == url_for("profile", username=user.primary_username.username)
+
+    # "log in" the user to make the change
+    with client.session_transaction() as session:
+        session["user_id"] = admin.id
+        session["username"] = admin.primary_username.username
+        session["is_authenticated"] = True
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            SetHomepageUsernameForm.delete_submit.name: "",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert "Homepage reset to default" in resp.text
+
+    assert OrganizationSetting.fetch_one(OrganizationSetting.HOMEPAGE_USER_NAME) is None
+
+    # "log out" the user
+    with client.session_transaction() as session:
+        session.clear()
+
+    resp = client.get(url_for("index"))
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == url_for("directory")

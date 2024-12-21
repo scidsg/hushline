@@ -98,6 +98,7 @@ class OrganizationSetting(Model):
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
     GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"
     GUIDANCE_PROMPTS = "guidance_prompts"
+    HOMEPAGE_USER_NAME = "homepage_user_name"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
