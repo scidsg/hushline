@@ -1239,7 +1239,7 @@ button.dropbtn {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 860px;
   min-width: 480px;
   width: 100%;
   display: flex;
