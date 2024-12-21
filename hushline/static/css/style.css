@@ -1533,7 +1533,8 @@ img.upgrade {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: .75rem;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
 }
 
 .tab-list li {
