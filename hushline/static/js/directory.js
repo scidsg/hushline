@@ -125,17 +125,15 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function createReportEventListeners(selector) {
-    document
-      .querySelector(selector)
-      .addEventListener("click", function (event) {
-        if (event.target.classList.contains("report-link")) {
-          event.preventDefault();
-          const link = event.target;
-          const username = link.getAttribute("data-username");
-          const bio = link.getAttribute("data-bio");
-          reportUser(username, bio);
-        }
+    const links = document.querySelectorAll(selector + " .report-link");
+    links.forEach((link) => {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        const username = this.getAttribute("data-username");
+        const bio = this.getAttribute("data-bio");
+        reportUser(username, bio);
       });
+    });
   }
 
   checkIfSessionUser().then(() => {
