@@ -153,6 +153,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function createReportEventListeners(selector) {
+    const reportLinks = document.querySelectorAll(selector + " .report-link");
+    reportLinks.forEach((link) => {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        const username = this.getAttribute("data-username");
+        const bio = this.getAttribute("data-bio");
+        reportUser(username, bio);
+      });
+    });
+  }
+
   function handleSearchInput() {
     const query = searchInput.value.trim();
     const filteredUsers = filterUsers(query);
