@@ -2702,7 +2702,7 @@ h3 {
 
 .message-container .message-meta + div strong {
   font-family: var(--font-sans-bold);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-base);
   font-weight: normal;
 }
 
