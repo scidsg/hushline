@@ -8,6 +8,8 @@ from hushline.db import db
 from hushline.model import Tier, User, Username
 from hushline.storage import S3Driver, public_store
 
+MAX_EXTRA_FIELDS = 4
+
 
 def main() -> None:
     print("Adding dev data")
@@ -493,9 +495,9 @@ def create_users() -> None:
 
     for data in users:
         username = data["username"]
-        bio = (data.get("bio") or "")[:250]  # Truncate to 250 if needed
+        bio = (data.get("bio") or "")[:250]  # Truncate to 250 characters
         extra_fields_config = data.get("extra_fields", [])
-        pgp_key = data.get("pgp_key")  # Get PGP key if exists
+        pgp_key = data.get("pgp_key")  # Get PGP key if provided
 
         # Find existing primary username
         primary = Username.query.filter_by(_username=username, is_primary=True).first()
@@ -504,25 +506,25 @@ def create_users() -> None:
             # Create new user
             user = User(password=data["password"], is_admin=data["is_admin"])
 
-            # Assign PGP key if provided
             if pgp_key:
                 user.pgp_key = pgp_key
 
             db.session.add(user)
             db.session.flush()
 
-            un1 = Username(
+            primary = Username(
                 user_id=user.id,
-                _username=data["username"],
+                _username=username,
                 display_name=data.get("display_name"),
                 bio=bio,
                 is_primary=True,
                 show_in_directory=True,
                 is_verified=data.get("is_verified", False),
             )
-            un2 = Username(
+
+            alias = Username(
                 user_id=user.id,
-                _username=data["username"] + "-alias",
+                _username=username + "-alias",
                 display_name=f'{data.get("display_name", username)} (Alias)',
                 bio=(f"{bio} (Alias)")[:250],
                 is_primary=False,
@@ -530,18 +532,14 @@ def create_users() -> None:
                 is_verified=False,
             )
 
-            # Define a constant at the top of your script
-            MAX_EXTRA_FIELDS = 4
-
-            # Replace magic number 4 with the constant
             for i, (label, value, verified) in enumerate(extra_fields_config, start=1):
                 if i > MAX_EXTRA_FIELDS:
-                    break  # we only have MAX_EXTRA_FIELDS columns
-                setattr(un1, f"extra_field_label{i}", label)
-                setattr(un1, f"extra_field_value{i}", value)
-                setattr(un1, f"extra_field_verified{i}", verified)
+                    break
+                setattr(primary, f"extra_field_label{i}", label)
+                setattr(primary, f"extra_field_value{i}", value)
+                setattr(primary, f"extra_field_verified{i}", verified)
 
-            db.session.add_all([un1, un2])
+            db.session.add_all([primary, alias])
             db.session.commit()
         else:
             # Update existing user
@@ -549,24 +547,12 @@ def create_users() -> None:
             user.password = data["password"]
             user.is_admin = data["is_admin"]
 
-            # Update PGP key if provided
             if pgp_key:
                 user.pgp_key = pgp_key
 
             primary.display_name = data.get("display_name", primary.display_name)
             primary.bio = bio
             primary.is_verified = True
-
-            # Define a constant at the top of your script
-            MAX_EXTRA_FIELDS = 4
-
-            # Replace magic number 4 with the constant
-            for i, (label, value, verified) in enumerate(extra_fields_config, start=1):
-                if i > MAX_EXTRA_FIELDS:
-                    break  # we only have MAX_EXTRA_FIELDS columns
-                setattr(un1, f"extra_field_label{i}", label)
-                setattr(un1, f"extra_field_value{i}", value)
-                setattr(un1, f"extra_field_verified{i}", verified)
 
             alias = Username.query.filter_by(user_id=user.id, is_primary=False).first()
             if alias:
@@ -575,22 +561,24 @@ def create_users() -> None:
                 alias.bio = (f"{bio} (Alias)")[:250]
                 alias.is_verified = False
 
+            for i, (label, value, verified) in enumerate(extra_fields_config, start=1):
+                if i > MAX_EXTRA_FIELDS:
+                    break
+                setattr(primary, f"extra_field_label{i}", label)
+                setattr(primary, f"extra_field_value{i}", value)
+                setattr(primary, f"extra_field_verified{i}", verified)
+
             db.session.commit()
 
-        print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
+        print(f"Test user:\n  username = {username}\n  password = {data['password']}")
 
 
 def create_tiers() -> None:
     tiers = [
-        {
-            "name": "Free",
-            "monthly_amount": 0,
-        },
-        {
-            "name": "Super User",
-            "monthly_amount": 500,
-        },
+        {"name": "Free", "monthly_amount": 0},
+        {"name": "Super User", "monthly_amount": 500},
     ]
+
     for data in tiers:
         name = cast(str, data["name"])
         monthly_amount = cast(int, data["monthly_amount"])
