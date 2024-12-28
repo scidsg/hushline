@@ -2,6 +2,7 @@
 from typing import cast
 
 from flask import current_app
+from sqlalchemy.sql import exists
 
 from hushline import create_app
 from hushline.db import db
