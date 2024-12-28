@@ -493,6 +493,7 @@ def create_users() -> None:
 
     for data in users:
         username = data["username"]
+        if not db.session.query(exists(Username).where(Username._username == username)).scalar():
         bio = (data.get("bio") or "")[:250]  # Truncate to 250 if needed
         extra_fields_config = data.get("extra_fields", [])
         pgp_key = data.get("pgp_key")  # Get PGP key if exists
