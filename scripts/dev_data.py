@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from typing import List, Tuple, cast
+from typing import List, Optional, Tuple, cast
 
 from flask import current_app
 from sqlalchemy.sql import exists
@@ -527,7 +527,9 @@ def create_users() -> None:
             )
 
             # Assign extra fields if provided
-            extra_fields: List[Tuple[str, str, bool]] = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
+            extra_fields: List[Tuple[str, str, bool]] = cast(
+                List[Tuple[str, str, bool]], data.get("extra_fields", [])
+            )
             for i, (label, value, verified) in enumerate(extra_fields, start=1):
                 if i > MAX_EXTRA_FIELDS:
                     break
