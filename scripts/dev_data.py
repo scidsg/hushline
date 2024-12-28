@@ -495,53 +495,66 @@ def create_users() -> None:
     MAX_EXTRA_FIELDS = 4
 
     for data in users:
-        username = cast(str, data["username"])  # Explicit cast for "username"
+        # Extract and cast basic user information
+        username = cast(str, data["username"])
+        password = cast(str, data["password"])
+        is_admin = cast(bool, data["is_admin"])
+        display_name = cast(str, data.get("display_name", username))
+        bio = cast(str, data.get("bio", ""))[:250]  # Ensure truncation to 250 characters
+        is_verified = cast(bool, data.get("is_verified", False))
+        extra_fields = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
+        pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
+
+        # Check if user already exists
         if not db.session.query(exists().where(Username._username == username)).scalar():
-            user = User(password=cast(str, data["password"]), is_admin=cast(bool, data["is_admin"]))
+            # Create a new user
+            user = User(password=password, is_admin=is_admin)
 
             # Assign PGP key if provided
-            pgp_key: Optional[str] = data.get("pgp_key")
             if pgp_key:
                 user.pgp_key = pgp_key
 
             db.session.add(user)
             db.session.flush()
 
+            # Create primary username
             un1 = Username(
                 user_id=user.id,
                 _username=username,
-                display_name=cast(str, data.get("display_name", username)),
-                bio=cast(str, data.get("bio", ""))[:250],  # Explicit cast and truncation
+                display_name=display_name,
+                bio=bio,
                 is_primary=True,
                 show_in_directory=True,
-                is_verified=cast(bool, data.get("is_verified", False)),
+                is_verified=is_verified,
             )
+
+            # Create alias username
             un2 = Username(
                 user_id=user.id,
-                _username=username + "-alias",
-                display_name=f"{data.get('display_name', username)} (Alias)",
-                bio=f"{data.get('bio', '')[:250]} (Alias)",
+                _username=f"{username}-alias",
+                display_name=f"{display_name} (Alias)",
+                bio=f"{bio} (Alias)",
                 is_primary=False,
                 show_in_directory=True,
                 is_verified=False,
             )
 
-            # Assign extra fields if provided
-            extra_fields: List[Tuple[str, str, bool]] = cast(
-                List[Tuple[str, str, bool]], data.get("extra_fields", [])
-            )
+            # Assign extra fields to the primary username
             for i, (label, value, verified) in enumerate(extra_fields, start=1):
                 if i > MAX_EXTRA_FIELDS:
-                    break
+                    break  # Stop if maximum number of extra fields is exceeded
                 setattr(un1, f"extra_field_label{i}", label)
                 setattr(un1, f"extra_field_value{i}", value)
                 setattr(un1, f"extra_field_verified{i}", verified)
 
+            # Add the new usernames to the database
             db.session.add(un1)
             db.session.add(un2)
             db.session.commit()
 
-        print(f"Test user:\n  username = {username}\n  password = {data['password']}")
+            print(f"Test user created:\n  username = {username}\n  password = {password}")
+        else:
+            print(f"User already exists: {username}")
 
 
 def create_tiers() -> None:
