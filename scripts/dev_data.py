@@ -497,7 +497,6 @@ def create_users() -> None:
     for data in users:
         # Extract and cast basic user information
         username = cast(str, data["username"])
-        password = cast(str, data["password"])
         is_admin = cast(bool, data["is_admin"])
         display_name = cast(str, data.get("display_name", username))
         bio = cast(str, data.get("bio", ""))[:250]  # Ensure truncation to 250 characters
