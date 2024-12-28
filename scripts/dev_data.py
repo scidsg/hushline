@@ -579,7 +579,7 @@ def create_users() -> None:
 
             db.session.commit()
 
-        print(f"Test user:\n  username = {username}\n  password = {data['password']}")
+        print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
 
 
 def create_tiers() -> None:
