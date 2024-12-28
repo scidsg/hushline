@@ -19,7 +19,7 @@ def main() -> None:
 
 def create_users() -> None:
     users = [
-       {
+        {
             "username": "admin",
             "password": "Test-testtesttesttest-1",
             "is_admin": True,
@@ -37,9 +37,9 @@ def create_users() -> None:
                 "Art is the CEO of Vandelay Industries, an international "
                 "importing/exporting company. Potato and corn chips, "
                 "diapers, and matches."
-            )
+            ),
         },
-       {
+        {
             "username": "jerryseinfeld",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
@@ -524,16 +524,19 @@ def create_users() -> None:
                 user_id=user.id,
                 _username=username + "-alias",
                 display_name=f'{data.get("display_name", username)} (Alias)',
-                bio=(f'{bio} (Alias)')[:250],
+                bio=(f"{bio} (Alias)")[:250],
                 is_primary=False,
                 show_in_directory=True,
                 is_verified=False,
             )
 
-            # Assign extra fields to un1 (primary), for example:
+            # Define a constant at the top of your script
+            MAX_EXTRA_FIELDS = 4
+
+            # Replace magic number 4 with the constant
             for i, (label, value, verified) in enumerate(extra_fields_config, start=1):
-                if i > 4:
-                    break  # we only have 4 extra_field_ columns
+                if i > MAX_EXTRA_FIELDS:
+                    break  # we only have MAX_EXTRA_FIELDS columns
                 setattr(un1, f"extra_field_label{i}", label)
                 setattr(un1, f"extra_field_value{i}", value)
                 setattr(un1, f"extra_field_verified{i}", verified)
@@ -554,19 +557,22 @@ def create_users() -> None:
             primary.bio = bio
             primary.is_verified = True
 
-            # Update extra fields if needed
+            # Define a constant at the top of your script
+            MAX_EXTRA_FIELDS = 4
+
+            # Replace magic number 4 with the constant
             for i, (label, value, verified) in enumerate(extra_fields_config, start=1):
-                if i > 4:
-                    break
-                setattr(primary, f"extra_field_label{i}", label)
-                setattr(primary, f"extra_field_value{i}", value)
-                setattr(primary, f"extra_field_verified{i}", verified)
+                if i > MAX_EXTRA_FIELDS:
+                    break  # we only have MAX_EXTRA_FIELDS columns
+                setattr(un1, f"extra_field_label{i}", label)
+                setattr(un1, f"extra_field_value{i}", value)
+                setattr(un1, f"extra_field_verified{i}", verified)
 
             alias = Username.query.filter_by(user_id=user.id, is_primary=False).first()
             if alias:
                 alias._username = username + "-alias"
                 alias.display_name = f'{data.get("display_name", username)} (Alias)'
-                alias.bio = (f'{bio} (Alias)')[:250]
+                alias.bio = (f"{bio} (Alias)")[:250]
                 alias.is_verified = False
 
             db.session.commit()
