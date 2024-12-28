@@ -495,38 +495,39 @@ def create_users() -> None:
     MAX_EXTRA_FIELDS = 4
 
     for data in users:
-        username = data["username"]
-        if not db.session.query(exists(Username).where(Username._username == username)).scalar():
-            user = User(password=data["password"], is_admin=data["is_admin"])
+        username = cast(str, data["username"])  # Explicit cast for "username"
+        if not db.session.query(exists().where(Username._username == username)).scalar():
+            user = User(password=cast(str, data["password"]), is_admin=cast(bool, data["is_admin"]))
 
             # Assign PGP key if provided
-            if "pgp_key" in data:
-                user.pgp_key = data["pgp_key"]
+            pgp_key: Optional[str] = data.get("pgp_key")
+            if pgp_key:
+                user.pgp_key = pgp_key
 
             db.session.add(user)
             db.session.flush()
 
             un1 = Username(
                 user_id=user.id,
-                _username=data["username"],  # type: ignore
-                display_name=data.get("display_name", username),
-                bio=(data.get("bio", "")[:250]),
+                _username=username,
+                display_name=cast(str, data.get("display_name", username)),
+                bio=cast(str, data.get("bio", ""))[:250],  # Explicit cast and truncation
                 is_primary=True,
                 show_in_directory=True,
-                is_verified=data.get("is_verified", False),
+                is_verified=cast(bool, data.get("is_verified", False)),
             )
             un2 = Username(
                 user_id=user.id,
-                _username=data["username"] + "-alias",  # type: ignore
+                _username=username + "-alias",
                 display_name=f"{data.get('display_name', username)} (Alias)",
-                bio=(f"{data.get('bio', '')[:250]} (Alias)"),
+                bio=f"{data.get('bio', '')[:250]} (Alias)",
                 is_primary=False,
                 show_in_directory=True,
                 is_verified=False,
             )
 
             # Assign extra fields if provided
-            extra_fields: List[Tuple[str, str, bool]] = data.get("extra_fields", [])
+            extra_fields: List[Tuple[str, str, bool]] = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
             for i, (label, value, verified) in enumerate(extra_fields, start=1):
                 if i > MAX_EXTRA_FIELDS:
                     break
@@ -538,7 +539,7 @@ def create_users() -> None:
             db.session.add(un2)
             db.session.commit()
 
-        print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
+        print(f"Test user:\n  username = {username}\n  password = {data['password']}")
 
 
 def create_tiers() -> None:
