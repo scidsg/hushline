@@ -515,7 +515,7 @@ def create_users() -> None:
 
             un1 = Username(
                 user_id=user.id,
-                _username=username,
+                _username=data["username"],
                 display_name=data.get("display_name"),
                 bio=bio,
                 is_primary=True,
@@ -524,7 +524,7 @@ def create_users() -> None:
             )
             un2 = Username(
                 user_id=user.id,
-                _username=username + "-alias",
+                _username=data["username"] + "-alias",
                 display_name=f'{data.get("display_name", username)} (Alias)',
                 bio=(f"{bio} (Alias)")[:250],
                 is_primary=False,
