@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-from typing import cast
+from typing import List, Tuple, cast
 
 from flask import current_app
+from sqlalchemy.sql import exists
 
 from hushline import create_app
 from hushline.db import db
 from hushline.model import Tier, User, Username
 from hushline.storage import S3Driver, public_store
 
-MAX_EXTRA_FIELDS = 4
 
 def main() -> None:
     print("Adding dev data")
@@ -492,94 +492,69 @@ def create_users() -> None:
         },
     ]
 
+    MAX_EXTRA_FIELDS = 4
+
     for data in users:
-        username: str = cast(str, data["username"])
-        bio: str = cast(str, data.get("bio", ""))[:250]  # Truncate to 250 if needed
-        extra_fields_config: List[Tuple[str, str, bool]] = data.get("extra_fields", [])
-        pgp_key: Optional[str] = data.get("pgp_key")
-
-        # Find existing primary username
-        primary: Optional[Username] = Username.query.filter_by(_username=username, is_primary=True).first()
-
-        if primary is None:
-            # Create new user
+        username = data["username"]
+        if not db.session.query(exists(Username).where(Username._username == username)).scalar():
             user = User(password=data["password"], is_admin=data["is_admin"])
 
-            if pgp_key:
-                user.pgp_key = pgp_key
+            # Assign PGP key if provided
+            if "pgp_key" in data:
+                user.pgp_key = data["pgp_key"]
 
             db.session.add(user)
             db.session.flush()
 
-            primary = Username(
+            un1 = Username(
                 user_id=user.id,
-                _username=username,
-                display_name=data.get("display_name"),
-                bio=bio,
+                _username=data["username"],  # type: ignore
+                display_name=data.get("display_name", username),
+                bio=(data.get("bio", "")[:250]),
                 is_primary=True,
                 show_in_directory=True,
                 is_verified=data.get("is_verified", False),
             )
-
-            alias = Username(
+            un2 = Username(
                 user_id=user.id,
-                _username=f"{username}-alias",
-                display_name=f'{data.get("display_name", username)} (Alias)',
-                bio=f"{bio} (Alias)"[:250],
+                _username=data["username"] + "-alias",  # type: ignore
+                display_name=f"{data.get('display_name', username)} (Alias)",
+                bio=(f"{data.get('bio', '')[:250]} (Alias)"),
                 is_primary=False,
                 show_in_directory=True,
                 is_verified=False,
             )
 
-            assign_extra_fields(primary, extra_fields_config)
+            # Assign extra fields if provided
+            extra_fields: List[Tuple[str, str, bool]] = data.get("extra_fields", [])
+            for i, (label, value, verified) in enumerate(extra_fields, start=1):
+                if i > MAX_EXTRA_FIELDS:
+                    break
+                setattr(un1, f"extra_field_label{i}", label)
+                setattr(un1, f"extra_field_value{i}", value)
+                setattr(un1, f"extra_field_verified{i}", verified)
 
-            db.session.add_all([primary, alias])
-            db.session.commit()
-        else:
-            # Update existing user
-            user: User = primary.user
-            user.password = data["password"]
-            user.is_admin = data["is_admin"]
-
-            if pgp_key:
-                user.pgp_key = pgp_key
-
-            primary.display_name = data.get("display_name", primary.display_name)
-            primary.bio = bio
-            primary.is_verified = data.get("is_verified", False)
-
-            assign_extra_fields(primary, extra_fields_config)
-
-            alias = Username.query.filter_by(user_id=user.id, is_primary=False).first()
-            if alias:
-                alias._username = f"{username}-alias"
-                alias.display_name = f'{data.get("display_name", username)} (Alias)'
-                alias.bio = f"{bio} (Alias)"[:250]
-                alias.is_verified = False
-
+            db.session.add(un1)
+            db.session.add(un2)
             db.session.commit()
 
-        print(f"Test user:\n  username = {username}\n  password = {data['password']}")
-
-
-def assign_extra_fields(username: Username, extra_fields: List[Tuple[str, str, bool]]) -> None:
-    for i, (label, value, verified) in enumerate(extra_fields, start=1):
-        if i > MAX_EXTRA_FIELDS:
-            break
-        setattr(username, f"extra_field_label{i}", label)
-        setattr(username, f"extra_field_value{i}", value)
-        setattr(username, f"extra_field_verified{i}", verified)
+        print(f"Test user:\n  username = {data['username']}\n  password = {data['password']}")
 
 
 def create_tiers() -> None:
-    tiers: List[Dict[str, Union[str, int]]] = [
-        {"name": "Free", "monthly_amount": 0},
-        {"name": "Super User", "monthly_amount": 500},
+    tiers = [
+        {
+            "name": "Free",
+            "monthly_amount": 0,
+        },
+        {
+            "name": "Business",
+            "monthly_amount": 2000,
+        },
     ]
-
     for data in tiers:
-        name: str = cast(str, data["name"])
-        monthly_amount: int = cast(int, data["monthly_amount"])
+        name = cast(str, data["name"])
+        monthly_amount = cast(int, data["monthly_amount"])
         if not db.session.scalar(db.exists(Tier).where(Tier.name == name).select()):
             tier = Tier(name, monthly_amount)
             db.session.add(tier)
