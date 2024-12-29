@@ -564,8 +564,8 @@ def create_tiers() -> None:
             "monthly_amount": 0,
         },
         {
-            "name": "Business",
-            "monthly_amount": 2000,
+            "name": "Super User",
+            "monthly_amount": 500,
         },
     ]
     for data in tiers:
