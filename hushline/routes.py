@@ -412,7 +412,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("message", id=id))
 
     @app.route("/register", methods=["GET", "POST"])
-    def register() -> Response | str | tuple[Response | str, int]:
+    def register() -> Response | str:
         if (
             session.get("is_authenticated", False)
             and (user_id := session.get("user_id", False))
