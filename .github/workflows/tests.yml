@@ -1,48 +1,36 @@
 ---
-name: Run Linter and Tests
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-          cache: "poetry"
-
-      - name: Install Python dependencies
-        run: poetry install
-
-      - name: Lint
-        run: poetry run make lint
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Test
-        run: make test
-
-  test-with-alembic:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Test with alembic
-        run: make test
-        env:
-          PYTEST_ADDOPTS: "--alembic"
+  name: Run Tests
+  
+  on:
+    push:
+    pull_request:
+      branches:
+        - main
+  
+  jobs:
+    run-lint-and-tests:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+  
+        - name: Install Poetry
+          run: pipx install poetry
+  
+        - uses: actions/setup-python@v4
+          with:
+            python-version: "3.12"
+            cache: "poetry"
+  
+        - name: Install Python dependencies
+          run: poetry install
+  
+        - name: Lint
+          run: poetry run make lint
+  
+        - name: Test
+          run: make test
+  
+        - name: Test with alembic
+          run: make test
+          env:
+            PYTEST_ADDOPTS: "--alembic"
