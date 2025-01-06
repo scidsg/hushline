@@ -25,13 +25,13 @@ RUN pip install poetry
 
 WORKDIR /app
 
-COPY package.json package-lock.json .
+COPY package.json package-lock.json ./
 
 RUN npm install
 
 ENV PYTHONPATH=/app
 
-COPY pyproject.toml poetry.lock .
+COPY pyproject.toml poetry.lock ./
 
 RUN poetry install --no-root
 
