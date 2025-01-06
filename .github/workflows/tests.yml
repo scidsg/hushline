@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix-gh-actions
   pull_request:
     branches:
       - main
