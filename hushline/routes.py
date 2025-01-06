@@ -426,15 +426,23 @@ def init_app(app: Flask) -> None:
         if not require_invite_code:
             del form.invite_code
 
-        # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
-        num1 = secrets.randbelow(10) + 1
-        num2 = secrets.randbelow(10) + 1
-        math_problem = f"{num1} + {num2} ="
-        session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+        # Generate a math CAPTCHA only for a GET request or if "math_answer" is not already set
+        if request.method == "GET" or "math_answer" not in session:
+            num1 = secrets.randbelow(10) + 1
+            num2 = secrets.randbelow(10) + 1
+            session["math_answer"] = str(num1 + num2)  # Store the answer in session
+            math_problem = f"{num1} + {num2} ="
+            session["math_problem"] = math_problem  # Store the problem in session
+        else:
+            # Use the existing math problem from the session
+            math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
 
         if form.validate_on_submit():
             captcha_answer = request.form.get("captcha_answer", "")
-            if captcha_answer != session.get("math_answer"):
+            app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
+            app.logger.debug(f"User entered captcha_answer: {captcha_answer}")
+
+            if str(captcha_answer) != session.get("math_answer"):
                 flash("Incorrect CAPTCHA. Please try again.", "error")
                 return render_template(
                     "register.html",
@@ -443,6 +451,7 @@ def init_app(app: Flask) -> None:
                     math_problem=math_problem,
                 )
 
+            # Proceed with registration logic
             username = form.username.data
             password = form.password.data
 
