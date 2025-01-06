@@ -1,3 +1,4 @@
+import ast
 import os
 
 from flask import url_for
@@ -5,6 +6,15 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import InviteCode, Username
+
+
+def extract_captcha_answer(response_text: str) -> int:
+    """Extract and evaluate the CAPTCHA answer from the HTML response."""
+    math_problem = response_text.split("Solve ")[1].split(" =")[0]
+    try:
+        return ast.literal_eval(math_problem)
+    except (ValueError, SyntaxError):
+        raise RuntimeError("Invalid math problem extracted.")
 
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
@@ -16,13 +26,16 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
     assert response.status_code == 200
     assert "Solve the math problem to complete your registration." in response.text
 
-    # Extract the CAPTCHA question (e.g., "What is 3 + 4 =")
-    math_problem = response.text.split("Solve ")[1].split(" =")[0]
-    math_answer = eval(math_problem)
+    # Extract and solve CAPTCHA
+    math_answer = extract_captcha_answer(response.text)
 
     response = client.post(
         url_for("register"),
-        data={"username": username, "password": "SecurePassword123!", "captcha_answer": math_answer},
+        data={
+            "username": username,
+            "password": "SecurePassword123!",
+            "captcha_answer": math_answer,
+        },
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -43,8 +56,7 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     # Load the registration page to fetch the CAPTCHA
     response = client.get(url_for("register"))
     assert response.status_code == 200
-    math_problem = response.text.split("Solve ")[1].split(" =")[0]
-    math_answer = eval(math_problem)
+    math_answer = extract_captcha_answer(response.text)
 
     response = client.post(
         url_for("register"),
@@ -98,8 +110,7 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
     # Register the user with CAPTCHA
     response = client.get(url_for("register"))
     assert response.status_code == 200
-    math_problem = response.text.split("Solve ")[1].split(" =")[0]
-    math_answer = eval(math_problem)
+    math_answer = extract_captcha_answer(response.text)
 
     client.post(
         url_for("register"),
@@ -123,8 +134,7 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     # Register the user with CAPTCHA
     response = client.get(url_for("register"))
     assert response.status_code == 200
-    math_problem = response.text.split("Solve ")[1].split(" =")[0]
-    math_answer = eval(math_problem)
+    math_answer = extract_captcha_answer(response.text)
 
     client.post(
         url_for("register"),
