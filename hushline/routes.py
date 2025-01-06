@@ -426,7 +426,22 @@ def init_app(app: Flask) -> None:
         if not require_invite_code:
             del form.invite_code
 
+        # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
+        num1 = secrets.randbelow(10) + 1
+        num2 = secrets.randbelow(10) + 1
+        math_problem = f"{num1} + {num2} ="
+        session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+
         if form.validate_on_submit():
+            captcha_answer = request.form.get("captcha_answer", "")
+            if not validate_captcha(captcha_answer):
+                return render_template(
+                    "register.html",
+                    form=form,
+                    require_invite_code=require_invite_code,
+                    math_problem=math_problem,
+                )
+
             username = form.username.data
             password = form.password.data
 
@@ -444,6 +459,7 @@ def init_app(app: Flask) -> None:
                             "register.html",
                             form=form,
                             require_invite_code=require_invite_code,
+                            math_problem=math_problem,
                         ),
                         400,
                     )
@@ -457,6 +473,7 @@ def init_app(app: Flask) -> None:
                         "register.html",
                         form=form,
                         require_invite_code=require_invite_code,
+                        math_problem=math_problem,
                     ),
                     409,
                 )
@@ -476,6 +493,7 @@ def init_app(app: Flask) -> None:
             "register.html",
             form=form,
             require_invite_code=require_invite_code,
+            math_problem=math_problem,
         )
 
     @app.route("/login", methods=["GET", "POST"])
