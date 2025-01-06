@@ -8,15 +8,15 @@ FROM python:3.12.6-slim-bookworm
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-        curl \
-        build-essential \
-        clang \
-        pkg-config \
-        libffi-dev \
-        libpq-dev \
-        libpcsclite-dev \
-        nettle-dev \
-        npm
+    curl \
+    build-essential \
+    clang \
+    pkg-config \
+    libffi-dev \
+    libpq-dev \
+    libpcsclite-dev \
+    nettle-dev \
+    npm
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
@@ -25,15 +25,15 @@ RUN pip install poetry
 
 WORKDIR /app
 
-COPY package.json package-lock.json .
+COPY package.json package-lock.json ./
 
 RUN npm install
 
 ENV PYTHONPATH=/app
 
-COPY pyproject.toml poetry.lock .
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry install
+RUN poetry install --no-root
 
 ENV FLASK_APP="hushline"
 CMD ["./scripts/dev_start.sh"]
