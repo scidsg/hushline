@@ -10,9 +10,19 @@ from hushline.model import InviteCode, Username
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     username = "test_user"
+
+    # Load the registration page to fetch the CAPTCHA
+    response = client.get(url_for("register"))
+    assert response.status_code == 200
+    assert "Solve the math problem to complete your registration." in response.text
+
+    # Extract the CAPTCHA question (e.g., "What is 3 + 4 =")
+    math_problem = response.text.split("Solve ")[1].split(" =")[0]
+    math_answer = eval(math_problem)
+
     response = client.post(
         url_for("register"),
-        data={"username": username, "password": "SecurePassword123!"},
+        data={"username": username, "password": "SecurePassword123!", "captcha_answer": math_answer},
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -30,12 +40,19 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     db.session.add(code)
     db.session.commit()
 
+    # Load the registration page to fetch the CAPTCHA
+    response = client.get(url_for("register"))
+    assert response.status_code == 200
+    math_problem = response.text.split("Solve ")[1].split(" =")[0]
+    math_answer = eval(math_problem)
+
     response = client.post(
         url_for("register"),
         data={
             "username": username,
             "password": "SecurePassword123!",
             "invite_code": code.code,
+            "captcha_answer": math_answer,
         },
         follow_redirects=True,
     )
@@ -78,12 +95,19 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
     username = "newuser"
     password = "SecurePassword123!"
 
+    # Register the user with CAPTCHA
+    response = client.get(url_for("register"))
+    assert response.status_code == 200
+    math_problem = response.text.split("Solve ")[1].split(" =")[0]
+    math_answer = eval(math_problem)
+
     client.post(
         url_for("register"),
-        data={"username": username, "password": password},
+        data={"username": username, "password": password, "captcha_answer": math_answer},
         follow_redirects=True,
     )
 
+    # Login the user
     login_response = client.post(
         url_for("login"), data={"username": username, "password": password}, follow_redirects=True
     )
@@ -96,12 +120,19 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     username = "newuser"
     password = "SecurePassword123!"
 
+    # Register the user with CAPTCHA
+    response = client.get(url_for("register"))
+    assert response.status_code == 200
+    math_problem = response.text.split("Solve ")[1].split(" =")[0]
+    math_answer = eval(math_problem)
+
     client.post(
         url_for("register"),
-        data={"username": username, "password": password},
+        data={"username": username, "password": password, "captcha_answer": math_answer},
         follow_redirects=True,
     )
 
+    # Attempt login with incorrect password
     login_response = client.post(
         url_for("login"),
         data={"username": username, "password": password + "not correct"},
