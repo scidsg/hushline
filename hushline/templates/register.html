@@ -30,6 +30,20 @@
         {% endfor %}
       </div>
     {% endif %}
+    <div class="captcha">
+      <p>🤖 Solve the math problem to complete your registration.</p>
+      <div class="captcha_container">
+        <label for="captcha_answer">{{ math_problem }}</label>
+        <input
+          type="text"
+          id="captcha_answer"
+          name="captcha_answer"
+          required
+          autocomplete="off"
+          aria-label="Solve {{ math_problem }} to complete registration"
+        />
+      </div>
+    </div>
     <button type="submit">Register</button>
   </form>
   <p>

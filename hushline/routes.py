@@ -412,7 +412,7 @@ def init_app(app: Flask) -> None:
         return redirect(url_for("message", id=id))
 
     @app.route("/register", methods=["GET", "POST"])
-    def register() -> Response | str | tuple[Response | str, int]:
+    def register() -> Response | str:
         if (
             session.get("is_authenticated", False)
             and (user_id := session.get("user_id", False))
@@ -426,7 +426,32 @@ def init_app(app: Flask) -> None:
         if not require_invite_code:
             del form.invite_code
 
+        # Generate a math CAPTCHA only for a GET request or if "math_answer" is not already set
+        if request.method == "GET" or "math_answer" not in session:
+            num1 = secrets.randbelow(10) + 1
+            num2 = secrets.randbelow(10) + 1
+            session["math_answer"] = str(num1 + num2)  # Store the answer in session
+            math_problem = f"{num1} + {num2} ="
+            session["math_problem"] = math_problem  # Store the problem in session
+        else:
+            # Use the existing math problem from the session
+            math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
+
         if form.validate_on_submit():
+            captcha_answer = request.form.get("captcha_answer", "")
+            app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
+            app.logger.debug(f"User entered captcha_answer: {captcha_answer}")
+
+            if str(captcha_answer) != session.get("math_answer"):
+                flash("Incorrect CAPTCHA. Please try again.", "error")
+                return render_template(
+                    "register.html",
+                    form=form,
+                    require_invite_code=require_invite_code,
+                    math_problem=math_problem,
+                )
+
+            # Proceed with registration logic
             username = form.username.data
             password = form.password.data
 
@@ -439,26 +464,22 @@ def init_app(app: Flask) -> None:
                     tzinfo=UTC
                 ) < datetime.now(UTC):
                     flash("⛔️ Invalid or expired invite code.", "error")
-                    return (
-                        render_template(
-                            "register.html",
-                            form=form,
-                            require_invite_code=require_invite_code,
-                        ),
-                        400,
+                    return render_template(
+                        "register.html",
+                        form=form,
+                        require_invite_code=require_invite_code,
+                        math_problem=math_problem,
                     )
 
             if db.session.scalar(
                 db.exists(Username).where(Username._username == username).select()
             ):
                 flash("💔 Username already taken.", "error")
-                return (
-                    render_template(
-                        "register.html",
-                        form=form,
-                        require_invite_code=require_invite_code,
-                    ),
-                    409,
+                return render_template(
+                    "register.html",
+                    form=form,
+                    require_invite_code=require_invite_code,
+                    math_problem=math_problem,
                 )
 
             user = User(password=password)
@@ -476,6 +497,7 @@ def init_app(app: Flask) -> None:
             "register.html",
             form=form,
             require_invite_code=require_invite_code,
+            math_problem=math_problem,
         )
 
     @app.route("/login", methods=["GET", "POST"])
