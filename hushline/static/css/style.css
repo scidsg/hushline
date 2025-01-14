@@ -953,6 +953,20 @@ pre {
   white-space: break-spaces;
 }
 
+li code {
+  padding: 0.25rem;
+  display: inline-block;
+  margin: 0 0 0.125rem 0;
+}
+
+form li {
+  margin-bottom: 0.325rem;
+}
+
+form ul {
+  padding-left: 0.75rem;
+}
+
 th {
   font-weight: normal;
   font-family: var(--font-sans-bold);
