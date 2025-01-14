@@ -280,6 +280,6 @@ class UpdateProfileHeaderForm(FlaskForm):
                     "username": "x",
                 }
             ),
-        ]
+        ],
     )
     submit = SubmitField("Update Profile Header", name="update_profile_header", widget=Button())
