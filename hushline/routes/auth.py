@@ -1,0 +1,240 @@
+import secrets
+from datetime import UTC, datetime, timedelta
+
+import pyotp
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from werkzeug.wrappers.response import Response
+
+from hushline.auth import authentication_required
+from hushline.db import db
+from hushline.model import (
+    AuthenticationLog,
+    InviteCode,
+    User,
+    Username,
+)
+from hushline.routes.forms import LoginForm, RegistrationForm, TwoFactorForm
+
+
+def register_auth_routes(app: Flask) -> None:
+    @app.route("/register", methods=["GET", "POST"])
+    def register() -> Response | str:
+        if (
+            session.get("is_authenticated", False)
+            and (user_id := session.get("user_id", False))
+            and db.session.get(User, user_id)
+        ):
+            flash("👉 You are already logged in.")
+            return redirect(url_for("inbox"))
+
+        require_invite_code = app.config["REGISTRATION_CODES_REQUIRED"]
+        form = RegistrationForm()
+        if not require_invite_code:
+            del form.invite_code
+
+        # Generate a math CAPTCHA only for a GET request or if "math_answer" is not already set
+        if request.method == "GET" or "math_answer" not in session:
+            num1 = secrets.randbelow(10) + 1
+            num2 = secrets.randbelow(10) + 1
+            session["math_answer"] = str(num1 + num2)  # Store the answer in session
+            math_problem = f"{num1} + {num2} ="
+            session["math_problem"] = math_problem  # Store the problem in session
+        else:
+            # Use the existing math problem from the session
+            math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
+
+        if form.validate_on_submit():
+            captcha_answer = request.form.get("captcha_answer", "")
+            app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
+            app.logger.debug(f"User entered captcha_answer: {captcha_answer}")
+
+            if str(captcha_answer) != session.get("math_answer"):
+                flash("Incorrect CAPTCHA. Please try again.", "error")
+                return render_template(
+                    "register.html",
+                    form=form,
+                    require_invite_code=require_invite_code,
+                    math_problem=math_problem,
+                )
+
+            # Proceed with registration logic
+            username = form.username.data
+            password = form.password.data
+
+            invite_code_input = form.invite_code.data if require_invite_code else None
+            if invite_code_input:
+                invite_code = db.session.scalars(
+                    db.select(InviteCode).filter_by(code=invite_code_input)
+                ).one_or_none()
+                if not invite_code or invite_code.expiration_date.replace(
+                    tzinfo=UTC
+                ) < datetime.now(UTC):
+                    flash("⛔️ Invalid or expired invite code.", "error")
+                    return render_template(
+                        "register.html",
+                        form=form,
+                        require_invite_code=require_invite_code,
+                        math_problem=math_problem,
+                    )
+
+            if db.session.scalar(
+                db.exists(Username).where(Username._username == username).select()
+            ):
+                flash("💔 Username already taken.", "error")
+                return render_template(
+                    "register.html",
+                    form=form,
+                    require_invite_code=require_invite_code,
+                    math_problem=math_problem,
+                )
+
+            user = User(password=password)
+            db.session.add(user)
+            db.session.flush()
+
+            username = Username(_username=username, user_id=user.id, is_primary=True)
+            db.session.add(username)
+            db.session.commit()
+
+            flash("Registration successful!", "success")
+            return redirect(url_for("login"))
+
+        return render_template(
+            "register.html",
+            form=form,
+            require_invite_code=require_invite_code,
+            math_problem=math_problem,
+        )
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login() -> Response | str:
+        if "user_id" in session and session.get("is_authenticated", False):
+            flash("👉 You are already logged in.")
+            return redirect(url_for("inbox"))
+
+        form = LoginForm()
+        if form.validate_on_submit():
+            username = db.session.scalars(
+                db.select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
+            ).one_or_none()
+            if username and username.user.check_password(form.password.data):
+                session.permanent = True
+                session["user_id"] = username.user_id
+                session["username"] = username.username
+                session["is_authenticated"] = True
+
+                # 2FA enabled?
+                if username.user.totp_secret:
+                    session["is_authenticated"] = False
+                    return redirect(url_for("verify_2fa_login"))
+
+                auth_log = AuthenticationLog(user_id=username.user_id, successful=True)
+                db.session.add(auth_log)
+                db.session.commit()
+
+                # If premium features are enabled, prompt the user to select a tier if they haven't
+                if app.config.get("STRIPE_SECRET_KEY"):
+                    user = db.session.get(User, username.user_id)
+                    if user and user.tier_id is None:
+                        return redirect(url_for("premium.select_tier"))
+
+                return redirect(url_for("inbox"))
+
+            flash("⛔️ Invalid username or password")
+        return render_template("login.html", form=form)
+
+    @app.route("/verify-2fa-login", methods=["GET", "POST"])
+    def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
+        # Redirect to login if the login process has not started yet
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if session.get("is_authenticated", False):
+            return redirect(url_for("inbox"))
+
+        form = TwoFactorForm()
+
+        if form.validate_on_submit():
+            if not user.totp_secret:
+                flash("⛔️ 2FA is not enabled.")
+                return redirect(url_for("login"))
+
+            totp = pyotp.TOTP(user.totp_secret)
+            timecode = totp.timecode(datetime.now())
+            verification_code = form.verification_code.data
+
+            rate_limit = False
+
+            # If the most recent successful login was made with the same OTP code, reject this one
+            last_login = db.session.scalars(
+                db.select(AuthenticationLog)
+                .filter_by(user_id=user.id, successful=True)
+                .order_by(AuthenticationLog.timestamp.desc())
+                .limit(1)
+            ).first()
+            if (
+                last_login
+                and last_login.timecode == timecode
+                and last_login.otp_code == verification_code
+            ):
+                # If the time interval has incremented, then a repeat TOTP code which passes the
+                # totp.verify(...) check is OK & part of the security model of the TOTP spec.
+                # However, a repeat TOTP code during the same time interval should be disallowed.
+                rate_limit = True
+
+            # If there were 5 failed logins in the last 30 seconds, don't allow another one
+            failed_logins = db.session.scalar(
+                db.select(
+                    db.func.count(AuthenticationLog.id)
+                    .filter(AuthenticationLog.user_id == user.id)
+                    .filter(AuthenticationLog.successful == db.false())
+                    .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
+                )
+            )
+            if failed_logins is not None and failed_logins >= 5:  # noqa: PLR2004
+                rate_limit = True
+
+            if rate_limit:
+                flash("⏲️ Please wait a moment before trying again.")
+                return render_template("verify_2fa_login.html", form=form), 429
+
+            if totp.verify(verification_code, valid_window=1):
+                auth_log = AuthenticationLog(
+                    user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
+                )
+                db.session.add(auth_log)
+                db.session.commit()
+
+                session["is_authenticated"] = True
+
+                # If premium features are enabled, prompt the user to select a tier if they haven't
+                if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+                    return redirect(url_for("premium.select_tier"))
+
+                return redirect(url_for("inbox"))
+
+            auth_log = AuthenticationLog(user_id=user.id, successful=False)
+            db.session.add(auth_log)
+            db.session.commit()
+
+            flash("⛔️ Invalid 2FA code. Please try again.")
+            return render_template("verify_2fa_login.html", form=form), 401
+
+        return render_template("verify_2fa_login.html", form=form)
+
+    @app.route("/logout")
+    @authentication_required
+    def logout() -> Response:
+        session.clear()
+        flash("👋 You have been logged out successfully.", "info")
+        return redirect(url_for("index"))
