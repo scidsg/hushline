@@ -8,7 +8,7 @@ from wtforms import Field, Form, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
 from wtforms.widgets.core import html_params
 
-from .model import MessageStatus
+from hushline.model import MessageStatus
 
 
 class Button:

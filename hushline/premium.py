@@ -20,9 +20,9 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
-from .auth import authentication_required
-from .db import db
-from .model import (
+from hushline.auth import authentication_required
+from hushline.db import db
+from hushline.model import (
     StripeEvent,
     StripeEventStatusEnum,
     StripeInvoice,

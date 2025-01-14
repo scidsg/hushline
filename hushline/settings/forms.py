@@ -26,9 +26,9 @@ from wtforms.validators import (
 )
 from wtforms.validators import Optional as OptionalField
 
-from ..db import db
-from ..forms import Button, CanonicalHTML, ComplexPassword, HexColor
-from ..model import MessageStatus, SMTPEncryption, Username
+from hushline.db import db
+from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor
+from hushline.model import MessageStatus, SMTPEncryption, Username
 
 
 class ChangePasswordForm(FlaskForm):
