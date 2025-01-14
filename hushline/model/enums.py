@@ -92,3 +92,14 @@ class StripeEventStatusEnum(enum.Enum):
     IN_PROGRESS = "in_progress"
     ERROR = "error"
     FINISHED = "finished"
+
+
+@enum.unique
+class FieldType(enum.Enum):
+    TEXT = "text"
+    CHOICE_SINGLE = "choice_single"
+    CHOICE_MULTIPLE = "choice_multiple"
+
+    @classmethod
+    def default(cls) -> "FieldType":
+        return cls.TEXT
