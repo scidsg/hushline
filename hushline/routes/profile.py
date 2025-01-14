@@ -16,6 +16,7 @@ from hushline.model import (
     Username,
 )
 from hushline.routes.forms import MessageForm
+from hushline.safe_template import safe_render_template
 
 
 def register_profile_routes(app: Flask) -> None:
@@ -54,8 +55,21 @@ def register_profile_routes(app: Flask) -> None:
         math_problem = f"{num1} + {num2} ="
         session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
+        if uname.profile_header:
+            profile_header = safe_render_template(
+                uname.profile_header,
+                {
+                    "display_name_or_username": uname.display_name or uname.username,
+                    "display_name": uname.display_name,
+                    "username": uname.username,
+                },
+            )
+        else:
+            profile_header = f"Submit message to {uname.display_name or uname.username}"
+
         return render_template(
             "profile.html",
+            profile_header=profile_header,
             form=form,
             user=uname.user,
             username=uname,

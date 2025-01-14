@@ -19,11 +19,13 @@ from hushline.settings.common import (
     handle_display_name_form,
     handle_update_bio,
     handle_update_directory_visibility,
+    handle_update_profile_header,
 )
 from hushline.settings.forms import (
     DirectoryVisibilityForm,
     DisplayNameForm,
     ProfileForm,
+    UpdateProfileHeaderForm,
 )
 
 
@@ -52,6 +54,7 @@ def register_profile_routes(bp: Blueprint) -> None:
                 for i in range(1, 5)
             },
         )
+        update_profile_header_form = UpdateProfileHeaderForm(template=username.profile_header)
 
         status_code = 200
         if request.method == "POST":
@@ -64,6 +67,11 @@ def register_profile_routes(bp: Blueprint) -> None:
                 return handle_update_directory_visibility(username, directory_visibility_form)
             elif profile_form.submit.name in request.form and profile_form.validate():
                 return await handle_update_bio(username, profile_form)
+            elif (
+                update_profile_header_form.submit.name in request.form
+                and update_profile_header_form.validate()
+            ):
+                return handle_update_profile_header(username, update_profile_header_form)
             else:
                 form_error()
                 status_code = 400
@@ -85,4 +93,5 @@ def register_profile_routes(bp: Blueprint) -> None:
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
             business_tier_display_price=business_tier_display_price,
+            update_profile_header_form=update_profile_header_form,
         ), status_code

@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
@@ -16,6 +18,31 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         captcha_answer = session.get("math_answer")
         assert captcha_answer
         return captcha_answer
+
+
+def test_profile_header(client: FlaskClient, user: User) -> None:
+    assert not user.primary_username.profile_header  # precondition
+
+    resp = client.get(url_for("profile", username=user.primary_username.username))
+    assert resp.status_code == 200
+    assert (
+        "Submit message to "
+        + (user.primary_username.display_name or user.primary_username.username)
+        in resp.text
+    )
+
+    rand = str(uuid4())
+    template = rand + " {{ display_name_or_username }} {{ username }} {{ display_name }}"
+    user.primary_username.profile_header = template
+    db.session.commit()
+
+    expected = (
+        f"{rand} {user.primary_username.display_name or user.primary_username.username} "
+        f"{user.primary_username.username} {user.primary_username.display_name or ''}"
+    )
+    resp = client.get(url_for("profile", username=user.primary_username.username))
+    assert resp.status_code == 200
+    assert expected in resp.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

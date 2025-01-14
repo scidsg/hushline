@@ -38,6 +38,7 @@ class Username(Model):
     is_verified: Mapped[bool] = mapped_column(default=False)
     show_in_directory: Mapped[bool] = mapped_column(default=False)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
+    profile_header: Mapped[Optional[str]] = mapped_column(db.Text)
 
     # Extra fields
     extra_field_label1: Mapped[Optional[str]]

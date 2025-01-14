@@ -1,0 +1,25 @@
+<h4>Profile Header</h4>
+<form
+  method="POST"
+  class="formBody"
+>
+  {{ update_profile_header_form.hidden_tag() }}
+  {{ update_profile_header_form.template.label }}
+  <p>You can use the following variables for substitution between braces. E.g., <code>{{ '{{' }} variable {{ '}}' }}</code></p>
+  <ul>
+    <li><code>display_name_or_username</code>: the display name, and if it's missing, then the username</li>
+    <li><code>display_name</code>: the display name, possibly missing</li>
+    <li><code>username</code>: the username, always present</li>
+  </ul>
+  {% with placeholder = "Submit message to {{ display_name_or_username }}" %}
+    {{ update_profile_header_form.template(placeholder=placeholder, autocomplete="off") }}
+  {% endwith %}
+  {% if update_profile_header_form.template.errors %}
+    <div>
+      {% for error in update_profile_header_form.template.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {{ update_profile_header_form.submit }}
+</form>
