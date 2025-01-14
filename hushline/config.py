@@ -7,7 +7,7 @@ from typing import Any, Mapping, Optional, Self
 
 from markupsafe import Markup
 
-from .utils import if_not_none, parse_bool
+from hushline.utils import if_not_none, parse_bool
 
 _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"

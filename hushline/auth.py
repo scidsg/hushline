@@ -3,9 +3,8 @@ from typing import Any, Callable
 
 from flask import abort, current_app, flash, redirect, session, url_for
 
+from hushline.db import db
 from hushline.model import User
-
-from .db import db
 
 
 def authentication_required(func: Callable[..., Any]) -> Callable[..., Any]:
