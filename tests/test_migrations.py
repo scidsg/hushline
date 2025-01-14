@@ -12,6 +12,7 @@ import pytest
 from alembic import command
 from alembic.script import ScriptDirectory
 from flask import Flask
+from sqlalchemy import text
 
 from hushline.db import db, migrate
 
@@ -73,6 +74,9 @@ def test_upgrade_with_data(revision: str, app: Flask) -> None:
     command.upgrade(cfg, revision)
     upgrade_tester.check_upgrade()
 
+    # absurd but somehow we need to check this
+    assert db.session.scalar(text("SELECT version_num FROM alembic_version")) == revision
+
 
 @pytest.mark.parametrize("revision", TESTABLE_REVISIONS)
 def test_downgrade_with_data(revision: str, app: Flask) -> None:
@@ -87,3 +91,16 @@ def test_downgrade_with_data(revision: str, app: Flask) -> None:
 
     command.downgrade(cfg, "-1")
     downgrade_tester.check_downgrade()
+
+    # absurd but somehow we need to check this
+    assert (
+        db.session.scalar(text("SELECT version_num FROM alembic_version"))
+        == ALL_REVISIONS[ALL_REVISIONS.index(revision) - 1]
+    )
+
+
+@pytest.mark.parametrize("revision", TESTABLE_REVISIONS)
+def test_double_upgrade(revision: str, app: Flask) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, revision)
+    command.upgrade(cfg, revision)
