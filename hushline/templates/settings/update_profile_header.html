@@ -4,13 +4,13 @@
   class="formBody"
 >
   {{ update_profile_header_form.hidden_tag() }}
-  {{ update_profile_header_form.template.label }}
-  <p>You can use the following variables for substitution between braces. E.g., <code>{{ '{{' }} variable {{ '}}' }}</code></p>
+  <p>Set a custom header for your profile page that makes sense for your community. Here are a few examples of what you can do:</p>
   <ul>
-    <li><code>display_name_or_username</code>: the display name, and if it's missing, then the username</li>
-    <li><code>display_name</code>: the display name, possibly missing</li>
-    <li><code>username</code>: the username, always present</li>
+    <li>Deposit information to <code>&lbrace;&lbrace; display_name_or_username &rbrace;&rbrace;</code></li>
+    <li>Submit a message to <code>&lbrace;&lbrace; username &rbrace;&rbrace;</code></li>
+    <li><code>&lbrace;&lbrace; display_name &rbrace;&rbrace;</code> को एक संदेश भेजें</li>
   </ul>
+  {{ update_profile_header_form.template.label }}
   {% with placeholder = "Submit message to {{ display_name_or_username }}" %}
     {{ update_profile_header_form.template(placeholder=placeholder, autocomplete="off") }}
   {% endwith %}

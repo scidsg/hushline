@@ -269,6 +269,7 @@ class SetHomepageUsernameForm(FlaskForm):
 
 class UpdateProfileHeaderForm(FlaskForm):
     template = StringField(
+        "Custom Profile Header",
         validators=[
             OptionalField(),
             Length(max=500),
@@ -281,4 +282,4 @@ class UpdateProfileHeaderForm(FlaskForm):
             ),
         ]
     )
-    submit = SubmitField("Set Header Template", name="update_profile_header", widget=Button())
+    submit = SubmitField("Update Profile Header", name="update_profile_header", widget=Button())
