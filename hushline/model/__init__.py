@@ -8,6 +8,8 @@ from hushline.model.enums import (
     StripeInvoiceStatusEnum,
     StripeSubscriptionStatusEnum,
 )
+from hushline.model.field_definition import FieldDefinition
+from hushline.model.field_value import FieldValue
 from hushline.model.invite_code import InviteCode
 from hushline.model.message import Message
 from hushline.model.message_status_text import MessageStatusText
