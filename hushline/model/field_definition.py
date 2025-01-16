@@ -31,7 +31,7 @@ class FieldDefinition(Model):
 
     def __init__(  # noqa: PLR0913
         self,
-        username: Username,
+        username: "Username",
         label: str,
         field_type: FieldType,
         required: bool,
