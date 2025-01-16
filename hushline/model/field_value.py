@@ -5,10 +5,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.crypto import decrypt_field, encrypt_field, encrypt_message
 from hushline.db import db
-from hushline.model import FieldDefinition, Message
 
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
+
+    from hushline.model import FieldDefinition, Message
 else:
     Model = db.Model
 
