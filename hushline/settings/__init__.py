@@ -27,6 +27,7 @@ from hushline.settings.forms import (
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
+    UpdateProfileHeaderForm,
     UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,

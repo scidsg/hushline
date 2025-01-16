@@ -8,6 +8,7 @@ Create Date: 2024-11-27 20:11:30.154068
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.orm import Session
 from uuid import uuid4
 
 
@@ -74,13 +75,13 @@ def upgrade() -> None:
         )
     )
 
-    conn = op.get_bind()
-    for row in conn.execute(sa.text("SELECT id FROM messages")).fetchall():
-        conn.execute(
+    session = Session(op.get_bind())
+    for row in session.execute(sa.text("SELECT id FROM messages")).fetchall():
+        session.execute(
             sa.text("UPDATE messages SET reply_slug = :slug WHERE id = :id"),
             {"id": row[0], "slug": str(uuid4())},
         )
-    conn.commit()
+    session.commit()
 
     with op.batch_alter_table("messages", schema=None) as batch_op:
         batch_op.alter_column(
