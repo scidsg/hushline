@@ -1,10 +1,12 @@
+from uuid import uuid4
+
 import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import Message, User, Username
+from hushline.model import Message, OrganizationSetting, User, Username
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
@@ -16,6 +18,38 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         captcha_answer = session.get("math_answer")
         assert captcha_answer
         return captcha_answer
+
+
+def test_profile_header(client: FlaskClient, user: User) -> None:
+    assert (
+        db.session.scalars(
+            db.select(OrganizationSetting).filter_by(
+                key=OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE
+            )
+        ).one_or_none()
+        is None
+    )  # precondition
+
+    resp = client.get(url_for("profile", username=user.primary_username.username))
+    assert resp.status_code == 200
+    assert (
+        "Submit message to "
+        + (user.primary_username.display_name or user.primary_username.username)
+        in resp.text
+    )
+
+    rand = str(uuid4())
+    template = rand + " {{ display_name_or_username }} {{ username }} {{ display_name }}"
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE, template)
+    db.session.commit()
+
+    expected = (
+        f"{rand} {user.primary_username.display_name or user.primary_username.username} "
+        f"{user.primary_username.username} {user.primary_username.display_name or ''}"
+    )
+    resp = client.get(url_for("profile", username=user.primary_username.username))
+    assert resp.status_code == 200
+    assert expected in resp.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

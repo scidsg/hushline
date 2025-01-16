@@ -19,6 +19,7 @@ class OrganizationSetting(Model):
     BRAND_LOGO = "brand_logo"
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
+    BRAND_PROFILE_HEADER_TEMPLATE = "brand_profile_header_template"
     DIRECTORY_INTRO_TEXT = "directory_intro_text"
     GUIDANCE_ENABLED = "guidance_enabled"
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
@@ -32,6 +33,7 @@ class OrganizationSetting(Model):
     _DEFAULT_VALUES: dict[str, Any] = {
         BRAND_NAME: "🤫 Hush Line",
         BRAND_PRIMARY_COLOR: "#7d25c1",
+        BRAND_PROFILE_HEADER_TEMPLATE: "Submit message to {{ display_name_or_username }}",
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",

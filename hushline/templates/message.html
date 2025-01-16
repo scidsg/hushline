@@ -28,7 +28,7 @@
   <div class="message-container">
     <div class="message-meta">
       <p>
-        To: 
+        To:
         <a href="{{ url_for('profile', username=message.username.username) }}">{{ message.username.display_name or message.username.username }}</a>
       </p>
       <p class="meta">
@@ -46,5 +46,5 @@
   </div>
 
 
-  
+
 {% endblock %}

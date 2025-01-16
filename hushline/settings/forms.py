@@ -27,7 +27,7 @@ from wtforms.validators import (
 from wtforms.validators import Optional as OptionalField
 
 from hushline.db import db
-from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor
+from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor, ValidTemplate
 from hushline.model import MessageStatus, SMTPEncryption, Username
 
 
@@ -265,3 +265,21 @@ class SetHomepageUsernameForm(FlaskForm):
             db.exists(Username).where(Username._username == username).select()
         ):
             raise ValidationError(f"Username {username!r} does not exist")
+
+
+class UpdateProfileHeaderForm(FlaskForm):
+    template = StringField(
+        "Custom Profile Header",
+        validators=[
+            OptionalField(),
+            Length(max=500),
+            ValidTemplate(
+                {
+                    "display_name_or_username": "x",
+                    "display_name": "x",
+                    "username": "x",
+                }
+            ),
+        ],
+    )
+    submit = SubmitField("Update Profile Header", name="update_profile_header", widget=Button())

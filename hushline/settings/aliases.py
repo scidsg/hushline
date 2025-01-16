@@ -63,7 +63,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
 
     @bp.route("/alias/<int:username_id>", methods=["GET", "POST"])
     @authentication_required
-    async def alias(username_id: int) -> Response | str:
+    async def alias(username_id: int) -> Response | Tuple[str, int]:
         alias = db.session.scalars(
             db.select(Username).filter_by(
                 id=username_id, user_id=session["user_id"], is_primary=False
@@ -79,6 +79,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             show_in_directory=alias.show_in_directory
         )
 
+        status_code = 200
         if request.method == "POST":
             if "update_bio" in request.form and profile_form.validate_on_submit():
                 return await handle_update_bio(alias, profile_form)
@@ -90,6 +91,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             elif "update_display_name" in request.form and display_name_form.validate_on_submit():
                 return handle_display_name_form(alias, display_name_form)
             else:
+                status_code = 400
                 current_app.logger.error(
                     f"Unable to handle form submission on endpoint {request.endpoint!r}, "
                     f"form fields: {request.form.keys()}"
@@ -103,4 +105,4 @@ def register_aliases_routes(bp: Blueprint) -> None:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
-        )
+        ), status_code

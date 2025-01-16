@@ -1,6 +1,6 @@
 import html
 import re
-from typing import Any
+from typing import Any, Mapping
 
 from flask_wtf import FlaskForm
 from markupsafe import Markup
@@ -9,6 +9,7 @@ from wtforms.validators import DataRequired, Length, ValidationError
 from wtforms.widgets.core import html_params
 
 from hushline.model import MessageStatus
+from hushline.safe_template import TemplateError, safe_render_template
 
 
 class Button:
@@ -84,3 +85,14 @@ class UpdateMessageStatusForm(FlaskForm):
 
 class DeleteMessageForm(FlaskForm):
     submit = SubmitField("Delete", widget=Button())
+
+
+class ValidTemplate:
+    def __init__(self, variables: Mapping[str, str]) -> None:
+        self._variables = variables
+
+    def __call__(self, form: Form, field: Field) -> None:
+        try:
+            safe_render_template(field.data, self._variables)
+        except TemplateError as e:
+            raise ValidationError(str(e))

@@ -67,6 +67,30 @@
         {% endif %}
       </form>
 
+      <h4>Profile Header</h4>
+      <form
+        method="POST"
+        class="formBody"
+      >
+        {{ update_profile_header_form.hidden_tag() }}
+        <p>Set a custom header for profile pages that makes sense for your community. Here are a few examples of what you can do:</p>
+        <ul>
+          <li>Deposit information to <code>&lbrace;&lbrace; display_name_or_username &rbrace;&rbrace;</code></li>
+          <li>Submit a message to <code>&lbrace;&lbrace; username &rbrace;&rbrace;</code></li>
+          <li><code>&lbrace;&lbrace; display_name &rbrace;&rbrace;</code> को एक संदेश भेजें</li>
+        </ul>
+        {{ update_profile_header_form.template.label }}
+        {{ update_profile_header_form.template(autocomplete="off") }}
+        {% if update_profile_header_form.template.errors %}
+          <div>
+            {% for error in update_profile_header_form.template.errors %}
+              <span class="error">{{ error }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {{ update_profile_header_form.submit }}
+      </form>
+
       <h4>Homepage</h4>
       <form
         method="POST"
