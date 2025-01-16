@@ -1,9 +1,9 @@
+import json
 from typing import TYPE_CHECKING
 
-from cryptography.hazmat.primitives import padding
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from hushline.crypto import encrypt_message
+from hushline.crypto import decrypt_field, encrypt_field, encrypt_message
 from hushline.db import db
 from hushline.model import FieldDefinition, Message
 
@@ -11,6 +11,33 @@ if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 else:
     Model = db.Model
+
+
+class PaddedFieldValue:
+    """
+    To hide what field is being encrypted, we need to pad the value to a fixed block size.
+    This class is used to create a padded version of the field, return as a JSON string in
+    format: {"v": "value", "p": "padding"}
+    """
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+        self.padding = ""
+
+    def json(self) -> str:
+        return json.dumps({"v": self.value, "p": self.padding})
+
+    def pad(self) -> str:
+        BLOCK_SIZE = 1024
+
+        # Add padding
+        self.padding = ""
+        current_len = len(self.json())
+        padding_len = BLOCK_SIZE - (current_len % BLOCK_SIZE)
+        self.padding = " " * padding_len
+
+        # Return the padded value
+        return json.dumps(self.__dict__)
 
 
 class FieldValue(Model):
@@ -21,11 +48,8 @@ class FieldValue(Model):
     field_definition: Mapped["FieldDefinition"] = relationship(uselist=False)
     message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
     message: Mapped["Message"] = relationship(uselist=False)
-    value: Mapped[str] = mapped_column(db.String(1024))
+    _value: Mapped[str] = mapped_column(db.String(1024))
     encrypted: Mapped[bool] = mapped_column(default=False)
-
-    # Block size for padding
-    BLOCK_SIZE = 1024
 
     def __init__(
         self,
@@ -37,26 +61,44 @@ class FieldValue(Model):
         self.field_definition = field_definition
         self.message = message
         self.encrypted = encrypted
-        self.set_value(value)
+        # set the value AFTER setting the encrypted flag
+        self.value = value
 
-    def set_value(self, value: str) -> None:
+    @property
+    def value(self) -> str | None:
+        """
+        This value is either a string with the actual value, PGP-encrypted data. If it's
+        PGP-encrypted, the plaintext is a JSON string in format: {"v": "value", "p": "padding"}.
+        """
+        return decrypt_field(self._value)
+
+    @value.setter
+    def value(self, value: str) -> None:
         if self.encrypted:
-            # TODO: consider how this padding will work, and how to go about
-            # displaying it when decrypted...
+            # Encrypt with PGP
 
-            # Pad the value to the block size, to avoid leaking the length of the original data
-            padder = padding.PKCS7(self.BLOCK_SIZE).padder()
-            padded_data = padder.update(value.encode()) + padder.finalize()
+            # Pad the value to hide the length of the plaintext
+            padded_value = PaddedFieldValue(value).pad()
 
-            # Encrypt the value
+            # Encrypt the padded value
             pgp_key = self.message.username.user.pgp_key
             if not pgp_key:
                 raise ValueError("User does not have a PGP key")
-            encrypted_value = encrypt_message(padded_data.decode(), pgp_key)
+            encrypted_value = encrypt_message(padded_value, pgp_key)
             if encrypted_value:
                 self.value = encrypted_value
+            else:
+                raise ValueError("Failed to encrypt value")
         else:
-            self.value = value
+            # Do not encrypt with PGP, and instead only encrypt with db key
+            val_to_save = value
+
+        # Encrypt the field
+        val = encrypt_field(val_to_save)
+        if val is not None:
+            self._value = val
+        else:
+            self._value = ""
 
     def __repr__(self) -> str:
         return f"<FieldValue {self.field_definition.label}>"
