@@ -25,7 +25,6 @@ FIRST_TESTABLE_REVISION = "46aedec8fd9b"
 SKIPPABLE_REVISIONS = [
     "5ffe5a5c8e9a",  # only renames indices and tables, no data changed
     "06b343c38386",  # only renames indices and tables, no data changed
-    "0a6cdf5c62f8",  # adds/removes a nullable column, no test necessary
 ]
 
 

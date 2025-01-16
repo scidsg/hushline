@@ -33,7 +33,6 @@ from hushline.settings.forms import (
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
-    UpdateProfileHeaderForm,
 )
 from hushline.utils import redirect_to_self
 
@@ -288,19 +287,4 @@ def handle_email_forwarding_form(
 
     db.session.commit()
     flash("👍 SMTP settings updated successfully")
-    return redirect_to_self()
-
-
-def handle_update_profile_header(
-    username: Username,
-    form: UpdateProfileHeaderForm,
-) -> Response:
-    if form.template.data:
-        username.profile_header = form.template.data
-        msg = "👍 Profile header template updated successfully"
-    else:
-        username.profile_header = None
-        msg = "👍 Profile header template reset"
-    db.session.commit()
-    flash(msg)
     return redirect_to_self()

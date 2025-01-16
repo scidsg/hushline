@@ -1030,11 +1030,11 @@ def test_homepage_user(client: FlaskClient, user: User, admin: User) -> None:
     assert resp.headers["Location"] == url_for("directory")
 
 
-@pytest.mark.usefixtures("_authenticated_user")
-def test_update_profile_header(client: FlaskClient, user: User) -> None:
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_profile_header(client: FlaskClient, admin: User) -> None:
     template_str = "{{ display_name_or_username }} {{ display_name }} {{ username }}"
     resp = client.post(
-        url_for("settings.profile"),
+        url_for("settings.branding"),
         data={
             "template": template_str,
             UpdateProfileHeaderForm.submit.name: "",
@@ -1043,12 +1043,13 @@ def test_update_profile_header(client: FlaskClient, user: User) -> None:
     )
     assert resp.status_code == 200
     assert "Profile header template updated successfully" in resp.text
-
-    db.session.refresh(user.primary_username)
-    assert user.primary_username.profile_header == template_str
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE)
+        == template_str
+    )
 
     resp = client.post(
-        url_for("settings.profile"),
+        url_for("settings.branding"),
         data={
             "template": "{{ INVALID SYNAX AHHHH !!!! }}",
             UpdateProfileHeaderForm.submit.name: "",
@@ -1057,6 +1058,26 @@ def test_update_profile_header(client: FlaskClient, user: User) -> None:
     )
     assert resp.status_code == 400
     assert "Your submitted form could not be processed" in resp.text
+    assert (
+        OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE)
+        == template_str
+    )
 
-    db.session.refresh(user.primary_username)
-    assert user.primary_username.profile_header == template_str
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "template": "",
+            UpdateProfileHeaderForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Profile header template reset to default" in resp.text
+    assert (
+        db.session.scalars(
+            db.select(OrganizationSetting).filter_by(
+                key=OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE
+            )
+        ).one_or_none()
+        is None
+    )

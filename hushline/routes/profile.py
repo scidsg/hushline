@@ -13,6 +13,7 @@ from werkzeug.wrappers.response import Response
 from hushline.crypto import decrypt_field
 from hushline.db import db
 from hushline.model import (
+    OrganizationSetting,
     Username,
 )
 from hushline.routes.forms import MessageForm
@@ -55,17 +56,14 @@ def register_profile_routes(app: Flask) -> None:
         math_problem = f"{num1} + {num2} ="
         session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
 
-        if uname.profile_header:
-            profile_header = safe_render_template(
-                uname.profile_header,
-                {
-                    "display_name_or_username": uname.display_name or uname.username,
-                    "display_name": uname.display_name,
-                    "username": uname.username,
-                },
-            )
-        else:
-            profile_header = f"Submit message to {uname.display_name or uname.username}"
+        profile_header = safe_render_template(
+            OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE),
+            {
+                "display_name_or_username": uname.display_name or uname.username,
+                "display_name": uname.display_name,
+                "username": uname.username,
+            },
+        )
 
         return render_template(
             "profile.html",

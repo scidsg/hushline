@@ -9,6 +9,7 @@ from flask import (
     request,
     session,
 )
+from werkzeug.wrappers.response import Response
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
@@ -26,14 +27,16 @@ from hushline.settings.forms import (
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
+    UpdateProfileHeaderForm,
 )
 from hushline.storage import public_store
+from hushline.utils import redirect_to_self
 
 
 def register_branding_routes(bp: Blueprint) -> None:
     @bp.route("/branding", methods=["GET", "POST"])
     @admin_authentication_required
-    def branding() -> Tuple[str, int]:
+    def branding() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         update_directory_text_form = UpdateDirectoryTextForm(
@@ -46,6 +49,7 @@ def register_branding_routes(bp: Blueprint) -> None:
         set_homepage_username_form = SetHomepageUsernameForm(
             username=OrganizationSetting.fetch_one(OrganizationSetting.HOMEPAGE_USER_NAME)
         )
+        update_profile_header_form = UpdateProfileHeaderForm()
 
         status_code = 200
         if request.method == "POST":
@@ -148,6 +152,38 @@ def register_branding_routes(bp: Blueprint) -> None:
                         db.session.rollback()
                         flash("There was an error and the setting could not reset")
             elif (
+                update_profile_header_form.submit.name in request.form
+                and update_profile_header_form.validate()
+            ):
+                if data := update_profile_header_form.template.data:
+                    OrganizationSetting.upsert(
+                        OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE, data
+                    )
+                    db.session.commit()
+                    flash("👍 Profile header template updated successfully")
+                else:
+                    row_count = db.session.execute(
+                        db.delete(OrganizationSetting).filter_by(
+                            key=OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE
+                        )
+                    ).rowcount
+                    match row_count:
+                        case 0:
+                            flash("👍 Profile header template reset to default")
+                        case 1:
+                            db.session.commit()
+                            flash("👍 Profile header template reset to default")
+                        case _:
+                            current_app.logger.error(
+                                "Deleting OrganizationSetting "
+                                + OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE
+                                + " would have deleted multiple rows"
+                            )
+                            status_code = 500
+                            db.session.rollback()
+                            flash("There was an error and the setting could not reset")
+                return redirect_to_self()
+            elif (
                 set_homepage_username_form.submit.name in request.form
                 and set_homepage_username_form.validate()
             ):
@@ -169,5 +205,6 @@ def register_branding_routes(bp: Blueprint) -> None:
             delete_brand_logo_form=delete_brand_logo_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,
+            update_profile_header_form=update_profile_header_form,
             set_homepage_username_form=set_homepage_username_form,
         ), status_code

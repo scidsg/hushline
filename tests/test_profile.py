@@ -6,7 +6,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import Message, User, Username
+from hushline.model import Message, OrganizationSetting, User, Username
 
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
@@ -21,7 +21,14 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
 
 
 def test_profile_header(client: FlaskClient, user: User) -> None:
-    assert not user.primary_username.profile_header  # precondition
+    assert (
+        db.session.scalars(
+            db.select(OrganizationSetting).filter_by(
+                key=OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE
+            )
+        ).one_or_none()
+        is None
+    )  # precondition
 
     resp = client.get(url_for("profile", username=user.primary_username.username))
     assert resp.status_code == 200
@@ -33,7 +40,7 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
 
     rand = str(uuid4())
     template = rand + " {{ display_name_or_username }} {{ username }} {{ display_name }}"
-    user.primary_username.profile_header = template
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE, template)
     db.session.commit()
 
     expected = (
