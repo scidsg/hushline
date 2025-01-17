@@ -18,6 +18,15 @@
         or unencrypted. You'll be able to see the values of unencrypted fields directly within Hush Line, and you'll
         need to decrypt encrypted fields with your PGP key.
       </p>
+
+      <!-- Fields -->
+
+      <!-- Add field -->
+      {% with %}
+        {% set field_form=new_field_form %}
+        {% set is_new_field=True %}
+        {% include "settings/fields-form.html" %}
+      {% endwith %}
     </div>
   </div>
 {% endblock %}

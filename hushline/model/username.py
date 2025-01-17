@@ -8,7 +8,7 @@ from hushline.db import db
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
-    from hushline.model.user import User
+    from hushline.model import FieldDefinition, User
 else:
     Model = db.Model
 
@@ -52,6 +52,8 @@ class Username(Model):
     extra_field_verified2: Mapped[Optional[bool]] = mapped_column(default=False)
     extra_field_verified3: Mapped[Optional[bool]] = mapped_column(default=False)
     extra_field_verified4: Mapped[Optional[bool]] = mapped_column(default=False)
+
+    message_fields: Mapped[list["FieldDefinition"]] = relationship(back_populates="username")
 
     def __init__(
         self,

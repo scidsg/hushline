@@ -1,0 +1,53 @@
+<form method="POST" class="formBody">
+    {{ field_form.hidden_tag() }}
+
+    <div>
+        {{ field_form.label.label }}
+        {{ field_form.label(id='label', placeholder='Field label') }}
+    </div>
+
+    <div>
+        {{ field_form.field_type.label }}
+        {{ field_form.field_type(id='field_type') }}
+    </div>
+
+    <div class="choices-container-{{ field_form.id.data }}">
+        {{ field_form.choices.label }}
+        <div class="choices-list choices-list-{{ field_form.id.data }}">
+            {% for choice in field_form.choices %}
+              <div class="choice-item">
+                {{ choice.choice.label }}
+                {{ choice.choice(id=choice.choice.id) }}
+                <button type="button" class="remove-choice">Remove</button>
+              </div>
+            {% endfor %}
+            <button type="button" class="add-choice" data-field-id="{{ field_form.id.data }}">Add Choice</button>
+        </div>
+    </div>
+
+    <div class="field-checkbox">
+        {{ field_form.encrypted }}
+        {{ field_form.encrypted.label }}
+    </div>
+
+    <div class="field-checkbox">
+        {{ field_form.required }}
+        {{ field_form.required.label }}
+    </div>
+
+    <div class="field-checkbox">
+        {{ field_form.enabled }}
+        {{ field_form.enabled.label }}
+    </div>
+
+    <div>
+        {% if is_new_field %}
+            {{ field_form.submit }}
+        {% else %}
+            {{ field_form.update }}
+            {{ field_form.delete }}
+            {{ field_form.move_up }}
+            {{ field_form.move_down }}
+        {% endif %}
+    </div>
+</form>

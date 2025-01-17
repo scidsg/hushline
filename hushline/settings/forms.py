@@ -7,6 +7,8 @@ from flask_wtf.file import FileAllowed, FileField, FileSize
 from wtforms import (
     BooleanField,
     Field,
+    FieldList,
+    Form,
     FormField,
     HiddenField,
     IntegerField,
@@ -28,7 +30,7 @@ from wtforms.validators import Optional as OptionalField
 
 from hushline.db import db
 from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor, ValidTemplate
-from hushline.model import MessageStatus, SMTPEncryption, Username
+from hushline.model import FieldType, MessageStatus, SMTPEncryption, Username
 
 
 class ChangePasswordForm(FlaskForm):
@@ -283,3 +285,28 @@ class UpdateProfileHeaderForm(FlaskForm):
         ],
     )
     submit = SubmitField("Update Profile Header", name="update_profile_header", widget=Button())
+
+
+class FieldChoiceForm(Form):
+    choice = StringField("Choice", validators=[DataRequired()])
+
+
+class FieldForm(FlaskForm):
+    id = HiddenField()
+    label = StringField("Label", validators=[DataRequired(), Length(max=50)])
+    field_type = SelectField(
+        "Field Type",
+        choices=[(field_type.value, field_type.label()) for field_type in FieldType],
+        validators=[DataRequired()],
+        default=(FieldType.default(), FieldType.default().label()),
+    )
+    choices = FieldList(FormField(FieldChoiceForm), validators=[OptionalField()], default=[])
+    encrypted = BooleanField("Encrypted", default=True)
+    required = BooleanField("Required", default=True)
+    enabled = BooleanField("Enabled", default=True)
+
+    submit = SubmitField("Add Field", name="add_field", widget=Button())
+    update = SubmitField("Update Field", name="update_field", widget=Button())
+    delete = SubmitField("Delete Field", name="delete_field", widget=Button())
+    move_up = SubmitField("Move Up", name="move_up", widget=Button())
+    move_down = SubmitField("Move Down", name="move_down", widget=Button())
