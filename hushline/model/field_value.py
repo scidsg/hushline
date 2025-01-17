@@ -17,28 +17,23 @@ else:
 class PaddedFieldValue:
     """
     To hide what field is being encrypted, we need to pad the value to a fixed block size.
-    This class is used to create a padded version of the field, return as a JSON string in
-    format: {"v": "value", "p": "padding"}
+    This class is used to create a padded version of the field by adding spaces to the end of the
+    value until it reaches a block size of 512 characters.
     """
 
     def __init__(self, value: str) -> None:
         self.value = value
         self.padding = ""
 
-    def json(self) -> str:
-        return json.dumps({"v": self.value, "p": self.padding})
-
     def pad(self) -> str:
         BLOCK_SIZE = 512
 
         # Add padding
-        self.padding = ""
-        current_len = len(self.json())
-        padding_len = BLOCK_SIZE - (current_len % BLOCK_SIZE)
+        padding_len = BLOCK_SIZE - (len(self.value) % BLOCK_SIZE)
         self.padding = " " * padding_len
 
         # Return the padded value
-        return json.dumps(self.__dict__)
+        return self.value + self.padding
 
 
 class FieldValue(Model):
@@ -69,7 +64,7 @@ class FieldValue(Model):
     def value(self) -> str | None:
         """
         This value is either a string with the actual value, PGP-encrypted data. If it's
-        PGP-encrypted, the plaintext is a JSON string in format: {"v": "value", "p": "padding"}.
+        PGP-encrypted, the plaintext is padded with spaces at the end.
         """
         return decrypt_field(self._value)
 
