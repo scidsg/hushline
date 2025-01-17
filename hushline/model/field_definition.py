@@ -43,8 +43,8 @@ class FieldDefinition(Model):
         self.label = label
         self.field_type = field_type
         self.required = required
-        self.enabled = encrypted
-        self.encrypted = enabled
+        self.enabled = enabled
+        self.encrypted = encrypted
         self.choices = choices
 
         # Calculate sort_order
