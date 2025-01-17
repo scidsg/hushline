@@ -2947,6 +2947,14 @@ strong {
   border: none;
 }
 
+.settings-content .fields .field-form-toggle {
+  cursor: pointer;
+}
+
+.settings-content .fields .field-form-content {
+  display: none;
+}
+
 .settings-content .fields .choices-list {
   margin-left: 2em;
   margin-bottom: 0.5em;

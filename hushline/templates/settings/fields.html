@@ -15,18 +15,26 @@
       <p>
         When you define custom fields below, the message field will still appear but the contact method field 
         will be replaced with the custom fields you define. You can make fields required or optional, and encrypted
-        or unencrypted. You'll be able to see the values of unencrypted fields directly within Hush Line, and you'll
-        need to decrypt encrypted fields with your PGP key.
+        or unencrypted. You <strong>(and your hosting provider)</strong> will be able to see the values of 
+        unencrypted fields. You'll need to decrypt encrypted fields with your PGP key.
       </p>
 
       <!-- Fields -->
 
       <!-- Add field -->
-      {% with %}
-        {% set field_form=new_field_form %}
-        {% set is_new_field=True %}
-        {% include "settings/fields-form.html" %}
-      {% endwith %}
+      <div class="field-form field-form-new">
+        <h5 class="field-form-toggle">
+          <span class="field-form-arrow"></span>
+          Add Field
+        </h5>
+        <div class="field-form-content">
+          {% with %}
+            {% set field_form=new_field_form %}
+            {% set is_new_field=True %}
+            {% include "settings/fields-form.html" %}
+          {% endwith %}
+        </div>
+      </div>
     </div>
   </div>
 {% endblock %}
