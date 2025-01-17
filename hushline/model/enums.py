@@ -97,6 +97,7 @@ class StripeEventStatusEnum(enum.Enum):
 @enum.unique
 class FieldType(enum.Enum):
     TEXT = "text"
+    MULTILINE_TEXT = "multiline_text"
     CHOICE_SINGLE = "choice_single"
     CHOICE_MULTIPLE = "choice_multiple"
 

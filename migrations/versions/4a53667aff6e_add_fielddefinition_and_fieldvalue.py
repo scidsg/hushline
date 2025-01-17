@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column("label", sa.String(255), nullable=False),
         sa.Column(
             "field_type",
-            sa.Enum("TEXT", "NUMBER", "DATE", "BOOLEAN", name="fieldtype"),
+            sa.Enum("text", "multiline_text", "choice_single", "choice_multiple", name="fieldtype"),
             default="TEXT",
         ),
         sa.Column("required", sa.Boolean, default=False),
