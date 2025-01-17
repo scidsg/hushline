@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("field_definition_id", sa.Integer, sa.ForeignKey("field_definitions.id")),
         sa.Column("message_id", sa.Integer, sa.ForeignKey("messages.id")),
-        sa.Column("_value", sa.String(1024), nullable=False),
+        sa.Column("_value", sa.Text, nullable=False),
         sa.Column("encrypted", sa.Boolean, default=False),
     )
 

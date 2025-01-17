@@ -1,18 +1,22 @@
 from typing import List
 
 import pytest
+from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, User, Username
+from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
 
 
 @pytest.fixture()
-def username() -> Username:
+def username(client: FlaskClient) -> Username:
     user = User(password="Test-testtesttesttest-1")  # noqa: S106
-    username = Username(user_id=user.id, _username="testuser", is_primary=True)
     db.session.add(user)
+    db.session.commit()
+
+    username = Username(user_id=user.id, _username="testuser", is_primary=True)
     db.session.add(username)
     db.session.commit()
+
     return username
 
 
@@ -80,3 +84,73 @@ def test_add_fields_and_move_down(username: Username) -> None:
         db.select(FieldDefinition).order_by(FieldDefinition.sort_order)
     ).all()
     assert [field.label for field in ordered_fields] == ["A", "C", "B", "D", "E"]
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_field_value_encryption(user: User) -> None:
+    username = user.primary_username
+
+    field_definition = FieldDefinition(
+        username=username,
+        label="Test Field",
+        field_type=FieldType.TEXT,
+        required=False,
+        enabled=True,
+        encrypted=True,  # encrypted field
+        choices=[],
+    )
+    db.session.add(field_definition)
+    db.session.commit()
+
+    assert field_definition.encrypted is True
+
+    message = Message(content="this is a test message", username_id=username.id)
+    db.session.add(message)
+    db.session.commit()
+
+    field_value = FieldValue(
+        field_definition=field_definition,
+        message=message,
+        value="this is a test value",
+        encrypted=field_definition.encrypted,
+    )
+    db.session.add(field_value)
+    db.session.commit()
+
+    val = field_value.value
+    assert val is not None
+    assert val.startswith("-----BEGIN PGP MESSAGE-----")
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_field_value_unencryption(user: User) -> None:
+    username = user.primary_username
+
+    field_definition = FieldDefinition(
+        username=username,
+        label="Test Field",
+        field_type=FieldType.TEXT,
+        required=False,
+        enabled=True,
+        encrypted=False,  # not encrypted field
+        choices=[],
+    )
+    db.session.add(field_definition)
+    db.session.commit()
+
+    assert field_definition.encrypted is False
+
+    message = Message(content="this is a test message", username_id=username.id)
+    db.session.add(message)
+    db.session.commit()
+
+    field_value = FieldValue(
+        field_definition=field_definition,
+        message=message,
+        value="this is a test value",
+        encrypted=field_definition.encrypted,
+    )
+    db.session.add(field_value)
+    db.session.commit()
+
+    assert field_value.value == "this is a test value"

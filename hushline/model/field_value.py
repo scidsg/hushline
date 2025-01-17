@@ -29,7 +29,7 @@ class PaddedFieldValue:
         return json.dumps({"v": self.value, "p": self.padding})
 
     def pad(self) -> str:
-        BLOCK_SIZE = 1024
+        BLOCK_SIZE = 512
 
         # Add padding
         self.padding = ""
@@ -49,7 +49,7 @@ class FieldValue(Model):
     field_definition: Mapped["FieldDefinition"] = relationship(uselist=False)
     message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
     message: Mapped["Message"] = relationship(uselist=False)
-    _value: Mapped[str] = mapped_column(db.String(1024))
+    _value: Mapped[str] = mapped_column(db.Text)
     encrypted: Mapped[bool] = mapped_column(default=False)
 
     def __init__(
@@ -87,7 +87,7 @@ class FieldValue(Model):
                 raise ValueError("User does not have a PGP key")
             encrypted_value = encrypt_message(padded_value, pgp_key)
             if encrypted_value:
-                self.value = encrypted_value
+                val_to_save = encrypted_value
             else:
                 raise ValueError("Failed to encrypt value")
         else:
