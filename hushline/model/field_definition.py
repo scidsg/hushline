@@ -20,7 +20,7 @@ class FieldDefinition(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
-    username: Mapped["Username"] = relationship(uselist=False)
+    username: Mapped["Username"] = relationship(back_populates="message_fields")
     label: Mapped[str] = mapped_column(db.String(255))
     field_type: Mapped[FieldType] = mapped_column(SQLAlchemyEnum(FieldType), default=FieldType.TEXT)
     required: Mapped[bool] = mapped_column(default=False)

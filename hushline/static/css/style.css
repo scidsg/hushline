@@ -2946,3 +2946,18 @@ strong {
   outline: none;
   border: none;
 }
+
+.settings-content .fields .choices-list {
+  margin-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+.settings-content .fields .choices-list button {
+  font-size: 0.8em;
+}
+
+.settings-content .fields .field-checkbox input[type="checkbox"],
+.settings-content .fields .field-checkbox label {
+  display: inline-block;
+  width: auto;
+}
