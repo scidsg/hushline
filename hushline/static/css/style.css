@@ -2969,6 +2969,7 @@ strong {
 
 .settings-content .fields .field-form-content {
   display: none;
+  margin-left: 27px;
 }
 
 .settings-content .fields .choices-list {

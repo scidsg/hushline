@@ -46,8 +46,12 @@
         {% else %}
             {{ field_form.update }}
             {{ field_form.delete }}
-            {{ field_form.move_up }}
-            {{ field_form.move_down }}
+            {% if not is_first %}
+                {{ field_form.move_up }}
+            {% endif %}
+            {% if not is_last %}
+                {{ field_form.move_down }}
+            {% endif %}
         {% endif %}
     </div>
 </form>

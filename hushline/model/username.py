@@ -53,7 +53,10 @@ class Username(Model):
     extra_field_verified3: Mapped[Optional[bool]] = mapped_column(default=False)
     extra_field_verified4: Mapped[Optional[bool]] = mapped_column(default=False)
 
-    message_fields: Mapped[list["FieldDefinition"]] = relationship(back_populates="username")
+    message_fields: Mapped[list["FieldDefinition"]] = relationship(
+        back_populates="username",
+        order_by="FieldDefinition.sort_order",
+    )
 
     def __init__(
         self,
