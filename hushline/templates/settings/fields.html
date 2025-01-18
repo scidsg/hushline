@@ -31,6 +31,8 @@
           </h5>
           <div class="field-form-content">
             {% with %}
+              {% set is_first=(loop.index == 1) %}
+              {% set is_last=(loop.index == field_forms|length) %}
               {% set is_new_field=False %}
               {% include "settings/fields-form.html" %}
             {% endwith %}
