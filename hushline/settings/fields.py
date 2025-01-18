@@ -93,18 +93,11 @@ def register_fields_routes(bp: Blueprint) -> None:
                     flash("Field moved down.")
                     return redirect_to_self()
 
-        field_forms = [
-            FieldForm(
-                id=field.id,
-                label=field.label,
-                field_type=field.field_type,
-                choices=field.choices,
-                encrypted=field.encrypted,
-                required=field.required,
-                enabled=field.enabled,
-            )
-            for field in username.message_fields
-        ]
+        field_forms = []
+        for field in username.message_fields:
+            form = FieldForm(obj=field)
+            form.field_type.data = field.field_type.value
+            field_forms.append(form)
 
         new_field_form = FieldForm()
 

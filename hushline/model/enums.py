@@ -113,7 +113,3 @@ class FieldType(enum.Enum):
                 return "Multiple Choice"
             case x:
                 raise Exception(f"Programming error. FieldType {x!r} not handled")
-
-    @classmethod
-    def default(cls) -> "FieldType":
-        return cls.TEXT

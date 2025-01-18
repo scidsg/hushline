@@ -2,13 +2,13 @@
     {{ field_form.hidden_tag() }}
 
     <div>
-        {{ field_form.label.label }}
-        {{ field_form.label(id='label', placeholder='Field label') }}
+        {{ field_form.label.label(for='label-' ~ field_form.id.data) }}
+        {{ field_form.label(id='label-' ~ field_form.id.data, placeholder='Field label') }}
     </div>
 
     <div>
-        {{ field_form.field_type.label }}
-        {{ field_form.field_type(id='field_type') }}
+        {{ field_form.field_type.label(for='field_type-' ~ field_form.id.data) }}
+        {{ field_form.field_type(id='field_type-' ~ field_form.id.data) }}
     </div>
 
     <div class="choices-container-{{ field_form.id.data }}">
@@ -26,18 +26,18 @@
     </div>
 
     <div class="field-checkbox">
-        {{ field_form.encrypted }}
-        {{ field_form.encrypted.label }}
+        {{ field_form.encrypted(id='encrypted-' ~ field_form.id.data) }}
+        {{ field_form.encrypted.label(for='encrypted-' ~ field_form.id.data) }}
     </div>
 
     <div class="field-checkbox">
-        {{ field_form.required }}
-        {{ field_form.required.label }}
+        {{ field_form.required(id='required-' ~ field_form.id.data) }}
+        {{ field_form.required.label(for='required-' ~ field_form.id.data) }}
     </div>
 
     <div class="field-checkbox">
-        {{ field_form.enabled }}
-        {{ field_form.enabled.label }}
+        {{ field_form.enabled(id='enabled-' ~ field_form.id.data) }}
+        {{ field_form.enabled.label(for='enabled-' ~ field_form.id.data) }}
     </div>
 
     <div>

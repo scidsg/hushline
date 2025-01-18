@@ -298,7 +298,6 @@ class FieldForm(FlaskForm):
         "Field Type",
         choices=[(field_type.value, field_type.label()) for field_type in FieldType],
         validators=[DataRequired()],
-        default=(FieldType.default(), FieldType.default().label()),
     )
     choices = FieldList(FormField(FieldChoiceForm), validators=[OptionalField()], default=[])
     encrypted = BooleanField("Encrypted", default=True)
