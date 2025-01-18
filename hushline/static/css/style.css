@@ -2948,7 +2948,23 @@ strong {
 }
 
 .settings-content .fields .field-form-toggle {
+  display: flex;
   cursor: pointer;
+}
+
+.settings-content .fields .field-form-arrow {
+  margin-right: 10px;
+}
+
+.settings-content .fields .field-form-label-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.settings-content .fields .field-form-label {
+  font-family: var(--font-sans);
+  font-size: 0.875em;
 }
 
 .settings-content .fields .field-form-content {
