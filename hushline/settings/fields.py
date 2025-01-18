@@ -48,11 +48,30 @@ def register_fields_routes(bp: Blueprint) -> None:
 
                 # Update an existing field
                 if field_form.update.name in request.form:
-                    pass
+                    current_app.logger.info("Updating field")
+                    field_definition = db.session.scalars(
+                        db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+                    ).one()
+                    field_definition.label = field_form.label.data
+                    field_definition.field_type = FieldType(field_form.field_type.data)
+                    field_definition.required = field_form.required.data
+                    field_definition.enabled = field_form.enabled.data
+                    field_definition.encrypted = field_form.encrypted.data
+                    field_definition.choices = field_form.choices.data
+                    db.session.commit()
+                    flash("Field updated.")
+                    return redirect_to_self()
 
                 # Delete a field
                 if field_form.delete.name in request.form:
-                    pass
+                    current_app.logger.info("Deleting field")
+                    field_definition = db.session.scalars(
+                        db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+                    ).one()
+                    db.session.delete(field_definition)
+                    db.session.commit()
+                    flash("Field deleted.")
+                    return redirect_to_self()
 
                 # Move a field up
                 if field_form.move_up.name in request.form:
