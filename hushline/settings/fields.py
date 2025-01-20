@@ -30,6 +30,8 @@ def register_fields_routes(bp: Blueprint) -> None:
         if request.method == "POST":
             field_form = FieldForm()
             if field_form.validate():
+                current_app.logger.info(f"Field form validated: {field_form.data}")
+
                 # Create a new field
                 if field_form.submit.name in request.form:
                     field_definition = FieldDefinition(

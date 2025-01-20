@@ -2972,12 +2972,12 @@ strong {
   margin-left: 27px;
 }
 
-.settings-content .fields .choices-list {
+.settings-content .fields .choices-container {
   margin-left: 2em;
   margin-bottom: 0.5em;
 }
 
-.settings-content .fields .choices-list button {
+.settings-content .fields .choices-container button {
   font-size: 0.8em;
 }
 

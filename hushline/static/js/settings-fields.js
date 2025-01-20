@@ -42,4 +42,70 @@ document.addEventListener("DOMContentLoaded", function () {
             updateChoicesVisibility(fieldType);
         });
     });
+
+    // Add choice
+    document.querySelectorAll(".add-choice").forEach(function (addButton) {
+        addButton.addEventListener("click", function () {
+            const fieldId = addButton.getAttribute("data-field-id");
+            const choicesContainer = document.querySelector(`.choices-list-${fieldId}`);
+
+            // Calculate the new index based on the number of current choices
+            const index = choicesContainer.children.length;
+            const inputName = `choices-${index}-choice`;
+            const inputId = `choices-${index}-choice`;
+
+            const choiceItem = document.createElement("div");
+            choiceItem.classList.add("choice-item");
+            choiceItem.innerHTML = `
+                <input type="text" name="${inputName}" id="${inputId}" />
+                <button type="button" class="move-up-choice">↑</button>
+                <button type="button" class="move-down-choice">↓</button>
+                <button type="button" class="remove-choice">Remove</button>
+            `;
+            choicesContainer.appendChild(choiceItem);
+            bindChoiceButtons(choiceItem);
+        });
+    });
+
+
+    // Bind choice buttons (reuse function to handle dynamically added elements)
+    function bindChoiceButtons(choiceItem) {
+        const moveUpButton = choiceItem.querySelector(".move-up-choice");
+        const moveDownButton = choiceItem.querySelector(".move-down-choice");
+        const removeButton = choiceItem.querySelector(".remove-choice");
+
+        moveUpButton.addEventListener("click", function () {
+            const previous = choiceItem.previousElementSibling;
+            if (previous) {
+                choiceItem.parentNode.insertBefore(choiceItem, previous);
+            }
+        });
+
+        moveDownButton.addEventListener("click", function () {
+            const next = choiceItem.nextElementSibling;
+            if (next) {
+                choiceItem.parentNode.insertBefore(next, choiceItem);
+            }
+        });
+
+        removeButton.addEventListener("click", function () {
+            choiceItem.parentNode.removeChild(choiceItem);
+            // Update the names and ids of remaining choice items
+            updateChoiceIndexes(choiceItem.parentNode);
+        });
+    }
+
+    // Bind existing choice buttons
+    document.querySelectorAll(".choice-item").forEach(function (choiceItem) {
+        bindChoiceButtons(choiceItem);
+    });
+
+    // Update the indexes of choice items
+    function updateChoiceIndexes(choicesContainer) {
+        choicesContainer.querySelectorAll(".choice-item").forEach(function (choiceItem, index) {
+            const input = choiceItem.querySelector("input[type='text']");
+            input.name = `choices-${index}-choice`;
+            input.id = `choices-${index}-choice`;
+        });
+    }
 });
