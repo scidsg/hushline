@@ -2967,6 +2967,14 @@ strong {
   font-size: 0.875em;
 }
 
+.settings-content .fields .field-form-label-container .label-meta {
+  font-size: 0.8em;
+  font-style: italic;
+  opacity: 0.5;
+  margin-left: 0.5em;
+  font-family: var(--font-sans);
+}
+
 .settings-content .fields .field-form-content {
   display: none;
   margin-left: 27px;

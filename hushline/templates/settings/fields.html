@@ -25,7 +25,18 @@
           <h5 class="field-form-toggle">
             <span class="field-form-arrow"></span>
             <div class="field-form-label-container">
-              <div>Field {{ loop.index }}</div>
+              <div>
+                Field {{ loop.index }}
+                {% if not field_form.enabled.data %}
+                  <span class="label-meta">disabled</span>
+                {% endif %}
+                {% if not field_form.encrypted.data %}
+                  <span class="label-meta">not encrypted</span>
+                {% endif %}
+                {% if field_form.required.data %}
+                  <span class="label-meta">required</span>
+                {% endif %}
+              </div>
               <div class="field-form-label">{{ field_form.label.data }}</div>
             </div>
           </h5>
