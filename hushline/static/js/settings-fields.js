@@ -25,4 +25,21 @@ document.addEventListener("DOMContentLoaded", function () {
             };
         });
     });
+
+    // Hide choices when the field type is text or multiline_text
+    function updateChoicesVisibility(fieldType) {
+        const choicesContainer = fieldType.parentElement.parentElement.querySelector(`.choices-container`);
+        if (fieldType.value === "text" || fieldType.value === "multiline_text") {
+            choicesContainer.style.display = "none";
+        } else {
+            choicesContainer.style.display = "block";
+        }
+    }
+    document.querySelectorAll(".field-form").forEach(function (fieldForm) {
+        const fieldType = fieldForm.querySelector(".field-type");
+        updateChoicesVisibility(fieldType);
+        fieldType.addEventListener("change", function () {
+            updateChoicesVisibility(fieldType);
+        });
+    });
 });
