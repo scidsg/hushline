@@ -20,11 +20,11 @@ run-full: ## Run the app with all features enabled
 
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations
-	poetry run ./scripts/dev_migrations.py
+	docker compose run app poetry run ./scripts/dev_migrations.py
 
 .PHONY: migrate-prod
 migrate-prod: ## Run prod env (alembic) migrations
-	poetry run flask db upgrade
+	docker compose run app poetry run flask db upgrade
 
 .PHONY: dev-data
 dev-data: migrate-dev ## Run dev env migrations, and add dev data
@@ -48,7 +48,7 @@ revision: migrate-prod ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
-	poetry run flask db revision -m "$(message)" --autogenerate
+	docker compose run app poetry run flask db revision -m "$(message)" --autogenerate
 
 TESTS ?= ./tests/
 .PHONY: test
