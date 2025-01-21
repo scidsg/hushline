@@ -7,6 +7,7 @@ services:
     ports:
       - 127.0.0.1:8080:8080
     environment:
+      IS_DOCKER: '1'
       FLASK_APP: hushline
       FLASK_ENV: production
       ENCRYPTION_KEY: bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw=

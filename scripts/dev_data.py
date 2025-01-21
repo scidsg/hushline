@@ -12,10 +12,10 @@ from hushline.storage import S3Driver, public_store
 
 def main() -> None:
     print("Adding dev data")
-    create_app().app_context().push()
-    create_users()
-    create_tiers()
-    create_localstack_buckets()
+    with create_app().app_context():
+        create_users()
+        create_tiers()
+        create_localstack_buckets()
 
 
 def create_users() -> None:
