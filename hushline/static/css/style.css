@@ -2989,8 +2989,21 @@ strong {
   font-size: 0.8em;
 }
 
-.settings-content .fields .field-checkbox input[type="checkbox"],
-.settings-content .fields .field-checkbox label {
-  display: inline-block;
+.settings-content .fields input[type="checkbox"],
+.settings-content .fields input[type="radio"],
+.settings-content .fields label {
+  display: inline;
   width: auto;
+}
+
+#messageForm input[type="checkbox"],
+#messageForm input[type="radio"],
+#messageForm label {
+  display: inline;
+  width: auto;
+}
+
+#messageForm ul {
+  list-style: none;
+  padding: 0;
 }

@@ -10,8 +10,8 @@ from hushline.routes.auth import register_auth_routes
 from hushline.routes.common import get_ip_address
 from hushline.routes.directory import register_directory_routes
 from hushline.routes.forms import (  # noqa: F401
+    DynamicMessageForm,
     LoginForm,
-    MessageForm,
     RegistrationForm,
     TwoFactorForm,
 )

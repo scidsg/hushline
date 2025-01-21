@@ -107,25 +107,17 @@
     {% if not user.pgp_key %}
       {{ form.hidden_tag() }}
     {% endif %}
-
-    <label for="contact_method">Contact Method (Optional)</label>
-    <input
-      type="text"
-      id="contact_method"
-      name="contact_method"
-      value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}"
-      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
-    />
-
-    <label for="content">Message</label>
-    <textarea
-      id="content"
-      maxlength="10000"
-      name="content"
-      required=""
-      spellcheck="true"
-      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
-    >{{ form.content.data if form.content.data is not none else '' }}</textarea>
+    
+    {% for name in field_names %}
+      <div>
+        {{ form[name].label(for=name) }}
+        {% if pgp_required_but_not_set %}
+          {{ form[name](id=name, disabled='disabled') }}
+        {% else %}
+          {{ form[name](id=name) }}
+        {% endif %}
+      </div>
+    {% endfor %}
 
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
