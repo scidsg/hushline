@@ -1,9 +1,10 @@
 {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
+
 <div class="settings-tabs">
   <ul class="tab-list" role="tablist">
     {% with buttons = [
       ('settings.profile', 'Profile', True),
-      ('settings.aliases', 'Aliases', aliases_enabled and user.pgp_key is not none),
+      ('settings.aliases', 'Aliases', aliases_enabled),
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.email', 'Email & Encryption', True),
