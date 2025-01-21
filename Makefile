@@ -1,5 +1,11 @@
 .DEFAULT_GOAL := help
 
+ifndef IS_DOCKER
+CMD := docker compose run --rm app
+else
+CMD :=
+endif
+
 .PHONY: help
 help: ## Print the help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[0-9a-zA-Z_-]+:.*?## / {printf "\033[36m%s\033[0m : %s\n", $$1, $$2}' $(MAKEFILE_LIST) | \
@@ -20,38 +26,37 @@ run-full: ## Run the app with all features enabled
 
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations
-	poetry run ./scripts/dev_migrations.py
+	$(CMD) poetry run ./scripts/dev_migrations.py
 
 .PHONY: migrate-prod
 migrate-prod: ## Run prod env (alembic) migrations
-	poetry run flask db upgrade
+	$(CMD) poetry run flask db upgrade
 
 .PHONY: dev-data
 dev-data: migrate-dev ## Run dev env migrations, and add dev data
-	poetry run ./scripts/dev_data.py
+	$(CMD) poetry run ./scripts/dev_data.py
 
 .PHONY: lint
 lint: ## Lint the code
-	poetry run ruff format --check && \
-	poetry run ruff check --output-format full && \
-	poetry run mypy . && \
-	docker compose run --rm app npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
+	$(CMD) poetry run ruff format --check && \
+	$(CMD) poetry run ruff check --output-format full && \
+	$(CMD) poetry run mypy . && \
+	$(CMD) npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: fix
 fix: ## Format the code
-	poetry run ruff format && \
-	poetry run ruff check --fix && \
-	docker compose run --rm app npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
+	$(CMD) poetry run ruff format && \
+	$(CMD) poetry run ruff check --fix && \
+	$(CMD) npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: revision
 revision: migrate-prod ## Create a new migration
 ifndef message
 	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
 endif
-	poetry run flask db revision -m "$(message)" --autogenerate
+	$(CMD) poetry run flask db revision -m "$(message)" --autogenerate
 
 TESTS ?= ./tests/
 .PHONY: test
 test: ## Run the test suite
-	docker compose run --rm app \
-		poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)
+	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)
