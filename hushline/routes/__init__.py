@@ -19,7 +19,6 @@ from hushline.routes.inbox import register_inbox_routes
 from hushline.routes.index import register_index_routes
 from hushline.routes.message import register_message_routes
 from hushline.routes.profile import register_profile_routes
-from hushline.routes.submit import register_submit_routes
 from hushline.routes.vision import register_vision_routes
 
 # Logging setup
@@ -31,7 +30,6 @@ def init_app(app: Flask) -> None:
     register_index_routes(app)
     register_inbox_routes(app)
     register_profile_routes(app)
-    register_submit_routes(app)
     register_message_routes(app)
     register_directory_routes(app)
     register_vision_routes(app)
