@@ -27,10 +27,6 @@ qrcode = "^7.4.2"
 requests = "^2.32.3"
 ruff = "^0.4.7"
 stripe = "^10.9.0"
-types-bleach = "^6.2.0.20241123"
-types-markdown = "^3.7.0.20241204"
-types-requests = "^2.32.0.20240712"
-types-setuptools = "^71.1.0.20240813"
 
 [tool.poetry.group.dev.dependencies]
 beautifulsoup4 = "^4.12.3"
@@ -42,6 +38,7 @@ types-bleach = "^6.2.0.20241123"
 types-flask-migrate = "^4.0.0.20240311"
 types-markdown = "^3.7.0.20240822"
 types-requests = "^2.32.0.20240712"
+types-setuptools = "^71.1.0.20240813"
 
 [[tool.poetry.packages]]
 include = "hushline"
