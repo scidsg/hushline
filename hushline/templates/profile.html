@@ -130,9 +130,7 @@
     >{{ form.content.data if form.content.data is not none else '' }}</textarea>
 
     {% if not pgp_required_but_not_set %}
-      <!-- Hidden field for public PGP key -->
       <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
-      <!-- Hidden field to indicate if the message was encrypted client-side -->
       <input
         type="hidden"
         name="client_side_encrypted"
@@ -176,7 +174,6 @@
           </p>
         {% endif %}
       {% endif %}
-      <!-- Math CAPTCHA -->
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>
         <div class="captcha_container">
