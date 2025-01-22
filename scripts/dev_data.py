@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from pathlib import Path
 from typing import List, Optional, Tuple, cast
 
 from flask import current_app
@@ -8,6 +9,9 @@ from hushline import create_app
 from hushline.db import db
 from hushline.model import Tier, User, Username
 from hushline.storage import S3Driver, public_store
+
+with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:
+    PGP_KEY = f.read()
 
 
 def main() -> None:
@@ -27,6 +31,7 @@ def create_users() -> None:
             "is_verified": True,
             "display_name": "Hush Line Admin",
             "bio": "Hush Line administrator account.",
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "artvandelay",
@@ -54,26 +59,7 @@ def create_users() -> None:
                 ("Website", "https://jerryseinfeld.com", True),
                 ("Signal", "@Jerry.01", False),
             ],
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "georgecostanza",
@@ -89,26 +75,7 @@ def create_users() -> None:
                 ("Website", "https://yankees.com", False),
                 ("Signal", "@George.99", False),
             ],
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "elainebenes",
@@ -123,26 +90,7 @@ def create_users() -> None:
             "extra_fields": [
                 ("Email", "elaine@pendant.com", False),
             ],
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "cosmokramer",
@@ -157,26 +105,7 @@ def create_users() -> None:
             "extra_fields": [
                 ("Business Ideas", "Homemade Pizzeria", False),
             ],
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "newman",
@@ -185,26 +114,7 @@ def create_users() -> None:
             "is_verified": True,
             "display_name": "Postal Employee Newman",
             "bio": "Postal worker and sworn enemy to Jerry. Hello, Jerry.",
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "frankcostanza",
@@ -216,26 +126,7 @@ def create_users() -> None:
                 "I invented the manzier and celebrate Festivus. "
                 "Tip line for any beef you got—SERENITY NOW!"
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "michaelbluth",
@@ -247,26 +138,7 @@ def create_users() -> None:
                 "Holding this family together with hopes, dreams, and bad magic shows. "
                 "Use my tip line to warn me if Gob’s illusions go too far."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "gobbluth",
@@ -303,26 +175,7 @@ def create_users() -> None:
             "extra_fields": [
                 ("Favorite Drink", "Vodka Martini", True),
             ],
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "tobiasfunke",
@@ -345,26 +198,7 @@ def create_users() -> None:
                 "I’m just trying to say what everyone’s thinking—sometimes it’s trouble. "
                 "Use my tip line for petty gripes or leftover 'spite store' leads."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "jeffgreene",
@@ -376,26 +210,7 @@ def create_users() -> None:
                 "Larry’s longtime manager, often enabling awkward situations. "
                 "Send me tips on hush-hush deals or who’s offended Larry this week."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "leonblack",
@@ -407,26 +222,7 @@ def create_users() -> None:
                 "I mooch off Larry and offer streetwise pep talks. "
                 "Hit me with tips on side hustles or a new 'shit bow' story."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "dwightschrute",
@@ -438,26 +234,7 @@ def create_users() -> None:
                 "Assistant to the Regional Manager. "
                 "Contact my tip line for beet sales or suspicious behavior from Jim."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "martymcfly",
@@ -469,26 +246,7 @@ def create_users() -> None:
                 "Time-traveling teen with a hoverboard. "
                 "Use my tip line if someone calls me chicken or there's a DeLorean sighting."
             ),
-            "pgp_key": (
-                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-                "Version: ProtonMail\n"
-                "\n"
-                "xjMEXiN/UBYJKwYBBAHaRw8BAQdAkalcTpVnOJSv6Sz7e1U1PSzLFoRLfUAH\n"
-                "3YKdavTR7iDNL2dsZW5uLnNvcnJlbnRpbm9AcG0ubWUgPGdsZW5uLnNvcnJl\n"
-                "bnRpbm9AcG0ubWU+wngEEBYKACAFAl4jf1AGCwkHCAMCBBUICgIEFgIBAAIZ\n"
-                "AQIbAwIeAQAKCRCcnhzX3YAXZHoAAP99IptrvyKxZn1fv8WncHvNV2oP+pyh\n"
-                "YsKmPr4Xv/O4ggEA3dGQdbke3zhysfRx/S95UwzH0TrLU7mTQif1a0NFgwjC\n"
-                "qAQQFggAWgUCY08+AAkQ2AbBr1l46McWIQQKhlL+XVM4YFeJn+nYBsGvWXjo\n"
-                "xywcb3BlbnBncC1jYUBwcm90b24ubWUgPG9wZW5wZ3AtY2FAcHJvdG9uLm1l\n"
-                "PgWDBAtmqgAA2E0A/R2vXOoqUUyRuFhEzKUaNWMLeWBiqLHIxLO1W1jBmeei\n"
-                "AQC8C3idUvM7IVaMW3K8Q0x5Dx+/c0C6jqG0iZyxE+g7Ac44BF4jf1ASCisG\n"
-                "AQQBl1UBBQEBB0CN1gW+5a1yrHvTQ4SSb9DG4qjDdANSNTD5uAegyYkMcAMB\n"
-                "CAfCYQQYFggACQUCXiN/UAIbDAAKCRCcnhzX3YAXZL5XAQCE5wzSF02WECYv\n"
-                "O9ad2q095aqlNypwHbMn8ttsMhQ97QD9HtC+fbcLAb0DHRsKuL9DmJwGj45E\n"
-                "QsxwmU8lzRZlpgg=\n"
-                "=cngN\n"
-                "-----END PGP PUBLIC KEY BLOCK-----"
-            ),
+            "pgp_key": PGP_KEY,
         },
     ]
 
