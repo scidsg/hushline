@@ -8,11 +8,15 @@ from flask import (
     request,
     session,
 )
+from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
+from wtforms import BooleanField, SubmitField
+from wtforms.validators import Optional as OptionalField
 
 from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.email import create_smtp_config
+from hushline.forms import DisplayNoneButton
 from hushline.model import (
     SMTPEncryption,
     User,
@@ -22,6 +26,16 @@ from hushline.settings.forms import EmailForwardingForm
 from hushline.utils import redirect_to_self
 
 
+class ToggleNotificationsForm(FlaskForm):
+    enable_email_notifications = BooleanField("Tip Notifications", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_notifications", widget=DisplayNoneButton())
+
+
+class ToggleIncludeContentForm(FlaskForm):
+    include_content = BooleanField("Include Message Contents", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_include_content", widget=DisplayNoneButton())
+
+
 def handle_email_forwarding_form(
     user: User, form: EmailForwardingForm, default_forwarding_enabled: bool
 ) -> Optional[Response]:
@@ -29,7 +43,7 @@ def handle_email_forwarding_form(
         flash("⛔️ Email forwarding requires a configured PGP key")
         return None
 
-    forwarding_enabled = form.forwarding_enabled.data
+    forwarding_enabled = form.custom_smtp_settings.data
     custom_smtp_settings = forwarding_enabled and (
         form.custom_smtp_settings.data or not default_forwarding_enabled
     )
@@ -51,7 +65,7 @@ def handle_email_forwarding_form(
             flash("⛔️ Unable to validate SMTP connection settings")
             return None
 
-    user.email = form.email_address.data if forwarding_enabled else None
+    user.email = form.email_address.data
     user.smtp_server = form.smtp_settings.smtp_server.data if custom_smtp_settings else None
     user.smtp_port = form.smtp_settings.smtp_port.data if custom_smtp_settings else None
     user.smtp_username = form.smtp_settings.smtp_username.data if custom_smtp_settings else None
@@ -85,6 +99,12 @@ def register_notifications_routes(bp: Blueprint) -> None:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
 
+        toggle_notifications_form = ToggleNotificationsForm(
+            data={"enable_email_notifications": user.enable_email_notifications}
+        )
+        toggle_include_content_form = ToggleIncludeContentForm(
+            data={"include_content": user.email_include_message_content}
+        )
         email_forwarding_form = EmailForwardingForm(
             data=dict(
                 email_address=user.email,
@@ -95,6 +115,30 @@ def register_notifications_routes(bp: Blueprint) -> None:
         status_code = 200
         if request.method == "POST":
             if (
+                toggle_notifications_form.submit.name in request.form
+                and toggle_notifications_form.validate()
+            ):
+                user.enable_email_notifications = (
+                    toggle_notifications_form.enable_email_notifications.data
+                )
+                db.session.commit()
+                if toggle_notifications_form.enable_email_notifications.data:
+                    flash("Email notifications enabled")
+                else:
+                    flash("Email notifications disabled")
+                return redirect_to_self()
+            elif (
+                toggle_include_content_form.submit.name in request.form
+                and toggle_include_content_form.validate()
+            ):
+                user.email_include_message_content = toggle_include_content_form.include_content.data
+                db.session.commit()
+                if toggle_include_content_form.include_content.data:
+                    flash("Email message content enabled")
+                else:
+                    flash("Email message content disabled")
+                return redirect_to_self()
+            elif (
                 email_forwarding_form.submit.name in request.form
                 and email_forwarding_form.validate()
                 and (
@@ -123,6 +167,8 @@ def register_notifications_routes(bp: Blueprint) -> None:
         return render_template(
             "settings/notifications.html",
             user=user,
-            email_forwarding_form=email_forwarding_form,
             default_forwarding_enabled=default_forwarding_enabled,
+            toggle_notifications_form=toggle_notifications_form,
+            toggle_include_content_form=toggle_include_content_form,
+            email_forwarding_form=email_forwarding_form,
         ), status_code

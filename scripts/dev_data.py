@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from typing import List, Optional, Tuple, cast
 from pathlib import Path
+from typing import List, Optional, Tuple, cast
 
 from flask import current_app
 from sqlalchemy.sql import exists
@@ -10,7 +10,7 @@ from hushline.db import db
 from hushline.model import Tier, User, Username
 from hushline.storage import S3Driver, public_store
 
-with open(Path(__file__).parent.parent / 'tests' / 'test_pgp_key.txt') as f:
+with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:
     PGP_KEY = f.read()
 
 
