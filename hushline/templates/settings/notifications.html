@@ -3,17 +3,21 @@
 {% block settings_content %}
   <h3>Notifications</h3>
 
+  <p>Get notified when a new tip comes in. Optionally include the encrypted message content.</p>
+
   {% if not user.pgp_key %}
     <p class="info">
       <a href="{{ url_for('.encryption') }}">Add a PGP key</a> to enable email forwarding.
     </p>
   {% endif %}
-  <form
-    method="POST"
-    class="formBody"
-  >
-    {% if user.pgp_key %}
+
+  {% if user.pgp_key %}
+    <form
+      method="POST"
+      class="formBody"
+    >
       {{ email_forwarding_form.hidden_tag() }}
+
       <div class="checkbox-group toggle-ui forwarding">
         {{ email_forwarding_form.forwarding_enabled() }}
         <label for="forwarding_enabled" class="toggle-label">
@@ -23,14 +27,17 @@
           </div>
         </label>
       </div>
+
       {% if default_forwarding_enabled and smtp_forwarding_message_html %}
         <p class="meta">
           {{ smtp_forwarding_message_html }}
         </p>
       {% endif %}
+
       <fieldset id="forwarding_enabled_fields">
         {{ email_forwarding_form.email_address.label }}
         {{ email_forwarding_form.email_address }}
+
         {% if default_forwarding_enabled %}
           <div class="checkbox-group toggle-ui">
             {{ email_forwarding_form.custom_smtp_settings() }}
@@ -42,6 +49,7 @@
             </label>
           </div>
         {% endif %}
+
         <fieldset id="custom_smtp_settings_fields">
           {{ email_forwarding_form.smtp_settings.smtp_sender.label }}
           {{ email_forwarding_form.smtp_settings.smtp_sender }}
@@ -79,9 +87,10 @@
             <span class="error">{{ error }}</span>
           {% endfor %}
         </fieldset>
+
         {{ email_forwarding_form.submit }}
       </fieldset>
-    {% endif %}
-  </form>
+    </form>
+  {% endif %}
 
 {% endblock %}
