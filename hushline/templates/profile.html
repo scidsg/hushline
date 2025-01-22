@@ -108,14 +108,26 @@
       {{ form.hidden_tag() }}
     {% endif %}
     
-    {% for name in field_names %}
-      <div>
-        {{ form[name].label(for=name) }}
-        {% if pgp_required_but_not_set %}
-          {{ form[name](id=name, disabled='disabled') }}
-        {% else %}
-          {{ form[name](id=name) }}
-        {% endif %}
+    {% for field_data in fields_to_display %}
+      <div class="field-group">
+        <div class="label">
+          {{ form[field_data['name']].label(for=field_data['name']) }}
+          {% if field_data['encrypted'] %}
+            <span class="meta">🔒 encrypted</span>
+          {% endif %}
+          {% if field_data['required'] %}
+            <span class="meta">required</span>
+          {% else %}
+            <span class="meta">optional</span>
+          {% endif %}
+        </div>
+        <div>
+          {% if pgp_required_but_not_set %}
+            {{ form[field_data['name']](id=field_data['name'], disabled='disabled') }}
+          {% else %}
+            {{ form[field_data['name']](id=field_data['name']) }}
+          {% endif %}
+        </div>
       </div>
     {% endfor %}
 
@@ -129,11 +141,41 @@
       value="false"
     />
 
-    {% if current_user_id == user.id %}
-      {% if user.pgp_key %}
-        <p class="helper meta">
-          🔐 Your message will be encrypted and only readable by you.
-        </p>
+      {% if current_user_id == user.id %}
+        {% if user.pgp_key %}
+          <p class="helper meta">
+            🔒 Encrypted fields will be only readable by you.
+          </p>
+        {% else %}
+          <p class="helper meta">
+            ⚠️ Your messages will NOT be encrypted. If you expect messages to
+            contain sensitive information, please
+            <a
+              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >add a public PGP key</a
+            >.
+          </p>
+        {% endif %}
+      {% else %}
+        {% if user.pgp_key %}
+          <p class="helper meta">
+            🔒 Encrypted fields will be only readable by
+            {{ display_name_or_username }}.
+          </p>
+        {% else %}
+          <p class="helper meta">
+            ⚠️ Your message will NOT be encrypted. If this message is sensitive,
+            ask {{ display_name_or_username }} to add a public PGP key.
+            <a
+              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Here's how they can do it</a
+            >.
+          </p>
+        {% endif %}
       {% endif %}
     {% else %}
       {% if user.pgp_key %}
