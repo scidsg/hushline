@@ -76,9 +76,6 @@ class DynamicMessageForm:
             if not field.enabled:
                 continue
 
-            # Make choices a list of strings
-            choices = [c["choice"] for c in field.choices]
-
             # Define the validators
             validators = []
 
@@ -107,14 +104,16 @@ class DynamicMessageForm:
                 setattr(
                     self.F,
                     name,
-                    field_type(field.label, choices=choices, validators=validators, coerce=str),
+                    field_type(
+                        field.label, choices=field.choices, validators=validators, coerce=str
+                    ),
                 )
             elif field.field_type == FieldType.CHOICE_MULTIPLE:
                 setattr(
                     self.F,
                     name,
                     MultiCheckboxField(
-                        field.label, choices=choices, validators=validators, coerce=str
+                        field.label, choices=field.choices, validators=validators, coerce=str
                     ),
                 )
             else:

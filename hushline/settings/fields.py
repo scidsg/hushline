@@ -41,7 +41,7 @@ def register_fields_routes(bp: Blueprint) -> None:
                         field_form.required.data,
                         field_form.enabled.data,
                         field_form.encrypted.data,
-                        field_form.choices.data,
+                        [c['choice'] for c in field_form.choices.data],
                     )
                     db.session.add(field_definition)
                     db.session.commit()
@@ -59,7 +59,7 @@ def register_fields_routes(bp: Blueprint) -> None:
                     field_definition.required = field_form.required.data
                     field_definition.enabled = field_form.enabled.data
                     field_definition.encrypted = field_form.encrypted.data
-                    field_definition.choices = field_form.choices.data
+                    field_definition.choices = [c['choice'] for c in field_form.choices.data]
                     db.session.commit()
                     flash("Field updated.")
                     return redirect_to_self()
