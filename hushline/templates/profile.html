@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 
-{% set pgp_required_but_not_set = require_pgp and not user.pgp_key %}
-
 {% block title %}
-  {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
+  {% if user.pgp_key %}
     {{ profile_header }}
   {% else %}
     Profile: {{ display_name_or_username }}
@@ -21,11 +19,11 @@
         ✍️ Note to Self (Add a PGP Key for secure notes)
       {% endif %}
     {% else %}
-      {% if (not require_pgp) or (require_pgp and user.pgp_key) %}
-        {# Unauthenticated or other users who meet PGP requirements or don’t require PGP #}
+      {% if user.pgp_key %}
+        {# Unauthenticated or other users who meet PGP requirements #}
         {{ profile_header }}
       {% else %}
-        {# Unauthenticated or other users who don’t meet PGP requirements #}
+        {# Unauthenticated or other users who don't meet PGP requirements #}
         {{ display_name_or_username }}
       {% endif %}
     {% endif %}
@@ -81,7 +79,7 @@
 
   {% if current_user_id == user.id %}
     <p class="instr">
-      {% if pgp_required_but_not_set %}
+      {% if not user.pgp_key %}
         <b>👁️ Only visible to you:</b> In order to protect your sources, you need
         to add a PGP key to your account before anyone can send you tips.
         Without a PGP key, your profile can still be listed in the Hush Line
@@ -106,7 +104,7 @@
     action="{{ url_for('submit_message', username=username.username) }}"
     id="messageForm"
   >
-    {% if not pgp_required_but_not_set %}
+    {% if not user.pgp_key %}
       {{ form.hidden_tag() }}
     {% endif %}
 
@@ -116,7 +114,7 @@
       id="contact_method"
       name="contact_method"
       value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}"
-      {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
+      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
     />
 
     <label for="content">Message</label>
@@ -126,56 +124,34 @@
       name="content"
       required=""
       spellcheck="true"
-      {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
+      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
     >{{ form.content.data if form.content.data is not none else '' }}</textarea>
 
-    {% if not pgp_required_but_not_set %}
-      <!-- Hidden field for public PGP key -->
-      <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
-      <!-- Hidden field to indicate if the message was encrypted client-side -->
-      <input
-        type="hidden"
-        name="client_side_encrypted"
-        id="clientSideEncrypted"
-        value="false"
-      />
+    <!-- Hidden field for public PGP key -->
+    <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
+    <!-- Hidden field to indicate if the message was encrypted client-side -->
+    <input
+      type="hidden"
+      name="client_side_encrypted"
+      id="clientSideEncrypted"
+      value="false"
+    />
 
-      {% if current_user_id == user.id %}
-        {% if user.pgp_key %}
-          <p class="helper meta">
-            🔐 Your message will be encrypted and only readable by you.
-          </p>
-        {% else %}
-          <p class="helper meta">
-            ⚠️ Your messages will NOT be encrypted. If you expect messages to
-            contain sensitive information, please
-            <a
-              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              >add a public PGP key</a
-            >.
-          </p>
-        {% endif %}
-      {% else %}
-        {% if user.pgp_key %}
-          <p class="helper meta">
-            🔐 Your message will be encrypted and only readable by
-            {{ display_name_or_username }}.
-          </p>
-        {% else %}
-          <p class="helper meta">
-            ⚠️ Your message will NOT be encrypted. If this message is sensitive,
-            ask {{ display_name_or_username }} to add a public PGP key.
-            <a
-              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Here's how they can do it</a
-            >.
-          </p>
-        {% endif %}
+    {% if current_user_id == user.id %}
+      {% if user.pgp_key %}
+        <p class="helper meta">
+          🔐 Your message will be encrypted and only readable by you.
+        </p>
       {% endif %}
+    {% else %}
+      {% if user.pgp_key %}
+        <p class="helper meta">
+          🔐 Your message will be encrypted and only readable by
+          {{ display_name_or_username }}.
+        </p>
+      {% endif %}
+    {% endif %}
+    {% if user.pgp_key %}
       <!-- Math CAPTCHA -->
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>
@@ -192,15 +168,16 @@
         </div>
       </div>
     {% endif %}
+
     <button
       type="submit"
       id="submitBtn"
-      {% if pgp_required_but_not_set %}disabled="disabled"{% endif %}
+      {% if not user.pgp_key %}disabled="disabled"{% endif %}
     >
       Send Message
     </button>
 
-    {% if pgp_required_but_not_set %}
+    {% if not user.pgp_key %}
       <div class="pgp-disabled-overlay">
         <p>
           🔒<br />
@@ -213,7 +190,7 @@
 {% endblock %}
 
 {% block scripts %}
-  {% if not pgp_required_but_not_set %}
+  {% if user.pgp_key %}
     <script src="{{ url_for('static', filename='vendor/openpgp-5.11.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
     <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>

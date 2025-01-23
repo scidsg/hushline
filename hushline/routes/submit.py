@@ -35,7 +35,7 @@ def register_submit_routes(app: Flask) -> None:
             return redirect(url_for("index"))
 
         if form.validate_on_submit():
-            if not uname.user.pgp_key and app.config["REQUIRE_PGP"]:
+            if not uname.user.pgp_key:
                 flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
                 return redirect(url_for("profile", username=username))
 

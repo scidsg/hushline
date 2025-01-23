@@ -210,8 +210,12 @@ def user_password() -> str:
 
 
 def make_user(user_password: str) -> User:
+    with open("tests/test_pgp_key.txt") as file:
+        test_pgp_key = file.read().strip()
+
     user = User(password=user_password)
     user.tier_id = 1
+    user.pgp_key = test_pgp_key
     db.session.add(user)
     db.session.flush()
 

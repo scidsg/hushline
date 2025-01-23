@@ -74,6 +74,5 @@ def register_profile_routes(app: Flask) -> None:
             display_name_or_username=uname.display_name or uname.username,
             current_user_id=session.get("user_id"),
             public_key=uname.user.pgp_key,
-            require_pgp=app.config["REQUIRE_PGP"],
             math_problem=math_problem,
         )
