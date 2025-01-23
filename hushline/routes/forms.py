@@ -126,7 +126,7 @@ class DynamicMessageForm:
             TextAreaField("Message", validators=[DataRequired(), Length(max=10000)]),
         )
 
-    def fields_to_display(self) -> list[dict[str, str | bool]]:
+    def fields_to_display(self) -> list[dict[str, any]]:
         """
         Return a list of dicts for this form for the template to loop through while rendering
         """
@@ -148,6 +148,7 @@ class DynamicMessageForm:
                     }
                 )
 
+        ret.append({"name": "content", "required": True, "encrypted": True})
         return ret
 
     def form(self) -> FlaskForm:
