@@ -114,7 +114,7 @@
       id="contact_method"
       name="contact_method"
       value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}"
-      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
+      {% if not user.pgp_key %}disabled="disabled"{% endif %}
     />
 
     <label for="content">Message</label>
@@ -124,7 +124,7 @@
       name="content"
       required=""
       spellcheck="true"
-      {% if not not user.pgp_key %}disabled="disabled"{% endif %}
+      {% if not user.pgp_key %}disabled="disabled"{% endif %}
     >{{ form.content.data if form.content.data is not none else '' }}</textarea>
 
     <!-- Hidden field for public PGP key -->
