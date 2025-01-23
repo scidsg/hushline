@@ -46,16 +46,18 @@ class FieldValue(Model):
     _value: Mapped[str] = mapped_column(db.Text)
     encrypted: Mapped[bool] = mapped_column(default=False)
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         field_definition: "FieldDefinition",
         message: "Message",
         value: str,
         encrypted: bool,
+        client_side_encrypted: bool,
     ) -> None:
         self.field_definition = field_definition
         self.message = message
         self.encrypted = encrypted
+        self.client_side_encrypted = client_side_encrypted
         # set the value AFTER setting the encrypted flag
         self.value = value
 
@@ -69,7 +71,7 @@ class FieldValue(Model):
 
     @value.setter
     def value(self, value: str) -> None:
-        if self.encrypted:
+        if self.encrypted and not self.client_side_encrypted:
             # Encrypt with PGP
 
             # Pad the value to hide the length of the plaintext

@@ -125,7 +125,11 @@
           {% if not user.pgp_key %}
             {{ form[field_data['name']](id=field_data['name'], disabled='disabled') }}
           {% else %}
-            {{ form[field_data['name']](id=field_data['name']) }}
+            {% if field_data['encrypted'] %}
+              {{ form[field_data['name']](id=field_data['name'], class='encrypted-field') }}
+            {% else %}
+              {{ form[field_data['name']](id=field_data['name']) }}
+            {% endif %}
           {% endif %}
         </div>
       </div>
