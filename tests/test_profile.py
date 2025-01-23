@@ -8,7 +8,8 @@ from flask.testing import FlaskClient
 from hushline.db import db
 from hushline.model import Message, OrganizationSetting, User, Username
 
-pgp_message_sig = '-----BEGIN PGP MESSAGE-----\n\n'
+pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
+
 
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
     # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
