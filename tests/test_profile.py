@@ -22,6 +22,7 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         return captcha_answer
 
 
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_header(client: FlaskClient, user: User) -> None:
     assert (
         db.session.scalars(
@@ -55,6 +56,7 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     msg_content = "This is a test message."
 
@@ -83,6 +85,7 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message_to_alias(
     client: FlaskClient, user: User, user_alias: Username
 ) -> None:
@@ -109,6 +112,7 @@ def test_profile_submit_message_to_alias(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message_with_contact_method(client: FlaskClient, user: User) -> None:
     message_content = "This is a test message."
     contact_method = "email@example.com"
@@ -189,6 +193,7 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message_with_invalid_captcha(client: FlaskClient, user: User) -> None:
     message_content = "This is a test message."
     contact_method = "email@example.com"
