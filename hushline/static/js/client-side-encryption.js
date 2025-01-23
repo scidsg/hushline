@@ -38,7 +38,9 @@ async function encryptMessage(publicKeyArmored, message) {
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   const encryptedFlag = document.getElementById("clientSideEncrypted");
-  const publicKeyArmored = document.getElementById("publicKey") ? document.getElementById("publicKey").value : "";
+  const publicKeyArmored = document.getElementById("publicKey")
+    ? document.getElementById("publicKey").value
+    : "";
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -52,17 +54,24 @@ document.addEventListener("DOMContentLoaded", function () {
         value = field.value;
       } else if (field.tagName === "UL") {
         const checkedValues = [];
-        field.querySelectorAll("input[type='checkbox']:checked, input[type='radio']:checked").forEach((input) => {
-          checkedValues.push(input.value);
-        });
+        field
+          .querySelectorAll(
+            "input[type='checkbox']:checked, input[type='radio']:checked",
+          )
+          .forEach((input) => {
+            checkedValues.push(input.value);
+          });
         value = checkedValues.join(", ");
       }
 
       console.log("Encrypting field:", field, value);
 
       const paddedValue = addSpacePadding(value);
-      const encryptedValue = await encryptMessage(publicKeyArmored, paddedValue);
-      if(encryptedValue) {
+      const encryptedValue = await encryptMessage(
+        publicKeyArmored,
+        paddedValue,
+      );
+      if (encryptedValue) {
         // If it's a UL, this means the field type is a checkbox or radio.
         // So replace the whole UL with a hidden input field
         if (field.tagName === "UL") {
@@ -78,7 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           field.value = encryptedValue;
         }
-
       } else {
         console.error("Client-side encryption failed for field:", field.name);
         encryptedFlag.value = "false";

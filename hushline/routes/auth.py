@@ -104,6 +104,8 @@ def register_auth_routes(app: Flask) -> None:
             db.session.add(username)
             db.session.commit()
 
+            username.create_default_field_defs()
+
             flash("Registration successful!", "success")
             return redirect(url_for("login"))
 

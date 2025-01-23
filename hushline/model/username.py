@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.db import db
+from hushline.model import FieldDefinition, FieldType
 
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
-    from hushline.model import FieldDefinition, User
+    from hushline.model import User
 else:
     Model = db.Model
 
@@ -103,3 +104,29 @@ class Username(Model):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id} username={self.username}>"
+
+    def create_default_field_defs(self) -> None:
+        """
+        If there are no message fields, create the default ones.
+        """
+        if len(self.message_fields) == 0:
+            contact_method_field_def = FieldDefinition(
+                self,
+                "Contact Method",
+                FieldType.TEXT,
+                False,
+                True,
+                True,
+                [],
+            )
+            content_field_def = FieldDefinition(
+                self,
+                "Message",
+                FieldType.MULTILINE_TEXT,
+                True,
+                True,
+                True,
+                [],
+            )
+            db.session.add_all([contact_method_field_def, content_field_def])
+            db.session.commit()

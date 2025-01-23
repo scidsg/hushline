@@ -108,31 +108,33 @@
       {{ form.hidden_tag() }}
     {% endif %}
     
-    {% for field_data in fields_to_display %}
-      <div class="field-group">
-        <div class="label">
-          {{ form[field_data['name']].label(for=field_data['name']) }}
-          {% if field_data['encrypted'] %}
-            <span class="meta">🔒 encrypted</span>
-          {% endif %}
-          {% if field_data['required'] %}
-            <span class="meta">required</span>
-          {% else %}
-            <span class="meta">optional</span>
-          {% endif %}
-        </div>
-        <div>
-          {% if not user.pgp_key %}
-            {{ form[field_data['name']](id=field_data['name'], disabled='disabled') }}
-          {% else %}
-            {% if field_data['encrypted'] %}
-              {{ form[field_data['name']](id=field_data['name'], class='encrypted-field') }}
-            {% else %}
-              {{ form[field_data['name']](id=field_data['name']) }}
+    {% for data in field_data %}
+      {% if data['field'].enabled %}
+        <div class="field-group">
+          <div class="label">
+            {{ form[data['name']].label(for=data['name']) }}
+            {% if data['field'].encrypted %}
+              <span class="meta">🔒 encrypted</span>
             {% endif %}
-          {% endif %}
+            {% if data['field'].required %}
+              <span class="meta">required</span>
+            {% else %}
+              <span class="meta">optional</span>
+            {% endif %}
+          </div>
+          <div>
+            {% if not user.pgp_key %}
+              {{ form[data['name']](id=data['name'], disabled='disabled') }}
+            {% else %}
+              {% if data['field'].encrypted %}
+                {{ form[data['name']](id=data['name'], class='encrypted-field') }}
+              {% else %}
+                {{ form[data['name']](id=data['name']) }}
+              {% endif %}
+            {% endif %}
+          </div>
         </div>
-      </div>
+      {% endif %}
     {% endfor %}
 
     <!-- Hidden field for public PGP key -->

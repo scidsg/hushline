@@ -13,9 +13,10 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
-from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.model import (
+    FieldDefinition,
+    FieldValue,
     Message,
     OrganizationSetting,
     Username,
@@ -32,6 +33,8 @@ def register_profile_routes(app: Flask) -> None:
         if not uname:
             flash("🫥 User not found.")
             return redirect(url_for("index"))
+
+        uname.create_default_field_defs()
 
         dynamic_form = DynamicMessageForm(uname.message_fields)
         form = dynamic_form.form()
@@ -57,7 +60,7 @@ def register_profile_routes(app: Flask) -> None:
             form=form,
             user=uname.user,
             username=uname,
-            fields_to_display=dynamic_form.fields_to_display(),
+            field_data=dynamic_form.field_data(),
             display_name_or_username=uname.display_name or uname.username,
             current_user_id=session.get("user_id"),
             public_key=uname.user.pgp_key,
@@ -79,7 +82,7 @@ def register_profile_routes(app: Flask) -> None:
         form = dynamic_form.form()
 
         if form.validate_on_submit():
-            if not uname.user.pgp_key and app.config["REQUIRE_PGP"]:
+            if not uname.user.pgp_key:
                 flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
                 return redirect(url_for("profile", username=username))
 
@@ -90,38 +93,35 @@ def register_profile_routes(app: Flask) -> None:
 
             current_app.logger.debug(f"Form submitted: {form.data}")
 
-            content = form.content.data
-            contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
-            full_content = (
-                f"Contact Method: {contact_method}\n\n{content}" if contact_method else content
-            )
             client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
 
-            if client_side_encrypted:
-                content_to_save = (
-                    content  # Assume content is already encrypted and includes contact method
-                )
-            elif uname.user.pgp_key:
-                try:
-                    encrypted_content = encrypt_message(full_content, uname.user.pgp_key)
-                    if not encrypted_content:
-                        flash("⛔️ Failed to encrypt message.", "error")
-                        return redirect(url_for("profile", username=username))
-                    content_to_save = encrypted_content
-                except Exception as e:
-                    app.logger.error("Encryption failed: %s", str(e), exc_info=True)
-                    flash("⛔️ Failed to encrypt message.", "error")
-                    return redirect(url_for("profile", username=username))
-            else:
-                content_to_save = full_content
+            email_body = ""
 
-            new_message = Message(content=content_to_save, username_id=uname.id)
-            db.session.add(new_message)
+            # Create a message
+            message = Message(content="", username_id=uname.id)
+            db.session.add(message)
             db.session.commit()
 
-            do_send_email(uname.user, content_to_save)
+            # Add the field values
+            for data in dynamic_form.field_data():
+                field_name: str = data["name"]  # type: ignore
+                field_definition: FieldDefinition = data["field"]  # type: ignore
+                value = getattr(form, field_name).data
+                field_value = FieldValue(
+                    field_definition,
+                    message,
+                    value,
+                    field_definition.encrypted,
+                    client_side_encrypted,
+                )
+                db.session.add(field_value)
+                db.session.commit()
+
+                email_body += f"{field_definition.label}\n\n{field_value.value}\n\n\n"
+
+            do_send_email(uname.user, email_body)
             flash("👍 Message submitted successfully.")
-            session["reply_slug"] = new_message.reply_slug
+            session["reply_slug"] = message.reply_slug
             return redirect(url_for("submission_success"))
 
         return redirect(url_for("profile", username=username))
