@@ -13,7 +13,7 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
-from hushline.crypto import decrypt_field, encrypt_field, encrypt_message, generate_salt
+from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.model import (
     Message,
@@ -35,28 +35,6 @@ def register_profile_routes(app: Flask) -> None:
 
         dynamic_form = DynamicMessageForm(uname.message_fields)
         form = dynamic_form.form()
-
-        # TODO: make this work again
-        # # If the encrypted message is stored in the session, use it to populate the form
-        # scope = "submit_message"
-        # if (
-        #     f"{scope}:salt" in session
-        #     and f"{scope}:contact_method" in session
-        #     and f"{scope}:content" in session
-        # ):
-        #     try:
-        #         form.contact_method.data = decrypt_field(
-        #             session[f"{scope}:contact_method"], scope, session[f"{scope}:salt"]
-        #         )
-        #         form.content.data = decrypt_field(
-        #             session[f"{scope}:content"], scope, session[f"{scope}:salt"]
-        #         )
-        #     except Exception:
-        #         app.logger.error("Error decrypting content", exc_info=True)
-
-        #     session.pop(f"{scope}:contact_method", None)
-        #     session.pop(f"{scope}:content", None)
-        #     session.pop(f"{scope}:salt", None)
 
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
         num1 = secrets.randbelow(10) + 1
@@ -107,15 +85,7 @@ def register_profile_routes(app: Flask) -> None:
 
             captcha_answer = request.form.get("captcha_answer", "")
             if not validate_captcha(captcha_answer):
-                # Encrypt the message and store it in the session
-                scope = "submit_message"
-                salt = generate_salt()
-                session[f"{scope}:contact_method"] = encrypt_field(
-                    form.contact_method.data, scope, salt
-                )
-                session[f"{scope}:content"] = encrypt_field(form.content.data, scope, salt)
-                session[f"{scope}:salt"] = salt
-
+                flash("⛔️ Invalid CAPTCHA answer.", "error")
                 return redirect(url_for("profile", username=username))
 
             content = form.content.data
