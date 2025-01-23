@@ -13,26 +13,18 @@ else:
     Model = db.Model
 
 
-class PaddedFieldValue:
+def add_space_padding(value: str, block_size: int = 512) -> str:
     """
     To hide what field is being encrypted, we need to pad the value to a fixed block size.
     This class is used to create a padded version of the field by adding spaces to the end of the
     value until it reaches a block size of 512 characters.
     """
+    # Add padding
+    padding_len = block_size - (len(value) % block_size)
+    padding = " " * padding_len
 
-    def __init__(self, value: str) -> None:
-        self.value = value
-        self.padding = ""
-
-    def pad(self) -> str:
-        BLOCK_SIZE = 512
-
-        # Add padding
-        padding_len = BLOCK_SIZE - (len(self.value) % BLOCK_SIZE)
-        self.padding = " " * padding_len
-
-        # Return the padded value
-        return self.value + self.padding
+    # Return the padded value
+    return value + padding
 
 
 class FieldValue(Model):
@@ -75,7 +67,7 @@ class FieldValue(Model):
             # Encrypt with PGP
 
             # Pad the value to hide the length of the plaintext
-            padded_value = PaddedFieldValue(value).pad()
+            padded_value = add_space_padding(value)
 
             # Encrypt the padded value
             pgp_key = self.message.username.user.pgp_key

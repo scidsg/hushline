@@ -104,7 +104,7 @@
     action="{{ url_for('submit_message', username=username.username) }}"
     id="messageForm"
   >
-    {% if not user.pgp_key %}
+    {% if user.pgp_key %}
       {{ form.hidden_tag() }}
     {% endif %}
     

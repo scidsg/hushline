@@ -88,6 +88,8 @@ def register_profile_routes(app: Flask) -> None:
                 flash("⛔️ Invalid CAPTCHA answer.", "error")
                 return redirect(url_for("profile", username=username))
 
+            current_app.logger.debug(f"Form submitted: {form.data}")
+
             content = form.content.data
             contact_method = form.contact_method.data.strip() if form.contact_method.data else ""
             full_content = (
