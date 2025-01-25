@@ -98,7 +98,7 @@ def register_profile_routes(app: Flask) -> None:
             email_body = ""
 
             # Create a message
-            message = Message(content="", username_id=uname.id)
+            message = Message(username_id=uname.id)
             db.session.add(message)
             db.session.commit()
 
