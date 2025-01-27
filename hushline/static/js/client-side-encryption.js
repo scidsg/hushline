@@ -42,11 +42,12 @@ document.addEventListener("DOMContentLoaded", function () {
     ? document.getElementById("publicKey").value
     : "";
 
+  let encryptionSuccessful = true;
+
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     // Loop through all encrypted fields and encrypt them
-    encryptedFlag.value = "true";
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
       // Get the value
       let value = "";
@@ -88,11 +89,18 @@ document.addEventListener("DOMContentLoaded", function () {
           field.value = encryptedValue;
         }
       } else {
+        encryptionSuccessful = false;
         console.error("Client-side encryption failed for field:", field.name);
-        encryptedFlag.value = "false";
       }
     });
 
-    form.submit(); // Submit the form after processing
+    if(encryptionSuccessful) {
+      encryptedFlag.value = "true";
+    }
+
+    // Wait for the DOM to update before submitting
+    setTimeout(() => {
+      form.submit();
+    }, 100);
   });
 });
