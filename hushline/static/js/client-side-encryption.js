@@ -73,28 +73,37 @@ document.addEventListener("DOMContentLoaded", function () {
         paddedValue,
       );
       if (encryptedValue) {
-        // If it's a UL, this means the field type is a checkbox or radio.
-        // So replace the whole UL with a hidden input field
+        // Replace the field with a hidden field and a disabled textarea (for show) containing the encrypted value
+        let fieldName;
         if (field.tagName === "UL") {
-          // Figure out the name of the field
-          const fieldName = field.querySelector("input").name;
-
-          field.innerHTML = ""; // Clear the contents of the <ul>
-          const textarea = document.createElement("textarea");
-          textarea.name = fieldName;
-          textarea.disabled = true;
-          textarea.value = encryptedValue;
-          field.appendChild(textarea);
+          fieldName = field.querySelector("input").name;
         } else {
-          field.value = encryptedValue;
+          fieldName = field.name;
         }
+
+        // Empty out the field
+        const fieldContainer = field.parentElement;
+        fieldContainer.innerHTML = "";
+
+        // Add a textarea with the encrypted value
+        const hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = fieldName;
+        hiddenInput.value = encryptedValue;
+
+        const textarea = document.createElement("textarea");
+        textarea.disabled = true;
+        textarea.value = encryptedValue;
+
+        fieldContainer.appendChild(hiddenInput);
+        fieldContainer.appendChild(textarea);
       } else {
         encryptionSuccessful = false;
         console.error("Client-side encryption failed for field:", field.name);
       }
     });
 
-    if(encryptionSuccessful) {
+    if (encryptionSuccessful) {
       encryptedFlag.value = "true";
     }
 

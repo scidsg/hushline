@@ -2754,7 +2754,11 @@ h3 {
 }
 
 .message-container .message .field-value .label {
-  font-weight: bold;
+  font-family: var(--font-sans-bold);
+}
+
+.message-container .message .field-value pre.value {
+  overflow: auto;
 }
 
 #copy-link-button {

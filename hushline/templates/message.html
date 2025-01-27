@@ -31,7 +31,7 @@
     {% for field_value in message.field_values %}
     <div class="field-value {% if field_value.encrypted %}encrypted{% endif %}">
       <div class="label">{{ field_value.field_definition.label }}</div>
-      <div class="value">{{ field_value.value }}</div>
+      <pre class="value">{{ field_value.value }}</pre>
       <div class="mailvelope-decryption-container" id="decryption-container-{{ field_value.id }}"></div>
     </div>
     {% endfor %}
