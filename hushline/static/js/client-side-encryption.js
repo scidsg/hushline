@@ -51,7 +51,11 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
       // Get the value
       let value = "";
-      if (field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "TEXTAREA") {
+      if (
+        field.tagName === "INPUT" ||
+        field.tagName === "SELECT" ||
+        field.tagName === "TEXTAREA"
+      ) {
         value = field.value;
       } else if (field.tagName === "UL") {
         const checkedValues = [];

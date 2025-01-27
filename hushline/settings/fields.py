@@ -12,7 +12,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldValue, FieldType, User
+from hushline.model import FieldDefinition, FieldType, FieldValue, User
 from hushline.settings.forms import FieldForm
 from hushline.utils import redirect_to_self
 

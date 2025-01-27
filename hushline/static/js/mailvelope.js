@@ -2,8 +2,11 @@ document.addEventListener("DOMContentLoaded", function () {
   if (window.mailvelope) {
     document.querySelectorAll(".field-value.encrypted").forEach((fieldEl) => {
       if (window.mailvelope) {
-        const encryptedContent = fieldEl.querySelector(".encrypted-content").innerText;
-        const decryptionContainer = fieldEl.querySelector(".mailvelope-decryption-container");
+        const encryptedContent =
+          fieldEl.querySelector(".encrypted-content").innerText;
+        const decryptionContainer = fieldEl.querySelector(
+          ".mailvelope-decryption-container",
+        );
 
         mailvelope
           .createDisplayContainer({

@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from hushline.db import db
 
-from ..helpers import (
+from ..helpers import (  # type: ignore[misc]
     format_param_dict,
     random_string,
 )

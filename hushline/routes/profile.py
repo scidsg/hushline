@@ -125,10 +125,13 @@ def register_profile_routes(app: Flask) -> None:
             current_app.logger.debug("Message sent and now redirecting")
             return redirect(url_for("submission_success"))
 
-        errors = [
-            f"{dynamic_form.field_from_name(field).label}: {', '.join(errors)}"
-            for field, errors in form.errors.items()
-        ]
+        errors = []
+        for field, field_errors in form.errors.items():
+            for error in field_errors:
+                field_def = dynamic_form.field_from_name(field)
+                label = field_def.label if field_def else "unknown"
+                errors.append(f"{label}: {error}")
+
         error_message = "⛔️ There was an error submitting your message: " + "; ".join(errors)
         flash(error_message, "error")
         return redirect(url_for("profile", username=username))

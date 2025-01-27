@@ -8,13 +8,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.crypto import gen_reply_slug
 from hushline.db import db
+from hushline.model import User, Username
 from hushline.model.enums import MessageStatus
 from hushline.model.message_status_text import MessageStatusText
-from hushline.model.user import User
-from hushline.model.username import Username
 
 if TYPE_CHECKING:
-    from flask_sqlalchemy.model import FieldValue, Model
+    from flask_sqlalchemy.model import Model
+
+    from hushline.model import FieldValue
 else:
     Model = db.Model
 

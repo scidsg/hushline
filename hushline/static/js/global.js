@@ -221,9 +221,9 @@ document.addEventListener("DOMContentLoaded", function () {
         pagesCount == 0 ||
         (pagesCount == 1 &&
           guidancePages[0].querySelector(".heading-text").textContent.trim() ==
-          "" &&
+            "" &&
           guidancePages[0].querySelector(".prompt-text").textContent.trim() ==
-          "")
+            "")
       ) {
         guidanceDiv.classList.remove("show");
       }
