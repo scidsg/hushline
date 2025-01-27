@@ -2746,6 +2746,15 @@ h3 {
 
 .message-container .message {
   margin-top: 1rem;
+  padding: 1rem;
+}
+
+.message-container .message .field-value {
+  margin-bottom: 1rem;
+}
+
+.message-container .message .field-value .label {
+  font-weight: bold;
 }
 
 #copy-link-button {
@@ -2820,7 +2829,6 @@ strong {
     opacity: 0;
     transform: translateY(1.5rem);
   }
-
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -2948,88 +2956,6 @@ strong {
   border: none;
 }
 
-.settings-content .fields .field-form-toggle {
-  display: flex;
-  cursor: pointer;
-}
-
-.settings-content .fields .field-form-arrow {
-  margin-right: 10px;
-}
-
-.settings-content .fields .field-form-label-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.settings-content .fields .field-form-label {
-  font-family: var(--font-sans);
-  font-size: 0.875em;
-}
-
-.settings-content .fields .field-form-label-container .label-meta {
-  font-size: 0.8em;
-  font-style: italic;
-  opacity: 0.5;
-  margin-left: 0.5em;
-  font-family: var(--font-sans);
-}
-
-.settings-content .fields .field-form-content {
-  display: none;
-  margin-left: 27px;
-}
-
-.settings-content .fields .choices-container {
-  margin-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-.settings-content .fields .choices-container button {
-  font-size: 0.8em;
-}
-
-.settings-content .fields input[type="checkbox"],
-.settings-content .fields input[type="radio"],
-.settings-content .fields label {
-  display: inline;
-  width: auto;
-}
-
-#messageForm input[type="checkbox"],
-#messageForm input[type="radio"],
-#messageForm label {
-  display: inline;
-  width: auto;
-}
-
-#messageForm ul {
-  list-style: none;
-  padding: 0;
-}
-
-#messageForm .field-group {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#messageForm .field-group .label {
-  margin-bottom: 0.5rem;
-}
-
-#messageForm .field-group input,
-#messageForm .field-group textarea,
-#messageForm .field-group select {
-  margin-bottom: 0;
-}
-
-#messageForm .field-group .meta {
-  margin-left: 0.5rem;
-  font-size: 0.8125rem;
-  line-height: 1;
-  font-style: italic;
-  opacity: 0.8;
+.float-right {
+  float: right;
 }
