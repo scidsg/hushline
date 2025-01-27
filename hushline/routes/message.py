@@ -16,7 +16,6 @@ from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.forms import DeleteMessageForm, UpdateMessageStatusForm
 from hushline.model import (
-    FieldValue,
     Message,
     User,
     Username,
