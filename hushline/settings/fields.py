@@ -12,7 +12,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, User
+from hushline.model import FieldDefinition, FieldValue, FieldType, User
 from hushline.settings.forms import FieldForm
 from hushline.utils import redirect_to_self
 
@@ -72,6 +72,12 @@ def register_fields_routes(bp: Blueprint) -> None:
                     field_definition = db.session.scalars(
                         db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
                     ).one()
+
+                    # Delete all field values that rely on this field definition
+                    db.session.execute(
+                        db.delete(FieldValue).filter_by(field_definition_id=field_definition.id)
+                    )
+
                     db.session.delete(field_definition)
                     db.session.commit()
                     flash("Field deleted.")
