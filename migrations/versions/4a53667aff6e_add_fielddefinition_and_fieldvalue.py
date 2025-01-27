@@ -44,8 +44,12 @@ def upgrade() -> None:
     op.create_table(
         "field_values",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("field_definition_id", sa.Integer, sa.ForeignKey("field_definitions.id")),
-        sa.Column("message_id", sa.Integer, sa.ForeignKey("messages.id")),
+        sa.Column(
+            "field_definition_id",
+            sa.Integer,
+            sa.ForeignKey("field_definitions.id", ondelete="CASCADE"),
+        ),
+        sa.Column("message_id", sa.Integer, sa.ForeignKey("messages.id", ondelete="CASCADE")),
         sa.Column("_value", sa.Text, nullable=False),
         sa.Column("encrypted", sa.Boolean, default=False),
     )

@@ -16,6 +16,7 @@ from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.forms import DeleteMessageForm, UpdateMessageStatusForm
 from hushline.model import (
+    FieldValue,
     Message,
     User,
     Username,
@@ -58,27 +59,24 @@ def register_message_routes(app: Flask) -> None:
     def delete_message(id: int) -> Response:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
-        row_count = db.session.execute(
-            db.delete(Message).where(
+        message = db.session.scalars(
+            db.select(Message).where(
                 Message.id == id,
                 Message.username_id.in_(
                     db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
             )
-        ).rowcount
-        match row_count:
-            case 1:
-                db.session.commit()
-                flash("🗑️ Message deleted successfully.")
-            case 0:
-                db.session.rollback()
-                flash("⛔️ Message not found.")
-            case _:
-                db.session.rollback()
-                current_app.logger.error(
-                    f"Multiple messages would have been deleted. Message.id={id} User.id={user.id}"
-                )
-                flash("Internal server error. Message not deleted.")
+        ).one_or_none()
+        if message:
+            for field_value in message.field_values:
+                db.session.delete(field_value)
+            db.session.commit()
+
+            db.session.delete(message)
+            db.session.commit()
+            flash("🗑️ Message deleted successfully.")
+        else:
+            flash("⛔️ Message not found.")
 
         return redirect(url_for("inbox"))
 

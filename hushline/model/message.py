@@ -33,7 +33,9 @@ class Message(Model):
     status_changed_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()")
     )
-    field_values: Mapped[list["FieldValue"]] = relationship("FieldValue", back_populates="message")
+    field_values: Mapped[list["FieldValue"]] = relationship(
+        "FieldValue", back_populates="message", cascade="all, delete-orphan"
+    )
 
     def __init__(self, username_id: int) -> None:
         super().__init__(
