@@ -221,9 +221,9 @@ document.addEventListener("DOMContentLoaded", function () {
         pagesCount == 0 ||
         (pagesCount == 1 &&
           guidancePages[0].querySelector(".heading-text").textContent.trim() ==
-            "" &&
+          "" &&
           guidancePages[0].querySelector(".prompt-text").textContent.trim() ==
-            "")
+          "")
       ) {
         guidanceDiv.classList.remove("show");
       }
@@ -286,7 +286,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("guidance-modal");
-  const firstModalContent = modal.querySelector(".modal-content");
+  let firstModalContent = null;
+  if (modal) {
+    firstModalContent = modal.querySelector(".modal-content");
+  }
 
   if (modal && firstModalContent) {
     firstModalContent.classList.add("animate");
