@@ -122,8 +122,10 @@ def register_profile_routes(app: Flask) -> None:
             do_send_email(uname.user, email_body)
             flash("👍 Message submitted successfully.")
             session["reply_slug"] = message.reply_slug
+            current_app.logger.debug("Message sent and now redirecting")
             return redirect(url_for("submission_success"))
 
+        flash(f"⛔️ There was an error submitting your message: {form.errors}", "error")
         return redirect(url_for("profile", username=username))
 
     @app.route("/submit/success")

@@ -119,13 +119,6 @@ class DynamicMessageForm:
             else:
                 raise ValueError(f"Unknown field type: {field.field_type}")
 
-        # Add the message field at the end
-        setattr(
-            self.F,
-            "content",
-            TextAreaField("Message", validators=[DataRequired(), Length(max=10000)]),
-        )
-
     def field_data(self) -> list[dict[str, str | FieldDefinition]]:
         """
         Return a list of dicts for this form for the template to loop through while rendering
