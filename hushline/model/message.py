@@ -14,7 +14,7 @@ from hushline.model.user import User
 from hushline.model.username import Username
 
 if TYPE_CHECKING:
-    from flask_sqlalchemy.model import Model
+    from flask_sqlalchemy.model import FieldValue, Model
 else:
     Model = db.Model
 
@@ -33,6 +33,7 @@ class Message(Model):
     status_changed_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()")
     )
+    field_values: Mapped[list["FieldValue"]] = relationship("FieldValue", back_populates="message")
 
     def __init__(self, username_id: int) -> None:
         super().__init__(

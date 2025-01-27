@@ -34,7 +34,7 @@ class FieldValue(Model):
     field_definition_id: Mapped[int] = mapped_column(db.ForeignKey("field_definitions.id"))
     field_definition: Mapped["FieldDefinition"] = relationship(uselist=False)
     message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
-    message: Mapped["Message"] = relationship(uselist=False)
+    message: Mapped["Message"] = relationship("Message", back_populates="field_values")
     _value: Mapped[str] = mapped_column(db.Text)
     encrypted: Mapped[bool] = mapped_column(default=False)
 
