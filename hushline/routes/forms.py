@@ -88,9 +88,9 @@ class DynamicMessageForm:
             # Multiline text has 10000 chars, all other types (types, single choice, and multiple
             # choice) have 255 chars
             if field.field_type == FieldType.MULTILINE_TEXT:
-                validators.append(Length(max=10000))
+                validators.append(Length(max=10240))
             else:
-                validators.append(Length(max=255))
+                validators.append(Length(max=1024))
 
             # Add the field to the form
             name = f"field_{i}"
@@ -130,6 +130,15 @@ class DynamicMessageForm:
             }
             for i in range(len(self.fields))
         ]
+
+    def field_from_name(self, name: str) -> FieldDefinition | None:
+        """
+        Return the FieldDefinition object for the given field name
+        """
+        for i, field in enumerate(self.fields):
+            if f"field_{i}" == name:
+                return field
+        return None
 
     def form(self) -> FlaskForm:
         """
