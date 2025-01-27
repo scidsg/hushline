@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from hushline import create_app
 from hushline.crypto import _SCRYPT_PARAMS
 from hushline.db import db
-from hushline.model import AuthenticationLog, Message, Tier, User, Username
+from hushline.model import AuthenticationLog, FieldValue, Message, Tier, User, Username
 
 if TYPE_CHECKING:
     from _pytest.config.argparsing import Parser
@@ -224,6 +224,8 @@ def make_user(user_password: str) -> User:
     db.session.add(username)
     db.session.commit()
 
+    username.create_default_field_defs()
+
     return user
 
 
@@ -285,9 +287,20 @@ def user_alias(app: Flask, user: User) -> Username:
 
 
 def make_message(user: User) -> Message:
-    msg = Message(content=str(uuid4()), username_id=user.primary_username.id)
+    msg = Message(username_id=user.primary_username.id)
     db.session.add(msg)
     db.session.commit()
+
+    field_value = FieldValue(
+        user.primary_username.message_fields[-1],
+        msg,
+        str(uuid4()),
+        False,
+        False,
+    )
+    db.session.add(field_value)
+    db.session.commit()
+
     return msg
 
 

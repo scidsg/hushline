@@ -104,7 +104,7 @@ def test_field_value_encryption(user: User) -> None:
 
     assert field_definition.encrypted is True
 
-    message = Message(content="this is a test message", username_id=username.id)
+    message = Message(username_id=username.id)
     db.session.add(message)
     db.session.commit()
 
@@ -141,7 +141,7 @@ def test_field_value_unencryption(user: User) -> None:
 
     assert field_definition.encrypted is False
 
-    message = Message(content="this is a test message", username_id=username.id)
+    message = Message(username_id=username.id)
     db.session.add(message)
     db.session.commit()
 
