@@ -288,3 +288,24 @@ def handle_email_forwarding_form(
     db.session.commit()
     flash("👍 SMTP settings updated successfully")
     return redirect_to_self()
+
+
+def create_profile_forms(
+    username: Username,
+) -> tuple[DisplayNameForm, DirectoryVisibilityForm, ProfileForm]:
+    display_name_form = DisplayNameForm(display_name=username.display_name)
+    directory_visibility_form = DirectoryVisibilityForm(
+        show_in_directory=username.show_in_directory
+    )
+    profile_form = ProfileForm(
+        bio=username.bio or "",
+        **{
+            f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
+            for i in range(1, 5)
+        },
+        **{
+            f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
+            for i in range(1, 5)
+        },
+    )
+    return display_name_form, directory_visibility_form, profile_form

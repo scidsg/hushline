@@ -1,0 +1,109 @@
+{% if is_alias %}
+  {% set username = alias %}
+{% else %}
+  {% set username = user.primary_username %}
+{% endif %}
+
+
+<h4>Update Display Name</h4>
+{% if username.is_verified %}
+<p class="meta">
+  ⚠️ Changing your display name will result in losing your verification status.
+</p>
+{% endif %}
+<form
+  method="POST"
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ display_name_form.hidden_tag() }}
+  {{ display_name_form.display_name.label }}
+  {{ display_name_form.display_name(id='display_name') }}
+  {% if display_name_form.display_name.errors %}
+  {% for error in display_name_form.display_name.errors %}
+  <span class="error">{{ error }}</span>
+  {% endfor %}
+  {% endif %}
+  {{ display_name_form.submit }}
+</form>
+
+<h4>Public User Directory</h4>
+<form 
+  method="POST" 
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ directory_visibility_form.hidden_tag() }}
+  <div class="checkbox-group toggle-ui">
+    {{ directory_visibility_form.show_in_directory() }}
+    <label for="show_in_directory" class="toggle-label">
+      Show on public directory
+      <div class="toggle">
+        <div class="toggle__ball"></div>
+      </div>
+    </label>
+  </div>
+  {{ directory_visibility_form.submit }}
+</form>
+
+<h4>Add Your Bio</h4>
+<form
+  method="POST"
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ profile_form.hidden_tag() }}
+  <div class="form-group">
+    <div class="label-with-wordcount">
+      <label for="bio">Bio (up to 250 characters):</label>
+      <span class="meta"><span class="bio-count">0</span>/250</span>
+    </div>
+    <textarea id="bio" name="bio" rows="4" maxlength="250">{{ username.bio or '' }}</textarea>
+  </div>
+
+  <h5>Profile Details</h5>
+  <p class="info">
+    Add links to social media, your Signal username, your pronouns, or
+    anything else you want on your profile.
+  </p>
+
+  <div class="form-group-pairs">
+    {% for i in [1, 2, 3, 4] %}
+      {% set label = profile_form|attr('extra_field_label'+i.__str__()) %}
+      {% set value = profile_form|attr('extra_field_value'+i.__str__()) %}
+      {% set verified = username|attr('extra_field_verified'+i.__str__()) %}
+
+      {% if loop.first %}
+        {% set label_placeholder = 'Signal' %}
+        {% set value_placeholder = 'signaluser.123' %}
+      {% else %}
+        {% set label_placeholder = '' %}
+        {% set value_placeholder = '' %}
+      {% endif %}
+
+      <div class="input-pair">
+        <div>
+          {{ label.label }}
+          {{ label(placeholder=label_placeholder) }}
+        </div>
+        <div>
+          {{ value.label }}
+          {{ value(placeholder=value_placeholder) }}
+          {% if verified %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+        {% for error in label.errors + value.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <button type="submit" name="update_bio">Update Bio</button>
+</form>

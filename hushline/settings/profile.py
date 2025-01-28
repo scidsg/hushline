@@ -15,15 +15,11 @@ from hushline.model import (
     User,
 )
 from hushline.settings.common import (
+    create_profile_forms,
     form_error,
     handle_display_name_form,
     handle_update_bio,
     handle_update_directory_visibility,
-)
-from hushline.settings.forms import (
-    DirectoryVisibilityForm,
-    DisplayNameForm,
-    ProfileForm,
 )
 
 
@@ -37,21 +33,7 @@ def register_profile_routes(bp: Blueprint) -> None:
         if username is None:
             raise Exception("Username was unexpectedly none")
 
-        display_name_form = DisplayNameForm(display_name=username.display_name)
-        directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=username.show_in_directory
-        )
-        profile_form = ProfileForm(
-            bio=username.bio or "",
-            **{
-                f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
-                for i in range(1, 5)
-            },
-            **{
-                f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
-                for i in range(1, 5)
-            },
-        )
+        display_name_form, directory_visibility_form, profile_form = create_profile_forms(username)
 
         status_code = 200
         if request.method == "POST":

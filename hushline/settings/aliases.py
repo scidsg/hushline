@@ -19,6 +19,7 @@ from hushline.model import (
     Username,
 )
 from hushline.settings.common import (
+    create_profile_forms,
     form_error,
     handle_display_name_form,
     handle_new_alias_form,
@@ -73,11 +74,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             flash("Alias not found.")
             return redirect(url_for(".index"))
 
-        display_name_form = DisplayNameForm()
-        profile_form = ProfileForm()
-        directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=alias.show_in_directory
-        )
+        display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
 
         status_code = 200
         if request.method == "POST":
