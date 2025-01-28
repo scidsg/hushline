@@ -8,6 +8,7 @@ from flask import (
     current_app,
     flash,
     redirect,
+    request,
     session,
     url_for,
 )
@@ -309,3 +310,26 @@ def create_profile_forms(
         },
     )
     return display_name_form, directory_visibility_form, profile_form
+
+
+async def handle_profile_post(
+    display_name_form: DisplayNameForm,
+    directory_visibility_form: DirectoryVisibilityForm,
+    profile_form: ProfileForm,
+    username: Username,
+) -> Response | None:
+    """
+    Handle the POST request for the profile page. Returns None on error.
+    """
+    if display_name_form.submit.name in request.form and display_name_form.validate():
+        return handle_display_name_form(username, display_name_form)
+    elif (
+        directory_visibility_form.submit.name in request.form
+        and directory_visibility_form.validate()
+    ):
+        return handle_update_directory_visibility(username, directory_visibility_form)
+    elif profile_form.submit.name in request.form and profile_form.validate():
+        return await handle_update_bio(username, profile_form)
+
+    form_error()
+    return None

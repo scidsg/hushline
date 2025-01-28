@@ -2,7 +2,6 @@ from typing import Tuple
 
 from flask import (
     Blueprint,
-    current_app,
     flash,
     redirect,
     render_template,
@@ -21,16 +20,11 @@ from hushline.model import (
 from hushline.settings.common import (
     create_profile_forms,
     form_error,
-    handle_display_name_form,
     handle_new_alias_form,
-    handle_update_bio,
-    handle_update_directory_visibility,
+    handle_profile_post,
 )
 from hushline.settings.forms import (
-    DirectoryVisibilityForm,
-    DisplayNameForm,
     NewAliasForm,
-    ProfileForm,
 )
 
 
@@ -78,22 +72,13 @@ def register_aliases_routes(bp: Blueprint) -> None:
 
         status_code = 200
         if request.method == "POST":
-            if "update_bio" in request.form and profile_form.validate_on_submit():
-                return await handle_update_bio(alias, profile_form)
-            elif (
-                "update_directory_visibility" in request.form
-                and directory_visibility_form.validate_on_submit()
-            ):
-                return handle_update_directory_visibility(alias, directory_visibility_form)
-            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
-                return handle_display_name_form(alias, display_name_form)
-            else:
-                status_code = 400
-                current_app.logger.error(
-                    f"Unable to handle form submission on endpoint {request.endpoint!r}, "
-                    f"form fields: {request.form.keys()}"
-                )
-                flash("Uh oh. There was an error handling your data. Please notify the admin.")
+            res = await handle_profile_post(
+                display_name_form, directory_visibility_form, profile_form, alias
+            )
+            if res:
+                return res
+
+            status_code = 400
 
         return render_template(
             "settings/alias.html",

@@ -16,10 +16,7 @@ from hushline.model import (
 )
 from hushline.settings.common import (
     create_profile_forms,
-    form_error,
-    handle_display_name_form,
-    handle_update_bio,
-    handle_update_directory_visibility,
+    handle_profile_post,
 )
 
 
@@ -37,18 +34,13 @@ def register_profile_routes(bp: Blueprint) -> None:
 
         status_code = 200
         if request.method == "POST":
-            if display_name_form.submit.name in request.form and display_name_form.validate():
-                return handle_display_name_form(username, display_name_form)
-            elif (
-                directory_visibility_form.submit.name in request.form
-                and directory_visibility_form.validate()
-            ):
-                return handle_update_directory_visibility(username, directory_visibility_form)
-            elif profile_form.submit.name in request.form and profile_form.validate():
-                return await handle_update_bio(username, profile_form)
-            else:
-                form_error()
-                status_code = 400
+            res = await handle_profile_post(
+                display_name_form, directory_visibility_form, profile_form, username
+            )
+            if res:
+                return res
+
+            status_code = 400
 
         business_tier = Tier.business_tier()
         business_tier_display_price = ""
