@@ -14,7 +14,7 @@ from hushline.model.message_status_text import MessageStatusText
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
-    from hushline.model import FieldValue, User, Username
+    from hushline.model import FieldValue, Username
 else:
     Model = db.Model
 
@@ -47,6 +47,9 @@ class Message(Model):
     # a better coder than me should properly configure this in the future.
     @property
     def status_text(self) -> str | Markup:
+        # Import here to avoid circular imports
+        from hushline.model import User, Username
+
         if status_text := db.session.scalars(
             db.select(MessageStatusText)
             .join(User, User.id == MessageStatusText.user_id)
