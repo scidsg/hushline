@@ -106,42 +106,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Add the content column back to messages
-    op.add_column("messages", sa.Column("content", sa.Text))
-
-    # Fetch all field values for messages' content
-    connection = op.get_bind()
-
-    field_values_result = connection.execute(
-        sa.text(
-            """
-            SELECT field_values.message_id, field_values._value
-            FROM field_values
-            JOIN field_definitions ON field_values.field_definition_id = field_definitions.id
-            WHERE field_definitions.label = 'Message'
-            """
-        )
-    )
-    print(f"Found {field_values_result.rowcount} field values to update")
-
-    # Update messages with the content from field_values
-    for field_value_row in field_values_result:
-        message_id = field_value_row[0]
-        message_content = field_value_row[1]
-
-        connection.execute(
-            sa.text(
-                f"""
-                UPDATE messages
-                SET content = '{message_content}'
-                WHERE id = {message_id}
-                """
-            )
-        )
-
-    # Drop the field_values and field_definitions tables
-    op.drop_table("field_values")
-    op.drop_table("field_definitions")
-
-    # Drop the fieldtype enum type
-    fieldtype_enum.drop(op.get_bind(), checkfirst=False)
+    raise NotImplementedError("There's no going back.")
