@@ -296,13 +296,6 @@ These configs are needed for the web app.
       <td>Whether or not new user registrations require invite codes.</td>
     </tr>
     <tr>
-      <td><code>REQUIRE_PGP</code></td>
-      <td>false</td>
-      <td>boolean</td>
-      <td><code>false</code></td>
-      <td>Whether users are required to use PGP to receive messages.</td>
-    </tr>
-    <tr>
       <td><code>SECRET_KEY</code></td>
       <td>true</td>
       <td>string</td>

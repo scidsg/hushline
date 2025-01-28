@@ -209,6 +209,9 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
+    user.pgp_key = None
+    db.session.commit()
+
     response = client.post(
         url_for("settings.email"),
         # for some reason using the Form class doesn't work here. why? fuck if i know.
