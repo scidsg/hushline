@@ -44,31 +44,57 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let encryptionSuccessful = true;
 
+  function getFieldValue(field) {
+    if (
+      field.tagName === "INPUT" ||
+      field.tagName === "SELECT" ||
+      field.tagName === "TEXTAREA"
+    ) {
+      return field.value;
+    } else if (field.tagName === "UL") {
+      const checkedValues = [];
+      field
+        .querySelectorAll(
+          "input[type='checkbox']:checked, input[type='radio']:checked",
+        )
+        .forEach((input) => {
+          checkedValues.push(input.value);
+        });
+      return checkedValues.join(", ");
+    }
+  }
+
+  function getFieldLabel(field) {
+    return field.getAttribute("data-label");
+  }
+
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
+    // Build an email body with all fields
+    let emailBody = '';
+    document.querySelectorAll(".form-field").forEach(async (field) => {
+      const value = getFieldValue(field);
+      const label = getFieldLabel(field);
+
+      emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
+    });
+    const paddedEmailBody = addSpacePadding(emailBody);
+    const encryptedEmailBody = await encryptMessage(
+      publicKeyArmored,
+      paddedEmailBody,
+    );
+    if(encryptedEmailBody) {
+      const emailBodyEl = document.getElementById("email_body");
+      emailBodyEl.value = encryptedEmailBody;
+    } else {
+      encryptionSuccessful = false;
+      console.error("Client-side encryption failed for email body");
+    }
+
     // Loop through all encrypted fields and encrypt them
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
-      // Get the value
-      let value = "";
-      if (
-        field.tagName === "INPUT" ||
-        field.tagName === "SELECT" ||
-        field.tagName === "TEXTAREA"
-      ) {
-        value = field.value;
-      } else if (field.tagName === "UL") {
-        const checkedValues = [];
-        field
-          .querySelectorAll(
-            "input[type='checkbox']:checked, input[type='radio']:checked",
-          )
-          .forEach((input) => {
-            checkedValues.push(input.value);
-          });
-        value = checkedValues.join(", ");
-      }
-
+      const value = getFieldValue(field);
       console.log("Encrypting field:", field, value);
 
       const paddedValue = addSpacePadding(value);

@@ -127,9 +127,9 @@
               {{ form[data['name']](id=data['name'], disabled='disabled') }}
             {% else %}
               {% if data['field'].encrypted %}
-                {{ form[data['name']](id=data['name'], class='encrypted-field') }}
+                {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
               {% else %}
-                {{ form[data['name']](id=data['name']) }}
+                {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
               {% endif %}
             {% endif %}
           </div>
