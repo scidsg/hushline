@@ -89,9 +89,9 @@ document.addEventListener("DOMContentLoaded", function () {
       choiceItem.classList.add("choice-item");
       choiceItem.innerHTML = `
                 <input type="text" name="${inputName}" id="${inputId}" />
-                <button type="button" class="move-up-choice">↑</button>
-                <button type="button" class="move-down-choice">↓</button>
-                <button type="button" class="remove-choice">Remove</button>
+                <button type="button" class="move-up-choice">Move Up</button>
+                <button type="button" class="move-down-choice">Move Down</button>
+                <button type="button" class="remove-choice  btn-danger">Remove</button>
             `;
       choicesContainer.appendChild(choiceItem);
       bindChoiceButtons(choiceItem);

@@ -2998,12 +2998,11 @@ strong {
 }
 
 .fields .choices-container {
-  margin-left: 2em;
-  margin-bottom: 0.5em;
+  margin: 0 0 1rem 0;
 }
 
 .fields .choices-container button {
-  font-size: 0.8em;
+  margin-top: 0;
 }
 
 .fields input[type="checkbox"],
@@ -3060,4 +3059,12 @@ strong {
 
 .field-form-toggle {
   align-items: center;
+}
+
+.choice-item button {
+  margin-bottom: 1rem;
+}
+
+.fields .choices-container .add-choice {
+  margin-top: .25rem;
 }
