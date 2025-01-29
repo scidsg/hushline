@@ -3084,7 +3084,7 @@ label + p.meta {
   max-width: fit-content;
   width: 100%;
   margin: 0;
-  margin-left: .5rem;
+  margin-left: 0.5rem;
 }
 
 .label {
@@ -3110,7 +3110,7 @@ input[type="radio"] + label {
 
 .field-group ul,
 .field-group ol {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 ul + p.meta {
