@@ -105,66 +105,66 @@
     {% endfor %}
   </div>
   <button type="submit" name="update_bio">Update Bio</button>
+</form>
 
-  <div class="fields">
-    <h4>Message Fields</h4>
-      <p>
-        By default, when someone visits your profile they will see a form with two fields, an optional contact 
-        method field and a message field.
-      </p>
-      <p>
-        When you define custom fields below, the message field will still appear but the contact method field 
-        will be replaced with the custom fields you define. You can make fields required or optional, and encrypted
-        or unencrypted. You <strong>(and your hosting provider)</strong> will be able to see the values of 
-        unencrypted fields. You'll need to decrypt encrypted fields with your PGP key.
-      </p>
+<div class="fields">
+  <h4>Message Fields</h4>
+    <p>
+      By default, when someone visits your profile they will see a form with two fields, an optional contact 
+      method field and a message field.
+    </p>
+    <p>
+      When you define custom fields below, the message field will still appear but the contact method field 
+      will be replaced with the custom fields you define. You can make fields required or optional, and encrypted
+      or unencrypted. You <strong>(and your hosting provider)</strong> will be able to see the values of 
+      unencrypted fields. You'll need to decrypt encrypted fields with your PGP key.
+    </p>
 
-      <!-- Fields -->
-      {% for field_form in field_forms %}
-        <div class="field-form field-form-{{ field_form.id.data }}">
-          <h5 class="field-form-toggle">
-            <span class="field-form-arrow"></span>
-            <div class="field-form-label-container">
-              <div>
-                Field {{ loop.index }}
-                {% if not field_form.enabled.data %}
-                  <span class="label-meta">disabled</span>
-                {% endif %}
-                {% if not field_form.encrypted.data %}
-                  <span class="label-meta">not encrypted</span>
-                {% endif %}
-                {% if field_form.required.data %}
-                  <span class="label-meta">required</span>
-                {% endif %}
-              </div>
-              <div class="field-form-label">{{ field_form.label.data }}</div>
-            </div>
-          </h5>
-          <div class="field-form-content">
-            {% with %}
-              {% set is_first=(loop.index == 1) %}
-              {% set is_last=(loop.index == field_forms|length) %}
-              {% set is_new_field=False %}
-              {% include "settings/profile-field-form.html" %}
-            {% endwith %}
-          </div>
-        </div>
-      {% endfor %}
-
-      <!-- Add field -->
-      <div class="field-form field-form-new">
+    <!-- Fields -->
+    {% for field_form in field_forms %}
+      <div class="field-form field-form-{{ field_form.id.data }}">
         <h5 class="field-form-toggle">
           <span class="field-form-arrow"></span>
-          Add Field
+          <div class="field-form-label-container">
+            <div>
+              Field {{ loop.index }}
+              {% if not field_form.enabled.data %}
+                <span class="label-meta">disabled</span>
+              {% endif %}
+              {% if not field_form.encrypted.data %}
+                <span class="label-meta">not encrypted</span>
+              {% endif %}
+              {% if field_form.required.data %}
+                <span class="label-meta">required</span>
+              {% endif %}
+            </div>
+            <div class="field-form-label">{{ field_form.label.data }}</div>
+          </div>
         </h5>
         <div class="field-form-content">
           {% with %}
-            {% set field_form=new_field_form %}
-            {% set is_new_field=True %}
+            {% set is_first=(loop.index == 1) %}
+            {% set is_last=(loop.index == field_forms|length) %}
+            {% set is_new_field=False %}
             {% include "settings/profile-field-form.html" %}
           {% endwith %}
         </div>
       </div>
+    {% endfor %}
+
+    <!-- Add field -->
+    <div class="field-form field-form-new">
+      <h5 class="field-form-toggle">
+        <span class="field-form-arrow"></span>
+        Add Field
+      </h5>
+      <div class="field-form-content">
+        {% with %}
+          {% set field_form=new_field_form %}
+          {% set is_new_field=True %}
+          {% include "settings/profile-field-form.html" %}
+        {% endwith %}
+      </div>
     </div>
-  </div>  
-</form>
+  </div>
+</div>
