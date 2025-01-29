@@ -70,6 +70,12 @@ class DynamicMessageForm:
                 StringField("Contact Method", validators=[Optional(), Length(max=255)]),
             )
 
+        # Custom validator to skip choice validation while keeping other validations
+        def skip_invalid_choice(
+            form: FlaskForm, field: RadioField | SelectField | MultiCheckboxField
+        ) -> None:
+            field.errors = [error for error in field.errors if error != "Not a valid choice."]
+
         # Add the fields to the form
         for i, field in enumerate(fields):
             # Skip disabled fields
@@ -92,6 +98,13 @@ class DynamicMessageForm:
             else:
                 validators.append(Length(max=1024))
 
+            # If it's an encrypted choice field, skip validating the PGP-encrypted choices
+            if field.encrypted and field.field_type in (
+                FieldType.CHOICE_SINGLE,
+                FieldType.CHOICE_MULTIPLE,
+            ):
+                validators.append(skip_invalid_choice)
+
             # Add the field to the form
             name = f"field_{i}"
             if field.field_type == FieldType.TEXT:
@@ -100,7 +113,7 @@ class DynamicMessageForm:
                 setattr(self.F, name, TextAreaField(field.label, validators=validators))
             elif field.field_type == FieldType.CHOICE_SINGLE:
                 # Decide if we want radio buttons or dropdown depending on the number of choices
-                field_type = RadioField if len(field.choices) < 3 else SelectField  # noqa: PLR2004
+                field_type = RadioField if len(field.choices) <= 3 else SelectField  # noqa: PLR2004
                 setattr(
                     self.F,
                     name,

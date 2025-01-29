@@ -81,6 +81,8 @@ def register_profile_routes(app: Flask) -> None:
         dynamic_form = DynamicMessageForm(uname.message_fields)
         form = dynamic_form.form()
 
+        current_app.logger.debug(f"Form submitted: {form.data}")
+
         if form.validate_on_submit():
             if not uname.user.pgp_key:
                 flash("⛔️ You cannot submit messages to users who have not set a PGP key.", "error")
@@ -131,6 +133,7 @@ def register_profile_routes(app: Flask) -> None:
                 field_def = dynamic_form.field_from_name(field)
                 label = field_def.label if field_def else "unknown"
                 errors.append(f"{label}: {error}")
+                current_app.logger.debug(f"Error in field {field}: {error}")
 
         error_message = "⛔️ There was an error submitting your message: " + "; ".join(errors)
         flash(error_message, "error")

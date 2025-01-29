@@ -62,7 +62,11 @@ class FieldValue(Model):
         return decrypt_field(self._value)
 
     @value.setter
-    def value(self, value: str) -> None:
+    def value(self, value: str | list[str]) -> None:
+        # Is value is a list, join it into a single string separated by newlines
+        if isinstance(value, list):
+            value = "\n".join(value)
+
         if self.encrypted and not self.client_side_encrypted:
             # Encrypt with PGP
 
