@@ -50,6 +50,25 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // Hide required checkbox when the field type is multiple choice
+  function updateRequiredVisibility(fieldType) {
+    const requiredCheckboxContainer = fieldType.parentElement.parentElement.querySelector(`.required-checkbox-container`);
+    const requiredCheckbox = fieldType.parentElement.parentElement.querySelector(`.required-checkbox`);
+    if (fieldType.value === "choice_multiple") {
+      requiredCheckbox.checked = false;
+      requiredCheckboxContainer.style.display = "none";
+    } else {
+      requiredCheckboxContainer.style.display = "block";
+    }
+  }
+  document.querySelectorAll(".field-form").forEach(function (fieldForm) {
+    const fieldType = fieldForm.querySelector(".field-type");
+    updateRequiredVisibility(fieldType);
+    fieldType.addEventListener("change", function () {
+      updateRequiredVisibility(fieldType);
+    });
+  });
+
   // Add choice
   document.querySelectorAll(".add-choice").forEach(function (addButton) {
     addButton.addEventListener("click", function () {

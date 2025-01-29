@@ -40,8 +40,8 @@
         {{ field_form.encrypted.label(for='encrypted-' ~ field_form.id.data) }}
     </div>
 
-    <div class="field-checkbox">
-        {{ field_form.required(id='required-' ~ field_form.id.data) }}
+    <div class="field-checkbox required-checkbox-container">
+        {{ field_form.required(id='required-' ~ field_form.id.data, class='required-checkbox') }}
         {{ field_form.required.label(for='required-' ~ field_form.id.data) }}
     </div>
 
