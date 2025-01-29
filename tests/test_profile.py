@@ -25,6 +25,7 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         return captcha_answer
 
 
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_header(client: FlaskClient, user: User) -> None:
     assert (
         db.session.scalars(
@@ -58,6 +59,7 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     response = client.post(
         url_for("profile", username=user.primary_username.username),
@@ -85,6 +87,7 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message_to_alias(
     client: FlaskClient, user: User, user_alias: Username
 ) -> None:
