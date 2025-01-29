@@ -54,13 +54,13 @@
             {{ field_form.submit }}
         {% else %}
             {{ field_form.update }}
-            {{ field_form.delete }}
             {% if not is_first %}
                 {{ field_form.move_up }}
             {% endif %}
             {% if not is_last %}
                 {{ field_form.move_down }}
             {% endif %}
+            {{ field_form.delete }}
         {% endif %}
     </div>
 </form>

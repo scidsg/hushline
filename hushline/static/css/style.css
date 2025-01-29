@@ -3054,7 +3054,7 @@ strong {
   height: 1.25rem;
   background-size: contain;
   background-repeat: no-repeat;
-  margin-right: .5rem;
+  margin-right: 0.5rem;
 }
 
 .field-form-toggle {
@@ -3066,5 +3066,13 @@ strong {
 }
 
 .fields .choices-container .add-choice {
-  margin-top: .25rem;
+  margin-top: 0.25rem;
+}
+
+.field-form-content .field-checkbox input {
+  margin-bottom: 0.5rem;
+}
+
+#add_field {
+  margin-top: 1rem;
 }
