@@ -18,8 +18,10 @@ from hushline.model import (
     Username,
 )
 from hushline.settings.common import (
+    build_field_forms,
     create_profile_forms,
     form_error,
+    handle_field_post,
     handle_new_alias_form,
     handle_profile_post,
 )
@@ -69,6 +71,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             return redirect(url_for(".index"))
 
         display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
+        field_forms, new_field_form = build_field_forms(alias)
 
         status_code = 200
         if request.method == "POST":
@@ -87,4 +90,27 @@ def register_aliases_routes(bp: Blueprint) -> None:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
         ), status_code
+
+    @bp.route("/alias/<int:username_id>/fields", methods=["GET", "POST"])
+    @authentication_required
+    def alias_fields(username_id: int) -> Response | Tuple[str, int]:
+        alias = db.session.scalars(
+            db.select(Username).filter_by(
+                id=username_id, user_id=session["user_id"], is_primary=False
+            )
+        ).one_or_none()
+        if not alias:
+            flash("Alias not found.")
+            return redirect(url_for(".index"))
+
+        alias.create_default_field_defs()
+
+        if request.method == "POST":
+            res = handle_field_post(alias)
+            if res:
+                return res
+
+        return redirect(url_for(".alias", username_id=alias.id))

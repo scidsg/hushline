@@ -2964,27 +2964,27 @@ strong {
   float: right;
 }
 
-.settings-content .fields .field-form-toggle {
+.fields .field-form-toggle {
   display: flex;
   cursor: pointer;
 }
 
-.settings-content .fields .field-form-arrow {
+.fields .field-form-arrow {
   margin-right: 10px;
 }
 
-.settings-content .fields .field-form-label-container {
+.fields .field-form-label-container {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
 
-.settings-content .fields .field-form-label {
+.fields .field-form-label {
   font-family: var(--font-sans);
   font-size: 0.875em;
 }
 
-.settings-content .fields .field-form-label-container .label-meta {
+.fields .field-form-label-container .label-meta {
   font-size: 0.8em;
   font-style: italic;
   opacity: 0.5;
@@ -2992,23 +2992,23 @@ strong {
   font-family: var(--font-sans);
 }
 
-.settings-content .fields .field-form-content {
+.fields .field-form-content {
   display: none;
   margin-left: 27px;
 }
 
-.settings-content .fields .choices-container {
+.fields .choices-container {
   margin-left: 2em;
   margin-bottom: 0.5em;
 }
 
-.settings-content .fields .choices-container button {
+.fields .choices-container button {
   font-size: 0.8em;
 }
 
-.settings-content .fields input[type="checkbox"],
-.settings-content .fields input[type="radio"],
-.settings-content .fields label {
+.fields input[type="checkbox"],
+.fields input[type="radio"],
+.fields label {
   display: inline;
   width: auto;
 }

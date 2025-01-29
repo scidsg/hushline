@@ -2,9 +2,11 @@ from typing import Tuple
 
 from flask import (
     Blueprint,
+    redirect,
     render_template,
     request,
     session,
+    url_for,
 )
 from werkzeug.wrappers.response import Response
 
@@ -15,7 +17,9 @@ from hushline.model import (
     User,
 )
 from hushline.settings.common import (
+    build_field_forms,
     create_profile_forms,
+    handle_field_post,
     handle_profile_post,
 )
 
@@ -31,6 +35,7 @@ def register_profile_routes(bp: Blueprint) -> None:
             raise Exception("Username was unexpectedly none")
 
         display_name_form, directory_visibility_form, profile_form = create_profile_forms(username)
+        field_forms, new_field_form = build_field_forms(username)
 
         status_code = 200
         if request.method == "POST":
@@ -58,5 +63,25 @@ def register_profile_routes(bp: Blueprint) -> None:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
             business_tier_display_price=business_tier_display_price,
         ), status_code
+
+    @bp.route("/profile/fields", methods=["GET", "POST"])
+    @authentication_required
+    def profile_fields() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        username = user.primary_username
+
+        if username is None:
+            raise Exception("Username not found")
+
+        username.create_default_field_defs()
+
+        if request.method == "POST":
+            res = handle_field_post(username)
+            if res:
+                return res
+
+        return redirect(url_for(".profile"))

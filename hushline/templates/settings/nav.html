@@ -9,7 +9,6 @@
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.email', 'Email & Encryption', True),
       ('settings.replies', 'Message Replies', user.pgp_key is not none),
-      ('settings.fields', 'Message Fields', True),
       ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.admin', 'Admin', user.is_admin),
       ('settings.advanced', 'Advanced', True)

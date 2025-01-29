@@ -1,4 +1,12 @@
-<form method="POST" class="formBody">
+<form
+    method="POST"
+    class="formBody"
+    {% if is_alias %}
+        action="{{ url_for('.alias_fields', username_id=alias.id) }}"
+    {% else %}
+        action="{{ url_for('.profile_fields') }}"
+    {%endif%}
+>
     {{ field_form.hidden_tag() }}
 
     <div>

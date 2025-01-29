@@ -9,7 +9,6 @@ from hushline.settings.auth import register_auth_routes
 from hushline.settings.branding import register_branding_routes
 from hushline.settings.delete_account import register_delete_account_routes
 from hushline.settings.email import register_email_routes
-from hushline.settings.fields import register_fields_routes
 from hushline.settings.forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -56,6 +55,5 @@ def create_blueprint() -> Blueprint:
     register_2fa_routes(bp)
     register_proton_routes(bp)
     register_delete_account_routes(bp)
-    register_fields_routes(bp)
 
     return bp
