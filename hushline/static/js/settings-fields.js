@@ -1,15 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const arrowClosed = "➤";
-  const arrowOpen = "⮟";
-
   // All field forms start closed
   document
     .querySelectorAll(".field-form-content")
     .forEach(function (fieldContent) {
       fieldContent.style.display = "none";
     });
-  document.querySelectorAll(".field-form-arrow").forEach(function (fieldArrow) {
-    fieldArrow.textContent = arrowClosed;
+
+  // Ensure chevrons start unrotated
+  document.querySelectorAll(".icon.chevron").forEach(function (chevron) {
+    chevron.style.transition = "transform 0.2s ease";
   });
 
   // Toggle field forms
@@ -18,16 +17,16 @@ document.addEventListener("DOMContentLoaded", function () {
     .forEach(function (fieldToggle) {
       fieldToggle.addEventListener("click", function () {
         const fieldContent = fieldToggle.parentElement.querySelector(
-          ".field-form-content",
+          ".field-form-content"
         );
-        const fieldArrow = fieldToggle.querySelector(".field-form-arrow");
+        const chevron = fieldToggle.querySelector(".icon.chevron");
 
-        if (fieldContent.style.display === "none") {
+        if (fieldContent.style.display === "none" || !fieldContent.style.display) {
           fieldContent.style.display = "block";
-          fieldArrow.textContent = arrowOpen;
+          chevron.style.transform = "rotate(90deg)"; // Open state
         } else {
           fieldContent.style.display = "none";
-          fieldArrow.textContent = arrowClosed;
+          chevron.style.transform = "rotate(0deg)"; // Closed state
         }
       });
     });
