@@ -3062,7 +3062,8 @@ strong {
   margin-left: 0;
 }
 
-.field-group ul li input[type="checkbox"] {
+.field-group ul li input[type="checkbox"],
+.field-group ul li input[type="radio"] {
   margin-left: 0;
 }
 
@@ -3099,4 +3100,9 @@ label + p.meta {
 #messageForm .helper {
   margin-top: 0;
   margin-bottom: 1rem;
+}
+
+input[type="checkbox"] + label,
+input[type="radio"] + label {
+  font-family: var(--font-sans);
 }
