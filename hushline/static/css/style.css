@@ -3081,7 +3081,8 @@ strong {
 }
 
 label + p.meta {
-  width: fit-content;
+  max-width: fit-content;
+  width: 100%;
   margin: 0;
   margin-left: .5rem;
 }
@@ -3089,7 +3090,7 @@ label + p.meta {
 .label {
   display: flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: last baseline;
   margin-bottom: 0.5rem;
 }
 
@@ -3105,4 +3106,13 @@ label + p.meta {
 input[type="checkbox"] + label,
 input[type="radio"] + label {
   font-family: var(--font-sans);
+}
+
+.field-group ul,
+.field-group ol {
+  margin-bottom: .5rem;
+}
+
+ul + p.meta {
+  margin-top: 0rem;
 }

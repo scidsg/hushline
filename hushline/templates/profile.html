@@ -113,8 +113,8 @@
         <div class="field-group">
           <div class="label">
             {{ form[data['name']].label(for=data['name']) }}
-            {% if not data['field'].required %}
-              <p class="meta">Optional</p>
+            {% if data['field'].required %}
+              <p class="meta">Required</p>
             {% endif %}
           </div>
           <div>

@@ -293,7 +293,7 @@ class FieldChoiceForm(Form):
 
 class FieldForm(FlaskForm):
     id = HiddenField()
-    label = StringField("Label", validators=[DataRequired(), Length(max=50)])
+    label = StringField("Label", validators=[DataRequired(), Length(max=500)])
     field_type = SelectField(
         "Field Type",
         choices=[(field_type.value, field_type.label()) for field_type in FieldType],
