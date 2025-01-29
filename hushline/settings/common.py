@@ -194,6 +194,9 @@ def handle_new_alias_form(user: User, new_alias_form: NewAliasForm) -> Optional[
         return None
     else:
         flash("👍 Alias created successfully.")
+
+    uname.create_default_field_defs()
+
     return redirect_to_self()
 
 

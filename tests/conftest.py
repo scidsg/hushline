@@ -283,6 +283,8 @@ def user_alias(app: Flask, user: User) -> Username:
     db.session.add(username)
     db.session.commit()
 
+    username.create_default_field_defs()
+
     return username
 
 
