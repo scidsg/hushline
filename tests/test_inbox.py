@@ -7,6 +7,7 @@ from hushline.model import FieldValue, Message, User, Username
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_delete_own_message(client: FlaskClient, user: User) -> None:
     # Create a message for the authenticated user
     message = Message(username_id=user.primary_username.id)
