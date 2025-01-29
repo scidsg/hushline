@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
       choicesContainer.appendChild(choiceItem);
       bindChoiceButtons(choiceItem);
+      updateChoiceIndexes(choiceItem.parentNode);
     });
   });
 
@@ -105,6 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const previous = choiceItem.previousElementSibling;
       if (previous) {
         choiceItem.parentNode.insertBefore(choiceItem, previous);
+        updateChoiceIndexes(choiceItem.parentNode);
       }
     });
 
@@ -112,12 +114,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const next = choiceItem.nextElementSibling;
       if (next) {
         choiceItem.parentNode.insertBefore(next, choiceItem);
+        updateChoiceIndexes(choiceItem.parentNode);
       }
     });
 
     removeButton.addEventListener("click", function () {
       choiceItem.parentNode.removeChild(choiceItem);
-      // Update the names and ids of remaining choice items
       updateChoiceIndexes(choiceItem.parentNode);
     });
   }
@@ -132,9 +134,14 @@ document.addEventListener("DOMContentLoaded", function () {
     choicesContainer
       .querySelectorAll(".choice-item")
       .forEach(function (choiceItem, index) {
+        const label = choiceItem.querySelector("label");
         const input = choiceItem.querySelector("input[type='text']");
+        label.htmlFor = `choices-${index}-choice`;
         input.name = `choices-${index}-choice`;
         input.id = `choices-${index}-choice`;
       });
   }
+  document.querySelectorAll('.choices-container').forEach(function (choicesContainer) {
+    updateChoiceIndexes(choicesContainer);
+  });
 });
