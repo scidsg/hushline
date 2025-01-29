@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     // Build an email body with all fields
-    let emailBody = '';
+    let emailBody = "";
     document.querySelectorAll(".form-field").forEach(async (field) => {
       const value = getFieldValue(field);
       const label = getFieldLabel(field);
@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
       publicKeyArmored,
       emailBody,
     );
-    if(encryptedEmailBody) {
+    if (encryptedEmailBody) {
       const emailBodyEl = document.getElementById("email_body");
       emailBodyEl.value = encryptedEmailBody;
     } else {

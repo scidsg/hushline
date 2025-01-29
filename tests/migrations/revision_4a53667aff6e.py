@@ -138,6 +138,7 @@ class DowngradeTester:
     """
     Downgrade is not implemented.
     """
+
     def load_data(self) -> None:
         pass
 

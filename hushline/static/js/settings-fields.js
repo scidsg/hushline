@@ -52,8 +52,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Hide required checkbox when the field type is multiple choice
   function updateRequiredVisibility(fieldType) {
-    const requiredCheckboxContainer = fieldType.parentElement.parentElement.querySelector(`.required-checkbox-container`);
-    const requiredCheckbox = fieldType.parentElement.parentElement.querySelector(`.required-checkbox`);
+    const requiredCheckboxContainer =
+      fieldType.parentElement.parentElement.querySelector(
+        `.required-checkbox-container`,
+      );
+    const requiredCheckbox =
+      fieldType.parentElement.parentElement.querySelector(`.required-checkbox`);
     if (fieldType.value === "choice_multiple") {
       requiredCheckbox.checked = false;
       requiredCheckboxContainer.style.display = "none";
@@ -141,7 +145,9 @@ document.addEventListener("DOMContentLoaded", function () {
         input.id = `choices-${index}-choice`;
       });
   }
-  document.querySelectorAll('.choices-container').forEach(function (choicesContainer) {
-    updateChoiceIndexes(choicesContainer);
-  });
+  document
+    .querySelectorAll(".choices-container")
+    .forEach(function (choicesContainer) {
+      updateChoiceIndexes(choicesContainer);
+    });
 });
