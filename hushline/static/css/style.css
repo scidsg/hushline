@@ -3025,28 +3025,15 @@ strong {
 }
 
 #messageForm .field-group {
-  padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#messageForm .field-group .label {
-  margin-bottom: 0.5rem;
 }
 
 #messageForm .field-group input,
 #messageForm .field-group textarea,
 #messageForm .field-group select {
   margin-bottom: 0;
-}
-
-#messageForm .field-group .meta {
-  margin-left: 0.5rem;
-  font-size: 0.8125rem;
-  line-height: 1;
-  font-style: italic;
-  opacity: 0.8;
 }
 
 .field-form-toggle .icon {
@@ -3078,10 +3065,32 @@ strong {
 }
 
 .checkbox-group-settings {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 .checkbox-group-settings .group-label {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
   font-family: var(--font-sans-bold);
+}
+
+label + p.meta {
+  width: fit-content;
+  margin: 0;
+  margin-left: .5rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.label label {
+  margin-bottom: 0;
+}
+
+#messageForm .helper {
+  margin-top: 0;
+  margin-bottom: 1rem;
 }

@@ -107,19 +107,53 @@
     {% if user.pgp_key %}
       {{ form.hidden_tag() }}
     {% endif %}
+
+    {% if current_user_id == user.id %}
+        {% if user.pgp_key %}
+          <p class="helper meta">
+            🔒 Encrypted fields will be only readable by you.
+          </p>
+        {% else %}
+          <p class="helper meta">
+            ⚠️ Your messages will NOT be encrypted. If you expect messages to
+            contain sensitive information, please
+            <a
+              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >add a public PGP key</a
+            >.
+          </p>
+        {% endif %}
+      {% else %}
+        {% if user.pgp_key %}
+          <p class="helper meta">
+            🔒 Encrypted fields will be only readable by
+            {{ display_name_or_username }}.
+          </p>
+        {% else %}
+          <p class="helper meta">
+            ⚠️ Your message will NOT be encrypted. If this message is sensitive,
+            ask {{ display_name_or_username }} to add a public PGP key.
+            <a
+              href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Here's how they can do it</a
+            >.
+          </p>
+        {% endif %}
+      {% endif %}
     
     {% for data in field_data %}
       {% if data['field'].enabled %}
         <div class="field-group">
           <div class="label">
             {{ form[data['name']].label(for=data['name']) }}
-            {% if data['field'].encrypted %}
-              <span class="meta">🔒 encrypted</span>
-            {% endif %}
             {% if data['field'].required %}
-              <span class="meta">required</span>
+              <p class="meta">Required</p>
             {% else %}
-              <span class="meta">optional</span>
+              <p class="meta">Optional</p>
             {% endif %}
           </div>
           <div>
@@ -128,8 +162,14 @@
             {% else %}
               {% if data['field'].encrypted %}
                 {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
+                {% if data['field'].encrypted %}
+                  <p class="meta">🔒 Encrypted</p>
+                {% endif %}
               {% else %}
                 {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
+                {% if data['field'].encrypted %}
+                  <p class="meta">🔒 Encrypted</p>
+                {% endif %}
               {% endif %}
             {% endif %}
           </div>
@@ -146,43 +186,6 @@
       id="clientSideEncrypted"
       value="false"
     />
-
-    {% if current_user_id == user.id %}
-      {% if user.pgp_key %}
-        <p class="helper meta">
-          🔒 Encrypted fields will be only readable by you.
-        </p>
-      {% else %}
-        <p class="helper meta">
-          ⚠️ Your messages will NOT be encrypted. If you expect messages to
-          contain sensitive information, please
-          <a
-            href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            >add a public PGP key</a
-          >.
-        </p>
-      {% endif %}
-    {% else %}
-      {% if user.pgp_key %}
-        <p class="helper meta">
-          🔒 Encrypted fields will be only readable by
-          {{ display_name_or_username }}.
-        </p>
-      {% else %}
-        <p class="helper meta">
-          ⚠️ Your message will NOT be encrypted. If this message is sensitive,
-          ask {{ display_name_or_username }} to add a public PGP key.
-          <a
-            href="https://github.com/scidsg/hushline/blob/main/docs/1-getting-started.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Here's how they can do it</a
-          >.
-        </p>
-      {% endif %}
-    {% endif %}
 
     {% if user.pgp_key %}
       <!-- Math CAPTCHA -->
