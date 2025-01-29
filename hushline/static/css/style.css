@@ -3022,6 +3022,7 @@ strong {
 #messageForm ul {
   list-style: none;
   padding: 0;
+  margin-top: 0;
 }
 
 #messageForm .field-group {
@@ -3058,6 +3059,11 @@ strong {
 
 .field-form-content .field-checkbox input {
   margin-bottom: 0.5rem;
+  margin-left: 0;
+}
+
+.field-group ul li input[type="checkbox"] {
+  margin-left: 0;
 }
 
 #add_field {
