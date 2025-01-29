@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    HiddenField,
     PasswordField,
     RadioField,
     SelectField,
@@ -62,13 +63,12 @@ class DynamicMessageForm:
 
         self.F = F
 
-        # If there are no fields, add the default contact method field
-        if len(fields) == 0:
-            setattr(
-                self.F,
-                "contact_method",
-                StringField("Contact Method", validators=[Optional(), Length(max=255)]),
-            )
+        # Add email body hidden field
+        setattr(
+            self.F,
+            "email_body",
+            HiddenField("Email Body", validators=[Optional(), Length(max=10240 * len(fields))]),
+        )
 
         # Custom validator to skip choice validation while keeping other validations
         def skip_invalid_choice(
