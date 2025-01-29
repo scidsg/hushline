@@ -79,10 +79,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
     });
-    const paddedEmailBody = addSpacePadding(emailBody);
     const encryptedEmailBody = await encryptMessage(
       publicKeyArmored,
-      paddedEmailBody,
+      emailBody,
     );
     if(encryptedEmailBody) {
       const emailBodyEl = document.getElementById("email_body");
