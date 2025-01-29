@@ -19,7 +19,7 @@ depends_on = None
 
 
 fieldtype_enum = sa.Enum(
-    "text", "multiline_text", "choice_single", "choice_multiple", name="fieldtype"
+    "TEXT", "MULTILINE_TEXT", "CHOICE_SINGLE", "CHOICE_MULTIPLE", name="fieldtype"
 )
 
 
@@ -69,8 +69,8 @@ def upgrade() -> None:
                     required, enabled, encrypted, choices, sort_order
                 )
                 VALUES
-                    ({username_id}, 'Contact Method', 'text', false, true, true, '[]', 0),
-                    ({username_id}, 'Message', 'multiline_text', true, true, false, '[]', 1)
+                    ({username_id}, 'Contact Method', 'TEXT', false, true, true, '[]', 0),
+                    ({username_id}, 'Message', 'MULTILINE_TEXT', true, true, false, '[]', 1)
                 RETURNING id
                 """
             )
