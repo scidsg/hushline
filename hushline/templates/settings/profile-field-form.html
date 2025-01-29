@@ -9,6 +9,22 @@
 >
     {{ field_form.hidden_tag() }}
 
+    <div class="checkbox-group-settings">
+        <p class="group-label">Field Options</p>
+        <div class="field-checkbox">
+            {{ field_form.encrypted(id='encrypted-' ~ field_form.id.data) }}
+            {{ field_form.encrypted.label(for='encrypted-' ~ field_form.id.data) }}
+        </div>
+        <div class="field-checkbox required-checkbox-container">
+            {{ field_form.required(id='required-' ~ field_form.id.data, class='required-checkbox') }}
+            {{ field_form.required.label(for='required-' ~ field_form.id.data) }}
+        </div>
+        <div class="field-checkbox">
+            {{ field_form.enabled(id='enabled-' ~ field_form.id.data) }}
+            {{ field_form.enabled.label(for='enabled-' ~ field_form.id.data) }}
+        </div>
+    </div>
+
     <div>
         {{ field_form.label.label(for='label-' ~ field_form.id.data) }}
         {{ field_form.label(id='label-' ~ field_form.id.data, placeholder='Field label') }}
@@ -32,21 +48,6 @@
             {% endfor %}
         </div>
         <button type="button" class="add-choice" data-field-id="{{ field_form.id.data }}">Add Choice</button>
-    </div>
-
-    <div class="field-checkbox">
-        {{ field_form.encrypted(id='encrypted-' ~ field_form.id.data) }}
-        {{ field_form.encrypted.label(for='encrypted-' ~ field_form.id.data) }}
-    </div>
-
-    <div class="field-checkbox required-checkbox-container">
-        {{ field_form.required(id='required-' ~ field_form.id.data, class='required-checkbox') }}
-        {{ field_form.required.label(for='required-' ~ field_form.id.data) }}
-    </div>
-
-    <div class="field-checkbox">
-        {{ field_form.enabled(id='enabled-' ~ field_form.id.data) }}
-        {{ field_form.enabled.label(for='enabled-' ~ field_form.id.data) }}
     </div>
 
     <div>

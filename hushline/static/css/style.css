@@ -3076,3 +3076,12 @@ strong {
 #add_field {
   margin-top: 1rem;
 }
+
+.checkbox-group-settings {
+  margin-bottom: .5rem;
+}
+
+.checkbox-group-settings .group-label {
+  margin-bottom: .5rem;
+  font-family: var(--font-sans-bold);
+}
