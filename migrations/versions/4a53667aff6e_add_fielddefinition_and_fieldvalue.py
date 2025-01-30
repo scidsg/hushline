@@ -39,6 +39,7 @@ def upgrade() -> None:
         sa.Column("encrypted", sa.Boolean, default=False),
         sa.Column("choices", JSONB, default=[]),
         sa.Column("sort_order", sa.Integer, default=0),
+        sa.UniqueConstraint("username_id", "sort_order"),
     )
 
     op.create_table(

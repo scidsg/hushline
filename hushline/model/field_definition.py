@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +18,7 @@ else:
 
 class FieldDefinition(Model):
     __tablename__ = "field_definitions"
+    __table_args__ = (UniqueConstraint("username_id", "sort_order"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
@@ -58,59 +60,54 @@ class FieldDefinition(Model):
         if self.sort_order == 0:
             return
 
-        # Select all fields for this user
-        fields = (
+        # Select the field above the current field
+        field_above = (
             db.session.query(FieldDefinition)
-            .filter(FieldDefinition.username_id == self.username.id)
-            .order_by(FieldDefinition.sort_order)
-            .all()
+            .filter(
+                FieldDefinition.username_id == self.username.id,
+                FieldDefinition.sort_order == self.sort_order - 1,
+            )
+            .one_or_none()
         )
 
-        # Find the index of the current field
-        index = 0
-        for i, field in enumerate(fields):
-            if field == self:
-                index = i
-                break
+        if field_above:
+            above_sort_order = field_above.sort_order
+            below_sort_order = self.sort_order
 
-        # Swap the current field with the one above it
-        new_fields = fields.copy()
-        new_fields[index] = fields[index - 1]
-        new_fields[index - 1] = fields[index]
+            # Set sort orders to temp values first to avoid unique constraint violation
+            field_above.sort_order = -1
+            self.sort_order = -2
+            db.session.commit()
 
-        # Update sort_order on all fields
-        for i, field in enumerate(new_fields):
-            field.sort_order = i
-        db.session.commit()
+            # Swap the sort orders
+            field_above.sort_order = below_sort_order
+            self.sort_order = above_sort_order
+            db.session.commit()
 
     def move_down(self) -> None:
-        # Select all fields for this user
-        fields = (
+        # Select the field below the current field
+        field_below = (
             db.session.query(FieldDefinition)
-            .filter(FieldDefinition.username_id == self.username.id)
-            .order_by(FieldDefinition.sort_order)
-            .all()
+            .filter(
+                FieldDefinition.username_id == self.username.id,
+                FieldDefinition.sort_order == self.sort_order + 1,
+            )
+            .one_or_none()
         )
 
-        if self.sort_order == len(fields) - 1:
-            return
+        if field_below:
+            above_sort_order = self.sort_order
+            below_sort_order = field_below.sort_order
 
-        # Find the index of the current field
-        index = 0
-        for i, field in enumerate(fields):
-            if field == self:
-                index = i
-                break
+            # Set sort orders to temp values first to avoid unique constraint violation
+            self.sort_order = -1
+            field_below.sort_order = -2
+            db.session.commit()
 
-        # Swap the current field with the one below it
-        new_fields = fields.copy()
-        new_fields[index] = fields[index + 1]
-        new_fields[index + 1] = fields[index]
-
-        # Update sort_order on all fields
-        for i, field in enumerate(new_fields):
-            field.sort_order = i
-        db.session.commit()
+            # Swap the sort orders
+            self.sort_order = below_sort_order
+            field_below.sort_order = above_sort_order
+            db.session.commit()
 
     def __repr__(self) -> str:
         return f"<FieldDefinition {self.username.username}, {self.label}>"

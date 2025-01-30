@@ -110,7 +110,7 @@ class Username(Model):
         If there are no message fields, create the default ones.
         """
         if len(self.message_fields) == 0:
-            contact_method_field_def = FieldDefinition(
+            db.session.add(FieldDefinition(
                 self,
                 "Contact Method",
                 FieldType.TEXT,
@@ -118,8 +118,8 @@ class Username(Model):
                 True,
                 True,
                 [],
-            )
-            content_field_def = FieldDefinition(
+            ))
+            db.session.add(FieldDefinition(
                 self,
                 "Message",
                 FieldType.MULTILINE_TEXT,
@@ -127,6 +127,5 @@ class Username(Model):
                 True,
                 True,
                 [],
-            )
-            db.session.add_all([contact_method_field_def, content_field_def])
+            ))
             db.session.commit()
