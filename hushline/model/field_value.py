@@ -94,4 +94,4 @@ class FieldValue(Model):
             self._value = ""
 
     def __repr__(self) -> str:
-        return f"<FieldValue {self.field_definition.label}>"
+        return f"<{self.__class__.__name__} {self.field_definition.label}>"
