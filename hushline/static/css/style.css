@@ -2998,12 +2998,11 @@ strong {
 }
 
 .fields .choices-container {
-  margin-left: 2em;
-  margin-bottom: 0.5em;
+  margin: 0 0 1rem 0;
 }
 
 .fields .choices-container button {
-  font-size: 0.8em;
+  margin-top: 0;
 }
 
 .fields input[type="checkbox"],
@@ -3023,17 +3022,13 @@ strong {
 #messageForm ul {
   list-style: none;
   padding: 0;
+  margin-top: 0;
 }
 
 #messageForm .field-group {
-  padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#messageForm .field-group .label {
-  margin-bottom: 0.5rem;
 }
 
 #messageForm .field-group input,
@@ -3042,10 +3037,82 @@ strong {
   margin-bottom: 0;
 }
 
-#messageForm .field-group .meta {
+.field-form-toggle .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  background-size: contain;
+  background-repeat: no-repeat;
+  margin-right: 0.5rem;
+}
+
+.field-form-toggle {
+  align-items: center;
+}
+
+.choice-item button {
+  margin-bottom: 1rem;
+}
+
+.fields .choices-container .add-choice {
+  margin-top: 0.25rem;
+}
+
+.field-form-content .field-checkbox input {
+  margin-bottom: 0.5rem;
+  margin-left: 0;
+}
+
+.field-group ul li input[type="checkbox"],
+.field-group ul li input[type="radio"] {
+  margin-left: 0;
+}
+
+#add_field {
+  margin-top: 1rem;
+}
+
+.checkbox-group-settings {
+  margin-bottom: 0.5rem;
+}
+
+.checkbox-group-settings .group-label {
+  margin-bottom: 0.5rem;
+  font-family: var(--font-sans-bold);
+}
+
+label + p.meta {
+  max-width: fit-content;
+  width: 100%;
+  margin: 0;
   margin-left: 0.5rem;
-  font-size: 0.8125rem;
-  line-height: 1;
-  font-style: italic;
-  opacity: 0.8;
+}
+
+.label {
+  display: flex;
+  flex-direction: row;
+  align-items: last baseline;
+  margin-bottom: 0.5rem;
+}
+
+.label label {
+  margin-bottom: 0;
+}
+
+#messageForm .helper {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+input[type="checkbox"] + label,
+input[type="radio"] + label {
+  font-family: var(--font-sans);
+}
+
+.field-group ul,
+.field-group ol {
+  margin-bottom: 0.5rem;
+}
+
+ul + p.meta {
+  margin-top: 0rem;
 }

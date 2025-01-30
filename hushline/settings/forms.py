@@ -293,7 +293,7 @@ class FieldChoiceForm(Form):
 
 class FieldForm(FlaskForm):
     id = HiddenField()
-    label = StringField("Label", validators=[DataRequired(), Length(max=50)])
+    label = StringField("Label", validators=[DataRequired(), Length(max=500)])
     field_type = SelectField(
         "Field Type",
         choices=[(field_type.value, field_type.label()) for field_type in FieldType],
@@ -306,6 +306,6 @@ class FieldForm(FlaskForm):
 
     submit = SubmitField("Add Field", name="add_field", widget=Button())
     update = SubmitField("Update Field", name="update_field", widget=Button())
-    delete = SubmitField("Delete Field", name="delete_field", widget=Button())
+    delete = SubmitField("Delete Field", name="delete_field", widget=Button(), render_kw={"class": "btn-danger"})
     move_up = SubmitField("Move Up", name="move_up", widget=Button())
     move_down = SubmitField("Move Down", name="move_down", widget=Button())
