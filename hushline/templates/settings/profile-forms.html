@@ -21,9 +21,9 @@
   {{ display_name_form.display_name.label }}
   {{ display_name_form.display_name(id='display_name') }}
   {% if display_name_form.display_name.errors %}
-  {% for error in display_name_form.display_name.errors %}
-  <span class="error">{{ error }}</span>
-  {% endfor %}
+    {% for error in display_name_form.display_name.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
   {% endif %}
   {{ display_name_form.submit }}
 </form>
