@@ -110,4 +110,4 @@ class FieldDefinition(Model):
             db.session.commit()
 
     def __repr__(self) -> str:
-        return f"<FieldDefinition {self.username.username}, {self.label}>"
+        return f"<{self.__class__.__name__} {self.username.username}, {self.label}>"
