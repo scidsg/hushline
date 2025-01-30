@@ -17,11 +17,14 @@ document.addEventListener("DOMContentLoaded", function () {
     .forEach(function (fieldToggle) {
       fieldToggle.addEventListener("click", function () {
         const fieldContent = fieldToggle.parentElement.querySelector(
-          ".field-form-content"
+          ".field-form-content",
         );
         const chevron = fieldToggle.querySelector(".icon.chevron");
 
-        if (fieldContent.style.display === "none" || !fieldContent.style.display) {
+        if (
+          fieldContent.style.display === "none" ||
+          !fieldContent.style.display
+        ) {
           fieldContent.style.display = "block";
           chevron.style.transform = "rotate(90deg)"; // Open state
         } else {
