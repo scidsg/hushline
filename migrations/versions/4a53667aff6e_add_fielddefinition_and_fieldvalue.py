@@ -9,6 +9,7 @@ Create Date: 2025-01-16 23:24:40.316301
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Session
 
 
 # revision identifiers, used by Alembic.
@@ -56,13 +57,13 @@ def upgrade() -> None:
     )
 
     # Create field definitions for every username
-    connection = op.get_bind()
-    usernames_result = connection.execute(sa.text("""SELECT id FROM usernames"""))
+    session = Session(op.get_bind())
+    usernames_result = session.execute(sa.text("""SELECT id FROM usernames"""))
     for username_row in usernames_result:
         username_id = username_row[0]
 
         # Create field definitions
-        insert_result = connection.execute(
+        insert_result = session.execute(
             sa.text(
                 f"""
                 INSERT INTO field_definitions (
@@ -76,13 +77,14 @@ def upgrade() -> None:
                 """
             )
         )
+        session.commit()
 
         # Fetch the inserted IDs
         inserted_ids = insert_result.fetchall()
         message_field_definition_id = inserted_ids[1][0]
 
         # Select all messages for this username
-        messages_result = connection.execute(
+        messages_result = session.execute(
             sa.text(f"""SELECT id, content FROM messages WHERE username_id = {username_id}""")
         )
         for message_row in messages_result:
@@ -90,7 +92,7 @@ def upgrade() -> None:
             message_content = message_row[1]
 
             # Create field value for message's content
-            connection.execute(
+            session.execute(
                 sa.text(
                     f"""
                     INSERT INTO field_values (
@@ -101,6 +103,7 @@ def upgrade() -> None:
                     """
                 )
             )
+            session.commit()
 
     # Drop the content column from messages
     op.drop_column("messages", "content")
