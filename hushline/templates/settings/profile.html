@@ -21,8 +21,7 @@
         </div>
       {% endif %}
 
-      {% with %}
-        {% set is_alias=False %}
+      {% with is_alias=False %}
         {% include "settings/profile-forms.html" %}
       {% endwith %}
     </div>

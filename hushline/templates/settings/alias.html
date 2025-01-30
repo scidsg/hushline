@@ -8,8 +8,7 @@
   <h2 class="alias-heading">{{ alias.display_name or alias.username }}</h2>
   <a href="{{ url_for('profile', username=alias.username) }}">Alias tip line</a>
 
-  {% with %}
-    {% set is_alias=True %}
+  {% with is_alias=True %}
     {% include "settings/profile-forms.html" %}
   {% endwith %}
 </div>

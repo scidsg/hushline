@@ -142,10 +142,7 @@
           </div>
         </h5>
         <div class="field-form-content">
-          {% with %}
-            {% set is_first=(loop.index == 1) %}
-            {% set is_last=(loop.index == field_forms|length) %}
-            {% set is_new_field=False %}
+          {% with is_new_field=False, is_first=(loop.index == 1), is_last=(loop.index == field_forms|length) %}
             {% include "settings/profile-field-form.html" %}
           {% endwith %}
         </div>
@@ -159,9 +156,7 @@
         Add Field
       </h5>
       <div class="field-form-content">
-        {% with %}
-          {% set field_form=new_field_form %}
-          {% set is_new_field=True %}
+        {% with is_new_field=True, field_form=new_field_form %}
           {% include "settings/profile-field-form.html" %}
         {% endwith %}
       </div>
