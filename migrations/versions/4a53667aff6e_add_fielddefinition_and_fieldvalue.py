@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.create_table(
         "field_definitions",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("username_id", sa.Integer, sa.ForeignKey("usernames.id")),
+        sa.Column("username_id", sa.Integer, sa.ForeignKey("usernames.id"), index=True),
         sa.Column("label", sa.String(255), nullable=False),
         sa.Column(
             "field_type",
