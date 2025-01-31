@@ -77,7 +77,7 @@ class FieldDefinition(Model):
             # Set sort orders to temp values first to avoid unique constraint violation
             field_above.sort_order = -1
             self.sort_order = -2
-            db.session.commit()
+            db.session.flush()
 
             # Swap the sort orders
             field_above.sort_order = below_sort_order
@@ -102,7 +102,7 @@ class FieldDefinition(Model):
             # Set sort orders to temp values first to avoid unique constraint violation
             self.sort_order = -1
             field_below.sort_order = -2
-            db.session.commit()
+            db.session.flush()
 
             # Swap the sort orders
             self.sort_order = below_sort_order
