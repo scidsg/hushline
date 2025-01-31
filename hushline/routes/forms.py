@@ -91,12 +91,13 @@ class DynamicMessageForm:
             else:
                 validators.append(Optional())
 
-            # Multiline text has 10000 chars, all other types (types, single choice, and multiple
-            # choice) have 255 chars
+            # Multiline text has 102400 chars, all other types (types, single choice, and multiple
+            # choice) have 10240 chars. We're using huge values because we're storing PGP-encrypted
+            # data.
             if field.field_type == FieldType.MULTILINE_TEXT:
-                validators.append(Length(max=10240))
+                validators.append(Length(max=102400))
             else:
-                validators.append(Length(max=1024))
+                validators.append(Length(max=10240))
 
             # If it's an encrypted choice field, skip validating the PGP-encrypted choices
             if field.encrypted and field.field_type in (
