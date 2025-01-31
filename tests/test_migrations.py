@@ -26,6 +26,9 @@ SKIPPABLE_REVISIONS = [
     "5ffe5a5c8e9a",  # only renames indices and tables, no data changed
     "06b343c38386",  # only renames indices and tables, no data changed
 ]
+DISALLOWED_DOWNGRADES = [
+    "4a53667aff6e",  # downgrading is disabled to prevent accidental data loss
+]
 
 
 def list_revisions() -> Sequence[str]:
@@ -80,6 +83,9 @@ def test_upgrade_with_data(revision: str, app: Flask) -> None:
 
 @pytest.mark.parametrize("revision", TESTABLE_REVISIONS)
 def test_downgrade_with_data(revision: str, app: Flask) -> None:
+    if revision in DISALLOWED_DOWNGRADES:
+        pytest.xfail("Downgrade is disallowed for this revision")
+
     cfg = typing.cast(alembic.config.Config, migrate.get_config())
     command.upgrade(cfg, revision)
 

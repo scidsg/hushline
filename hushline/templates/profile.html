@@ -104,28 +104,39 @@
     action="{{ url_for('submit_message', username=username.username) }}"
     id="messageForm"
   >
-    {% if not user.pgp_key %}
+    {% if user.pgp_key %}
       {{ form.hidden_tag() }}
     {% endif %}
-
-    <label for="contact_method">Contact Method (Optional)</label>
-    <input
-      type="text"
-      id="contact_method"
-      name="contact_method"
-      value="{{ form.contact_method.data if form.contact_method.data is not none else '' }}"
-      {% if not user.pgp_key %}disabled="disabled"{% endif %}
-    />
-
-    <label for="content">Message</label>
-    <textarea
-      id="content"
-      maxlength="10000"
-      name="content"
-      required=""
-      spellcheck="true"
-      {% if not user.pgp_key %}disabled="disabled"{% endif %}
-    >{{ form.content.data if form.content.data is not none else '' }}</textarea>
+    
+    {% for data in field_data %}
+      {% if data['field'].enabled %}
+        <div class="field-group">
+          <div class="label">
+            {{ form[data['name']].label(for=data['name']) }}
+            {% if data['field'].required %}
+              <p class="meta">Required</p>
+            {% endif %}
+          </div>
+          <div>
+            {% if not user.pgp_key %}
+              {{ form[data['name']](id=data['name'], disabled='disabled') }}
+            {% else %}
+              {% if data['field'].encrypted %}
+                {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
+                {% if data['field'].encrypted %}
+                  <p class="meta">🔒 Encrypted</p>
+                {% endif %}
+              {% else %}
+                {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
+                {% if data['field'].encrypted %}
+                  <p class="meta">🔒 Encrypted</p>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
 
     <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
@@ -137,20 +148,6 @@
       value="false"
     />
 
-    {% if current_user_id == user.id %}
-      {% if user.pgp_key %}
-        <p class="helper meta">
-          🔐 Your message will be encrypted and only readable by you.
-        </p>
-      {% endif %}
-    {% else %}
-      {% if user.pgp_key %}
-        <p class="helper meta">
-          🔐 Your message will be encrypted and only readable by
-          {{ display_name_or_username }}.
-        </p>
-      {% endif %}
-    {% endif %}
     {% if user.pgp_key %}
       <!-- Math CAPTCHA -->
       <div class="captcha">
@@ -192,6 +189,7 @@
 {% block scripts %}
   {% if user.pgp_key %}
     <script src="{{ url_for('static', filename='vendor/openpgp-5.11.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
     <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
     <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
   {% endif %}

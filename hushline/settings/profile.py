@@ -2,9 +2,11 @@ from typing import Tuple
 
 from flask import (
     Blueprint,
+    redirect,
     render_template,
     request,
     session,
+    url_for,
 )
 from werkzeug.wrappers.response import Response
 
@@ -15,15 +17,10 @@ from hushline.model import (
     User,
 )
 from hushline.settings.common import (
-    form_error,
-    handle_display_name_form,
-    handle_update_bio,
-    handle_update_directory_visibility,
-)
-from hushline.settings.forms import (
-    DirectoryVisibilityForm,
-    DisplayNameForm,
-    ProfileForm,
+    build_field_forms,
+    create_profile_forms,
+    handle_field_post,
+    handle_profile_post,
 )
 
 
@@ -37,36 +34,18 @@ def register_profile_routes(bp: Blueprint) -> None:
         if username is None:
             raise Exception("Username was unexpectedly none")
 
-        display_name_form = DisplayNameForm(display_name=username.display_name)
-        directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=username.show_in_directory
-        )
-        profile_form = ProfileForm(
-            bio=username.bio or "",
-            **{
-                f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
-                for i in range(1, 5)
-            },
-            **{
-                f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
-                for i in range(1, 5)
-            },
-        )
+        display_name_form, directory_visibility_form, profile_form = create_profile_forms(username)
+        field_forms, new_field_form = build_field_forms(username)
 
         status_code = 200
         if request.method == "POST":
-            if display_name_form.submit.name in request.form and display_name_form.validate():
-                return handle_display_name_form(username, display_name_form)
-            elif (
-                directory_visibility_form.submit.name in request.form
-                and directory_visibility_form.validate()
-            ):
-                return handle_update_directory_visibility(username, directory_visibility_form)
-            elif profile_form.submit.name in request.form and profile_form.validate():
-                return await handle_update_bio(username, profile_form)
-            else:
-                form_error()
-                status_code = 400
+            res = await handle_profile_post(
+                display_name_form, directory_visibility_form, profile_form, username
+            )
+            if res:
+                return res
+
+            status_code = 400
 
         business_tier = Tier.business_tier()
         business_tier_display_price = ""
@@ -84,5 +63,25 @@ def register_profile_routes(bp: Blueprint) -> None:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
             business_tier_display_price=business_tier_display_price,
         ), status_code
+
+    @bp.route("/profile/fields", methods=["GET", "POST"])
+    @authentication_required
+    def profile_fields() -> Response | Tuple[str, int]:
+        user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        username = user.primary_username
+
+        if username is None:
+            raise Exception("Username not found")
+
+        username.create_default_field_defs()
+
+        if request.method == "POST":
+            res = handle_field_post(username)
+            if res:
+                return res
+
+        return redirect(url_for(".profile"))

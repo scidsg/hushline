@@ -1,0 +1,165 @@
+{% if is_alias %}
+  {% set username = alias %}
+{% else %}
+  {% set username = user.primary_username %}
+{% endif %}
+
+<h4>Update Display Name</h4>
+{% if username.is_verified %}
+<p class="meta">
+  ⚠️ Changing your display name will result in losing your verification status.
+</p>
+{% endif %}
+<form
+  method="POST"
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ display_name_form.hidden_tag() }}
+  {{ display_name_form.display_name.label }}
+  {{ display_name_form.display_name(id='display_name') }}
+  {% if display_name_form.display_name.errors %}
+    {% for error in display_name_form.display_name.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+  {% endif %}
+  {{ display_name_form.submit }}
+</form>
+
+<h4>Public User Directory</h4>
+<form 
+  method="POST" 
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ directory_visibility_form.hidden_tag() }}
+  <div class="checkbox-group toggle-ui">
+    {{ directory_visibility_form.show_in_directory() }}
+    <label for="show_in_directory" class="toggle-label">
+      Show on public directory
+      <div class="toggle">
+        <div class="toggle__ball"></div>
+      </div>
+    </label>
+  </div>
+  {{ directory_visibility_form.submit }}
+</form>
+
+<h4>Add Your Bio</h4>
+<form
+  method="POST"
+  class="formBody"
+  {% if is_alias %}
+    action="{{ url_for('.alias', username_id=alias.id) }}"
+  {%endif%}
+>
+  {{ profile_form.hidden_tag() }}
+  <div class="form-group">
+    <div class="label-with-wordcount">
+      <label for="bio">Bio (up to 250 characters):</label>
+      <span class="meta"><span class="bio-count">0</span>/250</span>
+    </div>
+    <textarea id="bio" name="bio" rows="4" maxlength="250">{{ username.bio or '' }}</textarea>
+  </div>
+
+  <h5>Profile Details</h5>
+  <p class="info">
+    Add links to social media, your Signal username, your pronouns, or
+    anything else you want on your profile.
+  </p>
+
+  <div class="form-group-pairs">
+    {% for i in [1, 2, 3, 4] %}
+      {% set label = profile_form|attr('extra_field_label'+i.__str__()) %}
+      {% set value = profile_form|attr('extra_field_value'+i.__str__()) %}
+      {% set verified = username|attr('extra_field_verified'+i.__str__()) %}
+
+      {% if loop.first %}
+        {% set label_placeholder = 'Signal' %}
+        {% set value_placeholder = 'signaluser.123' %}
+      {% else %}
+        {% set label_placeholder = '' %}
+        {% set value_placeholder = '' %}
+      {% endif %}
+
+      <div class="input-pair">
+        <div>
+          {{ label.label }}
+          {{ label(placeholder=label_placeholder) }}
+        </div>
+        <div>
+          {{ value.label }}
+          {{ value(placeholder=value_placeholder) }}
+          {% if verified %}
+            <span class="icon verifiedURL" title="Verified Address"></span>
+          {% endif %}
+        </div>
+        {% for error in label.errors + value.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <button type="submit" name="update_bio">Update Bio</button>
+</form>
+
+<div class="fields">
+  <h4>Message Fields</h4>
+    <p>
+      By default, when someone visits your profile they will see a form with two fields, an optional contact 
+      method field and a message field.
+    </p>
+    <p>
+      When you define custom fields below, the message field will still appear but the contact method field 
+      will be replaced with the custom fields you define. You can make fields required or optional, and encrypted
+      or unencrypted. You <strong>(and your hosting provider)</strong> will be able to see the values of 
+      unencrypted fields. You'll need to decrypt encrypted fields with your PGP key.
+    </p>
+
+    <!-- Fields -->
+    {% for field_form in field_forms %}
+      <div class="field-form field-form-{{ field_form.id.data }}">
+        <h5 class="field-form-toggle">
+          <div class="icon chevron"></div>
+          <div class="field-form-label-container">
+            <div>
+              Field {{ loop.index }}
+              {% if not field_form.enabled.data %}
+                <span class="label-meta">disabled</span>
+              {% endif %}
+              {% if not field_form.encrypted.data %}
+                <span class="label-meta">not encrypted</span>
+              {% endif %}
+              {% if field_form.required.data %}
+                <span class="label-meta">required</span>
+              {% endif %}
+            </div>
+            <div class="field-form-label">{{ field_form.label.data }}</div>
+          </div>
+        </h5>
+        <div class="field-form-content">
+          {% with is_new_field=False, is_first=(loop.index == 1), is_last=(loop.index == field_forms|length) %}
+            {% include "settings/profile-field-form.html" %}
+          {% endwith %}
+        </div>
+      </div>
+    {% endfor %}
+
+    <!-- Add field -->
+    <div class="field-form field-form-new">
+      <h5 class="field-form-toggle">
+        <div class="icon chevron"></div>
+        Add Field
+      </h5>
+      <div class="field-form-content">
+        {% with is_new_field=True, field_form=new_field_form %}
+          {% include "settings/profile-field-form.html" %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>

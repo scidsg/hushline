@@ -7,15 +7,13 @@
     <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
     {% for message in user.messages %}
       <article
-        class="message {% if 'BEGIN PGP MESSAGE' in message.content %}encrypted{% endif %}"
-        data-encrypted-content="{{ message.content }}"
+        class="message encrypted"
         aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
       >
+        <p class="float-right">{{ message.created_at.date() }}</p>
         {% if user_has_aliases %}
           <p>To: @{{ message.username.username }}</p>
         {% endif %}
-        <p class="decrypted-content">{{ message.content }}</p>
-        <div class="mailvelope-decryption-container" id="decryption-container-{{ message.id }}"></div>
         <p><a class="stretched-link" href="{{ url_for('message', id=message.id) }}">Go to message</a></p>
       </article>
     {% endfor %}

@@ -286,7 +286,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("guidance-modal");
-  const firstModalContent = modal.querySelector(".modal-content");
+  let firstModalContent = null;
+  if (modal) {
+    firstModalContent = modal.querySelector(".modal-content");
+  }
 
   if (modal && firstModalContent) {
     firstModalContent.classList.add("animate");

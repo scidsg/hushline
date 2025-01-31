@@ -8,6 +8,7 @@ from flask import (
     current_app,
     flash,
     redirect,
+    request,
     session,
     url_for,
 )
@@ -20,6 +21,9 @@ from hushline.crypto import is_valid_pgp_key
 from hushline.db import db
 from hushline.email import create_smtp_config
 from hushline.model import (
+    FieldDefinition,
+    FieldType,
+    FieldValue,
     SMTPEncryption,
     User,
     Username,
@@ -30,6 +34,8 @@ from hushline.settings.forms import (
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
+    FieldChoiceForm,
+    FieldForm,
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
@@ -193,6 +199,9 @@ def handle_new_alias_form(user: User, new_alias_form: NewAliasForm) -> Optional[
         return None
     else:
         flash("👍 Alias created successfully.")
+
+    uname.create_default_field_defs()
+
     return redirect_to_self()
 
 
@@ -288,3 +297,141 @@ def handle_email_forwarding_form(
     db.session.commit()
     flash("👍 SMTP settings updated successfully")
     return redirect_to_self()
+
+
+def create_profile_forms(
+    username: Username,
+) -> tuple[DisplayNameForm, DirectoryVisibilityForm, ProfileForm]:
+    display_name_form = DisplayNameForm(display_name=username.display_name)
+    directory_visibility_form = DirectoryVisibilityForm(
+        show_in_directory=username.show_in_directory
+    )
+    profile_form = ProfileForm(
+        bio=username.bio or "",
+        **{
+            f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
+            for i in range(1, 5)
+        },
+        **{
+            f"extra_field_value{i}": getattr(username, f"extra_field_value{i}", "")
+            for i in range(1, 5)
+        },
+    )
+    return display_name_form, directory_visibility_form, profile_form
+
+
+async def handle_profile_post(
+    display_name_form: DisplayNameForm,
+    directory_visibility_form: DirectoryVisibilityForm,
+    profile_form: ProfileForm,
+    username: Username,
+) -> Response | None:
+    """
+    Handle the POST request for the profile page. Returns None on error.
+    """
+    if display_name_form.submit.name in request.form and display_name_form.validate():
+        return handle_display_name_form(username, display_name_form)
+    elif (
+        directory_visibility_form.submit.name in request.form
+        and directory_visibility_form.validate()
+    ):
+        return handle_update_directory_visibility(username, directory_visibility_form)
+    elif profile_form.submit.name in request.form and profile_form.validate():
+        return await handle_update_bio(username, profile_form)
+
+    form_error()
+    return None
+
+
+def handle_field_post(username: Username) -> Response | None:
+    field_form = FieldForm()
+    if field_form.validate():
+        # Create a new field
+        if field_form.submit.name in request.form:
+            field_definition = FieldDefinition(
+                username,
+                field_form.label.data,
+                FieldType(field_form.field_type.data),
+                field_form.required.data,
+                field_form.enabled.data,
+                field_form.encrypted.data,
+                [c["choice"] for c in field_form.choices.data],
+            )
+            db.session.add(field_definition)
+            db.session.commit()
+            flash("New field added.")
+            return redirect_to_self()
+
+        # Update an existing field
+        if field_form.update.name in request.form:
+            current_app.logger.info("Updating field")
+            field_definition = db.session.scalars(
+                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+            ).one()
+            field_definition.label = field_form.label.data
+            field_definition.field_type = FieldType(field_form.field_type.data)
+            field_definition.required = field_form.required.data
+            field_definition.enabled = field_form.enabled.data
+            field_definition.encrypted = field_form.encrypted.data
+            field_definition.choices = [c["choice"] for c in field_form.choices.data]
+            db.session.commit()
+            flash("Field updated.")
+            return redirect_to_self()
+
+        # Delete a field
+        if field_form.delete.name in request.form:
+            current_app.logger.info("Deleting field")
+            field_definition = db.session.scalars(
+                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+            ).one()
+
+            # Delete all field values that rely on this field definition
+            db.session.execute(
+                db.delete(FieldValue).filter_by(field_definition_id=field_definition.id)
+            )
+
+            db.session.delete(field_definition)
+            db.session.commit()
+            flash("Field deleted.")
+            return redirect_to_self()
+
+        # Move a field up
+        if field_form.move_up.name in request.form:
+            current_app.logger.info("Moving field up")
+            field_definition = db.session.scalars(
+                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+            ).one()
+            field_definition.move_up()
+            flash("Field moved up.")
+            return redirect_to_self()
+
+        # Move a field down
+        if field_form.move_down.name in request.form:
+            current_app.logger.info("Moving field down")
+            field_definition = db.session.scalars(
+                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
+            ).one()
+            field_definition.move_down()
+            flash("Field moved down.")
+            return redirect_to_self()
+
+    return None
+
+
+def build_field_forms(username: Username) -> tuple[list[FieldForm], FieldForm]:
+    field_forms = []
+    for field in username.message_fields:
+        form = FieldForm(obj=field)
+        form.field_type.data = field.field_type.value
+
+        form.choices.entries = []
+        for choice in field.choices:
+            choice_form = FieldChoiceForm()
+            choice_form.choice.data = choice
+            form.choices.append_entry(choice_form.data)
+
+        field_forms.append(form)
+
+    new_field_form = FieldForm()
+
+    return field_forms, new_field_form

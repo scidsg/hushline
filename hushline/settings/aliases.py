@@ -2,7 +2,6 @@ from typing import Tuple
 
 from flask import (
     Blueprint,
-    current_app,
     flash,
     redirect,
     render_template,
@@ -19,17 +18,15 @@ from hushline.model import (
     Username,
 )
 from hushline.settings.common import (
+    build_field_forms,
+    create_profile_forms,
     form_error,
-    handle_display_name_form,
+    handle_field_post,
     handle_new_alias_form,
-    handle_update_bio,
-    handle_update_directory_visibility,
+    handle_profile_post,
 )
 from hushline.settings.forms import (
-    DirectoryVisibilityForm,
-    DisplayNameForm,
     NewAliasForm,
-    ProfileForm,
 )
 
 
@@ -73,30 +70,18 @@ def register_aliases_routes(bp: Blueprint) -> None:
             flash("Alias not found.")
             return redirect(url_for(".index"))
 
-        display_name_form = DisplayNameForm()
-        profile_form = ProfileForm()
-        directory_visibility_form = DirectoryVisibilityForm(
-            show_in_directory=alias.show_in_directory
-        )
+        display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
+        field_forms, new_field_form = build_field_forms(alias)
 
         status_code = 200
         if request.method == "POST":
-            if "update_bio" in request.form and profile_form.validate_on_submit():
-                return await handle_update_bio(alias, profile_form)
-            elif (
-                "update_directory_visibility" in request.form
-                and directory_visibility_form.validate_on_submit()
-            ):
-                return handle_update_directory_visibility(alias, directory_visibility_form)
-            elif "update_display_name" in request.form and display_name_form.validate_on_submit():
-                return handle_display_name_form(alias, display_name_form)
-            else:
-                status_code = 400
-                current_app.logger.error(
-                    f"Unable to handle form submission on endpoint {request.endpoint!r}, "
-                    f"form fields: {request.form.keys()}"
-                )
-                flash("Uh oh. There was an error handling your data. Please notify the admin.")
+            res = await handle_profile_post(
+                display_name_form, directory_visibility_form, profile_form, alias
+            )
+            if res:
+                return res
+
+            status_code = 400
 
         return render_template(
             "settings/alias.html",
@@ -105,4 +90,27 @@ def register_aliases_routes(bp: Blueprint) -> None:
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
         ), status_code
+
+    @bp.route("/alias/<int:username_id>/fields", methods=["GET", "POST"])
+    @authentication_required
+    def alias_fields(username_id: int) -> Response | Tuple[str, int]:
+        alias = db.session.scalars(
+            db.select(Username).filter_by(
+                id=username_id, user_id=session["user_id"], is_primary=False
+            )
+        ).one_or_none()
+        if not alias:
+            flash("Alias not found.")
+            return redirect(url_for(".index"))
+
+        alias.create_default_field_defs()
+
+        if request.method == "POST":
+            res = handle_field_post(alias)
+            if res:
+                return res
+
+        return redirect(url_for(".alias", username_id=alias.id))

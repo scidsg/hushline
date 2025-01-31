@@ -92,3 +92,24 @@ class StripeEventStatusEnum(enum.Enum):
     IN_PROGRESS = "in_progress"
     ERROR = "error"
     FINISHED = "finished"
+
+
+@enum.unique
+class FieldType(enum.Enum):
+    TEXT = "text"
+    MULTILINE_TEXT = "multiline_text"
+    CHOICE_SINGLE = "choice_single"
+    CHOICE_MULTIPLE = "choice_multiple"
+
+    def label(self) -> str:
+        match self:
+            case self.TEXT:
+                return "Text"
+            case self.MULTILINE_TEXT:
+                return "Multiline Text"
+            case self.CHOICE_SINGLE:
+                return "Single Choice"
+            case self.CHOICE_MULTIPLE:
+                return "Multiple Choice"
+            case x:
+                raise Exception(f"Programming error. FieldType {x!r} not handled")

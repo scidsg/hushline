@@ -1,0 +1,67 @@
+<form
+    method="POST"
+    class="formBody"
+    {% if is_alias %}
+        action="{{ url_for('.alias_fields', username_id=alias.id) }}"
+    {% else %}
+        action="{{ url_for('.profile_fields') }}"
+    {%endif%}
+>
+    {{ field_form.hidden_tag() }}
+
+    <div class="checkbox-group-settings">
+        <p class="group-label">Field Options</p>
+        <div class="field-checkbox">
+            {{ field_form.encrypted(id='encrypted-' ~ field_form.id.data) }}
+            {{ field_form.encrypted.label(for='encrypted-' ~ field_form.id.data) }}
+        </div>
+        <div class="field-checkbox required-checkbox-container">
+            {{ field_form.required(id='required-' ~ field_form.id.data, class='required-checkbox') }}
+            {{ field_form.required.label(for='required-' ~ field_form.id.data) }}
+        </div>
+        <div class="field-checkbox">
+            {{ field_form.enabled(id='enabled-' ~ field_form.id.data) }}
+            {{ field_form.enabled.label(for='enabled-' ~ field_form.id.data) }}
+        </div>
+    </div>
+
+    <div>
+        {{ field_form.label.label(for='label-' ~ field_form.id.data) }}
+        {{ field_form.label(id='label-' ~ field_form.id.data, placeholder='Field label') }}
+    </div>
+
+    <div>
+        {{ field_form.field_type.label(for='field_type-' ~ field_form.id.data) }}
+        {{ field_form.field_type(id='field_type-' ~ field_form.id.data, class='field-type') }}
+    </div>
+
+    <div class="choices-container choices-container-{{ field_form.id.data }}" data-field-id="{{ field_form.id.data }}">
+        <div class="choices-list choices-list-{{ field_form.id.data }}">
+            {% for choice in field_form.choices %}
+              <div class="choice-item">
+                {{ choice.choice.label }}
+                {{ choice.choice(id=choice.choice.id) }}
+                <button type="button" class="move-up-choice">Move Up</button>
+                <button type="button" class="move-down-choice">Move Down</button>
+                <button type="button" class="remove-choice btn-danger">Remove</button>
+              </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="add-choice" data-field-id="{{ field_form.id.data }}">Add Choice</button>
+    </div>
+
+    <div>
+        {% if is_new_field %}
+            {{ field_form.submit }}
+        {% else %}
+            {{ field_form.update }}
+            {% if not is_first %}
+                {{ field_form.move_up }}
+            {% endif %}
+            {% if not is_last %}
+                {{ field_form.move_down }}
+            {% endif %}
+            {{ field_form.delete }}
+        {% endif %}
+    </div>
+</form>
