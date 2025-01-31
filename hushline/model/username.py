@@ -109,7 +109,7 @@ class Username(Model):
         """
         If there are no message fields, create the default ones.
         """
-        if len(self.message_fields) == 0:
+        if not self.message_fields:
             db.session.add(
                 FieldDefinition(
                     self,
