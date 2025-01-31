@@ -11,6 +11,7 @@ from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
+    FieldDefinition,
     FieldValue,
     Message,
     MessageStatusText,
@@ -32,12 +33,21 @@ def register_delete_account_routes(bp: Blueprint) -> None:
         if user:
             # Delete field values and definitions
             usernames = db.session.scalars(db.select(Username).filter_by(user_id=user.id)).all()
-            for username in usernames:
-                for field_def in username.message_fields:
-                    db.session.execute(
-                        db.delete(FieldValue).filter_by(field_definition_id=field_def.id)
+            username_ids = [username.id for username in usernames]
+
+            # Delete all FieldValue entries related to the user's usernames
+            db.session.execute(
+                db.delete(FieldValue).where(
+                    FieldValue.field_definition_id.in_(
+                        db.select(FieldDefinition.id).where(FieldDefinition.username_id.in_(username_ids))
                     )
-                    db.session.delete(field_def)
+                )
+            )
+
+            # Delete all FieldDefinition entries related to the user's usernames
+            db.session.execute(
+                db.delete(FieldDefinition).where(FieldDefinition.username_id.in_(username_ids))
+            )
 
             # Delete messages and related data
             db.session.execute(
