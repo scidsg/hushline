@@ -10,22 +10,12 @@
 
 {% block content %}
   <h2 class="submit">
-    {% if current_user_id == user.id %}
-      {% if user.pgp_key %}
-        {# Authenticated user viewing their own profile with PGP key #}
-        ✍️ Note to Self
-      {% else %}
-        {# Authenticated user viewing their own profile without a PGP key #}
-        ✍️ Note to Self (Add a PGP Key for secure notes)
-      {% endif %}
+    {% if user.pgp_key %}
+      {# Unauthenticated or other users who meet PGP requirements #}
+      {{ profile_header }}
     {% else %}
-      {% if user.pgp_key %}
-        {# Unauthenticated or other users who meet PGP requirements #}
-        {{ profile_header }}
-      {% else %}
-        {# Unauthenticated or other users who don't meet PGP requirements #}
-        {{ display_name_or_username }}
-      {% endif %}
+      {# Unauthenticated or other users who don't meet PGP requirements #}
+      {{ display_name_or_username }}
     {% endif %}
   </h2>
 

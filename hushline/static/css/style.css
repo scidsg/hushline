@@ -677,7 +677,7 @@
     color: var(--color-text-dark);
   }
 
-  .message {
+  .message-container {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     background-color: var(--color-dark-bg-alt);
@@ -2704,10 +2704,6 @@ h3 {
   margin-bottom: 0.125rem;
 }
 
-.message-meta p:first-of-type {
-  font-size: var(--font-size-small);
-}
-
 .message-meta p strong {
   font-family: var(--font-sans-bold);
   font-size: var(--font-size-small);
@@ -2746,7 +2742,6 @@ h3 {
 
 .message-container .message {
   margin-top: 1rem;
-  padding: 1rem;
 }
 
 .message-container .message .field-value {
@@ -3131,4 +3126,9 @@ select {
   background-position: right 0.5rem center;
   background-size: 0.5rem auto;
   padding-right: 1.5rem;
+}
+
+p.encrypted-value {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
 }
