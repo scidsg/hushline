@@ -77,7 +77,7 @@ def register_profile_routes(app: Flask) -> None:
         uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
         if not uname:
             flash("🫥 User not found.")
-            return redirect(url_for("index"))
+            return abort(404)
 
         dynamic_form = DynamicMessageForm(uname.message_fields)
         form = dynamic_form.form()
