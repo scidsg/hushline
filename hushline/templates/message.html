@@ -32,9 +32,9 @@
     <div class="field-value {% if field_value.encrypted %}encrypted{% endif %}">
       <div class="label">{{ field_value.field_definition.label }}</div>
       {% if field_value.encrypted %}
-        <pre class="encrypted-value">{{ field_value.value }}</pre>
+        <p class="encrypted-value">{{ field_value.value }}</p>
       {% else %}
-        <pre class="value">{{ field_value.value }}</pre>
+        <p class="value">{{ field_value.value }}</p>
       {% endif %}
       <div class="value mailvelope-decryption-container" id="decryption-container-{{ field_value.id }}"></div>
     </div>
