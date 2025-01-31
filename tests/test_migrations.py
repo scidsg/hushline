@@ -84,8 +84,7 @@ def test_upgrade_with_data(revision: str, app: Flask) -> None:
 @pytest.mark.parametrize("revision", TESTABLE_REVISIONS)
 def test_downgrade_with_data(revision: str, app: Flask) -> None:
     if revision in DISALLOWED_DOWNGRADES:
-        pytest.skip("Downgrade is not implemented for this revision")
-        return
+        pytest.xfail("Downgrade is disallowed for this revision")
 
     cfg = typing.cast(alembic.config.Config, migrate.get_config())
     command.upgrade(cfg, revision)

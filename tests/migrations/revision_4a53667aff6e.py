@@ -143,4 +143,4 @@ class DowngradeTester:
         pass
 
     def check_downgrade(self) -> None:
-        pass
+        raise RuntimeError
