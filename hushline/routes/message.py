@@ -16,6 +16,7 @@ from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.forms import DeleteMessageForm, UpdateMessageStatusForm
 from hushline.model import (
+    FieldValue,
     Message,
     User,
     Username,
@@ -67,8 +68,7 @@ def register_message_routes(app: Flask) -> None:
             )
         ).one_or_none()
         if message:
-            for field_value in message.field_values:
-                db.session.delete(field_value)
+            db.session.execute(db.delete(FieldValue).where(FieldValue.message_id == message.id))
             db.session.commit()
 
             db.session.delete(message)
