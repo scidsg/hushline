@@ -162,38 +162,3 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
         or "&lt;script&gt;alert('xss')&lt;/script&gt;" in html_str
     )
     assert "<script>alert('xss')</script>" not in html_str
-
-
-# Commenting this out for now because when filling out an invalid CAPTCHA, it does not
-# current re-fill the content
-
-# @pytest.mark.usefixtures("_authenticated_user")
-# def test_profile_submit_message_with_invalid_captcha(client: FlaskClient, user: User) -> None:
-#     message_content = "This is a test message."
-#     contact_method = "email@example.com"
-
-#     # Send a POST request to submit the message
-#     response = client.post(
-#         url_for("profile", username=user.primary_username.username),
-#         data={
-#             "content": message_content,
-#             "contact_method": contact_method,
-#             "client_side_encrypted": "false",
-#             "captcha_answer": 0,  # the answer is never 0
-#         },
-#         follow_redirects=True,
-#     )
-
-#     assert response.status_code == 200
-#     assert "Incorrect CAPTCHA." in response.text
-
-#     assert contact_method in response.text
-#     assert message_content in response.text
-
-#     # Verify that the message is not saved in the database
-#     assert (
-#         db.session.scalars(
-#             db.select(Message).filter_by(username_id=user.primary_username.id)
-#         ).one_or_none()
-#         is None
-#     )
