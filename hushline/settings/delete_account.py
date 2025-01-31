@@ -39,7 +39,9 @@ def register_delete_account_routes(bp: Blueprint) -> None:
             db.session.execute(
                 db.delete(FieldValue).where(
                     FieldValue.field_definition_id.in_(
-                        db.select(FieldDefinition.id).where(FieldDefinition.username_id.in_(username_ids))
+                        db.select(FieldDefinition.id).where(
+                            FieldDefinition.username_id.in_(username_ids)
+                        )
                     )
                 )
             )
