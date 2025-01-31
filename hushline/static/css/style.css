@@ -3038,11 +3038,18 @@ strong {
 }
 
 .field-form-toggle .icon {
+  min-width: 1.25rem;
+  min-height: 1.25rem;
   width: 1.25rem;
   height: 1.25rem;
   background-size: contain;
   background-repeat: no-repeat;
   margin-right: 0.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
 }
 
 .field-form-toggle {
@@ -3115,4 +3122,13 @@ input[type="radio"] + label {
 
 ul + p.meta {
   margin-top: 0rem;
+}
+
+select {
+  appearance: none;
+  background-image: url('/static/img/app/dropdown.png');
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.5rem auto;
+  padding-right: 1.5rem; 
 }
