@@ -3139,3 +3139,14 @@ label > .meta {
   margin-left: 0.25rem;
   font-family: var(--font-sans);
 }
+
+form li {
+  margin-bottom: 0.325rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+li label {
+  margin-bottom: 0;
+}
