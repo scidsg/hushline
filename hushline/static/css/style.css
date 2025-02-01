@@ -3134,6 +3134,6 @@ p.encrypted-value {
 }
 
 label > .meta {
-  margin-left: .25rem;
+  margin-left: 0.25rem;
   font-family: var(--font-sans);
 }
