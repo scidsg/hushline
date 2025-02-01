@@ -118,7 +118,7 @@
     color: var(--color-brand-mid-contrast);
   }
 
-  p.meta {
+  .meta {
     color: var(--color-text-light);
   }
 
@@ -465,7 +465,7 @@
     color: var(--color-brand-dark-min-saturation);
   }
 
-  p.meta {
+  .meta {
     color: var(--color-text-dark-alt);
   }
 
@@ -1277,12 +1277,12 @@ label {
   display: flex;
 }
 
-p.meta {
+.meta {
   font-size: var(--font-size-small);
   line-height: var(--line-height-base);
 }
 
-h3 + p.meta {
+h3 + .meta {
   margin-top: 0.75rem;
 }
 
@@ -3084,7 +3084,7 @@ strong {
   font-family: var(--font-sans-bold);
 }
 
-label + p.meta {
+label + .meta {
   max-width: fit-content;
   width: 100%;
   margin: 0;
@@ -3133,4 +3133,9 @@ select {
 p.encrypted-value {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
+}
+
+label > .meta {
+  margin-left: 0.25rem;
+  font-family: var(--font-sans);
 }
