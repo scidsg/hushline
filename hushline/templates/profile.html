@@ -97,12 +97,12 @@
       {% if data['field'].enabled %}
         <div class="field-group">
           <div class="label">
-            {{ form[data['name']].label(for=data['name']) }}
-            {% if data['field'].required %}
-              <p class="meta">Required</p>
-            {% else %}
-              <p class="meta">Optional</p>
-            {% endif %}
+            <label for="{{ data['name'] }}">
+              {{ form[data['name']].label.text }} 
+              <span class="meta">
+                {% if data['field'].required %}Required{% else %}Optional{% endif %}
+              </span>
+            </label>
           </div>
           <div>
             {% if not user.pgp_key %}
