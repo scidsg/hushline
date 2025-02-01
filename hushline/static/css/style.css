@@ -113,7 +113,8 @@
     background-color: var(--color-brand-bg);
   }
 
-  a {
+  a,
+  a.meta {
     color: var(--color-brand-mid-contrast);
   }
 
@@ -459,7 +460,8 @@
     color: var(--color-text-dark);
   }
 
-  a {
+  a,
+  a.meta {
     color: var(--color-brand-dark-min-saturation);
   }
 
