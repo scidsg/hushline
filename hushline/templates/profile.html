@@ -100,6 +100,8 @@
             {{ form[data['name']].label(for=data['name']) }}
             {% if data['field'].required %}
               <p class="meta">Required</p>
+            {% else %}
+              <p class="meta">Optional</p>
             {% endif %}
           </div>
           <div>
