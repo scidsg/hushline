@@ -3020,12 +3020,21 @@ strong {
   list-style: none;
   padding: 0;
   margin-top: 0;
+  margin-bottom: 0;
+}
+
+#messageForm ul li:only-of-type {
+  margin-bottom: 0;
 }
 
 #messageForm .field-group {
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#messageForm .field-group input + .meta {
+  margin-bottom: 0;
 }
 
 #messageForm .field-group input,
@@ -3136,8 +3145,8 @@ p.encrypted-value {
 }
 
 label > .meta {
-  margin-left: 0.25rem;
   font-family: var(--font-sans);
+  margin-left: 0.25rem;
 }
 
 form li {
