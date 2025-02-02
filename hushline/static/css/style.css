@@ -3024,7 +3024,7 @@ strong {
 }
 
 #messageForm ul li:only-of-type {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 #messageForm .field-group {
@@ -3034,7 +3034,7 @@ strong {
 }
 
 #messageForm .field-group input + .meta {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 #messageForm .field-group input,
@@ -3145,8 +3145,8 @@ p.encrypted-value {
 }
 
 label > .meta {
-  margin-left: 0.25rem;
   font-family: var(--font-sans);
+  margin-left: 0.25rem;
 }
 
 form li {
