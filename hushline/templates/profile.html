@@ -125,9 +125,7 @@
       {% endif %}
     {% endfor %}
 
-    <!-- Hidden field for public PGP key -->
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
-    <!-- Hidden field to indicate if the message was encrypted client-side -->
     <input
       type="hidden"
       name="client_side_encrypted"
@@ -136,7 +134,6 @@
     />
 
     {% if user.pgp_key %}
-      <!-- Math CAPTCHA -->
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>
         <div class="captcha_container">

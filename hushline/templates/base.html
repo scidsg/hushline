@@ -99,7 +99,6 @@
     {% endif %}
 
     <header>
-      <!-- Navigation bar, logo, etc. -->
       <div class="brand-wrapper">
         {% if brand_logo_url %}
           <img class="brand-logo" src="{{ brand_logo_url }}" alt="Logo"/>
@@ -166,9 +165,7 @@
 
     <main class="{% block main_class %}{% endblock %}">
       <div class="container">
-        {% block content %}
-          <!-- This block will be filled with page-specific content -->
-        {% endblock %}
+        {% block content %}{% endblock %}
       </div>
     </main>
 

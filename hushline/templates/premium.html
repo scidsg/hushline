@@ -42,7 +42,6 @@
             ⚠️ Your subscription will expire on {{
             user.stripe_subscription_current_period_end.strftime('%B %d, %Y') }}.
           </p>
-          <!-- Corrected action URL -->
           <form
             id="enable-autorenew-form"
             action="{{ url_for('premium.enable_autorenew') }}"
@@ -50,7 +49,6 @@
           >
             <button id="enable-autorenew">Automatically Renew</button>
           </form>
-          <!-- Corrected action URL -->
           <form
             id="cancel-form"
             action="{{ url_for('premium.cancel') }}"

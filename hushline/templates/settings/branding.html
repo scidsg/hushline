@@ -1,118 +1,110 @@
-{% extends "base.html" %}
+{% extends "settings/base.html" %}
 
-{% block title %}Settings{% endblock %}
+{% block settings_content %}
+  <h3>Branding</h3>
 
-{% block content %}
-  <h2>Settings</h2>
-  <div class="settings-content">
-    {% include "settings/nav.html" %}
-    <div class="tab-content">
-      <h3>Branding</h3>
+  <h4>Diretory Intro Text</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ update_directory_text_form.hidden_tag() }}
+    {{ update_directory_text_form.markdown.label }}
+    {{ update_directory_text_form.markdown }}
+    {{ update_directory_text_form.submit }}
+  </form>
 
-      <h4>Diretory Intro Text</h4>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_directory_text_form.hidden_tag() }}
-        {{ update_directory_text_form.markdown.label }}
-        {{ update_directory_text_form.markdown }}
-        {{ update_directory_text_form.submit }}
-      </form>
+  <h4>Primary Color</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ update_brand_primary_color_form.hidden_tag() }}
+    <label for="brand-primary-color">Choose Color</label>
+    <input
+      type="color"
+      name="brand_primary_hex_color"
+      id="brand-primary-color"
+      value="{{ brand_primary_color }}"
+    />
+    {{ update_brand_primary_color_form.submit }}
+  </form>
 
-      <h4>Primary Color</h4>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_brand_primary_color_form.hidden_tag() }}
-        <label for="brand-primary-color">Choose Color</label>
-        <input
-          type="color"
-          name="brand_primary_hex_color"
-          id="brand-primary-color"
-          value="{{ brand_primary_color }}"
-        />
-        {{ update_brand_primary_color_form.submit }}
-      </form>
+  <h4>App Name</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ update_brand_app_name_form.hidden_tag() }}
+    <label for="brand-app-name">Choose Name</label>
+    <input
+      type="text"
+      name="brand_app_name"
+      id="brand-app-name"
+      value="{{ brand_name }}"
+      required
+    />
+    {{ update_brand_app_name_form.submit }}
+  </form>
 
-      <h4>App Name</h4>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_brand_app_name_form.hidden_tag() }}
-        <label for="brand-app-name">Choose Name</label>
-        <input
-          type="text"
-          name="brand_app_name"
-          id="brand-app-name"
-          value="{{ brand_name }}"
-          required
-        />
-        {{ update_brand_app_name_form.submit }}
-      </form>
+  <h4>Logo</h4>
+  <form
+    method="POST"
+    enctype="multipart/form-data"
+    class="formBody"
+  >
+    {{ update_brand_logo_form.hidden_tag() }}
+    {{ update_brand_logo_form.logo(accept=".png") }}
+    {{ update_brand_logo_form.submit(class="btn") }}
+    {% if brand_logo_url %}
+      {{ delete_brand_logo_form.submit(class="btn-danger") }}
+    {% endif %}
+  </form>
 
-      <h4>Logo</h4>
-      <form
-        method="POST"
-        enctype="multipart/form-data"
-        class="formBody"
-      >
-        {{ update_brand_logo_form.hidden_tag() }}
-        {{ update_brand_logo_form.logo(accept=".png") }}
-        {{ update_brand_logo_form.submit(class="btn") }}
-        {% if brand_logo_url %}
-          {{ delete_brand_logo_form.submit(class="btn-danger") }}
-        {% endif %}
-      </form>
+  <h4>Profile Header</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ update_profile_header_form.hidden_tag() }}
+    <p>Set a custom header for profile pages that makes sense for your community. Here are a few examples of what you can do:</p>
+    <ul>
+      <li>Deposit information to <code>&lbrace;&lbrace; display_name_or_username &rbrace;&rbrace;</code></li>
+      <li>Submit a message to <code>&lbrace;&lbrace; username &rbrace;&rbrace;</code></li>
+      <li><code>&lbrace;&lbrace; display_name &rbrace;&rbrace;</code> को एक संदेश भेजें</li>
+    </ul>
+    {{ update_profile_header_form.template.label }}
+    {{ update_profile_header_form.template(autocomplete="off") }}
+    {% if update_profile_header_form.template.errors %}
+      <div>
+        {% for error in update_profile_header_form.template.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {{ update_profile_header_form.submit }}
+  </form>
 
-      <h4>Profile Header</h4>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ update_profile_header_form.hidden_tag() }}
-        <p>Set a custom header for profile pages that makes sense for your community. Here are a few examples of what you can do:</p>
-        <ul>
-          <li>Deposit information to <code>&lbrace;&lbrace; display_name_or_username &rbrace;&rbrace;</code></li>
-          <li>Submit a message to <code>&lbrace;&lbrace; username &rbrace;&rbrace;</code></li>
-          <li><code>&lbrace;&lbrace; display_name &rbrace;&rbrace;</code> को एक संदेश भेजें</li>
-        </ul>
-        {{ update_profile_header_form.template.label }}
-        {{ update_profile_header_form.template(autocomplete="off") }}
-        {% if update_profile_header_form.template.errors %}
-          <div>
-            {% for error in update_profile_header_form.template.errors %}
-              <span class="error">{{ error }}</span>
-            {% endfor %}
-          </div>
-        {% endif %}
-        {{ update_profile_header_form.submit }}
-      </form>
-
-      <h4>Homepage</h4>
-      <form
-        method="POST"
-        class="formBody"
-      >
-        {{ set_homepage_username_form.hidden_tag() }}
-        {{ set_homepage_username_form.username.label }}
-        {{ set_homepage_username_form.username }}
-        {% if set_homepage_username_form.username.errors %}
-          <div>
-            {% for error in set_homepage_username_form.username.errors %}
-              <span class="error">{{ error }}</span>
-            {% endfor %}
-          </div>
-        {% endif %}
-        {{ set_homepage_username_form.submit(class="btn") }}
-        {% if set_homepage_username_form.username.data %}
-          {{ set_homepage_username_form.delete_submit(class="btn-danger") }}
-        {% endif %}
-      </form>
-    </div>
-  </div>
+  <h4>Homepage</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ set_homepage_username_form.hidden_tag() }}
+    {{ set_homepage_username_form.username.label }}
+    {{ set_homepage_username_form.username }}
+    {% if set_homepage_username_form.username.errors %}
+      <div>
+        {% for error in set_homepage_username_form.username.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {{ set_homepage_username_form.submit(class="btn") }}
+    {% if set_homepage_username_form.username.data %}
+      {{ set_homepage_username_form.delete_submit(class="btn-danger") }}
+    {% endif %}
+  </form>
 {% endblock %}
 
 {% block scripts %}
