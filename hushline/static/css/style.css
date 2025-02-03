@@ -3150,7 +3150,7 @@ label > .meta {
 }
 
 form li {
-  margin-bottom: 0.325rem;
+  margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
