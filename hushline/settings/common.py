@@ -349,10 +349,14 @@ def handle_field_post(username: Username) -> Response | None:
         # Create a new field
         if field_form.submit.name in request.form:
             # Get the highest existing sort_order for this username
-            max_sort_order = db.session.scalar(
-                db.select(db.func.coalesce(db.func.max(FieldDefinition.sort_order), 0))
-                .filter(FieldDefinition.username_id == username.id)
-            ) or 0
+            max_sort_order = (
+                db.session.scalar(
+                    db.select(db.func.coalesce(db.func.max(FieldDefinition.sort_order), 0)).filter(
+                        FieldDefinition.username_id == username.id
+                    )
+                )
+                or 0
+            )
 
             field_definition = FieldDefinition(
                 username,
