@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="theme-color" content="{{ brand_primary_color }}" id="theme-color" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta property="og:title" content="Hush Line" />
+    <meta property="og:title" content="{{ brand_name }}" />
     <meta
       property="og:description"
       content="An open-source whistleblowing platform for organizations and individuals."
@@ -15,8 +15,7 @@
       content="https://hushline.app/assets/img/social/social.png"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@scidsg" />
-    <meta name="twitter:title" content="Hush Line" />
+    <meta name="twitter:title" content="{{ brand_name }}" />
     <meta
       name="twitter:description"
       content="An open-source whistleblowing platform for organizations and individuals."
@@ -25,7 +24,7 @@
       name="twitter:image"
       content="https://hushline.app/assets/img/social/social.png"
     />
-    <title>{% block title %}{% endblock %} - Hush Line</title>
+    <title>{% block title %}{% endblock %} - {{ brand_name }}</title>
     {% if brand_logo_url %}
       <link rel="icon" type="image/png" href="/assets/public/brand/logo.png" />
     {% else %}
