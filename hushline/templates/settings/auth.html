@@ -1,72 +1,63 @@
-{% extends "base.html" %}
+{% extends "settings/base.html" %}
 
-{% block title %}Settings{% endblock %}
+{% block settings_content %}
+  <h3>Authentication</h3>
+  <h4>Change Username</h4>
+  {% if user.primary_username.is_verified %}
+    <p class="meta">
+      ⚠️ Changing your username will result in losing your verification status.
+    </p>
+  {% endif %}
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ change_username_form.hidden_tag() }}
+    {{ change_username_form.new_username.label }}
+    {{ change_username_form.new_username(id='new_username', value=session['username']) }}
+    {% for error in change_username_form.new_username.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+    {{ change_username_form.submit }}
+  </form>
 
-{% block content %}
-  <h2>Settings</h2>
-  <div class="settings-content">
-    {% include "settings/nav.html" %}
-    <div class="tab-content">
-    <h3>Authentication</h3>
-    <h4>Change Username</h4>
-    {% if user.primary_username.is_verified %}
-      <p class="meta">
-        ⚠️ Changing your username will result in losing your verification status.
-      </p>
-    {% endif %}
+  <h4>Two-Factor Authentication</h4>
+  {% if user.totp_secret %}
     <form
-      method="POST"
+      method="GET"
+      action="{{ url_for('settings.confirm_disable_2fa') }}"
       class="formBody"
     >
-      {{ change_username_form.hidden_tag() }}
-      {{ change_username_form.new_username.label }}
-      {{ change_username_form.new_username(id='new_username', value=session['username']) }}
-      {% for error in change_username_form.new_username.errors %}
-        <span class="error">{{ error }}</span>
-      {% endfor %}
-      {{ change_username_form.submit }}
+      <button type="submit">Disable 2FA</button>
     </form>
-
-    <h4>Two-Factor Authentication</h4>
-    {% if user.totp_secret %}
-      <!-- If 2FA is enabled, show the Disable 2FA button -->
-      <form
-        method="GET"
-        action="{{ url_for('settings.confirm_disable_2fa') }}"
-        class="formBody"
-      >
-        <button type="submit">Disable 2FA</button>
-      </form>
-    {% else %}
-      <!-- If 2FA is disabled, show the Enable 2FA button -->
-      <form
-        method="POST"
-        action="{{ url_for('settings.toggle_2fa') }}"
-        class="formBody"
-      >
-        <button type="submit">Enable 2FA</button>
-      </form>
-    {% endif %}
-
-    <h4>Change Password</h4>
+  {% else %}
     <form
       method="POST"
+      action="{{ url_for('settings.toggle_2fa') }}"
       class="formBody"
     >
-      {{ change_password_form.hidden_tag() }}
-      {{ change_password_form.old_password.label }}
-      {{ change_password_form.old_password(id='old_password') }}
-      {% for error in change_password_form.old_password.errors %}
-        <span class="error">{{ error }}</span>
-      {% endfor %}
-      {{ change_password_form.new_password.label }}
-      {{ change_password_form.new_password(id='new_password') }}
-      {% for error in change_password_form.new_password.errors %}
-        <span class="error">{{ error }}</span>
-      {% endfor %}
-      {{ change_password_form.submit }}
+      <button type="submit">Enable 2FA</button>
     </form>
-  </div>
+  {% endif %}
+
+  <h4>Change Password</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ change_password_form.hidden_tag() }}
+    {{ change_password_form.old_password.label }}
+    {{ change_password_form.old_password(id='old_password') }}
+    {% for error in change_password_form.old_password.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+    {{ change_password_form.new_password.label }}
+    {{ change_password_form.new_password(id='new_password') }}
+    {% for error in change_password_form.new_password.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+    {{ change_password_form.submit }}
+  </form>
 {% endblock %}
 
 {% block scripts %}

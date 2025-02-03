@@ -1,48 +1,40 @@
-{% extends "base.html" %}
+{% extends "settings/base.html" %}
 
-{% block title %}Settings{% endblock %}
+{% block settings_content %}
+  <h3>Aliases</h3>
+  <h4>Add an Alias</h4>
+  {% set alias_count = aliases.__len__() %}
+  {% if alias_count < user.max_aliases %}
+    <form
+      method="POST"
+      class="formBody"
+    >
+      {{ new_alias_form.hidden_tag() }}
+      {{ new_alias_form.username.label }}
+      {{ new_alias_form.username }}
+      {{ new_alias_form.submit }}
+    </form>
+  {% else %}
+    <p>Alias limit reached.</p>
+  {% endif %}
 
-{% block content %}
-  <h2>Settings</h2>
-  <div class="settings-content">
-    {% include "settings/nav.html" %}
-    <div class="tab-content">
-      <h3>Aliases</h3>
-      <h4>Add an Alias</h4>
-      {% set alias_count = aliases.__len__() %}
-      {% if alias_count < user.max_aliases %}
-        <form
-          method="POST"
-          class="formBody"
-        >
-          {{ new_alias_form.hidden_tag() }}
-          {{ new_alias_form.username.label }}
-          {{ new_alias_form.username }}
-          {{ new_alias_form.submit }}
-        </form>
-      {% else %}
-        <p>Alias limit reached.</p>
-      {% endif %}
-
-      <h4>Current Aliases</h4>
-      {% if aliases %}
-        <div class="alias-list">
-          {% for username in aliases %}
-            <div class="alias-entry">
-              <div>
-                <a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">
-                  {{ username.display_name or username.username }}
-                </a>
-              </div>
-              <div class="icon chevron"></div>
-            </div>
-          {% endfor %}
+  <h4>Current Aliases</h4>
+  {% if aliases %}
+    <div class="alias-list">
+      {% for username in aliases %}
+        <div class="alias-entry">
+          <div>
+            <a href="{{ url_for('.alias', username_id=username.id) }}" class="stretched-link">
+              {{ username.display_name or username.username }}
+            </a>
+          </div>
+          <div class="icon chevron"></div>
         </div>
-      {% else %}
-        <p>🙊 No aliases configured.</p>
-      {% endif %}
+      {% endfor %}
     </div>
-  </div>
+  {% else %}
+    <p>🙊 No aliases configured.</p>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

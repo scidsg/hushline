@@ -1,36 +1,30 @@
-{% extends "base.html" %}
+{% extends "settings/base.html" %}
 
-{% block title %}Settings{% endblock %}
+{% block settings_content %}
+  <h3>Advanced</h3>
 
-{% block content %}
-  <h2>Settings</h2>
-  <div class="settings-content">
-    {% include "settings/nav.html" %}
-    <div class="tab-content">
-      <h3>Advanced</h3>
-    {% if is_premium_enabled %}
-    <div class="adv-form">
-      <h4>Paid Features</h4>
-      <div>
-        <a href="{{ url_for('premium.index') }}">Manage my plan</a>
-      </div>
+  {% if is_premium_enabled %}
+  <div class="adv-form">
+    <h4>Paid Features</h4>
+    <div>
+      <a href="{{ url_for('premium.index') }}">Manage my plan</a>
     </div>
-    {% endif %}
-
-    <h4>Delete Account</h4>
-    <p class="meta">
-      ⚠️ Deleting your account is a permanent action that cannot be undone!
-    </p>
-    <form
-      method="POST"
-      action="{{ url_for('settings.delete_account') }}"
-      class="formBody"
-    >
-      <button type="submit" class="btn-danger" id="deleteAccountButton">
-        Delete Account
-      </button>
-    </form>
   </div>
+  {% endif %}
+
+  <h4>Delete Account</h4>
+  <p class="meta">
+    ⚠️ Deleting your account is a permanent action that cannot be undone!
+  </p>
+  <form
+    method="POST"
+    action="{{ url_for('settings.delete_account') }}"
+    class="formBody"
+  >
+    <button type="submit" class="btn-danger" id="deleteAccountButton">
+      Delete Account
+    </button>
+  </form>
 {% endblock %}
 
 {% block scripts %}
