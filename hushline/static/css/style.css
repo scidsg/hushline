@@ -3159,3 +3159,8 @@ form li {
 li label {
   margin-bottom: 0;
 }
+
+.message pre {
+  border: none;
+  padding: 0;
+}
