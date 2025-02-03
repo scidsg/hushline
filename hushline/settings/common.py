@@ -237,10 +237,10 @@ def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
         db.session.commit()
     else:
         flash("⛔️ Invalid PGP key format or import failed.")
-        return redirect(url_for(".email"))
+        return redirect(url_for(".notifications"))
 
     flash("👍 PGP key updated successfully.")
-    return redirect(url_for(".email"))
+    return redirect(url_for(".notifications"))
 
 
 def handle_email_forwarding_form(

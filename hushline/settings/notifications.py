@@ -11,31 +11,21 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
-from hushline.model import (
-    User,
-)
+from hushline.model import User
 from hushline.settings.common import (
     form_error,
     handle_email_forwarding_form,
-    handle_pgp_key_form,
     set_input_disabled,
 )
-from hushline.settings.forms import (
-    EmailForwardingForm,
-    PGPKeyForm,
-    PGPProtonForm,
-)
+from hushline.settings.forms import EmailForwardingForm
 
 
-def register_email_routes(bp: Blueprint) -> None:
+def register_notifications_routes(bp: Blueprint) -> None:
     @bp.route("/email", methods=["GET", "POST"])
     @authentication_required
-    def email() -> Response | Tuple[str, int]:
+    def notifications() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
-
-        pgp_proton_form = PGPProtonForm()
-        pgp_key_form = PGPKeyForm(pgp_key=user.pgp_key)
 
         email_forwarding_form = EmailForwardingForm(
             data=dict(
@@ -46,9 +36,7 @@ def register_email_routes(bp: Blueprint) -> None:
 
         status_code = 200
         if request.method == "POST":
-            if pgp_key_form.submit.name in request.form and pgp_key_form.validate():
-                return handle_pgp_key_form(user, pgp_key_form)
-            elif (
+            if (
                 email_forwarding_form.submit.name in request.form
                 and email_forwarding_form.validate()
                 and (
@@ -75,10 +63,8 @@ def register_email_routes(bp: Blueprint) -> None:
             email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
 
         return render_template(
-            "settings/email.html",
+            "settings/notifications.html",
             user=user,
-            pgp_proton_form=pgp_proton_form,
-            pgp_key_form=pgp_key_form,
             email_forwarding_form=email_forwarding_form,
             default_forwarding_enabled=default_forwarding_enabled,
         ), status_code

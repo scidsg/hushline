@@ -175,7 +175,7 @@ def test_add_pgp_key(client: FlaskClient, user: User, user_password: str) -> Non
         new_pgp_key = file.read().strip()
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.encryption"),
         data=form_to_data(PGPKeyForm(data={"pgp_key": new_pgp_key})),
         follow_redirects=True,
     )
@@ -193,7 +193,7 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
     invalid_pgp_key = "NOT A VALID PGP KEY BLOCK"
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.encryption"),
         data=form_to_data(PGPKeyForm(data={"pgp_key": invalid_pgp_key})),
         follow_redirects=True,
     )
@@ -213,7 +213,7 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
     db.session.commit()
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.notifications"),
         # for some reason using the Form class doesn't work here. why? fuck if i know.
         data={
             "forwarding_enabled": True,
@@ -262,7 +262,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
     }
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.notifications"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -307,7 +307,7 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: Us
     }
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.notifications"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
@@ -348,7 +348,7 @@ def test_update_smtp_settings_default_forwarding(
     }
 
     response = client.post(
-        url_for("settings.email"),
+        url_for("settings.notifications"),
         data=new_smtp_settings,
         follow_redirects=True,
     )
