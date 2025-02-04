@@ -44,6 +44,14 @@ async function encryptMessage(publicKeyArmored, message) {
   }
 }
 
+function loadEmailSettings() {
+  const elem = document.getElementById("userEmailSettings");
+  if (!elem) {
+    console.error("Email settings element not found");
+  }
+  return JSON.parse(elem.innerHTML);
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   const encryptedFlag = document.getElementById("clientSideEncrypted");
@@ -51,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ? document.getElementById("publicKey").value
     : "";
 
+  const emailSettings = loadEmailSettings();
   let encryptionSuccessful = true;
 
   function getFieldValue(field) {
@@ -80,24 +89,26 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    // Build an email body with all fields
-    let emailBody = "";
-    document.querySelectorAll(".form-field").forEach(async (field) => {
-      const value = getFieldValue(field);
-      const label = getFieldLabel(field);
+    if (emailSettings.sendEmail) {
+      // Build an email body with all fields
+      let emailBody = "";
+      document.querySelectorAll(".form-field").forEach(async (field) => {
+        const value = getFieldValue(field);
+        const label = getFieldLabel(field);
 
-      emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
-    });
-    const encryptedEmailBody = await encryptMessage(
-      publicKeyArmored,
-      emailBody,
-    );
-    if (encryptedEmailBody) {
-      const emailBodyEl = document.getElementById("email_body");
-      emailBodyEl.value = encryptedEmailBody;
-    } else {
-      encryptionSuccessful = false;
-      console.error("Client-side encryption failed for email body");
+        emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
+      });
+      const encryptedEmailBody = await encryptMessage(
+        publicKeyArmored,
+        emailBody,
+      );
+      if (encryptedEmailBody) {
+        const emailBodyEl = document.getElementById("email_body");
+        emailBodyEl.value = encryptedEmailBody;
+      } else {
+        encryptionSuccessful = false;
+        console.error("Client-side encryption failed for email body");
+      }
     }
 
     // Loop through all encrypted fields and encrypt them
@@ -141,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    if (encryptionSuccessful) {
+    if (encryptionSuccessful && emailSettings.sendEmail) {
       encryptedFlag.value = "true";
     }
 

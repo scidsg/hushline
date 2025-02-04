@@ -216,7 +216,6 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
         url_for("settings.notifications"),
         # for some reason using the Form class doesn't work here. why? fuck if i know.
         data={
-            "forwarding_enabled": True,
             "email_address": "primary@example.com",
             "custom_smtp_settings": True,
             "smtp_settings-smtp_server": "smtp.example.com",
@@ -249,7 +248,6 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
-        "forwarding_enabled": True,
         "email_address": "primary@example.com",
         "custom_smtp_settings": True,
         "smtp_settings-smtp_server": "smtp.example.com",
@@ -294,7 +292,6 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
 @patch("hushline.email.smtplib.SMTP_SSL")
 def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     new_smtp_settings = {
-        "forwarding_enabled": True,
         "email_address": "primary@example.com",
         "custom_smtp_settings": True,
         "smtp_settings-smtp_server": "smtp.example.com",
@@ -341,7 +338,6 @@ def test_update_smtp_settings_default_forwarding(
     SMTP: MagicMock, client: FlaskClient, user: User
 ) -> None:
     new_smtp_settings = {
-        "forwarding_enabled": True,
         "email_address": "primary@example.com",
         "smtp_settings-smtp_encryption": "StartTLS",
         EmailForwardingForm.submit.name: "",

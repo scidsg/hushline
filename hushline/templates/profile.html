@@ -9,6 +9,12 @@
 {% endblock %}
 
 {% block content %}
+  <div id="userEmailSettings" class="display-none">
+    {{ {
+        "sendEmail": user.enable_email_notifications,
+       } | tojson }}
+  </div>
+
   <h2 class="submit">
     {% if user.pgp_key %}
       {# Unauthenticated or other users who meet PGP requirements #}

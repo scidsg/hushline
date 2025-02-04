@@ -3164,3 +3164,7 @@ li label {
   border: none;
   padding: 0;
 }
+
+.display-none {
+  display: none;
+}

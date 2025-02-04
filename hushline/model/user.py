@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from flask import current_app
 from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.config import AliasMode
@@ -43,6 +44,7 @@ class User(Model):
         viewonly=True,
     )
 
+    enable_email_notifications: Mapped[bool] = mapped_column(server_default=text("false"))
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
     smtp_port: Mapped[Optional[int]]

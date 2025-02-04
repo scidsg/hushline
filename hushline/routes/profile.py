@@ -129,19 +129,23 @@ def register_profile_routes(app: Flask) -> None:
                 if isinstance(value, list):
                     value = "\n".join(value)
 
-                if not client_side_encrypted:
+                if not client_side_encrypted and uname.user.enable_email_notifications:
                     plaintext_email_body += (
                         f"# {field_definition.label}\n\n{value}\n\n====================\n\n"
                     )
 
             if not client_side_encrypted:
                 ciphertext = encrypt_message(plaintext_email_body, uname.user.pgp_key)
-                if ciphertext:
-                    encrypted_email_body = ciphertext
-                else:
-                    encrypted_email_body = "There was an error creating an encrypted email body. Login to Hush Line to view this message."  # noqa: E501
 
-            do_send_email(uname.user, encrypted_email_body)
+                if ciphertext:
+                    email_body = ciphertext
+                else:
+                    email_body = (
+                        "There was an error creating an encrypted email body. "
+                        "Login to Hush Line to view this message."
+                    )
+
+            do_send_email(uname.user, email_body)
             flash("👍 Message submitted successfully.")
             session["reply_slug"] = message.reply_slug
             current_app.logger.debug("Message sent and now redirecting")
