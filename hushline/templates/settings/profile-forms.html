@@ -130,12 +130,6 @@
               {% if not field_form.enabled.data %}
                 <span class="label-meta">disabled</span>
               {% endif %}
-              {% if not field_form.encrypted.data %}
-                <span class="label-meta">not encrypted</span>
-              {% endif %}
-              {% if field_form.required.data %}
-                <span class="label-meta">required</span>
-              {% endif %}
             </div>
             <div class="field-form-label">{{ field_form.label.data }}</div>
           </div>
