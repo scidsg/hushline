@@ -25,12 +25,12 @@
         </div>
     </div>
 
-    <div>
+    <div class="field">
         {{ field_form.label.label(for='label-' ~ field_form.id.data) }}
         {{ field_form.label(id='label-' ~ field_form.id.data, placeholder='Field label') }}
     </div>
 
-    <div>
+    <div class="field">
         {{ field_form.field_type.label(for='field_type-' ~ field_form.id.data) }}
         {{ field_form.field_type(id='field_type-' ~ field_form.id.data, class='field-type') }}
     </div>

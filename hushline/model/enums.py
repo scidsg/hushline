@@ -108,8 +108,8 @@ class FieldType(enum.Enum):
             case self.MULTILINE_TEXT:
                 return "Multiline Text"
             case self.CHOICE_SINGLE:
-                return "Single Choice"
+                return "Single Selection"
             case self.CHOICE_MULTIPLE:
-                return "Multiple Choice"
+                return "Multiple Selection"
             case x:
                 raise Exception(f"Programming error. FieldType {x!r} not handled")
