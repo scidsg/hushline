@@ -5,12 +5,6 @@
 
   <p>Get notified when a new tip comes in. Optionally include the encrypted message content.</p>
 
-  {% if not user.pgp_key %}
-    <p class="info">
-      <a href="{{ url_for('.encryption') }}">Add a PGP key</a> to enable email forwarding.
-    </p>
-  {% endif %}
-
   <form method="POST" class="formBody auto-submit">
     {{ toggle_notifications_form.hidden_tag() }}
     <div class="checkbox-group toggle-ui">
@@ -25,7 +19,29 @@
     {{ toggle_notifications_form.submit }}
   </form>
 
-  {% if user.pgp_key %}
+  {% if user.enable_email_notifications %}
+    {% if not user.pgp_key %}
+      <p class="info">
+        <a href="{{ url_for('.encryption') }}">Add a PGP key</a> to enable content inclusion.
+      </p>
+    {% else %}
+      <form method="POST" class="formBody auto-submit">
+        {{ toggle_include_content_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+          {{ toggle_include_content_form.include_content }}
+          <label for="{{ toggle_include_content_form.include_content.name }}" class="toggle-label">
+            {{ toggle_include_content_form.include_content.label }}
+            <div class="toggle">
+              <div class="toggle__ball"></div>
+            </div>
+          </label>
+        </div>
+        {{ toggle_include_content_form.submit }}
+      </form>
+    {% endif %}
+  {% endif %}
+
+  {% if user.enable_email_notifications %}
     <form
       method="POST"
       class="formBody"

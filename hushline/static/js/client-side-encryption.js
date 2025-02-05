@@ -52,44 +52,46 @@ function loadEmailSettings() {
   return JSON.parse(elem.innerHTML);
 }
 
+function getFieldValue(field) {
+  if (
+    field.tagName === "INPUT" ||
+    field.tagName === "SELECT" ||
+    field.tagName === "TEXTAREA"
+  ) {
+    return field.value;
+  } else if (field.tagName === "UL") {
+    const checkedValues = [];
+    field
+      .querySelectorAll(
+        "input[type='checkbox']:checked, input[type='radio']:checked",
+      )
+      .forEach((input) => {
+        checkedValues.push(input.value);
+      });
+    return checkedValues.join(", ");
+  }
+}
+
+function getFieldLabel(field) {
+  return field.getAttribute("data-label");
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
-  const encryptedFlag = document.getElementById("clientSideEncrypted");
+  const clientSideEncryptedEl = document.getElementById("clientSideEncrypted");
+  const emailEncryptionType = document.getElementById("emailEncryptionType");
   const publicKeyArmored = document.getElementById("publicKey")
     ? document.getElementById("publicKey").value
     : "";
 
   const emailSettings = loadEmailSettings();
-  let encryptionSuccessful = true;
-
-  function getFieldValue(field) {
-    if (
-      field.tagName === "INPUT" ||
-      field.tagName === "SELECT" ||
-      field.tagName === "TEXTAREA"
-    ) {
-      return field.value;
-    } else if (field.tagName === "UL") {
-      const checkedValues = [];
-      field
-        .querySelectorAll(
-          "input[type='checkbox']:checked, input[type='radio']:checked",
-        )
-        .forEach((input) => {
-          checkedValues.push(input.value);
-        });
-      return checkedValues.join(", ");
-    }
-  }
-
-  function getFieldLabel(field) {
-    return field.getAttribute("data-label");
-  }
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    if (emailSettings.sendEmail) {
+    const emailBodyEl = document.getElementById("email_body");
+
+    if (emailSettings.sendEmail && emailSettings.includeContent) {
       // Build an email body with all fields
       let emailBody = "";
       document.querySelectorAll(".form-field").forEach(async (field) => {
@@ -103,12 +105,17 @@ document.addEventListener("DOMContentLoaded", function () {
         emailBody,
       );
       if (encryptedEmailBody) {
-        const emailBodyEl = document.getElementById("email_body");
         emailBodyEl.value = encryptedEmailBody;
+        emailEncryptionType.value = "already_encrypted";
       } else {
-        encryptionSuccessful = false;
         console.error("Client-side encryption failed for email body");
       }
+    } else if (emailSettings.sendEmail) {
+      emailBodyEl.value =
+        "You have a new Hush Line message. Log in to view it.";
+      emailEncryptionType.value = "safe_as_plaintext";
+    } else {
+      emailEncryptionType.value = "safe_as_plaintext";
     }
 
     // Loop through all encrypted fields and encrypt them
@@ -147,14 +154,10 @@ document.addEventListener("DOMContentLoaded", function () {
         fieldContainer.appendChild(hiddenInput);
         fieldContainer.appendChild(textarea);
       } else {
-        encryptionSuccessful = false;
         console.error("Client-side encryption failed for field:", field.name);
+        clientSideEncryptedEl.value = "false";
       }
     });
-
-    if (encryptionSuccessful && emailSettings.sendEmail) {
-      encryptedFlag.value = "true";
-    }
 
     // Wait for the DOM to update before submitting
     setTimeout(() => {

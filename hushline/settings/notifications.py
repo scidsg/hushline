@@ -28,6 +28,11 @@ class ToggleNotificationsForm(FlaskForm):
     submit = SubmitField("Submit", name="toggle_notifications", widget=DisplayNoneButton())
 
 
+class ToggleIncludeContentForm(FlaskForm):
+    include_content = BooleanField("Include Message Contents", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_include_content", widget=DisplayNoneButton())
+
+
 def handle_email_forwarding_form(
     user: User, form: EmailForwardingForm, default_forwarding_enabled: bool
 ) -> Optional[Response]:
@@ -91,9 +96,9 @@ def register_notifications_routes(bp: Blueprint) -> None:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
 
-        toggle_notifications_form = ToggleNotificationsForm(
-            data={"enable_email_notifications": user.enable_email_notifications}
-        )
+        toggle_notifications_form = ToggleNotificationsForm()
+        toggle_include_content_form = ToggleIncludeContentForm()
+
         email_forwarding_form = EmailForwardingForm(
             data=dict(
                 email_address=user.email,
@@ -115,6 +120,19 @@ def register_notifications_routes(bp: Blueprint) -> None:
                     flash("Email notifications enabled")
                 else:
                     flash("Email notifications disabled")
+                return redirect_to_self()
+            elif (
+                toggle_include_content_form.submit.name in request.form
+                and toggle_include_content_form.validate()
+            ):
+                user.email_include_message_content = (
+                    toggle_include_content_form.include_content.data
+                )
+                db.session.commit()
+                if toggle_include_content_form.include_content.data:
+                    flash("Email message content enabled")
+                else:
+                    flash("Email message content disabled")
                 return redirect_to_self()
             elif (
                 email_forwarding_form.submit.name in request.form
@@ -142,10 +160,14 @@ def register_notifications_routes(bp: Blueprint) -> None:
             email_forwarding_form.smtp_settings.smtp_encryption.data = user.smtp_encryption.value
             email_forwarding_form.smtp_settings.smtp_sender.data = user.smtp_sender
 
+        toggle_notifications_form.enable_email_notifications.data = user.enable_email_notifications
+        toggle_include_content_form.include_content.data = user.email_include_message_content
+
         return render_template(
             "settings/notifications.html",
             user=user,
             default_forwarding_enabled=default_forwarding_enabled,
             toggle_notifications_form=toggle_notifications_form,
+            toggle_include_content_form=toggle_include_content_form,
             email_forwarding_form=email_forwarding_form,
         ), status_code

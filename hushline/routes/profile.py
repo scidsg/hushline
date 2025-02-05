@@ -13,7 +13,6 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
-from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.model import (
     FieldDefinition,
@@ -23,7 +22,7 @@ from hushline.model import (
     Username,
 )
 from hushline.routes.common import do_send_email, validate_captcha
-from hushline.routes.forms import DynamicMessageForm
+from hushline.routes.forms import DynamicMessageForm, EmailEncryptionType
 from hushline.safe_template import safe_render_template
 
 
@@ -44,7 +43,7 @@ def register_profile_routes(app: Flask) -> None:
         num1 = secrets.randbelow(10) + 1
         num2 = secrets.randbelow(10) + 1
         math_problem = f"{num1} + {num2} ="
-        session["math_answer"] = str(num1 + num2)  # Store the answer in session as a string
+        session["math_answer"] = str(num1 + num2)
 
         profile_header = safe_render_template(
             OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE),
@@ -96,15 +95,26 @@ def register_profile_routes(app: Flask) -> None:
 
             current_app.logger.debug(f"Form submitted: {form.data}")
 
-            plaintext_email_body = ""
-            encrypted_email_body = ""
-
-            client_side_encrypted = request.form.get("client_side_encrypted", "false") == "true"
-            if client_side_encrypted:
-                encrypted_email_body = form.email_body.data
-                if not encrypted_email_body.startswith("-----BEGIN PGP MESSAGE-----"):
-                    current_app.logger.error("Email body is not a PGP message")
-                    encrypted_email_body = "There was an error creating an encrypted email body. Login to Hush Line to view this message."  # noqa: E501
+            email_body = (
+                "There was an error creating an encrypted email body. "
+                "Login to Hush Line to view this message."
+            )
+            match form.email_encryption_type.data:
+                case EmailEncryptionType.SHOULD_ENCRYPT.value:
+                    # if we should encrypt at this point, something went wrong
+                    # but this is semi-expected
+                    pass
+                case EmailEncryptionType.ALREADY_ENCRYPTED.value:
+                    if (form.encrypted_email_body.data or "").startswith(
+                        "-----BEGIN PGP MESSAGE-----"
+                    ):
+                        email_body = form.email_body.data
+                    else:
+                        current_app.logger.error("Email body is not a PGP message")
+                case EmailEncryptionType.SAFE_AS_PLAINTEXT.value:
+                    email_body = form.email_body.data
+                case x:
+                    raise NotImplementedError(f"Encryption type not handled: {x}")
 
             # Create a message
             message = Message(username_id=uname.id)
@@ -121,7 +131,7 @@ def register_profile_routes(app: Flask) -> None:
                     message,
                     value,
                     field_definition.encrypted,
-                    client_side_encrypted,
+                    form.client_side_encrypted.data == "true",
                 )
                 db.session.add(field_value)
                 db.session.commit()
@@ -129,23 +139,8 @@ def register_profile_routes(app: Flask) -> None:
                 if isinstance(value, list):
                     value = "\n".join(value)
 
-                if not client_side_encrypted and uname.user.enable_email_notifications:
-                    plaintext_email_body += (
-                        f"# {field_definition.label}\n\n{value}\n\n====================\n\n"
-                    )
-
-            if not client_side_encrypted:
-                ciphertext = encrypt_message(plaintext_email_body, uname.user.pgp_key)
-
-                if ciphertext:
-                    email_body = ciphertext
-                else:
-                    email_body = (
-                        "There was an error creating an encrypted email body. "
-                        "Login to Hush Line to view this message."
-                    )
-
-            do_send_email(uname.user, email_body)
+            if uname.user.enable_email_notifications and email_body:
+                do_send_email(uname.user, email_body)
             flash("👍 Message submitted successfully.")
             session["reply_slug"] = message.reply_slug
             current_app.logger.debug("Message sent and now redirecting")

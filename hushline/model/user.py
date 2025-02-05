@@ -45,6 +45,8 @@ class User(Model):
     )
 
     enable_email_notifications: Mapped[bool] = mapped_column(server_default=text("false"))
+    email_include_message_content: Mapped[bool] = mapped_column(server_default=text("false"))
+
     _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
     _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
     smtp_port: Mapped[Optional[int]]
