@@ -51,6 +51,12 @@
       {{ email_forwarding_form.email_address.label }}
       {{ email_forwarding_form.email_address }}
 
+      {% if default_forwarding_enabled and smtp_forwarding_message_html %}
+        <p class="meta">
+          {{ smtp_forwarding_message_html }}
+        </p>
+      {% endif %}
+
       {% if default_forwarding_enabled %}
         <div class="checkbox-group toggle-ui">
           {{ email_forwarding_form.custom_smtp_settings() }}
@@ -61,12 +67,6 @@
             </div>
           </label>
         </div>
-      {% endif %}
-
-      {% if default_forwarding_enabled and smtp_forwarding_message_html %}
-        <p class="meta">
-          {{ smtp_forwarding_message_html }}
-        </p>
       {% endif %}
 
       <fieldset id="custom_smtp_settings_fields">

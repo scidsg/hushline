@@ -3181,11 +3181,11 @@ li label {
   margin-bottom: 0;
 }
 
-#email_address + .toggle-ui {
-  margin-top: 1.5rem;
+#email_address ~ .toggle-ui {
+  margin-bottom: 1.5rem;
 }
 
-#email_address + .toggle-ui + .meta {
+#email_address + .meta {
   margin-top: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
