@@ -22,7 +22,7 @@ from hushline.model import (
     Username,
 )
 from hushline.routes.common import do_send_email, validate_captcha
-from hushline.routes.forms import DynamicMessageForm, EmailEncryptionType
+from hushline.routes.forms import DynamicMessageForm
 from hushline.safe_template import safe_render_template
 
 
@@ -95,32 +95,12 @@ def register_profile_routes(app: Flask) -> None:
 
             current_app.logger.debug(f"Form submitted: {form.data}")
 
-            email_body = (
-                "There was an error creating an encrypted email body. "
-                "Login to Hush Line to view this message."
-            )
-            match form.email_encryption_type.data:
-                case EmailEncryptionType.SHOULD_ENCRYPT.value:
-                    # if we should encrypt at this point, something went wrong
-                    # but this is semi-expected
-                    pass
-                case EmailEncryptionType.ALREADY_ENCRYPTED.value:
-                    if (form.encrypted_email_body.data or "").startswith(
-                        "-----BEGIN PGP MESSAGE-----"
-                    ):
-                        email_body = form.email_body.data
-                    else:
-                        current_app.logger.error("Email body is not a PGP message")
-                case EmailEncryptionType.SAFE_AS_PLAINTEXT.value:
-                    email_body = form.email_body.data
-                case x:
-                    raise NotImplementedError(f"Encryption type not handled: {x}")
-
             # Create a message
             message = Message(username_id=uname.id)
             db.session.add(message)
-            db.session.commit()
+            db.session.flush()
 
+            extracted_fields = []
             # Add the field values
             for data in dynamic_form.field_data():
                 field_name: str = data["name"]  # type: ignore
@@ -131,16 +111,23 @@ def register_profile_routes(app: Flask) -> None:
                     message,
                     value,
                     field_definition.encrypted,
-                    form.client_side_encrypted.data == "true",
                 )
                 db.session.add(field_value)
-                db.session.commit()
+                db.session.flush()
+                extracted_fields.append((field_definition.label, field_value.value))
 
-                if isinstance(value, list):
-                    value = "\n".join(value)
+            db.session.commit()
 
-            if uname.user.enable_email_notifications and email_body:
-                do_send_email(uname.user, email_body)
+            if uname.user.enable_email_notifications:
+                if not uname.user.email_include_message_content:
+                    email_body = "You have a new Hush Line message. Login to read it."
+                else:
+                    email_body = ""
+                    for name, value in extracted_fields:
+                        email_body += f"\n\n{name}\n\n{value}\n\n=============="
+
+                do_send_email(uname.user, email_body.strip())
+
             flash("👍 Message submitted successfully.")
             session["reply_slug"] = message.reply_slug
             current_app.logger.debug("Message sent and now redirecting")

@@ -234,10 +234,10 @@ def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
         db.session.commit()
     else:
         flash("⛔️ Invalid PGP key format or import failed.")
-        return redirect(url_for(".notifications"))
+        return redirect(url_for(".encryption"))
 
     flash("👍 PGP key updated successfully.")
-    return redirect(url_for(".notifications"))
+    return redirect(url_for(".encryption"))
 
 
 def create_profile_forms(

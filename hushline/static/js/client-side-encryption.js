@@ -44,14 +44,6 @@ async function encryptMessage(publicKeyArmored, message) {
   }
 }
 
-function loadEmailSettings() {
-  const elem = document.getElementById("userEmailSettings");
-  if (!elem) {
-    console.error("Email settings element not found");
-  }
-  return JSON.parse(elem.innerHTML);
-}
-
 function getFieldValue(field) {
   if (
     field.tagName === "INPUT" ||
@@ -78,45 +70,14 @@ function getFieldLabel(field) {
 
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
-  const clientSideEncryptedEl = document.getElementById("clientSideEncrypted");
-  const emailEncryptionType = document.getElementById("emailEncryptionType");
   const publicKeyArmored = document.getElementById("publicKey")
     ? document.getElementById("publicKey").value
     : "";
-
-  const emailSettings = loadEmailSettings();
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     const emailBodyEl = document.getElementById("email_body");
-
-    if (emailSettings.sendEmail && emailSettings.includeContent) {
-      // Build an email body with all fields
-      let emailBody = "";
-      document.querySelectorAll(".form-field").forEach(async (field) => {
-        const value = getFieldValue(field);
-        const label = getFieldLabel(field);
-
-        emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
-      });
-      const encryptedEmailBody = await encryptMessage(
-        publicKeyArmored,
-        emailBody,
-      );
-      if (encryptedEmailBody) {
-        emailBodyEl.value = encryptedEmailBody;
-        emailEncryptionType.value = "already_encrypted";
-      } else {
-        console.error("Client-side encryption failed for email body");
-      }
-    } else if (emailSettings.sendEmail) {
-      emailBodyEl.value =
-        "You have a new Hush Line message. Log in to view it.";
-      emailEncryptionType.value = "safe_as_plaintext";
-    } else {
-      emailEncryptionType.value = "safe_as_plaintext";
-    }
 
     // Loop through all encrypted fields and encrypt them
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
@@ -155,7 +116,6 @@ document.addEventListener("DOMContentLoaded", function () {
         fieldContainer.appendChild(textarea);
       } else {
         console.error("Client-side encryption failed for field:", field.name);
-        clientSideEncryptedEl.value = "false";
       }
     });
 

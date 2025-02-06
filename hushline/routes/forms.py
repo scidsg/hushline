@@ -1,10 +1,5 @@
-import enum
-from typing import Self
-
 from flask_wtf import FlaskForm
 from wtforms import (
-    Field,
-    HiddenField,
     PasswordField,
     RadioField,
     SelectField,
@@ -12,7 +7,7 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from wtforms.validators import DataRequired, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
 from hushline.forms import ComplexPassword
@@ -57,48 +52,13 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
 
 
-@enum.unique
-class EmailEncryptionType(enum.Enum):
-    SHOULD_ENCRYPT = "should_encrypt"
-    ALREADY_ENCRYPTED = "already_encrypted"
-    SAFE_AS_PLAINTEXT = "safe_as_plaintext"
-
-    @classmethod
-    def parse(cls, string: str) -> Self:
-        for val in cls:
-            if val.value == string:
-                return val
-        raise ValueError(f"Not a valid {cls.__name__}: {string}")
-
-
 class DynamicMessageForm:
     def __init__(self, fields: list[FieldDefinition]):
         self.fields = fields
 
         # Create a custom form class for this instance of CustomMessageForm
         class F(FlaskForm):
-            client_side_encrypted = HiddenField(
-                "Client Side Encrypted",
-                validators=[DataRequired()],
-                render_kw={"id": "clientSideEncrypted", "value": "false"},
-            )
-            email_body = HiddenField(
-                "Email Body", validators=[Optional(), Length(max=10240 * len(fields))]
-            )
-            email_encryption_type = HiddenField(
-                "Email Encryption Type",
-                validators=[DataRequired()],
-                render_kw={
-                    "id": "emailEncryptionType",
-                    "value": EmailEncryptionType.SHOULD_ENCRYPT.value,
-                },
-            )
-
-            def validate_email_encryption_type(self, field: Field) -> None:
-                try:
-                    EmailEncryptionType.parse(field.data)
-                except ValueError:
-                    raise ValidationError(f"Not a valid input: {field.data}")
+            pass
 
         self.F = F
 
