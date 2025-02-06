@@ -3164,3 +3164,11 @@ li label {
   border: none;
   padding: 0;
 }
+
+.drill-in h4 {
+  margin-top: 0;
+}
+
+form:last-of-type + .fields {
+  margin-top: 2rem;
+}
