@@ -77,8 +77,6 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const emailBodyEl = document.getElementById("email_body");
-
     // Loop through all encrypted fields and encrypt them
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
       const value = getFieldValue(field);
