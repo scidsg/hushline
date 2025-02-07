@@ -82,6 +82,6 @@ def do_send_email(user: User, body: str) -> None:
                 encryption=SMTPEncryption[current_app.config["SMTP_ENCRYPTION"]],
             )
 
-        send_email(user.email, "New Message", body, smtp_config)
+        send_email(user.email, "New Hush Line Message Received", body, smtp_config)
     except Exception as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
