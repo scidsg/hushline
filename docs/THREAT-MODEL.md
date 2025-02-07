@@ -61,7 +61,7 @@ The following assumptions are accepted in the threat model of the Hush Line prod
 
 ### Assumptions About the World
 
-- The security assumptions of `bcrypt` with randomly generated salts are valid.
+- The security assumptions of `scrypt` with randomly generated salts are valid.
 - The security/anonymity assumptions of Tor and the Onion service protocol are valid.
 - The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
 
