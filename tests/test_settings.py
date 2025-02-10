@@ -1099,15 +1099,20 @@ def test_profile_fields_disabled(client: FlaskClient, app: Flask, user: User) ->
     resp = client.get(url_for("settings.profile_fields"))
     assert resp.status_code == 401
 
+
 @pytest.mark.usefixtures("_authenticated_user")
-def test_alias_fields_enabled(client: FlaskClient, app: Flask, user: User, user_alias: Username) -> None:
+def test_alias_fields_enabled(
+    client: FlaskClient, app: Flask, user: User, user_alias: Username
+) -> None:
     app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
     resp = client.get(url_for("settings.alias_fields", username_id=user_alias.id))
     assert resp.status_code == 302
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_alias_fields_disabled(client: FlaskClient, app: Flask, user: User, user_alias: Username) -> None:
+def test_alias_fields_disabled(
+    client: FlaskClient, app: Flask, user: User, user_alias: Username
+) -> None:
     app.config["FIELDS_MODE"] = FieldsMode.PREMIUM
     resp = client.get(url_for("settings.alias_fields", username_id=user_alias.id))
     assert resp.status_code == 401
