@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
-from hushline.config import AliasMode
+from hushline.config import AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -1080,3 +1080,35 @@ def test_update_profile_header(client: FlaskClient, admin: User) -> None:
         ).one_or_none()
         is None
     )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_enabled(client: FlaskClient, app: Flask, user: User) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    resp = client.get(url_for("settings.profile_fields"))
+    assert resp.status_code == 302
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_disabled(client: FlaskClient, app: Flask, user: User) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.PREMIUM
+    resp = client.get(url_for("settings.profile_fields"))
+    assert resp.status_code == 401
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_enabled(
+    client: FlaskClient, app: Flask, user: User, user_alias: Username
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    resp = client.get(url_for("settings.alias_fields", username_id=user_alias.id))
+    assert resp.status_code == 302
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_disabled(
+    client: FlaskClient, app: Flask, user: User, user_alias: Username
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.PREMIUM
+    resp = client.get(url_for("settings.alias_fields", username_id=user_alias.id))
+    assert resp.status_code == 401
