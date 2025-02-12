@@ -34,7 +34,7 @@ class MessageStatus(enum.Enum):
             case self.PENDING:
                 return Markup.escape(
                     "Your message has been received. Please allow 24-72 hours for a reply. You "
-                    "can check this page any time for an update. Messages expire after 30 days."
+                    "can check this page any time for an update."
                 )
             case self.ACCEPTED:
                 return Markup.escape(

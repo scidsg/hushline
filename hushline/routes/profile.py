@@ -120,7 +120,7 @@ def register_profile_routes(app: Flask) -> None:
 
             if uname.user.enable_email_notifications:
                 if not uname.user.email_include_message_content:
-                    email_body = "You have a new Hush Line message. Login to read it."
+                    email_body = "You have a new Hush Line message! Please log in to read it."
                 else:
                     email_body = ""
                     for name, value in extracted_fields:
