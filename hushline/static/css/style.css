@@ -310,7 +310,7 @@
   }
 
   .message:not(.message-container .message) {
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     background-color: white;
   }
@@ -1170,6 +1170,7 @@ img.empty {
   border-radius: 0.25rem;
   margin: 0.5rem 0;
   position: relative;
+  border: var(--border-dark-1);
 }
 
 .message:last-of-type {
