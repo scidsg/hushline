@@ -495,7 +495,7 @@
   }
 
   .container {
-    border: var(--border-dark-1);
+    border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
   }
@@ -842,6 +842,11 @@
   .copy-container .copy-success {
     color: #7cd671;
   }
+
+  .message:not(.message-container .message),
+  .message-container {
+    border: var(--border-dark);
+  }
 }
 
 body {
@@ -1170,7 +1175,6 @@ img.empty {
   border-radius: 0.25rem;
   margin: 0.5rem 0;
   position: relative;
-  border: var(--border-dark-1);
 }
 
 .message:last-of-type {
