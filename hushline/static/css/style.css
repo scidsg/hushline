@@ -158,6 +158,11 @@
     background-color: white;
   }
 
+  select {
+    appearance: none;
+    background-image: url("/static/img/app/dropdown.png");
+  }
+
   code,
   pre {
     border: var(--border);
@@ -305,7 +310,7 @@
   }
 
   .message:not(.message-container .message) {
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
     background-color: white;
   }
@@ -490,7 +495,7 @@
   }
 
   .container {
-    border: var(--border-dark-1);
+    border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
   }
@@ -511,10 +516,15 @@
     color: var(--color-text-dark);
   }
 
+  select {
+    appearance: none;
+    background-image: url("/static/img/app/dropdown-dm.png");
+  }
+
   code,
   pre {
     border: var(--border);
-    background-color: var(--color-dark-bg);
+    background-color: var(--color-dark-bg-alt);
   }
 
   .tab-list {
@@ -831,6 +841,11 @@
 
   .copy-container .copy-success {
     color: #7cd671;
+  }
+
+  .message:not(.message-container .message),
+  .message-container {
+    border: var(--border-dark);
   }
 }
 
@@ -3029,8 +3044,6 @@ strong {
 
 #messageForm .field-group {
   margin-bottom: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #messageForm .field-group input + .meta {
@@ -3132,7 +3145,6 @@ ul + p.meta {
 
 select {
   appearance: none;
-  background-image: url("/static/img/app/dropdown.png");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 0.5rem auto;
