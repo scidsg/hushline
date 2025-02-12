@@ -82,7 +82,13 @@
       {% endif %}
     {% endwith %}
 
-    {% if not is_onion_service %}
+    {% if is_onion_service %}
+      <div class="banner">
+        <p>
+          ✅ You are accessing Hush Line using our Onion Service!
+        </p>
+      </div>
+    {% else %}
       <div class="banner">
         <p>
           🧅 Use
