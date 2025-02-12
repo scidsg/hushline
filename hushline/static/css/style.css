@@ -158,11 +158,6 @@
     background-color: white;
   }
 
-  select {
-    appearance: none;
-    background-image: url("/static/img/app/dropdown.png");
-  }
-
   code,
   pre {
     border: var(--border);
@@ -516,15 +511,10 @@
     color: var(--color-text-dark);
   }
 
-  select {
-    appearance: none;
-    background-image: url("/static/img/app/dropdown-dm.png");
-  }
-
   code,
   pre {
     border: var(--border);
-    background-color: var(--color-dark-bg-alt);
+    background-color: var(--color-dark-bg);
   }
 
   .tab-list {
@@ -3039,6 +3029,8 @@ strong {
 
 #messageForm .field-group {
   margin-bottom: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #messageForm .field-group input + .meta {
@@ -3140,6 +3132,7 @@ ul + p.meta {
 
 select {
   appearance: none;
+  background-image: url("/static/img/app/dropdown.png");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 0.5rem auto;
