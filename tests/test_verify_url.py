@@ -37,6 +37,7 @@ def unused_port() -> int:
 
 
 def start_verification_app(port: int) -> None:
+    print(f"Binding app to {port}")
     app.run(host="127.0.0.1", port=port, debug=False)
 
 
