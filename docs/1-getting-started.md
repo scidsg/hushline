@@ -54,12 +54,14 @@ In **Settings > Profile**, add a helpful bio and extra links.
 ### Step 4. Enable End-to-End Encryption
 Add an encryption key to receive messages.  
 - **Option 4.1:** Use Proton Mail  
-  Create an account at [Proton Mail](https://proton.me). In **Settings > Email & Encryption**, search and import your key.
+  Create an account at [Proton Mail](https://proton.me). In **Settings > Email & Encryption**, 
+  search and import your key.
 
   <img src="https://hushline.app/assets/img/docs/settings-proton.webp" width="66%">
 
 - **Option 4.2:** Use Mailvelope  
-  Follow [Mailvelope’s guide](https://mailvelope.com/en/help#installation) to export your public PGP key and paste it in Hush Line.
+  Follow [Mailvelope’s guide](https://mailvelope.com/en/help#installation) to export your public 
+  PGP key and paste it in Hush Line.
 
   <img src="https://hushline.app/assets/img/docs/settings-pgp.webp" width="66%">
 
@@ -128,7 +130,8 @@ Add extra fields (LinkedIn, website, etc.) for verification.
 <img src="https://hushline.app/assets/img/docs/verifiy-url.webp" width="66%">
 
 ### Step 3. Contact Us
-When ready, message [Hush Line Verification](https://tips.hushline.app/to/hushline-verification) to start verification.  
+When ready, message [Hush Line Verification](https://tips.hushline.app/to/hushline-verification) 
+to start verification.  
 <img src="https://hushline.app/assets/img/docs/message-verify.webp" width="66%">
 
 ---
@@ -146,7 +149,8 @@ Answer key questions:
 - Which extra links reinforce your authenticity?
 
 > **Example:**  
-> Art Vandelay is an award-winning investigative reporter covering cybersecurity, business, and AI.  
+> Art Vandelay is an award-winning investigative reporter covering cybersecurity, business, 
+> and AI.  
 > **Job Profile:** Link  
 > **Signal:** Link  
 > **LinkedIn:** Link
@@ -158,7 +162,8 @@ Answer key questions:
 ## For Whistleblowers
 
 ### Step 1. Start With The Directory
-If not in immediate danger, use the [User Directory](https://tips.hushline.app/directory) to find help.  
+If not in immediate danger, use the [User Directory](https://tips.hushline.app/directory) 
+to find help.  
 <img src="https://hushline.app/assets/img/docs/directory.webp" width="66%">
 
 ### Step 2. Submit Your Message
