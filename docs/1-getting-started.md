@@ -1,5 +1,3 @@
-See [Hush Line documentation](https://hushline.app/start-here.html) for the most up-to-date version.
-
 # Hush Line Documentation
 
 ## Table of Contents
@@ -40,34 +38,34 @@ See [Hush Line documentation](https://hushline.app/start-here.html) for the most
 Hush Line doesn’t require PII. For extra privacy, use the Onion service via Tor Browser.  
 [Register](https://tips.hushline.app/register)
 
-<img src="https://hushline.app/assets/img/docs/register.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/register.webp" width="66%">
 
 ### Step 2. Log in to Hush Line
 Control your encryption key when logging in.  
 [Login](https://tips.hushline.app/login)
 
-<img src="https://hushline.app/assets/img/docs/login.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/login.webp" width="66%">
 
 ### Step 3. Add Information About Yourself
 In **Settings > Profile**, add a helpful bio and extra links.
 
-<img src="https://hushline.app/assets/img/docs/prep-account.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/prep-account.webp" width="66%">
 
 ### Step 4. Enable End-to-End Encryption
 Add an encryption key to receive messages.  
 - **Option 4.1:** Use Proton Mail  
   Create an account at [Proton Mail](https://proton.me). In **Settings > Email & Encryption**, search and import your key.
 
-  <img src="https://hushline.app/assets/img/docs/settings-proton.webp" width="50%">
+  <img src="https://hushline.app/assets/img/docs/settings-proton.webp" width="66%">
 
 - **Option 4.2:** Use Mailvelope  
   Follow [Mailvelope’s guide](https://mailvelope.com/en/help#installation) to export your public PGP key and paste it in Hush Line.
 
-  <img src="https://hushline.app/assets/img/docs/settings-pgp.webp" width="50%">
+  <img src="https://hushline.app/assets/img/docs/settings-pgp.webp" width="66%">
 
 ### Step 5. Enable Message Forwarding
 Forward messages to your chosen email so you don’t have to log in.  
-<img src="https://hushline.app/assets/img/docs/settings-forwarding.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/settings-forwarding.webp" width="66%">
 
 #### Congrats!
 Now you can share your tip line. Questions? Reach out via [Hush Line](https://tips.hushline.app/to/scidsg).
@@ -78,15 +76,15 @@ Now you can share your tip line. Questions? Reach out via [Hush Line](https://ti
 
 ### Step 1. Enable Two-Factor Authentication
 In **Settings > Authentication**, click **Enable 2FA**.  
-<img src="https://hushline.app/assets/img/docs/settings-2fa.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/settings-2fa.webp" width="66%">
 
 ### Step 2. Scan the QR Code
 Use an authenticator app to scan the code.  
-<img src="https://hushline.app/assets/img/docs/enable-2fa.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/enable-2fa.webp" width="66%">
 
 ### Step 3. Log In Again
 Enter the new six-digit code to log back in.  
-<img src="https://hushline.app/assets/img/docs/enter-2fa.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/enter-2fa.webp" width="66%">
 
 ---
 
@@ -94,11 +92,11 @@ Enter the new six-digit code to log back in.
 
 ### Step 1. Make Yourself Discoverable
 Opt into the public user directory in **Settings > Profile > Public User Directory**.  
-<img src="https://hushline.app/assets/img/docs/directory.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/directory.webp" width="66%">
 
 ### Step 2. Share Your Address Widely
 Add a tip line link on your website, email signature, and social media.  
-<img src="https://hushline.app/assets/img/docs/email-signature.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/email-signature.webp" width="66%">
 
 ---
 
@@ -107,15 +105,15 @@ Add a tip line link on your website, email signature, and social media.
 
 ### Step 1. Set Custom Replies
 Customize responses for statuses like "✅ Accepted" or "⛔️ Declined."  
-<img src="https://hushline.app/assets/img/docs/replies.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/replies.webp" width="66%">
 
 ### Step 2. Send Yourself a Test Message
 Send a message to get a unique URL for status updates.  
-<img src="https://hushline.app/assets/img/docs/message-status.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/message-status.webp" width="66%">
 
 ### Step 3. Set a Status
 In your Inbox, select a status from the dropdown to see custom messages.  
-<img src="https://hushline.app/assets/img/docs/triage.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/triage.webp" width="66%">
 
 ---
 
@@ -123,15 +121,15 @@ In your Inbox, select a status from the dropdown to see custom messages.
 
 ### Step 1. Add a Display Name
 In **Settings > Profile**, update your Display Name to match your public identity.  
-<img src="https://hushline.app/assets/img/docs/display-name.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/display-name.webp" width="66%">
 
 ### Step 2. Include Additional URLs
 Add extra fields (LinkedIn, website, etc.) for verification.  
-<img src="https://hushline.app/assets/img/docs/verifiy-url.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/verifiy-url.webp" width="66%">
 
 ### Step 3. Contact Us
 When ready, message [Hush Line Verification](https://tips.hushline.app/to/hushline-verification) to start verification.  
-<img src="https://hushline.app/assets/img/docs/message-verify.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/message-verify.webp" width="66%">
 
 ---
 
@@ -139,7 +137,7 @@ When ready, message [Hush Line Verification](https://tips.hushline.app/to/hushli
 
 ### Recommendation 1. Add an Encryption Key
 Use Proton Mail or Mailvelope for easy PGP setup.  
-<img src="https://hushline.app/assets/img/docs/settings-pgp.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/settings-pgp.webp" width="66%">
 
 ### Recommendation 2. Add a Rich Bio
 Answer key questions:
@@ -153,7 +151,7 @@ Answer key questions:
 > **Signal:** Link  
 > **LinkedIn:** Link
 
-<img src="https://hushline.app/assets/img/docs/verifiy-url.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/verifiy-url.webp" width="66%">
 
 ---
 
@@ -161,12 +159,12 @@ Answer key questions:
 
 ### Step 1. Start With The Directory
 If not in immediate danger, use the [User Directory](https://tips.hushline.app/directory) to find help.  
-<img src="https://hushline.app/assets/img/docs/directory.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/directory.webp" width="66%">
 
 ### Step 2. Submit Your Message
 Provide relevant information and optionally a contact method.  
-<img src="https://hushline.app/assets/img/docs/submit-message.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/submit-message.webp" width="66%">
 
 ### Step 3. Wait For A Response
 Check your unique reply link for status updates.  
-<img src="https://hushline.app/assets/img/docs/message-status.webp" width="50%">
+<img src="https://hushline.app/assets/img/docs/message-status.webp" width="66%">
