@@ -31,18 +31,22 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Test
         run: make test
+        env:
+          PYTEST_ADDOPTS: "--skip-local-only"
 
   test-with-alembic:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Test with alembic
         run: make test
         env:
-          PYTEST_ADDOPTS: "--alembic"
+          PYTEST_ADDOPTS: "--alembic --skip-local-only"
