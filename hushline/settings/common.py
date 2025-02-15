@@ -1,4 +1,5 @@
 import asyncio
+import urllib.parse
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional
 
