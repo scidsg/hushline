@@ -73,6 +73,11 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 async def verify_url(
     session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
 ) -> None:
+    # Ensure the URL is using HTTPS
+    parsed_url = urllib.parse.urlparse(url_to_verify)
+    if parsed_url.scheme != "https":
+        url_to_verify = urllib.parse.urlunparse(("https",) + parsed_url[1:])
+
     current_app.logger.debug(
         f"Verifying URL: {url_to_verify!r}. Expecting to find profile URL: {profile_url!r}"
     )
