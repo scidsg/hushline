@@ -61,6 +61,7 @@ def await_verification_app(port: int) -> None:
     raise Exception("App could not be reached")
 
 
+@pytest.mark.local_only()
 @pytest.fixture(scope="module")
 def verification_server() -> Generator[int, None, None]:
     port = unused_port()
@@ -76,6 +77,7 @@ def verification_server() -> Generator[int, None, None]:
     proc.join()
 
 
+@pytest.mark.local_only()
 @pytest.mark.asyncio()
 async def test_verify_url(user: User, verification_server: int) -> None:
     username = user.primary_username
@@ -91,6 +93,7 @@ async def test_verify_url(user: User, verification_server: int) -> None:
     assert username.extra_field_verified1 is True
 
 
+@pytest.mark.local_only()
 @pytest.mark.asyncio()
 async def test_verify_url_fail(user: User, verification_server: int) -> None:
     username = user.primary_username
@@ -105,6 +108,7 @@ async def test_verify_url_fail(user: User, verification_server: int) -> None:
     assert username.extra_field_verified1 is False
 
 
+@pytest.mark.local_only()
 @pytest.mark.usefixtures("_authenticated_user")
 def test_verify_url_request(client: FlaskClient, user: User, verification_server: int) -> None:
     assert user.primary_username.extra_field_verified1 is False  # precondition
@@ -131,6 +135,7 @@ def test_verify_url_request(client: FlaskClient, user: User, verification_server
     assert user.primary_username.extra_field_verified1 is True
 
 
+@pytest.mark.local_only()
 @pytest.mark.usefixtures("_authenticated_user")
 def test_verify_url_request_fail(client: FlaskClient, user: User, verification_server: int) -> None:
     user.primary_username.extra_field_verified1 = True

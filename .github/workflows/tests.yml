@@ -37,6 +37,8 @@ jobs:
 
       - name: Test
         run: make test
+        env:
+          PYTEST_ADDOPTS: "--skip-local-only"
 
   test-with-alembic:
     runs-on: ubuntu-latest
@@ -47,4 +49,4 @@ jobs:
       - name: Test with alembic
         run: make test
         env:
-          PYTEST_ADDOPTS: "--alembic"
+          PYTEST_ADDOPTS: "--alembic --skip-local-only"

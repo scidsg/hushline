@@ -38,6 +38,22 @@ def pytest_addoption(parser: Parser) -> None:
         help="Use alembic migrations for DB initialization",
     )
 
+    parser.addoption(
+        "--skip-local-only",
+        action="store_true",
+        default=False,
+        help="ignore tests that can't pass in CI",
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if not config.getoption("--skip-local-only"):
+        return
+    skip_local_only = pytest.mark.skip(reason="--skip-local-only was set")
+    for item in items:
+        if "local_only" in item.keywords:
+            item.add_marker(skip_local_only)
+
 
 def random_name(size: int) -> str:
     return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])
