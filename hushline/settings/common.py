@@ -73,7 +73,9 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 async def verify_url(
     session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
 ) -> None:
-    current_app.logger.debug(f"Verifying url: {url_to_verify!r}")
+    current_app.logger.debug(
+        f"Verifying URL: {url_to_verify!r}. Expecting to find profile URL: {profile_url!r}"
+    )
 
     # ensure that regardless of what caller sets this field to, we force it to be false
     setattr(username, f"extra_field_verified{i}", False)
