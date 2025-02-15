@@ -77,20 +77,21 @@ async def verify_url(
         async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
             response.raise_for_status()
             html_content = await response.text()
-
-            soup = BeautifulSoup(html_content, "html.parser")
-            verified = False
-            for link in soup.find_all("a"):
-                href = link.get("href")
-                rel = link.get("rel", [])
-                if href == profile_url and "me" in rel:
-                    verified = True
-                    break
-
-            setattr(username, f"extra_field_verified{i}", verified)
     except aiohttp.ClientError as e:
-        current_app.logger.error(f"Error fetching URL for field {i}: {e}")
+        current_app.logger.error(f"Error fetching URL {url_to_verify!r} for field {i}: {e}")
         setattr(username, f"extra_field_verified{i}", False)
+    else:
+        current_app.logger.debug("Successfully fetched URL {url_to_verify!r}")
+        soup = BeautifulSoup(html_content, "html.parser")
+        verified = False
+        for link in soup.find_all("a"):
+            href = link.get("href")
+            rel = link.get("rel", [])
+            if href == profile_url and "me" in rel:
+                verified = True
+                break
+
+        setattr(username, f"extra_field_verified{i}", verified)
 
 
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
@@ -116,13 +117,20 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
                 continue
 
             # Verify the URL only if it starts with "https://"
-            if value.startswith("https://"):
+            if value.startswith("https://") or (
+                current_app.config["TESTING"] and value.startswith("http://")
+            ):
                 task = verify_url(client_session, username, i, value, profile_url)
                 tasks.append(task)
 
-        # Run all the tasks concurrently
-        if tasks:  # Only gather if there are tasks to run
-            await asyncio.gather(*tasks)
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    if current_app.config["TESTING"]:
+                        raise result
+                    else:
+                        current_app.logger.warning(f"Exception raised verifying URL: {result}")
 
     db.session.commit()
     flash("👍 Bio and fields updated successfully.")
