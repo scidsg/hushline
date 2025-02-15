@@ -73,6 +73,8 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 async def verify_url(
     session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
 ) -> None:
+    current_app.logger.debug(f"Verifying url: {url_to_verify!r}")
+
     # ensure that regardless of what caller sets this field to, we force it to be false
     setattr(username, f"extra_field_verified{i}", False)
     try:
@@ -90,7 +92,10 @@ async def verify_url(
         rel = link.get("rel", [])
         if href == profile_url and "me" in rel:
             setattr(username, f"extra_field_verified{i}", True)
+            current_app.logger.debug(f"Verified URL {url_to_verify!r}")
             break
+
+    current_app.logger.debug(f"Failed to verify URL {url_to_verify!r}")
 
 
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
