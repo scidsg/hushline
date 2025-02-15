@@ -73,25 +73,24 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
 async def verify_url(
     session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
 ) -> None:
+    # ensure that regardless of what caller sets this field to, we force it to be false
+    setattr(username, f"extra_field_verified{i}", False)
     try:
         async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
             response.raise_for_status()
             html_content = await response.text()
     except aiohttp.ClientError as e:
         current_app.logger.error(f"Error fetching URL {url_to_verify!r} for field {i}: {e}")
-        setattr(username, f"extra_field_verified{i}", False)
-    else:
-        current_app.logger.debug("Successfully fetched URL {url_to_verify!r}")
-        soup = BeautifulSoup(html_content, "html.parser")
-        verified = False
-        for link in soup.find_all("a"):
-            href = link.get("href")
-            rel = link.get("rel", [])
-            if href == profile_url and "me" in rel:
-                verified = True
-                break
+        return
 
-        setattr(username, f"extra_field_verified{i}", verified)
+    current_app.logger.debug(f"Successfully fetched URL {url_to_verify!r}")
+    soup = BeautifulSoup(html_content, "html.parser")
+    for link in soup.find_all("a"):
+        href = link.get("href")
+        rel = link.get("rel", [])
+        if href == profile_url and "me" in rel:
+            setattr(username, f"extra_field_verified{i}", True)
+            break
 
 
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
@@ -103,6 +102,9 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     async with aiohttp.ClientSession() as client_session:
         tasks = []
         for i in range(1, 5):
+            # always unverify all fields first
+            setattr(username, f"extra_field_verified{i}", False)
+
             if (label_field := getattr(form, f"extra_field_label{i}", None)) and (
                 label := getattr(label_field, "data", None)
             ):
@@ -112,13 +114,11 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
                 value := getattr(value_field, "data", None)
             ):
                 setattr(username, f"extra_field_value{i}", value)
-            else:
-                setattr(username, f"extra_field_verified{i}", False)
-                continue
 
             # Verify the URL only if it starts with "https://"
-            if value.startswith("https://") or (
-                current_app.config["TESTING"] and value.startswith("http://")
+            if value and (
+                value.startswith("https://")
+                or (current_app.config["TESTING"] and value.startswith("http://"))
             ):
                 task = verify_url(client_session, username, i, value, profile_url)
                 tasks.append(task)
