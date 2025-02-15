@@ -89,7 +89,9 @@ async def test_verify_url(user: User, verification_server: int) -> None:
 
     async with aiohttp.ClientSession() as sess:
         await verify_url(sess, username, 1, url_to_verify, profile_url)
+    db.session.commit()
 
+    db.session.refresh(username)
     assert username.extra_field_verified1 is True
 
 
@@ -104,7 +106,9 @@ async def test_verify_url_fail(user: User, verification_server: int) -> None:
 
     async with aiohttp.ClientSession() as sess:
         await verify_url(sess, username, 1, url_to_verify, profile_url)
+    db.session.commit()
 
+    db.session.refresh(username)
     assert username.extra_field_verified1 is False
 
 
