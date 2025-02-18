@@ -104,7 +104,12 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     username.bio = form.bio.data.strip()
 
     # Define base_url from the environment or config
-    profile_url = url_for("profile", _external=True, username=username._username)
+    profile_url = url_for(
+        "profile",
+        username=username._username,
+        _external=True,
+        _scheme=current_app.config["PREFERRED_URL_SCHEME"],
+    )
 
     async with aiohttp.ClientSession() as client_session:
         tasks = []
