@@ -89,7 +89,9 @@ document.addEventListener("DOMContentLoaded", function () {
       emailBody,
     );
     if (encryptedEmailBody) {
-      const encryptedEmailBodyEl = document.getElementById("encrypted_email_body");
+      const encryptedEmailBodyEl = document.getElementById(
+        "encrypted_email_body",
+      );
       encryptedEmailBodyEl.value = encryptedEmailBody;
     } else {
       console.error("Client-side encryption failed for email body");

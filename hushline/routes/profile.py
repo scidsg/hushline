@@ -127,7 +127,7 @@ def register_profile_routes(app: Flask) -> None:
                     ):
                         email_body = form.encrypted_email_body.data
                     else:
-                        # If we don't want to encrypt the entire body, or if client-side encryption 
+                        # If we don't want to encrypt the entire body, or if client-side encryption
                         # of the body failed
                         email_body = ""
                         for name, value in extracted_fields:
