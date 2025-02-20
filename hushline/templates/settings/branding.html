@@ -61,6 +61,24 @@
     {% endif %}
   </form>
 
+  <h4>Donate Button</h4>
+
+  <p>Hide the donate button that links to the Hush Line donation page.</p>
+
+  <form method="POST" class="formBody auto-submit">
+    {{ toggle_donate_button_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ toggle_donate_button_form.hide_button }}
+      <label for="{{ toggle_donate_button_form.hide_button.name }}" class="toggle-label">
+        {{ toggle_donate_button_form.hide_button.label }}
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    {{ toggle_donate_button_form.submit }}
+  </form>
+
   <h4>Profile Header</h4>
   <form
     method="POST"
