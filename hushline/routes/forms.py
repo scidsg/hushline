@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    HiddenField,
     PasswordField,
     RadioField,
     SelectField,
@@ -61,6 +62,15 @@ class DynamicMessageForm:
             pass
 
         self.F = F
+
+        # Add email body hidden field
+        setattr(
+            self.F,
+            "encrypted_email_body",
+            HiddenField(
+                "Encrypted Email Body", validators=[Optional(), Length(max=10240 * len(fields))]
+            ),
+        )
 
         # Custom validator to skip choice validation while keeping other validations
         def skip_invalid_choice(
