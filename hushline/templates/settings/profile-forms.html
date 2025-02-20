@@ -107,7 +107,7 @@
   <button type="submit" name="update_bio">Update Bio</button>
 </form>
 
-{% if user.fields_enabled and not user.is_free_tier %}
+{% if user.fields_enabled %}
   <div class="fields">
     <h4>Message Fields</h4>
       <p>
