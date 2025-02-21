@@ -2,6 +2,8 @@ import random
 import string
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
 
+from flask import url_for
+from flask.testing import FlaskClient
 from flask_wtf import FlaskForm
 
 T = TypeVar("T")
@@ -57,3 +59,14 @@ class Missing:
 # ridiculous formatting because `ruff` won't allow `not (x == y)`
 assert (Missing() == Missing()) ^ bool("x")
 assert Missing() != Missing()
+
+
+def get_captcha_from_session(client: FlaskClient, username: str) -> str:
+    # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
+    response = client.get(url_for("profile", username=username))
+    assert response.status_code == 200
+
+    with client.session_transaction() as session:
+        captcha_answer = session.get("math_answer")
+        assert captcha_answer
+        return captcha_answer
