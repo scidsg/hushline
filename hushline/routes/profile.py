@@ -118,6 +118,9 @@ def register_profile_routes(app: Flask) -> None:
 
             db.session.commit()
 
+            plaintext_new_message_body = (
+                "You have a new Hush Line message! Please log in to read it."
+            )
             if uname.user.enable_email_notifications:
                 if uname.user.email_include_message_content:
                     # Only encrypt the entire body if we got the encrypted body from the form
@@ -126,9 +129,7 @@ def register_profile_routes(app: Flask) -> None:
                             email_body = form.encrypted_email_body.data
                         else:
                             # If the body is not encrypted, we should not send it
-                            email_body = (
-                                "You have a new Hush Line message! Please log in to read it."
-                            )
+                            email_body = plaintext_new_message_body
                     else:
                         # If we don't want to encrypt the entire body, or if client-side encryption
                         # of the body failed
@@ -136,7 +137,7 @@ def register_profile_routes(app: Flask) -> None:
                         for name, value in extracted_fields:
                             email_body += f"\n\n{name}\n\n{value}\n\n=============="
                 else:
-                    email_body = "You have a new Hush Line message! Please log in to read it."
+                    email_body = plaintext_new_message_body
 
                 do_send_email(uname.user, email_body.strip())
 
