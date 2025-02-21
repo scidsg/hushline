@@ -62,10 +62,8 @@
   </form>
 
   <h4>Donate Button</h4>
-
   <p>Hide the donate button that links to the Hush Line donation page.</p>
-
-  <form method="POST" class="formBody auto-submit">
+  <form method="POST" class="formBody auto-submit donate-form">
     {{ toggle_donate_button_form.hidden_tag() }}
     <div class="checkbox-group toggle-ui">
       {{ toggle_donate_button_form.hide_button }}
