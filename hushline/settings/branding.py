@@ -9,10 +9,14 @@ from flask import (
     request,
     session,
 )
+from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
+from wtforms import BooleanField, SubmitField
+from wtforms.validators import Optional as OptionalField
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
+from hushline.forms import DisplayNoneButton
 from hushline.model import (
     OrganizationSetting,
     User,
@@ -33,6 +37,11 @@ from hushline.storage import public_store
 from hushline.utils import redirect_to_self
 
 
+class ToggleDonateButtonForm(FlaskForm):
+    hide_button = BooleanField("Hide 'Donate' Button", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_notifications", widget=DisplayNoneButton())
+
+
 def register_branding_routes(bp: Blueprint) -> None:
     @bp.route("/branding", methods=["GET", "POST"])
     @admin_authentication_required
@@ -46,6 +55,9 @@ def register_branding_routes(bp: Blueprint) -> None:
         delete_brand_logo_form = DeleteBrandLogoForm()
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
         update_brand_app_name_form = UpdateBrandAppNameForm()
+        toggle_donate_button_form = ToggleDonateButtonForm(
+            hide_button=OrganizationSetting.fetch_one(OrganizationSetting.HIDE_DONATE_BUTTON)
+        )
         set_homepage_username_form = SetHomepageUsernameForm(
             username=OrganizationSetting.fetch_one(OrganizationSetting.HOMEPAGE_USER_NAME)
         )
@@ -193,6 +205,24 @@ def register_branding_routes(bp: Blueprint) -> None:
                 )
                 db.session.commit()
                 flash(f"👍 Homepage set to user {set_homepage_username_form.username.data!r}")
+            elif (
+                toggle_donate_button_form.submit.name in request.form
+                and toggle_donate_button_form.validate()
+            ):
+                current_app.logger.info(">>>>>>")
+                current_app.logger.info(toggle_donate_button_form.hide_button)
+                current_app.logger.info(toggle_donate_button_form.hide_button.data)
+                current_app.logger.info(">>>>>>")
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.HIDE_DONATE_BUTTON,
+                    value=toggle_donate_button_form.hide_button.data,
+                )
+                db.session.commit()
+                if toggle_donate_button_form.hide_button.data:
+                    flash("👍 Donate button set to hidden")
+                else:
+                    flash("👍 Donate button set to visible")
+                redirect_to_self()
             else:
                 form_error()
                 status_code = 400
@@ -203,6 +233,7 @@ def register_branding_routes(bp: Blueprint) -> None:
             update_directory_text_form=update_directory_text_form,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
+            toggle_donate_button_form=toggle_donate_button_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,
             update_profile_header_form=update_profile_header_form,
