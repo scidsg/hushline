@@ -4,6 +4,7 @@ import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from helpers import get_captcha_from_session
 
 from hushline.db import db
 from hushline.model import Message, OrganizationSetting, User, Username
@@ -12,17 +13,6 @@ msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
-
-
-def get_captcha_from_session(client: FlaskClient, username: str) -> str:
-    # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
-    response = client.get(url_for("profile", username=username))
-    assert response.status_code == 200
-
-    with client.session_transaction() as session:
-        captcha_answer = session.get("math_answer")
-        assert captcha_answer
-        return captcha_answer
 
 
 @pytest.mark.usefixtures("_pgp_user")
