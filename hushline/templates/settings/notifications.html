@@ -41,6 +41,25 @@
     {% endif %}
   {% endif %}
 
+  {% if user.email_include_message_content %}
+    <p class="meta">
+      Encrypt the entire body if you use an email client like Proton Mail or Thunderbird.
+    </p>
+    <form method="POST" class="formBody auto-submit">
+      {{ toggle_encrypt_entire_body_form.hidden_tag() }}
+      <div class="checkbox-group toggle-ui">
+        {{ toggle_encrypt_entire_body_form.encrypt_entire_body }}
+        <label for="{{ toggle_include_content_form.include_content.name }}" class="toggle-label">
+          {{ toggle_encrypt_entire_body_form.encrypt_entire_body.label }}
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
+      {{ toggle_encrypt_entire_body_form.submit }}
+    </form>
+  {% endif %}
+
   {% if user.enable_email_notifications %}
     <form
       method="POST"

@@ -77,6 +77,26 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
+    // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
+    let emailBody = "";
+    document.querySelectorAll(".form-field").forEach(async (field) => {
+      const value = getFieldValue(field);
+      const label = getFieldLabel(field);
+      emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
+    });
+    const encryptedEmailBody = await encryptMessage(
+      publicKeyArmored,
+      emailBody,
+    );
+    if (encryptedEmailBody) {
+      const encryptedEmailBodyEl = document.getElementById(
+        "encrypted_email_body",
+      );
+      encryptedEmailBodyEl.value = encryptedEmailBody;
+    } else {
+      console.error("Client-side encryption failed for email body");
+    }
+
     // Loop through all encrypted fields and encrypt them
     document.querySelectorAll(".encrypted-field").forEach(async (field) => {
       const value = getFieldValue(field);

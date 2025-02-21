@@ -118,13 +118,32 @@ def register_profile_routes(app: Flask) -> None:
 
             db.session.commit()
 
+            plaintext_new_message_body = (
+                "You have a new Hush Line message! Please log in to read it."
+            )
             if uname.user.enable_email_notifications:
-                if not uname.user.email_include_message_content:
-                    email_body = "You have a new Hush Line message! Please log in to read it."
+                if uname.user.email_include_message_content:
+                    # Only encrypt the entire body if we got the encrypted body from the form
+                    if uname.user.email_encrypt_entire_body:
+                        if form.encrypted_email_body.data.startswith("-----BEGIN PGP MESSAGE-----"):
+                            email_body = form.encrypted_email_body.data
+                            current_app.logger.debug("Sending email with encrypted body")
+                        else:
+                            # If the body is not encrypted, we should not send it
+                            email_body = plaintext_new_message_body
+                            current_app.logger.debug(
+                                "Email body is not encrypted, sending email with generic body"
+                            )
+                    else:
+                        # If we don't want to encrypt the entire body, or if client-side encryption
+                        # of the body failed
+                        email_body = ""
+                        for name, value in extracted_fields:
+                            email_body += f"\n\n{name}\n\n{value}\n\n=============="
+                        current_app.logger.debug("Sending email with unencrypted body")
                 else:
-                    email_body = ""
-                    for name, value in extracted_fields:
-                        email_body += f"\n\n{name}\n\n{value}\n\n=============="
+                    email_body = plaintext_new_message_body
+                    current_app.logger.debug("Sending email with generic body")
 
                 do_send_email(uname.user, email_body.strip())
 

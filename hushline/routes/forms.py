@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    HiddenField,
     PasswordField,
     RadioField,
     SelectField,
@@ -58,7 +59,10 @@ class DynamicMessageForm:
 
         # Create a custom form class for this instance of CustomMessageForm
         class F(FlaskForm):
-            pass
+            # Add email body hidden field
+            encrypted_email_body = HiddenField(
+                "Encrypted Email Body", validators=[Optional(), Length(max=10240 * len(fields))]
+            )
 
         self.F = F
 
