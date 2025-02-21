@@ -121,11 +121,14 @@ def register_profile_routes(app: Flask) -> None:
             if uname.user.enable_email_notifications:
                 if uname.user.email_include_message_content:
                     # Only encrypt the entire body if we got the encrypted body from the form
-                    if (
-                        uname.user.email_encrypt_entire_body
-                        and form.encrypted_email_body.data.startswith("-----BEGIN PGP MESSAGE-----")
-                    ):
-                        email_body = form.encrypted_email_body.data
+                    if uname.user.email_encrypt_entire_body:
+                        if form.encrypted_email_body.data.startswith("-----BEGIN PGP MESSAGE-----"):
+                            email_body = form.encrypted_email_body.data
+                        else:
+                            # If the body is not encrypted, we should not send it
+                            email_body = (
+                                "You have a new Hush Line message! Please log in to read it."
+                            )
                     else:
                         # If we don't want to encrypt the entire body, or if client-side encryption
                         # of the body failed
