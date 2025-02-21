@@ -97,7 +97,6 @@ def configure_jinja(app: Flask) -> None:
     app.jinja_env.filters["markdown"] = md_to_html
 
     if app.config.get("FLASK_ENV") == "development":
-        app.logger.info("Development environment detected, enabling jinja2.StrictUndefined")
         app.jinja_env.undefined = StrictUndefined
 
     # always pop the config to avoid accidentally dumping all our secrets to the user
@@ -117,6 +116,7 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
             OrganizationSetting.GUIDANCE_PROMPTS,
+            OrganizationSetting.HIDE_DONATE_BUTTON,
         )
 
         data.update(

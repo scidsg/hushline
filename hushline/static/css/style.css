@@ -3213,3 +3213,7 @@ form:last-of-type + .fields {
   margin-top: 0.5rem;
   margin-bottom: 1.25rem;
 }
+
+.donate-form {
+  display: flex;
+}

@@ -37,6 +37,7 @@ from hushline.settings import (
     UserGuidanceForm,
     UserGuidancePromptContentForm,
 )
+from hushline.settings.branding import ToggleDonateButtonForm
 from tests.helpers import form_to_data
 
 
@@ -1112,3 +1113,29 @@ def test_alias_fields_disabled(
     app.config["FIELDS_MODE"] = FieldsMode.PREMIUM
     resp = client.get(url_for("settings.alias_fields", username_id=user_alias.id))
     assert resp.status_code == 401
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_hide_donate_button(client: FlaskClient, app: Flask, admin: User) -> None:
+    # precondition
+    setting = OrganizationSetting.query.filter_by(
+        key=OrganizationSetting.HIDE_DONATE_BUTTON
+    ).one_or_none()
+    assert setting is None or setting.value is False
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"hide_button": True, ToggleDonateButtonForm.submit.name: ""},
+    )
+    assert resp.status_code == 200
+    assert "Donate button set to hidden" in resp.text, resp.text
+
+    setting = OrganizationSetting.query.filter_by(key=OrganizationSetting.HIDE_DONATE_BUTTON).one()
+    assert setting.value is True
+
+    resp = client.post(url_for("settings.branding"), data={ToggleDonateButtonForm.submit.name: ""})
+    assert resp.status_code == 200
+    assert "Donate button set to visible" in resp.text, resp.text
+
+    setting = OrganizationSetting.query.filter_by(key=OrganizationSetting.HIDE_DONATE_BUTTON).one()
+    assert setting.value is False

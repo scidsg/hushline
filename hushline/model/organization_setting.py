@@ -25,6 +25,7 @@ class OrganizationSetting(Model):
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
     GUIDANCE_EXIT_BUTTON_LINK = "guidance_exit_button_link"
     GUIDANCE_PROMPTS = "guidance_prompts"
+    HIDE_DONATE_BUTTON = "hide_donate_button"
     HOMEPAGE_USER_NAME = "homepage_user_name"
 
     # non-default values
@@ -38,6 +39,7 @@ class OrganizationSetting(Model):
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
+        HIDE_DONATE_BUTTON: False,
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
