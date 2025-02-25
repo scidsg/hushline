@@ -3129,7 +3129,7 @@ label + .meta {
   margin-bottom: 1rem;
 }
 
-input[type="checkbox"] + label,
+input[type="checkbox"] + label:not(.toggle-label),
 input[type="radio"] + label {
   font-family: var(--font-sans);
 }
@@ -3194,15 +3194,16 @@ form:last-of-type + .fields {
 }
 
 .tab-content form.auto-submit {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.tab-content form.auto-submit:first-of-type {
-  margin-bottom: 0rem;
+.tab-content form.auto-submit:nth-child(5) {
+  margin-bottom: 1.5rem;
 }
 
 .toggle-label {
   margin-bottom: 0;
+  font-family: var(--font-sans-bold);
 }
 
 #email_address ~ .toggle-ui {
@@ -3214,6 +3215,21 @@ form:last-of-type + .fields {
   margin-bottom: 1.25rem;
 }
 
+.toggle-label .meta {
+  font-family: var(--font-sans);
+}
+
 .donate-form {
   display: flex;
+}
+
+.label-desc {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: max-content;
+}
+
+.label-desc p.meta {
+  margin-left: 0;
 }
