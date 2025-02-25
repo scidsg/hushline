@@ -3129,7 +3129,7 @@ label + .meta {
   margin-bottom: 1rem;
 }
 
-input[type="checkbox"] + label,
+input[type="checkbox"] + label:not(.toggle-label),
 input[type="radio"] + label {
   font-family: var(--font-sans);
 }
@@ -3203,6 +3203,7 @@ form:last-of-type + .fields {
 
 .toggle-label {
   margin-bottom: 0;
+  font-family: var(--font-sans-bold);
 }
 
 #email_address ~ .toggle-ui {
@@ -3212,6 +3213,10 @@ form:last-of-type + .fields {
 #email_address + .meta {
   margin-top: 0.5rem;
   margin-bottom: 1.25rem;
+}
+
+.toggle-label .meta {
+  font-family: var(--font-sans);
 }
 
 .donate-form {
