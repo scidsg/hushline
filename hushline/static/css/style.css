@@ -3194,11 +3194,11 @@ form:last-of-type + .fields {
 }
 
 .tab-content form.auto-submit {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.tab-content form.auto-submit:first-of-type {
-  margin-bottom: 0rem;
+.tab-content form.auto-submit:nth-child(5) {
+  margin-bottom: 1.5rem;
 }
 
 .toggle-label {
@@ -3216,4 +3216,15 @@ form:last-of-type + .fields {
 
 .donate-form {
   display: flex;
+}
+
+.label-desc {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: max-content;
+}
+
+.label-desc p.meta {
+  margin-left: 0;
 }
