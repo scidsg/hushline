@@ -14,8 +14,8 @@
         {% set display_str = "All" %}
         {% set url = url_for('inbox') %}
       {% endif %}
-      <li class="tab{% if status == status_filter %} active{% endif %}">
-        <a href="{{ url }}">{{ display_str }}</a>
+      <li>
+        <a href="{{ url }}" class="tab{% if status == status_filter %} active{% endif %}">{{ display_str }}</a>
       </li>
     {% endfor %}
   </ul>
