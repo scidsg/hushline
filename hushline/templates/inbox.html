@@ -21,6 +21,8 @@
   </ul>
 
   {% if messages %}
+    <p class="message-count">{{ messages|length }} Message(s)</p>
+
     {% for message in messages %}
       <article
         class="message encrypted"

@@ -3233,3 +3233,8 @@ form:last-of-type + .fields {
 .label-desc p.meta {
   margin-left: 0;
 }
+
+.message-count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-smaller);
+}
