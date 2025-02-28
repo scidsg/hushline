@@ -6,23 +6,24 @@
   <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
 
   <ul class="tab-list">
-    {% for status in [None] + message_statuses %}
-      {% if status %}
-        {% set display_str = status.display_str %}
-        {% set url = url_for('inbox', status=status.value) %}
+    {% for pair in [None] + message_statuses %}
+      {% if pair %}
+        {% set display_str = pair[0].display_str %}
+        {% set count = pair[1] %}
+        {% set url = url_for('inbox', status=pair[0].value) %}
       {% else %}
         {% set display_str = "All" %}
+        {% set count = total_messages %}
         {% set url = url_for('inbox') %}
       {% endif %}
       <li>
-        <a href="{{ url }}" class="tab{% if status == status_filter %} active{% endif %}">{{ display_str }}</a>
+        <a href="{{ url }}" class="tab{% if pair and pair[0] == status_filter %} active{% endif %}">{{ display_str }}</a>
+        <span>{{ count }}</span>
       </li>
     {% endfor %}
   </ul>
 
   {% if messages %}
-    <p class="message-count">{{ messages|length }} Message(s)</p>
-
     {% for message in messages %}
       <article
         class="message encrypted"

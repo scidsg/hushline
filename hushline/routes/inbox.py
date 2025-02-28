@@ -44,13 +44,23 @@ def register_inbox_routes(app: Flask) -> None:
         )
         if status_filter:
             query = query.filter(Message.status == status_filter)
-
         messages = list(db.session.scalars(query))
+
+        status_count_results = db.session.execute(
+            db.select(Message.status, db.func.count())
+            .join(Username)
+            .filter(Username.user_id == user.id)
+            .group_by(Message.status)
+        ).all()
+        status_counts_map = {x[0]: x[1] for x in status_count_results}
+        message_statuses = [(x, status_counts_map.get(x, 0)) for x in MessageStatus]
+
         return render_template(
             "inbox.html",
             user=user,
             messages=messages,
             status_filter=status_filter,
-            message_statuses=list(MessageStatus),
+            total_messages=sum(x[1] for x in message_statuses),
+            message_statuses=message_statuses,
             user_has_aliases=user_alias_count > 1,
         )
