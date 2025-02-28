@@ -3259,3 +3259,7 @@ li.tab:not(.active) .badge {
   opacity: 0.5;
   font-family: var(--font-sans);
 }
+
+li.tab .badge {
+  padding: 0.25rem 0.325rem;
+}
