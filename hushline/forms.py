@@ -83,7 +83,7 @@ def coerce_status(status: str | MessageStatus) -> MessageStatus:
 
 class UpdateMessageStatusForm(FlaskForm):
     status = SelectField(
-        choices=[(x.name, x.display_str) for x in MessageStatus],
+        choices=[(x.name, x.emoji + " " + x.display_str) for x in MessageStatus],
         validators=[DataRequired()],
         coerce=coerce_status,
     )

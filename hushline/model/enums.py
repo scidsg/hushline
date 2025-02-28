@@ -1,4 +1,5 @@
 import enum
+from typing import Self
 
 from markupsafe import Markup
 
@@ -14,19 +15,40 @@ class MessageStatus(enum.Enum):
     def default(cls) -> "MessageStatus":
         return cls.PENDING
 
+    @classmethod
+    def parse_str(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ValueError(f"Invalid {cls.__name__}")
+
     @property
     def display_str(self) -> str:
         match self:
             case self.PENDING:
-                return "⏳ Waiting for Response"
+                return "Waiting for Response"
             case self.ACCEPTED:
-                return "✅ Accepted"
+                return "Accepted"
             case self.DECLINED:
-                return "⛔ Declined"
+                return "Declined"
             case self.ARCHIVED:
-                return "😴 Archived"
+                return "Archived"
             case x:
-                raise Exception(f"Programming error. MessageStatus {x!r} not handled")
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
+
+    @property
+    def emoji(self) -> str:
+        match self:
+            case self.PENDING:
+                return "⏳"
+            case self.ACCEPTED:
+                return "✅"
+            case self.DECLINED:
+                return "⛔"
+            case self.ARCHIVED:
+                return "😴"
+            case x:
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
 
     @property
     def default_text(self) -> Markup:

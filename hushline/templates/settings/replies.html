@@ -9,7 +9,7 @@
   {% for (status, msg_status_text) in status_tuples %}
     {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}
     <div class="response">
-      <h4>{{ status.display_str }}</h4>
+      <h4>{{ status.emoji }} {{ status.display_str }}</h4>
       <form method="POST" class="formBody">
         {{ form.hidden_tag() }}
         {{ form.markdown.label }}

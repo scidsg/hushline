@@ -289,7 +289,7 @@
     border: var(--border-danger);
   }
 
-  p.badge {
+  .badge {
     background-color: white;
     color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-min-contrast);
@@ -669,13 +669,13 @@
     color: var(--color-brand-dark-min-saturation);
   }
 
-  p.badge {
+  .badge {
     background-color: var(--color-dark-bg-alt-1);
     color: var(--color-brand-dark-min-saturation);
     border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  h2.submit + .badgeContainer p.badge {
+  h2.submit + .badgeContainer .badge {
     background-color: var(--color-dark-bg-alt);
   }
 
@@ -1042,7 +1042,7 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not(
   margin: 0;
 }
 
-p.badge {
+.badge {
   border-radius: 0.25rem;
   width: fit-content;
   font-size: var(--font-size-smallest);
@@ -1052,6 +1052,7 @@ p.badge {
   line-height: 1;
   margin-bottom: 0;
   word-break: keep-all;
+  height: fit-content;
 }
 
 .badge:last-of-type {
@@ -1312,7 +1313,7 @@ h2.submit + p.instr {
   margin: 0.75rem 0 0.5rem 0;
 }
 
-.formBody p.badge {
+.formBody .badge {
   margin-bottom: 0.75rem;
 }
 
@@ -1451,7 +1452,7 @@ a.logoutLink {
   margin-top: 0.25rem;
 }
 
-.message p.badge {
+.message .badge {
   font-family: var(--font-sans-bold);
   font-size: var(--font-size-smaller);
   position: absolute;
@@ -1567,8 +1568,14 @@ img.upgrade {
   gap: 1.25rem;
 }
 
+.inbox-tabs {
+  margin-bottom: 0.5rem;
+}
+
 .tab-list li {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .tab-list li a {
@@ -3232,4 +3239,27 @@ form:last-of-type + .fields {
 
 .label-desc p.meta {
   margin-left: 0;
+}
+
+.message-count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-smaller);
+}
+
+li.tab a {
+  color: inherit;
+}
+
+li.tab {
+  padding: 0;
+}
+
+li.tab:not(.active) .badge {
+  filter: saturate(0);
+  opacity: 0.5;
+  font-family: var(--font-sans);
+}
+
+li.tab .badge {
+  padding: 0.25rem 0.325rem;
 }

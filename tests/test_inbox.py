@@ -3,7 +3,7 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import FieldValue, Message, User, Username
+from hushline.model import FieldValue, Message, MessageStatus, User, Username
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -12,7 +12,7 @@ def test_delete_own_message(client: FlaskClient, user: User) -> None:
     # Create a message for the authenticated user
     message = Message(username_id=user.primary_username.id)
     db.session.add(message)
-    db.session.commit()
+    db.session.flush()
 
     for field_def in user.primary_username.message_fields:
         field_value = FieldValue(
@@ -72,3 +72,47 @@ def test_cannot_delete_other_user_message(
     assert (
         db.session.get(Message, other_user_message.id) is not None
     )  # Ensure message was not deleted
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username) -> None:
+    messages = []
+    for status in MessageStatus:
+        message = Message(username_id=user.primary_username.id)
+        message.status = status
+        db.session.add(message)
+        db.session.flush()
+        messages.append(message)
+
+        for field_def in user.primary_username.message_fields:
+            field_def.encrypted = False
+
+        for field_def in user.primary_username.message_fields:
+            field_value = FieldValue(
+                field_def,
+                message,
+                "test_value",
+                field_def.encrypted,
+            )
+            db.session.add(field_value)
+            db.session.flush()
+    db.session.commit()
+
+    # no filter
+    resp = client.get(url_for("inbox"))
+    for msg in messages:
+        assert resp.status_code == 200
+        assert f'href="{url_for("message", id=msg.id)}"' in resp.text
+
+    # status filter
+    for msg in messages:
+        resp = client.get(url_for("inbox", status=msg.status.value))
+
+        # find match
+        assert resp.status_code == 200
+        assert f'href="{url_for("message", id=msg.id)}"' in resp.text
+
+        # don't find the other matches
+        for other_msg in messages:
+            if other_msg.id != msg.id:
+                assert f'href="{url_for("message", id=other_msg.id)}"' not in resp.text
