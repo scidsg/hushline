@@ -276,11 +276,24 @@ These configs are needed for the web app.
       <td>The key used for handling crypto operations on DB fields.</td>
     </tr>
     <tr>
+      <td><code>FIELDS_MODE</code></td>
+      <td>false</td>
+      <td>string</td>
+      <td><code>always</code></td>
+      <td>
+        Whether users should be able to customize the fields in their forms.
+        Values:
+          `always` - users can always customize fields.
+          `premium` - only users with a paid plan can customize fields.
+      </td>
+    </tr>
+    <tr>
       <td><code>ONION_HOSTNAME</code></td>
       <td>false</td>
       <td>string</td>
       <td></td>
       <td>Tor Onion Service host name that the Hush Line app is additionally available as.</td>
+    </tr>
     <tr>
       <td><code>NOTIFICATIONS_ADDRESS</code></td>
       <td>false</td>
