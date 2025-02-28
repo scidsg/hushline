@@ -1,4 +1,5 @@
 import enum
+from typing import Self
 
 from markupsafe import Markup
 
@@ -13,6 +14,13 @@ class MessageStatus(enum.Enum):
     @classmethod
     def default(cls) -> "MessageStatus":
         return cls.PENDING
+
+    @classmethod
+    def parse_str(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ValueError(f"Invalid {cls.__name__}")
 
     @property
     def display_str(self) -> str:

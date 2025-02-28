@@ -3,12 +3,28 @@
 {% block title %}Inbox{% endblock %}
 
 {% block content %}
-  {% if user.messages %}
-    <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
-    {% for message in user.messages %}
+  <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
+
+  <ul class="tab-list">
+    {% for status in [None] + message_statuses %}
+      {% if status %}
+        {% set display_str = status.display_str %}
+        {% set url = url_for('inbox', status=status.value) %}
+      {% else %}
+        {% set display_str = "All" %}
+        {% set url = url_for('inbox') %}
+      {% endif %}
+      <li class="tab{% if status == status_filter %} active{% endif %}">
+        <a href="{{ url }}">{{ display_str }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if messages %}
+    {% for message in messages %}
       <article
         class="message encrypted"
-        aria-label="Message with {{ message.user.primary_username or message.user.display_name }}"
+        aria-label="Message with {{ message.username.display_name or message.username.username }}"
       >
         {% if user_has_aliases %}
           <p>To: @{{ message.username.username }}</p>
