@@ -20,7 +20,7 @@ def test_default_replies(client: FlaskClient, user: User, message: Message) -> N
 
         resp = client.get(url_for("message_reply", slug=message.reply_slug))
         assert resp.status_code == 200
-        assert status.display_str in resp.text
+        assert (status.emoji + " " + status.display_str) in resp.text
         assert status.default_text in resp.text
 
 
@@ -38,7 +38,7 @@ def test_custom_replies(client: FlaskClient, user: User, message: Message) -> No
 
         resp = client.get(url_for("message_reply", slug=message.reply_slug))
         assert resp.status_code == 200
-        assert status.display_str in resp.text
+        assert (status.emoji + " " + status.display_str) in resp.text
         assert text in resp.text
         assert status.default_text not in resp.text
 

@@ -18,15 +18,29 @@ class MessageStatus(enum.Enum):
     def display_str(self) -> str:
         match self:
             case self.PENDING:
-                return "⏳ Waiting for Response"
+                return "Waiting for Response"
             case self.ACCEPTED:
-                return "✅ Accepted"
+                return "Accepted"
             case self.DECLINED:
-                return "⛔ Declined"
+                return "Declined"
             case self.ARCHIVED:
-                return "😴 Archived"
+                return "Archived"
             case x:
-                raise Exception(f"Programming error. MessageStatus {x!r} not handled")
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
+
+    @property
+    def emoji(self) -> str:
+        match self:
+            case self.PENDING:
+                return "⏳"
+            case self.ACCEPTED:
+                return "✅"
+            case self.DECLINED:
+                return "⛔"
+            case self.ARCHIVED:
+                return "😴"
+            case x:
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
 
     @property
     def default_text(self) -> Markup:
