@@ -2536,6 +2536,11 @@ p.bio + .extra-fields {
   width: 100%;
 }
 
+.message-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .settings-main,
 .inbox-main {
   max-width: 768px;
