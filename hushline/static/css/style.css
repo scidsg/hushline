@@ -182,7 +182,8 @@
     outline: none;
   }
 
-  .settings-main .settings-content .tab:hover {
+  .settings-main .settings-content .tab:hover,
+  .inbox-main .inbox-content .tab:hover {
     background-color: transparent;
     text-decoration: underline;
   }
@@ -192,12 +193,14 @@
     box-shadow: 0 -3px 0 inset var(--color-brand);
   }
 
-  .settings-main .settings-content .tab.active {
+  .settings-main .settings-content .tab.active,
+  .inbox-main .inbox-content .tab.active {
     box-shadow: none;
     box-shadow: 3px 0 0 inset var(--color-brand);
   }
 
-  .settings-main .settings-content .tab-list {
+  .settings-main .settings-content .tab-list,
+  .inbox-main .inbox-content .tab-list {
     border-bottom: none;
   }
 
@@ -408,20 +411,24 @@
   }
 
   @media (max-width: 640px) {
-    .settings-main .settings-content .tab.active {
+    .settings-main .settings-content .tab.active,
+    .inbox-main .inbox-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
-    .settings-main .settings-content .tab-list {
+    .settings-main .settings-content .tab-list,
+    .inbox-main .inbox-content .tab-list {
       border-bottom: var(--border);
     }
 
-    .settings-main .settings-content .tab:hover {
+    .settings-main .settings-content .tab:hover,
+    .inbox-main .inbox-content .tab:hover {
       text-decoration: underline;
     }
   }
 
-  .settings-main .settings-content .tab-list li button {
+  .settings-main .settings-content .tab-list li button,
+  .inbox-main .inbox-content .tab-list li button {
     padding: 1rem;
   }
 
@@ -547,7 +554,8 @@
     background-color: var(--color-dark-bg-alt-1);
   }
 
-  .settings-main .tab:hover {
+  .settings-main .tab:hover,
+  .inbox-main .tab:hover {
     background-color: transparent;
     text-decoration: underline;
   }
@@ -557,12 +565,14 @@
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
 
-  .settings-main .settings-content .tab.active {
+  .settings-main .settings-content .tab.active,
+  .inbox-main .inbox-content .tab.active {
     border-bottom: none;
     box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation);
   }
 
-  .settings-main .settings-content .tab-list {
+  .settings-main .settings-content .tab-list,
+  .inbox-main .inbox-content .tab-list {
     border-bottom: none;
   }
 
@@ -607,15 +617,18 @@
   }
 
   @media (max-width: 640px) {
-    .settings-main .settings-content .tab.active {
+    .settings-main .settings-content .tab.active,
+    .inbox-main .inbox-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
-    .settings-main .settings-content .tab-list {
+    .settings-main .settings-content .tab-list,
+    .inbox-main .inbox-content .tab-list {
       border-bottom: var(--border-dark);
     }
 
-    .settings-main .settings-content .tab:hover {
+    .settings-main .settings-content .tab:hover,
+    .inbox-main .inbox-content .tab:hover {
       text-decoration: underline;
     }
   }
@@ -1178,6 +1191,10 @@ img.empty {
   position: relative;
 }
 
+.message-list .message:first-of-type {
+  margin-top: 0;
+}
+
 .message:last-of-type {
   margin-bottom: 0;
 }
@@ -1583,7 +1600,8 @@ img.upgrade {
   text-decoration: none;
 }
 
-.settings-main .tab-list li a {
+.settings-main .tab-list li a,
+.inbox-main .tab-list li a {
   padding: 0;
 }
 
@@ -2461,57 +2479,73 @@ p.bio + .extra-fields {
   align-self: center;
 }
 
-.settings-main .settings-content {
+.settings-main .settings-content,
+.inbox-content {
   display: flex;
   flex-direction: row;
   gap: 2rem;
   width: 100%;
 }
 
-.settings-main .settings-content .settings-tabs {
+.settings-main .settings-content .settings-tabs,
+.inbox-tabs {
   width: 240px;
 }
 
-.settings-main .settings-content .tab-list li button {
+.inbox-tabs { 
+  max-width: 178px;
+  width: 100%;
+}
+
+.settings-main .settings-content .tab-list li button,
+.inbox-main .inbox-content .tab-list li button {
   padding: 0 0.625rem 0 0;
 }
 
-.settings-main .settings-content .tab-list {
+.settings-main .settings-content .tab-list,
+.inbox-content .tab-list {
   display: flex;
   flex-direction: column;
   gap: 0;
   margin-top: 0;
 }
 
-.settings-main .settings-content .settings-tabs + div {
+.settings-main .settings-content .settings-tabs + div,
+.message-list {
   width: 100%;
 }
 
-.settings-main {
+.settings-main,
+.inbox-main {
   max-width: 768px;
 }
 
-.settings-main .settings-content .tab.active {
-  padding: 0 0.625rem;
+.settings-main .settings-content .tab.active,
+.inbox-main .inbox-content .tab.active {
+  padding: 0 0 0 0.625rem;
 }
 
 .settings-main .settings-content textarea {
   width: 100%;
 }
 
-.settings-main {
+.settings-main,
+.inbox-main {
   max-width: 960px;
 }
 
-.settings-main .tab-list li {
+.settings-main .tab-list li,
+.inbox-main .tab-list li {
   margin-bottom: 1rem;
 }
 
-.settings-content {
+.settings-content,
+.inbox-content {
   padding-top: 0;
 }
 
-.settings-main .settings-content {
+.settings-main .settings-content,
+.inbox-main .inbox-content {
   margin-top: 1rem;
 }
 
@@ -2519,6 +2553,10 @@ p.bio + .extra-fields {
   .extra-fields {
     flex-direction: column;
     width: 100%;
+  }
+  
+  .message-list .message:first-of-type {
+    margin-top: 0.5rem;
   }
 
   .extra-field {
@@ -2529,7 +2567,8 @@ p.bio + .extra-fields {
     flex-direction: column;
   }
 
-  .settings-main .settings-content {
+  .settings-main .settings-content,
+  .inbox-main .inbox-content {
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -2537,12 +2576,14 @@ p.bio + .extra-fields {
     margin-top: 0;
   }
 
-  .settings-main .settings-content .tab-list li a {
+  .settings-main .settings-content .tab-list li a,
+  .inbox-main .inbox-content .tab-list li a {
     padding: 1rem 0;
     transition: none;
   }
 
-  .settings-main .settings-content .tab-list {
+  .settings-main .settings-content .tab-list,
+  .inbox-main .inbox-content .tab-list {
     display: flex;
     flex-direction: row;
     gap: 1.25rem;
@@ -2557,15 +2598,19 @@ p.bio + .extra-fields {
     padding: 1rem 0;
   }
 
-  .settings-main .settings-content .settings-tabs {
-    width: inherit;
+  .settings-main .settings-content .settings-tabs,
+  .inbox-main .inbox-content .tab-list {
+    max-width: max-content;
+    width: 100%;
   }
 
-  .settings-main .tab-list li {
+  .settings-main .tab-list li,
+  .inbox-main .tab-list li {
     margin-bottom: 0;
   }
 
-  .settings-content {
+  .settings-content,
+  .inbox-content {
     padding-top: 0;
   }
 }
