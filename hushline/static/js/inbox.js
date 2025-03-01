@@ -21,3 +21,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  const tabs = document.querySelectorAll(".tab");
+  const tabList = document.querySelectorAll(".tab-list .tab");
+  const mainElement = document.querySelector("main");
+
+  if (tabList.length >= 5) {
+    mainElement.classList.add("inbox-main");
+  }
+});
