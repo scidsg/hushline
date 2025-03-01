@@ -2512,7 +2512,7 @@ p.bio + .extra-fields {
   width: 240px;
 }
 
-.inbox-tabs { 
+.inbox-tabs {
   max-width: fit-content;
   width: 100%;
   padding-right: 1rem;
@@ -2575,7 +2575,7 @@ p.bio + .extra-fields {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .message-list .message:first-of-type {
     margin-top: 0.5rem;
   }
