@@ -113,6 +113,10 @@
     background-color: var(--color-brand-bg);
   }
 
+  .inbox-tabs {
+    border-right: var(--border);
+  }
+
   a,
   a.meta {
     color: var(--color-brand-mid-contrast);
@@ -416,6 +420,10 @@
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
+    .inbox-tabs {
+      border-right: none;
+    }
+
     .settings-main .settings-content .tab-list,
     .inbox-main .inbox-content .tab-list {
       border-bottom: var(--border);
@@ -470,6 +478,10 @@
   body {
     background-color: var(--color-dark-bg);
     color: var(--color-text-dark);
+  }
+
+  .inbox-tabs {
+    border-right: var(--border-dark-1);
   }
 
   a,
@@ -620,6 +632,10 @@
     .settings-main .settings-content .tab.active,
     .inbox-main .inbox-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
+    }
+
+    .inbox-tabs {
+      border-right: none;
     }
 
     .settings-main .settings-content .tab-list,
@@ -2487,14 +2503,19 @@ p.bio + .extra-fields {
   width: 100%;
 }
 
+.inbox-content {
+  gap: 1rem;
+}
+
 .settings-main .settings-content .settings-tabs,
 .inbox-tabs {
   width: 240px;
 }
 
 .inbox-tabs { 
-  max-width: 178px;
+  max-width: fit-content;
   width: 100%;
+  padding-right: 1rem;
 }
 
 .settings-main .settings-content .tab-list li button,
@@ -2574,6 +2595,7 @@ p.bio + .extra-fields {
     gap: 0;
     width: 100%;
     margin-top: 0;
+    overflow: hidden;
   }
 
   .settings-main .settings-content .tab-list li a,
