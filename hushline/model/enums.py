@@ -26,7 +26,7 @@ class MessageStatus(enum.Enum):
     def display_str(self) -> str:
         match self:
             case self.PENDING:
-                return "Waiting for Response"
+                return "Waiting"
             case self.ACCEPTED:
                 return "Accepted"
             case self.DECLINED:
