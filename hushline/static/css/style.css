@@ -208,7 +208,7 @@
   .inbox-main .inbox-content .tab-list:not(.inbox-tabs) {
     border-bottom: none;
   }
-  
+
   .inbox-tabs {
     background-color: #fafafd;
     border: 1px solid var(--color-border-light);
@@ -432,10 +432,9 @@
       border: none;
       border-bottom: initial;
     }
-    
+
     .inbox-tabs {
-    
-  }
+    }
 
     .settings-main .settings-content .tab-list,
     .inbox-main .inbox-content .tab-list {
@@ -2664,7 +2663,7 @@ p.bio + .extra-fields {
   .inbox-content {
     padding-top: 0;
   }
-  
+
   .inbox-tabs {
     border-radius: 0;
     padding: 0;
