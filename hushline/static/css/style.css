@@ -2,6 +2,7 @@
   --theme-color-light: var(--color-brand);
   --theme-color-dark: var(--color-brand-dark-min-saturation);
   --color-border: rgba(0, 0, 0, 0.18);
+  --color-border-light: rgba(0, 0, 0, 0.1);
   --color-border-dark: #787878;
   --color-border-dark-1: #505050;
   --color-brand: oklch(48.55% 0.222 304.47);
@@ -204,8 +205,13 @@
   }
 
   .settings-main .settings-content .tab-list,
-  .inbox-main .inbox-content .tab-list {
+  .inbox-main .inbox-content .tab-list:not(.inbox-tabs) {
     border-bottom: none;
+  }
+  
+  .inbox-tabs {
+    background-color: #fafafd;
+    border: 1px solid var(--color-border-light);
   }
 
   .user,
@@ -422,7 +428,14 @@
 
     .inbox-tabs {
       border-right: none;
+      background-color: initial;
+      border: none;
+      border-bottom: initial;
     }
+    
+    .inbox-tabs {
+    
+  }
 
     .settings-main .settings-content .tab-list,
     .inbox-main .inbox-content .tab-list {
@@ -481,7 +494,8 @@
   }
 
   .inbox-tabs {
-    border-right: var(--border-dark-1);
+    border: var(--border-dark-1);
+    background-color: var(--color-dark-bg-alt-1);
   }
 
   a,
@@ -546,7 +560,7 @@
     background-color: var(--color-dark-bg-alt);
   }
 
-  .tab-list {
+  .tab-list:not(.inbox-tabs) {
     border-bottom: var(--border-dark);
   }
 
@@ -584,7 +598,7 @@
   }
 
   .settings-main .settings-content .tab-list,
-  .inbox-main .inbox-content .tab-list {
+  .inbox-main .inbox-content .tab-list:not(.inbox-tabs) {
     border-bottom: none;
   }
 
@@ -636,6 +650,9 @@
 
     .inbox-tabs {
       border-right: none;
+      border-top: none;
+      border-left: none;
+      background-color: inherit;
     }
 
     .settings-main .settings-content .tab-list,
@@ -1603,6 +1620,8 @@ img.upgrade {
 
 .inbox-tabs {
   margin-bottom: 0.5rem;
+  padding: 1.25rem 1rem;
+  border-radius: 0.25rem;
 }
 
 .tab-list li {
@@ -2513,7 +2532,7 @@ p.bio + .extra-fields {
 }
 
 .inbox-tabs {
-  max-width: fit-content;
+  max-width: 150px;
   width: 100%;
   padding-right: 1rem;
 }
@@ -2563,6 +2582,11 @@ p.bio + .extra-fields {
 .settings-main .tab-list li,
 .inbox-main .tab-list li {
   margin-bottom: 1rem;
+}
+
+.settings-main .tab-list li:last-of-type,
+.inbox-main .tab-list li:last-of-type {
+  margin-bottom: 0;
 }
 
 .settings-content,
@@ -2627,7 +2651,7 @@ p.bio + .extra-fields {
 
   .settings-main .settings-content .settings-tabs,
   .inbox-main .inbox-content .tab-list {
-    max-width: max-content;
+    max-width: 100%;
     width: 100%;
   }
 
@@ -2639,6 +2663,11 @@ p.bio + .extra-fields {
   .settings-content,
   .inbox-content {
     padding-top: 0;
+  }
+  
+  .inbox-tabs {
+    border-radius: 0;
+    padding: 0;
   }
 }
 
