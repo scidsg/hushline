@@ -1,11 +1,9 @@
 {% extends "settings/base.html" %}
 
 {% block settings_content %}
-  <h3>Message Replies</h3>
-  <p>These are your personal, automated message replies. When you receive a new message, the sender receives a
-    temporary address where they can view the status of their message. Upon changing the status, the temporary
-    address will display the most recent updates. While there are pre-defined replies included by default, you
-    can also create custom messages below.</p>
+  <h3>Message Statuses</h3>
+  <p>When you receive a message, the sender gets a temporary address where they can view the status of their message. 
+    Set custom message statuses for your community below. Rich text using markdown is supported.</p>
   {% for (status, msg_status_text) in status_tuples %}
     {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}
     <div class="response">
