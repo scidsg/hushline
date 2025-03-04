@@ -659,6 +659,10 @@
       background-color: inherit;
     }
 
+    .settings-tabs {
+      border-bottom: none;
+    }
+
     .settings-main .settings-content .tab-list,
     .inbox-main .inbox-content .tab-list {
       border-bottom: var(--border-dark);
