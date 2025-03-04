@@ -245,14 +245,14 @@ class UserGuidanceAddPromptForm(FlaskForm):
 
 
 class SetMessageStatusTextForm(FlaskForm):
-    markdown = TextAreaField("Reply Text (markdown)", validators=[OptionalField()])
+    markdown = TextAreaField("Status Text", validators=[OptionalField()])
     # WTForms errors on SelectField(..., widget=HiddenInput()), so we have this instead
     status = HiddenField(validators=[DataRequired(), AnyOf([x.value for x in MessageStatus])])
     submit = SubmitField("Update Reply Text", widget=Button())
 
 
 class UpdateDirectoryTextForm(FlaskForm):
-    markdown = TextAreaField("Directory Intro Text (markdown)", validators=[DataRequired()])
+    markdown = TextAreaField("Directory Intro Text", validators=[DataRequired()])
     submit = SubmitField("Update Text", name="update_directory_text", widget=Button())
 
 

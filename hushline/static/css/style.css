@@ -114,7 +114,8 @@
     background-color: var(--color-brand-bg);
   }
 
-  .inbox-tabs {
+  .inbox-tabs,
+  .settings-tabs {
     border-right: var(--border);
   }
 
@@ -209,7 +210,8 @@
     border-bottom: none;
   }
 
-  .inbox-tabs {
+  .inbox-tabs,
+  .settings-tabs {
     background-color: #fafafd;
     border: 1px solid var(--color-border-light);
   }
@@ -426,7 +428,8 @@
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
-    .inbox-tabs {
+    .inbox-tabs,
+    .settings-tabs {
       border-right: none;
       background-color: initial;
       border: none;
@@ -492,7 +495,8 @@
     color: var(--color-text-dark);
   }
 
-  .inbox-tabs {
+  .inbox-tabs,
+  .settings-tabs {
     border: var(--border-dark-1);
     background-color: var(--color-dark-bg-alt-1);
   }
@@ -647,7 +651,8 @@
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
-    .inbox-tabs {
+    .inbox-tabs,
+    .settings-tabs {
       border-right: none;
       border-top: none;
       border-left: none;
@@ -1617,7 +1622,8 @@ img.upgrade {
   gap: 1.25rem;
 }
 
-.inbox-tabs {
+.inbox-tabs,
+.settings-tabs {
   margin-bottom: 0.5rem;
   padding: 1.25rem 1rem;
   border-radius: 0.25rem;
@@ -2664,7 +2670,8 @@ p.bio + .extra-fields {
     padding-top: 0;
   }
 
-  .inbox-tabs {
+  .inbox-tabs,
+  .settings-tabs {
     border-radius: 0;
     padding: 0;
   }

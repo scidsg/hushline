@@ -8,8 +8,8 @@
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.encryption', 'Encryption', True),
+      ('settings.replies', 'Message Statuses', user.pgp_key is not none),
       ('settings.notifications', 'Notifications', True),
-      ('settings.replies', 'Message Replies', user.pgp_key is not none),
       ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.admin', 'Admin', user.is_admin),
       ('settings.advanced', 'Advanced', True)
