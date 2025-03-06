@@ -3267,6 +3267,7 @@ select {
   background-position: right 0.5rem center;
   background-size: 0.5rem auto;
   padding-right: 1.5rem;
+  padding: 0.4125rem 1.5rem 0.4125rem 0.5rem;
 }
 
 p.encrypted-value {
