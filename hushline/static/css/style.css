@@ -213,7 +213,7 @@
   .inbox-tabs,
   .settings-tabs {
     background-color: #fafafd;
-    border: 1px solid var(--color-border-light);
+    border: var(--border);
   }
 
   .user,
