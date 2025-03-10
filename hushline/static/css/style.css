@@ -1148,7 +1148,7 @@ img.empty {
   align-items: center;
   flex-grow: 1;
   justify-content: center;
-  min-height: calc(100vh - 276px);
+  min-height: calc(100vh - 278px);
 }
 
 .emptyState img {
