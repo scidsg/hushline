@@ -1236,7 +1236,7 @@ img.empty {
   margin-top: 0;
 }
 
-.message:last-of-type {
+.message-list .message:last-of-type {
   margin-bottom: 0;
 }
 
@@ -2134,6 +2134,10 @@ input#captcha_answer {
     padding: 2rem 1.25rem;
   }
 
+  .emptyState {
+    min-height: calc(100vh - 262px);
+  }
+
   header {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -2291,6 +2295,10 @@ button[name="update_directory_visibility"] {
 
   .search-box {
     width: 100%;
+  }
+
+  .emptyState {
+    min-height: calc(100vh - 333px);
   }
 }
 
@@ -2572,6 +2580,10 @@ p.bio + .extra-fields {
   margin-top: 0;
 }
 
+.tab-list {
+  margin-bottom: 0;
+}
+
 .settings-main .settings-content .settings-tabs + div,
 .message-list {
   width: 100%;
@@ -2627,8 +2639,12 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
+  .emptyState {
+    min-height: calc(100vh - 299px);
+  }
+
   .message-list .message:first-of-type {
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   .extra-field {
@@ -2691,6 +2707,12 @@ p.bio + .extra-fields {
   .settings-tabs {
     border-radius: 0;
     padding: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .emptyState {
+    min-height: calc(100vh - 333px);
   }
 }
 
