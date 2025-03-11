@@ -117,15 +117,13 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
             # always unverify all fields first
             setattr(username, f"extra_field_verified{i}", False)
 
-            if (label_field := getattr(form, f"extra_field_label{i}", None)) and (
-                label := getattr(label_field, "data", None)
-            ):
-                setattr(username, f"extra_field_label{i}", label)
+            label_field = getattr(form, f"extra_field_label{i}")
+            label = (getattr(label_field, "data") or "").strip() or None
+            setattr(username, f"extra_field_label{i}", label)
 
-            if (value_field := getattr(form, f"extra_field_value{i}", None)) and (
-                value := getattr(value_field, "data", None)
-            ):
-                setattr(username, f"extra_field_value{i}", value)
+            value_field = getattr(form, f"extra_field_value{i}")
+            value = (getattr(value_field, "data") or "").strip() or None
+            setattr(username, f"extra_field_value{i}", value)
 
             # Verify the URL only if it starts with "https://"
             if value and (
