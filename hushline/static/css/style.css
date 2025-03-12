@@ -2639,6 +2639,10 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
+  .tab-content > h3 {
+    margin-top: 1.25rem;
+  }
+
   .emptyState {
     min-height: calc(100vh - 299px);
   }
