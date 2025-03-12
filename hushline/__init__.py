@@ -20,7 +20,11 @@ from hushline.version import __version__
 def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     app = Flask(__name__)
     app.session_interface = EncryptedSessionInterface()
-    app.logger.setLevel(logging.DEBUG)
+
+    if app.config["DEBUG"] or app.config["TESTING"]:
+        app.logger.setLevel(logging.DEBUG)
+    else:
+        logging.basicConfig(format="%(levelname)s:%(message)s")
 
     if not config:
         config = load_config()
