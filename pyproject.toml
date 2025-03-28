@@ -17,7 +17,7 @@ flask = { extras = ["async"], version = "^3.0.3" }
 flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
-gunicorn = "^22.0.0"
+gunicorn = "^23.0.0"
 markdown = "^3.7"
 passlib = "^1.7.4"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
