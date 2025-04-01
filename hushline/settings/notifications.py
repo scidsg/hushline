@@ -95,7 +95,7 @@ def handle_email_forwarding_form(
 
 
 def register_notifications_routes(bp: Blueprint) -> None:
-    @bp.route("/email", methods=["GET", "POST"])
+    @bp.route("/notifications", methods=["GET", "POST"])
     @authentication_required
     def notifications() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
