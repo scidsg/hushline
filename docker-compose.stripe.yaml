@@ -35,8 +35,10 @@ services:
     volumes:
       - ./:/app
     depends_on:
-      - postgres
-      - blob-storage
+      postgres:
+        condition: service_healthy
+      blob-storage:
+        condition: service_healthy
     restart: always
 
   worker:
@@ -53,7 +55,8 @@ services:
     restart: on-failure
     command: make dev-data
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:16.4-alpine3.20
@@ -63,6 +66,11 @@ services:
       POSTGRES_DB: hushline
     ports:
       - 127.0.0.1:5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hushline"]
+      interval: 5s
+      timeout: 1s
+      retries: 10
 
   blob-storage:
     image: localstack/localstack:latest
@@ -76,3 +84,8 @@ services:
     ports:
       - "127.0.0.1:4566:4566"
       - "127.0.0.1:4571:4571"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --max-time 1 -sSf http://localhost:4566/_localstack/health | egrep -q 'running|available'"]
+      interval: 5s
+      timeout: 1s
+      retries: 10
