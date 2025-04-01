@@ -78,17 +78,15 @@
         </p>
       {% endif %}
 
-      {% if default_forwarding_enabled %}
-        <div class="checkbox-group toggle-ui">
-          {{ email_forwarding_form.custom_smtp_settings() }}
-          <label for="custom_smtp_settings" class="toggle-label">
-            {{ email_forwarding_form.custom_smtp_settings.label }}
-            <div class="toggle">
-              <div class="toggle__ball"></div>
-            </div>
-          </label>
-        </div>
-      {% endif %}
+      <div class="checkbox-group toggle-ui">
+        {{ email_forwarding_form.custom_smtp_settings() }}
+        <label for="custom_smtp_settings" class="toggle-label">
+          {{ email_forwarding_form.custom_smtp_settings.label }}
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
 
       <fieldset id="custom_smtp_settings_fields">
         {{ email_forwarding_form.smtp_settings.smtp_sender.label }}
