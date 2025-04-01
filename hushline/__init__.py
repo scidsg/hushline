@@ -164,7 +164,7 @@ def register_commands(app: Flask) -> None:
                 db.session.commit()
 
         # Configure Stripe
-        if app.config["STRIPE_SECRET_KEY"]:
+        if app.config.get("STRIPE_SECRET_KEY"):
             with app.app_context():
                 premium.init_stripe()
                 premium.create_products_and_prices()
