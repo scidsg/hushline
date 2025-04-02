@@ -72,7 +72,7 @@
       {{ email_forwarding_form.email_address.label }}
       {{ email_forwarding_form.email_address }}
 
-      {% if default_forwarding_enabled and smtp_forwarding_message_html %}
+      {% if default_forwarding_enabled and smtp_forwarding_message_html and not custom_smtp_settings %}
         <p class="meta">
           {{ smtp_forwarding_message_html }}
         </p>
