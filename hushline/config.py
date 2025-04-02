@@ -5,6 +5,7 @@ from enum import Enum, unique
 from json import JSONDecodeError
 from typing import Any, Mapping, Optional, Self
 
+import bleach
 from markupsafe import Markup
 
 from hushline.utils import if_not_none, parse_bool
@@ -101,6 +102,14 @@ def _load_sqlalchemy(env: Mapping[str, str]) -> Mapping[str, Any]:
     return data
 
 
+def clean_html(html_str: str) -> Markup:
+    return Markup(
+        bleach.clean(
+            html_str, tags=["p", "span", "b", "strong", "i", "em", "a"], attributes={"a": ["href"]}
+        )
+    )
+
+
 def _load_smtp(env: Mapping[str, str]) -> Mapping[str, Any]:
     data: dict[str, Any] = {}
 
@@ -111,7 +120,7 @@ def _load_smtp(env: Mapping[str, str]) -> Mapping[str, Any]:
     data["SMTP_PORT"] = if_not_none(env.get("SMTP_PORT"), int, allow_falsey=False)
     data["SMTP_ENCRYPTION"] = env.get("SMTP_ENCRYPTION", "StartTLS")
     data["SMTP_FORWARDING_MESSAGE_HTML"] = if_not_none(
-        env.get("SMTP_FORWARDING_MESSAGE_HTML"), Markup, allow_falsey=False
+        env.get("SMTP_FORWARDING_MESSAGE_HTML"), clean_html, allow_falsey=False
     )
 
     return data

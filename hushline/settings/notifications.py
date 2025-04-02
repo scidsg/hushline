@@ -38,13 +38,12 @@ class ToggleEncryptEntireBodyForm(FlaskForm):
     submit = SubmitField("Submit", name="toggle_encrypt_entire_body", widget=DisplayNoneButton())
 
 
-def handle_email_forwarding_form(
-    user: User, form: EmailForwardingForm, default_forwarding_enabled: bool
-) -> Optional[Response]:
+def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optional[Response]:
     if form.email_address.data and not user.pgp_key:
         flash("⛔️ Email forwarding requires a configured PGP key")
         return None
 
+    default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
     forwarding_enabled = form.custom_smtp_settings.data
     custom_smtp_settings = forwarding_enabled and (
         form.custom_smtp_settings.data or not default_forwarding_enabled
@@ -95,11 +94,10 @@ def handle_email_forwarding_form(
 
 
 def register_notifications_routes(bp: Blueprint) -> None:
-    @bp.route("/email", methods=["GET", "POST"])
+    @bp.route("/notifications", methods=["GET", "POST"])
     @authentication_required
     def notifications() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
-        default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
 
         toggle_notifications_form = ToggleNotificationsForm()
         toggle_include_content_form = ToggleIncludeContentForm()
@@ -156,11 +154,7 @@ def register_notifications_routes(bp: Blueprint) -> None:
             elif (
                 email_forwarding_form.submit.name in request.form
                 and email_forwarding_form.validate()
-                and (
-                    resp := handle_email_forwarding_form(
-                        user, email_forwarding_form, default_forwarding_enabled
-                    )
-                )
+                and (resp := handle_email_forwarding_form(user, email_forwarding_form))
             ):
                 return resp
             else:
@@ -186,7 +180,8 @@ def register_notifications_routes(bp: Blueprint) -> None:
         return render_template(
             "settings/notifications.html",
             user=user,
-            default_forwarding_enabled=default_forwarding_enabled,
+            default_forwarding_enabled=bool(current_app.config.get("NOTIFICATIONS_ADDRESS")),
+            custom_smtp_settings=bool(user.smtp_username),
             toggle_notifications_form=toggle_notifications_form,
             toggle_include_content_form=toggle_include_content_form,
             toggle_encrypt_entire_body_form=toggle_encrypt_entire_body_form,

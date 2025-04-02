@@ -341,7 +341,7 @@ These configs are needed for the web app.
       <td>false</td>
       <td>HTML</td>
       <td></td>
-      <td>Message to display on the Email settings page below the SMTP forwarding config.</td>
+      <td>Message to display on the Email settings page below the SMTP forwarding config. Input will be sanitized to only include the tags: "p", "span", "b", "strong", "i", "em", "a".</td>
     </tr>
     <tr>
       <td><code>SMTP_PASSWORD</code></td>
