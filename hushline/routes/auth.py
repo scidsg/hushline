@@ -109,11 +109,15 @@ def register_auth_routes(app: Flask) -> None:
             flash("Registration successful!", "success")
             return redirect(url_for("login"))
 
+        # Check if this is the first user
+        first_user = db.session.query(User).count() == 0
+
         return render_template(
             "register.html",
             form=form,
             require_invite_code=require_invite_code,
             math_problem=math_problem,
+            first_user=first_user,
         )
 
     @app.route("/login", methods=["GET", "POST"])

@@ -3,6 +3,16 @@
 
 {% block content %}
   <h2>Register</h2>
+
+  {% if first_user %}
+  <div class="alert">
+    <div>
+      <h4>Create the Admin User</h4>
+      <p class="info">The first user you create on your Hush Line server will be the admin.</p>
+    </div>
+  </div>
+  {% endif %}
+
   <form method="POST" action="{{ url_for('register') }}">
     {{ form.hidden_tag() }}
     <div>

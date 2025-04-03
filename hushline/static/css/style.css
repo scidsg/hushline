@@ -411,7 +411,7 @@
     color: white;
   }
 
-  .upgrade {
+  .alert {
     background-color: var(--color-brand);
     color: white;
   }
@@ -845,12 +845,12 @@
     color: #333;
   }
 
-  .upgrade .btn {
+  .alert .btn {
     border: 1px solid #333;
     color: #333;
   }
 
-  .upgrade {
+  .alert {
     background-color: var(--color-brand-dark-min-saturation);
     color: #333;
   }
@@ -988,7 +988,7 @@ h4 {
   margin-top: 1.325rem;
 }
 
-.upgrade h4 {
+.alert h4 {
   margin-top: 0;
   margin-bottom: 0.25rem;
 }
@@ -1588,7 +1588,7 @@ li a.small {
   margin: 0;
 }
 
-img.upgrade {
+img.alert {
   max-width: 164px;
 }
 
@@ -2490,7 +2490,7 @@ p.bio + .extra-fields {
   border: 1px solid #666;
 }
 
-.upgrade {
+.alert {
   padding: 1rem;
   margin-top: 0.75rem;
   margin-bottom: 2rem;
@@ -2501,14 +2501,14 @@ p.bio + .extra-fields {
   gap: 1rem;
 }
 
-.upgrade .btn {
+.alert .btn {
   width: fit-content;
   box-sizing: border-box;
   text-align: center;
   margin: 0;
 }
 
-.upgrade h3 {
+.alert h3 {
   font-size: var(--font-size-4);
   margin-bottom: 0.25rem;
 }
@@ -2517,7 +2517,7 @@ p.bio + .extra-fields {
   margin-bottom: 0.75rem;
 }
 
-.upgrade p {
+.alert p {
   font-size: var(--font-size-small);
   margin: 0;
 }
@@ -2979,7 +2979,7 @@ strong {
 }
 
 @media (max-width: 640px) {
-  .upgrade {
+  .alert {
     flex-direction: column;
     align-items: start;
     gap: 0.75rem;
@@ -3413,4 +3413,9 @@ li.tab:not(.active) .badge {
 
 li.tab .badge {
   padding: 0.25rem 0.325rem;
+}
+
+.first-user {
+  text-align: center;
+  padding: 1rem;
 }
