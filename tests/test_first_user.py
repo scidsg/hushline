@@ -42,6 +42,7 @@ def test_some_users_register_should_hide_alert(client: FlaskClient, user_passwor
 
     assert "Create the Admin User" not in response.text
 
+
 def test_first_user_is_admin(client: FlaskClient) -> None:
     user_count = db.session.query(User).count()
     assert user_count == 0
@@ -67,6 +68,7 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
     user = db.session.scalars(db.select(User)).one()
     assert user.is_admin
     assert user.primary_username.show_in_directory
+
 
 def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> None:
     user_count = db.session.query(User).count()
