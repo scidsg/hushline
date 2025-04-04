@@ -2501,6 +2501,11 @@ p.bio + .extra-fields {
   gap: 1rem;
 }
 
+.alert:not(.tab-content .alert) {
+  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .alert .btn {
   width: fit-content;
   box-sizing: border-box;
