@@ -51,6 +51,9 @@ def register_auth_routes(app: Flask) -> None:
             # Use the existing math problem from the session
             math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
 
+        # Check if this is the first user
+        first_user = db.session.query(User).count() == 0
+
         if form.validate_on_submit():
             captcha_answer = request.form.get("captcha_answer", "")
             app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
@@ -97,10 +100,20 @@ def register_auth_routes(app: Flask) -> None:
                 )
 
             user = User(password=password)
+
+            # If this is the first user, set them as admin
+            if first_user:
+                user.is_admin = True
+
             db.session.add(user)
             db.session.flush()
 
             username = Username(_username=username, user_id=user.id, is_primary=True)
+
+            # If this is the first user, show them in the directory
+            if first_user:
+                username.show_in_directory = True
+
             db.session.add(username)
             db.session.commit()
 
@@ -114,6 +127,7 @@ def register_auth_routes(app: Flask) -> None:
             form=form,
             require_invite_code=require_invite_code,
             math_problem=math_problem,
+            first_user=first_user,
         )
 
     @app.route("/login", methods=["GET", "POST"])

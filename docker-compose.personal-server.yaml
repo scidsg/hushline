@@ -1,0 +1,57 @@
+---
+services:
+  app: &app_env
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      IS_DOCKER: '1'
+      FLASK_APP: hushline
+      FLASK_ENV: development
+      ENCRYPTION_KEY: bi5FDwhZGKfc4urLJ_ChGtIAaOPgxd3RDOhnvct10mw=
+      SECRET_KEY: cb3f4afde364bfb3956b97ca22ef4d2b593d9d980a4330686267cabcd2c0befd
+      SESSION_FERNET_KEY: jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A=
+      SQLALCHEMY_DATABASE_URI: postgresql://hushline:hushline@postgres:5432/hushline
+      REGISTRATION_CODES_REQUIRED: "false"
+      ALIAS_MODE: always
+      FIELDS_MODE: always
+      SESSION_COOKIE_NAME: session
+      DIRECTORY_VERIFIED_TAB_ENABLED: "false"
+      BLOB_STORAGE_PUBLIC_DRIVER: file-system
+      BLOB_STORAGE_PUBLIC_FS_ROOT: /hushline-public-files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+      - hushline-public-files:/hushline-public-files
+    restart: always
+
+  dev_data:
+    <<: *app_env
+    ports: []
+    command: poetry run ./scripts/dev_migrations.py
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  postgres:
+    image: postgres:16.4-alpine3.20
+    environment:
+      POSTGRES_USER: hushline
+      POSTGRES_PASSWORD: hushline
+      POSTGRES_DB: hushline
+    restart: on-failure
+    ports:
+      - 127.0.0.1:5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hushline"]
+      interval: 5s
+      timeout: 1s
+      retries: 10
+
+volumes:
+  hushline-public-files:

@@ -2,21 +2,10 @@ import os
 
 from flask import url_for
 from flask.testing import FlaskClient
+from helpers import get_captcha_from_session_register
 
 from hushline.db import db
 from hushline.model import InviteCode, Username
-
-
-def get_captcha_from_session(client: FlaskClient) -> str:
-    """Retrieve the CAPTCHA answer from the session."""
-    # Simulate loading the registration page to generate the CAPTCHA
-    response = client.get(url_for("register"))
-    assert response.status_code == 200
-
-    with client.session_transaction() as session:
-        captcha_answer = session.get("math_answer")
-        assert captcha_answer, "CAPTCHA answer not found in session"
-        return captcha_answer
 
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
@@ -24,7 +13,7 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     username = "test_user"
 
-    captcha_answer = get_captcha_from_session(client)
+    captcha_answer = get_captcha_from_session_register(client)
 
     response = client.post(
         url_for("register"),
@@ -52,7 +41,7 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     db.session.add(code)
     db.session.commit()
 
-    captcha_answer = get_captcha_from_session(client)
+    captcha_answer = get_captcha_from_session_register(client)
 
     response = client.post(
         url_for("register"),
@@ -84,7 +73,7 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
     username = "newuser"
     password = "SecurePassword123!"
 
-    captcha_answer = get_captcha_from_session(client)
+    captcha_answer = get_captcha_from_session_register(client)
 
     # Register the user
     response = client.post(
@@ -109,7 +98,7 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     username = "newuser"
     password = "SecurePassword123!"
 
-    captcha_answer = get_captcha_from_session(client)
+    captcha_answer = get_captcha_from_session_register(client)
 
     # Register the user
     response = client.post(

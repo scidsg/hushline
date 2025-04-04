@@ -61,6 +61,18 @@ assert (Missing() == Missing()) ^ bool("x")
 assert Missing() != Missing()
 
 
+def get_captcha_from_session_register(client: FlaskClient) -> str:
+    """Retrieve the CAPTCHA answer from the session."""
+    # Simulate loading the registration page to generate the CAPTCHA
+    response = client.get(url_for("register"))
+    assert response.status_code == 200
+
+    with client.session_transaction() as session:
+        captcha_answer = session.get("math_answer")
+        assert captcha_answer, "CAPTCHA answer not found in session"
+        return captcha_answer
+
+
 def get_captcha_from_session(client: FlaskClient, username: str) -> str:
     # Simulate loading the profile page to generate and retrieve the CAPTCHA from the session
     response = client.get(url_for("profile", username=username))
