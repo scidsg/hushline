@@ -1443,6 +1443,7 @@ header .btn {
   margin-top: 0;
   margin-bottom: 0;
   padding: 0.5rem 0.75rem;
+  display: flex;
 }
 
 .formBody input[type="submit"],
