@@ -1444,6 +1444,7 @@ header .btn {
   margin-bottom: 0;
   padding: 0.5rem 0.75rem;
   display: flex;
+  gap: 0.25rem;
 }
 
 .formBody input[type="submit"],
