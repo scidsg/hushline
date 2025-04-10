@@ -1289,7 +1289,7 @@ header {
   min-height: 65px;
   backdrop-filter: blur(1rem);
   -webkit-backdrop-filter: blur(1rem);
-   max-height: 65px;
+  max-height: 65px;
 }
 
 header h1 {
