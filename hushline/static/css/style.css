@@ -1289,11 +1289,13 @@ header {
   min-height: 65px;
   backdrop-filter: blur(1rem);
   -webkit-backdrop-filter: blur(1rem);
+   max-height: 65px;
 }
 
 header h1 {
   margin: 0;
   font-size: 1.25rem;
+  line-height: 1.1;
 }
 
 header nav {
