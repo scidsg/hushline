@@ -34,7 +34,7 @@ class OrganizationSetting(Model):
     _DEFAULT_VALUES: dict[str, Any] = {
         BRAND_NAME: "🤫 Hush Line",
         BRAND_PRIMARY_COLOR: "#7d25c1",
-        BRAND_PROFILE_HEADER_TEMPLATE: "Submit message to {{ display_name_or_username }}",
+        BRAND_PROFILE_HEADER_TEMPLATE: "Submit a message to {{ display_name_or_username }}",
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",

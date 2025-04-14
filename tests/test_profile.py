@@ -29,7 +29,7 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
     resp = client.get(url_for("profile", username=user.primary_username.username))
     assert resp.status_code == 200
     assert (
-        "Submit message to "
+        "Submit a message to "
         + (user.primary_username.display_name or user.primary_username.username)
         in resp.text
     )
