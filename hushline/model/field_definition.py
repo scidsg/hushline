@@ -24,12 +24,12 @@ class FieldDefinition(Model):
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"), index=True)
     username: Mapped["Username"] = relationship(back_populates="message_fields")
     label: Mapped[str] = mapped_column(db.String(255))
-    field_type: Mapped[FieldType] = mapped_column(SQLAlchemyEnum(FieldType), default=FieldType.TEXT)
-    required: Mapped[bool] = mapped_column(default=False)
-    enabled: Mapped[bool] = mapped_column(default=True)
-    encrypted: Mapped[bool] = mapped_column(default=False)
-    choices: Mapped[list[str]] = mapped_column(type_=JSONB, default=[])
-    sort_order: Mapped[int] = mapped_column(default=0)
+    field_type: Mapped[FieldType] = mapped_column(SQLAlchemyEnum(FieldType))
+    required: Mapped[bool] = mapped_column()
+    enabled: Mapped[bool] = mapped_column()
+    encrypted: Mapped[bool] = mapped_column()
+    choices: Mapped[list[str]] = mapped_column(type_=JSONB)
+    sort_order: Mapped[int] = mapped_column()
 
     def __init__(  # noqa: PLR0913
         self,
