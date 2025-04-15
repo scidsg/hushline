@@ -38,19 +38,19 @@
       },
       {
         "guid": "zcash",
-        "type": "crypto",
+        "type": "other",
         "address": "t1fWfUwLjsfZY5xnajjPHqQxfB3nj8hNggR",
         "description": "Support us via Zcash."
       },
       {
         "guid": "bitcoin",
-        "type": "crypto",
+        "type": "other",
         "address": "bc1qm30x3zwm5wh2e07nfuqx3qme8jtzpl3qhn5sm7",
         "description": "Support us via Bitcoin."
       },
       {
         "guid": "litecoin",
-        "type": "crypto",
+        "type": "other",
         "address": "ltc1q33ycseddyfs0242kg07w3th5f066fekvheley6",
         "description": "Support us via Litecoin."
       }
