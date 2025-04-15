@@ -22,7 +22,7 @@
       },
       "repositoryUrl": {
         "url": "https://github.com/scidsg/hushline",
-        "wellKnown": "https://github.com/scidsg/hushline/raw/main/.well-known/funding-manifest-urls"
+        "wellKnown": "https://github.com/scidsg/hushline/blob/main/.well-known/funding-manifest-urls"
       },
       "licenses": ["spdx:AGPL-3.0"],
       "tags": ["whistleblowing", "security", "privacy", "foss", "journalism"]
