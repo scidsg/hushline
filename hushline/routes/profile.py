@@ -36,7 +36,7 @@ def register_profile_routes(app: Flask) -> None:
 
         uname.create_default_field_defs()
 
-        dynamic_form = DynamicMessageForm(uname.message_fields)
+        dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
         form = dynamic_form.form()
 
         # Generate a simple math problem using secrets module (e.g., "What is 6 + 7?")
@@ -78,7 +78,7 @@ def register_profile_routes(app: Flask) -> None:
             flash("🫥 User not found.")
             return abort(404)
 
-        dynamic_form = DynamicMessageForm(uname.message_fields)
+        dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
         form = dynamic_form.form()
 
         current_app.logger.debug(f"Form submitted: {form.data}")

@@ -42,7 +42,7 @@ class FieldValue(Model):
     message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
     message: Mapped["Message"] = relationship("Message", back_populates="field_values")
     _value: Mapped[str] = mapped_column(db.Text)
-    encrypted: Mapped[bool] = mapped_column(default=False)
+    encrypted: Mapped[bool] = mapped_column()
 
     def __init__(
         self,
