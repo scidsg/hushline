@@ -59,6 +59,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             f"{k} {v}"
             for (k, v) in {
                 "default-src": "'self'",
+                "style-src": "'self' 'unsafe-inline'",
                 "script-src": " ".join(
                     [
                         "'self'",
@@ -68,8 +69,9 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                         "'unsafe-eval'",
                     ]
                 ),
+                "script-src-elem": "'self' 'unsafe-inline'",
                 "img-src": "'self' data: https:",
-                "style-src": "'self' 'unsafe-inline'",
+                "media-src": "'self' data:",
                 "worker-src": "'self' blob:",
                 "frame-ancestors": "'none'",
                 "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
