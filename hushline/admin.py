@@ -30,6 +30,13 @@ def create_blueprint() -> Blueprint:
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)
+
+        if user.is_admin:
+            admin_count = db.session.query(User).filter_by(is_admin=True).count()
+            if admin_count == 1:
+                flash("⛔️ You cannot remove the only admin")
+                return abort(400)
+
         user.is_admin = not user.is_admin
         db.session.commit()
         flash("✅ User admin status toggled.", "success")

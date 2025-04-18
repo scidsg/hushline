@@ -32,63 +32,63 @@ def test_admin_settings_hides_verified_on_nonmanaged_service(
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
-def test_toggle_verified_on_managed_service(app: Flask, client: FlaskClient, user: User) -> None:
+def test_toggle_verified_on_managed_service(
+    app: Flask, client: FlaskClient, admin_user: User
+) -> None:
     app.config["MANAGED_SERVICE"] = True
 
     response = client.post(
-        url_for("admin.toggle_verified", user_id=user.id),
+        url_for("admin.toggle_verified", user_id=admin_user.id),
         follow_redirects=True,
     )
     assert response.status_code == 200
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
-def test_toggle_verified_on_nonmanaged_service(app: Flask, client: FlaskClient, user: User) -> None:
+def test_toggle_verified_on_nonmanaged_service(
+    app: Flask, client: FlaskClient, admin_user: User
+) -> None:
     app.config["MANAGED_SERVICE"] = False
 
     response = client.post(
-        url_for("admin.toggle_verified", user_id=user.id),
+        url_for("admin.toggle_verified", user_id=admin_user.id),
         follow_redirects=True,
     )
     assert response.status_code == 401
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
-def test_toggle_admin_only_admin(client: FlaskClient, user: User) -> None:
+def test_toggle_admin_only_admin(client: FlaskClient, admin_user: User) -> None:
     # Make sure there is only one admin user
-    user_count = db.session.query(User).filter_by(is_admin=True).count()
-    assert user_count == 1
+    admin_count = db.session.query(User).filter_by(is_admin=True).count()
+    assert admin_count == 1
 
     # Make sure the user is an admin
-    assert user.is_admin is True
+    assert admin_user.is_admin is True
 
     # Toggling admin on the user should return 400
     response = client.post(
-        url_for("admin.toggle_admin", user_id=user.id),
+        url_for("admin.toggle_admin", user_id=admin_user.id),
         follow_redirects=True,
     )
     assert response.status_code == 400
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
-def test_toggle_admin_multiple_admins(client: FlaskClient, user: User) -> None:
-    # Make sure there is only one admin user
-    user_count = db.session.query(User).filter_by(is_admin=True).count()
-    assert user_count == 1
+def test_toggle_admin_multiple_admins(
+    client: FlaskClient, admin_user: User, admin_user2: User
+) -> None:
+    assert admin_user.is_admin is True
+    assert admin_user2.is_admin is True
 
-    # Make another admin
-    another_admin = make_user("Test-testtesttesttest-1")
-    another_admin.is_admin = True
-    db.session.add(user)
-    db.session.commit()
+    # Make sure there are two admin users
+    admin_count = db.session.query(User).filter_by(is_admin=True).count()
+    assert admin_count == 2
 
-    # There should be multiple admins now
-    user_count = db.session.query(User).filter_by(is_admin=True).count()
-    assert user_count == 2
+    # Toggling admin on the user should return 302 (successfully redirect)
+    response = client.post(url_for("admin.toggle_admin", user_id=admin_user.id))
+    assert response.status_code == 302
 
-    # Toggling admin on the user should return 200
-    response = client.post(
-        url_for("admin.toggle_admin", user_id=user.id),
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
+    # There should be only one admins now
+    admin_count = db.session.query(User).filter_by(is_admin=True).count()
+    assert admin_count == 1
