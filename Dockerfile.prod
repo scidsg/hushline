@@ -33,14 +33,14 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY poetry.lock pyproject.toml .
 RUN poetry install --no-root --without dev
 
+COPY scripts/ scripts/
+COPY migrations/ migrations/
+COPY hushline/ hushline/
+
 COPY --from=webpack /src/hushline/static/img/ ./hushline/static/img/
 COPY --from=webpack /src/hushline/static/fonts/ ./hushline/static/fonts/
 COPY --from=webpack /src/hushline/static/js/ ./hushline/static/js/
 COPY --from=webpack /src/hushline/static/css/ ./hushline/static/css/
-
-COPY scripts/ scripts/
-COPY migrations/ migrations/
-COPY hushline/ hushline/
 
 ENV FLASK_APP="hushline"
 CMD ["./scripts/prod_start.sh"]
