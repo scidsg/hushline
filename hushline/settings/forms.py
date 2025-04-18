@@ -47,7 +47,13 @@ class ChangePasswordForm(FlaskForm):
 
 
 class ChangeUsernameForm(FlaskForm):
-    new_username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+    new_username = StringField(
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(min=Username.USERNAME_MIN_LENGTH, max=Username.USERNAME_MAX_LENGTH),
+        ],
+    )
     submit = SubmitField("Change Username", name="update_display_name", widget=Button())
 
 
@@ -124,12 +130,24 @@ class PGPKeyForm(FlaskForm):
 
 
 class DisplayNameForm(FlaskForm):
-    display_name = StringField("Display Name", validators=[OptionalField(), Length(max=100)])
+    display_name = StringField(
+        "Display Name",
+        validators=[
+            OptionalField(),
+            Length(min=Username.DISPLAY_NAME_MIN_LENGTH, max=Username.DISPLAY_NAME_MAX_LENGTH),
+        ],
+    )
     submit = SubmitField("Update Display Name", name="update_display_name", widget=Button())
 
 
 class NewAliasForm(FlaskForm):
-    username = StringField("Alias Username", validators=[DataRequired(), Length(min=4, max=25)])
+    username = StringField(
+        "Alias Username",
+        validators=[
+            DataRequired(),
+            Length(min=Username.USERNAME_MIN_LENGTH, max=Username.USERNAME_MAX_LENGTH),
+        ],
+    )
     submit = SubmitField("Add Alias", name="new_alias", widget=Button())
 
 

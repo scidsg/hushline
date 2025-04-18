@@ -30,6 +30,11 @@ class Username(Model):
 
     __tablename__ = "usernames"
 
+    USERNAME_MIN_LENGTH = 3
+    USERNAME_MAX_LENGTH = 25
+    DISPLAY_NAME_MIN_LENGTH = 1
+    DISPLAY_NAME_MAX_LENGTH = 100
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship()

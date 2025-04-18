@@ -12,7 +12,7 @@ from wtforms.validators import DataRequired, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
 from hushline.forms import ComplexPassword
-from hushline.model import FieldDefinition, FieldType
+from hushline.model import FieldDefinition, FieldType, Username
 from hushline.routes.common import valid_username
 
 
@@ -35,7 +35,12 @@ class TwoFactorForm(FlaskForm):
 
 class RegistrationForm(FlaskForm):
     username = StringField(
-        "Username", validators=[DataRequired(), Length(min=4, max=25), valid_username]
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(min=Username.USERNAME_MIN_LENGTH, max=Username.USERNAME_MAX_LENGTH),
+            valid_username,
+        ],
     )
     password = PasswordField(
         "Password",
