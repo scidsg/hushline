@@ -32,5 +32,5 @@ def register_admin_routes(bp: Blueprint) -> None:
             pgp_key_count=pgp_key_count,
             two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
             pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
-            is_managed_service=current_app.config.get("MANAGED_SERVICE")
+            is_managed_service=current_app.config.get("MANAGED_SERVICE"),
         )
