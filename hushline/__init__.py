@@ -1,10 +1,11 @@
 import asyncio
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Tuple, Union
 
-from flask import Flask, flash, redirect, request, session, url_for
+from flask import Flask, render_template, request, session, url_for
 from flask.cli import AppGroup
 from jinja2 import StrictUndefined
+from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
@@ -46,11 +47,6 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         # Initialize Stripe
         with app.app_context():
             premium.init_stripe()
-
-    @app.errorhandler(404)
-    def page_not_found(e: Exception) -> Response:
-        flash("⛓️‍💥 That page doesn't exist.", "warning")
-        return redirect(url_for("index"))
 
     # Add Content-Security-Policy header to all responses
     @app.after_request
@@ -100,6 +96,30 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         def add_onion_location_header(response: Response) -> Response:
             response.headers["Onion-Location"] = f"http://{onion}{request.path}"
             return response
+
+    @app.errorhandler(Exception)
+    def handle_generic_exception(e: Exception) -> Union[HTTPException, Tuple[str, int]]:
+        if isinstance(e, HTTPException):
+            return e
+
+        app.logger.info(f"Unhandled error: {e}", exc_info=True)
+
+        http_e = InternalServerError()
+        return render_template(
+            "error.html",
+            title=http_e.name,
+            status_code=http_e.code,
+            description=http_e.description,
+        ), http_e.code
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e: HTTPException) -> Tuple[str, int]:
+        return render_template(
+            "error.html",
+            title=e.name,
+            status_code=e.code,
+            description=e.description,
+        ), (e.code or 500)
 
     # Register custom CLI commands
     register_commands(app)

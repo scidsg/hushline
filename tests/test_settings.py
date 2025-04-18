@@ -732,8 +732,7 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
     # check the file is not accessible
     resp = client.get(logo_url, follow_redirects=True)
-    # yes this check is ridiculous. why? because we redirect not-founds instead of actually 404-ing
-    assert "That page doesn" in resp.text
+    assert resp.status_code == 404
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
