@@ -34,13 +34,15 @@
           Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}
         </p>
         <div class="tableActions">
-          <form
-            action="{{ url_for('admin.toggle_verified', user_id=user.id) }}"
-            method="POST"
-            class="formBody"
-          >
-            <button type="submit">Toggle Verified</button>
-          </form>
+          {% if is_managed_service %}
+            <form
+              action="{{ url_for('admin.toggle_verified', user_id=user.id) }}"
+              method="POST"
+              class="formBody"
+            >
+              <button type="submit">Toggle Verified</button>
+            </form>
+          {% endif %}
           <form
             action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
             method="POST"
