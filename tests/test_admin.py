@@ -6,7 +6,6 @@ from hushline.db import db
 from hushline.model import (
     User,
 )
-from conftest import make_user
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
