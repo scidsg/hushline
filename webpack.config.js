@@ -20,6 +20,7 @@ modules = [
   "vision",
   // dummies for css
   "style",
+  "images",
 ];
 
 for (const mod_name of modules) {
