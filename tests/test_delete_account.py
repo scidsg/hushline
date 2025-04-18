@@ -39,7 +39,7 @@ def test_cannot_delete_only_admin_account(client: FlaskClient, admin_user: User)
 
     # Make sure the user is still there
     user_count = db.session.query(User).filter_by(id=admin_user.id).count()
-    assert user_count == 0
+    assert user_count == 1
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

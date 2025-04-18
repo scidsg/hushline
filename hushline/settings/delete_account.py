@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    abort,
     flash,
     redirect,
     session,
@@ -31,6 +32,12 @@ def register_delete_account_routes(bp: Blueprint) -> None:
 
         user = db.session.get(User, user_id)
         if user:
+            if user.is_admin:
+                admin_count = db.session.query(User).filter_by(is_admin=True).count()
+                if admin_count == 1:
+                    flash("⛔️ You cannot delete the only admin account")
+                    return abort(400)
+
             # Delete field values and definitions
             usernames = db.session.scalars(db.select(Username).filter_by(user_id=user.id)).all()
             username_ids = [username.id for username in usernames]
