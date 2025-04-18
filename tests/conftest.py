@@ -267,6 +267,7 @@ def _authenticated_user(client: FlaskClient, user: User) -> None:
         session["username"] = user.primary_username.username
         session["is_authenticated"] = True
 
+
 @pytest.fixture()
 def _authenticated_admin_user(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
