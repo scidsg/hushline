@@ -31,8 +31,7 @@ def register_profile_routes(app: Flask) -> None:
     def profile(username: str) -> Response | str:
         uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
         if not uname:
-            flash("🫥 User not found.")
-            return redirect(url_for("index"))
+            abort(404)
 
         uname.create_default_field_defs()
 

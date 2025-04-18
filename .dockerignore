@@ -1,2 +1,7 @@
 *.pyc
 __pycache__
+
+hushline/static/css/
+hushline/static/fonts/
+hushline/static/img/
+hushline/static/js/

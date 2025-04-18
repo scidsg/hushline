@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <h2>{% if status_code %}{{ status_code }}: {% endif %}{{ title }}</h2>
+  {% if description %}
+    <p>{{ description }}</p>
+  {% endif %}
+{% endblock %}

@@ -78,6 +78,6 @@ def test_message_page_wrong_user(
     client: FlaskClient, user: User, user2: User, message2: Message
 ) -> None:
     resp = client.get(url_for("message", id=message2.id), follow_redirects=True)
-    assert resp.status_code == 200
+    assert resp.status_code == 404
     assert "Message" not in resp.text
-    assert "That page doesn&#39;t exist" in resp.text, resp.text
+    assert "404: Not Found" in resp.text

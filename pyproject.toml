@@ -54,6 +54,9 @@ filterwarnings = [
     # passlib unmaintianed, see: https://github.com/scidsg/hushline/issues/553
     "ignore:.*'crypt' is deprecated.*:DeprecationWarning",
 ]
+markers = [
+    "local_only",
+]
 
 [tool.ruff]
 line-length = 100
