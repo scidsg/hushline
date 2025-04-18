@@ -1,32 +1,46 @@
 # vim: set syntax=dockerfile :
+FROM node:18.20.4-alpine3.20 AS webpack
+
+WORKDIR /src
+
+COPY ./package.json ./package-lock.json .
+
+RUN npm install
+
+COPY ./webpack.config.js . 
+COPY ./assets/ ./assets/
+
+RUN npm run build:prod
+
+# =============================
+
 FROM python:3.12.6-slim-bookworm
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential curl libpcsclite-dev clang llvm pkg-config nettle-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
 RUN pip install poetry
 
 # Install Rust (for SequoiaPGP)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install Poetry dependencies
-COPY poetry.lock pyproject.toml /app/
+COPY poetry.lock pyproject.toml .
 RUN poetry install --no-root --without dev
 
-# Copy the rest of the application
-COPY . /app
+COPY --from=webpack /src/hushline/static/img/ ./hushline/static/img/
+COPY --from=webpack /src/hushline/static/fonts/ ./hushline/static/fonts/
+COPY --from=webpack /src/hushline/static/js/ ./hushline/static/js/
+COPY --from=webpack /src/hushline/static/css/ ./hushline/static/css/
 
-# Expose port 8080
-EXPOSE 8080
+COPY scripts/ scripts/
+COPY migrations/ migrations/
+COPY hushline/ hushline/
 
-# Run!
 ENV FLASK_APP="hushline"
 CMD ["./scripts/prod_start.sh"]

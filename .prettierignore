@@ -1,7 +1,6 @@
-# Ignore artifacts:
+hushline/templates/*
+
+# artifacts
 build
 coverage
-hushline/static/vendor/*
-hushline/templates/*
 .pytest_cache
-.venv

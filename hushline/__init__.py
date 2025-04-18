@@ -55,16 +55,27 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     # Add Content-Security-Policy header to all responses
     @app.after_request
     def add_security_header(response: Response) -> Response:
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self';"
-            "script-src 'self' https://js.stripe.com https://cdn.jsdelivr.net 'wasm-unsafe-eval';"
-            "img-src 'self' data: https:;"
-            "style-src 'self' 'unsafe-inline';"
-            "worker-src 'self' blob:;"
-            "frame-ancestors 'none';"
-            "connect-src 'self' https://api.stripe.com https://cdn.jsdelivr.net data:;"
-            "child-src https://js.stripe.com;"
-            "frame-src https://js.stripe.com;"
+        response.headers["Content-Security-Policy"] = ";".join(
+            f"{k} {v}"
+            for (k, v) in {
+                "default-src": "'self'",
+                "script-src": " ".join(
+                    [
+                        "'self'",
+                        "https://js.stripe.com",
+                        "https://cdn.jsdelivr.net",
+                        "'wasm-unsafe-eval'",
+                        "'unsafe-eval'",
+                    ]
+                ),
+                "img-src": "'self' data: https:",
+                "style-src": "'self' 'unsafe-inline'",
+                "worker-src": "'self' blob:",
+                "frame-ancestors": "'none'",
+                "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
+                "child-src": "https://js.stripe.com",
+                "frame-src": "https://js.stripe.com",
+            }.items()
         )
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"

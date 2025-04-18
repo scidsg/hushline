@@ -1,3 +1,5 @@
+import * as openpgp from "./../../node_modules/openpgp/dist/openpgp.mjs";
+
 function addPadding(value, blockSize = 512) {
   /**
    * To hide what field is being encrypted, we need to pad the value to a (roughly) fixed block size.
