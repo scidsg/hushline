@@ -1,15 +1,19 @@
-.env
+# python
 *.pyc
 __pycache__
 .mypy_cache
-*.log
-_DEV.md
-.DS_Store
-/venv
-/tests/__pycache__
-hushline/static/data/users_directory.json
-/node_modules
 .coverage
 htmlcov
+
+# configs
 .env.stripe
-.vscode
+
+# generated
+hushline/static/js/
+hushline/static/css/
+hushline/static/fonts/
+hushline/static/img/
+hushline/static/data/users_directory.json
+
+# node
+/node_modules
