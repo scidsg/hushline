@@ -252,10 +252,27 @@ def user2(app: Flask, user_password: str, database: str) -> User:
 
 
 @pytest.fixture()
+def admin_user(app: Flask, user_password: str, database: str) -> User:
+    user = make_user(user_password)
+    user.is_admin = True
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture()
 def _authenticated_user(client: FlaskClient, user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = user.id
         session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+
+@pytest.fixture()
+def _authenticated_admin_user(client: FlaskClient, admin_user: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = admin_user.id
+        session["username"] = admin_user.primary_username.username
         session["is_authenticated"] = True
 
 

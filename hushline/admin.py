@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, redirect, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, request, url_for
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import admin_authentication_required
@@ -13,6 +13,9 @@ def create_blueprint() -> Blueprint:
     @bp.route("/toggle_verified/<int:user_id>", methods=["POST"])
     @admin_authentication_required
     def toggle_verified(user_id: int) -> Response:
+        if not current_app.config.get("MANAGED_SERVICE"):
+            abort(401)
+
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)
