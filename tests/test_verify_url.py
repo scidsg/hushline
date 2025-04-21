@@ -73,7 +73,7 @@ def verification_server() -> Generator[int, None, None]:
 
     yield port
 
-    proc.terminate()
+    proc.kill()
     proc.join()
 
 
