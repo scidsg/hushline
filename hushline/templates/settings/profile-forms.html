@@ -5,11 +5,13 @@
 {% endif %}
 
 <h4>Update Display Name</h4>
+
 {% if username.is_verified %}
-<p class="meta">
-  ⚠️ Changing your display name will result in losing your verification status.
-</p>
+  <p class="meta">
+    ⚠️ Changing your display name will result in losing your verification status.
+  </p>
 {% endif %}
+
 <form
   method="POST"
   class="formBody"

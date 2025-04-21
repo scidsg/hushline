@@ -140,9 +140,7 @@ document.addEventListener("DOMContentLoaded", function () {
     choicesContainer
       .querySelectorAll(".choice-item")
       .forEach(function (choiceItem, index) {
-        const label = choiceItem.querySelector("label");
         const input = choiceItem.querySelector("input[type='text']");
-        label.htmlFor = `choices-${index}-choice`;
         input.name = `choices-${index}-choice`;
         input.id = `choices-${index}-choice`;
       });
