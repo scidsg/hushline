@@ -97,29 +97,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             response.headers["Onion-Location"] = f"http://{onion}{request.path}"
             return response
 
-    @app.errorhandler(Exception)
-    def handle_generic_exception(e: Exception) -> Union[HTTPException, Tuple[str, int]]:
-        if isinstance(e, HTTPException):
-            return e
-
-        app.logger.info(f"Unhandled error: {e}", exc_info=True)
-
-        http_e = InternalServerError()
-        return render_template(
-            "error.html",
-            title=http_e.name,
-            status_code=http_e.code,
-            description=http_e.description,
-        ), http_e.code
-
-    @app.errorhandler(HTTPException)
-    def handle_http_exception(e: HTTPException) -> Tuple[str, int]:
-        return render_template(
-            "error.html",
-            title=e.name,
-            status_code=e.code,
-            description=e.description,
-        ), (e.code or 500)
+    register_error_handlers(app)
 
     # Register custom CLI commands
     register_commands(app)
@@ -215,3 +193,33 @@ def register_commands(app: Flask) -> None:
             asyncio.run(premium.worker(app))
 
     app.cli.add_command(stripe_cli)
+
+
+def register_error_handlers(app: Flask) -> None:
+    # don't register these in development. we want pretty error messages in the browser
+    if app.config["DEBUG"] and not app.config["TESTING"]:
+        return
+
+    @app.errorhandler(Exception)
+    def handle_generic_exception(e: Exception) -> Union[HTTPException, Tuple[str, int]]:
+        if isinstance(e, HTTPException):
+            return e
+
+        app.logger.info(f"Unhandled error: {e}", exc_info=True)
+
+        http_e = InternalServerError()
+        return render_template(
+            "error.html",
+            title=http_e.name,
+            status_code=http_e.code,
+            description=http_e.description,
+        ), http_e.code
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e: HTTPException) -> Tuple[str, int]:
+        return render_template(
+            "error.html",
+            title=e.name,
+            status_code=e.code,
+            description=e.description,
+        ), (e.code or 500)

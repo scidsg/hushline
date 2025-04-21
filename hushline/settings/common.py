@@ -395,6 +395,7 @@ def build_field_forms(username: Username) -> tuple[list[FieldForm], FieldForm]:
     for field in username.message_fields:
         form = FieldForm(obj=field)
         form.field_type.data = field.field_type.value
+        form.delete.widget.dataset["message-count"] = field.message_count
 
         form.choices.entries = []
         for choice in field.choices:

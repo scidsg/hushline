@@ -13,15 +13,22 @@ from hushline.safe_template import TemplateError, safe_render_template
 
 
 class Button:
+    def __init__(self) -> None:
+        self.dataset: dict[str, Any] = {}
+
     def __call__(self, field: Field, **kwargs: Any) -> Markup:
         kwargs.setdefault("id", field.id)
         kwargs.setdefault("type", "submit")
         kwargs.setdefault("value", field.label.text)
+
         if "value" not in kwargs:
             kwargs["value"] = field._value()
         if "required" not in kwargs and "required" in getattr(field, "flags", []):
             kwargs["required"] = True
-        params = html_params(name=field.name, **kwargs)
+
+        dataset = {f"data-{k}": v for (k, v) in self.dataset.items()}
+
+        params = html_params(name=field.name, **kwargs, **dataset)
         return Markup(f"<button {params}>{kwargs['value']}</button>")
 
 
