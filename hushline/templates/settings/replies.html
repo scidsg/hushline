@@ -2,7 +2,7 @@
 
 {% block settings_content %}
   <h3>Message Statuses</h3>
-  <p>When you receive a message, the sender gets a temporary address where they can view the status of their message. 
+  <p>When you receive a message, the sender gets a temporary address where they can view the status of their message.
     Set custom message statuses for your community below. Rich text using markdown is supported.</p>
   {% for (status, msg_status_text) in status_tuples %}
     {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}

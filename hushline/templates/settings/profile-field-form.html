@@ -30,7 +30,7 @@
         {{ field_form.label(id='label-' ~ field_form.id.data, placeholder='Field label') }}
     </div>
 
-    <div class="field">
+    <div class="field{% if not is_new_field %} display-none{% endif %}">
         {{ field_form.field_type.label(for='field_type-' ~ field_form.id.data) }}
         {{ field_form.field_type(id='field_type-' ~ field_form.id.data, class='field-type') }}
     </div>
