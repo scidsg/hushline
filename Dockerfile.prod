@@ -7,7 +7,7 @@ COPY ./package.json ./package-lock.json .
 
 RUN npm install
 
-COPY ./webpack.config.js . 
+COPY ./webpack.config.js .
 COPY ./assets/ ./assets/
 
 RUN npm run build:prod

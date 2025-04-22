@@ -83,9 +83,9 @@
         directory. Make sure to include a secure way to contact you, such as a
         Signal username, in your profile.
       {% else %}
-        <b>👁️ Only visible to you:</b> This is your public tip line. Share the 
-        address in your browser's address bar on your social media profiles, your 
-        website, and email signature. Ensuring that someone submitting a message 
+        <b>👁️ Only visible to you:</b> This is your public tip line. Share the
+        address in your browser's address bar on your social media profiles, your
+        website, and email signature. Ensuring that someone submitting a message
         trusts this form belongs to you is important for establishing trust.
       {% endif %}
     </p>
@@ -97,13 +97,13 @@
     id="messageForm"
   >
     {{ form.hidden_tag() }}
-    
+
     {% for data in field_data %}
       {% if data['field'].enabled %}
         <div class="field-group">
           <div class="label">
             <label for="{{ data['name'] }}">
-              {{ form[data['name']].label.text }} 
+              {{ form[data['name']].label.text }}
               <span class="meta">
                 {% if data['field'].required %}Required{% else %}Optional{% endif %}
               </span>

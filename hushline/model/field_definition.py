@@ -56,6 +56,14 @@ class FieldDefinition(Model):
             .count()
         )
 
+    @property
+    def message_count(self) -> int:
+        from .field_value import FieldValue
+
+        return db.session.scalar(
+            db.select(db.func.count(FieldValue.id)).where(FieldValue.field_definition_id == self.id)
+        )
+
     def move_up(self) -> None:
         if self.sort_order == 0:
             return
