@@ -38,6 +38,35 @@
         </div>
         {{ toggle_registration_codes_form.submit }}
     </form>
+
+    {% if toggle_registration_codes_form.registration_codes_required.data %}
+        <h4>Registration Codes</h4>
+
+        <form method="POST" class="formBody">
+          {{ create_invite_code_form.hidden_tag() }}
+          {{ create_invite_code_form.submit }}
+        </form>
+
+        {% if invite_codes %}
+            <div class="registration-code-list">
+            {% for invite_code in invite_codes %}
+                <div class="registration-code-entry">
+                  <div>
+                      <div class="registration-code">{{ invite_code.code }}</div>
+                      <div class="registration-code-exp">expires {{ invite_code.expiration_date.strftime('%Y-%m-%d') }}</div>
+                  </div>
+                  <form method="POST" class="formBody">
+                    {{ delete_invite_code_form.hidden_tag() }}
+                    <input type="hidden" name="{{ delete_invite_code_form.invite_code_id.name }}" value="{{ invite_code.id }}">
+                    {{ delete_invite_code_form.submit }}
+                  </form>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p>🙊 No registration codes.</p>
+        {% endif %}
+    {% endif %}
   {% endif %}
 
 {% endblock %}
