@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, SubmitField
@@ -37,9 +37,6 @@ def register_registration_routes(bp: Blueprint) -> None:
                 toggle_registration_form.submit.name in request.form
                 and toggle_registration_form.validate()
             ):
-                current_app.logger.info(
-                    f"Registration enabled: {toggle_registration_form}"
-                )
                 OrganizationSetting.upsert(
                     key=OrganizationSetting.REGISTRATION_ENABLED,
                     value=toggle_registration_form.registration_enabled.data,
@@ -54,9 +51,6 @@ def register_registration_routes(bp: Blueprint) -> None:
                 toggle_registration_codes_form.submit.name in request.form
                 and toggle_registration_codes_form.validate()
             ):
-                current_app.logger.info(
-                    f"Registration codes required: {toggle_registration_codes_form}"
-                )
                 OrganizationSetting.upsert(
                     key=OrganizationSetting.REGISTRATION_CODES_REQUIRED,
                     value=toggle_registration_codes_form.registration_codes_required.data,

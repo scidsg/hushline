@@ -12,6 +12,7 @@
     {{ toggle_registration_form.hidden_tag() }}
     <div class="checkbox-group toggle-ui">
       {{ toggle_registration_form.registration_enabled }}
+      <input type="hidden" name="{{ toggle_registration_form.registration_enabled.name }}" value="false">
       <label for="{{ toggle_registration_form.registration_enabled.name }}" class="toggle-label">
         {{ toggle_registration_form.registration_enabled.label }}
         <div class="toggle">
@@ -22,19 +23,22 @@
     {{ toggle_registration_form.submit }}
   </form>
 
-  <form method="POST" class="formBody auto-submit">
-    {{ toggle_registration_codes_form.hidden_tag() }}
-    <div class="checkbox-group toggle-ui">
-      {{ toggle_registration_codes_form.registration_codes_required }}
-      <label for="{{ toggle_registration_codes_form.registration_codes_required.name }}" class="toggle-label">
-        {{ toggle_registration_codes_form.registration_codes_required.label }}
-        <div class="toggle">
-          <div class="toggle__ball"></div>
+  {% if toggle_registration_form.registration_enabled.data %}
+    <form method="POST" class="formBody auto-submit">
+        {{ toggle_registration_codes_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+        {{ toggle_registration_codes_form.registration_codes_required }}
+        <input type="hidden" name="{{ toggle_registration_codes_form.registration_codes_required.name }}" value="false">
+        <label for="{{ toggle_registration_codes_form.registration_codes_required.name }}" class="toggle-label">
+            {{ toggle_registration_codes_form.registration_codes_required.label }}
+            <div class="toggle">
+            <div class="toggle__ball"></div>
+            </div>
+        </label>
         </div>
-      </label>
-    </div>
-    {{ toggle_registration_codes_form.submit }}
-  </form>
+        {{ toggle_registration_codes_form.submit }}
+    </form>
+  {% endif %}
 
 {% endblock %}
 
