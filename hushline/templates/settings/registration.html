@@ -1,0 +1,14 @@
+{% extends "settings/base.html" %}
+
+{% block settings_content %}
+  <h3>Registration</h3>
+  <p>
+    Registration allows you to control how users can create accounts on your Hush Line
+    instance. You can disable registration, choose to allow anyone to register, or
+    require an invite code.
+  </p>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}
