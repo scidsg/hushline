@@ -7,6 +7,35 @@
     instance. You can disable registration, choose to allow anyone to register, or
     require an invite code.
   </p>
+
+  <form method="POST" class="formBody auto-submit">
+    {{ toggle_registration_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ toggle_registration_form.registration_enabled }}
+      <label for="{{ toggle_registration_form.registration_enabled.name }}" class="toggle-label">
+        {{ toggle_registration_form.registration_enabled.label }}
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    {{ toggle_registration_form.submit }}
+  </form>
+
+  <form method="POST" class="formBody auto-submit">
+    {{ toggle_registration_codes_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ toggle_registration_codes_form.registration_codes_required }}
+      <label for="{{ toggle_registration_codes_form.registration_codes_required.name }}" class="toggle-label">
+        {{ toggle_registration_codes_form.registration_codes_required.label }}
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    {{ toggle_registration_codes_form.submit }}
+  </form>
+
 {% endblock %}
 
 {% block scripts %}

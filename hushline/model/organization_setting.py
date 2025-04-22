@@ -27,6 +27,8 @@ class OrganizationSetting(Model):
     GUIDANCE_PROMPTS = "guidance_prompts"
     HIDE_DONATE_BUTTON = "hide_donate_button"
     HOMEPAGE_USER_NAME = "homepage_user_name"
+    REGISTRATION_ENABLED = "registration_enabled"
+    REGISTRATION_CODES_REQUIRED = "registration_codes_required"
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
@@ -40,6 +42,8 @@ class OrganizationSetting(Model):
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
         HIDE_DONATE_BUTTON: False,
+        REGISTRATION_ENABLED: True,
+        REGISTRATION_CODES_REQUIRED: False,
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)
