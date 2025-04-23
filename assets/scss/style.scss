@@ -1,3 +1,5 @@
+@use "settings-registration";
+
 :root {
   --theme-color-light: var(--color-brand);
   --theme-color-dark: var(--color-brand-dark-min-saturation);
@@ -3427,31 +3429,4 @@ li.tab .badge {
 .first-user {
   text-align: center;
   padding: 1rem;
-}
-
-.registration-code-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.registration-code-entry {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  /* needed for stretched-link */
-}
-
-.registration-code-entry .registration-code {
-  font-family: var(--font-sans-bold);
-  font-size: var(--font-size-base);
-}
-
-.registration-code-entry .registration-code-exp {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-small);
-  color: var(--color-gray);
 }
