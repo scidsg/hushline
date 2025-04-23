@@ -42,7 +42,7 @@ class OrganizationSetting(Model):
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
         HIDE_DONATE_BUTTON: False,
-        REGISTRATION_ENABLED: True,
+        REGISTRATION_ENABLED: False,
         REGISTRATION_CODES_REQUIRED: False,
     }
 

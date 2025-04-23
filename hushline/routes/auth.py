@@ -36,11 +36,14 @@ def register_auth_routes(app: Flask) -> None:
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
+        # Check if this is the first user
+        first_user = db.session.query(User).count() == 0
+
         # Check if registration is allowed
         registration_enabled = OrganizationSetting.fetch_one(
             OrganizationSetting.REGISTRATION_ENABLED
         )
-        if not registration_enabled:
+        if not registration_enabled and not first_user:
             flash("⛔️ Registration is disabled.")
             return redirect(url_for("index"))
 
@@ -63,9 +66,6 @@ def register_auth_routes(app: Flask) -> None:
         else:
             # Use the existing math problem from the session
             math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
-
-        # Check if this is the first user
-        first_user = db.session.query(User).count() == 0
 
         if form.validate_on_submit():
             captcha_answer = request.form.get("captcha_answer", "")
