@@ -162,7 +162,6 @@ def configure_jinja(app: Flask) -> None:
         return {"brand_logo_url": val}
 
 
-
 def register_error_handlers(app: Flask) -> None:
     # don't register these in development. we want pretty error messages in the browser
     if app.config["DEBUG"] and not app.config["TESTING"]:
