@@ -309,13 +309,6 @@ These configs are needed for the web app.
       <td>Email address to use for sending message notifications</td>
     </tr>
     <tr>
-      <td><code>REGISTRATION_CODES_REQUIRED</code></td>
-      <td>false</td>
-      <td>boolean</td>
-      <td><code>true</code></td>
-      <td>Whether or not new user registrations require invite codes.</td>
-    </tr>
-    <tr>
       <td><code>SECRET_KEY</code></td>
       <td>true</td>
       <td>string</td>
