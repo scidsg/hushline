@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_wtf import FlaskForm
 from werkzeug.wrappers.response import Response
 from wtforms import BooleanField, IntegerField, SubmitField
@@ -38,6 +38,9 @@ def register_registration_routes(bp: Blueprint) -> None:
     @bp.route("/registration", methods=["GET", "POST"])
     @admin_authentication_required
     def registration() -> Tuple[str, int] | Response:
+        if not current_app.config["REGISTRATION_SETTINGS_ENABLED"]:
+            return abort(401)
+
         toggle_registration_form = ToggleRegistrationForm()
         toggle_registration_codes_form = ToggleRegistrationCodesForm()
 

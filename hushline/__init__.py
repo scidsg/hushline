@@ -143,6 +143,7 @@ def configure_jinja(app: Flask) -> None:
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
             is_onion_service=request.host.lower().endswith(".onion"),
             is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],
             registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, False),
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, False

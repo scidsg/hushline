@@ -309,6 +309,13 @@ These configs are needed for the web app.
       <td>Email address to use for sending message notifications</td>
     </tr>
     <tr>
+      <td><code>REGISTRATION_SETTINGS_ENABLED</code></td>
+      <td>false</td>
+      <td>boolean</td>
+      <td><code>true</code></td>
+      <td>Whether registration settings should be accessible to logged in admins</td>
+    </tr>
+    <tr>
       <td><code>SECRET_KEY</code></td>
       <td>true</td>
       <td>string</td>
