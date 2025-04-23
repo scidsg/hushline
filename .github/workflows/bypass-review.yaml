@@ -1,4 +1,6 @@
 name: Bypass Review by Admin for Specific Files
+permissions:
+  contents: read
 
 on:
   pull_request:

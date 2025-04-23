@@ -27,11 +27,25 @@ def create_blueprint() -> Blueprint:
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
     @admin_authentication_required
     def toggle_admin(user_id: int) -> Response:
-        user = db.session.get(User, user_id)
-        if user is None:
-            abort(404)
-        user.is_admin = not user.is_admin
+        # Use a database transaction
+        with db.session.begin_nested():
+            user = db.session.get(User, user_id)
+            if user is None:
+                abort(404)
+
+            if user.is_admin:
+                # Re-check admin count within the transaction
+                admin_count = db.session.query(User).filter_by(is_admin=True).count()
+                if admin_count == 1:
+                    flash("⛔️ You cannot remove the only admin")
+                    return abort(400)
+
+            # Toggle admin status
+            user.is_admin = not user.is_admin
+
+        # Commit the transaction
         db.session.commit()
+
         flash("✅ User admin status toggled.", "success")
         return redirect(url_for("settings.admin"))
 

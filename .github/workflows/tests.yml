@@ -1,5 +1,7 @@
 ---
 name: Run Linter and Tests
+permissions:
+  contents: read
 
 on:
   push:
