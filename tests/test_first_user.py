@@ -5,7 +5,7 @@ from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
 
 from hushline.db import db
-from hushline.model import User, Username
+from hushline.model import OrganizationSetting, User, Username
 
 
 def test_no_users_redirect_to_register(client: FlaskClient) -> None:
@@ -28,6 +28,11 @@ def test_no_users_register_should_show_alert(client: FlaskClient) -> None:
 
 
 def test_some_users_register_should_hide_alert(client: FlaskClient, user_password: str) -> None:
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=True,
+    )
+
     user_count = db.session.query(User).count()
     assert user_count == 0
 
@@ -71,6 +76,11 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
 
 
 def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> None:
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=True,
+    )
+
     user_count = db.session.query(User).count()
     assert user_count == 0
 
