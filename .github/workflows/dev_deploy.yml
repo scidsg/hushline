@@ -1,5 +1,9 @@
 ---
 name: Deploy/Destroy Branch Dev Environment
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 on:
   pull_request:
