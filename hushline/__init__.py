@@ -7,6 +7,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
+from hushline.cli_reg import register_reg_commands
 from hushline.cli_stripe import register_stripe_commands
 from hushline.config import AliasMode, load_config
 from hushline.db import db, migrate
@@ -99,6 +100,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     register_error_handlers(app)
 
     # Register custom CLI commands
+    register_reg_commands(app)
     register_stripe_commands(app)
 
     return app

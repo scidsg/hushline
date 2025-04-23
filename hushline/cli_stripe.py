@@ -9,7 +9,7 @@ from hushline.model import Tier
 
 
 def register_stripe_commands(app: Flask) -> None:
-    stripe_cli = AppGroup("stripe")
+    stripe_cli = AppGroup("stripe", help="Stripe commands")
 
     @stripe_cli.command("configure")
     def configure() -> None:
