@@ -31,7 +31,7 @@
         {% endfor %}
       {% endif %}
     </div>
-    {% if require_invite_code %}
+    {% if registration_codes_required %}
       <div>
         {{ form.invite_code.label }}
         {{ form.invite_code(size=32) }}
