@@ -4,7 +4,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
-  
+
 on:
   pull_request:
     types: [labeled, closed]

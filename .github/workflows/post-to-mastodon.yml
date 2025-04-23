@@ -1,7 +1,7 @@
 name: Post to Mastodon on PR Merge
 permissions:
   contents: none
-  
+
 on:
   pull_request:
     types: [closed]
