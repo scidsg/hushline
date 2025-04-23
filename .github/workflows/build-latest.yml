@@ -1,5 +1,8 @@
 name: Build latest container image
-
+permissions:
+  contents: read
+  packages: write
+  
 on:
   push:
     branches:
