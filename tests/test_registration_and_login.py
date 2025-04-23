@@ -5,7 +5,31 @@ from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
 
 from hushline.db import db
-from hushline.model import InviteCode, Username
+from hushline.model import InviteCode, OrganizationSetting, User, Username
+
+
+def test_user_registration_disabled(client: FlaskClient, user: User) -> None:
+    """Make sure registration doesn't work when it's disabled."""
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=False,
+    )
+    db.session.commit()
+
+    # The registration page should redirect to the index page
+    response = client.get(
+        url_for("register"),
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == url_for("index")
+
+    # The index page should not have the registration link
+    response = client.get(
+        url_for("index"),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Register" not in response.text
 
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:

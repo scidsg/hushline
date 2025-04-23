@@ -132,6 +132,8 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
             OrganizationSetting.GUIDANCE_PROMPTS,
             OrganizationSetting.HIDE_DONATE_BUTTON,
+            OrganizationSetting.REGISTRATION_ENABLED,
+            OrganizationSetting.REGISTRATION_CODES_REQUIRED,
         )
 
         data.update(
@@ -140,6 +142,10 @@ def configure_jinja(app: Flask) -> None:
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
             is_onion_service=request.host.lower().endswith(".onion"),
             is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, True),
+            registration_codes_required=data.get(
+                OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
+            ),
         )
 
         if "user_id" in session:

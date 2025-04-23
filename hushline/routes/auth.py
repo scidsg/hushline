@@ -18,6 +18,7 @@ from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
     InviteCode,
+    OrganizationSetting,
     User,
     Username,
 )
@@ -27,6 +28,14 @@ from hushline.routes.forms import LoginForm, RegistrationForm, TwoFactorForm
 def register_auth_routes(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str:
+        # Check if registration is allowed
+        registration_enabled = OrganizationSetting.fetch_one(
+            OrganizationSetting.REGISTRATION_ENABLED
+        )
+        if not registration_enabled:
+            flash("⛔️ Registration is disabled.")
+            return redirect(url_for("index"))
+
         if (
             session.get("is_authenticated", False)
             and (user_id := session.get("user_id", False))
