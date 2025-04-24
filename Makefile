@@ -49,12 +49,17 @@ fix: ## Format the code
 	$(CMD) poetry run ruff check --fix && \
 	$(CMD) npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
 
-.PHONY: revision
-revision: migrate-prod ## Create a new migration
+.PHONY: new-database-migration
+new-database-migration: ## Create a new migration
 ifndef message
-	$(error 'message' must be set when invoking the revision target, eg `make revision message="short message"`)
+	$(error Env var 'MESSAGE' must be set, e.g., `MESSAGE=foo make new-database-migration`)
 endif
-	$(CMD) poetry run flask db revision -m "$(message)" --autogenerate
+ifdef IS_DOCKER
+	$(error Cannot create migrations in docker)
+endif
+	docker compose down && \
+	docker compose run --rm app bash -c \
+		'make migrate-prod && poetry run flask db revision -m "$(MESSAGE)" --autogenerate'
 
 TESTS ?= ./tests/
 .PHONY: test
