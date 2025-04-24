@@ -62,9 +62,7 @@ def register_reg_commands(app: Flask) -> None:
     @click.argument("code")
     def code_delete(code: str) -> None:
         """Delete an invite code"""
-        invite_code = db.session.scalars(
-            db.select(InviteCode).filter_by(code=code)
-        ).one_or_none()
+        invite_code = db.session.scalars(db.select(InviteCode).filter_by(code=code)).one_or_none()
         if invite_code is None:
             click.echo("Invite code not found.")
             return
