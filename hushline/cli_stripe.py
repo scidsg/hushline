@@ -15,23 +15,21 @@ def register_stripe_commands(app: Flask) -> None:
     def configure() -> None:
         """Configure Stripe and premium tiers"""
         # Make sure tiers exist
-        with app.app_context():
-            free_tier = Tier.free_tier()
-            if not free_tier:
-                free_tier = Tier(name="Free", monthly_amount=0)
-                db.session.add(free_tier)
-                db.session.commit()
-            business_tier = Tier.business_tier()
-            if not business_tier:
-                business_tier = Tier(name="Business", monthly_amount=2000)
-                db.session.add(business_tier)
-                db.session.commit()
+        free_tier = Tier.free_tier()
+        if not free_tier:
+            free_tier = Tier(name="Free", monthly_amount=0)
+            db.session.add(free_tier)
+            db.session.commit()
+        business_tier = Tier.business_tier()
+        if not business_tier:
+            business_tier = Tier(name="Business", monthly_amount=2000)
+            db.session.add(business_tier)
+            db.session.commit()
 
         # Configure Stripe
         if app.config.get("STRIPE_SECRET_KEY"):
-            with app.app_context():
-                premium.init_stripe()
-                premium.create_products_and_prices()
+            premium.init_stripe()
+            premium.create_products_and_prices()
         else:
             app.logger.info("Skipping Stripe configuration because STRIPE_SECRET_KEY is not set")
 
