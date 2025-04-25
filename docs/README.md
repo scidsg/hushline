@@ -288,13 +288,6 @@ These configs are needed for the web app.
       </td>
     </tr>
     <tr>
-      <td><code>MANAGED_SERVICE</code></td>
-      <td>false</td>
-      <td>boolean</td>
-      <td><code>false</code></td>
-      <td>When this instance is the main managed service at tips.hushline.app.</td>
-    </tr>
-    <tr>
       <td><code>ONION_HOSTNAME</code></td>
       <td>false</td>
       <td>string</td>
@@ -405,6 +398,13 @@ These configs are needed for the web app.
       <td>string</td>
       <td></td>
       <td><a href="https://docs.stripe.com/webhooks#endpoint-secrets" target="_blank">Stripe webhook key</a> for enabling payments</td>
+    </tr>
+    <tr>
+      <td><code>USER_VERIFICATION_ENABLED</code></td>
+      <td>false</td>
+      <td>boolean</td>
+      <td><code>false</code></td>
+      <td>Whether or not admins will be able to toggle a user's verification status.</td>
     </tr>
   </tbody>
 </table>

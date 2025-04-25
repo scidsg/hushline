@@ -142,8 +142,8 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
         ("FILE_UPLOADS_ENABLED", False),
-        ("MANAGED_SERVICE", False),
         ("REGISTRATION_SETTINGS_ENABLED", True),
+        ("USER_VERIFICATION_ENABLED", False),
     ]
     for key, default in bool_configs:
         if value := env.get(key):

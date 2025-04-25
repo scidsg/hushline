@@ -13,7 +13,7 @@ def create_blueprint() -> Blueprint:
     @bp.route("/toggle_verified/<int:user_id>", methods=["POST"])
     @admin_authentication_required
     def toggle_verified(user_id: int) -> Response:
-        if not current_app.config.get("MANAGED_SERVICE"):
+        if not current_app.config.get("USER_VERIFICATION_ENABLED"):
             abort(401)
 
         user = db.session.get(User, user_id)
