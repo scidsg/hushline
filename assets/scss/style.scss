@@ -1,3 +1,5 @@
+@use "settings-registration";
+
 :root {
   --theme-color-light: var(--color-brand);
   --theme-color-dark: var(--color-brand-dark-min-saturation);
@@ -434,9 +436,6 @@
       background-color: initial;
       border: none;
       border-bottom: initial;
-    }
-
-    .inbox-tabs {
     }
 
     .settings-main .settings-content .tab-list,

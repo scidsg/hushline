@@ -1,0 +1,76 @@
+{% extends "settings/base.html" %}
+
+{% block settings_content %}
+  <h3>Registration</h3>
+  <p>
+    Registration allows you to control how users can create accounts on your Hush Line
+    instance. You can disable registration, choose to allow anyone to register, or
+    require an invite code.
+  </p>
+
+  <form method="POST" class="formBody auto-submit">
+    {{ toggle_registration_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ toggle_registration_form.registration_enabled }}
+      <input type="hidden" name="{{ toggle_registration_form.registration_enabled.name }}" value="false">
+      <label for="{{ toggle_registration_form.registration_enabled.name }}" class="toggle-label">
+        {{ toggle_registration_form.registration_enabled.label }}
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    {{ toggle_registration_form.submit }}
+  </form>
+
+  {% if toggle_registration_form.registration_enabled.data %}
+    <form method="POST" class="formBody auto-submit">
+        {{ toggle_registration_codes_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui">
+        {{ toggle_registration_codes_form.registration_codes_required }}
+        <input type="hidden" name="{{ toggle_registration_codes_form.registration_codes_required.name }}" value="false">
+        <label for="{{ toggle_registration_codes_form.registration_codes_required.name }}" class="toggle-label">
+            {{ toggle_registration_codes_form.registration_codes_required.label }}
+            <div class="toggle">
+            <div class="toggle__ball"></div>
+            </div>
+        </label>
+        </div>
+        {{ toggle_registration_codes_form.submit }}
+    </form>
+
+    {% if toggle_registration_codes_form.registration_codes_required.data %}
+        <h4>Registration Codes</h4>
+
+        <form method="POST" class="formBody">
+          {{ create_invite_code_form.hidden_tag() }}
+          {{ create_invite_code_form.submit }}
+        </form>
+
+        {% if invite_codes %}
+            <div class="registration-code-list">
+            {% for invite_code in invite_codes %}
+                <div class="registration-code-entry">
+                  <div>
+                      <div class="registration-code">{{ invite_code.code }}</div>
+                      <div class="registration-code-exp">expires {{ invite_code.expiration_date.strftime('%Y-%m-%d') }}</div>
+                  </div>
+                  <form method="POST" class="formBody">
+                    {{ delete_invite_code_form.hidden_tag() }}
+                    <input type="hidden" name="{{ delete_invite_code_form.invite_code_id.name }}" value="{{ invite_code.id }}">
+                    {{ delete_invite_code_form.submit }}
+                  </form>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p>🙊 No registration codes.</p>
+        {% endif %}
+    {% endif %}
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

@@ -1,18 +1,18 @@
-import asyncio
 import logging
 from typing import Any, Mapping, Optional, Tuple, Union
 
 from flask import Flask, render_template, request, session, url_for
-from flask.cli import AppGroup
 from jinja2 import StrictUndefined
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
+from hushline.cli_reg import register_reg_commands
+from hushline.cli_stripe import register_stripe_commands
 from hushline.config import AliasMode, load_config
 from hushline.db import db, migrate
 from hushline.md import md_to_html
-from hushline.model import OrganizationSetting, Tier, User
+from hushline.model import OrganizationSetting, User
 from hushline.secure_session import EncryptedSessionInterface
 from hushline.storage import public_store
 from hushline.version import __version__
@@ -100,7 +100,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     register_error_handlers(app)
 
     # Register custom CLI commands
-    register_commands(app)
+    register_reg_commands(app)
+    register_stripe_commands(app)
 
     return app
 
@@ -132,6 +133,8 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
             OrganizationSetting.GUIDANCE_PROMPTS,
             OrganizationSetting.HIDE_DONATE_BUTTON,
+            OrganizationSetting.REGISTRATION_ENABLED,
+            OrganizationSetting.REGISTRATION_CODES_REQUIRED,
         )
 
         data.update(
@@ -140,6 +143,11 @@ def configure_jinja(app: Flask) -> None:
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
             is_onion_service=request.host.lower().endswith(".onion"),
             is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],
+            registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, False),
+            registration_codes_required=data.get(
+                OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
+            ),
         )
 
         if "user_id" in session:
@@ -153,46 +161,6 @@ def configure_jinja(app: Flask) -> None:
         if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO):
             val = url_for("storage.public", path=setting)
         return {"brand_logo_url": val}
-
-
-def register_commands(app: Flask) -> None:
-    stripe_cli = AppGroup("stripe")
-
-    @stripe_cli.command("configure")
-    def configure() -> None:
-        """Configure Stripe and premium tiers"""
-        # Make sure tiers exist
-        with app.app_context():
-            free_tier = Tier.free_tier()
-            if not free_tier:
-                free_tier = Tier(name="Free", monthly_amount=0)
-                db.session.add(free_tier)
-                db.session.commit()
-            business_tier = Tier.business_tier()
-            if not business_tier:
-                business_tier = Tier(name="Business", monthly_amount=2000)
-                db.session.add(business_tier)
-                db.session.commit()
-
-        # Configure Stripe
-        if app.config.get("STRIPE_SECRET_KEY"):
-            with app.app_context():
-                premium.init_stripe()
-                premium.create_products_and_prices()
-        else:
-            app.logger.info("Skipping Stripe configuration because STRIPE_SECRET_KEY is not set")
-
-    @stripe_cli.command("start-worker")
-    def start_worker() -> None:
-        """Start the Stripe worker"""
-        if not app.config["STRIPE_SECRET_KEY"]:
-            app.logger.error("Cannot start the Stripe worker without a STRIPE_SECRET_KEY")
-            return
-
-        with app.app_context():
-            asyncio.run(premium.worker(app))
-
-    app.cli.add_command(stripe_cli)
 
 
 def register_error_handlers(app: Flask) -> None:

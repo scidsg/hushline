@@ -18,6 +18,7 @@ from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
     InviteCode,
+    OrganizationSetting,
     User,
     Username,
 )
@@ -35,9 +36,24 @@ def register_auth_routes(app: Flask) -> None:
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
-        require_invite_code = app.config["REGISTRATION_CODES_REQUIRED"]
+        # Check if this is the first user
+        first_user = db.session.query(User).count() == 0
+
+        # Check if registration is allowed
+        registration_enabled = OrganizationSetting.fetch_one(
+            OrganizationSetting.REGISTRATION_ENABLED
+        )
+        if not registration_enabled and not first_user:
+            flash("⛔️ Registration is disabled.")
+            return redirect(url_for("index"))
+
+        # Check if registration codes are required
+        registration_codes_enabled = OrganizationSetting.fetch_one(
+            OrganizationSetting.REGISTRATION_CODES_REQUIRED
+        )
+
         form = RegistrationForm()
-        if not require_invite_code:
+        if not registration_codes_enabled:
             del form.invite_code
 
         # Generate a math CAPTCHA only for a GET request or if "math_answer" is not already set
@@ -51,9 +67,6 @@ def register_auth_routes(app: Flask) -> None:
             # Use the existing math problem from the session
             math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
 
-        # Check if this is the first user
-        first_user = db.session.query(User).count() == 0
-
         if form.validate_on_submit():
             captcha_answer = request.form.get("captcha_answer", "")
             app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
@@ -64,15 +77,15 @@ def register_auth_routes(app: Flask) -> None:
                 return render_template(
                     "register.html",
                     form=form,
-                    require_invite_code=require_invite_code,
                     math_problem=math_problem,
+                    first_user=first_user,
                 )
 
             # Proceed with registration logic
             username = form.username.data
             password = form.password.data
 
-            invite_code_input = form.invite_code.data if require_invite_code else None
+            invite_code_input = form.invite_code.data if registration_codes_enabled else None
             if invite_code_input:
                 invite_code = db.session.scalars(
                     db.select(InviteCode).filter_by(code=invite_code_input)
@@ -84,8 +97,8 @@ def register_auth_routes(app: Flask) -> None:
                     return render_template(
                         "register.html",
                         form=form,
-                        require_invite_code=require_invite_code,
                         math_problem=math_problem,
+                        first_user=first_user,
                     )
 
             if db.session.scalar(
@@ -95,8 +108,8 @@ def register_auth_routes(app: Flask) -> None:
                 return render_template(
                     "register.html",
                     form=form,
-                    require_invite_code=require_invite_code,
                     math_problem=math_problem,
+                    first_user=first_user,
                 )
 
             user = User(password=password)
@@ -119,13 +132,17 @@ def register_auth_routes(app: Flask) -> None:
 
             username.create_default_field_defs()
 
+            if invite_code_input:
+                # Delete the invite code after use
+                db.session.delete(invite_code)
+                db.session.commit()
+
             flash("Registration successful!", "success")
             return redirect(url_for("login"))
 
         return render_template(
             "register.html",
             form=form,
-            require_invite_code=require_invite_code,
             math_problem=math_problem,
             first_user=first_user,
         )

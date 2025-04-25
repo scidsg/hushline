@@ -158,7 +158,9 @@
               </li>
             {% else %}
               <li><a href="{{ url_for('login') }}">Login</a></li>
-              <li><a href="{{ url_for('register') }}">Register</a></li>
+              {% if registration_enabled %}
+                <li><a href="{{ url_for('register') }}">Register</a></li>
+              {% endif %}
             {% endif %}
           </ul>
           {% if not hide_donate_button %}
