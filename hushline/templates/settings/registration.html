@@ -40,9 +40,9 @@
     </form>
 
     {% if toggle_registration_codes_form.registration_codes_required.data %}
-        <h4>Registration Codes</h4>
 
         <form method="POST" class="formBody">
+          <h4>Registration Codes</h4>
           {{ create_invite_code_form.hidden_tag() }}
           {{ create_invite_code_form.submit }}
         </form>
@@ -58,7 +58,7 @@
                   <form method="POST" class="formBody">
                     {{ delete_invite_code_form.hidden_tag() }}
                     <input type="hidden" name="{{ delete_invite_code_form.invite_code_id.name }}" value="{{ invite_code.id }}">
-                    {{ delete_invite_code_form.submit }}
+                    {{ delete_invite_code_form.submit(class="btn btn-danger") }}
                   </form>
                 </div>
             {% endfor %}
