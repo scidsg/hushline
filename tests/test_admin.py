@@ -12,7 +12,7 @@ from hushline.model import (
 def test_admin_settings_shows_verified_on_managed_service(
     app: Flask, client: FlaskClient, user: User
 ) -> None:
-    app.config["MANAGED_SERVICE"] = True
+    app.config["USER_VERIFICATION_ENABLED"] = True
 
     response = client.get(url_for("settings.admin"), follow_redirects=True)
     assert response.status_code == 200
@@ -23,7 +23,7 @@ def test_admin_settings_shows_verified_on_managed_service(
 def test_admin_settings_hides_verified_on_nonmanaged_service(
     app: Flask, client: FlaskClient, user: User
 ) -> None:
-    app.config["MANAGED_SERVICE"] = False
+    app.config["USER_VERIFICATION_ENABLED"] = False
 
     response = client.get(url_for("settings.admin"), follow_redirects=True)
     assert response.status_code == 200
@@ -34,7 +34,7 @@ def test_admin_settings_hides_verified_on_nonmanaged_service(
 def test_toggle_verified_on_managed_service(
     app: Flask, client: FlaskClient, admin_user: User
 ) -> None:
-    app.config["MANAGED_SERVICE"] = True
+    app.config["USER_VERIFICATION_ENABLED"] = True
 
     response = client.post(
         url_for("admin.toggle_verified", user_id=admin_user.id),
@@ -47,7 +47,7 @@ def test_toggle_verified_on_managed_service(
 def test_toggle_verified_on_nonmanaged_service(
     app: Flask, client: FlaskClient, admin_user: User
 ) -> None:
-    app.config["MANAGED_SERVICE"] = False
+    app.config["USER_VERIFICATION_ENABLED"] = False
 
     response = client.post(
         url_for("admin.toggle_verified", user_id=admin_user.id),
