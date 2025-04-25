@@ -18,10 +18,17 @@
     font-family: var(--font-sans-bold);
     font-size: var(--font-size-base);
   }
+
+  .registration-code {
+    font-family: var(--font-mono);
+  }
   
   .registration-code-entry .registration-code-exp {
     font-family: var(--font-sans);
     font-size: var(--font-size-small);
-    color: var(--color-gray);
+    color: var(--color-text-light);
   }
-  
+
+  .registration-code-entry form {
+    margin-top: 0;
+  }

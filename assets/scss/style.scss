@@ -1918,6 +1918,9 @@ a.dropbtn:hover {
 
 .user h3 {
   margin-bottom: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .user p.bio {
