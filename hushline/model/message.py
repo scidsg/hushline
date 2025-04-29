@@ -22,16 +22,18 @@ else:
 class Message(Model):
     __tablename__ = "messages"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
-    username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
+    username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"), nullable=False)
     username: Mapped["Username"] = relationship(uselist=False)
-    reply_slug: Mapped[str] = mapped_column(index=True)
+    reply_slug: Mapped[str] = mapped_column(index=True, nullable=False)
     status: Mapped[MessageStatus] = mapped_column(
-        SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING
+        SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING, nullable=False
     )
     status_changed_at: Mapped[datetime] = mapped_column(
-        db.DateTime(timezone=True), server_default=text("NOW()")
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     field_values: Mapped[list["FieldValue"]] = relationship(
         "FieldValue", back_populates="message", cascade="all, delete-orphan"

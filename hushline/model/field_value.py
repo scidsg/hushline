@@ -36,13 +36,17 @@ def add_padding(value: str, block_size: int = 512) -> str:
 class FieldValue(Model):
     __tablename__ = "field_values"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    field_definition_id: Mapped[int] = mapped_column(db.ForeignKey("field_definitions.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
+    field_definition_id: Mapped[int] = mapped_column(
+        db.ForeignKey("field_definitions.id", ondelete="CASCADE"), nullable=True
+    )
     field_definition: Mapped["FieldDefinition"] = relationship(uselist=False)
-    message_id: Mapped[int] = mapped_column(db.ForeignKey("messages.id"))
+    message_id: Mapped[int] = mapped_column(
+        db.ForeignKey("messages.id", ondelete="CASCADE"), nullable=True
+    )
     message: Mapped["Message"] = relationship("Message", back_populates="field_values")
-    _value: Mapped[str] = mapped_column(db.Text)
-    encrypted: Mapped[bool] = mapped_column()
+    _value: Mapped[str] = mapped_column(db.Text, nullable=False)
+    encrypted: Mapped[bool] = mapped_column(nullable=True)
 
     def __init__(
         self,
