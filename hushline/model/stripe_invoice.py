@@ -19,7 +19,7 @@ else:
 class StripeInvoice(Model):
     __tablename__ = "stripe_invoices"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     customer_id: Mapped[str] = mapped_column(db.String(255))
     invoice_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     hosted_invoice_url: Mapped[str] = mapped_column(db.String(2048))

@@ -15,7 +15,7 @@ class Tier(Model):
 
     __tablename__ = "tiers"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     name: Mapped[str] = mapped_column(db.String(255), unique=True)
     monthly_amount: Mapped[int] = mapped_column(db.Integer)  # in cents USD
     stripe_product_id: Mapped[Optional[str]] = mapped_column(db.String(255), unique=True)

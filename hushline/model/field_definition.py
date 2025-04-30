@@ -20,7 +20,7 @@ class FieldDefinition(Model):
     __tablename__ = "field_definitions"
     __table_args__ = (UniqueConstraint("username_id", "sort_order"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     username_id: Mapped[int] = mapped_column(
         db.ForeignKey("usernames.id"), nullable=True, index=True
     )

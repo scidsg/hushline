@@ -36,7 +36,7 @@ def add_padding(value: str, block_size: int = 512) -> str:
 class FieldValue(Model):
     __tablename__ = "field_values"
 
-    id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     field_definition_id: Mapped[int] = mapped_column(
         db.ForeignKey("field_definitions.id", ondelete="CASCADE"), nullable=True
     )

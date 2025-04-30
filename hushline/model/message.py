@@ -22,7 +22,7 @@ else:
 class Message(Model):
     __tablename__ = "messages"
 
-    id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )

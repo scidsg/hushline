@@ -17,7 +17,7 @@ else:
 class AuthenticationLog(Model):
     __tablename__ = "authentication_logs"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("authentication_logs", lazy=True))
     successful: Mapped[bool]
