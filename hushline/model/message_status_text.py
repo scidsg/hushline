@@ -23,7 +23,7 @@ class MessageStatusText(Model):
     __tablename__ = "message_status_text"
     __table_args__ = (UniqueConstraint("user_id", "status"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     status: Mapped[MessageStatus] = mapped_column(SQLAlchemyEnum(MessageStatus))
     markdown: Mapped[str] = mapped_column()

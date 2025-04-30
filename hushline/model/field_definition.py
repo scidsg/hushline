@@ -20,16 +20,20 @@ class FieldDefinition(Model):
     __tablename__ = "field_definitions"
     __table_args__ = (UniqueConstraint("username_id", "sort_order"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"), index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    username_id: Mapped[int] = mapped_column(
+        db.ForeignKey("usernames.id"), nullable=True, index=True
+    )
     username: Mapped["Username"] = relationship(back_populates="message_fields")
-    label: Mapped[str] = mapped_column(db.String(255))
-    field_type: Mapped[FieldType] = mapped_column(SQLAlchemyEnum(FieldType))
-    required: Mapped[bool] = mapped_column()
-    enabled: Mapped[bool] = mapped_column()
-    encrypted: Mapped[bool] = mapped_column()
-    choices: Mapped[list[str]] = mapped_column(type_=JSONB)
-    sort_order: Mapped[int] = mapped_column()
+    label: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    field_type: Mapped[FieldType] = mapped_column(
+        SQLAlchemyEnum(FieldType, name="fieldtype"), nullable=True
+    )
+    required: Mapped[bool] = mapped_column(nullable=True)
+    enabled: Mapped[bool] = mapped_column(nullable=True)
+    encrypted: Mapped[bool] = mapped_column(nullable=True)
+    choices: Mapped[list[str]] = mapped_column(type_=JSONB, nullable=True)
+    sort_order: Mapped[int] = mapped_column(nullable=True)
 
     def __init__(  # noqa: PLR0913
         self,

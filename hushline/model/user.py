@@ -24,7 +24,7 @@ else:
 class User(Model):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
     _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512))
     _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.String(255))

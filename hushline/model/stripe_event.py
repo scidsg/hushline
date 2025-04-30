@@ -17,7 +17,7 @@ else:
 class StripeEvent(Model):
     __tablename__ = "stripe_events"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     event_id: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     event_type: Mapped[str] = mapped_column(db.String(255))
     event_created: Mapped[int] = mapped_column(db.Integer)

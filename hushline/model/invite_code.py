@@ -15,7 +15,7 @@ else:
 class InviteCode(Model):
     __tablename__ = "invite_codes"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     code: Mapped[str] = mapped_column(db.String(255), unique=True)
     expiration_date: Mapped[datetime]
 
