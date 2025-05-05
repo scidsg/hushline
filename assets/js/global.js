@@ -299,4 +299,9 @@ document.addEventListener("DOMContentLoaded", () => {
       firstModalContent.style.opacity = "1";
     });
   }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/service-worker.js')
+      .then(() => console.log('Service Worker registered'))
+      .catch((err) => console.error('Service Worker registration failed:', err));
+  }
 });
