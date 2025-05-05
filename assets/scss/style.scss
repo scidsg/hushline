@@ -2114,6 +2114,7 @@ input#captcha_answer {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-top: env(safe-area-inset-top);
 }
 
 .banner p {
