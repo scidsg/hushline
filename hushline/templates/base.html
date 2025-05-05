@@ -24,10 +24,14 @@
       name="twitter:image"
       content="https://hushline.app/assets/img/social/social.png"
     />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ brand_name }}">
     <title>{% block title %}{% endblock %} - {{ brand_name }}</title>
     {% if brand_logo_url %}
       <link rel="icon" type="image/png" href="/assets/public/brand/logo.png" />
     {% else %}
+      <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
       <link
         rel="apple-touch-icon"
         sizes="180x180"
