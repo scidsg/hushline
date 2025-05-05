@@ -2124,7 +2124,7 @@ input#captcha_answer {
 
 .banner + header,
 .banner + header + main {
-  margin-top: 40px;
+  margin-top: calc(40px + env(safe-area-inset-top));
 }
 
 #email .forwarding {
