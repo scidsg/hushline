@@ -1,0 +1,21 @@
+{
+  "name": "Hush Line",
+  "short_name": "Hush Line",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf3ff",
+  "theme_color": "#7d25c1",
+  "description": "Anonymous reporting and whistleblower management for organizations and individuals.",
+  "icons": [
+    {
+      "src": "/static/favicon/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/favicon/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
