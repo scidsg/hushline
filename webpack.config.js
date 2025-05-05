@@ -14,6 +14,7 @@ modules = [
   "message_success",
   "premium",
   "premium-waiting",
+  "service-worker",
   "settings-fields",
   "settings",
   "submit-message",

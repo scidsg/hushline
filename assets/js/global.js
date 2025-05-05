@@ -300,7 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/assets/js/service-worker.js')
+    navigator.serviceWorker.register('/static/js/service-worker.js')
       .then(() => console.log('Service Worker registered'))
       .catch((err) => console.error('Service Worker registration failed:', err));
   }
