@@ -112,6 +112,10 @@
 
 /* Light Mode */
 @media (prefers-color-scheme: light) {
+  html {
+    background-color: var(--color-brand);
+  }
+
   body {
     background-color: var(--color-brand-bg);
   }
@@ -489,6 +493,10 @@
 
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
+  html {
+    background-color: var(--color-brand-dark-min-saturation);
+  }
+
   body {
     background-color: var(--color-dark-bg);
     color: var(--color-text-dark);
