@@ -29,7 +29,11 @@
     <meta name="apple-mobile-web-app-title" content="{{ brand_name }}">
     <title>{% block title %}{% endblock %} - {{ brand_name }}</title>
     {% if brand_logo_url %}
-      <link rel="icon" type="image/png" href="/assets/public/brand/logo.png" />
+      <link 
+        rel="icon" 
+        type="image/png" 
+        href="/assets/public/brand/logo.png" 
+      />
     {% else %}
       <link 
         rel="manifest" 
@@ -64,7 +68,46 @@
         href="{{ url_for('static', filename='favicon/android-chrome-512x512.png') }}"
         sizes="512x512"
       />
-      <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}" />
+      <link 
+        rel="icon" 
+        type="image/x-icon" 
+        href="{{ url_for('static', filename='favicon/favicon.ico') }}" 
+      />
+      <!-- iPhone X, XS, 11 Pro -->
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-1125x2436.png" 
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
+      />
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-828x1792.png" 
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)"
+      />
+      <!-- iPhone XS Max, 11 Pro Max -->
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-1242x2688.png" 
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)"
+      />
+      <!-- iPhone 12/13/14/15 Mini -->
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-1080x2340.png" 
+        media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3)"
+      />
+      <!-- iPhone 12/13/14/15, Pro -->
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-1170x2532.png" 
+        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+      />
+      <!-- iPhone 12/13/14/15 Pro Max -->
+      <link 
+        rel="apple-touch-startup-image" 
+        href="/static/splash/launch-1284x2778.png" 
+        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
+      />
     {% endif %}
     <link
       rel="stylesheet"
