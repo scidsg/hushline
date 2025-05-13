@@ -13,7 +13,7 @@ bleach = "^6.2.0"
 boto3 = "^1.35.33"
 cryptography = "^44.0.1"
 email-validator = "^2.2.0"
-flask = { extras = ["async"], version = "^3.0.3" }
+flask = { extras = ["async"], version = "^3.1.1" }
 flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 flask-wtf = "^1.2.1"
