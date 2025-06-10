@@ -25,7 +25,7 @@ pyotp = "^2.9.0"
 pysequoia = "^0.1.23"
 python = "^3.11"
 qrcode = "^7.4.2"
-requests = "^2.32.3"
+requests = "^2.32.4"
 ruff = "^0.4.7"
 stripe = "^10.9.0"
 
