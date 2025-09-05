@@ -1,0 +1,22 @@
+name: hushline-agent
+on:
+  issues:
+    types: [labeled]
+jobs:
+  run:
+    if: contains(github.event.label.name, 'agent')   # changed here
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config user.name "hushline-agent"
+          git config user.email "agent@users.noreply.github.com"
+      - name: Run agent
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          echo "${GH_TOKEN}" | sudo tee /etc/hushline-agent/token >/dev/null
+          ./ops/agent.sh "${{ github.event.issue.number }}"
