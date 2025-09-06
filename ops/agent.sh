@@ -72,6 +72,7 @@ done < <(echo "$ISSUE_BODY" | grep -Eo '([A-Za-z0-9._/-]+\.(scss|css|py|js|ts|ht
 export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
 export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 
+# Aider args tuned for low RAM
 AIDER_ARGS=(
   --yes
   --no-gitignore
@@ -98,8 +99,8 @@ run_aider() {
 # First pass
 run_aider
 
-# No changes -> report and exit
-if git diff --quiet; then
+# No changes -> report and exit (check both index and worktree)
+if git diff --quiet && git diff --cached --quiet; then
   gh issue comment "$ISSUE" -R "$REPO" -b "Agent attempted patch but no changes were made."
   exit 0
 fi
@@ -130,15 +131,15 @@ for attempt in 1 2; do
 ${FEEDBACK}
 \`\`\`
 " > /tmp/agent_feedback.txt
-  # Replace prompt body with feedback for the fix attempt
-  timeout -k 10 180 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_feedback.txt)" || true
+  nice -n 10 ionice -c2 -n7 timeout -k 10 180 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_feedback.txt)" || true
   git add -A || true
   git commit -m "agent: lint fix attempt $attempt" || true
 done
 
 # Decide whether to run pytest (skip for frontend-only diffs)
 run_tests=true
-changed_files="$(git diff --name-only "origin/$DEFAULT_BRANCH"...)"
+current_head="$(git rev-parse --abbrev-ref HEAD)"
+changed_files="$(git diff --name-only "origin/$DEFAULT_BRANCH...$current_head")"
 if grep -qE '\.(scss|css|js|ts|html|jinja2)$' <<<"$changed_files" && ! grep -qE '\.py($| )' <<<"$changed_files"; then
   run_tests=false
 fi
