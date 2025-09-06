@@ -12,14 +12,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Poetry and project deps under Python 3.11
+      - name: Ensure user-local bin is first on PATH
         run: |
-          python3.11 -m pip install --user --upgrade pip poetry
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install Poetry and deps under Python 3.11
+        run: |
+          python3.11 -m pip install --user --upgrade pip poetry pytest aider-chat
           mkdir -p "$HOME/.cache/pypoetry/virtualenvs"
-          # run Poetry explicitly via Python 3.11
           python3.11 -m poetry config virtualenvs.create false
           python3.11 -m poetry install -n
-          python3.11 -m pip install --user pytest aider-chat
 
       - name: Configure Git identity
         run: |
@@ -32,4 +34,5 @@ jobs:
       - name: Run agent
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          PYTHON: python3.11
         run: ./ops/agent.sh "${{ github.event.issue.number }}"
