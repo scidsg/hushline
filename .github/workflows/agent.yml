@@ -12,16 +12,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: System deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq gettext-base python3-pip
-
-      - name: Python deps (pytest, aider, project deps via Poetry)
+      # Python-only deps in user space
+      - name: Python deps
         run: |
           python3 -m pip install --upgrade pip
           pip install pytest aider-chat poetry
-          # install project deps into runner env (no venv)
           poetry config virtualenvs.create false
           poetry install -n
 
@@ -30,11 +25,10 @@ jobs:
           git config user.name "hushline-agent"
           git config user.email "agent@users.noreply.github.com"
 
-      - name: Make agent executable (defense-in-depth)
+      - name: Ensure agent script is executable
         run: chmod +x ops/agent.sh
 
       - name: Run agent
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
-        run: |
-          ./ops/agent.sh "${{ github.event.issue.number }}"
+        run: ./ops/agent.sh "${{ github.event.issue.number }}"
