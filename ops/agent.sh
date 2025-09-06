@@ -82,6 +82,10 @@ AIDER_ARGS=(
   --max-chat-history-tokens 2048
 )
 
+# Ensure local Ollama endpoint for litellm/Aider
+export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"  # harmless; some libs read this
+
 run_aider() {
   if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
     timeout -k 10 240 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_prompt.txt)" "${TARGET_FILES[@]}" || true
