@@ -4,8 +4,8 @@ on:
     types: [labeled]
 jobs:
   run:
-    if: contains(github.event.label.name, 'agent')   # changed here
-    runs-on: self-hosted
+    if: contains(github.event.label.name, 'agent')
+    runs-on: [self-hosted, agent]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,5 +18,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
         run: |
-          echo "${GH_TOKEN}" | sudo tee /etc/hushline-agent/token >/dev/null
           ./ops/agent.sh "${{ github.event.issue.number }}"
