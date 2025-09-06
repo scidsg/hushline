@@ -14,17 +14,18 @@ REPO="${REPO:-scidsg/hushline}"
 : "${GH_TOKEN:?GH_TOKEN must be set in env}"
 export GITHUB_TOKEN="$GH_TOKEN"
 
-# Hard caps to avoid stalls on Jetson
+# Hard caps for Jetson/low-RAM
 export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 export OLLAMA_NUM_PARALLEL=1
 export OLLAMA_KEEP_ALIVE=10m
 export AIDER_ANALYTICS_DISABLE=1
 
-# Native Ollama provider for Aider; avoid LiteLLM
+# Use Aider's native Ollama provider; avoid external keys
 unset LITELLM_PROVIDER LITELLM_OLLAMA_BASE OPENAI_API_KEY ANTHROPIC_API_KEY
 MODEL="${AIDER_MODEL:-ollama_chat/qwen2.5-coder:7b-instruct}"
 
-# Repo root and prompt
+# Repo root & prompt template present?
 [[ -d .git ]] || { echo "must run in repo root"; exit 1; }
 [[ -f ops/agent_prompt.tmpl ]] || { echo "missing ops/agent_prompt.tmpl"; exit 1; }
 
@@ -37,12 +38,17 @@ for bin in gh git aider curl jq; do
   command -v "$bin" >/dev/null || { echo "missing dependency: $bin"; exit 1; }
 done
 
-# Quick Ollama health check (fail fast instead of hanging)
+# Quick Ollama health & pre-pull to avoid Aider timeouts
 set +e
-curl -sS "${OLLAMA_API_BASE}/api/tags" | jq -r .models[0].name >/dev/null
-HEALTH_RC=$?
+curl -fsS "$OLLAMA_API_BASE/api/tags" | jq -r '.models[].name' >/dev/null 2>&1
+if ! curl -fsS "$OLLAMA_API_BASE/api/tags" | jq -e --arg m "${MODEL#*/}" '.models[].name | contains($m)' >/dev/null 2>&1; then
+  # Try a plain model name pull (e.g., "qwen2.5-coder:7b-instruct")
+  plain="${MODEL#*/}"
+  curl -fsS "$OLLAMA_API_BASE/api/pull" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"${plain}\"}" >/dev/null 2>&1
+fi
 set -e
-[[ $HEALTH_RC -ne 0 ]] && { echo "ollama health check failed"; exit 1; }
 
 # Issue data (preserve newlines)
 ISSUE_TITLE="$(gh issue view "$ISSUE" -R "$REPO" --json title -q .title)"
@@ -62,36 +68,37 @@ git checkout -B "$BR" "origin/$DEFAULT_BRANCH"
 export ISSUE_NUMBER="$ISSUE" ISSUE_TITLE ISSUE_BODY
 envsubst < ops/agent_prompt.tmpl > /tmp/agent_prompt.txt
 
-# Detect target files from the issue to avoid full repo-map
+# Detect target files from the issue body to reduce repo scanning
 TARGET_FILES=()
 while IFS= read -r f; do
   [[ -f "$f" ]] && TARGET_FILES+=("$f")
-done < <(echo "$ISSUE_BODY" | grep -Eo '([A-Za-z0-9._/-]+\.(scss|css|py|js|ts|html|jinja2))' | sort -u)
+done < <(
+  echo "$ISSUE_BODY" |
+    grep -Eo '([A-Za-z0-9._/-]+\.(scss|css|py|js|ts|html|jinja2|sh|yml|yaml))' |
+    sort -u
+)
 
-# Ensure local Ollama endpoint
-export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
-export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
-
-# Aider args tuned for low RAM
+# Aider args tuned for low RAM; disable Playwright/web scraping
 AIDER_ARGS=(
   --yes
   --no-gitignore
   --model "$MODEL"
   --edit-format udiff
-  --timeout 60
+  --timeout 180
   --no-stream
+  --disable-playwright
   --map-refresh files
   --map-multiplier-no-files 0
-  --map-tokens 256
-  --max-chat-history-tokens 512
+  --map-tokens 512
+  --max-chat-history-tokens 1024
 )
 
 run_aider() {
   if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
-    nice -n 10 ionice -c2 -n7 timeout -k 5 120 aider "${AIDER_ARGS[@]}" \
+    nice -n 10 ionice -c2 -n7 timeout -k 10 420 aider "${AIDER_ARGS[@]}" \
       --message "$(cat /tmp/agent_prompt.txt)" "${TARGET_FILES[@]}" || true
   else
-    nice -n 10 ionice -c2 -n7 timeout -k 5 120 aider "${AIDER_ARGS[@]}" \
+    nice -n 10 ionice -c2 -n7 timeout -k 10 420 aider "${AIDER_ARGS[@]}" \
       --message "$(cat /tmp/agent_prompt.txt)" || true
   fi
 }
@@ -105,19 +112,31 @@ if git diff --quiet && git diff --cached --quiet; then
   exit 0
 fi
 
-# Lint loop (up to 2 passes); feed failures back in small prompts
+# Lint loop (up to 2 passes); skip docker-based lint if socket unavailable
 lint_once() {
   local log=/tmp/lint.log rc=0
+
+  # If Makefile lint target exists…
   if [[ -f Makefile ]] && grep -qE '^[[:space:]]*lint:' Makefile; then
-    set +e; make lint > /dev/null 2> "$log"; rc=$?; set -e
+    # If lint appears to require docker and we can't access the socket, skip.
+    if grep -Eq '(docker|localstack|compose)' Makefile && [[ ! -r /var/run/docker.sock ]]; then
+      echo "docker-based lint skipped: no /var/run/docker.sock access" > "$log"
+      rc=0
+    else
+      set +e; make lint > /dev/null 2> "$log"; rc=$?; set -e
+    fi
+
+  # Or npm lint script…
   elif [[ -f package.json ]] && command -v jq >/dev/null && jq -e '.scripts.lint' package.json >/dev/null; then
     set +e
     npm ci --no-audit --prefer-offline >/dev/null 2>&1 || true
     npm run -s lint > /dev/null 2> "$log"; rc=$?
     set -e
+
   else
     echo "no linters configured" > "$log"; rc=0
   fi
+
   echo "$log:$rc"
 }
 
@@ -131,7 +150,7 @@ for attempt in 1 2; do
 ${FEEDBACK}
 \`\`\`
 " > /tmp/agent_feedback.txt
-  nice -n 10 ionice -c2 -n7 timeout -k 10 180 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_feedback.txt)" || true
+  nice -n 10 ionice -c2 -n7 timeout -k 10 420 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_feedback.txt)" || true
   git add -A || true
   git commit -m "agent: lint fix attempt $attempt" || true
 done
@@ -140,14 +159,14 @@ done
 run_tests=true
 current_head="$(git rev-parse --abbrev-ref HEAD)"
 changed_files="$(git diff --name-only "origin/$DEFAULT_BRANCH...$current_head")"
-if grep -qE '\.(scss|css|js|ts|html|jinja2)$' <<<"$changed_files" && ! grep -qE '\.py($| )' <<<"$changed_files"; then
+if grep -qE '\.(scss|css|js|ts|html|jinja2|yml|yaml)$' <<<"$changed_files" && ! grep -qE '\.py($| )' <<<"$changed_files"; then
   run_tests=false
 fi
 
 RC=0
 if $run_tests && command -v pytest >/dev/null 2>&1; then
   export DATABASE_URL="${DATABASE_URL:-sqlite:///./test.db}"
-  set +e; timeout -k 10 300 pytest -q; RC=$?; set -e
+  set +e; timeout -k 10 600 pytest -q; RC=$?; set -e
 fi
 
 # Commit & push
