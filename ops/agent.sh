@@ -16,6 +16,10 @@ command -v "$PYTHON_BIN" >/dev/null || PYTHON_BIN="python3"
 : "${GH_TOKEN:?GH_TOKEN missing}"
 export GITHUB_TOKEN="$GH_TOKEN"
 
+# Aider model/provider → Ollama
+MODEL="${AIDER_MODEL:-ollama:qwen2.5-coder:7b-instruct}"
+export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+
 ISSUE="$1"
 REPO="scidsg/hushline"
 
@@ -50,7 +54,7 @@ git fetch origin --prune
 BR="agent/issue-${ISSUE}-$(date +%Y%m%d-%H%M%S)"
 git checkout -B "$BR" "origin/${DEFAULT_BRANCH}"
 
-# Build prompt inline (no envsubst/jq)
+# Build prompt inline
 TMP_PROMPT="/tmp/agent_prompt.txt"
 {
   printf 'You are the Hush Line code assistant. Work only in this repository.\n'
@@ -72,8 +76,13 @@ EOF
   printf '%s\n' "$ISSUE_BODY"
 } > "$TMP_PROMPT"
 
-# Aider pass (non-interactive)
-aider --yes --message "$(cat "$TMP_PROMPT")"
+# Aider pass (non-interactive, Ollama model, unified diffs, skip .gitignore prompt)
+aider \
+  --model "$MODEL" \
+  --yes \
+  --no-gitignore \
+  --edit-format unified \
+  --message "$(cat "$TMP_PROMPT")"
 
 # No changes → comment and exit
 if git diff --quiet && git diff --cached --quiet; then
