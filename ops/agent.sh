@@ -68,29 +68,30 @@ while IFS= read -r f; do
   [[ -f "$f" ]] && TARGET_FILES+=("$f")
 done < <(echo "$ISSUE_BODY" | grep -Eo '([A-Za-z0-9._/-]+\.(scss|css|py|js|ts|html|jinja2))' | sort -u)
 
-# Aider args tuned for low RAM devices
+# Ensure local Ollama endpoint
+export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+
 AIDER_ARGS=(
   --yes
   --no-gitignore
   --model "$MODEL"
   --edit-format udiff
-  --timeout 180          # internal aider HTTP timeout
-  --no-stream            # avoid TTY/stream stalls
-  --map-refresh files    # only map files we pass, not whole repo
+  --timeout 60
+  --no-stream
+  --map-refresh files
   --map-multiplier-no-files 0
-  --map-tokens 1024
-  --max-chat-history-tokens 2048
+  --map-tokens 256
+  --max-chat-history-tokens 512
 )
-
-# Ensure local Ollama endpoint for litellm/Aider
-export OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
-export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"  # harmless; some libs read this
 
 run_aider() {
   if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
-    timeout -k 10 240 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_prompt.txt)" "${TARGET_FILES[@]}" || true
+    nice -n 10 ionice -c2 -n7 timeout -k 5 120 aider "${AIDER_ARGS[@]}" \
+      --message "$(cat /tmp/agent_prompt.txt)" "${TARGET_FILES[@]}" || true
   else
-    timeout -k 10 240 aider "${AIDER_ARGS[@]}" --message "$(cat /tmp/agent_prompt.txt)" || true
+    nice -n 10 ionice -c2 -n7 timeout -k 5 120 aider "${AIDER_ARGS[@]}" \
+      --message "$(cat /tmp/agent_prompt.txt)" || true
   fi
 }
 
