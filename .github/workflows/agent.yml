@@ -12,16 +12,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure user-local bin is first on PATH
+      # Create a Poetry venv pinned to Python 3.11 and use it for all steps
+      - name: Set up Poetry + Python 3.11 venv
         run: |
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          python3.11 -m pip install --user --upgrade pip poetry
+          # Create/use venv bound to Python 3.11
+          python3.11 -m poetry env use /usr/bin/python3.11
+          VENV="$(python3.11 -m poetry env info -p)"
+          echo "VENV=$VENV" >> "$GITHUB_ENV"
+          echo "$VENV/bin" >> "$GITHUB_PATH"
 
-      - name: Install Poetry and deps under Python 3.11
+      - name: Install project deps into venv
         run: |
-          python3.11 -m pip install --user --upgrade pip poetry pytest aider-chat
-          mkdir -p "$HOME/.cache/pypoetry/virtualenvs"
-          python3.11 -m poetry config virtualenvs.create false
+          # Keep Poetry-managed venv; do NOT disable virtualenvs
           python3.11 -m poetry install -n
+          # Extra tools needed by agent.sh, into the same venv
+          "$VENV/bin/pip" install -U pytest aider-chat
 
       - name: Configure Git identity
         run: |
@@ -34,5 +40,5 @@ jobs:
       - name: Run agent
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
-          PYTHON: python3.11
+          PYTHON: ${{ env.VENV }}/bin/python
         run: ./ops/agent.sh "${{ github.event.issue.number }}"
