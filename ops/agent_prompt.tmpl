@@ -3,8 +3,11 @@ Issue #: ${ISSUE_NUMBER}
 Title: ${ISSUE_TITLE}
 
 Task:
-- Write minimal pytest tests that reproduce the issue or define the requested feature.
-- Implement the smallest change to pass tests.
+- If the change affects backend logic, authentication, CSP, crypto, or any critical path: 
+  * Write minimal pytest tests that reproduce the issue or define the requested feature.
+  * Implement the smallest change to pass tests.
+- If the change is limited to styles, markup, or static assets (e.g., CSS, HTML, images), 
+  * Implement the change directly with no test required.
 - Preserve public APIs and security posture (CSP, TOTP, Tor, crypto).
 - Use repository conventions (pytest, Black/isort). No new services/env vars.
 
