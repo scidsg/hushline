@@ -18,3 +18,5 @@ hushline/static/data/users_directory.json
 # node
 /node_modules
 .DS_Store
+.aider*
+!.aider.conf.yml
