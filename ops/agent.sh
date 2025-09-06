@@ -29,7 +29,7 @@ PYTHON_BIN="${PYTHON:-python3.11}"
 [[ -f ops/agent_prompt.tmpl ]] || { echo "missing ops/agent_prompt.tmpl"; exit 1; }
 
 # Ensure git identity
-git config user.name >/dev/null 2>&1 || git config user.name "hushline-agent"
+git config user.name  >/dev/null 2>&1 || git config user.name  "hushline-agent"
 git config user.email >/dev/null 2>&1 || git config user.email "agent@users.noreply.github.com"
 
 # Fetch issue data
@@ -54,11 +54,29 @@ git checkout -B "$BR" "origin/${DEFAULT_BRANCH}"
 export ISSUE_NUMBER="$ISSUE" ISSUE_TITLE ISSUE_BODY
 envsubst < ops/agent_prompt.tmpl > /tmp/agent_prompt.txt
 
+# Derive candidate files from issue body and constrain edits
+readarray -t CANDIDATES < <(
+  printf "%s\n" "$ISSUE_BODY" |
+    grep -oE '[A-Za-z0-9_./-]+\.(html|jinja2|webmanifest|json|py|js|css)' |
+    sed 's#^./##' | sort -u
+)
+# Add likely defaults if present
+[[ -f hushline/hushline/templates/base.html ]] && CANDIDATES+=("hushline/hushline/templates/base.html")
+[[ -f hushline/hushline/static/img/favicon/site.webmanifest ]] && CANDIDATES+=("hushline/hushline/static/img/favicon/site.webmanifest")
+
+# Build --file args for aider (only existing files)
+FILE_ARGS=()
+for f in "${CANDIDATES[@]:-}"; do
+  [[ -f "$f" ]] && FILE_ARGS+=(--file "$f")
+done
+
 # Run aider with local Ollama model
 AIDER_MODEL="ollama:qwen2.5-coder:7b-instruct"
 aider --yes \
   --model "$AIDER_MODEL" \
+  --no-gitignore \
   --edit-format udiff \
+  "${FILE_ARGS[@]}" \
   --message "$(cat /tmp/agent_prompt.txt)" || true
 
 # Check if any changes
@@ -67,7 +85,7 @@ if git diff --cached --quiet && git diff --quiet; then
   exit 0
 fi
 
-# Tests
+# Tests (prefer SQLite in CI unless DATABASE_URL is already set)
 set +e
 DATABASE_URL="${DATABASE_URL:-sqlite:///./test.db}" \
 FLASK_ENV="${FLASK_ENV:-test}" \
