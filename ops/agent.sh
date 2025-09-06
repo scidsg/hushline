@@ -8,21 +8,15 @@ if [[ $# -ne 1 ]]; then
 fi
 
 ISSUE="$1"
-REPO="titles-peeps/hushline"
+REPO="scidsg/hushline"
 
-# Require GH_TOKEN from workflow secrets
-: "${GH_TOKEN:?GH_TOKEN missing}"
-export GITHUB_TOKEN="$GH_TOKEN"
-
-# Dependencies
-for bin in gh git aider; do
-  command -v "$bin" >/dev/null || { echo "missing dependency: $bin"; exit 1; }
-done
-
-# Python check (pytest in venv if set)
-PYTHON_BIN="${PYTHON:-python3.11}"
-"$PYTHON_BIN" -c 'import sys; print(sys.version)'
-"$PYTHON_BIN" -c 'import pytest' || { echo "pytest missing"; exit 1; }
+# Environment for Ollama + Aider
+export OLLAMA_HOST="http://localhost:11434"
+export LITELLM_PROVIDER="ollama"
+export LITELLM_OLLAMA_BASE="http://localhost:11434"
+export AIDER_MODEL="ollama:qwen2.5-coder:7b-instruct"
+export AIDER_MAX_CHAT_HISTORY_TOKENS=8192
+export AIDER_MAP_TOKENS=4096
 
 # Ensure repo root
 [[ -d .git ]] || { echo "must run in repo root"; exit 1; }
@@ -36,7 +30,7 @@ git config user.email >/dev/null 2>&1 || git config user.email "agent@users.nore
 ISSUE_TITLE="$(gh issue view "$ISSUE" -R "$REPO" --json title -q '.title')"
 ISSUE_BODY="$(gh issue view "$ISSUE" -R "$REPO" --json body  -q '.body')"
 
-# Determine default branch: GH API → git remote → fallback
+# Determine default branch
 DEFAULT_BRANCH="$(gh repo view "$REPO" --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || true)"
 if [[ -z "$DEFAULT_BRANCH" ]]; then
   DEFAULT_BRANCH="$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p' || true)"
@@ -45,68 +39,52 @@ if [[ -z "$DEFAULT_BRANCH" ]]; then
   DEFAULT_BRANCH="main"
 fi
 
-git fetch origin --prune
+# Prepare branch
 BR="agent/issue-${ISSUE}-$(date +%Y%m%d-%H%M%S)"
-git checkout -B "$BR" "origin/${DEFAULT_BRANCH}"
+git fetch origin --prune
+git checkout -B "$BR" "origin/$DEFAULT_BRANCH"
 
 # Build prompt
-export ISSUE_NUMBER="$ISSUE" ISSUE_TITLE ISSUE_BODY
+export ISSUE_NUMBER="$ISSUE"
+export ISSUE_TITLE
+export ISSUE_BODY
 envsubst < ops/agent_prompt.tmpl > /tmp/agent_prompt.txt
 
-# Derive candidate files from issue body and constrain edits
-readarray -t CANDIDATES < <(
-  printf "%s\n" "$ISSUE_BODY" |
-    grep -oE '[A-Za-z0-9_./-]+\.(html|jinja2|webmanifest|json|py|js|css)' |
-    sed 's#^./##' | sort -u
-)
-# Add likely defaults if present
-[[ -f hushline/hushline/templates/base.html ]] && CANDIDATES+=("hushline/hushline/templates/base.html")
-[[ -f hushline/hushline/static/img/favicon/site.webmanifest ]] && CANDIDATES+=("hushline/hushline/static/img/favicon/site.webmanifest")
-
-# Build --file args for aider (only existing files)
-FILE_ARGS=()
-for f in "${CANDIDATES[@]:-}"; do
-  [[ -f "$f" ]] && FILE_ARGS+=(--file "$f")
-done
-
-# Run aider with local Ollama model
-AIDER_MODEL="ollama:qwen2.5-coder:7b-instruct"
-aider --yes \
-  --model "$AIDER_MODEL" \
-  --no-gitignore \
-  --edit-format udiff \
-  "${FILE_ARGS[@]}" \
-  --message "$(cat /tmp/agent_prompt.txt)" || true
-
-# Check if any changes
-if git diff --cached --quiet && git diff --quiet; then
-  gh issue comment "$ISSUE" -R "$REPO" -b "Agent made no changes for this issue."
-  exit 0
+# Run aider with Ollama, preloading candidate files
+TARGET_FILES=()
+if grep -q "assets/scss/style.scss" <<<"$ISSUE_BODY"; then
+  TARGET_FILES+=("assets/scss/style.scss")
 fi
 
-# Tests (prefer SQLite in CI unless DATABASE_URL is already set)
+if [[ ${#TARGET_FILES[@]} -eq 0 ]]; then
+  TARGET_FILES=("assets/scss/style.scss")
+fi
+
+aider --yes \
+  --model "$AIDER_MODEL" \
+  --edit-format udiff \
+  --message "$(cat /tmp/agent_prompt.txt)" \
+  "${TARGET_FILES[@]}"
+
+# Test (use SQLite by default)
+export DATABASE_URL="${DATABASE_URL:-sqlite:///test.db}"
 set +e
-DATABASE_URL="${DATABASE_URL:-sqlite:///./test.db}" \
-FLASK_ENV="${FLASK_ENV:-test}" \
-"$PYTHON_BIN" -m pytest -q
+pytest -q
 RC=$?
 set -e
 
-# Commit, push
+# Commit and push
 git add -A
 git commit -m "Agent pass for #${ISSUE} (tests rc=${RC})" || true
 git push -u origin "$BR"
 
 # Create or update PR
-EXISTING_PR="$(gh pr list -R "$REPO" --head "$BR" --json number -q '.[0].number')"
-if [[ -z "${EXISTING_PR}" ]]; then
-  gh pr create -R "$REPO" \
-    -t "Agent patch for #${ISSUE}: ${ISSUE_TITLE}" \
-    -b "Automated patch for #${ISSUE}. Test exit code: ${RC}."
+EXISTING_PR=$(gh pr list -R "$REPO" --head "$BR" --json number -q '.[0].number')
+if [[ -z "$EXISTING_PR" ]]; then
+  gh pr create -R "$REPO" -t "Agent patch for #$ISSUE: ${ISSUE_TITLE}" -b "Automated patch for #$ISSUE. Test exit code: ${RC}."
 else
-  gh pr comment -R "$REPO" "${EXISTING_PR}" -b "Updated patch. Test exit code: ${RC}."
+  gh pr comment -R "$REPO" "$EXISTING_PR" -b "Updated patch. Test exit code: ${RC}."
 fi
 
-# Link PR to issue
-gh issue comment "$ISSUE" -R "$REPO" \
-  -b "Agent created/updated PR from branch \`$BR\`. Test exit code: ${RC}."
+# Link PR to the issue
+gh issue comment "$ISSUE" -R "$REPO" -b "Agent created/updated PR from branch \`$BR\`. Test exit code: ${RC}."
