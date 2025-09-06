@@ -12,11 +12,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Python-only deps in user space
-      - name: Python deps
+      - name: Use Python 3.11 user env
         run: |
-          python3 -m pip install --upgrade pip
-          pip install pytest aider-chat poetry
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          python3.11 -m pip --version
+          pip3.11 --version
+
+      - name: Install project deps with Poetry (3.11)
+        run: |
+          poetry env use "$(which python3.11)"
           poetry config virtualenvs.create false
           poetry install -n
 
