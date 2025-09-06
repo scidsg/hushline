@@ -32,10 +32,9 @@ PYTHON_BIN="${PYTHON:-python3.11}"
 git config user.name  >/dev/null 2>&1 || git config user.name  "hushline-agent"
 git config user.email >/dev/null 2>&1 || git config user.email "agent@users.noreply.github.com"
 
-# Fetch issue data
-mapfile -t FIELDS < <(gh issue view "$ISSUE" -R "$REPO" --json title,body -q '.title, .body')
-ISSUE_TITLE="${FIELDS[0]}"
-ISSUE_BODY="${FIELDS[1]}"
+# Fetch issue data (preserve newlines)
+ISSUE_TITLE="$(gh issue view "$ISSUE" -R "$REPO" --json title -q '.title')"
+ISSUE_BODY="$(gh issue view "$ISSUE" -R "$REPO" --json body  -q '.body')"
 
 # Determine default branch: GH API → git remote → fallback
 DEFAULT_BRANCH="$(gh repo view "$REPO" --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || true)"
