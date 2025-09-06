@@ -8,7 +8,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 ISSUE="$1"
-REPO="scidsg/hushline"
+REPO="titles-peeps/hushline"
 
 # Require GH_TOKEN from workflow secrets
 : "${GH_TOKEN:?GH_TOKEN missing}"
