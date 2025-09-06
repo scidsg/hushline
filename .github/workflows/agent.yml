@@ -39,6 +39,11 @@ jobs:
       - name: Ensure agent script is executable
         run: chmod +x ops/agent.sh
 
+      - name: Test DB override (SQLite)
+        run: |
+          echo 'DATABASE_URL=sqlite:///./test.db' >> $GITHUB_ENV
+          echo 'FLASK_ENV=test' >> $GITHUB_ENV
+
       - name: Run agent
         env:
           GH_TOKEN: ${{ secrets.AGENT_TOKEN }}

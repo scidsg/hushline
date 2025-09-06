@@ -67,8 +67,10 @@ if git diff --cached --quiet && git diff --quiet; then
   exit 0
 fi
 
-# Run tests
+# Tests
 set +e
+DATABASE_URL="${DATABASE_URL:-sqlite:///./test.db}" \
+FLASK_ENV="${FLASK_ENV:-test}" \
 "$PYTHON_BIN" -m pytest -q
 RC=$?
 set -e
