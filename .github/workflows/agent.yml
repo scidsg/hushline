@@ -12,17 +12,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Use Python 3.11 user env
+      - name: Ensure Python 3.11 on PATH
         run: |
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          python3.11 -m pip --version
-          pip3.11 --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          python3.11 -V || true
+          pip3.11 --version || true
 
-      - name: Install project deps with Poetry (3.11)
+      - name: Install Poetry and project deps (no venv)
         run: |
-          poetry env use "$(which python3.11)"
-          poetry config virtualenvs.create false
-          poetry install -n
+          python3.11 -m pip install --user --upgrade pip poetry
+          mkdir -p "$HOME/.cache/pypoetry/virtualenvs"
+          "$HOME/.local/bin/poetry" config virtualenvs.create false
+          "$HOME/.local/bin/poetry" install -n
+          python3.11 -m pip install --user pytest aider-chat
 
       - name: Configure Git identity
         run: |
