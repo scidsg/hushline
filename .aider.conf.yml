@@ -3,8 +3,8 @@ no-gitignore: true
 edit-format: udiff
 map-refresh: files
 map-multiplier-no-files: 0
-map-tokens: 1024
-max-chat-history-tokens: 2048
-timeout: 90
+map-tokens: 256
+max-chat-history-tokens: 512
+timeout: 60
 stream: false
 yes-always: true
