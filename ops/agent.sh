@@ -84,13 +84,13 @@ AIDER_ARGS=(
   --no-gitignore
   --model "$MODEL"
   --edit-format udiff
-  --timeout 180
+  --timeout 60
   --no-stream
   --disable-playwright
   --map-refresh files
   --map-multiplier-no-files 0
-  --map-tokens 512
-  --max-chat-history-tokens 1024
+  --map-tokens 256
+  --max-chat-history-tokens 512
 )
 
 run_aider() {
@@ -116,27 +116,27 @@ fi
 lint_once() {
   local log=/tmp/lint.log rc=0
 
-  # If Makefile lint target exists…
-  if [[ -f Makefile ]] && grep -qE '^[[:space:]]*lint:' Makefile; then
-    # If lint appears to require docker and we can't access the socket, skip.
-    if grep -Eq '(docker|localstack|compose)' Makefile && [[ ! -r /var/run/docker.sock ]]; then
-      echo "docker-based lint skipped: no /var/run/docker.sock access" > "$log"
-      rc=0
-    else
-      set +e; make lint > /dev/null 2> "$log"; rc=$?; set -e
-    fi
+  # If Docker socket isn't accessible, skip dockerized lints to avoid heavy pulls
+  if [[ -S /var/run/docker.sock ]] && groups "$(whoami)" | grep -q docker; then
+    docker_ok=1
+  else
+    docker_ok=0
+  fi
 
-  # Or npm lint script…
+  if [[ -f Makefile ]] && grep -qE '^[[:space:]]*lint:' Makefile; then
+    if [[ $docker_ok -eq 1 ]]; then
+      set +e; make lint > /dev/null 2> "$log"; rc=$?; set -e
+    else
+      echo "no docker, skipping dockerized lint" > "$log"; rc=0
+    fi
   elif [[ -f package.json ]] && command -v jq >/dev/null && jq -e '.scripts.lint' package.json >/dev/null; then
     set +e
     npm ci --no-audit --prefer-offline >/dev/null 2>&1 || true
     npm run -s lint > /dev/null 2> "$log"; rc=$?
     set -e
-
   else
     echo "no linters configured" > "$log"; rc=0
   fi
-
   echo "$log:$rc"
 }
 
