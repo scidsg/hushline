@@ -5,6 +5,7 @@ import pyotp
 from flask import (
     Flask,
     flash,
+    make_response,
     redirect,
     render_template,
     request,
@@ -270,4 +271,6 @@ def register_auth_routes(app: Flask) -> None:
     def logout() -> Response:
         session.clear()
         flash("👋 You have been logged out successfully.", "info")
-        return redirect(url_for("index"))
+        response = make_response(redirect(url_for("index")))
+        response.headers["Clear-Site-Data"] = '"*"'
+        return response
