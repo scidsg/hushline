@@ -1524,17 +1524,23 @@ a.logoutLink {
 }
 
 footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
   font-size: var(--font-size-smaller);
-  padding-left: 1rem;
+  padding-left: 0;
   padding-right: 1rem;
   border-radius: 0 .25rem 0 0;
   z-index: 11;
-  height: 38px;
   display: flex;
+  margin-top: 1rem;
+  align-self: start;
+}
+
+footer:has(a.powered-by) {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding-left: 1rem;
   align-items: center;
+  height: 38px;
 }
 
 footer p {
@@ -1543,6 +1549,12 @@ footer p {
 
 footer a {
   text-decoration: none;
+}
+
+footer .powered-by {
+  margin-left: 0.25rem;
+  font-size: var(--font-size-smallest);
+  color: var(--color-text-light);
 }
 
 footer a:hover {
