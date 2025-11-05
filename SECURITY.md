@@ -10,7 +10,7 @@ An external security review has been supported via the [Open Technology Fund](ht
 
 ---
 
-## 1) Coordinated Vulnerability Disclosure (CVD)
+## 1. Coordinated Vulnerability Disclosure (CVD)
 
 - **Report channels**
   - Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg) tip page (supports anonymous reporting).
@@ -31,7 +31,7 @@ An external security review has been supported via the [Open Technology Fund](ht
 
 ---
 
-## 2) Triage & Response Objectives
+## 2. Triage & Response Objectives
 
 - **Initial human response**: within 3 business days.
 - **Triage + severity**: within 7 days, we’ll assign CVSS and determine exploitability.
@@ -47,7 +47,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 3) Independent Security Assessments
+## 3. Independent Security Assessments
 
 - **Right to assess, not a maintenance guarantee**  
   Science & Design, Inc. may commission independent third-party security assessments of Hush Line at its discretion, including static/dynamic testing, configuration review, threat modeling, and privacy analysis. These assessments are not guaranteed services under any maintenance agreement.
@@ -63,7 +63,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 4) Cryptography & Data Protection
+## 4. Cryptography & Data Protection
 
 - End-to-end encryption for tip content; keys are never stored where they can be derived from plaintext submissions.  
 - Transport security: HTTPS/TLS enforced for all endpoints.  
@@ -72,7 +72,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 5) Dependency & Supply-Chain Security
+## 5. Dependency & Supply-Chain Security
 
 - Automated dependency updates with review.  
 - Build artifacts are reproducible where feasible; pinned versions for critical transitive dependencies.  
@@ -80,7 +80,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 6) Secure Development Lifecycle (SDLC)
+## 6. Secure Development Lifecycle (SDLC)
 
 - Mandatory code review for security-relevant changes.  
 - Static analysis and linters on CI; security checks run per PR.  
@@ -89,7 +89,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 7) Infrastructure & Operations
+## 7. Infrastructure & Operations
 
 - Managed hosting for application and databases with hardened configuration; infra-as-code defines baseline controls (network segmentation, backups, least-privilege).  
 - Separate staging environment for destructive testing; production changes require review and approver separation.  
@@ -97,7 +97,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 8) Incident Response
+## 8. Incident Response
 
 - Phases: detect → confirm → contain → eradicate → recover → learn.  
 - Notification: if a material security incident risks user data or anonymity, we will publish guidance and, when appropriate, in-product or site-wide notices.  
@@ -105,13 +105,13 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 9) Privacy & Anonymity Guarantees
+## 9. Privacy & Anonymity Guarantees
 
 - Anonymous tip submission is a core requirement. We do not require PII to create an account or submit a tip. Use Tor/Onion services for additional network-layer protections when needed.
 
 ---
 
-## 10) Hardening Expectations for Self-Hosts
+## 10. Hardening Expectations for Self-Hosts
 
 If you deploy Hush Line yourself, you are responsible for:
 - TLS with modern ciphers; HSTS; robust CSP; referrer policy; frame-ancestors.  
@@ -121,13 +121,13 @@ If you deploy Hush Line yourself, you are responsible for:
 
 ---
 
-## 11) Versioning & Security Notes
+## 11. Versioning & Security Notes
 
 Security-relevant changes are captured in releases and advisories. Review our Releases and the Security tab for patches and mitigation notes.
 
 ---
 
-## 12) Contact
+## 12. Contact
 
 - Secure Disclosure: https://tips.hushline.app/to/scidsg  
 - Public: open a GitHub issue for non-sensitive questions
