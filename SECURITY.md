@@ -4,13 +4,13 @@ _Last updated: 2025-11-05_
 
 Hush Line is free and open-source software maintained by Science & Design, Inc. We take coordinated disclosure seriously and operate with a bias toward rapid remediation and transparency.
 
-Notable history: Hush Line has remediated CVEs related to CSP and security headers; see [CVE-2024-38522](https://nvd.nist.gov/vuln/detail/cve-2024-38522) and [CVE-2024-55888](https://nvd.nist.gov/vuln/detail/cve-2024-55888) for context. These were fixed in subsequent releases. 
+Notable history: Hush Line has remediated CVEs related to CSP and security headers; see [CVE-2024-38522](https://nvd.nist.gov/vuln/detail/cve-2024-38522) and [CVE-2024-55888](https://nvd.nist.gov/vuln/detail/cve-2024-55888) for context. These were fixed in subsequent releases.
 
 An external security review has been supported via the [Open Technology Fund](https://www.opentech.fund/security-safety-audits/hush-line-security-audit/) program. Future independent assessments are governed by the “Independent Security Assessments” section below.
 
 ---
 
-## 1) Coordinated Vulnerability Disclosure (CVD)
+## 1. Coordinated Vulnerability Disclosure (CVD)
 
 - **Report channels**
   - Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg) tip page (supports anonymous reporting).
@@ -31,14 +31,14 @@ An external security review has been supported via the [Open Technology Fund](ht
 
 ---
 
-## 2) Triage & Response Objectives
+## 2. Triage & Response Objectives
 
 - **Initial human response**: within 3 business days.
 - **Triage + severity**: within 7 days, we’ll assign CVSS and determine exploitability.
-- **Fix window (targets)**  
-  - Critical: 7 days  
-  - High: 14 days  
-  - Medium: 30 days  
+- **Fix window (targets)**
+  - Critical: 7 days
+  - High: 14 days
+  - Medium: 30 days
   - Low: 90 days
 
 If exploitation in the wild is detected, we may hotfix and publish advisories immediately.
@@ -47,7 +47,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 3) Independent Security Assessments
+## 3. Independent Security Assessments
 
 - **Right to assess, not a maintenance guarantee**  
   Science & Design, Inc. may commission independent third-party security assessments of Hush Line at its discretion, including static/dynamic testing, configuration review, threat modeling, and privacy analysis. These assessments are not guaranteed services under any maintenance agreement.
@@ -63,71 +63,72 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ---
 
-## 4) Cryptography & Data Protection
+## 4. Cryptography & Data Protection
 
-- End-to-end encryption for tip content; keys are never stored where they can be derived from plaintext submissions.  
-- Transport security: HTTPS/TLS enforced for all endpoints.  
+- End-to-end encryption for tip content; keys are never stored where they can be derived from plaintext submissions.
+- Transport security: HTTPS/TLS enforced for all endpoints.
 - Content Security Policy and security headers are enforced and regressions are treated as high severity in light of prior history.
 - No plaintext secrets in code; repository and CI are scanned prior to release.
 
 ---
 
-## 5) Dependency & Supply-Chain Security
+## 5. Dependency & Supply-Chain Security
 
-- Automated dependency updates with review.  
-- Build artifacts are reproducible where feasible; pinned versions for critical transitive dependencies.  
+- Automated dependency updates with review.
+- Build artifacts are reproducible where feasible; pinned versions for critical transitive dependencies.
 - Third-party JS is minimized, integrity-checked when externally loaded, and reviewed for license and security posture.
 
 ---
 
-## 6) Secure Development Lifecycle (SDLC)
+## 6. Secure Development Lifecycle (SDLC)
 
-- Mandatory code review for security-relevant changes.  
-- Static analysis and linters on CI; security checks run per PR.  
-- Secrets pre-commit hooks; forbidden patterns in CI.  
+- Mandatory code review for security-relevant changes.
+- Static analysis and linters on CI; security checks run per PR.
+- Secrets pre-commit hooks; forbidden patterns in CI.
 - Security test coverage for authN/authZ, crypto, and request handlers under `tests/`.
 
 ---
 
-## 7) Infrastructure & Operations
+## 7. Infrastructure & Operations
 
-- Managed hosting for application and databases with hardened configuration; infra-as-code defines baseline controls (network segmentation, backups, least-privilege).  
-- Separate staging environment for destructive testing; production changes require review and approver separation.  
+- Managed hosting for application and databases with hardened configuration; infra-as-code defines baseline controls (network segmentation, backups, least-privilege).
+- Separate staging environment for destructive testing; production changes require review and approver separation.
 - Logs minimize sensitive data; retention is bounded; access is audited.
 
 ---
 
-## 8) Incident Response
+## 8. Incident Response
 
-- Phases: detect → confirm → contain → eradicate → recover → learn.  
-- Notification: if a material security incident risks user data or anonymity, we will publish guidance and, when appropriate, in-product or site-wide notices.  
+- Phases: detect → confirm → contain → eradicate → recover → learn.
+- Notification: if a material security incident risks user data or anonymity, we will publish guidance and, when appropriate, in-product or site-wide notices.
 - Post-mortems are written for high/critical incidents and may be public in summary form.
 
 ---
 
-## 9) Privacy & Anonymity Guarantees
+## 9. Privacy & Anonymity Guarantees
 
 - Anonymous tip submission is a core requirement. We do not require PII to create an account or submit a tip. Use Tor/Onion services for additional network-layer protections when needed.
 
 ---
 
-## 10) Hardening Expectations for Self-Hosts
+## 10. Hardening Expectations for Self-Hosts
 
 If you deploy Hush Line yourself, you are responsible for:
-- TLS with modern ciphers; HSTS; robust CSP; referrer policy; frame-ancestors.  
-- Regular updates to OS, runtime, and dependencies.  
-- Strong secrets management and key rotation.  
+
+- TLS with modern ciphers; HSTS; robust CSP; referrer policy; frame-ancestors.
+- Regular updates to OS, runtime, and dependencies.
+- Strong secrets management and key rotation.
 - Isolated database with minimum privileges; backups with tested restores.
 
 ---
 
-## 11) Versioning & Security Notes
+## 11. Versioning & Security Notes
 
 Security-relevant changes are captured in releases and advisories. Review our Releases and the Security tab for patches and mitigation notes.
 
 ---
 
-## 12) Contact
+## 12. Contact
 
-- Secure Disclosure: https://tips.hushline.app/to/scidsg  
+- Secure Disclosure: <https://tips.hushline.app/to/scidsg>
 - Public: open a GitHub issue for non-sensitive questions
