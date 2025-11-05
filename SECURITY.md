@@ -1,138 +1,133 @@
 # Hush Line Security Policy
 
-At Hush Line, developed by Science & Design, Inc., we prioritize the security of our application and the privacy of our users. This security policy outlines the measures and features we implement to ensure a secure environment for all users of Hush Line.
+_Last updated: 2025-11-05_
 
-## Two-Factor Authentication (2FA)
+Hush Line is free and open-source software maintained by Science & Design, Inc. We take coordinated disclosure seriously and operate with a bias toward rapid remediation and transparency.
 
-- Hush Line offers 2FA, adding an extra layer of security by requiring two forms of identification before granting access to an account.
+Notable history: Hush Line has remediated CVEs related to CSP and security headers; see [CVE-2024-38522](https://nvd.nist.gov/vuln/detail/cve-2024-38522) and [CVE-2024-55888](https://nvd.nist.gov/vuln/detail/cve-2024-55888) for context. These were fixed in subsequent releases. 
 
-## HTTPS with Let's Encrypt
+An external security review has been supported via the [Open Technology Fund](https://www.opentech.fund/security-safety-audits/hush-line-security-audit/) program. Future independent assessments are governed by the “Independent Security Assessments” section below.
 
-- All traffic is encrypted using HTTPS, with certificates provided by Let's Encrypt, ensuring secure communication between users and our servers.
+---
 
-## End-to-End Encrypted Messages (E2EE) with OpenPGP.js
+## 1) Coordinated Vulnerability Disclosure (CVD)
 
-- PGP-enabled messages are encrypted from the sender's device to the recipient's device, preventing any unauthorized access in transit.
+- **Report channels**
+  - Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg) tip page (supports anonymous reporting).
+  - Alternative: open a private [GitHub](https://github.com/scidsg/hushline) Security Advisory draft on this repository.
 
-## Tor Onion Service
+- **Safe harbor**
+  - Good-faith research, consistent with this policy and applicable law, will not be the basis for civil or criminal action initiated by us.
 
-- Hush Line offers a Tor onion service, allowing users to access the application with enhanced privacy and security.
+- **Scope**
+  - In-scope: code and infrastructure in this repo and first-party hosted services under the `hushline.app` domain, including the tip submission service.
+  - Out-of-scope examples: denial-of-service, rate limiting bypass without impact, speculative findings without proof-of-concept, social engineering of maintainers or users.
 
-## Security Headers
+- **Vulnerability classes we care most about**
+  - Authentication/authorization flaws, crypto misuse, XSS/HTML injection, CSRF, SSRF, template injection, insecure direct object reference, logic bugs affecting anonymity or confidentiality, supply-chain injection.
 
-Hush Line implements a series of HTTP security headers to protect our users and their data. These headers help mitigate various types of attacks and ensure secure communication between clients and our servers. Below are the security headers we use and their purposes:
+- **What to include**
+  - A clear description, affected paths/versions, minimal reproducible steps or PoC, expected vs. actual behavior, impact assessment, and any logs/screens that help triage.
 
-### Strict-Transport-Security
+---
 
-- `Strict-Transport-Security: max-age=63072000; includeSubdomains`
-  - Ensures that browsers only connect to Hush Line over HTTPS, preventing man-in-the-middle attacks. The `max-age` directive specifies that the policy is remembered for two years.
+## 2) Triage & Response Objectives
 
-### X-Frame-Options
+- **Initial human response**: within 3 business days.
+- **Triage + severity**: within 7 days, we’ll assign CVSS and determine exploitability.
+- **Fix window (targets)**  
+  - Critical: 7 days  
+  - High: 14 days  
+  - Medium: 30 days  
+  - Low: 90 days
 
-- `X-Frame-Options: DENY`
-  - Prevents the website from being framed by other sites, mitigating clickjacking attacks.
+If exploitation in the wild is detected, we may hotfix and publish advisories immediately.
 
-### X-Content-Type-Options
+We generally issue GitHub Security Advisories and, when applicable, request a CVE assignment and reference affected and fixed versions in release notes.
 
-- `X-Content-Type-Options: nosniff`
-  - Stops browsers from trying to MIME-sniff the content type, which can prevent certain types of attacks like drive-by downloads.
+---
 
-### Onion-Location
+## 3) Independent Security Assessments
 
-- `Onion-Location: http://$ONION_ADDRESS\$request_uri`
-  - Provides an Onion-Location header which helps users on the Tor network to be aware of the site's onion service counterpart, enhancing privacy and security.
+- **Right to assess, not a maintenance guarantee**  
+  Science & Design, Inc. may commission independent third-party security assessments of Hush Line at its discretion, including static/dynamic testing, configuration review, threat modeling, and privacy analysis. These assessments are not guaranteed services under any maintenance agreement.
 
-## Content-Security-Policy (CSP)
+- **Scope control**  
+  Scope, methodology, data access, and test windows are defined by us to protect user privacy and service reliability. Testing that risks service stability will be isolated in staging environments unless otherwise authorized in writing.
 
-The Content-Security-Policy (CSP) header is a powerful tool used by web applications to mitigate the risk of Cross-Site Scripting (XSS) attacks and other types of code injection attacks. By specifying which content sources are trustworthy, CSP prevents the browser from loading malicious assets. Here's a breakdown of the CSP directive used:
+- **Deliverables & disclosure**  
+  We may share: (a) a high-level attestation or summary; (b) a redacted report; or (c) full report under NDA—at our sole discretion. Public disclosure, if any, occurs after remediation of high/critical issues.
 
-- `default-src 'self';` Only allow content from the site's own origin. This is the default policy for loading resources such as JavaScript, images, CSS, fonts, AJAX requests, frames, HTML5 media, and other data.
-- `script-src 'self' https://js.stripe.com https://cdn.jsdelivr.net;`
-  Allow scripts to be loaded from the site’s own origin, Stripe (for payment processing), and jsDelivr (for external libraries like Tesseract.js).
-- `img-src 'self' data: https:;` Allow images from the site's origin, inline images using data URIs, and images loaded over HTTPS from any origin.
-- `style-src 'self' 'unsafe-inline';` Only the stylesheets from the site's own origin, and dynamically loaded styles for customer instances.
-- `frame-ancestors 'none';` Prevent the site from being framed (embedded within an <iframe>) by other sites, mitigating Clickjacking attacks.
-- `connect-src 'self' https://api.stripe.com;` Restrict the origins to which you can connect (via XHR, WebSockets, and EventSource).
-- `child-src https://js.stripe.com;` Define valid sources for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>.
-- `frame-src https://js.stripe.com;` Specify valid sources for frames.
+- **No certification warranty**  
+  Audit results are point-in-time and do not constitute a warranty of ongoing security or compliance fitness. Findings are triaged and tracked via our advisory process.
 
-## Permissions-Policy
+---
 
-The Permissions-Policy header allows a site to control which features and APIs can be used in the browser. This policy helps enhance privacy and security by restricting access to certain browser features that can be abused by malicious content. Here's an explanation of the directives used:
+## 4) Cryptography & Data Protection
 
-- `geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();`
-  - This configuration disables all the listed features for the website, meaning the site will not have access to geolocation data, MIDI devices, push notifications, synchronous XMLHttpRequests during page dismissal, microphone, camera, magnetometer, gyroscope, speaker, vibration API, fullscreen requests, payment requests, and Federated Learning of Cohorts (FLoC), a web tracking and profiling technology.
+- End-to-end encryption for tip content; keys are never stored where they can be derived from plaintext submissions.  
+- Transport security: HTTPS/TLS enforced for all endpoints.  
+- Content Security Policy and security headers are enforced and regressions are treated as high severity in light of prior history.
+- No plaintext secrets in code; repository and CI are scanned prior to release.
 
-## Referrer-Policy
+---
 
-- `Referrer-Policy: no-referrer`
-  - Ensures that no referrer information is passed along with requests made from Hush Line, enhancing user privacy.
+## 5) Dependency & Supply-Chain Security
 
-## X-XSS-Protection
+- Automated dependency updates with review.  
+- Build artifacts are reproducible where feasible; pinned versions for critical transitive dependencies.  
+- Third-party JS is minimized, integrity-checked when externally loaded, and reviewed for license and security posture.
 
-- `X-XSS-Protection: 1; mode=block`
-  - Activates the browser's XSS filtering capabilities to prevent cross-site scripting attacks.
+---
 
-By implementing these security headers, Hush Line aims to provide a secure platform for our users, safeguarding their information against a wide array of potential threats. We continuously evaluate and update our security practices to adapt to the evolving digital landscape.
+## 6) Secure Development Lifecycle (SDLC)
 
-## Strong Password Policy
+- Mandatory code review for security-relevant changes.  
+- Static analysis and linters on CI; security checks run per PR.  
+- Secrets pre-commit hooks; forbidden patterns in CI.  
+- Security test coverage for authN/authZ, crypto, and request handlers under `tests/`.
 
-- Users are required to create complex passwords, meeting specific criteria to ensure account security.
+---
 
-## 30 Minute Session Timeout
+## 7) Infrastructure & Operations
 
-- Sessions expire after 30 minutes of inactivity, reducing the risk of unauthorized access.
+- Managed hosting for application and databases with hardened configuration; infra-as-code defines baseline controls (network segmentation, backups, least-privilege).  
+- Separate staging environment for destructive testing; production changes require review and approver separation.  
+- Logs minimize sensitive data; retention is bounded; access is audited.
 
-## OCSP Stapling
+---
 
-- Online Certificate Status Protocol (OCSP) Stapling is utilized to provide fresher certificate revocation information.
+## 8) Incident Response
 
-## SSL Resolver Timeout
+- Phases: detect → confirm → contain → eradicate → recover → learn.  
+- Notification: if a material security incident risks user data or anonymity, we will publish guidance and, when appropriate, in-product or site-wide notices.  
+- Post-mortems are written for high/critical incidents and may be public in summary form.
 
-- Configured to minimize the risk of Denial of Service (DoS) attacks through carefully timed resolver timeouts.
+---
 
-## Security.txt Server File
+## 9) Privacy & Anonymity Guarantees
 
-- A `security.txt` file is provided, making it easier for researchers to report security vulnerabilities.
+- Anonymous tip submission is a core requirement. We do not require PII to create an account or submit a tip. Use Tor/Onion services for additional network-layer protections when needed.
 
-## Environment Variables for Storing Secrets
+---
 
-- Sensitive information, such as database credentials and encryption keys, is stored securely using environment variables.
+## 10) Hardening Expectations for Self-Hosts
 
-## Database Encryption At Rest
+If you deploy Hush Line yourself, you are responsible for:
+- TLS with modern ciphers; HSTS; robust CSP; referrer policy; frame-ancestors.  
+- Regular updates to OS, runtime, and dependencies.  
+- Strong secrets management and key rotation.  
+- Isolated database with minimum privileges; backups with tested restores.
 
-- Databases are encrypted at rest to protect sensitive data from unauthorized access if physical security is compromised.
+---
 
-## Input Sanitation with Flask-WTF
+## 11) Versioning & Security Notes
 
-- Input from users is sanitized using Flask-WTF, preventing injection attacks and ensuring data integrity.
+Security-relevant changes are captured in releases and advisories. Review our Releases and the Security tab for patches and mitigation notes.
 
-## UFW and Fail2Ban
+---
 
-- The Uncomplicated Firewall (UFW) and Fail2Ban are configured to protect against unauthorized access and automated attacks.
+## 12) Contact
 
-## Automatic Updates with `unattended-upgrades`
-
-- Security patches and updates are automatically applied to ensure the application is protected against known vulnerabilities.
-
-## Onion Binding with Sauteed Onions
-
-- Integrates with Sauteed Onions to provide a seamless experience between the clearnet and onion services.
-
-## Secure Cookie Delivery and Prevention of JavaScript Access to Cookies
-
-- Cookies are delivered securely and configured to prevent access from JavaScript, enhancing privacy and security.
-
-## Reporting Security Vulnerabilities
-
-We encourage responsible disclosure of any security vulnerabilities. Please report any security concerns to us via Hush Line:
-
-- https://tips.hushline.app/submit_message/scidsg
-
-Our security team will investigate all reported issues and take appropriate actions to mitigate any vulnerabilities.
-
-## Commitment to Security
-
-Hush Line, under the stewardship of Science & Design, Inc., is committed to continuously improving the security of our application. We monitor the latest security best practices and engage with the security community to stay ahead of potential threats.
-
-This document is subject to updates and modifications. We recommend users and developers to stay informed about our latest security practices and updates.
+- Secure Disclosure: https://tips.hushline.app/to/scidsg  
+- Public: open a GitHub issue for non-sensitive questions
