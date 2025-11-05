@@ -49,6 +49,9 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ## 3. Independent Security Assessments
 
+- **Audit cadence**
+  The agreement may be amended to specify that an independent security audit will be scheduled annually, with the understanding that the actual timing of each audit will depend on the selected vendor’s availability and scheduling constraints.
+
 - **Right to assess, not a maintenance guarantee**  
   Science & Design, Inc. may commission independent third-party security assessments of Hush Line at its discretion, including static/dynamic testing, configuration review, threat modeling, and privacy analysis. These assessments are not guaranteed services under any maintenance agreement.
 
