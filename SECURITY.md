@@ -59,7 +59,7 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
   Scope, methodology, data access, and test windows are defined by us to protect user privacy and service reliability. Testing that risks service stability will be isolated in staging environments unless otherwise authorized in writing.
 
 - **Deliverables & disclosure**  
-  We may share: (a) a high-level attestation or summary; (b) a redacted report; or (c) full report under NDA—at our sole discretion. Public disclosure, if any, occurs after remediation of high/critical issues.
+  We may share: (a) a high-level attestation or summary; (b) a redacted report; or (c) a full report containing detailed technical findings when necessary to support transparency and verification. Public disclosure of findings follows the principles of [ISO/IEC 29147:2018 — Vulnerability Disclosure and the CERT/CC Coordinated Vulnerability Disclosure](https://www.iso.org/standard/72311.html) framework. Findings are made public after remediation of high or critical issues and in conjunction with the publication of any related CVE or corresponding security advisory.
 
 - **No certification warranty**  
   Audit results are point-in-time and do not constitute a warranty of ongoing security or compliance fitness. Findings are triaged and tracked via our advisory process.
