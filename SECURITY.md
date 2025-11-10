@@ -1,6 +1,6 @@
 # Hush Line Security Policy
 
-_Last updated: 2025-11-05_
+_Last updated: 10 November 2025_
 
 Hush Line is free and open-source software maintained by Science & Design, Inc. We take coordinated disclosure seriously and operate with a bias toward rapid remediation and transparency.
 
