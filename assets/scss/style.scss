@@ -1525,13 +1525,16 @@ a.logoutLink {
 
 footer {
   font-size: var(--font-size-smaller);
-  padding-left: 0;
   padding-right: 1rem;
   border-radius: 0 .25rem 0 0;
   z-index: 11;
   display: flex;
-  margin-top: 1rem;
-  align-self: start;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding-left: 1rem;
+  align-items: center;
+  height: 38px;
 }
 
 footer:has(a.powered-by) {
@@ -1553,8 +1556,7 @@ footer a {
 
 footer .powered-by {
   margin-left: 0.25rem;
-  font-size: var(--font-size-smallest);
-  color: var(--color-text-light);
+  font-size: var(--font-size-smaller);
 }
 
 footer a:hover {
