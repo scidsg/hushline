@@ -485,6 +485,14 @@
   .copy-container .copy-success {
     color: #25631d;
   }
+
+  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+    outline: 2px solid var(--color-brand);
+  }
+
+  #clearIcon:focus-visible {
+    outline: 2px solid var(--color-brand);
+  }
 }
 
 /* Dark Mode */
@@ -899,6 +907,14 @@
   .message:not(.message-container .message),
   .message-container {
     border: var(--border-dark);
+  }
+
+  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+    outline: 2px solid var(--color-brand-dark-min-saturation);
+  }
+
+  #clearIcon:focus-visible {
+    outline: 2px solid var(--color-brand-dark-min-saturation);
   }
 }
 
@@ -2017,21 +2033,22 @@ label.search + input {
 }
 
 #clearIcon {
+  all: unset;                  
+  box-sizing: border-box;
   position: absolute;
-  right: 1rem;
-  top: 60%;
+  right: 0.5rem;
+  top: 63%;
   transform: translateY(-50%);
-  color: #666;
-  font-size: 24px;
-  min-width: 0px;
-  min-height: 0px;
-  margin: 0px;
-  box-shadow: none;
-  background: transparent;
-  padding: 0px 2px;
-  visibility: hidden;
-  /* Hide the icon initially */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+}
+
+#clearIcon img {
+  width: 1.325rem;
+  height: 1.325rem;
+  display: block;
 }
 
 .empty-message {
@@ -2285,7 +2302,10 @@ input#captcha_answer {
 }
 
 .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
-  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+#clearIcon:focus-visible {
   outline-offset: 2px;
 }
 

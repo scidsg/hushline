@@ -53,10 +53,13 @@
     <button
       id="clearIcon"
       type="button"
-      style="cursor: pointer"
       aria-label="Clear search field"
+      style="cursor: pointer; background: none; border: none; padding: 0"
     >
-      &times;
+      <img
+        src="{{ url_for('static', filename='img/icon-clear.png') }}"
+        alt=""
+      />
     </button>
   </div>
 
