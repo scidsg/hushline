@@ -485,9 +485,11 @@
   .copy-container .copy-success {
     color: #25631d;
   }
+
   .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
     outline: 2px solid var(--color-brand);
   }
+
   #clearIcon:focus-visible {
     outline: 2px solid var(--color-brand);
   }
@@ -906,10 +908,11 @@
   .message-container {
     border: var(--border-dark);
   }
-  
+
   .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
     outline: 2px solid var(--color-brand-dark-min-saturation);
   }
+
   #clearIcon:focus-visible {
     outline: 2px solid var(--color-brand-dark-min-saturation);
   }
