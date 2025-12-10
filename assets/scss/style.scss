@@ -485,6 +485,12 @@
   .copy-container .copy-success {
     color: #25631d;
   }
+  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+    outline: 2px solid var(--color-brand);
+  }
+  #clearIcon:focus-visible {
+    outline: 2px solid var(--color-brand);
+  }
 }
 
 /* Dark Mode */
@@ -899,6 +905,13 @@
   .message:not(.message-container .message),
   .message-container {
     border: var(--border-dark);
+  }
+  
+  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+    outline: 2px solid var(--color-brand-dark-min-saturation);
+  }
+  #clearIcon:focus-visible {
+    outline: 2px solid var(--color-brand-dark-min-saturation);
   }
 }
 
@@ -2286,12 +2299,10 @@ input#captcha_answer {
 }
 
 .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
-  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
 
 #clearIcon:focus-visible {
-  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
 
