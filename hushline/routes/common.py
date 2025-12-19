@@ -27,15 +27,13 @@ def valid_username(form: Form, field: Field) -> None:
 def _dir_sort_key(u: Username) -> str:
     s = (u._display_name or u._username or "").strip()
     s = unicodedata.normalize("NFKC", s)
-    s = unidecode(s)           # Hangul, Kana, Cyrillic, etc -> Latin-ish
+    s = unidecode(s)  # Hangul, Kana, Cyrillic, etc -> Latin-ish
     return s.casefold()
 
 
 def get_directory_usernames() -> Sequence[Username]:
     rows = db.session.scalars(
-        db.select(Username)
-        .join(User)
-        .filter(Username.show_in_directory.is_(True))
+        db.select(Username).join(User).filter(Username.show_in_directory.is_(True))
     ).all()
 
     rows.sort(key=lambda u: (not u.user.is_admin, _dir_sort_key(u), u.id))
