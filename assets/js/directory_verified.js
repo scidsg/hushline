@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
                               : ""
                           }
                           <div class="user-actions">
-                              <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+                              <a href="${pathPrefix}/to/${encodeURIComponent(user.primary_username)}">View Profile</a>
                               ${
                                 isSessionUser
                                   ? `<a href="#" class="report-link" data-username="${
