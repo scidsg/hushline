@@ -32,9 +32,11 @@ def _dir_sort_key(u: Username) -> str:
 
 
 def get_directory_usernames() -> Sequence[Username]:
-    rows = db.session.scalars(
-        db.select(Username).join(User).filter(Username.show_in_directory.is_(True))
-    ).all()
+    rows = list(
+        db.session.scalars(
+            db.select(Username).join(User).filter(Username.show_in_directory.is_(True))
+        ).all()
+    )
 
     rows.sort(key=lambda u: (not u.user.is_admin, _dir_sort_key(u), u.id))
     return rows
