@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="badgeContainer">${badgeContainer}</div>
                     ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
                     <div class="user-actions">
-                        <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+                        <a href="${pathPrefix}/to/${encodeURIComponent(user.primary_username)}">View Profile</a>
                         ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
                     </div>
                 `;
