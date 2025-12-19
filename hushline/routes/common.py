@@ -1,5 +1,6 @@
 import re
 import socket
+import unicodedata
 from typing import Sequence
 
 from flask import (
@@ -7,6 +8,7 @@ from flask import (
     flash,
     session,
 )
+from unidecode import unidecode
 from wtforms import Field, Form
 from wtforms.validators import ValidationError
 
@@ -22,16 +24,22 @@ def valid_username(form: Form, field: Field) -> None:
         )
 
 
+def _dir_sort_key(u: Username) -> str:
+    s = (u._display_name or u._username or "").strip()
+    s = unicodedata.normalize("NFKC", s)
+    s = unidecode(s)  # Hangul, Kana, Cyrillic, etc -> Latin-ish
+    return s.casefold()
+
+
 def get_directory_usernames() -> Sequence[Username]:
-    return db.session.scalars(
-        db.select(Username)
-        .join(User)
-        .filter(Username.show_in_directory.is_(True))
-        .order_by(
-            User.is_admin.desc(),
-            db.func.coalesce(Username._display_name, Username._username),
-        )
-    ).all()
+    rows = list(
+        db.session.scalars(
+            db.select(Username).join(User).filter(Username.show_in_directory.is_(True))
+        ).all()
+    )
+
+    rows.sort(key=lambda u: (not u.user.is_admin, _dir_sort_key(u), u.id))
+    return rows
 
 
 def validate_captcha(captcha_answer: str) -> bool:
