@@ -31,6 +31,7 @@ from wtforms.validators import Optional as OptionalField
 from hushline.db import db
 from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor, ValidTemplate
 from hushline.model import FieldType, MessageStatus, SMTPEncryption, Username
+from hushline.routes.common import valid_username
 
 
 class ChangePasswordForm(FlaskForm):
@@ -146,6 +147,7 @@ class NewAliasForm(FlaskForm):
         validators=[
             DataRequired(),
             Length(min=Username.USERNAME_MIN_LENGTH, max=Username.USERNAME_MAX_LENGTH),
+            valid_username,
         ],
     )
     submit = SubmitField("Add Alias", name="new_alias", widget=Button())
