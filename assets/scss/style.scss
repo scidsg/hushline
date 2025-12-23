@@ -78,6 +78,7 @@
   --font-size-5: 1.125rem;
 
   --shadow: 0px 4px 48px -12px rgba(0, 0, 0, 0.45);
+  --shadow-dynamic: 0px 4px 48px -24px rgba(0,0,0,0.15);
 
   --line-height-base: 1.40625;
 }
@@ -132,6 +133,7 @@
 
   header {
     background-color: var(--color-white-transparent);
+    box-shadow: var(--shadow-dynamic);
   }
 
   header nav a {
@@ -150,6 +152,7 @@
     border: var(--border);
     background-color: white;
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-dynamic);
   }
 
   .dirMeta,
@@ -223,6 +226,7 @@
   #results > div {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-dynamic);
   }
 
   p.instr {
@@ -323,12 +327,15 @@
   header nav ul.show {
     background-color: white;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-dynamic);
     outline: var(--border);
   }
 
   .message:not(.message-container .message) {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
     background-color: white;
   }
 
@@ -342,6 +349,7 @@
   .dropdown-content {
     background-color: white;
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
     border: var(--border);
     opacity: 0;
   }
@@ -370,6 +378,7 @@
     background-color: white;
     border: var(--border);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-dynamic);
   }
 
   .message .message-label,
@@ -385,6 +394,8 @@
   .admin-highlights .metric {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
   }
 
   .metric p:nth-child(1n) {
@@ -402,6 +413,8 @@
   input[type="file"] {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
   }
 
   .banner {
@@ -520,6 +533,7 @@
   header {
     background-color: var(--color-dark-bg-alt-transparent);
     color: var(--color-text-dark);
+    box-shadow: var(--shadow-dynamic);
   }
 
   header nav a {
@@ -529,6 +543,8 @@
   header nav ul.show {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
     outline: var(--border-dark);
   }
 
@@ -541,6 +557,7 @@
     border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-dynamic);
   }
 
   .dirMeta,
@@ -616,6 +633,7 @@
   #results > div {
     border: var(--border-dark-1);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
     background-color: var(--color-dark-bg-alt-1);
   }
 
@@ -753,6 +771,8 @@
   .message-container {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
     background-color: var(--color-dark-bg-alt);
   }
 
@@ -771,6 +791,7 @@
   .dropdown-content {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
     border: var(--border-dark);
     opacity: 0;
   }
@@ -824,6 +845,7 @@
   .admin-highlights .metric {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
   }
 
   .metric p:nth-child(1n) {
@@ -841,6 +863,8 @@
   input[type="file"] {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+
   }
 
   .banner {
@@ -3089,6 +3113,7 @@ strong {
   text-align: left;
   display: none;
   box-shadow: var(--shadow);
+  box-shadow: var(--shadow-dynamic);
   box-sizing: border-box;
   max-height: 80vh;
   overflow: hidden;

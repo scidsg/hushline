@@ -18,6 +18,7 @@ modules = [
   "settings-fields",
   "settings",
   "submit-message",
+  "time-shadows",
   "vision",
   // dummies for css
   "style",
