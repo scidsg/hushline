@@ -13,7 +13,7 @@
   // Container: deeper, softer, more grounded
   const containerProfile = {
     minLen: 6,
-    maxLen: 12,
+    maxLen: 10,
     nightLen: 6,
 
     horizonA: 0.55,
