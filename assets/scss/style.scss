@@ -8,48 +8,25 @@
   --color-border-dark: #787878;
   --color-border-dark-1: #505050;
   --color-brand: oklch(48.55% 0.222 304.47);
-  --color-brand-min-contrast: oklch(
-    from var(--color-brand) clamp(0.1, l, 0.6) c h
-  );
-  --color-brand-mid-contrast: oklch(
-    from var(--color-brand-min-contrast) max(l - 0.125, 0.1) calc(1.25 * c) h
-  );
-  --color-brand-max-contrast: oklch(
-    from var(--color-brand-min-contrast) max(l - 0.25, 0.1) calc(1.25 * c) h
-  );
-  --color-brand-dark-min-saturation: oklch(
-    from var(--color-brand) clamp(0.96, l + 0.425, 0.98) calc(0.5 * c) h
-  );
-  --color-brand-dark-mid-saturation: oklch(
-    from var(--color-brand) clamp(0.93, l + 0.4, 0.98) calc(0.75 * c) h
-  );
-  --color-brand-dark-max-saturation: oklch(
-    from var(--color-brand) clamp(0.8, l + 0.175, 0.94) calc(1.5 * c)
-      calc(h - 6)
-  );
+  --color-brand-min-contrast: oklch(from var(--color-brand) clamp(0.1, l, 0.6) c h);
+  --color-brand-mid-contrast: oklch(from var(--color-brand-min-contrast) max(l - 0.125, 0.1) calc(1.25 * c) h);
+  --color-brand-max-contrast: oklch(from var(--color-brand-min-contrast) max(l - 0.25, 0.1) calc(1.25 * c) h);
+  --color-brand-dark-min-saturation: oklch(from var(--color-brand) clamp(0.96, l + 0.425, 0.98) calc(0.5 * c) h);
+  --color-brand-dark-mid-saturation: oklch(from var(--color-brand) clamp(0.93, l + 0.4, 0.98) calc(0.75 * c) h);
+  --color-brand-dark-max-saturation: oklch(from var(--color-brand) clamp(0.8, l + 0.175, 0.94) calc(1.5 * c) calc(h - 6));
   --color-brand-modal: color-mix(in oklch, var(--color-brand) 75%, transparent);
-  --color-brand-modal-dark: color-mix(
-    in oklch,
-    var(--color-brand-dark-min-saturation) 75%,
-    transparent
-  );
+  --color-brand-modal-dark: color-mix(in oklch,
+      var(--color-brand-dark-min-saturation) 75%,
+      transparent);
   --color-text: #333;
   --color-text-dark-alt-2: #e6e6e6;
   --color-text-dark-alt: #c4c4c4;
   --color-text-dark: #dcdcdc;
   --color-text-light: #595959;
   --color-highlight: oklch(from var(--color-brand) l c h / 0.1);
-  --color-highlight-dark: oklch(
-    from var(--color-brand-dark-mid-saturation) l c h / 0.2
-  );
-  --color-brand-bg: oklch(
-    from var(--color-brand) clamp(0.8, l + 0.4883, 0.98) min(c, 0.0179)
-      calc(h + 10.26)
-  );
-  --color-dark-bg: oklch(
-    from var(--color-brand) clamp(0.18, l - 0.275, 0.2) min(c, 0.01)
-      calc(h + 10.26)
-  );
+  --color-highlight-dark: oklch(from var(--color-brand-dark-mid-saturation) l c h / 0.2);
+  --color-brand-bg: oklch(from var(--color-brand) clamp(0.8, l + 0.4883, 0.98) min(c, 0.0179) calc(h + 10.26));
+  --color-dark-bg: oklch(from var(--color-brand) clamp(0.18, l - 0.275, 0.2) min(c, 0.01) calc(h + 10.26));
   --color-dark-bg-alt: #272727;
   --color-dark-bg-alt-1: #353535;
   --color-dark-bg-alt-transparent: rgba(39, 39, 39, 0.75);
@@ -223,10 +200,10 @@
 
   .user,
   .message-container,
-  #results > div {
+  #results>div {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
   }
 
   p.instr {
@@ -258,8 +235,7 @@
     background-color: white;
     color: var(--color-brand-mid-contrast);
     border: 1px solid var(--color-brand-mid-contrast);
-    box-shadow: 0px 2px 0px 0px
-      oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
   }
 
   .formBody input[type="submit"]:hover,
@@ -274,8 +250,7 @@
   .btn:active,
   input[type="file"]::file-selector-button:active,
   select:active {
-    box-shadow: inset 0px 2px 0px 0px
-      oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
+    box-shadow: inset 0px 2px 0px 0px oklch(from var(--color-brand) min(l, 0.95) c h / 0.25);
   }
 
   .modal {
@@ -370,7 +345,7 @@
     background: white;
   }
 
-  .toggle-ui input[type="checkbox"]:checked ~ label .toggle {
+  .toggle-ui input[type="checkbox"]:checked~label .toggle {
     background: var(--color-brand-min-contrast);
   }
 
@@ -438,6 +413,7 @@
   }
 
   @media (max-width: 640px) {
+
     .settings-main .settings-content .tab.active,
     .inbox-main .inbox-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand);
@@ -499,7 +475,7 @@
     color: #25631d;
   }
 
-  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+  .toggle-ui input[type="checkbox"]:focus-visible~label .toggle {
     outline: 2px solid var(--color-brand);
   }
 
@@ -630,10 +606,11 @@
   }
 
   .user,
-  #results > div {
+  .message-container,
+  #results>div {
     border: var(--border-dark-1);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic-card);
     background-color: var(--color-dark-bg-alt-1);
   }
 
@@ -666,11 +643,11 @@
     background-color: var(--color-dark);
     color: var(--color-brand-dark-min-saturation);
     border: 1px solid var(--color-brand-dark-min-saturation);
-    box-shadow: 0px 2px 0px 0px
-      oklch(from var(--color-brand-dark-max-saturation) l c h / 0.25);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand-dark-max-saturation) l c h / 0.25);
   }
 
   @media (max-width: 640px) {
+
     .settings-main .settings-content .tab.active,
     .inbox-main .inbox-content .tab.active {
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
@@ -710,8 +687,7 @@
   .formBody button:active,
   .btn:active,
   input[type="file"]::file-selector-button:active {
-    box-shadow: inset 0px 2px 0px 0px
-      oklch(from var(--color-brand) l c h / 0.25);
+    box-shadow: inset 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
   }
 
   .modal-content {
@@ -754,7 +730,7 @@
     border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  h2.submit + .badgeContainer .badge {
+  h2.submit+.badgeContainer .badge {
     background-color: var(--color-dark-bg-alt);
   }
 
@@ -816,7 +792,7 @@
     background: #333;
   }
 
-  .toggle-ui input[type="checkbox"]:checked ~ label .toggle {
+  .toggle-ui input[type="checkbox"]:checked~label .toggle {
     background: var(--color-brand-dark-mid-saturation);
   }
 
@@ -933,7 +909,7 @@
     border: var(--border-dark);
   }
 
-  .toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+  .toggle-ui input[type="checkbox"]:focus-visible~label .toggle {
     outline: 2px solid var(--color-brand-dark-min-saturation);
   }
 
@@ -993,28 +969,28 @@ h2.submit {
   margin-bottom: 0.25rem;
 }
 
-h2 + p {
+h2+p {
   margin-top: 0.25rem;
 }
 
-h2.submit + p {
+h2.submit+p {
   margin-top: 1rem;
 }
 
-h2.submit ~ .instr {
+h2.submit~.instr {
   margin: 0.25rem 0 1rem 0;
 }
 
-h2.submit ~ p + .instr {
+h2.submit~p+.instr {
   margin-bottom: 0.75rem;
   margin-top: 0.25rem;
 }
 
-h2.submit ~ p.bio + .instr {
+h2.submit~p.bio+.instr {
   margin-top: 0;
 }
 
-h2.submit ~ .bio {
+h2.submit~.bio {
   margin: 0.75rem 0 1rem 0;
 }
 
@@ -1107,7 +1083,7 @@ p b {
   margin-bottom: 1rem;
 }
 
-.user .badgeContainer:not(:empty) + .user-actions {
+.user .badgeContainer:not(:empty)+.user-actions {
   margin-top: 0.125rem;
 }
 
@@ -1115,9 +1091,7 @@ p b {
   margin-top: 0.75rem;
 }
 
-h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not(
-    :has(+ .badgeContainer)
-  ):not(:has(+ .instr)) {
+h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContainer)):not(:has(+ .instr)) {
   margin-bottom: 1rem;
 }
 
@@ -1397,7 +1371,7 @@ label {
   line-height: var(--line-height-base);
 }
 
-h3 + .meta {
+h3+.meta {
   margin-top: 0.75rem;
 }
 
@@ -1408,7 +1382,7 @@ p.instr {
   padding: 0.9125rem 1rem;
 }
 
-h2.submit + p.instr {
+h2.submit+p.instr {
   margin: 0.75rem 0 0.5rem 0;
 }
 
@@ -1437,7 +1411,7 @@ textarea#pgp_key {
   margin-bottom: 0.75rem;
 }
 
-input + button {
+input+button {
   margin: 0.25rem 0;
 }
 
@@ -1755,7 +1729,7 @@ img.alert {
   margin-bottom: 0.75rem;
 }
 
-#results > div {
+#results>div {
   border-radius: 0.25rem;
 }
 
@@ -2026,7 +2000,7 @@ input:focus {
   margin: 0;
 }
 
-label.search + input {
+label.search+input {
   padding-left: 2.5rem;
 }
 
@@ -2057,7 +2031,7 @@ label.search + input {
 }
 
 #clearIcon {
-  all: unset;                  
+  all: unset;
   box-sizing: border-box;
   position: absolute;
   right: 0.5rem;
@@ -2115,7 +2089,7 @@ p.section-intro:not(:first-of-type) {
   margin: 0 0 1rem 0;
 }
 
-#results > div {
+#results>div {
   margin-bottom: 1rem;
   padding: 1.5rem 1rem;
 }
@@ -2125,11 +2099,11 @@ p.section-intro:not(:first-of-type) {
   margin-top: 0;
 }
 
-.file-name + p {
+.file-name+p {
   margin-bottom: 0;
 }
 
-.file-name ~ .bold {
+.file-name~.bold {
   font-family: var(--font-sans-bold);
 }
 
@@ -2181,8 +2155,8 @@ input#captcha_answer {
   padding: 0.125rem 0;
 }
 
-.banner + header,
-.banner + header + main {
+.banner+header,
+.banner+header+main {
   margin-top: calc(40px + env(safe-area-inset-top));
 }
 
@@ -2190,7 +2164,7 @@ input#captcha_answer {
   margin-bottom: 0;
 }
 
-#email .forwarding + .meta {
+#email .forwarding+.meta {
   margin-bottom: 1rem;
 }
 
@@ -2321,11 +2295,11 @@ input#captcha_answer {
   transition: transform 0.2s;
 }
 
-.toggle-ui input[type="checkbox"]:checked ~ label .toggle__ball {
+.toggle-ui input[type="checkbox"]:checked~label .toggle__ball {
   transform: translateX(24px);
 }
 
-.toggle-ui input[type="checkbox"]:focus-visible ~ label .toggle {
+.toggle-ui input[type="checkbox"]:focus-visible~label .toggle {
   outline-offset: 2px;
 }
 
@@ -2385,7 +2359,7 @@ button[name="update_directory_visibility"] {
   width: 100%;
 }
 
-.input-pair > div {
+.input-pair>div {
   flex: 1;
   position: relative;
 }
@@ -2405,14 +2379,14 @@ button[name="update_directory_visibility"] {
   position: relative;
 }
 
-.input-pair input + .icon.verifiedURL {
+.input-pair input+.icon.verifiedURL {
   position: absolute;
   right: 0%;
   top: 42px;
   left: calc(100% - 20px - 8px);
 }
 
-.form-group-pairs + button {
+.form-group-pairs+button {
   margin-top: 1.25rem;
 }
 
@@ -2424,7 +2398,7 @@ button[name="update_directory_visibility"] {
   display: inline-block;
 }
 
-p.bio + .extra-fields {
+p.bio+.extra-fields {
   margin-top: 0;
 }
 
@@ -2484,8 +2458,8 @@ p.bio + .extra-fields {
   z-index: 1;
 }
 
-.extra-field-value .icon.verifiedURL + a,
-.extra-field-value .icon.verifiedURL + span {
+.extra-field-value .icon.verifiedURL+a,
+.extra-field-value .icon.verifiedURL+span {
   padding-left: 1.5rem;
 }
 
@@ -2658,7 +2632,7 @@ p.bio + .extra-fields {
   margin-bottom: 0;
 }
 
-.settings-main .settings-content .settings-tabs + div,
+.settings-main .settings-content .settings-tabs+div,
 .message-list {
   width: 100%;
 }
@@ -2713,7 +2687,7 @@ p.bio + .extra-fields {
     width: 100%;
   }
 
-  .tab-content > h3 {
+  .tab-content>h3 {
     margin-top: 1.25rem;
   }
 
@@ -2757,7 +2731,7 @@ p.bio + .extra-fields {
     padding-top: 0;
   }
 
-  .settings-main .settings-content .settings-tabs + div {
+  .settings-main .settings-content .settings-tabs+div {
     width: 100%;
   }
 
@@ -2820,7 +2794,7 @@ p.bio + .extra-fields {
   content: "";
 }
 
-form + h3 {
+form+h3 {
   margin-top: 2rem;
 }
 
@@ -2836,8 +2810,8 @@ h3 {
   background-repeat: no-repeat;
 }
 
-.alias-heading + .meta,
-.alias-heading + a {
+.alias-heading+.meta,
+.alias-heading+a {
   margin-bottom: 2rem;
   margin-top: 0.25rem;
 }
@@ -2958,7 +2932,7 @@ h3 {
   font-weight: normal;
 }
 
-.message-container .message-meta + div strong {
+.message-container .message-meta+div strong {
   font-family: var(--font-sans-bold);
   font-size: var(--font-size-base);
   font-weight: normal;
@@ -3076,6 +3050,7 @@ strong {
     opacity: 0;
     transform: translateY(1.5rem);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -3278,7 +3253,7 @@ strong {
   margin-bottom: 1rem;
 }
 
-#messageForm .field-group input + .meta {
+#messageForm .field-group input+.meta {
   margin-bottom: 0;
 }
 
@@ -3338,7 +3313,7 @@ strong {
   font-family: var(--font-sans-bold);
 }
 
-label + .meta {
+label+.meta {
   max-width: fit-content;
   width: 100%;
   margin: 0;
@@ -3361,8 +3336,8 @@ label + .meta {
   margin-bottom: 1rem;
 }
 
-input[type="checkbox"] + label:not(.toggle-label),
-input[type="radio"] + label {
+input[type="checkbox"]+label:not(.toggle-label),
+input[type="radio"]+label {
   font-family: var(--font-sans);
 }
 
@@ -3371,7 +3346,7 @@ input[type="radio"] + label {
   margin-bottom: 0.5rem;
 }
 
-ul + p.meta {
+ul+p.meta {
   margin-top: 0rem;
 }
 
@@ -3389,7 +3364,7 @@ p.encrypted-value {
   font-size: 0.8125rem;
 }
 
-label > .meta {
+label>.meta {
   font-family: var(--font-sans);
   margin-left: 0.25rem;
 }
@@ -3414,7 +3389,7 @@ li label {
   margin-top: 0;
 }
 
-form:last-of-type + .fields {
+form:last-of-type+.fields {
   margin-top: 2rem;
 }
 
@@ -3439,11 +3414,11 @@ form:last-of-type + .fields {
   font-family: var(--font-sans-bold);
 }
 
-#email_address ~ .toggle-ui {
+#email_address~.toggle-ui {
   margin-bottom: 1.5rem;
 }
 
-#email_address + .meta {
+#email_address+.meta {
   margin-top: 0.5rem;
   margin-bottom: 1.25rem;
 }
