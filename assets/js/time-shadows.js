@@ -5,7 +5,7 @@
   const sunset = 18.0;
 
   // DEBUG: set to a number (0–24) to force a specific time, or null for real time
-  const DEBUG_HOUR = 6;
+  const DEBUG_HOUR = null;
 
   const root = document.documentElement;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
