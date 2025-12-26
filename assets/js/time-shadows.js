@@ -12,24 +12,24 @@
 
   // Container: deeper, softer, more grounded
   const containerProfile = {
-    minLen: 6,
-    maxLen: 10,
-    nightLen: 6,
+    minLen: 8,
+    maxLen: 24,
+    nightLen: 8,
 
     horizonA: 0.55,
     horizonB: 0.45,
 
     blurMin: 12,
-    blurMax: 22,
-    nightBlur: 18,
+    blurMax: 20,
+    nightBlur: 12,
 
-    spreadMin: -2,
-    spreadMax: -6,
-    nightSpread: -6,
+    spreadMin: -4,
+    spreadMax: -8,
+    nightSpread: -4,
 
-    alphaMin: 0.08,
-    alphaMax: 0.12,
-    nightAlpha: 0.12,
+    alphaMin: 0.1,
+    alphaMax: 0.1,
+    nightAlpha: 0.1,
 
     nightDx: -0.4,
     nightDy: 0.6,
@@ -37,24 +37,24 @@
 
   // Cards: lighter, tighter, closer to surface
   const cardProfile = {
-    minLen: 2,
-    maxLen: 6,
-    nightLen: 4,
+    minLen: 6,
+    maxLen: 12,
+    nightLen: 6,
 
     horizonA: 0.3,
     horizonB: 0.25,
 
-    blurMin: 5,
-    blurMax: 9,
-    nightBlur: 7,
+    blurMin: 6,
+    blurMax: 12,
+    nightBlur: 4,
 
-    spreadMin: 0,
-    spreadMax: -1,
-    nightSpread: 0,
+    spreadMin: -2,
+    spreadMax: -4,
+    nightSpread: -2,
 
-    alphaMin: 0.03,
-    alphaMax: 0.065,
-    nightAlpha: 0.085,
+    alphaMin: 0.06,
+    alphaMax: 0.08,
+    nightAlpha: 0.1,
 
     nightDx: -0.25,
     nightDy: 0.45,
