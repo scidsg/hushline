@@ -1,8 +1,8 @@
 # 🤫 Hush Line
 
-[Hush Line](https://hushline.app) is the first software-as-a-service and platform-as-a-service, open-source whistleblower management system for lawyers, journalists, educators, business leaders and more. We take care of the tech so you can focus on the mission, not the machines.
+[Hush Line](https://hushline.app) is a free & open-source whistleblower platform that provides secure, anonymous tip lines with no self-hosting, maintenance, or technical overhead. Sign up for a free account at https://tips.hushline.app/register
 
-![cover](https://github.com/user-attachments/assets/45d1646c-c1e5-4738-a668-c0aaa7845f08)
+<img width="3971" height="2084" alt="social" src="https://github.com/user-attachments/assets/723eae60-d6e5-4470-88d6-1f0f22a9c6b8" />
 
 ## Hush Line Features
 
