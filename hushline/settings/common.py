@@ -98,7 +98,9 @@ async def _is_safe_verification_url(url_to_verify: str) -> bool:
         return False
 
     if not hostname:
-        current_app.logger.warning(f"URL verification rejected due to missing hostname: {url_to_verify!r}")
+        current_app.logger.warning(
+            f"URL verification rejected due to missing hostname: {url_to_verify!r}"
+        )
         return False
 
     if current_app.config["TESTING"]:
