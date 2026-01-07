@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import uuid4
 from typing import TYPE_CHECKING
 
 from markupsafe import Markup
@@ -23,6 +24,13 @@ class Message(Model):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(
+        db.String(36),
+        unique=True,
+        index=True,
+        nullable=False,
+        default=lambda: str(uuid4()),
+    )
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
@@ -43,6 +51,7 @@ class Message(Model):
         super().__init__(
             username_id=username_id,  # type: ignore[call-arg]
             reply_slug=gen_reply_slug(),  # type: ignore[call-arg]
+            public_id=str(uuid4()),  # type: ignore[call-arg]
         )
 
     # using a plain property because the mapper/join was too complicated.

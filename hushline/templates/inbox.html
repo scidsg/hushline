@@ -34,7 +34,7 @@
               <p>To: @{{ message.username.username }}</p>
             {% endif %}
             <p>{{ message.created_at.date() }}</p>
-            <p><a class="stretched-link" href="{{ url_for('message', id=message.id) }}">Go to message</a></p>
+            <p><a class="stretched-link" href="{{ url_for('message', public_id=message.public_id) }}">Go to message</a></p>
           </article>
         {% endfor %}
       {% else %}

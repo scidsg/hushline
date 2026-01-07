@@ -47,7 +47,7 @@ def test_notifications_disabled(
     # Check if do_send_email was not called
     mock_do_send_email.assert_not_called()
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -82,14 +82,14 @@ def test_notifications_enabled_no_content(
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
     # Check if do_send_email was called
     mock_do_send_email.assert_called_once_with(user, plaintext_new_message_body)
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -125,7 +125,7 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -138,7 +138,7 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
     assert "Message" in args[1]
     assert pgp_message_sig in args[1]
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -179,14 +179,14 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
     # Check if do_send_email was called with encrypted email body
     mock_do_send_email.assert_called_once_with(user, encrypted_email_body)
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -225,13 +225,13 @@ def test_notifications_enabled_yes_content_yes_encrypted_body_failed_client_encr
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
     # Check if do_send_email was called with plaintext message
     mock_do_send_email.assert_called_once_with(user, plaintext_new_message_body)
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text

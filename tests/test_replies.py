@@ -68,7 +68,7 @@ def test_set_custom_replies(client: FlaskClient, user: User) -> None:
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_message_page(client: FlaskClient, user: User, message: Message) -> None:
-    resp = client.get(url_for("message", id=message.id))
+    resp = client.get(url_for("message", public_id=message.public_id))
     assert resp.status_code == 200
     assert "Message" in resp.text
 
@@ -77,7 +77,7 @@ def test_message_page(client: FlaskClient, user: User, message: Message) -> None
 def test_message_page_wrong_user(
     client: FlaskClient, user: User, user2: User, message2: Message
 ) -> None:
-    resp = client.get(url_for("message", id=message2.id), follow_redirects=True)
+    resp = client.get(url_for("message", public_id=message2.public_id), follow_redirects=True)
     assert resp.status_code == 404
     assert "Message" not in resp.text
     assert "404: Not Found" in resp.text

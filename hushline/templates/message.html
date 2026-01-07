@@ -6,11 +6,11 @@
 <div class="message-header">
   <h1>Message</h1>
   <div class="action-model">
-    <form id="statusForm" class="formBody" method="POST" action="{{ url_for('set_message_status', id=message.id) }}">
+    <form id="statusForm" class="formBody" method="POST" action="{{ url_for('set_message_status', public_id=message.public_id) }}">
       {{ update_status_form.hidden_tag() }}
       {{ update_status_form.status }}
     </form>
-    <form class="formBody" method="POST" action="{{ url_for('delete_message', id=message.id) }}">
+    <form class="formBody" method="POST" action="{{ url_for('delete_message', public_id=message.public_id) }}">
       {{ delete_message_form.submit(class="btn-danger") }}
     </form>
   </div>
