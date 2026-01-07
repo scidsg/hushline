@@ -26,7 +26,7 @@ def test_delete_own_message(client: FlaskClient, user: User) -> None:
 
     # Attempt to delete the user's own message
     response = client.post(
-        url_for("delete_message", id=message.id),
+        url_for("delete_message", public_id=message.public_id),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -64,7 +64,7 @@ def test_cannot_delete_other_user_message(
 
     # Attempt to delete the other user's message
     response = client.post(
-        url_for("delete_message", id=other_user_message.id),
+        url_for("delete_message", public_id=other_user_message.public_id),
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -102,7 +102,7 @@ def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username)
     resp = client.get(url_for("inbox"))
     for msg in messages:
         assert resp.status_code == 200
-        assert f'href="{url_for("message", id=msg.id)}"' in resp.text
+        assert f'href="{url_for("message", public_id=msg.public_id)}"' in resp.text
 
     # status filter
     for msg in messages:
@@ -110,9 +110,11 @@ def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username)
 
         # find match
         assert resp.status_code == 200
-        assert f'href="{url_for("message", id=msg.id)}"' in resp.text
+        assert f'href="{url_for("message", public_id=msg.public_id)}"' in resp.text
 
         # don't find the other matches
         for other_msg in messages:
-            if other_msg.id != msg.id:
-                assert f'href="{url_for("message", id=other_msg.id)}"' not in resp.text
+            if other_msg.public_id != msg.public_id:
+                assert (
+                    f'href="{url_for("message", public_id=other_msg.public_id)}"' not in resp.text
+                )
