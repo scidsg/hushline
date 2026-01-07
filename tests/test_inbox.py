@@ -116,6 +116,5 @@ def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username)
         for other_msg in messages:
             if other_msg.public_id != msg.public_id:
                 assert (
-                    f'href="{url_for("message", public_id=other_msg.public_id)}"'
-                    not in resp.text
+                    f'href="{url_for("message", public_id=other_msg.public_id)}"' not in resp.text
                 )

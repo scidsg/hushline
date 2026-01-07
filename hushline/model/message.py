@@ -1,6 +1,6 @@
 from datetime import datetime
-from uuid import uuid4
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from markupsafe import Markup
 from sqlalchemy import Enum as SQLAlchemyEnum

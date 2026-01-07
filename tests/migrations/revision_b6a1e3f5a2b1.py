@@ -63,12 +63,7 @@ class UpgradeTester(LoadUser):
 
     def check_upgrade(self) -> None:
         assert db.session.scalar(text("SELECT count(*) FROM messages")) == self.message_count
-        assert (
-            db.session.scalar(
-                text("SELECT count(*) FROM messages WHERE public_id IS NULL")
-            )
-            == 0
-        )
+        assert db.session.scalar(text("SELECT count(*) FROM messages WHERE public_id IS NULL")) == 0
 
 
 class DowngradeTester(LoadUser):
