@@ -24,13 +24,13 @@ from hushline.model import (
 
 
 def register_message_routes(app: Flask) -> None:
-    @app.route("/message/<int:id>")
+    @app.route("/message/<public_id>")
     @authentication_required
-    def message(id: int) -> str:
+    def message(public_id: str) -> str:
         msg = db.session.scalars(
             db.select(Message)
             .join(Username)
-            .filter(Username.user_id == session["user_id"], Message.id == id)
+            .filter(Username.user_id == session["user_id"], Message.public_id == public_id)
         ).one_or_none()
 
         if not msg:
@@ -54,14 +54,14 @@ def register_message_routes(app: Flask) -> None:
 
         return render_template("reply.html", message=msg)
 
-    @app.route("/message/<int:id>/delete", methods=["POST"])
+    @app.route("/message/<public_id>/delete", methods=["POST"])
     @authentication_required
-    def delete_message(id: int) -> Response:
+    def delete_message(public_id: str) -> Response:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         message = db.session.scalars(
             db.select(Message).where(
-                Message.id == id,
+                Message.public_id == public_id,
                 Message.username_id.in_(
                     db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
@@ -79,20 +79,20 @@ def register_message_routes(app: Flask) -> None:
 
         return redirect(url_for("inbox"))
 
-    @app.route("/message/<int:id>/status", methods=["POST"])
+    @app.route("/message/<public_id>/status", methods=["POST"])
     @authentication_required
-    def set_message_status(id: int) -> Response:
+    def set_message_status(public_id: str) -> Response:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         form = UpdateMessageStatusForm()
         if not form.validate():
             flash(f"Invalid status: {form.status.data}")
-            return redirect(url_for("message", id=id))
+            return redirect(url_for("message", public_id=public_id))
 
         row_count = db.session.execute(
             db.update(Message)
             .where(
-                Message.id == id,
+                Message.public_id == public_id,
                 Message.username_id.in_(
                     db.select(Username.id).select_from(Username).filter(Username.user_id == user.id)
                 ),
@@ -109,7 +109,8 @@ def register_message_routes(app: Flask) -> None:
             case _:
                 db.session.rollback()
                 current_app.logger.error(
-                    f"Multiple messages would have been updated. Message.id={id} User.id={user.id}"
+                    "Multiple messages would have been updated. "
+                    f"Message.public_id={public_id} User.id={user.id}"
                 )
                 flash("Internal server error. Message not updated.")
-        return redirect(url_for("message", id=id))
+        return redirect(url_for("message", public_id=public_id))

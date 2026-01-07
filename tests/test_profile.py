@@ -70,7 +70,7 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
@@ -97,7 +97,7 @@ def test_profile_submit_message_to_alias(
     for field_value in message.field_values:
         assert pgp_message_sig in field_value.value
 
-    response = client.get(url_for("message", id=message.id), follow_redirects=True)
+    response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
