@@ -1,4 +1,7 @@
 import asyncio
+import ipaddress
+import socket
+import urllib.parse
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional
 
@@ -69,6 +72,83 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
+BLOCKED_IP_RANGES = (
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+)
+
+
+def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return any(ip in network for network in BLOCKED_IP_RANGES)
+
+
+async def _is_safe_verification_url(url_to_verify: str) -> bool:
+    parsed_url = urllib.parse.urlparse(url_to_verify)
+    hostname = parsed_url.hostname
+
+    if parsed_url.scheme != "https" and not current_app.config["TESTING"]:
+        current_app.logger.warning(
+            f"URL verification rejected due to non-HTTPS scheme: {url_to_verify!r}"
+        )
+        return False
+
+    if not hostname:
+        current_app.logger.warning(f"URL verification rejected due to missing hostname: {url_to_verify!r}")
+        return False
+
+    if current_app.config["TESTING"]:
+        return True
+
+    if hostname.lower() == "localhost":
+        current_app.logger.warning(
+            f"URL verification rejected due to localhost hostname: {url_to_verify!r}"
+        )
+        return False
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        ip = None
+
+    if ip is not None:
+        if _is_blocked_ip(ip):
+            current_app.logger.warning(
+                f"URL verification rejected due to blocked IP: {url_to_verify!r}"
+            )
+            return False
+        return True
+
+    loop = asyncio.get_running_loop()
+    try:
+        addrinfo = await asyncio.wait_for(
+            loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM), timeout=2
+        )
+    except (OSError, asyncio.TimeoutError) as exc:
+        current_app.logger.warning(
+            f"URL verification rejected due to hostname resolution failure for {hostname!r}: {exc}"
+        )
+        return False
+
+    for _, _, _, _, sockaddr in addrinfo:
+        ip_str = sockaddr[0]
+        try:
+            resolved_ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if _is_blocked_ip(resolved_ip):
+            current_app.logger.warning(
+                f"URL verification rejected due to blocked resolved IP {ip_str!r} for {hostname!r}"
+            )
+            return False
+
+    return True
+
+
 # Define the async function for URL verification
 async def verify_url(
     session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
@@ -79,6 +159,8 @@ async def verify_url(
 
     # ensure that regardless of what caller sets this field to, we force it to be false
     setattr(username, f"extra_field_verified{i}", False)
+    if not await _is_safe_verification_url(url_to_verify):
+        return
     try:
         async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
             response.raise_for_status()
