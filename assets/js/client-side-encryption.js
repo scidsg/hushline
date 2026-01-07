@@ -79,69 +79,79 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
-    let emailBody = "";
-    document.querySelectorAll(".form-field").forEach(async (field) => {
-      const value = getFieldValue(field);
-      const label = getFieldLabel(field);
-      emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
-    });
-    const encryptedEmailBody = await encryptMessage(
-      publicKeyArmored,
-      emailBody,
-    );
-    if (encryptedEmailBody) {
-      const encryptedEmailBodyEl = document.getElementById(
-        "encrypted_email_body",
-      );
-      encryptedEmailBodyEl.value = encryptedEmailBody;
-    } else {
-      console.error("Client-side encryption failed for email body");
-    }
-
-    // Loop through all encrypted fields and encrypt them
-    document.querySelectorAll(".encrypted-field").forEach(async (field) => {
-      const value = getFieldValue(field);
-      console.log("Encrypting field:", field, value);
-
-      const paddedValue = addPadding(value);
-      const encryptedValue = await encryptMessage(
+    try {
+      // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
+      let emailBody = "";
+      document.querySelectorAll(".form-field").forEach((field) => {
+        const value = getFieldValue(field);
+        const label = getFieldLabel(field);
+        emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
+      });
+      const encryptedEmailBody = await encryptMessage(
         publicKeyArmored,
-        paddedValue,
+        emailBody,
       );
-      if (encryptedValue) {
-        // Replace the field with a hidden field and a disabled textarea (for show) containing the encrypted value
-        let fieldName;
-        if (field.tagName === "UL") {
-          fieldName = field.querySelector("input").name;
-        } else {
-          fieldName = field.name;
-        }
-
-        // Empty out the field
-        const fieldContainer = field.parentElement;
-        fieldContainer.innerHTML = "";
-
-        // Add a textarea with the encrypted value
-        const hiddenInput = document.createElement("input");
-        hiddenInput.type = "hidden";
-        hiddenInput.name = fieldName;
-        hiddenInput.value = encryptedValue;
-
-        const textarea = document.createElement("textarea");
-        textarea.disabled = true;
-        textarea.value = encryptedValue;
-
-        fieldContainer.appendChild(hiddenInput);
-        fieldContainer.appendChild(textarea);
+      if (encryptedEmailBody) {
+        const encryptedEmailBodyEl = document.getElementById(
+          "encrypted_email_body",
+        );
+        encryptedEmailBodyEl.value = encryptedEmailBody;
       } else {
-        console.error("Client-side encryption failed for field:", field.name);
+        throw new Error("Client-side encryption failed for email body");
       }
-    });
 
-    // Wait for the DOM to update before submitting
-    setTimeout(() => {
+      // Loop through all encrypted fields and encrypt them
+      const encryptionPromises = Array.from(
+        document.querySelectorAll(".encrypted-field"),
+      ).map(async (field) => {
+        const value = getFieldValue(field);
+        console.log("Encrypting field:", field, value);
+
+        const paddedValue = addPadding(value);
+        const encryptedValue = await encryptMessage(
+          publicKeyArmored,
+          paddedValue,
+        );
+        if (encryptedValue) {
+          // Replace the field with a hidden field and a disabled textarea (for show) containing the encrypted value
+          let fieldName;
+          if (field.tagName === "UL") {
+            fieldName = field.querySelector("input").name;
+          } else {
+            fieldName = field.name;
+          }
+
+          // Empty out the field
+          const fieldContainer = field.parentElement;
+          fieldContainer.innerHTML = "";
+
+          // Add a textarea with the encrypted value
+          const hiddenInput = document.createElement("input");
+          hiddenInput.type = "hidden";
+          hiddenInput.name = fieldName;
+          hiddenInput.value = encryptedValue;
+
+          const textarea = document.createElement("textarea");
+          textarea.disabled = true;
+          textarea.value = encryptedValue;
+
+          fieldContainer.appendChild(hiddenInput);
+          fieldContainer.appendChild(textarea);
+        } else {
+          throw new Error(
+            `Client-side encryption failed for field: ${field.name || "unknown"}`,
+          );
+        }
+      });
+
+      // Wait for all encryption operations to complete before submitting
+      await Promise.all(encryptionPromises);
       form.submit();
-    }, 100);
+    } catch (error) {
+      console.error("Encryption error:", error);
+      alert(
+        "Message encryption failed. Your message was NOT submitted for security reasons. Please try again.",
+      );
+    }
   });
 });
