@@ -105,7 +105,6 @@ document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".encrypted-field"),
       ).map(async (field) => {
         const value = getFieldValue(field);
-        console.log("Encrypting field:", field, value);
 
         const paddedValue = addPadding(value);
         const encryptedValue = await encryptMessage(
