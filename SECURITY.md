@@ -12,26 +12,21 @@ An external security review has been supported via the [Open Technology Fund](ht
 
 ## 1. Coordinated Vulnerability Disclosure (CVD)
 
-- **Report channels**
-
-  - Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg) tip page (supports anonymous reporting).
-  - Alternative: open a private [GitHub](https://github.com/scidsg/hushline) Security Advisory draft on this repository.
-
-- **Safe harbor**
-
-  - Good-faith research, consistent with this policy and applicable law, will not be the basis for civil or criminal action initiated by us.
-
-- **Scope**
-
-  - In-scope: code and infrastructure in this repo and first-party hosted services under the `hushline.app` domain, including the tip submission service.
-  - Out-of-scope examples: denial-of-service, rate limiting bypass without impact, speculative findings without proof-of-concept, social engineering of maintainers or users.
-
-- **Vulnerability classes we care most about**
-
-  - Authentication/authorization flaws, crypto misuse, XSS/HTML injection, CSRF, SSRF, template injection, insecure direct object reference, logic bugs affecting anonymity or confidentiality, supply-chain injection.
-
-- **What to include**
-  - A clear description, affected paths/versions, minimal reproducible steps or PoC, expected vs. actual behavior, impact assessment, and any logs/screens that help triage.
+- **Report channels**: Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg)
+  tip page (supports anonymous reporting). Alternative: open a private
+  [GitHub](https://github.com/scidsg/hushline) Security Advisory draft on this repository.
+- **Safe harbor**: Good-faith research, consistent with this policy and applicable law, will not
+  be the basis for civil or criminal action initiated by us.
+- **Scope**: In-scope: code and infrastructure in this repo and first-party hosted services under
+  the `hushline.app` domain, including the tip submission service. Out-of-scope examples:
+  denial-of-service, rate limiting bypass without impact, speculative findings without
+  proof-of-concept, social engineering of maintainers or users.
+- **Vulnerability classes we care most about**: Authentication/authorization flaws, crypto
+  misuse, XSS/HTML injection, CSRF, SSRF, template injection, insecure direct object reference,
+  logic bugs affecting anonymity or confidentiality, supply-chain injection.
+- **What to include**: A clear description, affected paths/versions, minimal reproducible steps
+  or PoC, expected vs. actual behavior, impact assessment, and any logs/screens that help
+  triage.
 
 ---
 
