@@ -10,7 +10,7 @@
       {{ update_status_form.hidden_tag() }}
       {{ update_status_form.status }}
     </form>
-    {% if message.username.user.enable_email_notifications %}
+    {% if message.username.user.enable_email_notifications and message.username.user.email_include_message_content %}
     <form
       id="resendMessageForm"
       class="formBody"

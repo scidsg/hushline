@@ -153,3 +153,37 @@ def test_resend_message_requires_csrf_token(
     assert response.status_code == 200
     assert "Invalid resend request" in response.text
     assert sent == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_resend_button_visible_with_required_settings(
+    client: FlaskClient, user: User, message: Message
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    db.session.commit()
+
+    response = client.get(url_for("message", public_id=message.public_id))
+    assert response.status_code == 200
+    assert "Resend to Email" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_resend_button_hidden_without_notifications_or_content(
+    client: FlaskClient, user: User, message: Message
+) -> None:
+    user.enable_email_notifications = False
+    user.email_include_message_content = True
+    db.session.commit()
+
+    response = client.get(url_for("message", public_id=message.public_id))
+    assert response.status_code == 200
+    assert "Resend to Email" not in response.text
+
+    user.enable_email_notifications = True
+    user.email_include_message_content = False
+    db.session.commit()
+
+    response = client.get(url_for("message", public_id=message.public_id))
+    assert response.status_code == 200
+    assert "Resend to Email" not in response.text
