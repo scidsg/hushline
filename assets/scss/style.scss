@@ -309,7 +309,7 @@
   .message:not(.message-container .message) {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
     background-color: white;
   }
@@ -324,7 +324,7 @@
   .dropdown-content {
     background-color: white;
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
     border: var(--border);
     opacity: 0;
   }
