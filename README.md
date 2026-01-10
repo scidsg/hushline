@@ -26,6 +26,13 @@
 
 ## In The Media
 
+### Privacy Guides
+
+“After using their platform for the past few weeks, I can comfortably write that Hush Line accomplishes its mission astoundingly well. Not only is customer support excellent for enterprise users, but its integration with PGP encrypted email makes it a lifesaver for a Thunderbird user like me. The ability to receive encrypted notifications via email is honestly an underrated feature.”
+<br>
+https://www.privacyguides.org/posts/2026/01/09/hush-line-review-an-accessible-whistleblowing-platform-for-journalists-and-lawyers-alike/<br>
+https://web.archive.org/web/20260110024015/https://www.privacyguides.org/posts/2026/01/09/hush-line-review-an-accessible-whistleblowing-platform-for-journalists-and-lawyers-alike/
+
 ### Newsweek
 
 “Investing in technology that protects privacy—such as Hush Line and Signal—is also important in sharing information that is anonymous, and can't be subpoenaed.”<br>
