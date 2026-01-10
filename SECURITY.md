@@ -12,22 +12,21 @@ An external security review has been supported via the [Open Technology Fund](ht
 
 ## 1. Coordinated Vulnerability Disclosure (CVD)
 
-- **Report channels**
-  - Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg) tip page (supports anonymous reporting).
-  - Alternative: open a private [GitHub](https://github.com/scidsg/hushline) Security Advisory draft on this repository.
-
-- **Safe harbor**
-  - Good-faith research, consistent with this policy and applicable law, will not be the basis for civil or criminal action initiated by us.
-
-- **Scope**
-  - In-scope: code and infrastructure in this repo and first-party hosted services under the `hushline.app` domain, including the tip submission service.
-  - Out-of-scope examples: denial-of-service, rate limiting bypass without impact, speculative findings without proof-of-concept, social engineering of maintainers or users.
-
-- **Vulnerability classes we care most about**
-  - Authentication/authorization flaws, crypto misuse, XSS/HTML injection, CSRF, SSRF, template injection, insecure direct object reference, logic bugs affecting anonymity or confidentiality, supply-chain injection.
-
-- **What to include**
-  - A clear description, affected paths/versions, minimal reproducible steps or PoC, expected vs. actual behavior, impact assessment, and any logs/screens that help triage.
+- **Report channels**: Preferred: submit via our verified [Hush Line](https://tips.hushline.app/to/scidsg)
+  tip page (supports anonymous reporting). Alternative: open a private
+  [GitHub](https://github.com/scidsg/hushline) Security Advisory draft on this repository.
+- **Safe harbor**: Good-faith research, consistent with this policy and applicable law, will not
+  be the basis for civil or criminal action initiated by us.
+- **Scope**: In-scope: code and infrastructure in this repo and first-party hosted services under
+  the `hushline.app` domain, including the tip submission service. Out-of-scope examples:
+  denial-of-service, rate limiting bypass without impact, speculative findings without
+  proof-of-concept, social engineering of maintainers or users.
+- **Vulnerability classes we care most about**: Authentication/authorization flaws, crypto
+  misuse, XSS/HTML injection, CSRF, SSRF, template injection, insecure direct object reference,
+  logic bugs affecting anonymity or confidentiality, supply-chain injection.
+- **What to include**: A clear description, affected paths/versions, minimal reproducible steps
+  or PoC, expected vs. actual behavior, impact assessment, and any logs/screens that help
+  triage.
 
 ---
 
@@ -49,20 +48,30 @@ We generally issue GitHub Security Advisories and, when applicable, request a CV
 
 ## 3. Independent Security Assessments
 
-- **Audit cadence**
-  An independent security audit will be scheduled annually, with the understanding that the actual timing of each audit will depend on the selected vendor’s availability and scheduling constraints.
+- **Audit cadence**: An independent security audit will be scheduled annually, with the
+  understanding that the actual timing of each audit will depend on the selected vendor’s
+  availability and scheduling constraints.
 
-- **Right to assess, not a maintenance guarantee**  
-  Science & Design, Inc. may commission independent third-party security assessments of Hush Line at its discretion, including static/dynamic testing, configuration review, threat modeling, and privacy analysis. These assessments are not guaranteed services under any maintenance agreement.
+- **Right to assess, not a maintenance guarantee**: Science & Design, Inc. may commission
+  independent third-party security assessments of Hush Line at its discretion, including
+  static/dynamic testing, configuration review, threat modeling, and privacy analysis. These
+  assessments are not guaranteed services under any maintenance agreement.
 
-- **Scope control**  
-  Scope, methodology, data access, and test windows are defined by us to protect user privacy and service reliability. Testing that risks service stability will be isolated in staging environments unless otherwise authorized in writing.
+- **Scope control**: Scope, methodology, data access, and test windows are defined by us to
+  protect user privacy and service reliability. Testing that risks service stability will be
+  isolated in staging environments unless otherwise authorized in writing.
 
-- **Deliverables & disclosure**  
-  We may share: (a) a high-level attestation or summary; (b) a redacted report; or (c) a full report containing detailed technical findings when necessary to support transparency and verification. Public disclosure of findings follows the principles of [ISO/IEC 29147:2018 — Vulnerability Disclosure and the CERT/CC Coordinated Vulnerability Disclosure](https://www.iso.org/standard/72311.html) framework. Findings are made public after remediation of high or critical issues and in conjunction with the publication of any related CVE or corresponding security advisory.
+- **Deliverables & disclosure**: We may share: (a) a high-level attestation or summary; (b)
+  a redacted report; or (c) a full report containing detailed technical findings when necessary
+  to support transparency and verification. Public disclosure of findings follows the
+  principles of [ISO/IEC 29147:2018 — Vulnerability Disclosure and the CERT/CC Coordinated
+  Vulnerability Disclosure](https://www.iso.org/standard/72311.html) framework. Findings are
+  made public after remediation of high or critical issues and in conjunction with the
+  publication of any related CVE or corresponding security advisory.
 
-- **No certification warranty**  
-  Audit results are point-in-time and do not constitute a warranty of ongoing security or compliance fitness. Findings are triaged and tracked via our advisory process.
+- **No certification warranty**: Audit results are point-in-time and do not constitute a
+  warranty of ongoing security or compliance fitness. Findings are triaged and tracked via
+  our advisory process.
 
 ---
 

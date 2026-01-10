@@ -101,6 +101,10 @@ class DeleteMessageForm(FlaskForm):
     submit = SubmitField("Delete", widget=Button())
 
 
+class ResendMessageForm(FlaskForm):
+    submit = SubmitField("Resend to Email", widget=Button())
+
+
 class ValidTemplate:
     def __init__(self, variables: Mapping[str, str]) -> None:
         self._variables = variables
