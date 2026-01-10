@@ -56,6 +56,7 @@
 
   --shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
   --shadow-dynamic: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
+  --shadow-dynamic-card: 0px 4px 8px -2px rgba(0, 0, 0, 0.08);
 
   --line-height-base: 1.40625;
 }
@@ -309,7 +310,7 @@
   .message:not(.message-container .message) {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
 
     background-color: white;
   }
@@ -324,7 +325,7 @@
   .dropdown-content {
     background-color: white;
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
     border: var(--border);
     opacity: 0;
   }
@@ -353,7 +354,7 @@
     background-color: white;
     border: var(--border);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
   }
 
   .message .message-label,
@@ -369,7 +370,7 @@
   .admin-highlights .metric {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
 
   }
 
@@ -388,7 +389,7 @@
   input[type="file"] {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
 
   }
 
@@ -519,7 +520,7 @@
   header nav ul.show {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
 
     outline: var(--border-dark);
   }
@@ -767,7 +768,7 @@
   .dropdown-content {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
     border: var(--border-dark);
     opacity: 0;
   }
@@ -821,7 +822,7 @@
   .admin-highlights .metric {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
   }
 
   .metric p:nth-child(1n) {
@@ -839,7 +840,7 @@
   input[type="file"] {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic-card);
 
   }
 
