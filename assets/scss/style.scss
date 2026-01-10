@@ -369,7 +369,7 @@
   .admin-highlights .metric {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
   }
 
@@ -388,7 +388,7 @@
   input[type="file"] {
     border: var(--border);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
   }
 
@@ -519,7 +519,7 @@
   header nav ul.show {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
     outline: var(--border-dark);
   }
@@ -747,7 +747,7 @@
   .message-container {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.1);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
     background-color: var(--color-dark-bg-alt);
   }
@@ -767,7 +767,7 @@
   .dropdown-content {
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
     border: var(--border-dark);
     opacity: 0;
   }
@@ -821,7 +821,7 @@
   .admin-highlights .metric {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
   }
 
   .metric p:nth-child(1n) {
@@ -839,7 +839,7 @@
   input[type="file"] {
     border: var(--border-dark);
     box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.15);
-    box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.08), var(--shadow-dynamic);
+    box-shadow: var(--shadow-dynamic);
 
   }
 
