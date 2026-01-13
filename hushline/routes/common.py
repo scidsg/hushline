@@ -93,3 +93,17 @@ def do_send_email(user: User, body: str) -> None:
         send_email(user.email, "New Hush Line Message Received", body, smtp_config)
     except Exception as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
+
+
+def format_message_email_fields(extracted_fields: Sequence[tuple[str, str]]) -> str:
+    email_body = ""
+    for name, value in extracted_fields:
+        email_body += f"\n\n{name}\n\n{value}\n\n=============="
+    return email_body.strip()
+
+
+def format_full_message_email_body(extracted_fields: Sequence[tuple[str, str]]) -> str:
+    email_body = ""
+    for name, value in extracted_fields:
+        email_body += f"# {name}\n\n{value}\n\n====================\n\n"
+    return email_body.strip()
