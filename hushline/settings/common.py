@@ -72,19 +72,18 @@ def set_input_disabled(input_field: Field, disabled: bool = True) -> None:
         unset_field_attribute(input_field, "disabled")
 
 
-BLOCKED_IP_RANGES = (
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("::1/128"),
-    ipaddress.ip_network("fc00::/7"),
-    ipaddress.ip_network("fe80::/10"),
-)
-
-
 def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    return any(ip in network for network in BLOCKED_IP_RANGES)
+    if ip.is_unspecified:
+        return True
+    if ip.is_loopback:
+        return True
+    if ip.is_private:
+        return True
+    if ip.is_link_local:
+        return True
+    if ip.is_multicast:
+        return True
+    return False
 
 
 async def _is_safe_verification_url(url_to_verify: str) -> bool:
@@ -106,7 +105,7 @@ async def _is_safe_verification_url(url_to_verify: str) -> bool:
     if current_app.config["TESTING"]:
         return True
 
-    if hostname.lower() == "localhost":
+    if hostname.lower() in {"localhost", "localhost.localdomain"}:
         current_app.logger.warning(
             f"URL verification rejected due to localhost hostname: {url_to_verify!r}"
         )
