@@ -206,3 +206,47 @@ async def test_verify_url_blocks_localhost_in_production(app: Flask, user: User)
     db.session.commit()
     db.session.refresh(username)
     assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_blocks_localhost_localdomain_in_production(
+    app: Flask, user: User
+) -> None:
+    username = user.primary_username
+    username.extra_field_verified1 = True
+
+    profile_url = url_for("profile", username=username.username, _external=True)
+    url_to_verify = "https://localhost.localdomain/"
+
+    original_testing = app.config["TESTING"]
+    app.config["TESTING"] = False
+    try:
+        async with aiohttp.ClientSession() as sess:
+            await verify_url(sess, username, 1, url_to_verify, profile_url)
+    finally:
+        app.config["TESTING"] = original_testing
+
+    db.session.commit()
+    db.session.refresh(username)
+    assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_blocks_unspecified_ip_in_production(app: Flask, user: User) -> None:
+    username = user.primary_username
+    username.extra_field_verified1 = True
+
+    profile_url = url_for("profile", username=username.username, _external=True)
+    url_to_verify = "https://0.0.0.0/"
+
+    original_testing = app.config["TESTING"]
+    app.config["TESTING"] = False
+    try:
+        async with aiohttp.ClientSession() as sess:
+            await verify_url(sess, username, 1, url_to_verify, profile_url)
+    finally:
+        app.config["TESTING"] = original_testing
+
+    db.session.commit()
+    db.session.refresh(username)
+    assert username.extra_field_verified1 is False
