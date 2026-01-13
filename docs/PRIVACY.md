@@ -1,43 +1,83 @@
 # Hush Line Privacy Policy
 
-**Effective Date:** 05-Aug-2024
+Effective date: 2026-01-09
 
-**1. Introduction**
+## Privacy Nutrition Facts
 
-Hush Line, operated by Science & Design, Inc., is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our platform.
+- **What you provide**: usernames, optional email, optional PGP key, and message content.
+- **What we store**: encrypted message content plus the account and security records listed below.
+- **What we share**: DigitalOcean hosts the service; Stripe handles billing if enabled.
+- **Cookies**: an encrypted session cookie and a local flag for first‑visit anti‑censorship tips.
+- **Your control**: update or delete your account and messages in the app.
 
-**2. Information We Collect**
+## 1) Who We Are
 
-- **Account Information:** When you create an account, we collect your username and contact information (such as email) if provided voluntarily.
-- **Communications:** We store messages sent through the platform and encrypt the data at rest. We encourage users to add a PGP key for enhanced security, and users may delete their messages at any time.
+Hush Line is a 501(c)(3) non-profit in the US. This policy explains how we handle data when you use Hush Line.
 
-**3. How We Use Your Information**
+## 2) Data We Collect
 
-- **Platform Operation:** Your information is used solely for operating and improving Hush Line, ensuring secure and reliable communication for your account. We do not use your information for any other purposes.
-- **Account Verification:** Verification is conducted in real-time using secure communications, and no verification data is sent to or stored by us.
+- **Account records**: user ID, usernames, optional display name, optional bio, and profile visibility flags for directory and verification.
+- **Security and auth data**: password hash, TOTP secret if enabled, and authentication logs with timestamp, success flag, and the TOTP code and timecode for successful 2FA logins. We do not store IP addresses or user‑agent strings in the database.
+- **Messaging data**: message IDs, public IDs, reply slugs, message status, status change time, and message content stored as encrypted field values.
+- **Profile field definitions**: custom field labels, types, required and enabled flags, choices, and sort order.
+- **Notification settings**: email notification toggles and SMTP configuration such as server, port, username, password, sender, and encryption mode, stored encrypted at rest.
+- **Invite codes**: invite code and expiration date when enabled.
+- **Branding and guidance settings**: organization settings like brand name, logo, guidance prompts, and directory intro text.
+- **Premium billing data**: Stripe customer ID, subscription IDs, status, period timestamps, invoice records with invoice ID, hosted invoice URL, total, status, created time, and Stripe webhook event payloads stored for processing.
 
-**4. Information Sharing and Disclosure**
+For the database schema, see the models in [`hushline/model/`](https://github.com/scidsg/hushline/tree/main/hushline/model) such as
+[`hushline/model/user.py`](https://github.com/scidsg/hushline/blob/main/hushline/model/user.py),
+[`hushline/model/username.py`](https://github.com/scidsg/hushline/blob/main/hushline/model/username.py), and
+[`hushline/model/message.py`](https://github.com/scidsg/hushline/blob/main/hushline/model/message.py).
 
-- **No Sale of Data:** We do not sell or rent your personal information to third parties.
-- **Legal Requirements:** We may disclose information if required to do so by law or in response to valid requests by public authorities (e.g., court orders, subpoenas).
-- **Service Providers:** We may share information with third-party service providers who assist us in operating the platform, but only as necessary to provide these services.
+## 3) How We Use Data
 
-**5. Data Security**
+We use data strictly to operate Hush Line: account access, message delivery, encryption and notification settings, fraud and abuse prevention, and platform reliability. We do not use data for advertising.
 
-We implement robust security measures to protect your information from unauthorized access, use, or disclosure. This includes encryption and regular security assessments. We encourage users to add a PGP key for enhanced security. However, no method of transmission over the internet or electronic storage is completely secure, so we cannot guarantee absolute security.
+## 4) Infrastructure & Third Parties
 
-**6. Your Choices**
+We rely on third‑party providers to run Hush Line:
 
-- **Account Information:** You may update or delete your account information at any time through the platform settings.
+- **DigitalOcean** for hosting and storage.
+- **GitHub** for source control, issue tracking, and security advisories.
+- **Terraform** for infrastructure provisioning and changes.
 
-**7. Children’s Privacy**
+These providers may collect data as part of their services. We do not control their data practices; please review their policies.
 
-Hush Line is not intended for use by individuals under the age of 18. We do not knowingly collect personal information from children. If you are a parent or guardian and believe we have collected information from a child, please contact us to have the data removed.
+If you enable email notifications, messages are sent via SMTP (either your custom SMTP settings or our configured provider). This transmits message content through email systems you choose or we operate.
 
-**8. Changes to This Privacy Policy**
+If you enable premium billing, payment processing is handled by Stripe. We do not store full payment details.
 
-We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated effective date. We encourage you to review the policy periodically.
+## 5) Security
 
-**9. Contact Us**
+We encrypt stored message content and sensitive account fields (email, SMTP credentials, PGP key, TOTP secret). No system is perfectly secure, but we design Hush Line to minimize data exposure.
 
-If you have any questions or concerns about this Privacy Policy, please [contact us using Hush Line](https://tips.hushline.app/submit_message/scidsg).
+## 6) Retention & Deletion
+
+Messages and accounts remain until you delete them. When you delete content, we remove it from active systems.
+
+## 7) Cookies & Local Storage
+
+We use an encrypted session cookie to keep you signed in. We also store a small local setting to show anti‑censorship tips for users on their first visit to the site. We do not use cookies for advertising or analytics.
+
+## 8) Your Choices & Rights
+
+You can update or delete your account information and messages in the app.
+If you need help accessing, correcting, or deleting data, contact us and we will respond.
+
+## 9) Third‑Party Policies
+
+Our infrastructure and billing providers have their own privacy policies:
+
+- DigitalOcean: https://www.digitalocean.com/legal/privacy-policy
+- GitHub: https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement
+- Terraform: https://www.hashicorp.com/privacy
+- Stripe: https://stripe.com/privacy
+
+## 10) Changes
+
+We may update this policy and will post changes with a new effective date.
+
+## 11) Contact
+
+For privacy questions, contact us via Hush Line: https://tips.hushline.app/to/scidsg
