@@ -11,6 +11,7 @@ modules = [
   "global",
   "inbox",
   "mailvelope",
+  "message",
   "message_success",
   "premium",
   "premium-waiting",
