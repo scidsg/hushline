@@ -83,8 +83,7 @@
     {% endif %}
 
     <div class="user-list">
-      {% for username in usernames %}
-        {% if username.is_verified and username.show_in_directory %}
+      {% for username in verified_pgp_usernames %}
           <article class="user">
             <h3>{{ username.display_name or username.username }}</h3>
             {% if username.username %}
@@ -119,13 +118,54 @@
               {% endif %}
             </div>
           </article>
-        {% endif %}
-      {% else %}
-        <p class="empty-message">
-          <span class="emoji-message">🙈</span><br />Nothing to see here...
-        </p>
       {% endfor %}
     </div>
+    {% if verified_info_usernames %}
+      <p class="label">Read-Only Accounts</p>
+      <div class="user-list">
+        {% for username in verified_info_usernames %}
+        <article class="user">
+          <h3>{{ username.display_name or username.username }}</h3>
+          {% if username.username %}
+            <p class="meta">@{{ username.username }}</p>
+          {% endif %}
+          {% if username.is_verified or useranme.user.is_admin %}
+            <div class="badgeContainer">
+              {% if username.user.is_admin %}
+                <p class="badge">⚙️ Admin</p>
+              {% endif %}
+              {% if username.is_verified %}
+                <p class="badge">⭐️ Verified</p>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if username.bio %}
+            <p class="bio">{{ username.bio }}</p>
+          {% endif %}
+          <div class="user-actions">
+            <a href="{{ url_for('profile', username=username.username) }}"
+              >View Profile</a
+            >
+            {% if logged_in %}
+              <a
+                href="#"
+                class="report-link"
+                data-username="{{ username.username }}"
+                data-display-name="{{ username.display_name or username.username }}"
+                data-bio="{{ username.bio }}"
+                >Report Account</a
+              >
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if not verified_pgp_usernames and not verified_info_usernames %}
+      <p class="empty-message">
+        <span class="emoji-message">🙈</span><br />Nothing to see here...
+      </p>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -136,8 +176,7 @@
     aria-labelledby="all-users-tab"
   >
     <div class="user-list">
-      {% for username in usernames %}
-        {% if username.show_in_directory %}
+      {% for username in pgp_usernames %}
           <article class="user">
             <h3>{{ username.display_name or username.username }}</h3>
             {% if username.username %}
@@ -172,13 +211,54 @@
               {% endif %}
             </div>
           </article>
-        {% endif %}
-      {% else %}
-        <p class="empty-message">
-          <span class="emoji-message">🙈</span><br />Nothing to see here...
-        </p>
       {% endfor %}
     </div>
+    {% if info_usernames %}
+      <p class="label">Read-Only Accounts</p>
+      <div class="user-list">
+        {% for username in info_usernames %}
+        <article class="user">
+          <h3>{{ username.display_name or username.username }}</h3>
+          {% if username.username %}
+            <p class="meta">@{{ username.username }}</p>
+          {% endif %}
+          {% if username.is_verified or username.user.is_admin %}
+            <div class="badgeContainer">
+              {% if username.user.is_admin %}
+                <p class="badge">⚙️ Admin</p>
+              {% endif %}
+              {% if username.is_verified %}
+                <p class="badge">⭐️ Verified</p>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if username.bio %}
+            <p class="bio">{{ username.bio }}</p>
+          {% endif %}
+          <div class="user-actions">
+            <a href="{{ url_for('profile', username=username.username) }}"
+              >View Profile</a
+            >
+            {% if logged_in %}
+              <a
+                href="#"
+                class="report-link"
+                data-username="{{ username.username }}"
+                data-display-name="{{ username.display_name or username.username }}"
+                data-bio="{{ username.bio }}"
+                >Report Account</a
+              >
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if not pgp_usernames and not info_usernames %}
+      <p class="empty-message">
+        <span class="emoji-message">🙈</span><br />Nothing to see here...
+      </p>
+    {% endif %}
   </div>
 {% endblock %}
 

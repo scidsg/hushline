@@ -3473,3 +3473,8 @@ li.tab .badge {
   text-align: center;
   padding: 1rem;
 }
+
+.user-list + .label {
+  margin-top: 1.5rem;
+  font-family: var(--font-sans-bold);
+}
