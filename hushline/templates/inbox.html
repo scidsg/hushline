@@ -30,9 +30,7 @@
             class="message encrypted"
             aria-label="Message with {{ message.username.display_name or message.username.username }}"
           >
-            {% if user_has_aliases %}
-              <p>To: @{{ message.username.username }}</p>
-            {% endif %}
+            <p>To: @{{ message.username.username }}</p>
             <p>{{ message.created_at.date() }}</p>
             <p><a class="stretched-link" href="{{ url_for('message', public_id=message.public_id) }}">Go to message</a></p>
           </article>

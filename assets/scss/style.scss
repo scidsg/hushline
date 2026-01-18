@@ -2950,8 +2950,8 @@ h3 {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .action-model form,
@@ -3043,6 +3043,7 @@ strong {
 
   .message-header button {
     margin: 0;
+    white-space: nowrap;
   }
 }
 
@@ -3327,6 +3328,7 @@ label+.meta {
   flex-direction: row;
   align-items: last baseline;
   margin-bottom: 0.5rem;
+  line-break: loose;
 }
 
 .label label {
