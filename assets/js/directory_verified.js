@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (infoOnly.length) {
       const infoLabel = document.createElement("p");
-      infoLabel.className = "meta";
+      infoLabel.className = "label";
       infoLabel.textContent = "Information Only";
       activePanel.appendChild(infoLabel);
 
