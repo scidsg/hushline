@@ -119,8 +119,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (infoOnly.length) {
       const infoLabel = document.createElement("p");
-      infoLabel.className = "label";
-      infoLabel.textContent = "Information Only";
+      infoLabel.className = "label searchLabel";
+      infoLabel.textContent = "📇 Info-Only Accounts";
       resultsContainer.appendChild(infoLabel);
 
       const infoListContainer = document.createElement("div");

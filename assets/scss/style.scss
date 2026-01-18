@@ -3474,7 +3474,8 @@ li.tab .badge {
   padding: 1rem;
 }
 
-.user-list + .label {
+.user-list + .label,
+.searchLabel {
   margin-top: 1.5rem;
   font-family: var(--font-sans-bold);
 }
