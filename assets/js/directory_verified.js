@@ -4,8 +4,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const initialMarkup = new Map();
   let userData = [];
   let isSessionUser = false;
+  let hasRenderedSearch = false;
+
+  tabPanels.forEach((panel) => {
+    initialMarkup.set(panel.id, panel.innerHTML);
+  });
 
   function updatePlaceholder() {
     const activeTabElement = document.querySelector(".tab.active");
@@ -75,82 +81,81 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = submissionUrl;
   }
 
-  function displayUsers(users, query) {
-    const userListContainer = document.querySelector(
-      ".tab-content.active .user-list",
+  function buildUserCard(user, query) {
+    const displayNameHighlighted = highlightMatch(
+      user.display_name || user.primary_username,
+      query,
     );
-    const activeTabElement = document.querySelector(".tab.active");
-    const activeTab = activeTabElement
-      ? activeTabElement.getAttribute("data-tab")
-      : "verified";
-    userListContainer.innerHTML = "";
+    const usernameHighlighted = highlightMatch(user.primary_username, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (users.length > 0) {
-      users.forEach((user) => {
-        const displayNameHighlighted = highlightMatch(
-          user.display_name || user.primary_username,
-          query,
-        );
-        const usernameHighlighted = highlightMatch(
-          user.primary_username,
-          query,
-        );
-        const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+    let badgeContainer = "";
 
-        let badgeContainer = "";
-
-        if (user.is_admin) {
-          badgeContainer += '<p class="badge">⚙️ Admin</p>';
-        }
-
-        if (user.is_verified) {
-          badgeContainer += '<p class="badge">⭐️ Verified</p>';
-        }
-
-        const userDiv = document.createElement("article");
-        userDiv.className = "user";
-        const isVerified = user.is_verified ? "Verified" : "";
-        const userType = user.is_admin
-          ? `${isVerified} admin user`
-          : `${isVerified} User`;
-        userDiv.setAttribute(
-          "aria-label",
-          `${userType}, Display name:${
-            user.display_name || user.primary_username
-          }, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}`,
-        );
-        userDiv.innerHTML = `
-                          <h3>${displayNameHighlighted}</h3>
-                          <p class="meta">@${usernameHighlighted}</p>
-                          <div class="badgeContainer">${badgeContainer}</div>
-                          ${
-                            bioHighlighted
-                              ? `<p class="bio">${bioHighlighted}</p>`
-                              : ""
-                          }
-                          <div class="user-actions">
-                              <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
-                              ${
-                                isSessionUser
-                                  ? `<a href="#" class="report-link" data-username="${
-                                      user.primary_username
-                                    }" data-display-name="${
-                                      user.display_name || user.primary_username
-                                    }" data-bio="${
-                                      user.bio ?? "No bio"
-                                    }">Report Account</a>`
-                                  : ``
-                              }
-                          </div>
-                      `;
-        userListContainer.appendChild(userDiv);
-      });
-
-      createReportEventListeners(".tab-content.active .user-list");
-    } else {
-      userListContainer.innerHTML =
-        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+    if (user.is_admin) {
+      badgeContainer += '<p class="badge">⚙️ Admin</p>';
     }
+
+    if (user.is_verified) {
+      badgeContainer += '<p class="badge">⭐️ Verified</p>';
+    }
+
+    const isVerified = user.is_verified ? "Verified" : "";
+    const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+    return `
+      <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
+        <h3>${displayNameHighlighted}</h3>
+        <p class="meta">@${usernameHighlighted}</p>
+        <div class="badgeContainer">${badgeContainer}</div>
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        <div class="user-actions">
+          <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+          ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
+        </div>
+      </article>
+    `;
+  }
+
+  function displayUsers(users, query) {
+    const activePanel = document.querySelector(".tab-content.active");
+    if (!activePanel) {
+      return;
+    }
+
+    activePanel.innerHTML = "";
+
+    if (users.length === 0) {
+      activePanel.innerHTML =
+        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+      return;
+    }
+
+    const withPgp = users.filter((user) => user.has_pgp_key);
+    const infoOnly = users.filter((user) => !user.has_pgp_key);
+
+    if (withPgp.length) {
+      const userListContainer = document.createElement("div");
+      userListContainer.className = "user-list";
+      userListContainer.innerHTML = withPgp
+        .map((user) => buildUserCard(user, query))
+        .join("");
+      activePanel.appendChild(userListContainer);
+    }
+
+    if (infoOnly.length) {
+      const infoLabel = document.createElement("p");
+      infoLabel.className = "meta";
+      infoLabel.textContent = "Information Only";
+      activePanel.appendChild(infoLabel);
+
+      const infoListContainer = document.createElement("div");
+      infoListContainer.className = "user-list";
+      infoListContainer.innerHTML = infoOnly
+        .map((user) => buildUserCard(user, query))
+        .join("");
+      activePanel.appendChild(infoListContainer);
+    }
+
+    createReportEventListeners(".tab-content.active .user-list");
   }
 
   function createReportEventListeners(selector) {
@@ -167,9 +172,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function handleSearchInput() {
     const query = searchInput.value.trim();
+    const activePanel = document.querySelector(".tab-content.active");
+    if (query.length === 0) {
+      if (
+        hasRenderedSearch &&
+        activePanel &&
+        initialMarkup.has(activePanel.id)
+      ) {
+        activePanel.innerHTML = initialMarkup.get(activePanel.id);
+        createReportEventListeners(`#${activePanel.id}`);
+        hasRenderedSearch = false;
+      }
+      clearIcon.style.visibility = "hidden";
+      return;
+    }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
     clearIcon.style.visibility = query.length ? "visible" : "hidden";
+    hasRenderedSearch = true;
   }
 
   searchInput.addEventListener("input", handleSearchInput);

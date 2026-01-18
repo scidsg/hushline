@@ -42,6 +42,7 @@ def register_directory_routes(app: Flask) -> None:
                 "bio": username.bio,
                 "is_admin": username.user.is_admin,
                 "is_verified": username.is_verified,
+                "has_pgp_key": bool(username.user.pgp_key),
             }
             for username in get_directory_usernames()
         ]
