@@ -41,8 +41,7 @@
       </form>
     {% elif step == "encryption" %}
       <h3>Next, let's secure your account.</h3>
-      <p>Wel'll add your public encyption key so we can secure messages so only you can read them. Proton users can import for their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can manually paste their public PGP key. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank">Check out our docs</a>.</p>
-
+      <p>We’ll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Check out our docs</a>.</p>
       <form method="POST" class="formBody">
         <p class="label">Proton Key Import</p>        
         {{ pgp_proton_form.hidden_tag() }}
