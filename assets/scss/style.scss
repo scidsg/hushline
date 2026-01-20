@@ -3200,7 +3200,7 @@ strong {
 
 .onboarding-body main {
   min-height: 100vh;
-  min-width: 100vw;
+  min-width: 100%;
   padding: 0;
   margin: 0 !important;
 }
@@ -3209,7 +3209,7 @@ strong {
   max-width: 720px;
   margin: 0 auto;
   padding: 3rem;
-  min-width: 100vw;
+  min-width: 100%;
   max-width: 100%;
   border-radius: none;
   border: none;
@@ -3646,4 +3646,8 @@ li.tab .badge {
     width: auto;
     bottom: 16px;
   }
+}
+
+.label {
+  font-family: var(--font-sans-bold);
 }
