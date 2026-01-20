@@ -134,6 +134,7 @@ def register_onboarding_routes(app: Flask) -> None:
                     user.email = notifications_form.email_address.data.strip()
                     user.onboarding_complete = True
                     db.session.commit()
+                    flash("🎉 Congratulations! Your account setup is complete!")
 
                     if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                         return redirect(url_for("premium.select_tier"))

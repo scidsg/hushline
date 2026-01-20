@@ -47,6 +47,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
+    assert "🎉 Congratulations! Your account setup is complete!" in response.text
     db.session.refresh(user)
     assert user.onboarding_complete is True
     assert user.enable_email_notifications is True
