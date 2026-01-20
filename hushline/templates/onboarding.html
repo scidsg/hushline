@@ -41,10 +41,9 @@
       </form>
     {% elif step == "encryption" %}
       <h3>Next, let's secure your account.</h3>
-      <p>Wel'll add your public encyption key so we can encrypt messages so only you can read them. Proton users can search for their key below. Other users can manually paste their public key.</p>
-
+      <p>We’ll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Check out our docs</a>.</p>
       <form method="POST" class="formBody">
-        <label>Proton Email Search</label>
+        <p class="label">Proton Key Import</p>        
         {{ pgp_proton_form.hidden_tag() }}
         <input type="hidden" name="step" value="encryption" />
         <input type="hidden" name="method" value="proton" />
@@ -82,7 +81,7 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "notifications" %}
-      <h3>Where should we send new tips?</h3>
+      <h3>Finally, where should we send new tips?</h3>
       <p>
         Hush Line works best when tips are delivered to your inbox. Add an email address where we should send them.
       </p>

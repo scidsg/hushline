@@ -39,7 +39,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Where should we send new tips?" in response.text
+    assert "Finally, where should we send new tips?" in response.text
 
     response = client.post(
         url_for("onboarding"),
