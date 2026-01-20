@@ -227,6 +227,7 @@ def user_password() -> str:
 
 def make_user(user_password: str) -> User:
     user = User(password=user_password)
+    user.onboarding_complete = True
     user.tier_id = 1
     db.session.add(user)
     db.session.flush()

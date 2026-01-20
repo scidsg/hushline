@@ -6,9 +6,10 @@ from wtforms import (
     SelectField,
     SelectMultipleField,
     StringField,
+    SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length, Optional
+from wtforms.validators import DataRequired, Email, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
 from hushline.forms import ComplexPassword
@@ -56,6 +57,28 @@ class RegistrationForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
+
+
+class OnboardingProfileForm(FlaskForm):
+    display_name = StringField(
+        "Display Name",
+        validators=[
+            DataRequired(),
+            Length(min=Username.DISPLAY_NAME_MIN_LENGTH, max=Username.DISPLAY_NAME_MAX_LENGTH),
+        ],
+    )
+    bio = TextAreaField("Bio", validators=[DataRequired(), Length(max=250)])
+
+
+class OnboardingNotificationsForm(FlaskForm):
+    email_address = StringField(
+        "Email Address",
+        validators=[DataRequired(), Email(), Length(max=255)],
+    )
+
+
+class OnboardingSkipForm(FlaskForm):
+    submit = SubmitField("Skip")
 
 
 class DynamicMessageForm:

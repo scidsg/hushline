@@ -174,11 +174,13 @@ def register_auth_routes(app: Flask) -> None:
                 db.session.add(auth_log)
                 db.session.commit()
 
+                user = db.session.get(User, username.user_id)
+                if user and not user.onboarding_complete:
+                    return redirect(url_for("onboarding"))
+
                 # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY"):
-                    user = db.session.get(User, username.user_id)
-                    if user and user.tier_id is None:
-                        return redirect(url_for("premium.select_tier"))
+                if app.config.get("STRIPE_SECRET_KEY") and user and user.tier_id is None:
+                    return redirect(url_for("premium.select_tier"))
 
                 return redirect(url_for("inbox"))
 
@@ -250,6 +252,9 @@ def register_auth_routes(app: Flask) -> None:
                 db.session.commit()
 
                 session["is_authenticated"] = True
+
+                if not user.onboarding_complete:
+                    return redirect(url_for("onboarding"))
 
                 # If premium features are enabled, prompt the user to select a tier if they haven't
                 if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:

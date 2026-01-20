@@ -76,6 +76,8 @@ class User(Model):
         db.DateTime(timezone=True), nullable=True
     )
 
+    onboarding_complete: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
+
     _PREMIUM_ALIAS_COUNT = 100
 
     @property

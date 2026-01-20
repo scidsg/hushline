@@ -148,10 +148,25 @@ def configure_jinja(app: Flask) -> None:
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
             ),
+            setup_incomplete=False,
+            user=None,
         )
 
         if "user_id" in session:
-            data["user"] = db.session.get(User, session["user_id"])
+            user = db.session.get(User, session["user_id"])
+            data["user"] = user
+            if user:
+                username = user.primary_username
+                data["setup_incomplete"] = bool(
+                    not username
+                    or not (username.display_name or "").strip()
+                    or not (username.bio or "").strip()
+                    or not user.pgp_key
+                    or not user.enable_email_notifications
+                    or not user.email_include_message_content
+                    or not user.email_encrypt_entire_body
+                    or not user.email
+                )
 
         return data
 

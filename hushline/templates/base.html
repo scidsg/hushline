@@ -148,7 +148,7 @@
     </style>
   </head>
 
-  <body>
+  <body class="{% block body_class %}{% endblock %}">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <div class="flash-messages" role="alert">
@@ -191,6 +191,11 @@
         <div class="navGroup">
           <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
           <ul>
+            {% if user and setup_incomplete %}
+              <li>
+                <a class="onboardingLink" href="{{ url_for('onboarding') }}">🪄 Account Setup</a>
+              </li>
+            {% endif %}
             {% if 'user_id' in session and session.get('is_authenticated', False) %}
               {% if is_premium_enabled %}
                 {% if user and not user.is_free_tier %}
