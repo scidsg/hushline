@@ -28,7 +28,7 @@ HTTP_OK = 200
 def register_onboarding_routes(app: Flask) -> None:
     @app.route("/onboarding", methods=["GET", "POST"])
     @authentication_required
-    def onboarding() -> Response | str:
+    def onboarding() -> Response | str | tuple[str, int]:
         user = db.session.get(User, session.get("user_id"))
         if not user:
             session.clear()
