@@ -44,6 +44,7 @@
       <p>Wel'll add your public encyption key so we can encrypt messages so only you can read them. Proton users can search for their key below. Other users can manually paste their public key.</p>
 
       <form method="POST" class="formBody">
+        <p>If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>.</p>
         <label>Proton Email Search</label>
         {{ pgp_proton_form.hidden_tag() }}
         <input type="hidden" name="step" value="encryption" />
@@ -82,7 +83,7 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "notifications" %}
-      <h3>Where should we send new tips?</h3>
+      <h3>Finally, where should we send new tips?</h3>
       <p>
         Hush Line works best when tips are delivered to your inbox. Add an email address where we should send them.
       </p>
