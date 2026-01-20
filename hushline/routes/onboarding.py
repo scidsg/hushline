@@ -62,9 +62,7 @@ def register_onboarding_routes(app: Flask) -> None:
         )
         pgp_proton_form = PGPProtonForm()
         pgp_key_form = PGPKeyForm(pgp_key=user.pgp_key)
-        notifications_form = OnboardingNotificationsForm(
-            data={"email_address": user.email or ""}
-        )
+        notifications_form = OnboardingNotificationsForm(data={"email_address": user.email or ""})
         skip_form = OnboardingSkipForm()
 
         status_code = 200
