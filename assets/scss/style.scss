@@ -3261,7 +3261,7 @@ strong {
 }
 
 .onboarding-wizard input {
-  width: 360px;
+  max-width: 360px;
 }
 
 .onboardingLink {
@@ -3632,6 +3632,10 @@ li.tab .badge {
 @media (max-width: 640px) {
   .onboarding-main .container {
     padding: 2rem;
+  }
+
+  .onboarding-wizard {
+    padding: 3rem 1.5rem;
   }
 }
 
