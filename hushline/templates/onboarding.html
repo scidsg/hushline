@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Guide Me{% endblock %}
+{% block body_class %}onboarding-body{% endblock %}
+{% block main_class %}onboarding-main{% endblock %}
+
+{% block content %}
+  <div class="onboarding-wizard">
+
+    <img
+      class="onboarding"
+      src="{{ url_for('static', filename='img/onboarding.png') }}"
+      alt="Empty Inbox"
+    />
+    <h2>Hush Line Account Setup</h2>
+
+    {% if step == "profile" %}
+      <h3>First, tell us a little about yourself!</h3>
+      <p>What should we call you? Make it the same as what your audience is familiar with.<br>Add a short bio to let people know how you can help.</p>
+      <form method="POST" class="formBody">
+        {{ profile_form.hidden_tag() }}
+        <input type="hidden" name="step" value="profile" />
+
+        {{ profile_form.display_name.label }}
+        {{ profile_form.display_name(id="display_name") }}
+        {% for error in profile_form.display_name.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+
+        {{ profile_form.bio.label }}
+        {{ profile_form.bio(id="bio", rows="4", maxlength="250") }}
+        {% for error in profile_form.bio.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+
+        <button type="submit">Continue</button>
+      </form>
+      <form class="formBody skipForm firstSkip" method="POST" action="{{ url_for('onboarding_skip') }}">
+        {{ skip_form.hidden_tag() }}
+        <button type="submit" class="onboarding-skip">Skip setup for now</button>
+      </form>
+    {% elif step == "encryption" %}
+      <h3>Next, let's secure your account.</h3>
+      <p>Wel'll add your public encyption key so we can encrypt messages so only you can read them. Proton users can search for their key below. Other users can manually paste their public key.</p>
+
+      <form method="POST" class="formBody">
+        <label>Proton Email Search</label>
+        {{ pgp_proton_form.hidden_tag() }}
+        <input type="hidden" name="step" value="encryption" />
+        <input type="hidden" name="method" value="proton" />
+        <div class="search-box">
+          <label id="searchIcon" for="proton_email" aria-label="Search Proton email">
+            <img
+              class="searchIcon"
+              src="{{ url_for('static', filename='img/icon-search.png') }}"
+              alt=""
+            />
+          </label>
+          <input id="searchInput" type="email" name="email" placeholder="Search Proton email..." required="">
+        </div>
+        {% for error in pgp_proton_form.email.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+        <button type="submit">Search Proton</button>
+      </form>
+
+      <form method="POST" class="formBody">
+        {{ pgp_key_form.hidden_tag() }}
+        <input type="hidden" name="step" value="encryption" />
+        <input type="hidden" name="method" value="manual" />
+        {{ pgp_key_form.pgp_key.label }}
+        {{ pgp_key_form.pgp_key }}
+        {% for error in pgp_key_form.pgp_key.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+        <button type="submit">Continue</button>
+      </form>
+
+      <a class="meta backBtn" href="{{ url_for('onboarding', step='profile') }}">Back</a>
+      <form class="formBody skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
+        {{ skip_form.hidden_tag() }}
+        <button type="submit" class="onboarding-skip">Skip setup for now</button>
+      </form>
+    {% elif step == "notifications" %}
+      <h3>Where should we send new tips?</h3>
+      <p>
+        Hush Line works best when tips are delivered to your inbox. Add an email address where we should send them.
+      </p>
+      <form method="POST" class="formBody">
+        {{ notifications_form.hidden_tag() }}
+        <input type="hidden" name="step" value="notifications" />
+        {{ notifications_form.email_address.label }}
+        {{ notifications_form.email_address }}
+        {% for error in notifications_form.email_address.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+        <button class="finishBtn" type="submit">Finish</button>
+      </form>
+      <a class="meta backBtn" href="{{ url_for('onboarding', step='encryption') }}">Back</a>
+      <form class="formBody lastSkip skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
+        {{ skip_form.hidden_tag() }}
+        <button type="submit" class="onboarding-skip">Skip setup for now</button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('onboarding', step='profile') }}">Start the guide</a>
+      <form class="formBody skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
+        {{ skip_form.hidden_tag() }}
+        <button type="submit" class="onboarding-skip">Skip setup for now</button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
