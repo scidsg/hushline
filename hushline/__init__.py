@@ -149,6 +149,7 @@ def configure_jinja(app: Flask) -> None:
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
             ),
             setup_incomplete=False,
+            user=None,
         )
 
         if "user_id" in session:

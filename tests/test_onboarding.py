@@ -17,7 +17,7 @@ def test_onboarding_flow(client: FlaskClient, user: User, _authenticated_user: N
 
     response = client.get(url_for("onboarding"))
     assert response.status_code == 200
-    assert "Who are you?" in response.text
+    assert "First, tell us a little about yourself!" in response.text
 
     response = client.post(
         url_for("onboarding"),
@@ -25,7 +25,7 @@ def test_onboarding_flow(client: FlaskClient, user: User, _authenticated_user: N
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Secure your account" in response.text
+    assert "Next, let's secure your account." in response.text
 
     response = client.post(
         url_for("onboarding"),
@@ -37,7 +37,7 @@ def test_onboarding_flow(client: FlaskClient, user: User, _authenticated_user: N
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Notifications" in response.text
+    assert "Where should we send new tips?" in response.text
 
     response = client.post(
         url_for("onboarding"),
