@@ -3244,7 +3244,7 @@ strong {
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
-
+  box-sizing: border-box;
 }
 
 .onboarding-wizard .formBody:nth-of-type(2) {
