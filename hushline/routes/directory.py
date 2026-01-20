@@ -13,10 +13,18 @@ def register_directory_routes(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
         logged_in = "user_id" in session
+        usernames = list(get_directory_usernames())
+        pgp_usernames = [username for username in usernames if username.user.pgp_key]
+        info_usernames = [username for username in usernames if not username.user.pgp_key]
+        verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
+        verified_info_usernames = [username for username in info_usernames if username.is_verified]
         return render_template(
             "directory.html",
             intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
-            usernames=get_directory_usernames(),
+            pgp_usernames=pgp_usernames,
+            info_usernames=info_usernames,
+            verified_pgp_usernames=verified_pgp_usernames,
+            verified_info_usernames=verified_info_usernames,
             logged_in=logged_in,
         )
 
@@ -34,6 +42,7 @@ def register_directory_routes(app: Flask) -> None:
                 "bio": username.bio,
                 "is_admin": username.user.is_admin,
                 "is_verified": username.is_verified,
+                "has_pgp_key": bool(username.user.pgp_key),
             }
             for username in get_directory_usernames()
         ]

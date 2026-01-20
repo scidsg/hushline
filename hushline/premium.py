@@ -420,6 +420,9 @@ def create_blueprint(app: Flask) -> Blueprint:
             session.clear()
             return redirect(url_for("login"))
 
+        if not user.onboarding_complete:
+            return redirect(url_for("onboarding"))
+
         return render_template(
             "premium-select-tier.html", user=user, business_price=get_business_price_string()
         )

@@ -2,8 +2,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const resultsContainer = document.getElementById("all");
+  const initialMarkup = resultsContainer ? resultsContainer.innerHTML : "";
   let userData = [];
   let isSessionUser = false;
+  let hasRenderedSearch = false;
 
   function loadData() {
     fetch(`${pathPrefix}/directory/users.json`)
@@ -56,65 +59,96 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = submissionUrl;
   }
 
-  function displayUsers(users, query) {
-    const userListContainer = document.querySelector(".user-list");
-    userListContainer.innerHTML = "";
+  function buildUserCard(user, query) {
+    const displayNameHighlighted = highlightMatch(
+      user.display_name || user.primary_username,
+      query,
+    );
+    const usernameHighlighted = highlightMatch(user.primary_username, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (users.length > 0) {
-      users.forEach((user) => {
-        const displayNameHighlighted = highlightMatch(
-          user.display_name || user.primary_username,
-          query,
-        );
-        const usernameHighlighted = highlightMatch(
-          user.primary_username,
-          query,
-        );
-        const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
-
-        let badgeContainer = "";
-        if (user.is_admin) {
-          badgeContainer += '<p class="badge">⚙️ Admin</p>';
-        }
-        if (user.is_verified) {
-          badgeContainer += '<p class="badge">⭐️ Verified</p>';
-        }
-
-        const userDiv = document.createElement("article");
-        userDiv.className = "user";
-        const isVerified = user.is_verified ? "Verified" : "";
-        const userType = user.is_admin
-          ? `${isVerified} admin user`
-          : `${isVerified} User`;
-        userDiv.setAttribute(
-          "aria-label",
-          `${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}`,
-        );
-        userDiv.innerHTML = `
-                    <h3>${displayNameHighlighted}</h3>
-                    <p class="meta">@${usernameHighlighted}</p>
-                    <div class="badgeContainer">${badgeContainer}</div>
-                    ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
-                    <div class="user-actions">
-                        <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
-                        ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
-                    </div>
-                `;
-        userListContainer.appendChild(userDiv);
-      });
-
-      createReportEventListeners(".user-list");
-    } else {
-      userListContainer.innerHTML =
-        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+    let badgeContainer = "";
+    if (user.is_admin) {
+      badgeContainer += '<p class="badge">⚙️ Admin</p>';
     }
+    if (user.is_verified) {
+      badgeContainer += '<p class="badge">⭐️ Verified</p>';
+    }
+
+    const isVerified = user.is_verified ? "Verified" : "";
+    const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+
+    return `
+      <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
+        <h3>${displayNameHighlighted}</h3>
+        <p class="meta">@${usernameHighlighted}</p>
+        <div class="badgeContainer">${badgeContainer}</div>
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        <div class="user-actions">
+          <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+          ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
+        </div>
+      </article>
+    `;
+  }
+
+  function displayUsers(users, query) {
+    if (!resultsContainer) {
+      return;
+    }
+
+    resultsContainer.innerHTML = "";
+
+    if (users.length === 0) {
+      resultsContainer.innerHTML =
+        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+      return;
+    }
+
+    const withPgp = users.filter((user) => user.has_pgp_key);
+    const infoOnly = users.filter((user) => !user.has_pgp_key);
+
+    if (withPgp.length) {
+      const userListContainer = document.createElement("div");
+      userListContainer.className = "user-list";
+      userListContainer.innerHTML = withPgp
+        .map((user) => buildUserCard(user, query))
+        .join("");
+      resultsContainer.appendChild(userListContainer);
+    }
+
+    if (infoOnly.length) {
+      const infoLabel = document.createElement("p");
+      infoLabel.className = "label searchLabel";
+      infoLabel.textContent = "📇 Info-Only Accounts";
+      resultsContainer.appendChild(infoLabel);
+
+      const infoListContainer = document.createElement("div");
+      infoListContainer.className = "user-list";
+      infoListContainer.innerHTML = infoOnly
+        .map((user) => buildUserCard(user, query))
+        .join("");
+      resultsContainer.appendChild(infoListContainer);
+    }
+
+    createReportEventListeners("#all");
   }
 
   function handleSearchInput() {
     const query = searchInput.value.trim();
+    if (query.length === 0) {
+      if (hasRenderedSearch && resultsContainer) {
+        resultsContainer.innerHTML = initialMarkup;
+        createReportEventListeners("#all");
+        hasRenderedSearch = false;
+      }
+      clearIcon.style.visibility = "hidden";
+      return;
+    }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
     clearIcon.style.visibility = query.length ? "visible" : "hidden";
+    hasRenderedSearch = true;
   }
 
   searchInput.addEventListener("input", handleSearchInput);
