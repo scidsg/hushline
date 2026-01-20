@@ -11,7 +11,8 @@ def _load_test_pgp_key() -> str:
     return Path("tests/test_pgp_key.txt").read_text()
 
 
-def test_onboarding_flow(client: FlaskClient, user: User, _authenticated_user: None) -> None:
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_flow(client: FlaskClient, user: User) -> None:
     user.onboarding_complete = False
     db.session.commit()
 
@@ -53,7 +54,8 @@ def test_onboarding_flow(client: FlaskClient, user: User, _authenticated_user: N
     assert user.email == "test@example.com"
 
 
-def test_onboarding_skip(client: FlaskClient, user: User, _authenticated_user: None) -> None:
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_skip(client: FlaskClient, user: User) -> None:
     user.onboarding_complete = False
     db.session.commit()
 

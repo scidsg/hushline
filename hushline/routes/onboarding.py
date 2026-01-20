@@ -22,6 +22,8 @@ from hushline.routes.forms import (
 )
 from hushline.settings.forms import PGPKeyForm, PGPProtonForm
 
+HTTP_OK = 200
+
 
 def register_onboarding_routes(app: Flask) -> None:
     @app.route("/onboarding", methods=["GET", "POST"])
@@ -96,7 +98,7 @@ def register_onboarding_routes(app: Flask) -> None:
                             flash("⛔️ Error fetching PGP key from Proton Mail.")
                             status_code = 400
                         else:
-                            if resp.status_code == 200 and is_valid_pgp_key(resp.text):
+                            if resp.status_code == HTTP_OK and is_valid_pgp_key(resp.text):
                                 user.pgp_key = resp.text
                                 db.session.commit()
                                 return redirect(url_for("onboarding", step="notifications"))
