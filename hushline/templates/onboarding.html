@@ -33,7 +33,7 @@
           <span class="error">{{ error }}</span>
         {% endfor %}
 
-        <button type="submit">Continue</button>
+        <button class="contBtn" type="submit">Continue</button>
       </form>
       <form class="formBody skipForm firstSkip" method="POST" action="{{ url_for('onboarding_skip') }}">
         {{ skip_form.hidden_tag() }}
@@ -72,10 +72,10 @@
         {% for error in pgp_key_form.pgp_key.errors %}
           <span class="error">{{ error }}</span>
         {% endfor %}
-        <button type="submit">Continue</button>
+        <button class="contBtn" type="submit">Continue</button>
       </form>
 
-      <a class="meta backBtn" href="{{ url_for('onboarding', step='profile') }}">Back</a>
+      <a class="meta secondBack backBtn" href="{{ url_for('onboarding', step='profile') }}">Back</a>
       <form class="formBody skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
         {{ skip_form.hidden_tag() }}
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
@@ -107,5 +107,6 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% endif %}
+    <div class="onboarding-footer"></div>
   </div>
 {% endblock %}
