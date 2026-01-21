@@ -16,7 +16,7 @@
 
     {% if step == "profile" %}
       <h3>First, tell us a little about yourself!</h3>
-      <p>What should we call you? Make it the same as what your audience is familiar with.<br>Add a short bio to let people know how you can help.</p>
+      <p>What should we call you? Make it the same as what your audience is familiar with. Then, add a short bio to let people know how you can help.</p>
       <form method="POST" class="formBody">
         {{ profile_form.hidden_tag() }}
         <input type="hidden" name="step" value="profile" />
@@ -41,7 +41,7 @@
       </form>
     {% elif step == "encryption" %}
       <h3>Next, let's secure your account.</h3>
-      <p>We’ll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Check out our docs</a>.</p>
+      <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Check out our docs</a>.</p>
       <form method="POST" class="formBody">
         <p class="label">Proton Key Import</p>        
         {{ pgp_proton_form.hidden_tag() }}
