@@ -3189,8 +3189,7 @@ strong {
 }
 
 .onboarding-body header,
-.onboarding-body footer,
-.onboarding-body .banner {
+.onboarding-body footer {
   display: none;
 }
 
@@ -3208,7 +3207,7 @@ strong {
 .onboarding-main .container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 3rem;
+  padding: 4rem 3rem 1rem 3rem;
   min-width: 100%;
   max-width: 100%;
   border-radius: none;
@@ -3631,7 +3630,7 @@ li.tab .badge {
 
 @media (max-width: 640px) {
   .onboarding-main .container {
-    padding: 2rem;
+    padding: 4rem 2rem 2rem 2rem;
   }
 
   .onboarding-wizard {
@@ -3641,7 +3640,11 @@ li.tab .badge {
 
 @media (max-width: 480px) {
   .onboarding-main .container {
-    padding: 1rem;
+    padding: 3.5rem 1rem 1rem 1rem;
+  }
+
+  .onboarding-wizard {
+    padding: 3rem 1rem;
   }
 
   .skipForm {
