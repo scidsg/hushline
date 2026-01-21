@@ -3655,6 +3655,7 @@ li.tab .badge {
 
   .onboarding-wizard {
     padding: 3rem 1.5rem;
+    margin-top: env(safe-area-inset-top);
   }
 
   .contBtn,
