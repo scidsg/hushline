@@ -3648,6 +3648,15 @@ li.tab .badge {
   display: none;  
 }
 
+.onboarding-wizard h2 + .meta {
+  text-align: center;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.meta + h3 {
+  margin-top: 0; 
+}
+
 @media (max-width: 640px) {
   .onboarding-main .container {
     padding: 4rem 2rem 2rem 2rem;
