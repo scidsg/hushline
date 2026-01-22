@@ -19,7 +19,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
 
     response = client.get(url_for("onboarding"))
     assert response.status_code == 200
-    assert "First, tell us a about yourself" in response.text
+    assert "First, tell us about yourself" in response.text
 
     response = client.post(
         url_for("onboarding"),
