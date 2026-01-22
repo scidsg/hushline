@@ -43,7 +43,7 @@
     {% elif step == "encryption" %}
       <p class="meta">Step 2 of 3</p>
       <h3>Now, let's set up encryption</h3>
-      <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. Need more help? <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Check out our docs</a>.</p>
+      <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Need more help?</a></p>
       <form method="POST" class="formBody">
         <p class="label">Proton Key Import</p>        
         {{ pgp_proton_form.hidden_tag() }}
