@@ -1,11 +1,12 @@
 # 🤫 Hush Line
 
-[Hush Line](https://hushline.app) is a free & open-source whistleblower platform that provides secure, anonymous tip lines with no self-hosting, maintenance, or technical overhead. Sign up for a free account at https://tips.hushline.app/register
+[Hush Line](https://hushline.app) is a whistleblower platform that provides secure, anonymous tip lines with no self-hosting required. Sign up for a free account at https://tips.hushline.app/register
 
-<img width="3971" height="2084" alt="social" src="https://github.com/user-attachments/assets/723eae60-d6e5-4470-88d6-1f0f22a9c6b8" />
+<img width="3627" height="2194" alt="cover" src="https://github.com/user-attachments/assets/442d2a2f-cf64-469c-8f09-0808619df67e" />
 
 ## Hush Line Features
 
+- 👋 New User Onboarding
 - ⭐️ Verified accounts
 - 🙋 Opt-in user directory
 - 👁️ OCR Vision Assistant
