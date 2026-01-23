@@ -135,18 +135,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function handleSearchInput() {
     const query = searchInput.value.trim();
+    const hasQuery = query.length > 0;
+    if (clearIcon) {
+      clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
+      clearIcon.hidden = !hasQuery;
+      clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+    }
     if (query.length === 0) {
       if (hasRenderedSearch && resultsContainer) {
         resultsContainer.innerHTML = initialMarkup;
         createReportEventListeners("#all");
         hasRenderedSearch = false;
       }
-      clearIcon.style.visibility = "hidden";
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
-    clearIcon.style.visibility = query.length ? "visible" : "hidden";
     hasRenderedSearch = true;
   }
 

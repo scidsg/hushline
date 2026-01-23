@@ -160,6 +160,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function handleSearchInput() {
     const query = searchInput.value.trim();
     const activePanel = document.querySelector(".tab-content.active");
+    const hasQuery = query.length > 0;
+    if (clearIcon) {
+      clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
+      clearIcon.hidden = !hasQuery;
+      clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+    }
     if (query.length === 0) {
       if (
         hasRenderedSearch &&
@@ -170,12 +176,10 @@ document.addEventListener("DOMContentLoaded", function () {
         createReportEventListeners(`#${activePanel.id}`);
         hasRenderedSearch = false;
       }
-      clearIcon.style.visibility = "hidden";
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
-    clearIcon.style.visibility = query.length ? "visible" : "hidden";
     hasRenderedSearch = true;
   }
 
