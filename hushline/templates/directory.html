@@ -3,7 +3,7 @@
 {% block title %}Directory{% endblock %}
 
 {% block content %}
-  <h2>User Directory</h2>
+  <h2 id="directory-title">User Directory</h2>
 
   {% if intro_text %}
     {{ intro_text | markdown }}
@@ -106,16 +106,6 @@
             <a href="{{ url_for('profile', username=username.username) }}"
               >View Profile</a
             >
-            {% if logged_in %}
-              <a
-                href="#"
-                class="report-link"
-                data-username="{{ username.username }}"
-                data-display-name="{{ username.display_name or username.username }}"
-                data-bio="{{ username.bio }}"
-                >Report Account</a
-              >
-            {% endif %}
           </div>
         </article>
       {% endfor %}
@@ -147,14 +137,15 @@
               >View Profile</a
             >
             {% if logged_in %}
-              <a
-                href="#"
+              <button
+                type="button"
                 class="report-link"
                 data-username="{{ username.username }}"
                 data-display-name="{{ username.display_name or username.username }}"
                 data-bio="{{ username.bio }}"
-                >Report Account</a
               >
+                Report Account
+              </button>
             {% endif %}
           </div>
         </article>
@@ -167,8 +158,13 @@
   <div
     id="all"
     class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
-    role="tabpanel"
-    aria-labelledby="all-users-tab"
+    {% if directory_verified_tab_enabled %}
+      role="tabpanel"
+      aria-labelledby="all-tab"
+    {% else %}
+      role="region"
+      aria-labelledby="directory-title"
+    {% endif %}
   >
     <div class="user-list">
       {% for username in pgp_usernames %}
@@ -195,14 +191,15 @@
                 >View Profile</a
               >
               {% if logged_in %}
-                <a
-                  href="#"
+                <button
+                  type="button"
                   class="report-link"
                   data-username="{{ username.username }}"
                   data-display-name="{{ username.display_name or username.username }}"
                   data-bio="{{ username.bio }}"
-                  >Report Account</a
                 >
+                  Report Account
+                </button>
               {% endif %}
             </div>
           </article>
@@ -235,14 +232,15 @@
               >View Profile</a
             >
             {% if logged_in %}
-              <a
-                href="#"
+              <button
+                type="button"
                 class="report-link"
                 data-username="{{ username.username }}"
                 data-display-name="{{ username.display_name or username.username }}"
                 data-bio="{{ username.bio }}"
-                >Report Account</a
               >
+                Report Account
+              </button>
             {% endif %}
           </div>
         </article>

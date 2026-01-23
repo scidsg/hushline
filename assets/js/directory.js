@@ -86,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function () {
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
-          ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
         </div>
       </article>
     `;
@@ -136,18 +135,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function handleSearchInput() {
     const query = searchInput.value.trim();
+    const hasQuery = query.length > 0;
+    if (clearIcon) {
+      clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
+      clearIcon.hidden = !hasQuery;
+      clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+    }
     if (query.length === 0) {
       if (hasRenderedSearch && resultsContainer) {
         resultsContainer.innerHTML = initialMarkup;
         createReportEventListeners("#all");
         hasRenderedSearch = false;
       }
-      clearIcon.style.visibility = "hidden";
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
-    clearIcon.style.visibility = query.length ? "visible" : "hidden";
     hasRenderedSearch = true;
   }
 
@@ -157,18 +160,6 @@ document.addEventListener("DOMContentLoaded", function () {
     clearIcon.style.visibility = "hidden";
     handleSearchInput();
   });
-
-  function createReportEventListeners(selector) {
-    const links = document.querySelectorAll(selector + " .report-link");
-    links.forEach((link) => {
-      link.addEventListener("click", function (event) {
-        event.preventDefault();
-        const username = this.getAttribute("data-username");
-        const bio = this.getAttribute("data-bio");
-        reportUser(username, bio);
-      });
-    });
-  }
 
   checkIfSessionUser().then(() => {
     loadData();

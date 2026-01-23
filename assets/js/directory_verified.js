@@ -109,7 +109,6 @@ document.addEventListener("DOMContentLoaded", function () {
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
-          ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
         </div>
       </article>
     `;
@@ -158,21 +157,15 @@ document.addEventListener("DOMContentLoaded", function () {
     createReportEventListeners(".tab-content.active .user-list");
   }
 
-  function createReportEventListeners(selector) {
-    const reportLinks = document.querySelectorAll(selector + " .report-link");
-    reportLinks.forEach((link) => {
-      link.addEventListener("click", function (event) {
-        event.preventDefault();
-        const username = this.getAttribute("data-username");
-        const bio = this.getAttribute("data-bio");
-        reportUser(username, bio);
-      });
-    });
-  }
-
   function handleSearchInput() {
     const query = searchInput.value.trim();
     const activePanel = document.querySelector(".tab-content.active");
+    const hasQuery = query.length > 0;
+    if (clearIcon) {
+      clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
+      clearIcon.hidden = !hasQuery;
+      clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+    }
     if (query.length === 0) {
       if (
         hasRenderedSearch &&
@@ -183,12 +176,10 @@ document.addEventListener("DOMContentLoaded", function () {
         createReportEventListeners(`#${activePanel.id}`);
         hasRenderedSearch = false;
       }
-      clearIcon.style.visibility = "hidden";
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
-    clearIcon.style.visibility = query.length ? "visible" : "hidden";
     hasRenderedSearch = true;
   }
 
@@ -228,6 +219,22 @@ document.addEventListener("DOMContentLoaded", function () {
   tabs.forEach((tab) => {
     tab.addEventListener("click", function (e) {
       window.activateTab(e.currentTarget);
+    });
+    tab.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+        return;
+      }
+      event.preventDefault();
+      const tabArray = Array.from(tabs);
+      const currentIndex = tabArray.indexOf(event.currentTarget);
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      const nextIndex =
+        (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextTab = tabArray[nextIndex];
+      if (nextTab) {
+        window.activateTab(nextTab);
+        nextTab.focus();
+      }
     });
   });
 

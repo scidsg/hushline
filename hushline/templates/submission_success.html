@@ -17,8 +17,17 @@
     {% endwith %}
   </p>
   <div class="copy-container">
-    <a id="copy-link-button" class="btn" data-target="reply-url" href="#">Copy Link</a>
-    <span id="copy-link-success" class="copy-success">Link copied!</span>
+    <button id="copy-link-button" class="btn" data-target="reply-url" type="button">
+      Copy Link
+    </button>
+    <span
+      id="copy-link-success"
+      class="copy-success"
+      role="status"
+      aria-live="polite"
+    >
+      Link copied!
+    </span>
   </div>
 
   <p>

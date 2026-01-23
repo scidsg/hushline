@@ -1,7 +1,7 @@
 {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
 
-<div class="settings-tabs">
-  <ul class="tab-list" role="tablist">
+<nav class="settings-tabs" aria-label="Settings">
+  <ul class="tab-list">
     {% with buttons = [
       ('settings.profile', 'Profile', True),
       ('settings.aliases', 'Aliases', aliases_enabled),
@@ -19,10 +19,8 @@
         {% if show %}
           <li role="presentation">
             <a
-              type="button"
               class="tab{% if endpoint == request.endpoint %} active{% endif %}"
-              role="tab"
-              aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
+              {% if endpoint == request.endpoint %}aria-current="page"{% endif %}
               href="{{ url_for(endpoint) }}"
             >
               {{ display_name }}
@@ -32,4 +30,4 @@
       {% endfor %}
     {% endwith %}
   </ul>
-</div>
+</nav>

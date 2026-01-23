@@ -11,19 +11,19 @@
     class="formBody"
   >
     {{ pgp_proton_form.hidden_tag() }}
+    <label for="searchInput">Proton Email Search</label>
     <div class="search-box">
-      <label id="searchIcon" for="proton_email">
+      <span id="searchIcon" aria-hidden="true">
         <img
           class="searchIcon"
           src="/static/img/icon-search.png"
           alt=""
         />
-      </label>
+      </span>
       <input
         id="searchInput"
         type="email"
         name="email"
-        id="proton_email"
         placeholder="Search Proton email..."
         required
       />

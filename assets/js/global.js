@@ -144,19 +144,62 @@ document.addEventListener("DOMContentLoaded", function () {
   const guidanceDiv = document.querySelector("#guidance-modal.modal");
   if (guidanceDiv) {
     let activePage = 0;
+    let previousFocus = null;
 
     const hasFinishedGuidance = localStorage.getItem("hasFinishedGuidance");
     if (!hasFinishedGuidance) {
+      previousFocus = document.activeElement;
       guidanceDiv.classList.add("show");
+      guidanceDiv.setAttribute("aria-hidden", "false");
 
       // Count the child divs of guidanceDiv, these are the pages
       const guidancePages = guidanceDiv.querySelectorAll(":scope > div");
       const pagesCount = guidancePages.length;
 
+      function getFocusableElements() {
+        const activePage = guidancePages[activePageIndex()];
+        if (!activePage) {
+          return [];
+        }
+        return Array.from(
+          activePage.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter(
+          (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+        );
+      }
+
+      function activePageIndex() {
+        return Math.max(0, Math.min(activePage, pagesCount - 1));
+      }
+
+      function trapFocus(event) {
+        if (event.key !== "Tab" || !guidanceDiv.classList.contains("show")) {
+          return;
+        }
+        const focusable = getFocusableElements();
+        if (!focusable.length) {
+          event.preventDefault();
+          guidanceDiv.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+
       function showActivePage() {
         for (let i = 0; i < pagesCount; i++) {
           if (i == activePage) {
             guidancePages[i].classList.add("show");
+            guidancePages[i].setAttribute("aria-hidden", "false");
             guidanceDiv
               .querySelectorAll(".page-bullet-" + i)
               .forEach((bullet) => {
@@ -164,6 +207,7 @@ document.addEventListener("DOMContentLoaded", function () {
               });
           } else {
             guidancePages[i].classList.remove("show");
+            guidancePages[i].setAttribute("aria-hidden", "true");
             guidanceDiv
               .querySelectorAll(".page-bullet-" + i)
               .forEach((bullet) => {
@@ -171,6 +215,10 @@ document.addEventListener("DOMContentLoaded", function () {
               });
           }
         }
+        guidanceDiv.setAttribute(
+          "aria-labelledby",
+          "guidance-heading-" + activePage,
+        );
       }
 
       function leaveClicked() {
@@ -213,7 +261,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function doneClicked() {
         guidanceDiv.classList.remove("show");
+        guidanceDiv.setAttribute("aria-hidden", "true");
         localStorage.setItem("hasFinishedGuidance", "true");
+        if (previousFocus && typeof previousFocus.focus === "function") {
+          previousFocus.focus();
+        }
       }
 
       // If there are no pages, or if there's one page and it's blank, hide the modal
@@ -226,6 +278,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "")
       ) {
         guidanceDiv.classList.remove("show");
+        guidanceDiv.setAttribute("aria-hidden", "true");
       }
 
       // If there's just 1 page, hide the bullets
@@ -280,6 +333,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Show the first page
       showActivePage();
+      guidanceDiv.focus();
+      guidanceDiv.addEventListener("keydown", trapFocus);
     }
   }
 });
