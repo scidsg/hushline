@@ -1234,7 +1234,7 @@ img.empty {
 
 .flash-messages {
   position: fixed;
-  top: 1rem;
+  top: calc(1rem + env(safe-area-inset-top));
   right: 50%;
   transform: translateX(50%) translateY(0%);
   padding: 1.25rem 2rem;
