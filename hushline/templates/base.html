@@ -183,17 +183,29 @@
     <header>
       <div class="brand-wrapper">
         {% if brand_logo_url %}
-          <img class="brand-logo" src="{{ brand_logo_url }}" alt="Logo"/>
+          <img
+            class="brand-logo"
+            src="{{ brand_logo_url }}"
+            alt="{{ brand_name }} logo"
+          />
         {% endif %}
         <h1>{{ brand_name }}</h1>
       </div>
       <nav>
         <div class="navGroup">
-          <a class="mobileNav btnIcon" aria-label="Navigation menu">Menu</a>
-          <ul>
+          <button
+            type="button"
+            class="mobileNav btnIcon"
+            aria-label="Navigation menu"
+            aria-expanded="false"
+            aria-controls="primary-nav"
+          >
+            Menu
+          </button>
+          <ul id="primary-nav">
             {% if user and setup_incomplete %}
               <li>
-                <a class="onboardingLink" href="{{ url_for('onboarding') }}">🪄 Account Setup</a>
+                <a class="onboardingLink" href="{{ url_for('onboarding', full=1) }}">🪄 Account Setup</a>
               </li>
             {% endif %}
             {% if 'user_id' in session and session.get('is_authenticated', False) %}
@@ -226,7 +238,8 @@
                   <img
                     class="dropdown-icon"
                     src="{{ url_for('static', filename='img/dropdown.png') }}"
-                    alt="Dropdown"
+                    alt=""
+                    aria-hidden="true"
                   />
                 </button>
                 <div id="dropdown-content" class="dropdown-content" hidden>
@@ -291,23 +304,40 @@
 
     {% if guidance_enabled %}
       <input type="hidden" id="guidance-exit-button-link" value="{{ guidance_exit_button_link }}" />
-      <div id="guidance-modal" class="modal">
+      <div
+        id="guidance-modal"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        tabindex="-1"
+      >
         {% for prompt in guidance_prompts %}
           <div class="modal-content guidance-prompt-{{ loop.index - 1 }}">
-            <h2 class="heading-text">{{ prompt.heading_text }}</h2>
+            <h2 class="heading-text" id="guidance-heading-{{ loop.index - 1 }}">
+              {{ prompt.heading_text }}
+            </h2>
             <div class="prompt-text">{{ prompt.prompt_text|markdown }}</div>
             <div class="modal-buttons-container">
               <div class="modal-buttons">
                 <span class="page-bullets">
                   {% for prompt in guidance_prompts %}
-                    <span class="page-bullet-{{ loop.index - 1 }}">•</span>
+                    <button
+                      type="button"
+                      class="page-bullet-{{ loop.index - 1 }}"
+                      aria-label="Go to step {{ loop.index }}"
+                    >
+                      •
+                    </button>
                   {% endfor %}
                 </span>
                 <div class="button-group">
-                  <button class="leave btn-danger">{{ guidance_exit_button_text }}</button>
-                  <button class="btn back">Back</button>
-                  <button class="continue">Next</button>
-                  <button class="done">Continue</button>
+                  <button type="button" class="leave btn-danger">
+                    {{ guidance_exit_button_text }}
+                  </button>
+                  <button type="button" class="btn back">Back</button>
+                  <button type="button" class="continue">Next</button>
+                  <button type="button" class="done">Continue</button>
                 </div>
               </div>
             </div>

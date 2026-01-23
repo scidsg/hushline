@@ -91,6 +91,16 @@
 
 /* Light Mode */
 @media (prefers-color-scheme: light) {
+  ::selection {
+    background: var(--color-brand);
+    color: white;
+  }
+
+  .banner p::selection {
+    background: var(--color-brand-max-contrast);
+    color: white;
+  }
+  
   body {
     background-color: var(--color-brand-bg);
   }
@@ -114,7 +124,8 @@
     box-shadow: var(--shadow-dynamic);
   }
 
-  header nav a {
+  header nav a,
+  header nav button {
     color: var(--color-text);
   }
 
@@ -169,6 +180,44 @@
 
   .tab:focus-within {
     outline: none;
+  }
+
+  .tab:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+    text-decoration: underline;
+  }
+
+  .tab.active:focus-visible {
+    box-shadow:
+      0 -3px 0 inset var(--color-brand-dark-min-saturation),
+      inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+
+  .settings-main .settings-content .tab.active:focus-visible,
+  .inbox-main .inbox-content .tab.active:focus-visible {
+    box-shadow:
+      3px 0 0 inset var(--color-brand-dark-min-saturation),
+      inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+
+  .tab:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px var(--color-brand-min-contrast);
+    text-decoration: underline;
+  }
+
+  .tab.active:focus-visible {
+    box-shadow:
+      0 -3px 0 inset var(--color-brand),
+      inset 0 0 0 3px var(--color-brand-min-contrast);
+  }
+
+  .settings-main .settings-content .tab.active:focus-visible,
+  .inbox-main .inbox-content .tab.active:focus-visible {
+    box-shadow:
+      3px 0 0 inset var(--color-brand),
+      inset 0 0 0 3px var(--color-brand-min-contrast);
   }
 
   .settings-main .settings-content .tab:hover,
@@ -267,13 +316,18 @@
     background-color: var(--color-white-transparent);
   }
 
-  .modal-buttons .page-bullets span {
-    color: var(--color-text-dark);
-  }
+.modal-buttons .page-bullets button {
+  color: var(--color-text-dark);
+  background: none;
+  border: 0;
+  padding: 0 0.25rem;
+  font: inherit;
+  cursor: pointer;
+}
 
-  .modal-buttons .page-bullets span.active {
-    color: var(--color-brand);
-  }
+.modal-buttons .page-bullets button.active {
+  color: var(--color-brand);
+}
 
   .btn-danger,
   .formBody .btn-danger {
@@ -505,6 +559,16 @@
 
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
+  ::selection {
+    background: var(--color-brand-dark-min-saturation);
+    color: var(--color-text);
+  }
+
+  .banner p::selection {
+    background: var(--color-brand-dark-max-saturation);
+    color: white;
+  }
+  
   body {
     background-color: var(--color-dark-bg);
     color: var(--color-text-dark);
@@ -531,7 +595,8 @@
     box-shadow: var(--shadow-dynamic);
   }
 
-  header nav a {
+  header nav a,
+  header nav button {
     color: var(--color-text-dark);
   }
 
@@ -549,7 +614,7 @@
   }
 
   .container {
-    border: var(--border-dark);
+    border: var(--border-dark-1);
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     box-shadow: var(--shadow-dynamic);
@@ -735,11 +800,16 @@
     border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  .modal-buttons .page-bullets span {
+  .modal-buttons .page-bullets button {
     color: var(--color-border-dark);
+    background: none;
+    border: 0;
+    padding: 0 0.25rem;
+    font: inherit;
+    cursor: pointer;
   }
 
-  .modal-buttons .page-bullets span.active {
+  .modal-buttons .page-bullets button.active {
     color: var(--color-brand-dark-min-saturation);
   }
 
@@ -1210,7 +1280,7 @@ img.empty {
 
 .flash-messages {
   position: fixed;
-  top: 1rem;
+  top: calc(1rem + env(safe-area-inset-top));
   right: 50%;
   transform: translateX(50%) translateY(0%);
   padding: 1.25rem 2rem;
@@ -1357,6 +1427,7 @@ header nav ul {
   gap: 1.125rem;
   margin: 0;
   padding: 0;
+  padding-right: 0.25rem;
   align-items: center;
 }
 
@@ -1365,8 +1436,10 @@ header nav li {
   font-size: 0.875rem;
 }
 
-header nav a {
+header nav a,
+header nav button {
   text-decoration: none;
+  border-radius: 0.25rem;
 }
 
 header nav a:hover {
@@ -1524,13 +1597,15 @@ input[type="file"]::file-selector-button:active {
 
 .mobileNav {
   background-size: contain;
-  width: 2.5rem;
-  height: 2.5rem;
   background-repeat: no-repeat;
   padding-left: 2.25rem;
   align-items: center;
   font-size: var(--font-size-small);
   font-family: var(--font-sans-bold);
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-right: 0.5rem;
 }
 
 .btn .emoji {
@@ -1694,7 +1769,7 @@ img.alert {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: 1.25rem;
+  gap: 0.5rem;
 }
 
 .inbox-tabs,
@@ -1728,7 +1803,7 @@ img.alert {
 .tab {
   min-height: 0px;
   min-width: auto;
-  padding: 1rem 0;
+  padding: 1rem 0.25rem;
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   white-space: nowrap;
@@ -2012,6 +2087,16 @@ input:focus {
   display: flex;
   gap: 0.625rem;
   font-size: var(--font-size-small);
+}
+
+.user-actions .report-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .search-box {
@@ -3185,15 +3270,15 @@ strong {
   -webkit-backdrop-filter: blur(1rem);
 }
 
-.modal-buttons button {
+.modal-buttons .button-group button {
   display: none;
 }
 
-.modal-buttons button.show {
+.modal-buttons .button-group button.show {
   display: inline-block;
 }
 
-.modal-buttons .page-bullets span {
+.modal-buttons .page-bullets button {
   cursor: pointer;
 }
 
