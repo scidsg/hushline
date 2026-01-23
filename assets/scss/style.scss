@@ -1381,6 +1381,7 @@ header nav ul {
   gap: 1.125rem;
   margin: 0;
   padding: 0;
+  padding-right: 0.25rem;
   align-items: center;
 }
 
@@ -1389,8 +1390,10 @@ header nav li {
   font-size: 0.875rem;
 }
 
-header nav a {
+header nav a,
+header nav button {
   text-decoration: none;
+  border-radius: 0.25rem;
 }
 
 header nav a:hover {
@@ -1548,8 +1551,6 @@ input[type="file"]::file-selector-button:active {
 
 .mobileNav {
   background-size: contain;
-  width: 2.5rem;
-  height: 2.5rem;
   background-repeat: no-repeat;
   padding-left: 2.25rem;
   align-items: center;
@@ -1558,6 +1559,7 @@ input[type="file"]::file-selector-button:active {
   background-color: transparent;
   border: 0;
   box-shadow: none;
+  padding-right: 0.5rem;
 }
 
 .btn .emoji {
