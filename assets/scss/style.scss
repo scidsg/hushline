@@ -114,7 +114,8 @@
     box-shadow: var(--shadow-dynamic);
   }
 
-  header nav a {
+  header nav a,
+  header nav button {
     color: var(--color-text);
   }
 
@@ -536,7 +537,8 @@
     box-shadow: var(--shadow-dynamic);
   }
 
-  header nav a {
+  header nav a,
+  header nav button {
     color: var(--color-text-dark);
   }
 
