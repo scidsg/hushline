@@ -10,13 +10,14 @@
     <img
       class="onboarding"
       src="{{ url_for('static', filename='img/onboarding.png') }}"
-      alt="Empty Inbox"
+      alt="Onboarding Logo"
     />
-    <h2>Hush Line Account Setup</h2>
+    <h2>Let's set up your account</h2>
 
     {% if step == "profile" %}
-      <h3>First, tell us a little about yourself!</h3>
-      <p>What should we call you? Make it the same as what your audience is familiar with.<br>Add a short bio to let people know how you can help.</p>
+      <p class="meta">Step 1 of 3</p>
+      <h3>First, tell us about yourself</h3>
+      <p>What should we call you? Make it the same as what your audience is familiar with. Then, add a short bio to let whistleblowers know who you are and how you can help.</p>
       <form method="POST" class="formBody">
         {{ profile_form.hidden_tag() }}
         <input type="hidden" name="step" value="profile" />
@@ -33,18 +34,18 @@
           <span class="error">{{ error }}</span>
         {% endfor %}
 
-        <button type="submit">Continue</button>
+        <button class="contBtn" type="submit">Continue</button>
       </form>
       <form class="formBody skipForm firstSkip" method="POST" action="{{ url_for('onboarding_skip') }}">
         {{ skip_form.hidden_tag() }}
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "encryption" %}
-      <h3>Next, let's secure your account.</h3>
-      <p>Wel'll add your public encyption key so we can encrypt messages so only you can read them. Proton users can search for their key below. Other users can manually paste their public key.</p>
-
+      <p class="meta">Step 2 of 3</p>
+      <h3>Now, let's set up encryption</h3>
+      <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Need more help?</a></p>
       <form method="POST" class="formBody">
-        <label>Proton Email Search</label>
+        <p class="label">Proton Key Import</p>        
         {{ pgp_proton_form.hidden_tag() }}
         <input type="hidden" name="step" value="encryption" />
         <input type="hidden" name="method" value="proton" />
@@ -73,18 +74,19 @@
         {% for error in pgp_key_form.pgp_key.errors %}
           <span class="error">{{ error }}</span>
         {% endfor %}
-        <button type="submit">Continue</button>
+        <button class="contBtn" type="submit">Continue</button>
       </form>
 
-      <a class="meta backBtn" href="{{ url_for('onboarding', step='profile') }}">Back</a>
+      <a class="meta secondBack backBtn" href="{{ url_for('onboarding', step='profile') }}">Back</a>
       <form class="formBody skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
         {{ skip_form.hidden_tag() }}
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "notifications" %}
-      <h3>Where should we send new tips?</h3>
+      <p class="meta">Step 3 of 3</p>
+      <h3>Finally, where should we send new tips?</h3>
       <p>
-        Hush Line works best when tips are delivered to your inbox. Add an email address where we should send them.
+        Hush Line works best when tips are delivered to your email. If you imported a Proton Mail key on the previous step, use the same address here, and tips will automatically decrypt when they arrive in your inbox!
       </p>
       <form method="POST" class="formBody">
         {{ notifications_form.hidden_tag() }}
@@ -108,5 +110,6 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% endif %}
+    <div class="onboarding-footer"></div>
   </div>
 {% endblock %}

@@ -19,7 +19,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
 
     response = client.get(url_for("onboarding"))
     assert response.status_code == 200
-    assert "First, tell us a little about yourself!" in response.text
+    assert "First, tell us about yourself" in response.text
 
     response = client.post(
         url_for("onboarding"),
@@ -27,7 +27,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Next, let's secure your account." in response.text
+    assert "Now, let's set up encryption" in response.text
 
     response = client.post(
         url_for("onboarding"),
@@ -39,7 +39,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Where should we send new tips?" in response.text
+    assert "Finally, where should we send new tips?" in response.text
 
     response = client.post(
         url_for("onboarding"),
