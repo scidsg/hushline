@@ -172,6 +172,18 @@
     outline: none;
   }
 
+  .tab:focus-visible {
+    outline: 3px solid var(--color-brand-dark-min-saturation);
+    outline-offset: 2px;
+    text-decoration: underline;
+  }
+
+  .tab:focus-visible {
+    outline: 3px solid var(--color-brand-min-contrast);
+    outline-offset: 2px;
+    text-decoration: underline;
+  }
+
   .settings-main .settings-content .tab:hover,
   .inbox-main .inbox-content .tab:hover {
     background-color: transparent;
