@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
-          ${isSessionUser ? `<a href="#" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</a>` : ``}
+          ${isSessionUser ? `<button type="button" class="report-link" data-username="${user.primary_username}" data-display-name="${user.display_name || user.primary_username}" data-bio="${user.bio ?? "No bio"}">Report Account</button>` : ``}
         </div>
       </article>
     `;
@@ -161,8 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function createReportEventListeners(selector) {
     const links = document.querySelectorAll(selector + " .report-link");
     links.forEach((link) => {
-      link.addEventListener("click", function (event) {
-        event.preventDefault();
+      link.addEventListener("click", function () {
         const username = this.getAttribute("data-username");
         const bio = this.getAttribute("data-bio");
         reportUser(username, bio);

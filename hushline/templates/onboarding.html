@@ -45,18 +45,18 @@
       <h3>Now, let's set up encryption</h3>
       <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Need more help?</a></p>
       <form method="POST" class="formBody">
-        <p class="label">Proton Key Import</p>        
+        <label for="searchInput">Proton Email Search</label>
         {{ pgp_proton_form.hidden_tag() }}
         <input type="hidden" name="step" value="encryption" />
         <input type="hidden" name="method" value="proton" />
         <div class="search-box">
-          <label id="searchIcon" for="proton_email" aria-label="Search Proton email">
+          <span id="searchIcon" aria-hidden="true">
             <img
               class="searchIcon"
               src="{{ url_for('static', filename='img/icon-search.png') }}"
               alt=""
             />
-          </label>
+          </span>
           <input id="searchInput" type="email" name="email" placeholder="Search Proton email..." required="">
         </div>
         {% for error in pgp_proton_form.email.errors %}

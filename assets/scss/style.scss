@@ -267,13 +267,18 @@
     background-color: var(--color-white-transparent);
   }
 
-  .modal-buttons .page-bullets span {
-    color: var(--color-text-dark);
-  }
+.modal-buttons .page-bullets button {
+  color: var(--color-text-dark);
+  background: none;
+  border: 0;
+  padding: 0 0.25rem;
+  font: inherit;
+  cursor: pointer;
+}
 
-  .modal-buttons .page-bullets span.active {
-    color: var(--color-brand);
-  }
+.modal-buttons .page-bullets button.active {
+  color: var(--color-brand);
+}
 
   .btn-danger,
   .formBody .btn-danger {
@@ -735,11 +740,16 @@
     border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
-  .modal-buttons .page-bullets span {
+  .modal-buttons .page-bullets button {
     color: var(--color-border-dark);
+    background: none;
+    border: 0;
+    padding: 0 0.25rem;
+    font: inherit;
+    cursor: pointer;
   }
 
-  .modal-buttons .page-bullets span.active {
+  .modal-buttons .page-bullets button.active {
     color: var(--color-brand-dark-min-saturation);
   }
 
@@ -1531,6 +1541,9 @@ input[type="file"]::file-selector-button:active {
   align-items: center;
   font-size: var(--font-size-small);
   font-family: var(--font-sans-bold);
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .btn .emoji {
@@ -2012,6 +2025,16 @@ input:focus {
   display: flex;
   gap: 0.625rem;
   font-size: var(--font-size-small);
+}
+
+.user-actions .report-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .search-box {
@@ -3185,15 +3208,15 @@ strong {
   -webkit-backdrop-filter: blur(1rem);
 }
 
-.modal-buttons button {
+.modal-buttons .button-group button {
   display: none;
 }
 
-.modal-buttons button.show {
+.modal-buttons .button-group button.show {
   display: inline-block;
 }
 
-.modal-buttons .page-bullets span {
+.modal-buttons .page-bullets button {
   cursor: pointer;
 }
 
