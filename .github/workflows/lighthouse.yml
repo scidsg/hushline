@@ -18,12 +18,22 @@ jobs:
       - name: Install Lighthouse
         run: npm install -g lighthouse
 
-      - name: Start app
+      - name: Build assets
         run: |
           npm install
-          npm run build
-          npm run start &
-          sleep 10
+          npm run build:prod
+
+      - name: Start app
+        run: |
+          docker compose up -d postgres blob-storage
+          docker compose run --rm dev_data
+          docker compose up -d app
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
 
       - name: Run Lighthouse
         run: |
