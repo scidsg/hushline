@@ -49,11 +49,12 @@ jobs:
       - name: Extract score
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
-          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
+          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\",\"runId\":\"${GITHUB_RUN_ID}\"}" > badge.json
           if [ "$SCORE" -ne 100 ]; then
             echo "Accessibility score must be 100, got $SCORE"
             exit 1
           fi
+
       - name: Commit badge
         if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
         run: |
