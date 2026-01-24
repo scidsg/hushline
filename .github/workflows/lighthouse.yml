@@ -1,0 +1,74 @@
+name: Lighthouse Accessibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Lighthouse
+        run: npm install -g lighthouse
+
+      - name: Build assets
+        run: |
+          npm install
+          npm run build:prod
+
+      - name: Start app
+        run: |
+          docker compose up -d postgres blob-storage
+          docker compose run --rm dev_data
+          docker compose up -d app
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run Lighthouse
+        run: |
+          lighthouse http://localhost:8080 \
+            --only-categories=accessibility \
+            --chrome-flags="--headless" \
+            --output=json \
+            --output-path=./lighthouse.json
+
+      - name: Extract score
+        run: |
+          SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
+          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
+          if [ "$SCORE" -ne 100 ]; then
+            echo "Accessibility score must be 100, got $SCORE"
+            exit 1
+          fi
+      - name: Commit badge
+        if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add badge.json
+          if git diff --cached --quiet; then
+            echo "Badge is already up to date."
+            exit 0
+          fi
+          git commit -m "Update Lighthouse accessibility badge [skip ci]"
+          git push
+
+      - name: Upload badge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-badge
+          path: badge.json
