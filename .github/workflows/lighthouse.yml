@@ -47,6 +47,10 @@ jobs:
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
           echo "{ \"accessibility\": $SCORE }" > badge.json
+          if [ "$SCORE" -ne 100 ]; then
+            echo "Accessibility score must be 100, got $SCORE"
+            exit 1
+          fi
 
       - name: Upload badge artifact
         uses: actions/upload-artifact@v4
