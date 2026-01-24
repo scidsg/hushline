@@ -73,7 +73,6 @@ jobs:
           delete-branch: true
           add-paths: |
             badge.json
-            badge-meta.json
 
       - name: Upload badge artifact
         uses: actions/upload-artifact@v4
@@ -81,4 +80,3 @@ jobs:
           name: accessibility-badge
           path: |
             badge.json
-            badge-meta.json
