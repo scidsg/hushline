@@ -51,7 +51,12 @@ jobs:
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
           echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
-          echo "{\"runId\":\"${GITHUB_RUN_ID}\"}" > badge-meta.json
+          PR_NUMBER="${GITHUB_REF#refs/pull/}"
+          PR_NUMBER="${PR_NUMBER%/merge}"
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            PR_NUMBER=""
+          fi
+          echo "{\"score\":$SCORE,\"runId\":\"${GITHUB_RUN_ID}\",\"runNumber\":\"${GITHUB_RUN_NUMBER}\",\"sha\":\"${GITHUB_SHA}\",\"workflow\":\"${GITHUB_WORKFLOW}\",\"url\":\"http://localhost:8080\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"prNumber\":\"${PR_NUMBER}\"}" > badge-meta.json
           if [ "$SCORE" -ne 100 ]; then
             echo "Accessibility score must be 100, got $SCORE"
             exit 1
