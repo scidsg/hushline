@@ -130,7 +130,9 @@ document.addEventListener("DOMContentLoaded", function () {
       resultsContainer.appendChild(infoListContainer);
     }
 
-    createReportEventListeners("#all");
+    if (typeof createReportEventListeners === "function") {
+      createReportEventListeners("#all");
+    }
   }
 
   function handleSearchInput() {
@@ -142,11 +144,13 @@ document.addEventListener("DOMContentLoaded", function () {
       clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
     }
     if (query.length === 0) {
-      if (hasRenderedSearch && resultsContainer) {
+      if (resultsContainer) {
         resultsContainer.innerHTML = initialMarkup;
-        createReportEventListeners("#all");
-        hasRenderedSearch = false;
+        if (typeof createReportEventListeners === "function") {
+          createReportEventListeners("#all");
+        }
       }
+      hasRenderedSearch = false;
       return;
     }
     const filteredUsers = filterUsers(query);
@@ -158,6 +162,8 @@ document.addEventListener("DOMContentLoaded", function () {
   clearIcon.addEventListener("click", function () {
     searchInput.value = "";
     clearIcon.style.visibility = "hidden";
+    clearIcon.hidden = true;
+    clearIcon.setAttribute("aria-hidden", "true");
     handleSearchInput();
   });
 
