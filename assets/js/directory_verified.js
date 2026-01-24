@@ -154,7 +154,9 @@ document.addEventListener("DOMContentLoaded", function () {
       activePanel.appendChild(infoListContainer);
     }
 
-    createReportEventListeners(".tab-content.active .user-list");
+    if (typeof createReportEventListeners === "function") {
+      createReportEventListeners(".tab-content.active .user-list");
+    }
   }
 
   function handleSearchInput() {
@@ -167,15 +169,13 @@ document.addEventListener("DOMContentLoaded", function () {
       clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
     }
     if (query.length === 0) {
-      if (
-        hasRenderedSearch &&
-        activePanel &&
-        initialMarkup.has(activePanel.id)
-      ) {
+      if (activePanel && initialMarkup.has(activePanel.id)) {
         activePanel.innerHTML = initialMarkup.get(activePanel.id);
-        createReportEventListeners(`#${activePanel.id}`);
-        hasRenderedSearch = false;
+        if (typeof createReportEventListeners === "function") {
+          createReportEventListeners(`#${activePanel.id}`);
+        }
       }
+      hasRenderedSearch = false;
       return;
     }
     const filteredUsers = filterUsers(query);
@@ -187,6 +187,8 @@ document.addEventListener("DOMContentLoaded", function () {
   clearIcon.addEventListener("click", function () {
     searchInput.value = "";
     clearIcon.style.visibility = "hidden";
+    clearIcon.hidden = true;
+    clearIcon.setAttribute("aria-hidden", "true");
     handleSearchInput();
   });
 
