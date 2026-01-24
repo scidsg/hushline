@@ -3,13 +3,6 @@
 [Hush Line](https://hushline.app) is a whistleblower platform that provides secure, anonymous tip lines with no self-hosting required. Sign up for a free account at https://tips.hushline.app/register
 
 ![Accessibility](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge.json)
-![Tests](https://github.com/scidsg/hushline/actions/workflows/tests.yml/badge.svg)
-![Lighthouse](https://github.com/scidsg/hushline/actions/workflows/lighthouse.yml/badge.svg)
-![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
-![Build Latest](https://github.com/scidsg/hushline/actions/workflows/build-latest.yml/badge.svg)
-![Build Release](https://github.com/scidsg/hushline/actions/workflows/build-release.yml/badge.svg)
-![License](https://img.shields.io/github/license/scidsg/hushline)
-![Release](https://img.shields.io/github/v/release/scidsg/hushline)
 
 <img width="3627" height="2194" alt="cover" src="https://github.com/user-attachments/assets/442d2a2f-cf64-469c-8f09-0808619df67e" />
 
