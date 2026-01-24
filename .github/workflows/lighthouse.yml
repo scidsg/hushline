@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   lighthouse:
@@ -50,22 +49,24 @@ jobs:
       - name: Extract score
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
-          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\",\"runId\":\"${GITHUB_RUN_ID}\"}" > badge.json
+          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
           if [ "$SCORE" -ne 100 ]; then
             echo "Accessibility score must be 100, got $SCORE"
             exit 1
           fi
-      - name: Create badge update PR
-        if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          commit-message: "Update Lighthouse accessibility badge [skip ci]"
-          title: "Update Lighthouse accessibility badge"
-          body: "Automated update of `badge.json` from Lighthouse workflow."
-          branch: "automation/lighthouse-badge"
-          delete-branch: true
-          add-paths: |
-            badge.json
+
+      - name: Commit badge
+        if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add badge.json
+          if git diff --cached --quiet; then
+            echo "Badge is already up to date."
+            exit 0
+          fi
+          git commit -m "Update Lighthouse accessibility badge [skip ci]"
+          git push
 
       - name: Upload badge artifact
         uses: actions/upload-artifact@v4
