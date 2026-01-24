@@ -51,7 +51,6 @@ jobs:
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
           echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
-          echo "{\"runId\":\"${GITHUB_RUN_ID}\"}" > badge-meta.json
           if [ "$SCORE" -ne 100 ]; then
             echo "Accessibility score must be 100, got $SCORE"
             exit 1
@@ -68,7 +67,6 @@ jobs:
           delete-branch: true
           add-paths: |
             badge.json
-            badge-meta.json
 
       - name: Upload badge artifact
         uses: actions/upload-artifact@v4
@@ -76,4 +74,3 @@ jobs:
           name: accessibility-badge
           path: |
             badge.json
-            badge-meta.json
