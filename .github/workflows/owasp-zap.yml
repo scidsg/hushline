@@ -42,7 +42,7 @@ jobs:
             -v "$PWD":/zap/wrk/:rw \
             --network=host \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t http://localhost:8080 -J report_json.json -w report_md.md -r report_html.html -a -j -l WARN
+            zap-baseline.py -t http://localhost:8080 -J report_json.json -w report_md.md -r report_html.html -a -j -l MEDIUM
           echo $? > /tmp/zap_exit_code
           set -e
 
