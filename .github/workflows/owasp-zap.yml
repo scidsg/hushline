@@ -38,12 +38,15 @@ jobs:
       - name: OWASP ZAP Baseline Scan
         run: |
           set +e
+          mkdir -p /tmp/zap
+          touch /tmp/zap/report_html.html /tmp/zap/report_md.md /tmp/zap/report_json.json
           docker run --rm \
-            -v "$PWD":/zap/wrk/:rw \
+            -v /tmp/zap:/zap/wrk/:rw \
             --network=host \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://localhost:8080 -J report_json.json -w report_md.md -r report_html.html -a -j -l MEDIUM
           echo $? > /tmp/zap_exit_code
+          ls -la /tmp/zap
           set -e
 
       - name: Upload ZAP report
@@ -52,9 +55,9 @@ jobs:
         with:
           name: zap-baseline-report
           path: |
-            report_html.html
-            report_md.md
-            report_json.json
+            /tmp/zap/report_html.html
+            /tmp/zap/report_md.md
+            /tmp/zap/report_json.json
 
       - name: Fail on ZAP alerts
         if: always()
