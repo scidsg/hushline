@@ -51,15 +51,4 @@ jobs:
             -F "file=@hushline/static/css/style.css" \
             -F "output=json" \
             https://jigsaw.w3.org/css-validator/validator
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          data = json.loads(Path("/tmp/w3c/css.json").read_text())
-          errors = data.get("cssvalidation", {}).get("errors", [])
-          if errors:
-              raise SystemExit(
-                  f"W3C CSS validation failed with {len(errors)} error(s)."
-              )
-          print("W3C CSS validation passed.")
-          PY
+          python -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
