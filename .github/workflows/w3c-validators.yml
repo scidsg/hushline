@@ -43,7 +43,7 @@ jobs:
           docker run --rm \
             -v /tmp/w3c:/work \
             ghcr.io/validator/validator:latest \
-            /vnu/vnu-runtime-image/bin/vnu --errors-only --no-langdetect /work/index.html /work/directory.html
+            java -jar /vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
 
       - name: Validate CSS (W3C CSS)
         run: |
