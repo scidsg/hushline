@@ -1,0 +1,45 @@
+name: Lighthouse Accessibility
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Lighthouse
+        run: npm install -g lighthouse
+
+      - name: Start app
+        run: |
+          npm install
+          npm run build
+          npm run start &
+          sleep 10
+
+      - name: Run Lighthouse
+        run: |
+          lighthouse http://localhost:8080 \
+            --only-categories=accessibility \
+            --chrome-flags="--headless" \
+            --output=json \
+            --output-path=./lighthouse.json
+
+      - name: Extract score
+        run: |
+          SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
+          echo "{ \"accessibility\": $SCORE }" > badge.json
+
+      - name: Upload badge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-badge
+          path: badge.json
