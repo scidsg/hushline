@@ -667,6 +667,37 @@
     background-color: var(--color-dark-bg-alt-1);
   }
 
+  .tab {
+    background-color: transparent;
+  }
+  .tab:focus-within {
+    outline: none;
+  }
+  .tab:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+    text-decoration: underline;
+  }
+  .tab.active:focus-visible {
+    box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+  .settings-main .settings-content .tab.active:focus-visible,
+  .inbox-main .inbox-content .tab.active:focus-visible {
+    box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+  .tab:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+    text-decoration: underline;
+  }
+  .tab.active:focus-visible {
+    box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+  .settings-main .settings-content .tab.active:focus-visible,
+  .inbox-main .inbox-content .tab.active:focus-visible {
+    box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
+
   .settings-main .tab:hover,
   .inbox-main .tab:hover {
     background-color: transparent;
@@ -3280,6 +3311,8 @@ strong {
 
 .modal-buttons .page-bullets button {
   cursor: pointer;
+  box-shadow: none;
+  min-width: fit-content;
 }
 
 .modal-buttons .page-bullets.hide {
