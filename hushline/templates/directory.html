@@ -43,13 +43,18 @@
   {% endif %}
 
   <div class="search-box">
-    <label id="searchIcon" for="searchInput" aria-label="Search users">
+    <label id="searchIcon" for="searchInput" aria-hidden="true">
       <img
         src="{{ url_for('static', filename='img/icon-search.png') }}"
         alt=""
       />
     </label>
-    <input type="text" id="searchInput" placeholder="Search users..." />
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search users..."
+      aria-label="Search users"
+    />
     <button
       id="clearIcon"
       type="button"
