@@ -38,7 +38,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: http://localhost:8080
-          fail_on: any
+          fail_action: fail
           allow_issue_writing: false
           cmd_options: "-a -j"
 
