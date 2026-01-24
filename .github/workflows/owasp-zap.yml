@@ -36,15 +36,18 @@ jobs:
           done
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: http://localhost:8080
-          fail_action: true
-          allow_issue_writing: false
-          cmd_options: "-a -j -l WARN"
-          artifact_name: zapscan
+        run: |
+          set +e
+          docker run --rm \
+            -v "$PWD":/zap/wrk/:rw \
+            --network=host \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:8080 -J report_json.json -w report_md.md -r report_html.html -a -j -l WARN
+          echo $? > /tmp/zap_exit_code
+          set -e
 
       - name: Upload ZAP report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report
@@ -52,3 +55,8 @@ jobs:
             report_html.html
             report_md.md
             report_json.json
+
+      - name: Fail on ZAP alerts
+        if: always()
+        run: |
+          exit "$(cat /tmp/zap_exit_code)"
