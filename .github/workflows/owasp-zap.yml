@@ -42,7 +42,7 @@ jobs:
           fail_action: true
           allow_issue_writing: false
           cmd_options: "-a -j -l WARN"
-          artifact_name: zap-scan
+          artifact_name: zapscan
 
       - name: Upload ZAP report
         uses: actions/upload-artifact@v4
