@@ -1,0 +1,63 @@
+name: W3C Validators
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build assets
+        run: |
+          npm install
+          npm run build:prod
+
+      - name: Start app
+        run: |
+          docker compose up -d postgres blob-storage
+          docker compose run --rm dev_data
+          docker compose up -d app
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Fetch HTML pages
+        run: |
+          mkdir -p /tmp/w3c
+          curl -fsS http://localhost:8080/ -o /tmp/w3c/index.html
+          curl -fsS http://localhost:8080/directory -o /tmp/w3c/directory.html
+
+      - name: Validate HTML (W3C Nu)
+        run: |
+          docker run --rm \
+            -v /tmp/w3c:/work \
+            validator/validator:latest \
+            vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
+
+      - name: Validate CSS (W3C CSS)
+        run: |
+          curl -fsS -o /tmp/w3c/css.json \
+            -F "file=@hushline/static/css/style.css" \
+            -F "output=json" \
+            https://jigsaw.w3.org/css-validator/validator
+          python - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path("/tmp/w3c/css.json").read_text())
+errors = data.get("cssvalidation", {}).get("errors", [])
+if errors:
+    raise SystemExit(f"W3C CSS validation failed with {len(errors)} error(s).")
+print("W3C CSS validation passed.")
+PY
