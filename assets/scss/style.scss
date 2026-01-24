@@ -3312,7 +3312,24 @@ strong {
 .modal-buttons .page-bullets button {
   cursor: pointer;
   box-shadow: none;
-  min-width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  line-height: 1;
+  box-sizing: border-box;
+  font-size: var(--font-size-3);
+}
+.modal-buttons .page-bullets button:nth-child(1) {
+  justify-content: end; 
+}
+
+.modal-buttons .page-bullets button:nth-child(3) {
+  justify-content: start; 
 }
 
 .modal-buttons .page-bullets.hide {
