@@ -152,6 +152,7 @@
     <button
       type="submit"
       id="submitBtn"
+      aria-label="Send a message to {{ display_name_or_username }}"
       {% if not user.pgp_key %}disabled="disabled"{% endif %}
     >
       Send Message
