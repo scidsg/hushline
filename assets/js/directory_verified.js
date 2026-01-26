@@ -6,7 +6,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const clearIcon = document.getElementById("clearIcon");
   const initialMarkup = new Map();
   let userData = [];
-  let isSessionUser = false;
   let hasRenderedSearch = false;
 
   tabPanels.forEach((panel) => {
@@ -31,18 +30,6 @@ document.addEventListener("DOMContentLoaded", function () {
         handleSearchInput();
       })
       .catch((error) => console.error("Failed to load user data:", error));
-  }
-
-  async function checkIfSessionUser() {
-    try {
-      const response = await fetch(
-        `${pathPrefix}/directory/get-session-user.json`,
-      );
-      const { logged_in } = await response.json();
-      isSessionUser = logged_in;
-    } catch (error) {
-      console.error("Failed to check session user:", error);
-    }
   }
 
   function filterUsers(query) {
@@ -74,13 +61,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return text.replace(regex, '<mark class="search-highlight">$1</mark>');
   }
 
-  function reportUser(username, bio) {
-    const messageContent = `Reported user: ${username}\n\nBio: ${bio}\n\nReason:`;
-    const encodedMessage = encodeURIComponent(messageContent);
-    const submissionUrl = `${pathPrefix}/to/admin?prefill=${encodedMessage}`;
-    window.location.href = submissionUrl;
-  }
-
   function buildUserCard(user, query) {
     const displayNameHighlighted = highlightMatch(
       user.display_name || user.primary_username,
@@ -108,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="badgeContainer">${badgeContainer}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+          <a href="${pathPrefix}/to/${user.primary_username}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
         </div>
       </article>
     `;
@@ -154,9 +134,6 @@ document.addEventListener("DOMContentLoaded", function () {
       activePanel.appendChild(infoListContainer);
     }
 
-    if (typeof createReportEventListeners === "function") {
-      createReportEventListeners(".tab-content.active .user-list");
-    }
   }
 
   function handleSearchInput() {
@@ -171,9 +148,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (query.length === 0) {
       if (activePanel && initialMarkup.has(activePanel.id)) {
         activePanel.innerHTML = initialMarkup.get(activePanel.id);
-        if (typeof createReportEventListeners === "function") {
-          createReportEventListeners(`#${activePanel.id}`);
-        }
       }
       hasRenderedSearch = false;
       return;
@@ -247,7 +221,5 @@ document.addEventListener("DOMContentLoaded", function () {
     console.error("Verified tab not found");
   }
 
-  checkIfSessionUser().then(() => {
-    loadData();
-  });
+  loadData();
 });
