@@ -50,8 +50,22 @@ jobs:
 
       - name: Validate CSS (W3C CSS)
         run: |
-          curl -fsS -o /tmp/w3c/css.json \
-            -F "file=@hushline/static/css/style.css" \
-            -F "output=json" \
-            https://jigsaw.w3.org/css-validator/validator
+          set +e
+          success=0
+          for i in 1 2 3 4 5; do
+            curl -fsS -o /tmp/w3c/css.json \
+              -F "file=@hushline/static/css/style.css" \
+              -F "output=json" \
+              https://jigsaw.w3.org/css-validator/validator
+            if [ $? -eq 0 ]; then
+              success=1
+              break
+            fi
+            sleep $((i * 5))
+          done
+          set -e
+          if [ "$success" -ne 1 ]; then
+            echo "W3C CSS validator unavailable (rate limited or error); skipping CSS validation."
+            exit 0
+          fi
           python -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
