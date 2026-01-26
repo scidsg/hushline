@@ -108,7 +108,9 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
           </div>
@@ -138,20 +140,11 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
-            {% if logged_in %}
-              <button
-                type="button"
-                class="report-link"
-                data-username="{{ username.username }}"
-                data-display-name="{{ username.display_name or username.username }}"
-                data-bio="{{ username.bio }}"
-              >
-                Report Account
-              </button>
-            {% endif %}
           </div>
         </article>
         {% endfor %}
@@ -192,20 +185,11 @@
               <p class="bio">{{ username.bio }}</p>
             {% endif %}
             <div class="user-actions">
-              <a href="{{ url_for('profile', username=username.username) }}"
+              <a
+                href="{{ url_for('profile', username=username.username) }}"
+                aria-label="{{ (username.display_name or username.username) }}'s profile"
                 >View Profile</a
               >
-              {% if logged_in %}
-                <button
-                  type="button"
-                  class="report-link"
-                  data-username="{{ username.username }}"
-                  data-display-name="{{ username.display_name or username.username }}"
-                  data-bio="{{ username.bio }}"
-                >
-                  Report Account
-                </button>
-              {% endif %}
             </div>
           </article>
       {% endfor %}
@@ -233,20 +217,11 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
-            {% if logged_in %}
-              <button
-                type="button"
-                class="report-link"
-                data-username="{{ username.username }}"
-                data-display-name="{{ username.display_name or username.username }}"
-                data-bio="{{ username.bio }}"
-              >
-                Report Account
-              </button>
-            {% endif %}
           </div>
         </article>
         {% endfor %}
