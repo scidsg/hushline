@@ -149,6 +149,7 @@
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <div class="flash-messages" role="alert">
@@ -267,7 +268,7 @@
       </nav>
     </header>
 
-    <main class="{% block main_class %}{% endblock %}">
+    <main id="main-content" class="{% block main_class %}{% endblock %}">
       <div class="container">
         {% block content %}{% endblock %}
       </div>
