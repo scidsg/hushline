@@ -72,11 +72,11 @@ document.addEventListener("DOMContentLoaded", function () {
     let badgeContainer = "";
 
     if (user.is_admin) {
-      badgeContainer += '<p class="badge">⚙️ Admin</p>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
 
     if (user.is_verified) {
-      badgeContainer += '<p class="badge">⭐️ Verified</p>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
     const isVerified = user.is_verified ? "Verified" : "";
