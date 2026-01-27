@@ -29,10 +29,10 @@
   {% if user.is_admin or username.is_verified %}
     <div class="badgeContainer">
       {% if user.is_admin %}
-        <p class="badge">⚙️&nbsp;Admin</p>
+        <p class="badge" aria-label="Administrator account">⚙️&nbsp;Admin</p>
       {% endif %}
       {% if username.is_verified %}
-        <p class="badge">⭐️&nbsp;Verified</p>
+        <p class="badge" aria-label="Verified account">⭐️&nbsp;Verified</p>
         <a
           class="meta"
           href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
