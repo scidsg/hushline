@@ -97,10 +97,10 @@
           {% if username.is_verified or username.user.is_admin %}
             <div class="badgeContainer">
               {% if username.user.is_admin %}
-                <p class="badge">⚙️ Admin</p>
+                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
               {% endif %}
               {% if username.is_verified %}
-                <p class="badge">⭐️ Verified</p>
+                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
               {% endif %}
             </div>
           {% endif %}
@@ -108,7 +108,9 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
           </div>
@@ -127,10 +129,10 @@
           {% if username.is_verified or username.user.is_admin %}
             <div class="badgeContainer">
               {% if username.user.is_admin %}
-                <p class="badge">⚙️ Admin</p>
+                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
               {% endif %}
               {% if username.is_verified %}
-                <p class="badge">⭐️ Verified</p>
+                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
               {% endif %}
             </div>
           {% endif %}
@@ -138,20 +140,11 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
-            {% if logged_in %}
-              <button
-                type="button"
-                class="report-link"
-                data-username="{{ username.username }}"
-                data-display-name="{{ username.display_name or username.username }}"
-                data-bio="{{ username.bio }}"
-              >
-                Report Account
-              </button>
-            {% endif %}
           </div>
         </article>
         {% endfor %}
@@ -181,10 +174,10 @@
             {% if username.is_verified or username.user.is_admin %}
               <div class="badgeContainer">
                 {% if username.user.is_admin %}
-                  <p class="badge">⚙️ Admin</p>
+                  <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
                 {% endif %}
                 {% if username.is_verified %}
-                  <p class="badge">⭐️ Verified</p>
+                  <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
                 {% endif %}
               </div>
             {% endif %}
@@ -192,20 +185,11 @@
               <p class="bio">{{ username.bio }}</p>
             {% endif %}
             <div class="user-actions">
-              <a href="{{ url_for('profile', username=username.username) }}"
+              <a
+                href="{{ url_for('profile', username=username.username) }}"
+                aria-label="{{ (username.display_name or username.username) }}'s profile"
                 >View Profile</a
               >
-              {% if logged_in %}
-                <button
-                  type="button"
-                  class="report-link"
-                  data-username="{{ username.username }}"
-                  data-display-name="{{ username.display_name or username.username }}"
-                  data-bio="{{ username.bio }}"
-                >
-                  Report Account
-                </button>
-              {% endif %}
             </div>
           </article>
       {% endfor %}
@@ -222,10 +206,10 @@
           {% if username.is_verified or username.user.is_admin %}
             <div class="badgeContainer">
               {% if username.user.is_admin %}
-                <p class="badge">⚙️ Admin</p>
+                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
               {% endif %}
               {% if username.is_verified %}
-                <p class="badge">⭐️ Verified</p>
+                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
               {% endif %}
             </div>
           {% endif %}
@@ -233,20 +217,11 @@
             <p class="bio">{{ username.bio }}</p>
           {% endif %}
           <div class="user-actions">
-            <a href="{{ url_for('profile', username=username.username) }}"
+            <a
+              href="{{ url_for('profile', username=username.username) }}"
+              aria-label="{{ (username.display_name or username.username) }}'s profile"
               >View Profile</a
             >
-            {% if logged_in %}
-              <button
-                type="button"
-                class="report-link"
-                data-username="{{ username.username }}"
-                data-display-name="{{ username.display_name or username.username }}"
-                data-bio="{{ username.bio }}"
-              >
-                Report Account
-              </button>
-            {% endif %}
           </div>
         </article>
         {% endfor %}

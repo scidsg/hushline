@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const resultsContainer = document.getElementById("all");
   const initialMarkup = resultsContainer ? resultsContainer.innerHTML : "";
   let userData = [];
-  let isSessionUser = false;
   let hasRenderedSearch = false;
 
   function loadData() {
@@ -23,21 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
       .catch((error) => console.error("Failed to load user data:", error));
   }
 
-  async function checkIfSessionUser() {
-    try {
-      const response = await fetch(
-        `${pathPrefix}/directory/get-session-user.json`,
-      );
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const { logged_in } = await response.json();
-      isSessionUser = logged_in;
-    } catch (error) {
-      console.error("Failed to check session user:", error);
-    }
-  }
-
   function filterUsers(query) {
     return userData.filter((user) => {
       const searchText =
@@ -52,13 +36,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return text.replace(regex, '<mark class="search-highlight">$1</mark>');
   }
 
-  function reportUser(username, bio) {
-    const messageContent = `Reported user: ${username}\n\nBio: ${bio}\n\nReason:`;
-    const encodedMessage = encodeURIComponent(messageContent);
-    const submissionUrl = `${pathPrefix}/to/admin?prefill=${encodedMessage}`;
-    window.location.href = submissionUrl;
-  }
-
   function buildUserCard(user, query) {
     const displayNameHighlighted = highlightMatch(
       user.display_name || user.primary_username,
@@ -69,10 +46,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let badgeContainer = "";
     if (user.is_admin) {
-      badgeContainer += '<p class="badge">⚙️ Admin</p>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
     if (user.is_verified) {
-      badgeContainer += '<p class="badge">⭐️ Verified</p>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
     const isVerified = user.is_verified ? "Verified" : "";
@@ -85,7 +62,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="badgeContainer">${badgeContainer}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${pathPrefix}/to/${user.primary_username}">View Profile</a>
+          <a href="${pathPrefix}/to/${user.primary_username}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
         </div>
       </article>
     `;
@@ -130,9 +107,6 @@ document.addEventListener("DOMContentLoaded", function () {
       resultsContainer.appendChild(infoListContainer);
     }
 
-    if (typeof createReportEventListeners === "function") {
-      createReportEventListeners("#all");
-    }
   }
 
   function handleSearchInput() {
@@ -146,9 +120,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (query.length === 0) {
       if (resultsContainer) {
         resultsContainer.innerHTML = initialMarkup;
-        if (typeof createReportEventListeners === "function") {
-          createReportEventListeners("#all");
-        }
       }
       hasRenderedSearch = false;
       return;
@@ -167,7 +138,5 @@ document.addEventListener("DOMContentLoaded", function () {
     handleSearchInput();
   });
 
-  checkIfSessionUser().then(() => {
-    loadData();
-  });
+  loadData();
 });

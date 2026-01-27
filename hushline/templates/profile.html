@@ -29,10 +29,10 @@
   {% if user.is_admin or username.is_verified %}
     <div class="badgeContainer">
       {% if user.is_admin %}
-        <p class="badge">⚙️&nbsp;Admin</p>
+        <span class="badge" role="img" aria-label="Administrator account">⚙️&nbsp;Admin</span>
       {% endif %}
       {% if username.is_verified %}
-        <p class="badge">⭐️&nbsp;Verified</p>
+        <span class="badge" role="img" aria-label="Verified account">⭐️&nbsp;Verified</span>
         <a
           class="meta"
           href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
@@ -152,6 +152,7 @@
     <button
       type="submit"
       id="submitBtn"
+      aria-label="Send a message to {{ display_name_or_username }}"
       {% if not user.pgp_key %}disabled="disabled"{% endif %}
     >
       Send Message
