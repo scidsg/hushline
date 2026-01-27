@@ -89,11 +89,33 @@
     url("../fonts/mono/IBMPlexMono-Medium.woff2") format("woff2");
 }
 
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  border-radius: 0.25rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* Light Mode */
 @media (prefers-color-scheme: light) {
   ::selection {
     background: var(--color-brand);
     color: white;
+  }
+
+  .skip-link {
+    background: var(--color-brand-max-contrast);
+    color: #fff;
   }
 
   .banner p::selection {
@@ -560,6 +582,11 @@
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   ::selection {
+    background: var(--color-brand-dark-min-saturation);
+    color: var(--color-text);
+  }
+
+  .skip-link {
     background: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
   }
