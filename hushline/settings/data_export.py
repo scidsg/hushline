@@ -4,7 +4,8 @@ import zipfile
 from datetime import datetime
 from typing import Iterable
 
-from flask import Blueprint, Response, abort, flash, redirect, send_file, session, url_for
+from flask import Blueprint, abort, flash, redirect, send_file, session, url_for
+from flask.typing import ResponseReturnValue
 from sqlalchemy.orm import selectinload
 
 from hushline.auth import authentication_required
@@ -42,7 +43,7 @@ def _slugify(value: str) -> str:
 def register_data_export_routes(bp: Blueprint) -> None:
     @bp.route("/data-export", methods=["POST"])
     @authentication_required
-    def data_export() -> Response:
+    def data_export() -> ResponseReturnValue:
         form = DataExportForm()
         if not form.validate_on_submit():
             abort(400)
