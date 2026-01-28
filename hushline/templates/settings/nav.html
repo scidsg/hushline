@@ -1,6 +1,6 @@
 {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
 
-<nav class="settings-tabs" aria-label="Settings Navigation">
+<nav class="settings-tabs" aria-label="Settings navigation">
   <ul class="tab-list">
     {% with buttons = [
       ('settings.profile', 'Profile', True),
