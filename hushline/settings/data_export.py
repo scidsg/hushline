@@ -79,8 +79,6 @@ def register_data_export_routes(bp: Blueprint) -> None:
                 .mappings()
                 .all()
             )
-        field_def_ids = [row["id"] for row in field_def_rows]
-
         field_values_rows = []
         if message_ids:
             field_values_rows = (
