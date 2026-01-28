@@ -56,6 +56,23 @@ function navController() {
 document.addEventListener("DOMContentLoaded", function () {
   navController();
 
+  function setupFlashDismiss() {
+    document.addEventListener("click", function (event) {
+      const dismissButton = event.target.closest(".flash-dismiss");
+      if (!dismissButton) return;
+      const flashContainer = dismissButton.closest(".flash-messages");
+      if (!flashContainer) return;
+      flashContainer.classList.add("is-dismissing");
+      const cleanup = () => {
+        flashContainer.remove();
+      };
+      flashContainer.addEventListener("animationend", cleanup, { once: true });
+      setTimeout(cleanup, 700);
+    });
+  }
+
+  setupFlashDismiss();
+
   function setupStatusForm() {
     const statusForm = document.getElementById("statusForm");
     if (!statusForm) return;

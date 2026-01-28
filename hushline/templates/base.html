@@ -154,7 +154,12 @@
       {% if messages %}
         <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
           {% for message in messages %}
-            <div class="flash-message">{{ message }}</div>
+            <div class="flash-message">
+              <span class="flash-message-text">{{ message }}</span>
+              <button type="button" class="flash-dismiss" aria-label="Dismiss message">
+                <img src="{{ url_for('static', filename='img/icon-close.png') }}" alt="" />
+              </button>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
