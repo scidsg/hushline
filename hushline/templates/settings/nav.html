@@ -1,6 +1,6 @@
 {% set aliases_enabled = alias_mode == AliasMode.ALWAYS or (alias_mode == AliasMode.PREMIUM and not user.is_free_tier) %}
 
-<nav class="settings-tabs" aria-label="Settings">
+<nav class="settings-tabs" aria-label="Settings navigation">
   <ul class="tab-list">
     {% with buttons = [
       ('settings.profile', 'Profile', True),
@@ -12,8 +12,8 @@
       ('settings.notifications', 'Notifications', True),
       ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled),
-      ('settings.admin', 'Admin', user.is_admin),
-      ('settings.advanced', 'Advanced', True)
+      ('settings.advanced', 'Advanced', True),
+      ('settings.admin', 'Admin', user.is_admin)
     ] %}
       {% for (endpoint, display_name, show) in buttons %}
         {% if show %}
