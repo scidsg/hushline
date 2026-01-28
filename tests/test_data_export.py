@@ -30,9 +30,7 @@ def test_data_export_requires_auth(client: FlaskClient) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
-def test_data_export_zip_contains_csv_and_pgp(
-    client: FlaskClient, user: User
-) -> None:
+def test_data_export_zip_contains_csv_and_pgp(client: FlaskClient, user: User) -> None:
     message = Message(username_id=user.primary_username.id)
     db.session.add(message)
     db.session.commit()

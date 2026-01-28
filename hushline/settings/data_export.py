@@ -148,9 +148,7 @@ def register_data_export_routes(bp: Blueprint) -> None:
                     db.select(Message)
                     .where(Message.username_id.in_(username_ids))
                     .options(
-                        selectinload(Message.field_values).selectinload(
-                            FieldValue.field_definition
-                        )
+                        selectinload(Message.field_values).selectinload(FieldValue.field_definition)
                     )
                 ).all()
                 for message in messages:
