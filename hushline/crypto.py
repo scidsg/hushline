@@ -126,6 +126,19 @@ def encrypt_message(message: str, user_pgp_key: str) -> str | None:
         return None
 
 
+def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:
+    current_app.logger.info("Encrypting bytes for user with provided PGP key")
+    try:
+        recipient_cert = Cert.from_bytes(user_pgp_key.encode())
+        encrypted = encrypt([recipient_cert], data)
+        if isinstance(encrypted, str):
+            return encrypted.encode("utf-8")
+        return encrypted
+    except Exception as e:
+        current_app.logger.error(f"Error during encryption: {e}")
+        return None
+
+
 def gen_reply_slug() -> str:
     # 4 words = 7776**4 = 51.7 bits of entropy
     return "-".join(secrets.choice(DICEWARE_WORDS) for _ in range(4))

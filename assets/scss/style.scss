@@ -3923,3 +3923,16 @@ li.tab .badge {
 .label {
   font-family: var(--font-sans-bold);
 }
+
+.settings-content h4 + p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin: 0 0.5rem 0 0;
+}
+
+.checkbox-group input[type="checkbox"] + label {
+  margin: 0;
+}
