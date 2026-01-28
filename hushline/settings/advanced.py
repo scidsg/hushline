@@ -18,6 +18,7 @@ def register_advanced_routes(bp: Blueprint) -> None:
     def advanced() -> str:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         data_export_form = DataExportForm()
+        data_export_form.encrypt_export.data = bool(user.pgp_key)
         return render_template(
             "settings/advanced.html",
             user=user,

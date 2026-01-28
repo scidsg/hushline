@@ -59,6 +59,7 @@ class ChangeUsernameForm(FlaskForm):
 
 
 class DataExportForm(FlaskForm):
+    encrypt_export = BooleanField("Encrypt export with my PGP key", default=True)
     submit = SubmitField("Download My Data", name="download_data", widget=Button())
 
 
