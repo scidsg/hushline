@@ -12,6 +12,17 @@
   </div>
   {% endif %}
 
+  <div class="adv-form">
+    <h4>Download My Data</h4>
+    <p>
+      Download a ZIP with CSV exports and your encrypted PGP messages.
+    </p>
+    <form method="POST" action="{{ url_for('settings.data_export') }}">
+      {{ data_export_form.hidden_tag() }}
+      {{ data_export_form.submit(class="btn") }}
+    </form>
+  </div>
+
   <h4>Delete Account</h4>
   <p class="meta">
     ⚠️ Deleting your account is a permanent action that cannot be undone!

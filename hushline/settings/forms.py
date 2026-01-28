@@ -58,6 +58,10 @@ class ChangeUsernameForm(FlaskForm):
     submit = SubmitField("Change Username", name="update_display_name", widget=Button())
 
 
+class DataExportForm(FlaskForm):
+    submit = SubmitField("Download My Data", name="download_data", widget=Button())
+
+
 class SMTPSettingsForm(FlaskForm):
     class Meta:
         csrf = False

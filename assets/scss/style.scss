@@ -3923,3 +3923,8 @@ li.tab .badge {
 .label {
   font-family: var(--font-sans-bold);
 }
+
+.settings-content h4 + p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
