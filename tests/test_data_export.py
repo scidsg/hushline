@@ -40,7 +40,7 @@ def test_data_export_zip_contains_csv_and_pgp(client: FlaskClient, user: User) -
     db.session.add(field_value)
     db.session.commit()
 
-    response = client.post(url_for("settings.data_export"))
+    response = client.post(url_for("settings.data_export"), data={"encrypt_export": "false"})
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
 
@@ -66,7 +66,7 @@ def test_data_export_only_includes_current_user(
     db.session.add(message)
     db.session.commit()
 
-    response = client.post(url_for("settings.data_export"))
+    response = client.post(url_for("settings.data_export"), data={"encrypt_export": "false"})
     assert response.status_code == 200
 
     with zipfile.ZipFile(io.BytesIO(response.data)) as zip_file:
