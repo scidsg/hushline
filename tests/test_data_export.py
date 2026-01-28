@@ -24,7 +24,7 @@ def _pgp_message_names(zip_file: zipfile.ZipFile) -> list[str]:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_data_export_requires_auth(client: FlaskClient) -> None:
     client.get(url_for("logout"))
-    response = client.get(url_for("settings.data_export"))
+    response = client.post(url_for("settings.data_export"))
     assert response.status_code == 302
     assert "/login" in response.headers.get("Location", "")
 
@@ -40,7 +40,7 @@ def test_data_export_zip_contains_csv_and_pgp(client: FlaskClient, user: User) -
     db.session.add(field_value)
     db.session.commit()
 
-    response = client.get(url_for("settings.data_export"))
+    response = client.post(url_for("settings.data_export"))
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
 
@@ -66,7 +66,7 @@ def test_data_export_only_includes_current_user(
     db.session.add(message)
     db.session.commit()
 
-    response = client.get(url_for("settings.data_export"))
+    response = client.post(url_for("settings.data_export"))
     assert response.status_code == 200
 
     with zipfile.ZipFile(io.BytesIO(response.data)) as zip_file:
