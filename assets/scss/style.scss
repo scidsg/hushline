@@ -586,6 +586,10 @@
     color: var(--color-text);
   }
 
+  .flash-dismiss img {
+    filter: brightness(1.5);
+  }
+
   .skip-link {
     background: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
@@ -1341,7 +1345,7 @@ img.empty {
   top: calc(1rem + env(safe-area-inset-top));
   right: 50%;
   transform: translateX(50%) translateY(0%);
-  padding: 1.25rem 2rem;
+  padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 0.25rem;
   width: max-content;
   max-width: 78vw;
