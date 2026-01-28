@@ -152,7 +152,7 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <div class="flash-messages" role="alert">
+        <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
           {% for message in messages %}
             <div class="flash-message">{{ message }}</div>
           {% endfor %}
