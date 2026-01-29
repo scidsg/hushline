@@ -3936,3 +3936,7 @@ li.tab .badge {
 .checkbox-group input[type="checkbox"] + label {
   margin: 0;
 }
+
+header nav ul li.dropdown ul {
+  padding-right: 0;
+}
