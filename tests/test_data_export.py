@@ -62,15 +62,26 @@ def test_data_export_zip_contains_csv_and_pgp(client: FlaskClient, user: User) -
 def test_data_export_only_includes_current_user(
     client: FlaskClient, user: User, user2: User
 ) -> None:
-    message = Message(username_id=user2.primary_username.id)
-    db.session.add(message)
+    other_message = Message(username_id=user2.primary_username.id)
+    own_message = Message(username_id=user.primary_username.id)
+    db.session.add_all([other_message, own_message])
     db.session.commit()
 
     response = client.post(url_for("settings.data_export"), data={"encrypt_export": "false"})
     assert response.status_code == 200
 
     with zipfile.ZipFile(io.BytesIO(response.data)) as zip_file:
+        users = _read_csv_from_zip(zip_file, "db/users.csv")
+        user_ids = {row.get("id") for row in users}
+        assert str(user.id) in user_ids
+        assert str(user2.id) not in user_ids
+
         usernames = _read_csv_from_zip(zip_file, "db/usernames.csv")
         usernames_set = {row.get("username") for row in usernames}
         assert user.primary_username.username in usernames_set
         assert user2.primary_username.username not in usernames_set
+
+        messages = _read_csv_from_zip(zip_file, "db/messages.csv")
+        message_username_ids = {row.get("username_id") for row in messages}
+        assert str(user.primary_username.id) in message_username_ids
+        assert str(user2.primary_username.id) not in message_username_ids
