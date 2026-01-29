@@ -35,7 +35,7 @@ def _write_csv(
 
 
 def _slugify(value: str) -> str:
-    cleaned = "".join(ch if ch.isalnum() else "-" for ch in value.strip().lower())
+    cleaned = "".join(ch if ch.isascii() and ch.isalnum() else "-" for ch in value.strip().lower())
     cleaned = "-".join(filter(None, cleaned.split("-")))
     return cleaned or "field"
 
@@ -203,9 +203,8 @@ def register_data_export_routes(bp: Blueprint) -> None:
                             else "field"
                         )
                         label_slug = _slugify(label)
-                        filename = (
-                            f"pgp_messages/{message.public_id}-{label_slug}-{field_value.id}.asc"
-                        )
+                        public_id = message.public_id or f"message-{message.id}"
+                        filename = f"pgp_messages/{public_id}-{label_slug}-{field_value.id}.asc"
                         zip_file.writestr(filename, value)
 
         zip_buffer.seek(0)
