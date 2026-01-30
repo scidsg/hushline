@@ -60,12 +60,21 @@ Messages and accounts remain until you delete them. When you delete content, we 
 
 We use an encrypted session cookie to keep you signed in. We also store a small local setting to show anti‑censorship tips for users on their first visit to the site. We do not use cookies for advertising or analytics.
 
-## 8) Your Choices & Rights
+## 8) Compliance & Legal Frameworks
+
+We comply with applicable privacy and accessibility laws, including:
+
+- General Data Protection Regulation (GDPR)
+- California Consumer Privacy Act / California Privacy Rights Act (CCPA/CPRA)
+- U.S. Federal Trade Commission Act (Section 5)
+- Americans with Disabilities Act (ADA) and Section 508 (accessibility)
+
+## 9) Your Choices & Rights
 
 You can update or delete your account information and messages in the app.
 If you need help accessing, correcting, or deleting data, contact us and we will respond.
 
-## 9) Third‑Party Policies
+## 10) Third-Party Policies
 
 Our infrastructure and billing providers have their own privacy policies:
 
@@ -74,10 +83,10 @@ Our infrastructure and billing providers have their own privacy policies:
 - Terraform: https://www.hashicorp.com/privacy
 - Stripe: https://stripe.com/privacy
 
-## 10) Changes
+## 11) Changes
 
 We may update this policy and will post changes with a new effective date.
 
-## 11) Contact
+## 12) Contact
 
 For privacy questions, contact us via Hush Line: https://tips.hushline.app/to/scidsg
