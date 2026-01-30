@@ -206,7 +206,11 @@ def _write_pgp_messages(zip_file: zipfile.ZipFile, username_ids: list[int]) -> N
 
 def _build_zip(user_id: int) -> bytes:
     rows = _fetch_rows(user_id)
-    username_ids = [row["id"] for row in rows["usernames"]]
+    username_ids: list[int] = []
+    for row in rows["usernames"]:
+        value = row.get("id")
+        if isinstance(value, int):
+            username_ids.append(value)
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
