@@ -15,4 +15,3 @@ import "./../img/icon-verified-lm.png";
 import "./../img/onboarding.png";
 import "./../img/rate-limit.png";
 import "./../img/upgrade.png";
-
