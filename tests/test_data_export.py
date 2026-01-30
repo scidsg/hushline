@@ -58,6 +58,14 @@ def test_data_export_zip_contains_csv_and_pgp(client: FlaskClient, user: User) -
         assert content.startswith("-----BEGIN PGP MESSAGE-----")
 
 
+@pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
+def test_data_export_encrypted_export(client: FlaskClient) -> None:
+    response = client.post(url_for("settings.data_export"), data={"encrypt_export": "y"})
+    assert response.status_code == 200
+    assert response.mimetype == "application/pgp-encrypted"
+    assert response.data.startswith(b"-----BEGIN PGP MESSAGE-----")
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_data_export_only_includes_current_user(
     client: FlaskClient, user: User, user2: User
