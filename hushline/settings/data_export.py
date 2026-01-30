@@ -182,9 +182,7 @@ def _write_csv_bundle(rows: dict[str, list[dict[str, object]]]) -> list[tuple[st
     ]
 
 
-def _write_pgp_messages(
-    zip_file: zipfile.ZipFile, username_ids: list[int]
-) -> None:
+def _write_pgp_messages(zip_file: zipfile.ZipFile, username_ids: list[int]) -> None:
     if not username_ids:
         return
     messages = db.session.scalars(
@@ -199,9 +197,7 @@ def _write_pgp_messages(
             value = field_value.value
             if not value or not value.startswith("-----BEGIN PGP MESSAGE-----"):
                 continue
-            label = (
-                field_value.field_definition.label if field_value.field_definition else "field"
-            )
+            label = field_value.field_definition.label if field_value.field_definition else "field"
             label_slug = _slugify(label)
             public_id = message.public_id or f"message-{message.id}"
             filename = f"pgp_messages/{public_id}-{label_slug}-{field_value.id}.asc"
