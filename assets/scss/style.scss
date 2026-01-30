@@ -586,6 +586,10 @@
     color: var(--color-text);
   }
 
+  .flash-dismiss img {
+    filter: brightness(1.5);
+  }
+
   .skip-link {
     background: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
@@ -1341,20 +1345,51 @@ img.empty {
   top: calc(1rem + env(safe-area-inset-top));
   right: 50%;
   transform: translateX(50%) translateY(0%);
-  padding: 1.25rem 2rem;
+  padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 0.25rem;
   width: max-content;
   max-width: 78vw;
   text-align: center;
   opacity: 0;
   z-index: 12;
-  animation:
-    fadeInDown 0.5s ease forwards,
-    fadeOutUp 0.5s ease 5s forwards;
+  animation: fadeInDown 0.5s ease forwards;
+}
+
+.flash-messages.is-dismissing {
+  animation: fadeOutUp 0.5s ease forwards;
 }
 
 .flash-message {
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flash-message-text {
+  flex: 1;
+}
+
+.flash-dismiss {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  min-height: fit-content;
+  min-width: fit-content;
+  box-shadow: none;
+  display: flex;
+  border-radius: 0.25rem;
+}
+
+.flash-dismiss img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.flash-dismiss:focus {
+  outline-offset: 2px;
 }
 
 .message .message-label,
@@ -3887,4 +3922,21 @@ li.tab .badge {
 
 .label {
   font-family: var(--font-sans-bold);
+}
+
+.settings-content h4 + p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin: 0 0.5rem 0 0;
+}
+
+.checkbox-group input[type="checkbox"] + label {
+  margin: 0;
+}
+
+header nav ul li.dropdown ul {
+  padding-right: 0;
 }
