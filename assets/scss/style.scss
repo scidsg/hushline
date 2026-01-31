@@ -1205,6 +1205,7 @@ input[type=radio]{
     min-width: 1.25rem;
     min-height: 1.25rem;
     margin-right: 0.5rem;
+    margin-top: 0;
 }
 
 input[type=checkbox]:checked,
@@ -3748,10 +3749,9 @@ label>.meta {
 }
 
 form li {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
 }
 
 li label {
