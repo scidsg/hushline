@@ -337,5 +337,5 @@ class FieldForm(FlaskForm):
         widget=Button(),
         render_kw={"class": "btn-danger message-field-delete-button"},
     )
-    move_up = SubmitField("Move Up", name="move_up", widget=Button())
-    move_down = SubmitField("Move Down", name="move_down", widget=Button())
+    move_up = SubmitField("Move Field Up", name="move_up", widget=Button())
+    move_down = SubmitField("Move Field Down", name="move_down", widget=Button())

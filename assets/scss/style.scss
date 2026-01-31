@@ -295,7 +295,9 @@
   input[type="submit"],
   button,
   .btn,
-  input[type="file"]::file-selector-button {
+  input[type="file"]::file-selector-button,
+  #add_field,
+  #update_field {
     background-color: var(--color-brand-mid-contrast);
     border: var(--border);
     color: white;
@@ -777,7 +779,9 @@
   input[type="submit"],
   button,
   .btn,
-  input[type="file"]::file-selector-button {
+  input[type="file"]::file-selector-button,
+  #add_field,
+  #update_field {
     border: 1px solid var(--color-brand-dark-min-saturation);
     background-color: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
@@ -1194,6 +1198,26 @@ p {
   word-break: break-word;
   margin: 0.5rem 0;
   line-height: var(--line-height-base);
+}
+
+input[type=checkbox],
+input[type=radio]{
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+input[type=checkbox]:checked,
+input[type=radio]:checked {
+    margin: 0 0.5rem 0 0;
+}
+
+.field-checkbox {
+  display: flex !important;
+}
+
+.field-checkbox label {
+  margin: 0;
 }
 
 code,
@@ -2118,6 +2142,7 @@ a.dropbtn:hover {
 .checkbox-group {
   display: flex;
   margin-bottom: 0.75rem;
+  align-content: center;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -3927,14 +3952,37 @@ li.tab .badge {
   margin-bottom: 0;
 }
 
-.checkbox-group input[type="checkbox"] {
-  margin: 0 0.5rem 0 0;
+input[type=checkbox],
+.checkbox-group input[type=checkbox],
+.field-checkbox input[type=checkbox]{
+  margin: 0 0.5rem 0 0 !important;
 }
 
 .checkbox-group input[type="checkbox"] + label {
   margin: 0;
 }
 
+.field-checkbox {
+  margin-bottom: 0.5rem !important;
+}
+
 header nav ul li.dropdown ul {
   padding-right: 0;
+}
+
+.choice-items button {
+  margin-bottom: 0;
+}
+
+.choice-items {
+  margin-bottom: 1.5rem;
+  margin-top: 0;
+}
+
+.field {
+  margin-top: 1rem;
+}
+
+.field + .field {
+  margin-top: 0;
 }
