@@ -41,16 +41,16 @@
               <div class="choice-item">
                 {{ choice.choice.label }}
                 {{ choice.choice(id=choice.choice.id) }}
-                <button type="button" class="move-up-choice">Move Up</button>
-                <button type="button" class="move-down-choice">Move Down</button>
-                <button type="button" class="remove-choice btn-danger">Remove</button>
+                <button type="button" class="move-up-choice">Move Choice Up</button>
+                <button type="button" class="move-down-choice">Move Choice Down</button>
+                <button type="button" class="remove-choice btn-danger">Remove Choice</button>
               </div>
             {% endfor %}
         </div>
-        <button type="button" class="add-choice" data-field-id="{{ field_form.id.data }}">Add Choice</button>
+        <button type="button" class="add-choice" data-field-id="{{ field_form.id.data }}">Add Another Choice</button>
     </div>
 
-    <div>
+    <div class="choice-items">
         {% if is_new_field %}
             {{ field_form.submit }}
         {% else %}
