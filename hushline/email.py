@@ -101,3 +101,4 @@ def send_email(to_email: str, subject: str, body: str, smtp_config: SMTPConfig) 
                 time.sleep(retry_delay)
                 continue
             return False
+    return False
