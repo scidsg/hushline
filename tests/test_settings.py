@@ -269,7 +269,7 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
     assert "SMTP settings updated successfully" in response.text
 
     SMTP.assert_called_with(user.smtp_server, user.smtp_port, timeout=ANY)
-    SMTP.return_value.__enter__.return_value.starttls.assert_called_once_with()
+    SMTP.return_value.__enter__.return_value.starttls.assert_called_once_with(context=ANY)
     SMTP.return_value.__enter__.return_value.login.assert_called_once_with(
         user.smtp_username, user.smtp_password
     )
