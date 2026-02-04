@@ -19,24 +19,27 @@
     </div>
   </div>
 
-  <h4>All Users</h4>
-  {% if all_users %}
-    {% for user in all_users %}
+  <h4>All Usernames</h4>
+  {% if all_usernames %}
+    {% for username in all_usernames %}
       <div class="user">
-        <h5>{{ user.primary_username.username }}</h5>
+        <h5>{{ username.username }}</h5>
         <p class="meta">
-          Display Name: {{ user.primary_username.display_name or 'No display name' }}
+          Display Name: {{ username.display_name or 'No display name' }}
         </p>
         <p class="meta">
-          Verified: {{ "✅ Yes" if user.primary_username.is_verified else "👎 No" }}
+          Type: {{ "Primary" if username.is_primary else "Alias" }}
         </p>
         <p class="meta">
-          Admin: {{ "✅ Yes" if user.is_admin else "👎 No" }}
+          Verified: {{ "✅ Yes" if username.is_verified else "👎 No" }}
+        </p>
+        <p class="meta">
+          Admin: {{ "✅ Yes" if username.user.is_admin else "👎 No" }}
         </p>
         <div class="tableActions">
           {% if user_verification_enabled %}
             <form
-              action="{{ url_for('admin.toggle_verified', user_id=user.id) }}"
+              action="{{ url_for('admin.toggle_verified_username', username_id=username.id) }}"
               method="POST"
               class="formBody"
             >
@@ -44,7 +47,7 @@
             </form>
           {% endif %}
           <form
-            action="{{ url_for('admin.toggle_admin', user_id=user.id) }}"
+            action="{{ url_for('admin.toggle_admin', user_id=username.user.id) }}"
             method="POST"
             class="formBody"
           >
