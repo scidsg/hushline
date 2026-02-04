@@ -2,11 +2,13 @@ import json
 
 from flask import (
     Flask,
-    Response,
     flash,
     redirect,
     session,
     url_for,
+)
+from flask import (
+    Response as FlaskResponse,
 )
 
 from hushline.db import db
@@ -19,7 +21,7 @@ from hushline.model import (
 
 def register_index_routes(app: Flask) -> None:
     @app.route("/site.webmanifest")
-    def site_webmanifest() -> Response:
+    def site_webmanifest() -> FlaskResponse:
         brand_name = OrganizationSetting.fetch_one(OrganizationSetting.BRAND_NAME) or "Hush Line"
         brand_primary_color = (
             OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PRIMARY_COLOR) or "#7d25c1"
@@ -59,10 +61,10 @@ def register_index_routes(app: Flask) -> None:
             ),
             "icons": icons,
         }
-        return Response(json.dumps(manifest), mimetype="application/manifest+json")
+        return FlaskResponse(json.dumps(manifest), mimetype="application/manifest+json")
 
     @app.route("/")
-    def index() -> Response:
+    def index() -> FlaskResponse:
         # If logged in, redirect to inbox
         if "user_id" in session:
             user = db.session.get(User, session.get("user_id"))
