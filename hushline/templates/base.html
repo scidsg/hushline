@@ -28,6 +28,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ brand_name }}">
     <title>{% block title %}{% endblock %} - {{ brand_name }}</title>
+    <link rel="manifest" href="{{ url_for('site_webmanifest') }}" />
     {% if brand_logo_url %}
       <link 
         rel="icon" 
@@ -35,10 +36,6 @@
         href="/assets/public/brand/logo.png" 
       />
     {% else %}
-      <link 
-        rel="manifest" 
-        href="{{ url_for('static', filename='manifest.json') }}"
-      />
       <link
         rel="apple-touch-icon"
         sizes="180x180"
