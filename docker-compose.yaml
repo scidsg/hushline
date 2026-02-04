@@ -19,6 +19,7 @@ services:
       SESSION_COOKIE_NAME: session
       NOTIFICATIONS_ADDRESS: notifications@hushline.app
       DIRECTORY_VERIFIED_TAB_ENABLED: "${DIRECTORY_VERIFIED_TAB_ENABLED:-true}"
+      USER_VERIFICATION_ENABLED: "true"
       SMTP_FORWARDING_MESSAGE_HTML: |
         ✊ Email forwarding is powered by
         <a href="https://riseup.net" target="_blank">Riseup.net</a>.

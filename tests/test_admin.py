@@ -5,6 +5,7 @@ from flask.testing import FlaskClient
 from hushline.db import db
 from hushline.model import (
     User,
+    Username,
 )
 
 
@@ -91,3 +92,22 @@ def test_toggle_admin_multiple_admins(
     # There should be only one admins now
     admin_count = db.session.query(User).filter_by(is_admin=True).count()
     assert admin_count == 1
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_verified_alias_on_managed_service(
+    app: Flask, client: FlaskClient, user_alias: Username
+) -> None:
+    app.config["USER_VERIFICATION_ENABLED"] = True
+
+    assert user_alias.is_verified is False
+
+    response = client.post(
+        url_for("admin.toggle_verified_username", username_id=user_alias.id),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_alias = db.session.get(Username, user_alias.id)
+    assert refreshed_alias is not None
+    assert refreshed_alias.is_verified is True
