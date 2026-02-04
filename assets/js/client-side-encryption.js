@@ -72,6 +72,9 @@ function getFieldLabel(field) {
 
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
+  if (!form) {
+    return;
+  }
   const publicKeyArmored = document.getElementById("publicKey")
     ? document.getElementById("publicKey").value
     : "";
