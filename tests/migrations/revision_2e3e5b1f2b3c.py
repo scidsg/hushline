@@ -22,7 +22,9 @@ class UpgradeTester:
         db.session.execute(
             text(
                 """
-            INSERT INTO usernames (id, user_id, username, is_primary, is_verified, show_in_directory)
+            INSERT INTO usernames (
+                id, user_id, username, is_primary, is_verified, show_in_directory
+            )
             VALUES (:id, :user_id, 'testuser', true, false, false)
             """
             ),
@@ -32,7 +34,8 @@ class UpgradeTester:
             text(
                 """
             INSERT INTO field_definitions (
-                id, username_id, label, field_type, required, enabled, encrypted, choices, sort_order
+                id, username_id, label, field_type, required, enabled, encrypted, choices,
+                sort_order
             )
             VALUES (:id, :username_id, 'Field', NULL, NULL, NULL, NULL, '[]', 0)
             """
@@ -87,7 +90,9 @@ class DowngradeTester:
         db.session.execute(
             text(
                 """
-            INSERT INTO usernames (id, user_id, username, is_primary, is_verified, show_in_directory)
+            INSERT INTO usernames (
+                id, user_id, username, is_primary, is_verified, show_in_directory
+            )
             VALUES (:id, :user_id, 'testuser', true, false, false)
             """
             ),
@@ -97,7 +102,8 @@ class DowngradeTester:
             text(
                 """
             INSERT INTO field_definitions (
-                id, username_id, label, field_type, required, enabled, encrypted, choices, sort_order
+                id, username_id, label, field_type, required, enabled, encrypted, choices,
+                sort_order
             )
             VALUES (:id, :username_id, 'Field', 'TEXT', false, true, false, '[]', 0)
             """
