@@ -42,8 +42,19 @@ def upgrade() -> None:
         batch_op.alter_column("enabled", existing_type=sa.BOOLEAN(), nullable=False)
         batch_op.alter_column("encrypted", existing_type=sa.BOOLEAN(), nullable=False)
 
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    fk_name = None
+    for fk in inspector.get_foreign_keys("field_values"):
+        if fk["referred_table"] == "field_definitions" and fk["constrained_columns"] == [
+            "field_definition_id"
+        ]:
+            fk_name = fk["name"]
+            break
+
     with op.batch_alter_table("field_values", schema=None) as batch_op:
-        batch_op.drop_constraint("field_values_field_definition_id_fkey", type_="foreignkey")
+        if fk_name:
+            batch_op.drop_constraint(fk_name, type_="foreignkey")
         batch_op.create_foreign_key(
             None,
             "field_definitions",
@@ -53,8 +64,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    fk_name = None
+    for fk in inspector.get_foreign_keys("field_values"):
+        if fk["referred_table"] == "field_definitions" and fk["constrained_columns"] == [
+            "field_definition_id"
+        ]:
+            fk_name = fk["name"]
+            break
+
     with op.batch_alter_table("field_values", schema=None) as batch_op:
-        batch_op.drop_constraint("field_values_field_definition_id_fkey", type_="foreignkey")
+        if fk_name:
+            batch_op.drop_constraint(fk_name, type_="foreignkey")
         batch_op.create_foreign_key(
             None,
             "field_definitions",
