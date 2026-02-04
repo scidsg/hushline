@@ -8,7 +8,6 @@ from flask import (
     session,
     url_for,
 )
-from werkzeug.wrappers.response import Response
 
 from hushline.db import db
 from hushline.model import (
@@ -54,7 +53,10 @@ def register_index_routes(app: Flask) -> None:
             "display": "standalone",
             "background_color": "#fbf3ff",
             "theme_color": brand_primary_color,
-            "description": "Anonymous reporting and whistleblower management for organizations and individuals.",
+            "description": (
+                "Anonymous reporting and whistleblower management for organizations "
+                "and individuals."
+            ),
             "icons": icons,
         }
         return Response(json.dumps(manifest), mimetype="application/manifest+json")
