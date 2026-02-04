@@ -22,9 +22,9 @@ def register_index_routes(app: Flask) -> None:
     @app.route("/site.webmanifest")
     def site_webmanifest() -> Response:
         brand_name = OrganizationSetting.fetch_one(OrganizationSetting.BRAND_NAME) or "Hush Line"
-        brand_primary_color = OrganizationSetting.fetch_one(
-            OrganizationSetting.BRAND_PRIMARY_COLOR
-        ) or "#7d25c1"
+        brand_primary_color = (
+            OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PRIMARY_COLOR) or "#7d25c1"
+        )
 
         logo_path = OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO)
         logo_url = url_for("storage.public", path=logo_path) if logo_path else None
