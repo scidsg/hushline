@@ -211,6 +211,12 @@
                 <a class="onboardingLink" href="{{ url_for('onboarding', full=1) }}">🪄 Account Setup</a>
               </li>
             {% endif %}
+            {% if not hide_donate_button %}
+            <li>
+              <a href="https://opencollective.com/hushline/contribute/hush-line-supporter-55786"
+              ><span class="emoji">❤️</span> Donate</a>
+            </li>
+            {% endif %}
             {% if 'user_id' in session and session.get('is_authenticated', False) %}
               {% if is_premium_enabled %}
                 {% if user and not user.is_free_tier %}
@@ -261,11 +267,6 @@
               {% endif %}
             {% endif %}
           </ul>
-          {% if not hide_donate_button %}
-            <a class="btn" href="https://opencollective.com/hushline/contribute/hush-line-supporter-55786"
-              ><span class="emoji">❤️</span> Donate</a
-            >
-          {% endif %}
         </div>
       </nav>
     </header>
