@@ -13,8 +13,8 @@ from hushline.settings.encryption import register_encryption_routes
 from hushline.settings.forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
-    DeleteBrandLogoForm,
     DeleteAliasForm,
+    DeleteBrandLogoForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
