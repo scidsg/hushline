@@ -68,10 +68,10 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
 
 def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:
     data = {
-        "SESSION_COOKIE_NAME": env.get("SESSION_COOKIE_NAME", "__HOST-session"),
+        "SESSION_COOKIE_NAME": "__HOST-session",
         "SESSION_COOKIE_SECURE": True,
         "SESSION_COOKIE_HTTPONLY": True,
-        "SESSION_COOKIE_SAMESITE": "Lax",
+        "SESSION_COOKIE_SAMESITE": "Strict",
         "PERMANENT_SESSION_LIFETIME": timedelta(minutes=30),
     }
 
