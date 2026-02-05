@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
   <head>
     <meta charset="UTF-8" />
     <meta name="theme-color" content="{{ brand_primary_color }}" id="theme-color" />
@@ -152,6 +152,9 @@
 
   <body class="{% block body_class %}{% endblock %}">
     <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="noscript-warning" role="status" aria-live="polite" aria-atomic="true">
+      ‼️ Enable JavaScript for full functionality, including end-to-end encrypted messages.
+    </div>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
