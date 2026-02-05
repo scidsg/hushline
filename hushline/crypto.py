@@ -109,21 +109,31 @@ def is_valid_pgp_key(key: str) -> bool:
         return False
 
 
-def encrypt_message(message: str, user_pgp_key: str) -> str | None:
-    current_app.logger.info("Encrypting message for user with provided PGP key")
+def can_encrypt_with_pgp_key(key: str) -> bool:
+    """
+    Validate that we can encrypt a message with the provided public key.
+    """
     try:
-        # Load the user's PGP certificate (public key) from the key data
-        recipient_cert = Cert.from_bytes(user_pgp_key.encode())
-
-        # Encode the message string to bytes
-        message_bytes = message.encode("utf-8")
-
-        # Assuming there is no signer (i.e., unsigned encryption).
-        # Adjust the call to encrypt by passing the encoded message
-        return encrypt([recipient_cert], message_bytes)  # Use message_bytes
+        recipient_cert = Cert.from_bytes(key.encode())
+        test_message = b"pgp-encryption-test"
+        encrypted = encrypt([recipient_cert], test_message)
+        return bool(encrypted)
     except Exception as e:
-        current_app.logger.error(f"Error during encryption: {e}")
-        return None
+        current_app.logger.error(f"Error during encryption test: {e}")
+        return False
+
+
+def encrypt_message(message: str, user_pgp_key: str) -> str:
+    current_app.logger.info("Encrypting message for user with provided PGP key")
+    # Load the user's PGP certificate (public key) from the key data
+    recipient_cert = Cert.from_bytes(user_pgp_key.encode())
+
+    # Encode the message string to bytes
+    message_bytes = message.encode("utf-8")
+
+    # Assuming there is no signer (i.e., unsigned encryption).
+    # Adjust the call to encrypt by passing the encoded message
+    return encrypt([recipient_cert], message_bytes)  # Use message_bytes
 
 
 def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:

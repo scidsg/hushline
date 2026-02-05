@@ -15,7 +15,7 @@ from wtforms.validators import Optional as OptionalField
 
 from hushline.auth import authentication_required
 from hushline.db import db
-from hushline.email import create_smtp_config
+from hushline.email import create_smtp_config, is_safe_smtp_host
 from hushline.forms import DisplayNoneButton
 from hushline.model import SMTPEncryption, User
 from hushline.settings.common import form_error, set_input_disabled
@@ -51,6 +51,9 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
 
     if custom_smtp_settings:
         try:
+            if not is_safe_smtp_host(form.smtp_settings.smtp_server.data or ""):
+                flash("⛔️ SMTP server must resolve to a public IP address.")
+                return None
             smtp_config = create_smtp_config(
                 form.smtp_settings.smtp_username.data,
                 form.smtp_settings.smtp_server.data,

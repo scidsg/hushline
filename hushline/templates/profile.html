@@ -93,11 +93,12 @@
 
   <form
     method="POST"
-    action="{{ url_for('submit_message', username=username.username) }}"
+    action="{{ url_for('profile', username=username.username) }}"
     id="messageForm"
     onsubmit="return false;"
   >
     {{ form.hidden_tag() }}
+    <input type="hidden" name="username_user_id" value="{{ username.user_id }}" />
 
     {% for data in field_data %}
       {% if data['field'].enabled %}
@@ -173,8 +174,8 @@
 
 {% block scripts %}
   {% if user.pgp_key %}
-    <script src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
   {% endif %}
 {% endblock %}

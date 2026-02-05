@@ -51,6 +51,6 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/mailvelope.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/inbox.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/mailvelope.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/inbox.js') }}"></script>
 {% endblock %}

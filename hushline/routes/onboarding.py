@@ -12,7 +12,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
-from hushline.crypto import is_valid_pgp_key
+from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.model import User
 from hushline.routes.forms import (
@@ -99,11 +99,19 @@ def register_onboarding_routes(app: Flask) -> None:
                             status_code = 400
                         else:
                             if resp.status_code == HTTP_OK and is_valid_pgp_key(resp.text):
-                                user.pgp_key = resp.text
-                                db.session.commit()
-                                return redirect(url_for("onboarding", step="notifications"))
-                            flash("⛔️ No PGP key found for that email address.")
-                            status_code = 400
+                                if not can_encrypt_with_pgp_key(resp.text):
+                                    flash(
+                                        "⛔️ PGP key cannot be used for encryption. Please "
+                                        "provide a key with an encryption subkey."
+                                    )
+                                    status_code = 400
+                                else:
+                                    user.pgp_key = resp.text
+                                    db.session.commit()
+                                    return redirect(url_for("onboarding", step="notifications"))
+                            else:
+                                flash("⛔️ No PGP key found for that email address.")
+                                status_code = 400
                 elif method == "manual":
                     if not pgp_key_form.validate_on_submit():
                         status_code = 400
@@ -113,9 +121,16 @@ def register_onboarding_routes(app: Flask) -> None:
                             pgp_key_form.pgp_key.errors.append("PGP key is required.")
                             status_code = 400
                         elif is_valid_pgp_key(pgp_key):
-                            user.pgp_key = pgp_key
-                            db.session.commit()
-                            return redirect(url_for("onboarding", step="notifications"))
+                            if not can_encrypt_with_pgp_key(pgp_key):
+                                pgp_key_form.pgp_key.errors.append(
+                                    "PGP key cannot be used for encryption. Please provide a "
+                                    "key with an encryption subkey."
+                                )
+                                status_code = 400
+                            else:
+                                user.pgp_key = pgp_key
+                                db.session.commit()
+                                return redirect(url_for("onboarding", step="notifications"))
                         else:
                             pgp_key_form.pgp_key.errors.append(
                                 "Invalid PGP key format or import failed."

@@ -11,10 +11,27 @@
   {% with is_alias=True %}
     {% include "settings/profile-forms.html" %}
   {% endwith %}
+
+  <div class="danger-zone">
+    <h3>Delete Alias</h3>
+    <p>
+      Deleting an alias is permanent. This will remove the alias tip line, its
+      profile information, and any messages associated with it. The alias URL
+      will stop working.
+    </p>
+    <form
+      method="POST"
+      action="{{ url_for('.delete_alias', username_id=alias.id) }}"
+      class="formBody"
+    >
+      {{ delete_alias_form.hidden_tag() }}
+      {{ delete_alias_form.submit(class="btn-danger", id="deleteAliasButton") }}
+    </form>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/settings-fields.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/settings-fields.js') }}"></script>
 {% endblock %}

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
   <head>
     <meta charset="UTF-8" />
     <meta name="theme-color" content="{{ brand_primary_color }}" id="theme-color" />
@@ -137,7 +137,12 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
-    <!-- prettier-ignore -->
+    <script>
+      document.documentElement.classList.remove("no-js");
+    </script>
+    {% block scripts %}{% endblock %}
+    <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
     <style>
       :root {
         --color-brand: oklch(from {{ brand_primary_color }} l c h);
@@ -147,6 +152,9 @@
 
   <body class="{% block body_class %}{% endblock %}">
     <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="noscript-warning" role="status" aria-live="polite" aria-atomic="true">
+      ‼️ Enable JavaScript for full functionality, including end-to-end encrypted messages.
+    </div>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
@@ -214,7 +222,7 @@
             {% if not hide_donate_button %}
             <li>
               <a href="https://opencollective.com/hushline/contribute/hush-line-supporter-55786"
-              ><span class="emoji">❤️</span> Donate</a>
+              >Donate</a>
             </li>
             {% endif %}
             {% if 'user_id' in session and session.get('is_authenticated', False) %}
@@ -349,9 +357,5 @@
         {% endfor %}
       </div>
     {% endif %}
-    {% block scripts %}
-    {% endblock %}
-    <script src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/global.js') }}"></script>
   </body>
 </html>
