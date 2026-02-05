@@ -103,6 +103,28 @@ def test_profile_submit_message_to_alias(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_failed_submit_preserves_input(client: FlaskClient, user: User) -> None:
+    username = user.primary_username.username
+    response = client.get(url_for("profile", username=username))
+    assert response.status_code == 200
+
+    response = client.post(
+        url_for("profile", username=username),
+        data={
+            "field_0": "Contact info preserved",
+            "field_1": "Message preserved",
+            "captcha_answer": "0",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "Invalid CAPTCHA answer" in response.text
+    assert "Contact info preserved" in response.text
+    assert "Message preserved" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> None:
     response = client.get(url_for("profile", username=user.primary_username.username))
     assert response.status_code == 200
