@@ -21,6 +21,7 @@ from hushline.model import (
 from hushline.settings import (
     ChangePasswordForm,
     ChangeUsernameForm,
+    DeleteAliasForm,
     DeleteBrandLogoForm,
     DisplayNameForm,
     EmailForwardingForm,
@@ -517,6 +518,20 @@ def test_alias_page_loads(client: FlaskClient, user: User, user_alias: Username)
     )
     assert response.status_code == 200
     assert f"Alias: @{user_alias.username}" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_alias(client: FlaskClient, user: User, user_alias: Username) -> None:
+    response = client.post(
+        url_for("settings.delete_alias", username_id=user_alias.id),
+        data=form_to_data(DeleteAliasForm()),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Alias deleted successfully" in response.text
+
+    alias_row = db.session.scalars(db.select(Username).filter_by(id=user_alias.id)).one_or_none()
+    assert alias_row is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")

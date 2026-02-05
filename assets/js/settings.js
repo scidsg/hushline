@@ -30,6 +30,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
   document
+    .getElementById("deleteAliasButton")
+    ?.addEventListener("click", function (event) {
+      const confirmed = confirm(
+        "Are you sure you want to delete this alias? This cannot be undone.",
+      );
+      if (!confirmed) {
+        event.preventDefault();
+      }
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  document
     .querySelector("input[name='show_in_directory']")
     ?.addEventListener("change", function (e) {
       // time out to let animation finish

@@ -35,8 +35,8 @@
   --border: 1px solid var(--color-border);
   --border-button: 2px solid var(--color-brand);
   --border-button-dark: 2px solid var(--color-brand-dark-min-saturation);
-  --border-danger: 1px solid darkred;
-  --border-danger-dark: 1px solid pink;
+  --border-danger: 2px solid darkred;
+  --border-danger-dark: 2px solid pink;
   --border-dark: 1px solid var(--color-border-dark);
   --border-dark-1: 1px solid var(--color-border-dark-1);
 
@@ -867,7 +867,7 @@
   }
 
   .modal-buttons .btn-danger {
-    border: 1px solid var(--color-brand-dark-min-saturation);
+    border: 2px solid var(--color-brand-dark-min-saturation);
   }
 
   .modal-buttons .page-bullets button {
@@ -3988,4 +3988,12 @@ header nav ul li.dropdown ul {
 
 .field + .field {
   margin-top: 0;
+}
+
+.danger-zone {
+  margin-top: 2rem;
+}
+
+.form-group + h5 {
+  margin-top: 2rem;
 }

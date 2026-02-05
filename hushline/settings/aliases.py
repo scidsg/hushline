@@ -15,6 +15,9 @@ from werkzeug.wrappers.response import Response
 from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import (
+    FieldDefinition,
+    FieldValue,
+    Message,
     User,
     Username,
 )
@@ -27,6 +30,7 @@ from hushline.settings.common import (
     handle_profile_post,
 )
 from hushline.settings.forms import (
+    DeleteAliasForm,
     NewAliasForm,
 )
 
@@ -73,9 +77,15 @@ def register_aliases_routes(bp: Blueprint) -> None:
 
         display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
         field_forms, new_field_form = build_field_forms(alias)
+        delete_alias_form = DeleteAliasForm()
 
         status_code = 200
         if request.method == "POST":
+            if (
+                delete_alias_form.submit.name in request.form
+                and delete_alias_form.validate_on_submit()
+            ):
+                return delete_alias(alias.id)
             res = await handle_profile_post(
                 display_name_form, directory_visibility_form, profile_form, alias
             )
@@ -93,7 +103,38 @@ def register_aliases_routes(bp: Blueprint) -> None:
             profile_form=profile_form,
             field_forms=field_forms,
             new_field_form=new_field_form,
+            delete_alias_form=delete_alias_form,
         ), status_code
+
+    @bp.route("/alias/<int:username_id>/delete", methods=["POST"])
+    @authentication_required
+    def delete_alias(username_id: int) -> Response:
+        alias = db.session.scalars(
+            db.select(Username).filter_by(
+                id=username_id, user_id=session["user_id"], is_primary=False
+            )
+        ).one_or_none()
+        if not alias:
+            flash("Alias not found.")
+            return abort(404)
+
+        with db.session.begin_nested():
+            db.session.execute(
+                db.delete(FieldValue).where(
+                    FieldValue.field_definition_id.in_(
+                        db.select(FieldDefinition.id).where(FieldDefinition.username_id == alias.id)
+                    )
+                )
+            )
+            db.session.execute(
+                db.delete(FieldDefinition).where(FieldDefinition.username_id == alias.id)
+            )
+            db.session.execute(db.delete(Message).where(Message.username_id == alias.id))
+            db.session.delete(alias)
+            db.session.commit()
+
+        flash("🗑️ Alias deleted successfully.")
+        return redirect(url_for(".aliases"))
 
     @bp.route("/alias/<int:username_id>/fields", methods=["GET", "POST"])
     @authentication_required
