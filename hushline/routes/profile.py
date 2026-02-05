@@ -61,6 +61,24 @@ def register_profile_routes(app: Flask) -> None:
 
         if request.method == "POST":
             current_app.logger.debug(f"Form submitted: {form.data}")
+            submitted_user_id = request.form.get("username_user_id")
+            if not submitted_user_id or submitted_user_id != str(uname.user_id):
+                flash("⛔️ This tip line changed while you were composing. Please reload.")
+                return (
+                    render_template(
+                        "profile.html",
+                        profile_header=profile_header,
+                        form=form,
+                        user=uname.user,
+                        username=uname,
+                        field_data=dynamic_form.field_data(),
+                        display_name_or_username=uname.display_name or uname.username,
+                        current_user_id=session.get("user_id"),
+                        public_key=uname.user.pgp_key,
+                        math_problem=math_problem,
+                    ),
+                    400,
+                )
 
             if form.validate_on_submit():
                 if not uname.user.pgp_key:
