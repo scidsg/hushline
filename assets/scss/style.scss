@@ -1384,6 +1384,22 @@ img.empty {
   animation: fadeInDown 0.5s ease forwards;
 }
 
+.noscript-warning {
+  display: none;
+  padding: 1rem;
+  border: 1px solid #f5c2c7;
+  border-radius: 8px;
+  background: #f8d7da;
+  color: #842029;
+  position: fixed;
+  top: calc(7.625rem + env(safe-area-inset-top));
+  z-index: 99;
+}
+
+.no-js .noscript-warning {
+  display: block;
+}
+
 .flash-messages.is-dismissing {
   animation: fadeOutUp 0.5s ease forwards;
 }
@@ -1393,6 +1409,10 @@ img.empty {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.no-js main {
+  margin-top: calc(7rem + env(safe-area-inset-top)) !important;
 }
 
 .flash-message-text {

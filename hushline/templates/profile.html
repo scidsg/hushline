@@ -174,8 +174,8 @@
 
 {% block scripts %}
   {% if user.pgp_key %}
-    <script src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
   {% endif %}
 {% endblock %}
