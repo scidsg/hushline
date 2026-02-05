@@ -10,9 +10,9 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
+from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.model import User
-from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.settings.forms import PGPProtonForm
 
 
