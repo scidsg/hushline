@@ -1,4 +1,6 @@
+import ipaddress
 import smtplib
+import socket
 import ssl
 import time
 from contextlib import contextmanager
@@ -60,7 +62,43 @@ class StartTLS_SMTPConfig(SMTPConfig):
             yield server
 
 
+def is_safe_smtp_host(host: str) -> bool:
+    if not host:
+        current_app.logger.warning("SMTP server validation failed: empty host")
+        return False
+
+    if host.lower() == "localhost":
+        current_app.logger.warning("SMTP server validation failed: localhost is not allowed")
+        return False
+
+    try:
+        addrinfo = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
+    except OSError as e:
+        current_app.logger.warning(f"SMTP server validation failed: {host!r} unresolved ({e})")
+        return False
+
+    for _, _, _, _, sockaddr in addrinfo:
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            current_app.logger.warning(
+                f"SMTP server validation failed: invalid IP {ip_str!r} for host {host!r}"
+            )
+            return False
+        if not ip.is_global:
+            current_app.logger.warning(
+                f"SMTP server validation failed: {host!r} resolved to non-public IP {ip}"
+            )
+            return False
+
+    return True
+
+
 def send_email(to_email: str, subject: str, body: str, smtp_config: SMTPConfig) -> bool:
+    if not is_safe_smtp_host(smtp_config.server):
+        current_app.logger.error(f"Blocked SMTP delivery to unsafe host {smtp_config.server!r}")
+        return False
     current_app.logger.debug(
         f"SMTP settings being used: Server: {smtp_config.server}, "
         f"Port: {smtp_config.port}, Username: {smtp_config.username}"
