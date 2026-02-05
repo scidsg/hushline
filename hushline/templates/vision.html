@@ -16,6 +16,6 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="{{ url_for('static', filename='js/vision.js') }}"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script defer src="{{ url_for('static', filename='js/vision.js') }}"></script>
 {% endblock %}
