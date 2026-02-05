@@ -14,6 +14,7 @@ from hushline.settings.forms import (
     ChangePasswordForm,
     ChangeUsernameForm,
     DeleteBrandLogoForm,
+    DeleteAliasForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,

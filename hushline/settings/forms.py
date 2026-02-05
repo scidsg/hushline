@@ -158,6 +158,10 @@ class NewAliasForm(FlaskForm):
     submit = SubmitField("Add Alias", name="new_alias", widget=Button())
 
 
+class DeleteAliasForm(FlaskForm):
+    submit = SubmitField("Delete Alias", name="delete_alias", widget=Button())
+
+
 class DirectoryVisibilityForm(FlaskForm):
     show_in_directory = BooleanField("Show on public directory")
     submit = SubmitField("Update Visibilty", name="update_directory_visibility", widget=Button())
