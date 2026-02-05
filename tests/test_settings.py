@@ -530,9 +530,7 @@ def test_delete_alias(client: FlaskClient, user: User, user_alias: Username) -> 
     assert response.status_code == 200
     assert "Alias deleted successfully" in response.text
 
-    alias_row = db.session.scalars(
-        db.select(Username).filter_by(id=user_alias.id)
-    ).one_or_none()
+    alias_row = db.session.scalars(db.select(Username).filter_by(id=user_alias.id)).one_or_none()
     assert alias_row is None
 
 

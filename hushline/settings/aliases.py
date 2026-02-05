@@ -122,9 +122,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             db.session.execute(
                 db.delete(FieldValue).where(
                     FieldValue.field_definition_id.in_(
-                        db.select(FieldDefinition.id).where(
-                            FieldDefinition.username_id == alias.id
-                        )
+                        db.select(FieldDefinition.id).where(FieldDefinition.username_id == alias.id)
                     )
                 )
             )
