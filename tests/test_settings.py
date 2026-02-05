@@ -21,6 +21,7 @@ from hushline.model import (
 from hushline.settings import (
     ChangePasswordForm,
     ChangeUsernameForm,
+    DeleteAliasForm,
     DeleteBrandLogoForm,
     DisplayNameForm,
     EmailForwardingForm,
@@ -229,6 +230,34 @@ def test_add_pgp_key_without_encryption_subkey(client: FlaskClient, user: User) 
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.settings.notifications.is_safe_smtp_host", return_value=False)
+def test_update_smtp_settings_reject_private_host(
+    is_safe_smtp_host: MagicMock, client: FlaskClient, user: User
+) -> None:
+    is_safe_smtp_host.return_value = False
+    new_smtp_settings = {
+        "email_address": "primary@example.com",
+        "custom_smtp_settings": True,
+        "smtp_settings-smtp_server": "localhost",
+        "smtp_settings-smtp_port": 587,
+        "smtp_settings-smtp_username": "user@example.com",
+        "smtp_settings-smtp_password": "securepassword123",
+        "smtp_settings-smtp_encryption": "StartTLS",
+        "smtp_settings-smtp_sender": "sender@example.com",
+        EmailForwardingForm.submit.name: "",
+    }
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data=new_smtp_settings,
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "SMTP server must resolve to a public IP address" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     user.pgp_key = None
@@ -267,8 +296,15 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
 @patch("hushline.email.smtplib.SMTP")
-def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
+def test_update_smtp_settings_starttls(
+    SMTP: MagicMock,
+    is_safe_smtp_host: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    is_safe_smtp_host.return_value = True
     new_smtp_settings = {
         "email_address": "primary@example.com",
         "custom_smtp_settings": True,
@@ -311,8 +347,15 @@ def test_update_smtp_settings_starttls(SMTP: MagicMock, client: FlaskClient, use
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
 @patch("hushline.email.smtplib.SMTP_SSL")
-def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
+def test_update_smtp_settings_ssl(
+    SMTP: MagicMock,
+    is_safe_smtp_host: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    is_safe_smtp_host.return_value = True
     new_smtp_settings = {
         "email_address": "primary@example.com",
         "custom_smtp_settings": True,
@@ -355,10 +398,15 @@ def test_update_smtp_settings_ssl(SMTP: MagicMock, client: FlaskClient, user: Us
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_default_forwarding(
-    SMTP: MagicMock, client: FlaskClient, user: User
+    SMTP: MagicMock,
+    is_safe_smtp_host: MagicMock,
+    client: FlaskClient,
+    user: User,
 ) -> None:
+    is_safe_smtp_host.return_value = True
     new_smtp_settings = {
         "email_address": "primary@example.com",
         "smtp_settings-smtp_encryption": "StartTLS",
@@ -517,6 +565,20 @@ def test_alias_page_loads(client: FlaskClient, user: User, user_alias: Username)
     )
     assert response.status_code == 200
     assert f"Alias: @{user_alias.username}" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_alias(client: FlaskClient, user: User, user_alias: Username) -> None:
+    response = client.post(
+        url_for("settings.delete_alias", username_id=user_alias.id),
+        data=form_to_data(DeleteAliasForm()),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Alias deleted successfully" in response.text
+
+    alias_row = db.session.scalars(db.select(Username).filter_by(id=user_alias.id)).one_or_none()
+    assert alias_row is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")

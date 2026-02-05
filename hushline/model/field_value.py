@@ -85,11 +85,7 @@ class FieldValue(Model):
             pgp_key = self.message.username.user.pgp_key
             if not pgp_key:
                 raise ValueError("User does not have a PGP key")
-            encrypted_value = encrypt_message(padded_value, pgp_key)
-            if encrypted_value:
-                val_to_save = encrypted_value
-            else:
-                raise ValueError("Failed to encrypt value")
+            val_to_save = encrypt_message(padded_value, pgp_key)
         else:
             # Do not encrypt with PGP, and instead only encrypt with db key
             val_to_save = value

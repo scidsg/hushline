@@ -199,6 +199,7 @@ def app(
             "STRIPE_SECRET_KEY": "sk_test_123",  # For premium tests
             "BLOB_STORAGE_PUBLIC_DRIVER": "file-system",
             "BLOB_STORAGE_PUBLIC_FS_ROOT": str(tmpdir),
+            "SESSION_FERNET_KEY": "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A=",
         },
     )
 
@@ -206,9 +207,11 @@ def app(
 
     app = create_app()
     app.config["TESTING"] = True
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SERVER_NAME"] = "localhost:8080"
     app.config["PREFERRED_URL_SCHEME"] = "http"
+    app.config["SESSION_FERNET_KEY"] = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
 
     with app.app_context():
         yield app
