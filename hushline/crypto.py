@@ -109,6 +109,20 @@ def is_valid_pgp_key(key: str) -> bool:
         return False
 
 
+def can_encrypt_with_pgp_key(key: str) -> bool:
+    """
+    Validate that we can encrypt a message with the provided public key.
+    """
+    try:
+        recipient_cert = Cert.from_bytes(key.encode())
+        test_message = b"pgp-encryption-test"
+        encrypted = encrypt([recipient_cert], test_message)
+        return bool(encrypted)
+    except Exception as e:
+        current_app.logger.error(f"Error during encryption test: {e}")
+        return False
+
+
 def encrypt_message(message: str, user_pgp_key: str) -> str | None:
     current_app.logger.info("Encrypting message for user with provided PGP key")
     try:

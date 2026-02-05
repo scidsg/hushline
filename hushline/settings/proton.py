@@ -12,7 +12,7 @@ from werkzeug.wrappers.response import Response
 from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import User
-from hushline.settings.common import is_valid_pgp_key
+from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.settings.forms import PGPProtonForm
 
 
@@ -44,6 +44,12 @@ def register_proton_routes(bp: Blueprint) -> None:
         if resp.status_code == 200:  # noqa: PLR2004
             pgp_key = resp.text
             if is_valid_pgp_key(pgp_key):
+                if not can_encrypt_with_pgp_key(pgp_key):
+                    flash(
+                        "⛔️ PGP key cannot be used for encryption. Please provide a key with an "
+                        "encryption subkey."
+                    )
+                    return redirect(url_for(".notifications"))
                 user.pgp_key = pgp_key
                 db.session.commit()
             else:
