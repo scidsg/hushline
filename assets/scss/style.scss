@@ -1129,7 +1129,7 @@ h6 {
   margin: 0 0 0.5rem 0;
   font-family: var(--font-sans-bold);
   font-weight: normal;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 h1 {
@@ -1268,7 +1268,7 @@ p b {
 .badgeContainer {
   display: flex;
   gap: 0.25rem;
-  margin: 0.5rem 0;
+  margin: 0.325rem 0;
   align-items: center;
 }
 
@@ -2012,6 +2012,7 @@ a.dropbtn:hover {
   z-index: 1;
   border-radius: 0.25rem;
   top: 3.5rem;
+  right: 1rem;
   opacity: 0;
 }
 
@@ -3495,7 +3496,7 @@ strong {
 
 .onboardingLink {
   position: relative;
-  top: -1px;
+  top: -2.5px;
 }
 
 .onboarding-wizard h3 {
