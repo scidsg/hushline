@@ -30,6 +30,7 @@ def test_notifications_disabled(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -68,6 +69,7 @@ def test_notifications_enabled_no_content(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -111,6 +113,7 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -165,6 +168,7 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
             "encrypted_email_body": encrypted_email_body,
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -211,6 +215,7 @@ def test_notifications_enabled_yes_content_yes_encrypted_body_failed_client_encr
             "encrypted_email_body": encrypted_email_body,
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
