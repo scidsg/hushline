@@ -3844,6 +3844,10 @@ li.tab:not(.active) .badge {
 
 li.tab .badge {
   padding: 0.25rem 0.325rem;
+  min-width: 22px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
 }
 
 .first-user {
