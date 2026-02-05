@@ -120,7 +120,15 @@ def register_message_routes(app: Flask) -> None:
                     if "-----BEGIN PGP MESSAGE-----" in value:
                         email_body = value
                     else:
-                        email_body = encrypt_message(value, user.pgp_key) if user.pgp_key else None
+                        try:
+                            email_body = (
+                                encrypt_message(value, user.pgp_key) if user.pgp_key else None
+                            )
+                        except Exception as e:
+                            current_app.logger.error(
+                                "Failed to encrypt email body: %s", str(e), exc_info=True
+                            )
+                            email_body = None
                     do_send_email(user, (email_body or generic_body).strip())
                 else:
                     do_send_email(user, value.strip())
