@@ -7,7 +7,7 @@ security vulnerabilities.
 
 Preferred: submit a report via GitHub Security Advisories for this repository.
 
-If you cannot use GitHub Security Advisories, email our security contact:
+If you cannot use GitHub Security Advisories, message our security contact:
 
 - `https://tips.hushline.app/to/hushline-security`
 

@@ -3,7 +3,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import Tier, User
+from hushline.model import Tier, User, Username
 from hushline.premium import update_price
 
 
@@ -22,6 +22,20 @@ def create_blueprint() -> Blueprint:
         user.primary_username.is_verified = not user.primary_username.is_verified
         db.session.commit()
         flash("✅ User verification status toggled.", "success")
+        return redirect(url_for("settings.admin"))
+
+    @bp.route("/toggle_verified_username/<int:username_id>", methods=["POST"])
+    @admin_authentication_required
+    def toggle_verified_username(username_id: int) -> Response:
+        if not current_app.config.get("USER_VERIFICATION_ENABLED"):
+            abort(401)
+
+        username = db.session.get(Username, username_id)
+        if username is None:
+            abort(404)
+        username.is_verified = not username.is_verified
+        db.session.commit()
+        flash("✅ Username verification status toggled.", "success")
         return redirect(url_for("settings.admin"))
 
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])

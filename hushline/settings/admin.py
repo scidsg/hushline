@@ -19,6 +19,9 @@ def register_admin_routes(bp: Blueprint) -> None:
         all_users = list(
             db.session.scalars(db.select(User).join(Username).order_by(Username._username)).all()
         )
+        all_usernames = list(
+            db.session.scalars(db.select(Username).order_by(Username._username)).all()
+        )
         user_count = len(all_users)
         two_fa_count = sum(1 for _ in filter(lambda x: x._totp_secret, all_users))
         pgp_key_count = sum(1 for _ in filter(lambda x: x._pgp_key, all_users))
@@ -27,6 +30,7 @@ def register_admin_routes(bp: Blueprint) -> None:
             "settings/admin.html",
             user=user,
             all_users=all_users,
+            all_usernames=all_usernames,
             user_count=user_count,
             two_fa_count=two_fa_count,
             pgp_key_count=pgp_key_count,

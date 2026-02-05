@@ -1,3 +1,5 @@
+import json
+
 from flask import (
     Flask,
     flash,
@@ -16,6 +18,49 @@ from hushline.model import (
 
 
 def register_index_routes(app: Flask) -> None:
+    @app.route("/site.webmanifest")
+    def site_webmanifest() -> Response:
+        brand_name = OrganizationSetting.fetch_one(OrganizationSetting.BRAND_NAME) or "Hush Line"
+        brand_primary_color = (
+            OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PRIMARY_COLOR) or "#7d25c1"
+        )
+
+        logo_path = OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO)
+        logo_url = url_for("storage.public", path=logo_path) if logo_path else None
+
+        icons = []
+        if logo_url:
+            icons.append({"src": logo_url, "sizes": "any", "type": "image/png"})
+        icons.extend(
+            [
+                {
+                    "src": url_for("static", filename="favicon/android-chrome-192x192.png"),
+                    "sizes": "192x192",
+                    "type": "image/png",
+                },
+                {
+                    "src": url_for("static", filename="favicon/android-chrome-512x512.png"),
+                    "sizes": "512x512",
+                    "type": "image/png",
+                },
+            ]
+        )
+
+        manifest = {
+            "name": brand_name,
+            "short_name": brand_name,
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#fbf3ff",
+            "theme_color": brand_primary_color,
+            "description": (
+                "Anonymous reporting and whistleblower management for organizations "
+                "and individuals."
+            ),
+            "icons": icons,
+        }
+        return Response(json.dumps(manifest), mimetype="application/manifest+json")
+
     @app.route("/")
     def index() -> Response:
         # If logged in, redirect to inbox
