@@ -208,6 +208,27 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_add_pgp_key_without_encryption_subkey(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        new_pgp_key = file.read().strip()
+
+    with patch("hushline.settings.common.can_encrypt_with_pgp_key", return_value=False):
+        response = client.post(
+            url_for("settings.encryption"),
+            data=form_to_data(PGPKeyForm(data={"pgp_key": new_pgp_key})),
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "PGP key cannot be used for encryption" in response.text
+
+    updated_user = db.session.scalars(
+        db.select(Username).filter_by(_username=user.primary_username.username)
+    ).one()
+    assert updated_user.user.pgp_key != new_pgp_key
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.email.smtplib.SMTP")
 def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
     user.pgp_key = None

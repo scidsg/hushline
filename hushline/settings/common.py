@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
-from hushline.crypto import is_valid_pgp_key
+from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.model import (
     FieldDefinition,
@@ -331,6 +331,12 @@ def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
         user.email = None
         db.session.commit()
     elif is_valid_pgp_key(pgp_key):
+        if not can_encrypt_with_pgp_key(pgp_key):
+            flash(
+                "⛔️ PGP key cannot be used for encryption. Please provide a key with an "
+                "encryption subkey."
+            )
+            return redirect(url_for(".encryption"))
         user.pgp_key = pgp_key
         db.session.commit()
     else:
