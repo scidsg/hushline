@@ -16,6 +16,7 @@ from flask import (
     url_for,
 )
 from psycopg.errors import UniqueViolation
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms import Field
@@ -254,7 +255,14 @@ def handle_change_username_form(username: Username, form: ChangeUsernameForm) ->
 
     # TODO a better pattern would be to try to commit, catch the exception, and match
     # on the name of the unique index that errored
-    if db.session.scalar(db.exists(Username).where(Username._username == new_username).select()):
+    if db.session.scalar(
+        db.exists(Username)
+        .where(
+            func.lower(Username._username) == new_username.lower(),
+            Username.id != username.id,
+        )
+        .select()
+    ):
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
@@ -283,13 +291,26 @@ def handle_new_alias_form(user: User, new_alias_form: NewAliasForm) -> Optional[
         flash("Your current subscription level does not allow the creation of more aliases.")
         return None
 
+    if db.session.scalar(
+        db.exists(Username)
+        .where(
+            func.lower(Username._username) == new_alias_form.username.data.lower(),
+        )
+        .select()
+    ):
+        flash("💔 This username is already taken.")
+        return None
+
     uname = Username(_username=new_alias_form.username.data, user_id=user.id, is_primary=False)
     db.session.add(uname)
     try:
         db.session.commit()
     except IntegrityError as e:
         db.session.rollback()
-        if isinstance(e.orig, UniqueViolation) and '"uq_usernames_username"' in str(e.orig):
+        if isinstance(e.orig, UniqueViolation) and (
+            '"uq_usernames_username"' in str(e.orig)
+            or '"uq_usernames_username_lower"' in str(e.orig)
+        ):
             flash("💔 This username is already taken.")
             return None
         current_app.logger.error("Error creating username", exc_info=True)

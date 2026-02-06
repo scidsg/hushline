@@ -48,6 +48,15 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
     assert expected in resp.text
 
 
+def test_profile_accepts_case_insensitive_username(
+    client: FlaskClient, user_alias: Username
+) -> None:
+    alt_username = user_alias.username.upper()
+    response = client.get(url_for("profile", username=alt_username))
+    assert response.status_code == 200
+    assert user_alias.username in response.text
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message(client: FlaskClient, user: User) -> None:

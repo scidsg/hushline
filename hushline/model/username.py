@@ -29,7 +29,6 @@ class Username(Model):
     """
 
     __tablename__ = "usernames"
-
     USERNAME_MIN_LENGTH = 3
     USERNAME_MAX_LENGTH = 25
     DISPLAY_NAME_MIN_LENGTH = 1

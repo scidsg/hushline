@@ -12,6 +12,7 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
@@ -103,7 +104,9 @@ def register_auth_routes(app: Flask) -> None:
                     )
 
             if db.session.scalar(
-                db.exists(Username).where(Username._username == username).select()
+                db.exists(Username)
+                .where(func.lower(Username._username) == username.lower())
+                .select()
             ):
                 flash("💔 Username already taken.", "error")
                 return render_template(
@@ -157,7 +160,10 @@ def register_auth_routes(app: Flask) -> None:
         form = LoginForm()
         if form.validate_on_submit():
             username = db.session.scalars(
-                db.select(Username).filter_by(_username=form.username.data.strip(), is_primary=True)
+                db.select(Username).where(
+                    func.lower(Username._username) == form.username.data.strip().lower(),
+                    Username.is_primary.is_(True),
+                )
             ).one_or_none()
             if username and username.user.check_password(form.password.data):
                 session.permanent = True

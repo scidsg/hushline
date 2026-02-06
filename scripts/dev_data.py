@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, cast
 
 from flask import current_app
+from sqlalchemy import func
 from sqlalchemy.sql import exists
 
 from hushline import create_app
@@ -264,7 +265,9 @@ def create_users() -> None:
         pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
 
         # Check if user already exists
-        if not db.session.query(exists().where(Username._username == username)).scalar():
+        if not db.session.query(
+            exists().where(func.lower(Username._username) == username.lower())
+        ).scalar():
             # Create a new user
             user = User(password=password, is_admin=is_admin)
 

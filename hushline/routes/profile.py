@@ -11,6 +11,7 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
 from hushline.db import db
@@ -39,7 +40,9 @@ def register_profile_routes(app: Flask) -> None:
 
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
-        uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
+        uname = db.session.scalars(
+            db.select(Username).where(func.lower(Username._username) == username.lower())
+        ).one_or_none()
         if not uname:
             abort(404)
 
