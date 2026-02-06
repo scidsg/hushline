@@ -97,6 +97,25 @@ def test_change_username(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_username_rejects_case_insensitive_duplicate(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangeUsernameForm(
+                data={
+                    "new_username": user2.primary_username.username.upper(),
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "This username is already taken." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_change_password(app: Flask, client: FlaskClient, user: User, user_password: str) -> None:
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
@@ -549,6 +568,23 @@ def test_add_alias_duplicate(client: FlaskClient, user: User) -> None:
             NewAliasForm(
                 data={
                     "username": user.primary_username.username,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+    assert "This username is already taken." in response.text
+    assert db.session.scalar(db.func.count(Username.id)) == 1
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_add_alias_duplicate_case_insensitive(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.aliases"),
+        data=form_to_data(
+            NewAliasForm(
+                data={
+                    "username": user.primary_username.username.upper(),
                 }
             )
         ),

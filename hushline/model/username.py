@@ -29,6 +29,13 @@ class Username(Model):
     """
 
     __tablename__ = "usernames"
+    __table_args__ = (
+        db.Index(
+            "uq_usernames_username_lower",
+            db.func.lower("username"),
+            unique=True,
+        ),
+    )
 
     USERNAME_MIN_LENGTH = 3
     USERNAME_MAX_LENGTH = 25

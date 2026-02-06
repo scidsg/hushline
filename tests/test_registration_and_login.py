@@ -102,6 +102,28 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     assert uname.username == "newuser"
 
 
+def test_user_registration_rejects_case_insensitive_duplicate(
+    client: FlaskClient, user: User
+) -> None:
+    """Usernames should be unique regardless of case."""
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    duplicate_username = user.primary_username.username.upper()
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    response = client.post(
+        url_for("register"),
+        data={
+            "username": duplicate_username,
+            "password": "SecurePassword123!",
+            "captcha_answer": captcha_answer,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Username already taken." in response.text
+
+
 def test_register_page_loads(client: FlaskClient) -> None:
     """Test if the registration page loads successfully."""
     response = client.get(url_for("register"))
@@ -129,6 +151,31 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
     # Attempt login
     login_response = client.post(
         url_for("login"), data={"username": username, "password": password}, follow_redirects=True
+    )
+    assert login_response.status_code == 200
+    assert "Inbox" in login_response.text
+
+
+def test_user_login_case_insensitive(client: FlaskClient) -> None:
+    """Login should accept username case-insensitively."""
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    username = "newuser"
+    password = "SecurePassword123!"
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    response = client.post(
+        url_for("register"),
+        data={"username": username, "password": password, "captcha_answer": captcha_answer},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Registration successful!" in response.text
+
+    login_response = client.post(
+        url_for("login"),
+        data={"username": username.upper(), "password": password},
+        follow_redirects=True,
     )
     assert login_response.status_code == 200
     assert "Inbox" in login_response.text
