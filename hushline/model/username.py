@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 
+from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.db import db
@@ -32,7 +33,7 @@ class Username(Model):
     __table_args__ = (
         db.Index(
             "uq_usernames_username_lower",
-            db.func.lower("username"),
+            text("lower(username)"),
             unique=True,
         ),
     )
