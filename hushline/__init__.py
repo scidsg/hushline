@@ -135,11 +135,7 @@ def configure_jinja(app: Flask) -> None:
         return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
 
     def _linear_to_srgb(value: float) -> float:
-        return (
-            12.92 * value
-            if value <= 0.0031308
-            else 1.055 * (value ** (1 / 2.4)) - 0.055
-        )
+        return 12.92 * value if value <= 0.0031308 else 1.055 * (value ** (1 / 2.4)) - 0.055
 
     def _brand_dark_color(hex_color: str) -> str:
         r, g, b = _hex_to_rgb(hex_color)
