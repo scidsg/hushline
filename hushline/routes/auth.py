@@ -1,6 +1,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
+import pyotp
 from flask import (
     Flask,
     flash,
@@ -11,7 +12,6 @@ from flask import (
     session,
     url_for,
 )
-import pyotp
 from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
