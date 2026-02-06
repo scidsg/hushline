@@ -2036,6 +2036,10 @@ a.dropbtn:hover {
   opacity: 0;
 }
 
+#primary-nav.show .dropdown-content {
+  right: inherit;
+}
+
 .dropdown-content a {
   padding: 12px 16px;
   text-decoration: none;
@@ -2501,6 +2505,12 @@ input#captcha_answer {
   .nav-emoji {
     position: absolute;
     transform: translateY(0rem) translateX(3.75rem);
+  }
+  .onboardingLink .nav-emoji {
+    left: -5rem !important;
+  }
+  .onboardingLink {
+    left: 1rem;
   }
 }
 
@@ -3516,7 +3526,11 @@ strong {
 
 .onboardingLink {
   position: relative;
-  top: -2.5px;
+}
+
+.onboardingLink .nav-emoji {
+  position: absolute;
+  left: -1.125rem;
 }
 
 .onboarding-wizard h3 {
