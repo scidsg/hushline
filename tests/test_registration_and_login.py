@@ -102,19 +102,24 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
     assert uname.username == "newuser"
 
 
-def test_user_registration_rejects_case_insensitive_duplicate(
-    client: FlaskClient, user: User
-) -> None:
+def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClient) -> None:
     """Usernames should be unique regardless of case."""
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
-    duplicate_username = user.primary_username.username.upper()
+
+    existing_user = User(password="SecurePassword123!")
+    db.session.add(existing_user)
+    db.session.flush()
+    db.session.add(
+        Username(user_id=existing_user.id, _username="CaseUser", is_primary=True)
+    )
+    db.session.commit()
 
     captcha_answer = get_captcha_from_session_register(client)
 
     response = client.post(
         url_for("register"),
         data={
-            "username": duplicate_username,
+            "username": "caseuser",
             "password": "SecurePassword123!",
             "captcha_answer": captcha_answer,
         },
