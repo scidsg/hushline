@@ -1992,16 +1992,24 @@ img.alert {
   content: "";
   position: absolute;
   inset: 0;
-  transform: scaleY(0);
+  will-change: transform;
+  transform: translateZ(0) scaleY(0);
   transform-origin: bottom;
   transition: transform 200ms ease;
   z-index: -1;
   border-radius: 0.25rem 0.25rem 0 0;
 }
 
+.directory-tabs .tab {
+  isolation: isolate;
+  transform: translateZ(0); 
+  -webkit-font-smoothing: antialiased;
+  backface-visibility: hidden;
+}
+
 .directory-tabs .tab:hover::before,
 .directory-tabs .tab:focus-visible::before {
-  transform: scaleY(1);
+  transform: translateZ(0) scaleY(1);
 }
 
 /* Style the tab content */
