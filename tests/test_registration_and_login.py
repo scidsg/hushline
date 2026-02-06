@@ -111,7 +111,7 @@ def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClien
     )
     db.session.commit()
 
-    existing_user = User(password="SecurePassword123!")
+    existing_user = User(password="SecurePassword123!")  # noqa: S106
     db.session.add(existing_user)
     db.session.flush()
     db.session.add(Username(user_id=existing_user.id, _username="CaseUser", is_primary=True))
