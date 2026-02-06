@@ -114,9 +114,7 @@ def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClien
     existing_user = User(password="SecurePassword123!")
     db.session.add(existing_user)
     db.session.flush()
-    db.session.add(
-        Username(user_id=existing_user.id, _username="CaseUser", is_primary=True)
-    )
+    db.session.add(Username(user_id=existing_user.id, _username="CaseUser", is_primary=True))
     db.session.commit()
 
     captcha_answer = get_captcha_from_session_register(client)
