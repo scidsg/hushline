@@ -131,11 +131,20 @@ def configure_jinja(app: Flask) -> None:
         b = int(hex_value[4:6], 16) / 255
         return r, g, b
 
+    SRGB_TO_LINEAR_THRESHOLD = 0.04045
+    LINEAR_TO_SRGB_THRESHOLD = 0.0031308
+
     def _srgb_to_linear(value: float) -> float:
-        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+        return (
+            value / 12.92 if value <= SRGB_TO_LINEAR_THRESHOLD else ((value + 0.055) / 1.055) ** 2.4
+        )
 
     def _linear_to_srgb(value: float) -> float:
-        return 12.92 * value if value <= 0.0031308 else 1.055 * (value ** (1 / 2.4)) - 0.055
+        return (
+            12.92 * value
+            if value <= LINEAR_TO_SRGB_THRESHOLD
+            else 1.055 * (value ** (1 / 2.4)) - 0.055
+        )
 
     def _brand_dark_color(hex_color: str) -> str:
         r, g, b = _hex_to_rgb(hex_color)
@@ -143,13 +152,13 @@ def configure_jinja(app: Flask) -> None:
         g_lin = _srgb_to_linear(g)
         b_lin = _srgb_to_linear(b)
 
-        l = 0.4122214708 * r_lin + 0.5363325363 * g_lin + 0.0514459929 * b_lin
-        m = 0.2119034982 * r_lin + 0.6806995451 * g_lin + 0.1073969566 * b_lin
-        s = 0.0883024619 * r_lin + 0.2817188376 * g_lin + 0.6299787005 * b_lin
+        l_val = 0.4122214708 * r_lin + 0.5363325363 * g_lin + 0.0514459929 * b_lin
+        m_val = 0.2119034982 * r_lin + 0.6806995451 * g_lin + 0.1073969566 * b_lin
+        s_val = 0.0883024619 * r_lin + 0.2817188376 * g_lin + 0.6299787005 * b_lin
 
-        l_ = l ** (1 / 3)
-        m_ = m ** (1 / 3)
-        s_ = s ** (1 / 3)
+        l_ = l_val ** (1 / 3)
+        m_ = m_val ** (1 / 3)
+        s_ = s_val ** (1 / 3)
 
         lab_l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
         lab_a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
