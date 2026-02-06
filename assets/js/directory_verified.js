@@ -221,5 +221,23 @@ document.addEventListener("DOMContentLoaded", function () {
     console.error("Verified tab not found");
   }
 
+  const directoryTabs = document.querySelector(".directory-tabs");
+  if (directoryTabs) {
+    const updateStickyState = () => {
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      const tabsTop = directoryTabs.getBoundingClientRect().top;
+      const isSticky = tabsTop <= stickyTop + 1;
+      directoryTabs.classList.toggle("is-sticky", isSticky);
+    };
+
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("resize", updateStickyState);
+  }
+
   loadData();
 });
