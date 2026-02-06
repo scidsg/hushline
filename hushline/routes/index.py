@@ -7,6 +7,7 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
 from hushline.db import db
@@ -83,7 +84,9 @@ def register_index_routes(app: Flask) -> None:
             OrganizationSetting.HOMEPAGE_USER_NAME
         ):
             if db.session.scalar(
-                db.exists(Username).where(Username._username == homepage_username).select()
+                db.exists(Username)
+                .where(func.lower(Username._username) == homepage_username.lower())
+                .select()
             ):
                 return redirect(url_for("profile", username=homepage_username))
             else:

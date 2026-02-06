@@ -2,13 +2,17 @@
 
 import sys
 
+from sqlalchemy import func
+
 from hushline import create_app
 from hushline.db import db
 from hushline.models import Username
 
 
 def toggle_admin(username: str) -> None:
-    uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one_or_none()
+    uname = db.session.scalars(
+        db.select(Username).where(func.lower(Username._username) == username.lower())
+    ).one_or_none()
     if not uname:
         print("User not found.")
         return
