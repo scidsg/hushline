@@ -4,6 +4,7 @@ from typing import Any, Optional
 from flask import current_app
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField, FileSize
+from sqlalchemy import func
 from wtforms import (
     BooleanField,
     Field,
@@ -293,7 +294,7 @@ class SetHomepageUsernameForm(FlaskForm):
     def validate_username(self, field: Field) -> None:
         username = field.data.strip()
         if not db.session.scalar(
-            db.exists(Username).where(Username._username == username).select()
+            db.exists(Username).where(func.lower(Username._username) == username.lower()).select()
         ):
             raise ValidationError(f"Username {username!r} does not exist")
 

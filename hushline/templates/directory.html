@@ -232,8 +232,8 @@
 
 {% block scripts %}
   {% if directory_verified_tab_enabled %}
-    <script src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
   {% else %}
-    <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/directory.js') }}"></script>
   {% endif %}
 {% endblock %}

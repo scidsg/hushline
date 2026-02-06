@@ -48,6 +48,15 @@ def test_profile_header(client: FlaskClient, user: User) -> None:
     assert expected in resp.text
 
 
+def test_profile_accepts_case_insensitive_username(
+    client: FlaskClient, user_alias: Username
+) -> None:
+    alt_username = user_alias.username.upper()
+    response = client.get(url_for("profile", username=alt_username))
+    assert response.status_code == 200
+    assert user_alias.username in response.text
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message(client: FlaskClient, user: User) -> None:
@@ -56,6 +65,7 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -85,6 +95,7 @@ def test_profile_submit_message_to_alias(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "username_user_id": user.id,
             "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
         },
         follow_redirects=True,
@@ -114,6 +125,7 @@ def test_profile_failed_submit_preserves_input(client: FlaskClient, user: User) 
         data={
             "field_0": "Contact info preserved",
             "field_1": "Message preserved",
+            "username_user_id": user.id,
             "captcha_answer": "0",
         },
         follow_redirects=True,
@@ -122,6 +134,24 @@ def test_profile_failed_submit_preserves_input(client: FlaskClient, user: User) 
     assert "Invalid CAPTCHA answer" in response.text
     assert "Contact info preserved" in response.text
     assert "Message preserved" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_rejects_user_id_mismatch(client: FlaskClient, user: User, user2: User) -> None:
+    username = user.primary_username.username
+    response = client.post(
+        url_for("profile", username=username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "username_user_id": user2.id,
+            "captcha_answer": get_captcha_from_session(client, username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "tip line changed" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
