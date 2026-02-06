@@ -120,6 +120,11 @@
     color: #fff;
   }
 
+  .directory-tabs,
+  .settings-tabs {
+    background-color: white;
+  }
+
   .banner p::selection {
     background: var(--color-brand-max-contrast);
     color: white;
@@ -593,6 +598,11 @@
 
   .flash-dismiss img {
     filter: brightness(1.5);
+  }
+
+  .directory-tabs,
+  .settings-tabs {
+    background-color: var(--color-dark-bg-alt);
   }
 
   .skip-link {
@@ -1105,6 +1115,7 @@ body {
 }
 
 main {
+  --container-padding: 2rem;
   max-width: 640px;
   width: 100%;
   display: flex;
@@ -1597,12 +1608,13 @@ button.dropbtn {
 }
 
 .container {
+  --container-padding: 2rem;
   max-width: 860px;
   min-width: 480px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.5rem 2rem;
+  padding: 2.5rem var(--container-padding);
   box-sizing: border-box;
   border-radius: 0.5rem;
 }
@@ -2224,6 +2236,25 @@ textarea#bio {
   margin-bottom: 0;
 }
 
+.directory-tabs {
+  position: sticky;
+  top: calc(65px + env(safe-area-inset-top));
+  z-index: 10;
+}
+
+.directory-tabs.is-sticky {
+  width: calc(100% + (2 * var(--container-padding, 2rem)));
+  margin-left: calc(-1 * var(--container-padding, 2rem));
+  margin-right: calc(-1 * var(--container-padding, 2rem));
+  padding-left: var(--container-padding, 2rem);
+  padding-right: var(--container-padding, 2rem);
+  box-sizing: border-box;
+}
+
+.banner+header+main .directory-tabs {
+  top: calc(105px + env(safe-area-inset-top));
+}
+
 textarea:focus,
 input:focus {
   outline-offset: -0.25rem;
@@ -2426,9 +2457,22 @@ input#captcha_answer {
 }
 
 @media only screen and (max-width: 768px) {
+  main {
+    --container-padding: 1.25rem;
+  }
+
   .container {
+    --container-padding: 1.25rem;
     min-width: initial;
-    padding: 2rem 1.25rem;
+    padding: 2rem var(--container-padding);
+  }
+
+  .directory-tabs.is-sticky {
+    width: calc(100% + 2.5rem);
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 
   .emptyState {
@@ -3024,6 +3068,7 @@ p.bio+.extra-fields {
     border-radius: 0;
     padding: 0;
   }
+
 }
 
 @media (max-width: 400px) {
