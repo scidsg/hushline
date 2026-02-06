@@ -125,6 +125,15 @@
     background-color: white;
   }
 
+  .directory-tabs .tab:hover::before {
+    background: var(--color-brand-bg);
+    box-shadow: 0 -3px 0 inset var(--color-brand);
+  }
+  .directory-tabs .tab:not(.active):hover::before {
+    background: var(--color-brand-bg);
+    box-shadow: 0 -1.5px 0 inset var(--color-brand);
+  }
+
   .banner p::selection {
     background: var(--color-brand-max-contrast);
     color: white;
@@ -610,6 +619,15 @@
     color: var(--color-text);
   }
 
+  .directory-tabs .tab:hover::before {
+    background: var(--color-dark-bg-alt-1);
+    box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
+  }
+  .directory-tabs .tab:not(.active):hover::before {
+    background: var(--color-dark-bg-alt-1);
+    box-shadow: 0 -1.5px 0 inset var(--color-brand-dark-min-saturation);
+  }
+
   .banner p::selection {
     background: var(--color-brand-dark-max-saturation);
     color: white;
@@ -710,7 +728,7 @@
   }
 
   /* Change background color of tabs on hover */
-  .tab:hover {
+  .tab:hover:not(.directory-tabs .tab) {
     background-color: var(--color-dark-bg-alt-1);
   }
 
@@ -1921,7 +1939,6 @@ img.alert {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  gap: 0.5rem;
 }
 
 .inbox-tabs,
@@ -1955,17 +1972,44 @@ img.alert {
 .tab {
   min-height: 0px;
   min-width: auto;
-  padding: 1rem 0.25rem;
+  padding: .75rem 0.5rem;
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   white-space: nowrap;
   border-radius: 0em;
   margin: 0;
   box-sizing: content-box;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
 }
 
 .tab.active {
   font-family: var(--font-sans-bold);
+}
+
+.directory-tabs .tab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  transform: translateZ(0) scaleY(0);
+  transform-origin: bottom;
+  transition: transform 200ms ease;
+  z-index: -1;
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.directory-tabs .tab {
+  isolation: isolate;
+  transform: translateZ(0); 
+  -webkit-font-smoothing: antialiased;
+  backface-visibility: hidden;
+}
+
+.directory-tabs .tab:hover::before,
+.directory-tabs .tab:focus-visible::before {
+  transform: translateZ(0) scaleY(1);
 }
 
 /* Style the tab content */
@@ -2240,6 +2284,7 @@ textarea#bio {
   position: sticky;
   top: calc(65px + env(safe-area-inset-top));
   z-index: 10;
+  margin-top: 0.25rem;
 }
 
 .directory-tabs.is-sticky {
