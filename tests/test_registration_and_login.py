@@ -105,6 +105,11 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
 def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClient) -> None:
     """Usernames should be unique regardless of case."""
     os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=True,
+    )
+    db.session.commit()
 
     existing_user = User(password="SecurePassword123!")
     db.session.add(existing_user)
