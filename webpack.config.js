@@ -79,6 +79,8 @@ module.exports = (env) => {
         {
           test: /\.(png|svg|jpg|jpeg|gif)$/i,
           type: 'asset/resource',
+          // Webpack 5.105.0 marks asset modules as side-effect free; keep these.
+          sideEffects: true,
           generator: {
             filename: '../img/[name][ext]',
           },
