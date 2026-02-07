@@ -46,6 +46,8 @@
   --font-sans-bold: "Atkinson Bold", Helvetica, Arial, sans-serif;
 
   --font-size-base: 1rem;
+  --font-size-menu-button: 0.938rem;
+  --font-size-logo: 1.3125rem;
   --font-size-small: 0.875rem;
   --font-size-smaller: 0.8125rem;
   --font-size-smallest: 0.75rem;
@@ -1588,7 +1590,7 @@ header {
 
 header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-logo);
   line-height: 1.1;
 }
 
@@ -1774,7 +1776,7 @@ input[type="file"]::file-selector-button:active {
 .mobileNav {
   background-size: contain;
   background-repeat: no-repeat;
-  padding-left: 2.125rem;
+  padding-left: 2.325rem;
   align-items: center;
   font-size: var(--font-size-small);
   font-family: var(--font-sans-bold);
@@ -2574,6 +2576,7 @@ input#captcha_answer {
     display: flex;
     flex-direction: row;
     cursor: pointer;
+    min-height: 44px;
   }
 
   header .btn {
