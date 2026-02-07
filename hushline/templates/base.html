@@ -226,7 +226,6 @@
           <ul id="primary-nav">
             {% if user and setup_incomplete %}
               <li class="onboardingLink">
-                <span class="nav-emoji">🪄</span>
                 <a href="{{ url_for('onboarding', full=1) }}">Account Setup</a>
               </li>
             {% endif %}
