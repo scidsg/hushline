@@ -1983,7 +1983,6 @@ img.alert {
   box-sizing: content-box;
   position: relative;
   z-index: 0;
-  overflow: hidden;
 }
 
 .tab.active {
@@ -2540,7 +2539,7 @@ input#captcha_answer {
   margin-bottom: 1rem;
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-width: 800px) {
   main {
     --container-padding: 1.25rem;
   }
