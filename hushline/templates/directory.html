@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Directory{% endblock %}
+{% block body_class %}directory-page{% endblock %}
 
 {% block content %}
   <h2 id="directory-title">User Directory</h2>
@@ -10,7 +11,8 @@
   {% endif %}
 
   {% if directory_verified_tab_enabled %}
-    <div class="directory-tabs">
+    <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
+    <div class="directory-tabs" id="directory-tabs">
       <ul class="tab-list" role="tablist">
         <li role="presentation">
           <button
@@ -37,6 +39,11 @@
           >
             All
           </button>
+        </li>
+        <li class="tab-top-item" role="presentation">
+          <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
+            Top
+          </a>
         </li>
       </ul>
     </div>

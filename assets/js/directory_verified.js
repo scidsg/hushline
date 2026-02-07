@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
-  const tabs = document.querySelectorAll(".tab");
+  const tabs = document.querySelectorAll(".tab[data-tab]");
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
@@ -223,6 +223,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const directoryTabs = document.querySelector(".directory-tabs");
   if (directoryTabs) {
+    const topLink = directoryTabs.querySelector(".tab-top-link");
+    if (topLink) {
+      topLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        const anchor = document.getElementById("directory-top-anchor");
+        const header = document.querySelector("header");
+        const banner = document.querySelector(".banner");
+        const headerHeight = header ? header.getBoundingClientRect().height : 0;
+        const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+        const stickyTop = headerHeight + bannerHeight;
+        const currentY = window.scrollY;
+        const anchorTop = anchor
+          ? anchor.getBoundingClientRect().top + currentY
+          : 0;
+        const targetY = Math.max(0, anchorTop - stickyTop);
+        window.scrollTo({ top: targetY, behavior: "smooth" });
+      });
+    }
+
     const updateStickyState = () => {
       const header = document.querySelector("header");
       const banner = document.querySelector(".banner");
@@ -230,12 +249,15 @@ document.addEventListener("DOMContentLoaded", function () {
       const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
       const stickyTop = headerHeight + bannerHeight;
       const tabsTop = directoryTabs.getBoundingClientRect().top;
-      const isSticky = tabsTop <= stickyTop + 1;
+      const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
       directoryTabs.classList.toggle("is-sticky", isSticky);
     };
 
     updateStickyState();
     window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("hashchange", () => {
+      requestAnimationFrame(updateStickyState);
+    });
     window.addEventListener("resize", updateStickyState);
   }
 

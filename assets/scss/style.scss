@@ -1132,6 +1132,10 @@ body {
   font-family: var(--font-sans);
 }
 
+body.directory-page {
+  scroll-behavior: smooth;
+}
+
 main {
   --container-padding: 2rem;
   max-width: 640px;
@@ -2278,6 +2282,27 @@ textarea#bio {
 
 .directory-tabs .tab-list {
   margin-bottom: 0;
+  align-items: center;
+}
+
+.directory-tabs .tab-top-item {
+  display: none;
+  margin-left: auto;
+}
+
+.directory-tabs.is-sticky .tab-top-item {
+  display: flex;
+}
+
+.directory-tabs .tab-top-link {
+  font-size: var(--font-size-small);
+  text-decoration: underline;
+  padding: 0.5rem 0.75rem;
+}
+
+.directory-tabs .tab-top-link:hover,
+.directory-tabs .tab-top-link:focus-visible {
+  text-decoration: underline;
 }
 
 .directory-tabs {
@@ -2285,6 +2310,11 @@ textarea#bio {
   top: calc(65px + env(safe-area-inset-top));
   z-index: 10;
   margin-top: 0.25rem;
+}
+
+ .directory-top-anchor {
+  height: 0;
+  scroll-margin-top: calc(65px + env(safe-area-inset-top) - 0.25rem);
 }
 
 .directory-tabs.is-sticky {
@@ -2299,6 +2329,11 @@ textarea#bio {
 .banner+header+main .directory-tabs {
   top: calc(105px + env(safe-area-inset-top));
 }
+
+.banner+header+main .directory-top-anchor {
+  scroll-margin-top: calc(105px + env(safe-area-inset-top) - 0.25rem);
+}
+
 
 textarea:focus,
 input:focus {
