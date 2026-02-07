@@ -46,7 +46,7 @@
   --font-sans-bold: "Atkinson Bold", Helvetica, Arial, sans-serif;
 
   --font-size-base: 1rem;
-  --font-size-menu-button: 0.938rem;
+  --font-size-menu: 0.938rem;
   --font-size-logo: 1.3125rem;
   --font-size-small: 0.875rem;
   --font-size-smaller: 0.8125rem;
@@ -1617,6 +1617,7 @@ header nav a,
 header nav button {
   text-decoration: none;
   border-radius: 0.25rem;
+  font-size: var(--font-size-menu);
 }
 
 header nav a:hover {
@@ -1625,10 +1626,6 @@ header nav a:hover {
 
 header nav .dropdown {
   display: flex;
-}
-
-button.dropbtn {
-  font-size: 0.875rem;
 }
 
 .container {
@@ -1778,7 +1775,7 @@ input[type="file"]::file-selector-button:active {
   background-repeat: no-repeat;
   padding-left: 2.3rem;
   align-items: center;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-menu);
   font-family: var(--font-sans-bold);
   background-color: transparent;
   padding-right: 0.5rem;
@@ -2073,10 +2070,6 @@ img.alert {
   box-shadow: none;
   margin: 0;
   font-family: var(--font-sans);
-}
-
-.dropdown a {
-  font-size: 0.875rem;
 }
 
 .dropdown ul a {
