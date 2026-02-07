@@ -3555,12 +3555,9 @@ strong {
   box-sizing: border-box;
   font-size: var(--font-size-3);
 }
-.modal-buttons .page-bullets button:nth-child(1) {
-  justify-content: end; 
-}
 
-.modal-buttons .page-bullets button:nth-child(3) {
-  justify-content: start; 
+.page-bullets {
+    zoom: 0.75;
 }
 
 .modal-buttons .page-bullets.hide {
