@@ -27,11 +27,11 @@ class FieldDefinition(Model):
     username: Mapped["Username"] = relationship(back_populates="message_fields")
     label: Mapped[str] = mapped_column(db.String(255), nullable=False)
     field_type: Mapped[FieldType] = mapped_column(
-        SQLAlchemyEnum(FieldType, name="fieldtype"), nullable=True
+        SQLAlchemyEnum(FieldType, name="fieldtype"), nullable=False
     )
-    required: Mapped[bool] = mapped_column(nullable=True)
-    enabled: Mapped[bool] = mapped_column(nullable=True)
-    encrypted: Mapped[bool] = mapped_column(nullable=True)
+    required: Mapped[bool] = mapped_column(nullable=False)
+    enabled: Mapped[bool] = mapped_column(nullable=False)
+    encrypted: Mapped[bool] = mapped_column(nullable=False)
     choices: Mapped[list[str]] = mapped_column(type_=JSONB, nullable=True)
     sort_order: Mapped[int] = mapped_column(nullable=True)
 

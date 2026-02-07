@@ -38,7 +38,7 @@ class FieldValue(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     field_definition_id: Mapped[int] = mapped_column(
-        db.ForeignKey("field_definitions.id", ondelete="CASCADE"), nullable=True
+        db.ForeignKey("field_definitions.id"), nullable=True
     )
     field_definition: Mapped["FieldDefinition"] = relationship(uselist=False)
     message_id: Mapped[int] = mapped_column(
