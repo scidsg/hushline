@@ -2069,6 +2069,7 @@ img.alert {
   box-shadow: none;
   margin: 0;
   font-family: var(--font-sans);
+  max-width: 120px;
 }
 
 .dropdown ul a {
@@ -2116,9 +2117,18 @@ a.dropbtn:hover {
   align-items: center;
 }
 
+.dropbtn-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dropdown-icon {
   width: 0.5rem;
   margin-left: 0.325rem;
+  flex: 0 0 auto;
   transition: transform 0.3s ease;
 }
 

@@ -261,7 +261,7 @@
                   aria-controls="dropdown-content"
                   class="dropbtn"
                 >
-                  @{{ session['username'] }}
+                  <span class="dropbtn-label">@{{ session['username'] }}</span>
                   <img
                     class="dropdown-icon"
                     src="{{ url_for('static', filename='img/dropdown.png') }}"
