@@ -2630,17 +2630,6 @@ input#captcha_answer {
   .admin-highlights {
     gap: 0.5rem;
   }
-
-  .nav-emoji {
-    position: absolute;
-    transform: translateY(0rem) translateX(3.75rem);
-  }
-  .onboardingLink .nav-emoji {
-    left: -5rem !important;
-  }
-  .onboardingLink {
-    left: 1rem;
-  }
 }
 
 .toggle-ui {
@@ -3649,15 +3638,6 @@ strong {
 
 .onboarding-wizard input {
   max-width: 360px;
-}
-
-.onboardingLink {
-  position: relative;
-}
-
-.onboardingLink .nav-emoji {
-  position: absolute;
-  left: -1.125rem;
 }
 
 .onboarding-wizard h3 {
