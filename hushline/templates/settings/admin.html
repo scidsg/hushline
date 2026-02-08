@@ -49,7 +49,7 @@
                 value="{{ 'false' if username.is_verified else 'true' }}"
               />
               <button type="submit">
-                {{ "Removed Verified" if username.is_verified else "Set Verified" }}
+                {{ "Remove Verified" if username.is_verified else "Set Verified" }}
               </button>
             </form>
           {% endif %}
