@@ -78,7 +78,16 @@ def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:
     # Handle the tips domain for profile verification
     if server_name := env.get("SERVER_NAME"):
         data["SERVER_NAME"] = server_name
-    data["PREFERRED_URL_SCHEME"] = "https" if server_name else "http"
+    if preferred_scheme := env.get("PREFERRED_URL_SCHEME"):
+        preferred_scheme = preferred_scheme.lower()
+        if preferred_scheme not in {"http", "https"}:
+            raise ConfigParseError(
+                "PREFERRED_URL_SCHEME must be 'http' or 'https', "
+                f"got {preferred_scheme!r}"
+            )
+        data["PREFERRED_URL_SCHEME"] = preferred_scheme
+    else:
+        data["PREFERRED_URL_SCHEME"] = "https" if server_name else "http"
 
     for key in ["FLASK_ENV", "SECRET_KEY"]:
         if val := env.get(key):
