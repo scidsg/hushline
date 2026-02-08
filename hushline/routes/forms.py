@@ -23,6 +23,8 @@ from hushline.model import (
 )
 from hushline.routes.common import valid_username
 
+PASSWORD_MAX_LENGTH = 128
+
 
 # https://wtforms.readthedocs.io/en/3.2.x/specific_problems/#specialty-field-tricks
 class MultiCheckboxField(SelectMultipleField):
