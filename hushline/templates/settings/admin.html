@@ -43,6 +43,7 @@
               method="POST"
               class="formBody"
             >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
               <input
                 type="hidden"
                 name="is_verified"
@@ -58,6 +59,7 @@
             method="POST"
             class="formBody"
           >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <input
               type="hidden"
               name="is_admin"
@@ -65,6 +67,21 @@
             />
             <button type="submit">
               {{ "Remove Admin" if username.user.is_admin else "Set Admin" }}
+            </button>
+          </form>
+          <form
+            action="{% if username.is_primary %}{{ url_for('admin.delete_user', user_id=username.user.id) }}{% else %}{{ url_for('admin.delete_username', username_id=username.id) }}{% endif %}"
+            method="POST"
+            class="formBody"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button
+              type="submit"
+              class="btn-danger {% if username.is_primary %}delete-user-button{% else %}delete-username-button{% endif %}"
+              data-username="{{ username.username }}"
+              {% if session.get('user_id') == username.user.id %}disabled{% endif %}
+            >
+              {{ "Delete User" if username.is_primary else "Delete Alias" }}
             </button>
           </form>
         </div>
