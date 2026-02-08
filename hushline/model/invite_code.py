@@ -15,8 +15,11 @@ else:
 class InviteCode(Model):
     __tablename__ = "invite_codes"
 
+    CODE_MIN_LENGTH = 6
+    CODE_MAX_LENGTH = 25
+
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
-    code: Mapped[str] = mapped_column(db.String(255), unique=True)
+    code: Mapped[str] = mapped_column(db.String(CODE_MAX_LENGTH), unique=True)
     expiration_date: Mapped[datetime]
 
     def __init__(self) -> None:
