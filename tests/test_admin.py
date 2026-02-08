@@ -17,7 +17,7 @@ def test_admin_settings_shows_verified_on_managed_service(
 
     response = client.get(url_for("settings.admin"), follow_redirects=True)
     assert response.status_code == 200
-    assert "Toggle Verified" in response.text
+    assert "Set Verified" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -28,7 +28,7 @@ def test_admin_settings_hides_verified_on_nonmanaged_service(
 
     response = client.get(url_for("settings.admin"), follow_redirects=True)
     assert response.status_code == 200
-    assert "Toggle Verified" not in response.text
+    assert "Set Verified" not in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -39,9 +39,13 @@ def test_toggle_verified_on_managed_service(
 
     response = client.post(
         url_for("admin.toggle_verified", user_id=admin_user.id),
+        data={"is_verified": "true"},
         follow_redirects=True,
     )
     assert response.status_code == 200
+    refreshed_user = db.session.get(User, admin_user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.primary_username.is_verified is True
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -52,6 +56,7 @@ def test_toggle_verified_on_nonmanaged_service(
 
     response = client.post(
         url_for("admin.toggle_verified", user_id=admin_user.id),
+        data={"is_verified": "true"},
         follow_redirects=True,
     )
     assert response.status_code == 401
@@ -69,6 +74,7 @@ def test_toggle_admin_only_admin(client: FlaskClient, admin_user: User) -> None:
     # Toggling admin on the user should return 400
     response = client.post(
         url_for("admin.toggle_admin", user_id=admin_user.id),
+        data={"is_admin": "false"},
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -86,7 +92,9 @@ def test_toggle_admin_multiple_admins(
     assert admin_count == 2
 
     # Toggling admin on the user should return 302 (successfully redirect)
-    response = client.post(url_for("admin.toggle_admin", user_id=admin_user.id))
+    response = client.post(
+        url_for("admin.toggle_admin", user_id=admin_user.id), data={"is_admin": "false"}
+    )
     assert response.status_code == 302
 
     # There should be only one admins now
@@ -104,6 +112,7 @@ def test_toggle_verified_alias_on_managed_service(
 
     response = client.post(
         url_for("admin.toggle_verified_username", username_id=user_alias.id),
+        data={"is_verified": "true"},
         follow_redirects=True,
     )
     assert response.status_code == 200
