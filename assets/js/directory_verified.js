@@ -224,27 +224,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const directoryTabs = document.querySelector(".directory-tabs");
   if (directoryTabs) {
     let tabsInitialTop = null;
-    const searchBox = document.querySelector(".search-box");
     const updateTabsInitialTop = () => {
-      const anchor = document.getElementById("directory-top-anchor");
-      if (anchor) {
-        tabsInitialTop = anchor.getBoundingClientRect().top + window.scrollY;
-        return;
-      }
       tabsInitialTop = directoryTabs.getBoundingClientRect().top + window.scrollY;
     };
-    const updateSearchStickyTop = () => {
-      if (!searchBox) return;
-      const header = document.querySelector("header");
-      const banner = document.querySelector(".banner");
-      const headerHeight = header ? header.getBoundingClientRect().height : 0;
-      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
-      const tabsHeight = directoryTabs.getBoundingClientRect().height;
-      const stickyTop = headerHeight + bannerHeight + tabsHeight;
-      searchBox.style.setProperty("--directory-search-sticky-top", `${stickyTop}px`);
-    };
     updateTabsInitialTop();
-    updateSearchStickyTop();
 
     const topLink = directoryTabs.querySelector(".tab-top-link");
     if (topLink) {
@@ -273,9 +256,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabsTop = directoryTabs.getBoundingClientRect().top;
       const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
       directoryTabs.classList.toggle("is-sticky", isSticky);
-      if (searchBox) {
-        searchBox.classList.toggle("search-box-sticky", isSticky);
-      }
       const showTopLink = isSticky && window.scrollY > stickyTop + 200;
       directoryTabs.classList.toggle("show-top-link", showTopLink);
     };
@@ -284,12 +264,10 @@ document.addEventListener("DOMContentLoaded", function () {
     window.addEventListener("scroll", updateStickyState, { passive: true });
     window.addEventListener("hashchange", () => {
       updateTabsInitialTop();
-      updateSearchStickyTop();
       requestAnimationFrame(updateStickyState);
     });
     window.addEventListener("resize", () => {
       updateTabsInitialTop();
-      updateSearchStickyTop();
       updateStickyState();
     });
   }
