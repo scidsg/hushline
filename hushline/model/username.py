@@ -32,13 +32,18 @@ class Username(Model):
     USERNAME_MIN_LENGTH = 3
     USERNAME_MAX_LENGTH = 25
     DISPLAY_NAME_MIN_LENGTH = 1
-    DISPLAY_NAME_MAX_LENGTH = 100
+    DISPLAY_NAME_MAX_LENGTH = 80
+    BIO_MAX_LENGTH = 250
+    EXTRA_FIELD_LABEL_MAX_LENGTH = 50
+    EXTRA_FIELD_VALUE_MAX_LENGTH = 4096
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship()
     _username: Mapped[str] = mapped_column("username", unique=True)
-    _display_name: Mapped[Optional[str]] = mapped_column("display_name", db.String(80))
+    _display_name: Mapped[Optional[str]] = mapped_column(
+        "display_name", db.String(DISPLAY_NAME_MAX_LENGTH)
+    )
     is_primary: Mapped[bool] = mapped_column()
     is_verified: Mapped[bool] = mapped_column(default=False)
     show_in_directory: Mapped[bool] = mapped_column(default=False)

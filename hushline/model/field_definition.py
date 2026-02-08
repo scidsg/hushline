@@ -20,12 +20,14 @@ class FieldDefinition(Model):
     __tablename__ = "field_definitions"
     __table_args__ = (UniqueConstraint("username_id", "sort_order"),)
 
+    LABEL_MAX_LENGTH = 255
+
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     username_id: Mapped[int] = mapped_column(
         db.ForeignKey("usernames.id"), nullable=True, index=True
     )
     username: Mapped["Username"] = relationship(back_populates="message_fields")
-    label: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    label: Mapped[str] = mapped_column(db.String(LABEL_MAX_LENGTH), nullable=False)
     field_type: Mapped[FieldType] = mapped_column(
         SQLAlchemyEnum(FieldType, name="fieldtype"), nullable=True
     )
