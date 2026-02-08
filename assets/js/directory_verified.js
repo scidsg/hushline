@@ -223,21 +223,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const directoryTabs = document.querySelector(".directory-tabs");
   if (directoryTabs) {
+    let tabsInitialTop = null;
+    const updateTabsInitialTop = () => {
+      tabsInitialTop = directoryTabs.getBoundingClientRect().top + window.scrollY;
+    };
+    updateTabsInitialTop();
+
     const topLink = directoryTabs.querySelector(".tab-top-link");
     if (topLink) {
       topLink.addEventListener("click", (event) => {
         event.preventDefault();
-        const anchor = document.getElementById("directory-top-anchor");
         const header = document.querySelector("header");
         const banner = document.querySelector(".banner");
         const headerHeight = header ? header.getBoundingClientRect().height : 0;
         const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
         const stickyTop = headerHeight + bannerHeight;
         const currentY = window.scrollY;
-        const anchorTop = anchor
-          ? anchor.getBoundingClientRect().top + currentY
-          : 0;
-        const targetY = Math.max(0, anchorTop - stickyTop);
+        if (tabsInitialTop === null) {
+          updateTabsInitialTop();
+        }
+        const targetY = Math.max(0, tabsInitialTop - stickyTop);
         window.scrollTo({ top: targetY, behavior: "smooth" });
       });
     }
@@ -251,14 +256,20 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabsTop = directoryTabs.getBoundingClientRect().top;
       const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
       directoryTabs.classList.toggle("is-sticky", isSticky);
+      const showTopLink = isSticky && window.scrollY > stickyTop + 200;
+      directoryTabs.classList.toggle("show-top-link", showTopLink);
     };
 
     updateStickyState();
     window.addEventListener("scroll", updateStickyState, { passive: true });
     window.addEventListener("hashchange", () => {
+      updateTabsInitialTop();
       requestAnimationFrame(updateStickyState);
     });
-    window.addEventListener("resize", updateStickyState);
+    window.addEventListener("resize", () => {
+      updateTabsInitialTop();
+      updateStickyState();
+    });
   }
 
   loadData();
