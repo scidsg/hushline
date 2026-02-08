@@ -82,8 +82,7 @@ def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:
         preferred_scheme = preferred_scheme.lower()
         if preferred_scheme not in {"http", "https"}:
             raise ConfigParseError(
-                "PREFERRED_URL_SCHEME must be 'http' or 'https', "
-                f"got {preferred_scheme!r}"
+                "PREFERRED_URL_SCHEME must be 'http' or 'https', " f"got {preferred_scheme!r}"
             )
         data["PREFERRED_URL_SCHEME"] = preferred_scheme
     else:
