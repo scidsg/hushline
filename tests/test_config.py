@@ -55,3 +55,37 @@ def test_parse_alias_mode() -> None:
 
     with pytest.raises(ConfigParseError, match="Not a valid value"):
         AliasMode.parse("wat")
+
+
+def test_preferred_url_scheme_defaults() -> None:
+    env = dict(**os.environ)
+    env.pop("PREFERRED_URL_SCHEME", None)
+    env.pop("SERVER_NAME", None)
+
+    cfg = load_config(env)
+    assert cfg["PREFERRED_URL_SCHEME"] == "http"
+
+    env["SERVER_NAME"] = "example.com"
+    cfg = load_config(env)
+    assert cfg["PREFERRED_URL_SCHEME"] == "https"
+
+
+def test_preferred_url_scheme_override() -> None:
+    env = dict(**os.environ)
+    env["PREFERRED_URL_SCHEME"] = "http"
+    env["SERVER_NAME"] = "example.com"
+
+    cfg = load_config(env)
+    assert cfg["PREFERRED_URL_SCHEME"] == "http"
+
+    env["PREFERRED_URL_SCHEME"] = "https"
+    cfg = load_config(env)
+    assert cfg["PREFERRED_URL_SCHEME"] == "https"
+
+
+def test_preferred_url_scheme_invalid_value() -> None:
+    env = dict(**os.environ)
+    env["PREFERRED_URL_SCHEME"] = "ftp"
+
+    with pytest.raises(ConfigParseError, match="PREFERRED_URL_SCHEME must be"):
+        load_config(env)
