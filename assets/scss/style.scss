@@ -116,6 +116,10 @@
     color: white;
   }
 
+  .directory-page .search-box.search-box-sticky {
+    background-color: white;
+  }
+
   .skip-link {
     background: var(--color-brand-max-contrast);
     color: #fff;
@@ -604,6 +608,10 @@
   ::selection {
     background: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
+  }
+
+  .directory-page .search-box.search-box-sticky {
+    background-color: var(--color-dark-bg-alt-1);
   }
 
   .flash-dismiss img {
@@ -1660,7 +1668,7 @@ h3+.meta {
 
 .dirMeta,
 p.instr {
-  margin: 1rem 0;
+  margin: 0 0 0.5rem 0;
   border-radius: 0.25rem;
   padding: 0.9125rem 1rem;
 }
@@ -2354,13 +2362,20 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: fit-content;
+  width: 100%;
+}
+
+.directory-page .search-box.search-box-sticky {
+  position: sticky;
+  top: calc(var(--directory-search-sticky-top, 0px) + env(safe-area-inset-top));
+  z-index: 9;
+  border-bottom: var(--border);
 }
 
 #searchIcon {
   position: absolute;
   left: 12px;
-  top: 47%;
+  top: 38%;
   margin: 0;
 }
 
@@ -2380,12 +2395,12 @@ label.search+input {
 }
 
 #searchInput {
-  width: 100%;
   padding-left: 42px;
   padding-right: 2.5rem;
   box-sizing: border-box;
-  margin-bottom: 0;
+  margin-bottom: 1rem;
   min-width: 320px;
+  width: 320px;
   margin-top: 1rem;
 }
 
@@ -2406,7 +2421,7 @@ label.search+input {
   box-sizing: border-box;
   position: absolute;
   right: 0.5rem;
-  top: 63%;
+  top: 50%;
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
