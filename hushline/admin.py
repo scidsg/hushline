@@ -5,6 +5,17 @@ from hushline.auth import admin_authentication_required
 from hushline.db import db
 from hushline.model import Tier, User, Username
 from hushline.premium import update_price
+from hushline.utils import parse_bool
+
+
+def _parse_form_bool(field_name: str) -> bool:
+    raw_value = request.form.get(field_name)
+    if raw_value is None:
+        abort(400)
+    try:
+        return parse_bool(raw_value)
+    except ValueError:
+        abort(400)
 
 
 def create_blueprint() -> Blueprint:
@@ -19,9 +30,11 @@ def create_blueprint() -> Blueprint:
         user = db.session.get(User, user_id)
         if user is None:
             abort(404)
-        user.primary_username.is_verified = not user.primary_username.is_verified
+        desired_verified = _parse_form_bool("is_verified")
+        user.primary_username.is_verified = desired_verified
         db.session.commit()
-        flash("✅ User verification status toggled.", "success")
+        status_label = "verified" if desired_verified else "unverified"
+        flash(f"✅ User verification set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
     @bp.route("/toggle_verified_username/<int:username_id>", methods=["POST"])
@@ -33,9 +46,11 @@ def create_blueprint() -> Blueprint:
         username = db.session.get(Username, username_id)
         if username is None:
             abort(404)
-        username.is_verified = not username.is_verified
+        desired_verified = _parse_form_bool("is_verified")
+        username.is_verified = desired_verified
         db.session.commit()
-        flash("✅ Username verification status toggled.", "success")
+        status_label = "verified" if desired_verified else "unverified"
+        flash(f"✅ Username verification set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
@@ -47,20 +62,23 @@ def create_blueprint() -> Blueprint:
             if user is None:
                 abort(404)
 
-            if user.is_admin:
+            desired_admin = _parse_form_bool("is_admin")
+
+            if user.is_admin and not desired_admin:
                 # Re-check admin count within the transaction
                 admin_count = db.session.query(User).filter_by(is_admin=True).count()
                 if admin_count == 1:
                     flash("⛔️ You cannot remove the only admin")
                     return abort(400)
 
-            # Toggle admin status
-            user.is_admin = not user.is_admin
+            # Set admin status explicitly
+            user.is_admin = desired_admin
 
         # Commit the transaction
         db.session.commit()
 
-        flash("✅ User admin status toggled.", "success")
+        status_label = "admin" if desired_admin else "non-admin"
+        flash(f"✅ User admin status set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
     @bp.route("/update_tier/<int:tier_id>", methods=["POST"])

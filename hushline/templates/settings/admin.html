@@ -37,13 +37,20 @@
           Admin: {{ "✅ Yes" if username.user.is_admin else "👎 No" }}
         </p>
         <div class="tableActions">
-          {% if user_verification_enabled %}
+            {% if user_verification_enabled %}
             <form
               action="{{ url_for('admin.toggle_verified_username', username_id=username.id) }}"
               method="POST"
               class="formBody"
             >
-              <button type="submit">Toggle Verified</button>
+              <input
+                type="hidden"
+                name="is_verified"
+                value="{{ 'false' if username.is_verified else 'true' }}"
+              />
+              <button type="submit">
+                {{ "Set Unverified" if username.is_verified else "Set Verified" }}
+              </button>
             </form>
           {% endif %}
           <form
@@ -51,7 +58,14 @@
             method="POST"
             class="formBody"
           >
-            <button type="submit">Toggle Admin</button>
+            <input
+              type="hidden"
+              name="is_admin"
+              value="{{ 'false' if username.user.is_admin else 'true' }}"
+            />
+            <button type="submit">
+              {{ "Remove Admin" if username.user.is_admin else "Make Admin" }}
+            </button>
           </form>
         </div>
       </div>
