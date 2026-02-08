@@ -42,6 +42,34 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".delete-user-button").forEach(function (button) {
+    button.addEventListener("click", function (event) {
+      const username = event.currentTarget.dataset.username || "this user";
+      const confirmed = confirm(
+        `Are you sure you want to delete ${username}? All aliases will be deleted too. This cannot be undone.`,
+      );
+      if (!confirmed) {
+        event.preventDefault();
+      }
+    });
+  });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".delete-username-button").forEach(function (button) {
+    button.addEventListener("click", function (event) {
+      const username = event.currentTarget.dataset.username || "this alias";
+      const confirmed = confirm(
+        `Are you sure you want to delete alias ${username}? This cannot be undone.`,
+      );
+      if (!confirmed) {
+        event.preventDefault();
+      }
+    });
+  });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
   document
     .querySelector("input[name='show_in_directory']")
     ?.addEventListener("change", function (e) {
