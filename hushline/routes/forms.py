@@ -16,6 +16,8 @@ from hushline.forms import ComplexPassword
 from hushline.model import FieldDefinition, FieldType, Username
 from hushline.routes.common import valid_username
 
+PASSWORD_MAX_LENGTH = 128
+
 
 # https://wtforms.readthedocs.io/en/3.2.x/specific_problems/#specialty-field-tricks
 class MultiCheckboxField(SelectMultipleField):
@@ -47,7 +49,7 @@ class RegistrationForm(FlaskForm):
         "Password",
         validators=[
             DataRequired(),
-            Length(min=18, max=128),
+            Length(min=18, max=PASSWORD_MAX_LENGTH),
             ComplexPassword(),
         ],
     )
@@ -55,8 +57,16 @@ class RegistrationForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
-    password = PasswordField("Password", validators=[DataRequired()])
+    username = StringField(
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(max=Username.USERNAME_MAX_LENGTH),
+        ],
+    )
+    password = PasswordField(
+        "Password", validators=[DataRequired(), Length(max=PASSWORD_MAX_LENGTH)]
+    )
 
 
 class OnboardingProfileForm(FlaskForm):
