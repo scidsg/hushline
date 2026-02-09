@@ -37,13 +37,21 @@
           Admin: {{ "✅ Yes" if username.user.is_admin else "👎 No" }}
         </p>
         <div class="tableActions">
-          {% if user_verification_enabled %}
+            {% if user_verification_enabled %}
             <form
               action="{{ url_for('admin.toggle_verified_username', username_id=username.id) }}"
               method="POST"
               class="formBody"
             >
-              <button type="submit">Toggle Verified</button>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <input
+                type="hidden"
+                name="is_verified"
+                value="{{ 'false' if username.is_verified else 'true' }}"
+              />
+              <button type="submit">
+                {{ "Remove Verified" if username.is_verified else "Set Verified" }}
+              </button>
             </form>
           {% endif %}
           <form
@@ -51,7 +59,30 @@
             method="POST"
             class="formBody"
           >
-            <button type="submit">Toggle Admin</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input
+              type="hidden"
+              name="is_admin"
+              value="{{ 'false' if username.user.is_admin else 'true' }}"
+            />
+            <button type="submit">
+              {{ "Remove Admin" if username.user.is_admin else "Set Admin" }}
+            </button>
+          </form>
+          <form
+            action="{% if username.is_primary %}{{ url_for('admin.delete_user', user_id=username.user.id) }}{% else %}{{ url_for('admin.delete_username', username_id=username.id) }}{% endif %}"
+            method="POST"
+            class="formBody"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button
+              type="submit"
+              class="btn-danger {% if username.is_primary %}delete-user-button{% else %}delete-username-button{% endif %}"
+              data-username="{{ username.username }}"
+              {% if session.get('user_id') == username.user.id %}disabled{% endif %}
+            >
+              {{ "Delete User" if username.is_primary else "Delete Alias" }}
+            </button>
           </form>
         </div>
       </div>

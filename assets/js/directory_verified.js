@@ -222,22 +222,36 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const directoryTabs = document.querySelector(".directory-tabs");
+  const searchBox = document.querySelector(".directory-search");
   if (directoryTabs) {
+    let tabsInitialTop = null;
+    let stickyStartY = null;
+    const updateTabsInitialTop = () => {
+      tabsInitialTop = directoryTabs.getBoundingClientRect().top + window.scrollY;
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      stickyStartY = tabsInitialTop - stickyTop;
+    };
+    updateTabsInitialTop();
+
     const topLink = directoryTabs.querySelector(".tab-top-link");
     if (topLink) {
       topLink.addEventListener("click", (event) => {
         event.preventDefault();
-        const anchor = document.getElementById("directory-top-anchor");
         const header = document.querySelector("header");
         const banner = document.querySelector(".banner");
         const headerHeight = header ? header.getBoundingClientRect().height : 0;
         const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
         const stickyTop = headerHeight + bannerHeight;
-        const currentY = window.scrollY;
-        const anchorTop = anchor
-          ? anchor.getBoundingClientRect().top + currentY
-          : 0;
-        const targetY = Math.max(0, anchorTop - stickyTop);
+        const tabsTop = directoryTabs.getBoundingClientRect().top;
+        const isSticky = tabsTop <= stickyTop;
+        if (!isSticky || tabsInitialTop === null) {
+          updateTabsInitialTop();
+        }
+        const targetY = Math.max(0, tabsInitialTop - stickyTop);
         window.scrollTo({ top: targetY, behavior: "smooth" });
       });
     }
@@ -250,15 +264,36 @@ document.addEventListener("DOMContentLoaded", function () {
       const stickyTop = headerHeight + bannerHeight;
       const tabsTop = directoryTabs.getBoundingClientRect().top;
       const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
+      const showTopLink =
+        stickyStartY !== null && window.scrollY > stickyStartY + 100;
       directoryTabs.classList.toggle("is-sticky", isSticky);
+      directoryTabs.classList.toggle("show-top-link", showTopLink);
+      directoryTabs.classList.toggle("top-link-visible", showTopLink);
+
+      if (searchBox) {
+        const tabsHeight = directoryTabs.getBoundingClientRect().height;
+        const searchStickyTop = stickyTop + tabsHeight;
+        searchBox.style.setProperty(
+          "--directory-search-top",
+          `${searchStickyTop}px`,
+        );
+        const searchTop = searchBox.getBoundingClientRect().top;
+        const isSearchSticky =
+          window.scrollY > searchStickyTop + 1 && searchTop <= searchStickyTop;
+        searchBox.classList.toggle("is-sticky", isSearchSticky);
+      }
     };
 
     updateStickyState();
     window.addEventListener("scroll", updateStickyState, { passive: true });
     window.addEventListener("hashchange", () => {
+      updateTabsInitialTop();
       requestAnimationFrame(updateStickyState);
     });
-    window.addEventListener("resize", updateStickyState);
+    window.addEventListener("resize", () => {
+      updateTabsInitialTop();
+      updateStickyState();
+    });
   }
 
   loadData();

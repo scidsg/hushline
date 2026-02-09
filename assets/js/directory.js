@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const searchBox = document.querySelector(".directory-search");
   const resultsContainer = document.getElementById("all");
   const initialMarkup = resultsContainer ? resultsContainer.innerHTML : "";
   let userData = [];
@@ -137,6 +138,30 @@ document.addEventListener("DOMContentLoaded", function () {
     clearIcon.setAttribute("aria-hidden", "true");
     handleSearchInput();
   });
+
+  if (searchBox) {
+    const updateStickyState = () => {
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      searchBox.style.setProperty(
+        "--directory-search-top",
+        `${stickyTop}px`,
+      );
+      const searchTop = searchBox.getBoundingClientRect().top;
+      const isSticky = window.scrollY > stickyTop + 1 && searchTop <= stickyTop;
+      searchBox.classList.toggle("is-sticky", isSticky);
+    };
+
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("hashchange", () => {
+      requestAnimationFrame(updateStickyState);
+    });
+    window.addEventListener("resize", updateStickyState);
+  }
 
   loadData();
 });
