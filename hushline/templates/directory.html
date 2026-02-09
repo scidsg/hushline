@@ -49,30 +49,32 @@
     </div>
   {% endif %}
 
-  <div class="search-box">
-    <label id="searchIcon" for="searchInput">
-      <img
-        src="{{ url_for('static', filename='img/icon-search.png') }}"
-        alt=""
+  <div class="directory-search">
+    <div class="search-box">
+      <label id="searchIcon" for="searchInput">
+        <img
+          src="{{ url_for('static', filename='img/icon-search.png') }}"
+          alt=""
+        />
+      </label>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search users..."
+        aria-label="Search users"
       />
-    </label>
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search users..."
-      aria-label="Search users"
-    />
-    <button
-      id="clearIcon"
-      type="button"
-      aria-label="Clear search field"
-      style="cursor: pointer; background: none; border: none; padding: 0"
-    >
-      <img
-        src="{{ url_for('static', filename='img/icon-clear.png') }}"
-        alt=""
-      />
-    </button>
+      <button
+        id="clearIcon"
+        type="button"
+        aria-label="Clear search field"
+        style="cursor: pointer; background: none; border: none; padding: 0"
+      >
+        <img
+          src="{{ url_for('static', filename='img/icon-clear.png') }}"
+          alt=""
+        />
+      </button>
+    </div>
   </div>
 
   {% if directory_verified_tab_enabled %}

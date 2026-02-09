@@ -222,10 +222,18 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const directoryTabs = document.querySelector(".directory-tabs");
+  const searchBox = document.querySelector(".directory-search");
   if (directoryTabs) {
     let tabsInitialTop = null;
+    let stickyStartY = null;
     const updateTabsInitialTop = () => {
       tabsInitialTop = directoryTabs.getBoundingClientRect().top + window.scrollY;
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      stickyStartY = tabsInitialTop - stickyTop;
     };
     updateTabsInitialTop();
 
@@ -238,8 +246,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const headerHeight = header ? header.getBoundingClientRect().height : 0;
         const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
         const stickyTop = headerHeight + bannerHeight;
-        const currentY = window.scrollY;
-        if (tabsInitialTop === null) {
+        const tabsTop = directoryTabs.getBoundingClientRect().top;
+        const isSticky = tabsTop <= stickyTop;
+        if (!isSticky || tabsInitialTop === null) {
           updateTabsInitialTop();
         }
         const targetY = Math.max(0, tabsInitialTop - stickyTop);
@@ -255,9 +264,24 @@ document.addEventListener("DOMContentLoaded", function () {
       const stickyTop = headerHeight + bannerHeight;
       const tabsTop = directoryTabs.getBoundingClientRect().top;
       const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
+      const showTopLink =
+        stickyStartY !== null && window.scrollY > stickyStartY + 100;
       directoryTabs.classList.toggle("is-sticky", isSticky);
-      const showTopLink = isSticky && window.scrollY > stickyTop + 200;
       directoryTabs.classList.toggle("show-top-link", showTopLink);
+      directoryTabs.classList.toggle("top-link-visible", showTopLink);
+
+      if (searchBox) {
+        const tabsHeight = directoryTabs.getBoundingClientRect().height;
+        const searchStickyTop = stickyTop + tabsHeight;
+        searchBox.style.setProperty(
+          "--directory-search-top",
+          `${searchStickyTop}px`,
+        );
+        const searchTop = searchBox.getBoundingClientRect().top;
+        const isSearchSticky =
+          window.scrollY > searchStickyTop + 1 && searchTop <= searchStickyTop;
+        searchBox.classList.toggle("is-sticky", isSearchSticky);
+      }
     };
 
     updateStickyState();
