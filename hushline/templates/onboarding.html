@@ -15,7 +15,7 @@
     <h2>Let's set up your account</h2>
 
     {% if step == "profile" %}
-      <p class="meta">Step 1 of 3</p>
+      <p class="meta">Step 1 of 4</p>
       <h3>First, tell us about yourself</h3>
       <p>What should we call you? Make it the same as what your audience is familiar with. Then, add a short bio to let whistleblowers know who you are and how you can help.</p>
       <form method="POST" class="formBody">
@@ -41,7 +41,7 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "encryption" %}
-      <p class="meta">Step 2 of 3</p>
+      <p class="meta">Step 2 of 4</p>
       <h3>Now, let's set up encryption</h3>
       <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Need more help?</a></p>
       <form method="POST" class="formBody">
@@ -83,8 +83,8 @@
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
       </form>
     {% elif step == "notifications" %}
-      <p class="meta">Step 3 of 3</p>
-      <h3>Finally, where should we send new tips?</h3>
+      <p class="meta">Step 3 of 4</p>
+      <h3>Where should we send new tips?</h3>
       <p>
         Hush Line works best when tips are delivered to your email. If you imported a Proton Mail key on the previous step, use the same address here, and tips will automatically decrypt when they arrive in your inbox!
       </p>
@@ -96,9 +96,37 @@
         {% for error in notifications_form.email_address.errors %}
           <span class="error">{{ error }}</span>
         {% endfor %}
+        <button class="finishBtn" type="submit">Continue</button>
+      </form>
+      <a class="meta backBtn thirdBack" href="{{ url_for('onboarding', step='encryption') }}">Back</a>
+      <form class="formBody lastSkip skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
+        {{ skip_form.hidden_tag() }}
+        <button type="submit" class="onboarding-skip">Skip setup for now</button>
+      </form>
+    {% elif step == "directory" %}
+      <p class="meta">Step 4 of 4</p>
+      <h3>Finally, join the User Directory!</h3>
+      <p>
+        The User Directory helps whistleblowers discover your tip line. You can change this anytime in your profile settings.
+      </p>
+      <form method="POST" class="formBody">
+        {{ directory_form.hidden_tag() }}
+        <input type="hidden" name="step" value="directory" />
+        <div class="checkbox-group toggle-ui">
+          {{ directory_form.show_in_directory() }}
+          <label for="show_in_directory" class="toggle-label">
+            Show on public directory
+            <div class="toggle">
+              <div class="toggle__ball"></div>
+            </div>
+          </label>
+        </div>
+        {% for error in directory_form.show_in_directory.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
         <button class="finishBtn" type="submit">Finish</button>
       </form>
-      <a class="meta backBtn" href="{{ url_for('onboarding', step='encryption') }}">Back</a>
+      <a class="meta backBtn" href="{{ url_for('onboarding', step='notifications') }}">Back</a>
       <form class="formBody lastSkip skipForm" method="POST" action="{{ url_for('onboarding_skip') }}">
         {{ skip_form.hidden_tag() }}
         <button type="submit" class="onboarding-skip">Skip setup for now</button>
