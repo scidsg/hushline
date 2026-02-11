@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    BooleanField,
     HiddenField,
     PasswordField,
     RadioField,
@@ -104,6 +105,10 @@ class OnboardingNotificationsForm(FlaskForm):
         "Email Address",
         validators=[DataRequired(), Email(), Length(max=User.EMAIL_MAX_LENGTH)],
     )
+
+
+class OnboardingDirectoryForm(FlaskForm):
+    show_in_directory = BooleanField("Show my profile in the User Directory", default=True)
 
 
 class OnboardingSkipForm(FlaskForm):

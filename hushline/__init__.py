@@ -237,6 +237,7 @@ def configure_jinja(app: Flask) -> None:
                     or not user.email_include_message_content
                     or not user.email_encrypt_entire_body
                     or not user.email
+                    or not username.show_in_directory
                 )
 
         return data
