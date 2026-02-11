@@ -156,6 +156,7 @@ async function main() {
     Array.isArray(manifest.themes) && manifest.themes.length
       ? manifest.themes
       : ["light", "dark"];
+  const defaultSettleDelayMs = Number(manifest.settleDelayMs ?? 1000);
   const sessions = manifest.sessions || {};
   const scenes = Array.isArray(manifest.scenes) ? manifest.scenes : [];
 
@@ -308,6 +309,12 @@ async function main() {
           for (const action of scene.actions) {
             await runAction(page, action);
           }
+        }
+
+        // Let UI transitions/animations settle before we capture.
+        const settleDelayMs = Number(scene.settleDelayMs ?? defaultSettleDelayMs);
+        if (settleDelayMs > 0) {
+          await sleep(settleDelayMs);
         }
 
         const files = [];
