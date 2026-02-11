@@ -48,5 +48,9 @@ jobs:
             scidsg/hushline:${{ github.ref_name }}
             scidsg/hushline:release
           platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=registry,ref=ghcr.io/${{ github.repository }}/hushline:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=ghcr.io/${{ github.repository }}/hushline:buildcache,mode=max

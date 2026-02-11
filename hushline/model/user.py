@@ -24,10 +24,25 @@ else:
 class User(Model):
     __tablename__ = "users"
 
+    PASSWORD_MIN_LENGTH = 18
+    PASSWORD_MAX_LENGTH = 128
+    PASSWORD_HASH_MAX_LENGTH = 512
+    TOTP_SECRET_MAX_LENGTH = 255
+    EMAIL_MAX_LENGTH = 255
+    SMTP_SERVER_MAX_LENGTH = 255
+    SMTP_USERNAME_MAX_LENGTH = 255
+    SMTP_PASSWORD_MAX_LENGTH = 255
+    SMTP_SENDER_MAX_LENGTH = 255
+    STRIPE_ID_MAX_LENGTH = 255
+
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
-    _password_hash: Mapped[str] = mapped_column("password_hash", db.String(512))
-    _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.String(255))
+    _password_hash: Mapped[str] = mapped_column(
+        "password_hash", db.String(PASSWORD_HASH_MAX_LENGTH)
+    )
+    _totp_secret: Mapped[Optional[str]] = mapped_column(
+        "totp_secret", db.String(TOTP_SECRET_MAX_LENGTH)
+    )
 
     primary_username: Mapped["Username"] = relationship(
         primaryjoin="and_(Username.user_id == User.id, Username.is_primary)",
@@ -48,11 +63,17 @@ class User(Model):
     email_include_message_content: Mapped[bool] = mapped_column(server_default=text("false"))
     email_encrypt_entire_body: Mapped[bool] = mapped_column(server_default=text("true"))
 
-    _email: Mapped[Optional[str]] = mapped_column("email", db.String(255))
-    _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.String(255))
+    _email: Mapped[Optional[str]] = mapped_column("email", db.String(EMAIL_MAX_LENGTH))
+    _smtp_server: Mapped[Optional[str]] = mapped_column(
+        "smtp_server", db.String(SMTP_SERVER_MAX_LENGTH)
+    )
     smtp_port: Mapped[Optional[int]]
-    _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.String(255))
-    _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.String(255))
+    _smtp_username: Mapped[Optional[str]] = mapped_column(
+        "smtp_username", db.String(SMTP_USERNAME_MAX_LENGTH)
+    )
+    _smtp_password: Mapped[Optional[str]] = mapped_column(
+        "smtp_password", db.String(SMTP_PASSWORD_MAX_LENGTH)
+    )
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
@@ -63,8 +84,8 @@ class User(Model):
     tier_id: Mapped[int | None] = mapped_column(db.ForeignKey("tiers.id"), nullable=True)
     tier: Mapped["Tier"] = relationship(backref=db.backref("tiers", lazy=True))
 
-    stripe_customer_id = mapped_column(db.String(255), index=True)
-    stripe_subscription_id = mapped_column(db.String(255), nullable=True)
+    stripe_customer_id = mapped_column(db.String(STRIPE_ID_MAX_LENGTH), index=True)
+    stripe_subscription_id = mapped_column(db.String(STRIPE_ID_MAX_LENGTH), nullable=True)
     stripe_subscription_cancel_at_period_end = mapped_column(db.Boolean, default=False)
     stripe_subscription_status: Mapped[Optional[StripeSubscriptionStatusEnum]] = mapped_column(
         SQLAlchemyEnum(StripeSubscriptionStatusEnum)

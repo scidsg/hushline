@@ -46,6 +46,14 @@ async function encryptMessage(publicKeyArmored, message) {
   }
 }
 
+function isArmoredMessage(value) {
+  return (
+    typeof value === "string" &&
+    value.includes("-----BEGIN PGP MESSAGE-----") &&
+    value.includes("-----END PGP MESSAGE-----")
+  );
+}
+
 function getFieldValue(field) {
   if (
     field.tagName === "INPUT" ||
@@ -81,6 +89,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
+    if (form.dataset.encryptionInProgress === "true") {
+      return;
+    }
+
+    form.dataset.encryptionInProgress = "true";
+    const submitButtons = form.querySelectorAll("button[type='submit'], input[type='submit']");
+    submitButtons.forEach((button) => {
+      button.disabled = true;
+    });
 
     try {
       // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
@@ -88,6 +105,9 @@ document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll(".form-field").forEach((field) => {
         const value = getFieldValue(field);
         const label = getFieldLabel(field);
+        if (isArmoredMessage(value)) {
+          throw new Error("Message appears already encrypted.");
+        }
         emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
       });
       const encryptedEmailBody = await encryptMessage(
@@ -108,6 +128,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".encrypted-field"),
       ).map(async (field) => {
         const value = getFieldValue(field);
+        if (isArmoredMessage(value)) {
+          throw new Error("Message appears already encrypted.");
+        }
 
         const paddedValue = addPadding(value);
         const encryptedValue = await encryptMessage(
@@ -154,6 +177,10 @@ document.addEventListener("DOMContentLoaded", function () {
       alert(
         "Message encryption failed. Your message was NOT submitted for security reasons. Please try again.",
       );
+      form.dataset.encryptionInProgress = "false";
+      submitButtons.forEach((button) => {
+        button.disabled = false;
+      });
     }
   });
 });

@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
-  const tabs = document.querySelectorAll(".tab");
+  const tabs = document.querySelectorAll(".tab[data-tab]");
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
@@ -219,6 +219,70 @@ document.addEventListener("DOMContentLoaded", function () {
     window.activateTab(verifiedTab);
   } else {
     console.error("Verified tab not found");
+  }
+
+  const directoryTabs = document.querySelector(".directory-tabs");
+  const searchBox = document.querySelector(".directory-search");
+  if (directoryTabs) {
+    let tabsInitialTop = null;
+    let stickyStartY = null;
+    const updateTabsInitialTop = () => {
+      tabsInitialTop = directoryTabs.getBoundingClientRect().top + window.scrollY;
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      stickyStartY = tabsInitialTop - stickyTop;
+    };
+    updateTabsInitialTop();
+
+    const topLink = directoryTabs.querySelector(".tab-top-link");
+    if (topLink) {
+      topLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+
+    const updateStickyState = () => {
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      const tabsTop = directoryTabs.getBoundingClientRect().top;
+      const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
+      const showTopLink =
+        stickyStartY !== null && window.scrollY > stickyStartY + 100;
+      directoryTabs.classList.toggle("is-sticky", isSticky);
+      directoryTabs.classList.toggle("show-top-link", showTopLink);
+      directoryTabs.classList.toggle("top-link-visible", showTopLink);
+
+      if (searchBox) {
+        const tabsHeight = directoryTabs.getBoundingClientRect().height;
+        const searchStickyTop = stickyTop + tabsHeight;
+        searchBox.style.setProperty(
+          "--directory-search-top",
+          `${searchStickyTop}px`,
+        );
+        const searchTop = searchBox.getBoundingClientRect().top;
+        const isSearchSticky =
+          window.scrollY > searchStickyTop + 1 && searchTop <= searchStickyTop;
+        searchBox.classList.toggle("is-sticky", isSearchSticky);
+      }
+    };
+
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("hashchange", () => {
+      updateTabsInitialTop();
+      requestAnimationFrame(updateStickyState);
+    });
+    window.addEventListener("resize", () => {
+      updateTabsInitialTop();
+      updateStickyState();
+    });
   }
 
   loadData();

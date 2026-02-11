@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Any, Mapping, Optional, Tuple, Union
 
 from flask import Flask, render_template, request, session, url_for
@@ -123,6 +124,74 @@ def configure_jinja(app: Flask) -> None:
     if onion_hostname := app.config.get("ONION_HOSTNAME"):
         app.jinja_env.globals["onion_hostname"] = onion_hostname
 
+    def _hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
+        hex_value = hex_color.lstrip("#")
+        r = int(hex_value[0:2], 16) / 255
+        g = int(hex_value[2:4], 16) / 255
+        b = int(hex_value[4:6], 16) / 255
+        return r, g, b
+
+    SRGB_TO_LINEAR_THRESHOLD = 0.04045
+    LINEAR_TO_SRGB_THRESHOLD = 0.0031308
+
+    def _srgb_to_linear(value: float) -> float:
+        return (
+            value / 12.92 if value <= SRGB_TO_LINEAR_THRESHOLD else ((value + 0.055) / 1.055) ** 2.4
+        )
+
+    def _linear_to_srgb(value: float) -> float:
+        return (
+            12.92 * value
+            if value <= LINEAR_TO_SRGB_THRESHOLD
+            else 1.055 * (value ** (1 / 2.4)) - 0.055
+        )
+
+    def _brand_dark_color(hex_color: str) -> str:
+        r, g, b = _hex_to_rgb(hex_color)
+        r_lin = _srgb_to_linear(r)
+        g_lin = _srgb_to_linear(g)
+        b_lin = _srgb_to_linear(b)
+
+        l_val = 0.4122214708 * r_lin + 0.5363325363 * g_lin + 0.0514459929 * b_lin
+        m_val = 0.2119034982 * r_lin + 0.6806995451 * g_lin + 0.1073969566 * b_lin
+        s_val = 0.0883024619 * r_lin + 0.2817188376 * g_lin + 0.6299787005 * b_lin
+
+        l_ = l_val ** (1 / 3)
+        m_ = m_val ** (1 / 3)
+        s_ = s_val ** (1 / 3)
+
+        lab_l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
+        lab_a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
+        lab_b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+
+        c = (lab_a**2 + lab_b**2) ** 0.5
+        h = math.degrees(math.atan2(lab_b, lab_a))
+
+        l_clamped = min(0.98, max(0.96, lab_l + 0.425))
+        c_scaled = 0.5 * c
+
+        h_rad = math.radians(h)
+        o_a = c_scaled * math.cos(h_rad)
+        o_b = c_scaled * math.sin(h_rad)
+
+        l_ = l_clamped + 0.3963377774 * o_a + 0.2158037573 * o_b
+        m_ = l_clamped - 0.1055613458 * o_a - 0.0638541728 * o_b
+        s_ = l_clamped - 0.0894841775 * o_a - 1.291485548 * o_b
+
+        l3 = l_ * l_ * l_
+        m3 = m_ * m_ * m_
+        s3 = s_ * s_ * s_
+
+        r_lin = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
+        g_lin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
+        b_lin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3
+
+        r = max(0, min(1, _linear_to_srgb(r_lin)))
+        g = max(0, min(1, _linear_to_srgb(g_lin)))
+        b = max(0, min(1, _linear_to_srgb(b_lin)))
+
+        return f"#{int(round(r * 255)):02x}{int(round(g * 255)):02x}{int(round(b * 255)):02x}"
+
     @app.context_processor
     def inject_variables() -> dict[str, Any]:
         data = OrganizationSetting.fetch(
@@ -151,6 +220,8 @@ def configure_jinja(app: Flask) -> None:
             setup_incomplete=False,
             user=None,
         )
+        brand_primary_color = data.get(OrganizationSetting.BRAND_PRIMARY_COLOR, "#7d25c1")
+        data["brand_primary_color_dark"] = _brand_dark_color(brand_primary_color)
 
         if "user_id" in session:
             user = db.session.get(User, session["user_id"])
@@ -166,6 +237,7 @@ def configure_jinja(app: Flask) -> None:
                     or not user.email_include_message_content
                     or not user.email_encrypt_entire_body
                     or not user.email
+                    or not username.show_in_directory
                 )
 
         return data

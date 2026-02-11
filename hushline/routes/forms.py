@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    BooleanField,
     HiddenField,
     PasswordField,
     RadioField,
@@ -13,8 +14,17 @@ from wtforms.validators import DataRequired, Email, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
 from hushline.forms import ComplexPassword
-from hushline.model import FieldDefinition, FieldType, Username
+from hushline.model import (
+    AuthenticationLog,
+    FieldDefinition,
+    FieldType,
+    InviteCode,
+    User,
+    Username,
+)
 from hushline.routes.common import valid_username
+
+PASSWORD_MAX_LENGTH = 128
 
 
 # https://wtforms.readthedocs.io/en/3.2.x/specific_problems/#specialty-field-tricks
@@ -31,7 +41,13 @@ class MultiCheckboxField(SelectMultipleField):
 
 
 class TwoFactorForm(FlaskForm):
-    verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
+    verification_code = StringField(
+        "2FA Code",
+        validators=[
+            DataRequired(),
+            Length(min=AuthenticationLog.OTP_CODE_LENGTH, max=AuthenticationLog.OTP_CODE_LENGTH),
+        ],
+    )
 
 
 class RegistrationForm(FlaskForm):
@@ -47,16 +63,30 @@ class RegistrationForm(FlaskForm):
         "Password",
         validators=[
             DataRequired(),
-            Length(min=18, max=128),
+            Length(min=User.PASSWORD_MIN_LENGTH, max=User.PASSWORD_MAX_LENGTH),
             ComplexPassword(),
         ],
     )
-    invite_code = StringField("Invite Code", validators=[DataRequired(), Length(min=6, max=25)])
+    invite_code = StringField(
+        "Invite Code",
+        validators=[
+            DataRequired(),
+            Length(min=InviteCode.CODE_MIN_LENGTH, max=InviteCode.CODE_MAX_LENGTH),
+        ],
+    )
 
 
 class LoginForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
-    password = PasswordField("Password", validators=[DataRequired()])
+    username = StringField(
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(max=Username.USERNAME_MAX_LENGTH),
+        ],
+    )
+    password = PasswordField(
+        "Password", validators=[DataRequired(), Length(max=User.PASSWORD_MAX_LENGTH)]
+    )
 
 
 class OnboardingProfileForm(FlaskForm):
@@ -67,14 +97,18 @@ class OnboardingProfileForm(FlaskForm):
             Length(min=Username.DISPLAY_NAME_MIN_LENGTH, max=Username.DISPLAY_NAME_MAX_LENGTH),
         ],
     )
-    bio = TextAreaField("Bio", validators=[DataRequired(), Length(max=250)])
+    bio = TextAreaField("Bio", validators=[DataRequired(), Length(max=Username.BIO_MAX_LENGTH)])
 
 
 class OnboardingNotificationsForm(FlaskForm):
     email_address = StringField(
         "Email Address",
-        validators=[DataRequired(), Email(), Length(max=255)],
+        validators=[DataRequired(), Email(), Length(max=User.EMAIL_MAX_LENGTH)],
     )
+
+
+class OnboardingDirectoryForm(FlaskForm):
+    show_in_directory = BooleanField("Show my profile in the User Directory", default=True)
 
 
 class OnboardingSkipForm(FlaskForm):

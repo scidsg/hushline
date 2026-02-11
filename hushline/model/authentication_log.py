@@ -17,12 +17,14 @@ else:
 class AuthenticationLog(Model):
     __tablename__ = "authentication_logs"
 
+    OTP_CODE_LENGTH = 6
+
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(backref=db.backref("authentication_logs", lazy=True))
     successful: Mapped[bool]
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
-    otp_code: Mapped[Optional[str]] = mapped_column(db.String(6))
+    otp_code: Mapped[Optional[str]] = mapped_column(db.String(OTP_CODE_LENGTH))
     timecode: Mapped[Optional[int]]
 
     __table_args__ = (

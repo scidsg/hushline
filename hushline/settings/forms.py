@@ -31,7 +31,7 @@ from wtforms.validators import Optional as OptionalField
 
 from hushline.db import db
 from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor, ValidTemplate
-from hushline.model import FieldType, MessageStatus, SMTPEncryption, Username
+from hushline.model import FieldDefinition, FieldType, MessageStatus, SMTPEncryption, User, Username
 from hushline.routes.common import valid_username
 
 
@@ -41,7 +41,7 @@ class ChangePasswordForm(FlaskForm):
         "New Password",
         validators=[
             DataRequired(),
-            Length(min=18, max=128),
+            Length(min=User.PASSWORD_MIN_LENGTH, max=User.PASSWORD_MAX_LENGTH),
             ComplexPassword(),
         ],
     )
@@ -68,19 +68,29 @@ class SMTPSettingsForm(FlaskForm):
     class Meta:
         csrf = False
 
-    smtp_server = StringField("SMTP Server", validators=[OptionalField(), Length(max=255)])
+    smtp_server = StringField(
+        "SMTP Server", validators=[OptionalField(), Length(max=User.SMTP_SERVER_MAX_LENGTH)]
+    )
     smtp_port = IntegerField("SMTP Port", validators=[OptionalField()])
-    smtp_username = StringField("SMTP Username", validators=[OptionalField(), Length(max=255)])
-    smtp_password = PasswordField("SMTP Password", validators=[OptionalField(), Length(max=255)])
+    smtp_username = StringField(
+        "SMTP Username", validators=[OptionalField(), Length(max=User.SMTP_USERNAME_MAX_LENGTH)]
+    )
+    smtp_password = PasswordField(
+        "SMTP Password", validators=[OptionalField(), Length(max=User.SMTP_PASSWORD_MAX_LENGTH)]
+    )
     smtp_encryption = SelectField(
         "SMTP Encryption Protocol", choices=[proto.value for proto in SMTPEncryption]
     )
-    smtp_sender = StringField("SMTP Sender Address", validators=[Length(max=255)])
+    smtp_sender = StringField(
+        "SMTP Sender Address", validators=[Length(max=User.SMTP_SENDER_MAX_LENGTH)]
+    )
 
 
 class EmailForwardingForm(FlaskForm):
     forwarding_enabled = BooleanField("Enable Forwarding", validators=[OptionalField()])
-    email_address = StringField("Email Address", validators=[OptionalField(), Length(max=255)])
+    email_address = StringField(
+        "Email Address", validators=[OptionalField(), Length(max=User.EMAIL_MAX_LENGTH)]
+    )
     custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[OptionalField()])
     smtp_settings = FormField(SMTPSettingsForm)
     submit = SubmitField("Update Email Forwarding", name="update_email_forwarding", widget=Button())
@@ -175,46 +185,48 @@ def strip_whitespace(value: Optional[Any]) -> Optional[str]:
 
 
 class ProfileForm(FlaskForm):
-    bio = TextAreaField("Bio", filters=[strip_whitespace], validators=[Length(max=250)])
+    bio = TextAreaField(
+        "Bio", filters=[strip_whitespace], validators=[Length(max=Username.BIO_MAX_LENGTH)]
+    )
     extra_field_label1 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=50)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
     )
     extra_field_value1 = StringField(
         "Content",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=4096)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_VALUE_MAX_LENGTH)],
     )
     extra_field_label2 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=50)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
     )
     extra_field_value2 = StringField(
         "Content",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=4096)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_VALUE_MAX_LENGTH)],
     )
     extra_field_label3 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=50)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
     )
     extra_field_value3 = StringField(
         "Content",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=4096)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_VALUE_MAX_LENGTH)],
     )
     extra_field_label4 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=50)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
     )
     extra_field_value4 = StringField(
         "Content",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=4096)],
+        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_VALUE_MAX_LENGTH)],
     )
     submit = SubmitField("Update Bio", name="update_bio", widget=Button())
 
@@ -323,7 +335,9 @@ class FieldChoiceForm(Form):
 
 class FieldForm(FlaskForm):
     id = HiddenField()
-    label = StringField("Label", validators=[DataRequired(), Length(max=500)])
+    label = StringField(
+        "Label", validators=[DataRequired(), Length(max=FieldDefinition.LABEL_MAX_LENGTH)]
+    )
     field_type = SelectField(
         "Field Type",
         choices=[(field_type.value, field_type.label()) for field_type in FieldType],

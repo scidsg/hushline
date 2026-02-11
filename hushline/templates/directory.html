@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Directory{% endblock %}
+{% block body_class %}directory-page{% endblock %}
 
 {% block content %}
   <h2 id="directory-title">User Directory</h2>
@@ -10,7 +11,8 @@
   {% endif %}
 
   {% if directory_verified_tab_enabled %}
-    <div class="directory-tabs">
+    <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
+    <div class="directory-tabs" id="directory-tabs">
       <ul class="tab-list" role="tablist">
         <li role="presentation">
           <button
@@ -38,34 +40,41 @@
             All
           </button>
         </li>
+        <li class="tab-top-item" role="presentation">
+          <a class="tab-top-link" role="button" href="#directory-top-anchor" aria-label="Back to top">
+            Top
+          </a>
+        </li>
       </ul>
     </div>
   {% endif %}
 
-  <div class="search-box">
-    <label id="searchIcon" for="searchInput">
-      <img
-        src="{{ url_for('static', filename='img/icon-search.png') }}"
-        alt=""
+  <div class="directory-search">
+    <div class="search-box">
+      <label id="searchIcon" for="searchInput">
+        <img
+          src="{{ url_for('static', filename='img/icon-search.png') }}"
+          alt=""
+        />
+      </label>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search users..."
+        aria-label="Search users"
       />
-    </label>
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search users..."
-      aria-label="Search users"
-    />
-    <button
-      id="clearIcon"
-      type="button"
-      aria-label="Clear search field"
-      style="cursor: pointer; background: none; border: none; padding: 0"
-    >
-      <img
-        src="{{ url_for('static', filename='img/icon-clear.png') }}"
-        alt=""
-      />
-    </button>
+      <button
+        id="clearIcon"
+        type="button"
+        aria-label="Clear search field"
+        style="cursor: pointer; background: none; border: none; padding: 0"
+      >
+        <img
+          src="{{ url_for('static', filename='img/icon-clear.png') }}"
+          alt=""
+        />
+      </button>
+    </div>
   </div>
 
   {% if directory_verified_tab_enabled %}
