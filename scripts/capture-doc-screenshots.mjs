@@ -125,10 +125,11 @@ async function runAction(page, action) {
   }
 }
 
-function makeContextOptions(viewport, jsEnabled) {
+function makeContextOptions(viewport, jsEnabled, colorScheme) {
   const opts = {
     viewport: { width: viewport.width, height: viewport.height },
     javaScriptEnabled: jsEnabled,
+    colorScheme,
   };
   if (viewport.isMobile) opts.isMobile = true;
   if (viewport.hasTouch) opts.hasTouch = true;
@@ -151,6 +152,10 @@ async function main() {
 
   const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
   const viewports = Array.isArray(manifest.viewports) ? manifest.viewports : [];
+  const themes =
+    Array.isArray(manifest.themes) && manifest.themes.length
+      ? manifest.themes
+      : ["light", "dark"];
   const sessions = manifest.sessions || {};
   const scenes = Array.isArray(manifest.scenes) ? manifest.scenes : [];
 
@@ -167,16 +172,18 @@ async function main() {
   const authenticatedContextKeys = new Set();
   const captured = [];
 
-  function contextKey(sessionId, viewportId, jsEnabled) {
-    return `${sessionId}::${viewportId}::${jsEnabled ? "js-on" : "js-off"}`;
+  function contextKey(sessionId, viewportId, theme, jsEnabled) {
+    return `${sessionId}::${viewportId}::${theme}::${jsEnabled ? "js-on" : "js-off"}`;
   }
 
-  async function getContext(sessionId, viewport, jsEnabled) {
-    const key = contextKey(sessionId, viewport.id, jsEnabled);
+  async function getContext(sessionId, viewport, theme, jsEnabled) {
+    const key = contextKey(sessionId, viewport.id, theme, jsEnabled);
     if (contexts.has(key)) {
       return contexts.get(key);
     }
-    const ctx = await browser.newContext(makeContextOptions(viewport, jsEnabled));
+    const ctx = await browser.newContext(
+      makeContextOptions(viewport, jsEnabled, theme),
+    );
     if (jsEnabled) {
       // Hide guidance modal by default; explicit modal scenes can clear this.
       const page = await ctx.newPage();
@@ -190,7 +197,7 @@ async function main() {
     return ctx;
   }
 
-  async function maybeAuthenticate(sessionId, viewport, jsEnabled, ctx) {
+  async function maybeAuthenticate(sessionId, viewport, theme, jsEnabled, ctx) {
     if (sessionId === "guest") return true;
 
     const sess = sessions[sessionId];
@@ -208,7 +215,7 @@ async function main() {
       return false;
     }
 
-    const authKey = contextKey(sessionId, viewport.id, jsEnabled);
+    const authKey = contextKey(sessionId, viewport.id, theme, jsEnabled);
     if (authenticatedContextKeys.has(authKey)) {
       return true;
     }
@@ -229,6 +236,8 @@ async function main() {
         ? scene.viewports
         : viewports.map((v) => v.id);
 
+    const targetThemes =
+      Array.isArray(scene.themes) && scene.themes.length ? scene.themes : themes;
     for (const viewportId of targetViewportIds) {
       const viewport = viewports.find((v) => v.id === viewportId);
       if (!viewport) {
@@ -236,103 +245,115 @@ async function main() {
           `Scene ${scene.slug} references unknown viewport ${viewportId}`,
         );
       }
+      for (const theme of targetThemes) {
+        if (theme !== "light" && theme !== "dark") {
+          throw new Error(`Scene ${scene.slug} references unknown theme ${theme}`);
+        }
 
-      const jsEnabled = scene.javaScriptEnabled !== false;
-      const ctx = await getContext(sessionId, viewport, jsEnabled);
-      const okAuth = await maybeAuthenticate(sessionId, viewport, jsEnabled, ctx);
-      if (!okAuth && sessionId !== "guest") {
-        continue;
-      }
+        const jsEnabled = scene.javaScriptEnabled !== false;
+        const ctx = await getContext(sessionId, viewport, theme, jsEnabled);
+        const okAuth = await maybeAuthenticate(
+          sessionId,
+          viewport,
+          theme,
+          jsEnabled,
+          ctx,
+        );
+        if (!okAuth && sessionId !== "guest") {
+          continue;
+        }
 
-      const page = await ctx.newPage();
+        const page = await ctx.newPage();
 
-      if (Array.isArray(scene.preNavigationActions)) {
-        let hasOriginLoaded = false;
-        for (const action of scene.preNavigationActions) {
-          if (
-            action.type === "clear_local_storage" ||
-            action.type === "set_local_storage" ||
-            action.type === "remove_local_storage"
-          ) {
-            if (!hasOriginLoaded) {
-              await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-              hasOriginLoaded = true;
+        if (Array.isArray(scene.preNavigationActions)) {
+          let hasOriginLoaded = false;
+          for (const action of scene.preNavigationActions) {
+            if (
+              action.type === "clear_local_storage" ||
+              action.type === "set_local_storage" ||
+              action.type === "remove_local_storage"
+            ) {
+              if (!hasOriginLoaded) {
+                await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+                hasOriginLoaded = true;
+              }
             }
+            await runAction(page, action);
           }
-          await runAction(page, action);
         }
-      }
 
-      await page.goto(`${baseUrl}${scene.path}`, { waitUntil: "networkidle" });
+        await page.goto(`${baseUrl}${scene.path}`, { waitUntil: "networkidle" });
 
-      if (scene.waitForSelector) {
-        try {
-          await page.waitForSelector(scene.waitForSelector, {
-            timeout: scene.timeoutMs || 10000,
-          });
-        } catch (err) {
-          const sessionDir = sanitizeSlug(sessionId || "guest");
-          const debugDir = path.join(outDir, sessionDir);
-          await ensureDir(debugDir);
-          const debugFile = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-debug.png`;
-          await page.screenshot({
-            path: path.join(debugDir, debugFile),
-            fullPage: false,
-          });
-          throw new Error(
-            `Scene ${scene.slug} (${viewport.id}) failed waiting for selector ${scene.waitForSelector}. Debug: ${sessionDir}/${debugFile}. ${err}`,
-          );
-        }
-      }
-
-      if (Array.isArray(scene.actions)) {
-        for (const action of scene.actions) {
-          await runAction(page, action);
-        }
-      }
-
-      const files = [];
-      const sessionDir = sanitizeSlug(sessionId || "guest");
-      const targetDir = path.join(outDir, sessionDir);
-      await ensureDir(targetDir);
-      const captureModes =
-        Array.isArray(scene.captureModes) && scene.captureModes.length
-          ? scene.captureModes
-          : ["fold", "full"];
-      for (const mode of captureModes) {
-        const normalizedMode = mode === "full" ? "full" : "fold";
-        const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${normalizedMode}.png`;
-        try {
-          await page.screenshot({
-            path: path.join(targetDir, fileName),
-            fullPage: normalizedMode === "full",
-          });
-          files.push({
-            mode: normalizedMode,
-            file: `${sessionDir}/${fileName}`,
-          });
-        } catch (err) {
-          const fullPageOptional = scene.fullPageOptional !== false;
-          if (normalizedMode === "full" && fullPageOptional) {
-            process.stdout.write(
-              `Skipping full-page capture for ${scene.slug} (${viewport.id}): ${err}\n`,
+        if (scene.waitForSelector) {
+          try {
+            await page.waitForSelector(scene.waitForSelector, {
+              timeout: scene.timeoutMs || 10000,
+            });
+          } catch (err) {
+            const sessionDir = sanitizeSlug(sessionId || "guest");
+            const debugDir = path.join(outDir, sessionDir);
+            await ensureDir(debugDir);
+            const debugFile = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-debug.png`;
+            await page.screenshot({
+              path: path.join(debugDir, debugFile),
+              fullPage: false,
+            });
+            throw new Error(
+              `Scene ${scene.slug} (${viewport.id}, ${theme}) failed waiting for selector ${scene.waitForSelector}. Debug: ${sessionDir}/${debugFile}. ${err}`,
             );
-            continue;
           }
-          throw err;
         }
+
+        if (Array.isArray(scene.actions)) {
+          for (const action of scene.actions) {
+            await runAction(page, action);
+          }
+        }
+
+        const files = [];
+        const sessionDir = sanitizeSlug(sessionId || "guest");
+        const targetDir = path.join(outDir, sessionDir);
+        await ensureDir(targetDir);
+        const captureModes =
+          Array.isArray(scene.captureModes) && scene.captureModes.length
+            ? scene.captureModes
+            : ["fold", "full"];
+        for (const mode of captureModes) {
+          const normalizedMode = mode === "full" ? "full" : "fold";
+          const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-${normalizedMode}.png`;
+          try {
+            await page.screenshot({
+              path: path.join(targetDir, fileName),
+              fullPage: normalizedMode === "full",
+            });
+            files.push({
+              mode: normalizedMode,
+              file: `${sessionDir}/${fileName}`,
+            });
+          } catch (err) {
+            const fullPageOptional = scene.fullPageOptional !== false;
+            if (normalizedMode === "full" && fullPageOptional) {
+              process.stdout.write(
+                `Skipping full-page capture for ${scene.slug} (${viewport.id}, ${theme}): ${err}\n`,
+              );
+              continue;
+            }
+            throw err;
+          }
+        }
+
+        await page.close();
+
+        captured.push({
+          title: scene.title,
+          slug: scene.slug,
+          path: scene.path,
+          session: sessionId,
+          viewport: viewport.id,
+          theme,
+          files,
+        });
       }
-
-      await page.close();
-
-      captured.push({
-        title: scene.title,
-        slug: scene.slug,
-        path: scene.path,
-        session: sessionId,
-        viewport: viewport.id,
-        files,
-      });
     }
   }
 
@@ -350,6 +371,7 @@ async function main() {
         baseUrl,
         capturedAt: now,
         viewports,
+        themes,
         sessions: Object.fromEntries(
           Object.entries(sessions).map(([k, v]) => [
             k,
@@ -364,12 +386,12 @@ async function main() {
   );
 
   const table = [
-    "| Scene | Path | Session | Viewport | Mode | File |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Scene | Path | Session | Viewport | Theme | Mode | File |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...captured.flatMap((item) =>
       item.files.map(
         (entry) =>
-          `| ${item.title} | \`${item.path}\` | ${item.session} | ${item.viewport} | ${entry.mode} | ![${item.slug}-${item.viewport}-${entry.mode}](./${entry.file}) |`,
+          `| ${item.title} | \`${item.path}\` | ${item.session} | ${item.viewport} | ${item.theme} | ${entry.mode} | ![${item.slug}-${item.viewport}-${item.theme}-${entry.mode}](./${entry.file}) |`,
       ),
     ),
   ];
@@ -395,7 +417,8 @@ async function main() {
     "",
     "This folder stores generated screenshot sets for docs.",
     "Captures are generated from local app state using scripted scenes.",
-    "Screenshots are above-the-fold only (viewport capture, no full-page images).",
+    "Each scene captures both light and dark mode by default.",
+    "Each scene captures above-the-fold and full-page by default (full-page is skipped when unsupported).",
     "Each release stores images by session under `releases/<version>/<session>/`.",
     "",
     "## Latest run",
