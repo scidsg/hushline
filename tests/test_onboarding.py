@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import url_for
@@ -110,7 +110,10 @@ def test_onboarding_skip(client: FlaskClient, user: User) -> None:
 @patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=True)
 @patch("hushline.routes.onboarding.requests.get")
 def test_onboarding_proton_search_prefills_manual_key(
-    requests_get, is_valid_pgp_key, can_encrypt_with_pgp_key, client: FlaskClient
+    requests_get: MagicMock,
+    is_valid_pgp_key: MagicMock,
+    can_encrypt_with_pgp_key: MagicMock,
+    client: FlaskClient,
 ) -> None:
     test_key = _load_test_pgp_key()
     requests_get.return_value.status_code = 200
