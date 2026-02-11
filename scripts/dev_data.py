@@ -1,24 +1,28 @@
 #!/usr/bin/env python
+import json
 from pathlib import Path
 from typing import List, Optional, Tuple, cast
 
 from flask import current_app
-from sqlalchemy import func
-from sqlalchemy.sql import exists
+from sqlalchemy import func, select
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import Tier, User, Username
+from hushline.model import FieldValue, Message, Tier, User, Username
 from hushline.storage import S3Driver, public_store
 
 with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:
     PGP_KEY = f.read()
+
+OVERRIDES_PATH = Path(__file__).parent / "dev_data_overrides.json"
 
 
 def main() -> None:
     print("Adding dev data")
     with create_app().app_context():
         create_users()
+        create_org_settings()
+        create_sample_messages()
         create_tiers()
         create_localstack_buckets()
 
@@ -31,8 +35,18 @@ def create_users() -> None:
             "is_admin": True,
             "is_verified": True,
             "display_name": "Hush Line Admin",
-            "bio": "Hush Line administrator account.",
+            "bio": (
+                "Message for account verification, technical problems, and general feedback!"
+                "If we receive a message about a crime that is occurring or about to occur it "
+                "will be forwarded to law enforcement."
+            ),
+            "extra_fields": [
+                ("Website", "https://hushline.app", True),
+                ("Signal", "@hushline.1337", False),
+            ],
             "pgp_key": PGP_KEY,
+            "onboarding_complete": True,
+            "email": "admin@hushline.local",
         },
         {
             "username": "artvandelay",
@@ -41,10 +55,16 @@ def create_users() -> None:
             "is_verified": True,
             "display_name": "Art Vandelay",
             "bio": (
-                "Art is the CEO of Vandelay Industries, an international "
-                "importing/exporting company. Potato and corn chips, "
-                "diapers, and matches."
+                "Art Vandelay is an award-winning investigative reporter covering marine biology, "
+                "architecture, and sports, with bylines in The Vandelay Herald. Demo account."
             ),
+            "extra_fields": [
+                ("Website", "https://vandelay.news", True),
+                ("Signal", "@artvandelay.01", False),
+            ],
+            "pgp_key": PGP_KEY,
+            "onboarding_complete": True,
+            "email": "artvandelay@hushline.local",
         },
         {
             "username": "jerryseinfeld",
@@ -112,10 +132,9 @@ def create_users() -> None:
             "username": "newman",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
-            "is_verified": True,
-            "display_name": "Postal Employee Newman",
-            "bio": "Postal worker and sworn enemy to Jerry. Hello, Jerry.",
-            "pgp_key": PGP_KEY,
+            "is_verified": False,
+            # Keep newman as an intentionally incomplete account for onboarding screenshots.
+            "onboarding_complete": False,
         },
         {
             "username": "frankcostanza",
@@ -250,6 +269,7 @@ def create_users() -> None:
             "pgp_key": PGP_KEY,
         },
     ]
+    users = apply_user_overrides(users)
 
     MAX_EXTRA_FIELDS = 4
 
@@ -263,23 +283,21 @@ def create_users() -> None:
         is_verified = cast(bool, data.get("is_verified", False))
         extra_fields = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
         pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
+        onboarding_complete = cast(bool, data.get("onboarding_complete", True))
+        email = cast(Optional[str], data.get("email", f"{username}@hushline.local"))
 
-        # Check if user already exists
-        if not db.session.query(
-            exists().where(func.lower(Username._username) == username.lower())
-        ).scalar():
+        primary = db.session.scalars(
+            select(Username)
+            .where(func.lower(Username._username) == username.lower(), Username.is_primary.is_(True))
+        ).one_or_none()
+
+        if primary is None:
             # Create a new user
             user = User(password=password, is_admin=is_admin)
-
-            # Assign PGP key if provided
-            if pgp_key:
-                user.pgp_key = pgp_key
-
             db.session.add(user)
             db.session.flush()
 
-            # Create primary username
-            un1 = Username(
+            primary = Username(
                 user_id=user.id,
                 _username=username,
                 display_name=display_name,
@@ -288,9 +306,9 @@ def create_users() -> None:
                 show_in_directory=True,
                 is_verified=is_verified,
             )
+            db.session.add(primary)
 
-            # Create alias username
-            un2 = Username(
+            alias = Username(
                 user_id=user.id,
                 _username=f"{username}-alias",
                 display_name=f"{display_name} (Alias)",
@@ -299,23 +317,170 @@ def create_users() -> None:
                 show_in_directory=True,
                 is_verified=False,
             )
+            db.session.add(alias)
+            created = True
+        else:
+            user = primary.user
+            created = False
 
-            # Assign extra fields to the primary username
-            for i, (label, value, verified) in enumerate(extra_fields, start=1):
-                if i > MAX_EXTRA_FIELDS:
-                    break  # Stop if maximum number of extra fields is exceeded
-                setattr(un1, f"extra_field_label{i}", label)
-                setattr(un1, f"extra_field_value{i}", value)
-                setattr(un1, f"extra_field_verified{i}", verified)
+        # Keep fixtures deterministic across repeated runs.
+        user.is_admin = is_admin
+        user.password_hash = password
+        user.pgp_key = pgp_key
+        user.onboarding_complete = onboarding_complete
+        if onboarding_complete and pgp_key and email:
+            user.enable_email_notifications = True
+            user.email_include_message_content = True
+            user.email_encrypt_entire_body = True
+            user.email = email
+        else:
+            user.enable_email_notifications = False
+            user.email_include_message_content = False
+            user.email_encrypt_entire_body = False
+            user.email = None
 
-            # Add the new usernames to the database
-            db.session.add(un1)
-            db.session.add(un2)
-            db.session.commit()
+        primary.display_name = display_name
+        primary.bio = bio
+        primary.show_in_directory = True
+        primary.is_verified = is_verified
 
+        for i in range(1, MAX_EXTRA_FIELDS + 1):
+            setattr(primary, f"extra_field_label{i}", None)
+            setattr(primary, f"extra_field_value{i}", None)
+            setattr(primary, f"extra_field_verified{i}", False)
+        for i, (label, value, verified) in enumerate(extra_fields, start=1):
+            if i > MAX_EXTRA_FIELDS:
+                break
+            setattr(primary, f"extra_field_label{i}", label)
+            setattr(primary, f"extra_field_value{i}", value)
+            setattr(primary, f"extra_field_verified{i}", verified)
+
+        db.session.commit()
+        primary.create_default_field_defs()
+
+        if created:
             print(f"Test user created:\n  username = {username}\n  password = {password}")
         else:
-            print(f"User already exists: {username}")
+            print(f"User updated:\n  username = {username}\n  password = {password}")
+
+
+def apply_user_overrides(users: list[dict[str, object]]) -> list[dict[str, object]]:
+    if not OVERRIDES_PATH.exists():
+        return users
+
+    try:
+        content = json.loads(OVERRIDES_PATH.read_text())
+    except json.JSONDecodeError:
+        print(f"Skipping invalid overrides file: {OVERRIDES_PATH}")
+        return users
+
+    if not isinstance(content, dict):
+        print(f"Skipping invalid overrides file shape: {OVERRIDES_PATH}")
+        return users
+
+    by_username = content.get("users", {})
+    if not isinstance(by_username, dict):
+        print(f"Skipping invalid overrides users key in: {OVERRIDES_PATH}")
+        return users
+
+    updated: list[dict[str, object]] = []
+    for user in users:
+        uname = cast(str, user.get("username", ""))
+        override = by_username.get(uname, {})
+        if isinstance(override, dict):
+            merged = dict(user)
+            merged.update(override)
+            updated.append(merged)
+        else:
+            updated.append(user)
+
+    print(f"Applied dev data overrides from {OVERRIDES_PATH}")
+    return updated
+
+
+def create_org_settings() -> None:
+    from hushline.model import OrganizationSetting
+
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_ENABLED, True)
+    OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT, "Leave")
+    OrganizationSetting.upsert(
+        OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK, "https://www.wikipedia.org/"
+    )
+    OrganizationSetting.upsert(
+        OrganizationSetting.GUIDANCE_PROMPTS,
+        [
+            {
+                "heading_text": "Before you submit",
+                "prompt_text": "Use a personal device and network whenever possible.",
+                "index": 0,
+            },
+            {
+                "heading_text": "Protect your identity",
+                "prompt_text": "Avoid sharing names, locations, or metadata that can identify you.",
+                "index": 1,
+            },
+            {
+                "heading_text": "Need more privacy?",
+                "prompt_text": "Use Tor Browser for stronger anonymity before sending a message.",
+                "index": 2,
+            },
+        ],
+    )
+    db.session.commit()
+
+
+def create_sample_messages() -> None:
+    samples = [
+        {
+            "owner": "admin",
+            "public_id": "11111111-1111-1111-1111-111111111111",
+            "reply_slug": "sample-reply-admin",
+            "status": "PENDING",
+            "field_text": "Sample message for admin message drill-in screenshots.",
+        },
+        {
+            "owner": "artvandelay",
+            "public_id": "22222222-2222-2222-2222-222222222222",
+            "reply_slug": "sample-reply-artvandelay",
+            "status": "PENDING",
+            "field_text": "Sample message for Art Vandelay status and reply screenshots.",
+        },
+    ]
+
+    for item in samples:
+        owner = db.session.scalars(
+            select(Username).where(
+                func.lower(Username._username) == cast(str, item["owner"]).lower(),
+                Username.is_primary.is_(True),
+            )
+        ).one_or_none()
+        if owner is None:
+            continue
+
+        msg = db.session.scalars(
+            select(Message).where(Message.public_id == cast(str, item["public_id"]))
+        ).one_or_none()
+        if msg is None:
+            msg = Message(username_id=owner.id)
+            msg.public_id = cast(str, item["public_id"])
+            msg.reply_slug = cast(str, item["reply_slug"])
+            db.session.add(msg)
+            db.session.flush()
+
+            field_def = owner.message_fields[0]
+            fv = FieldValue(
+                field_definition=field_def,
+                message=msg,
+                value=cast(str, item["field_text"]),
+                encrypted=field_def.encrypted,
+            )
+            db.session.add(fv)
+        else:
+            msg.reply_slug = cast(str, item["reply_slug"])
+
+        db.session.commit()
 
 
 def create_tiers() -> None:

@@ -1,0 +1,321 @@
+{
+  "viewports": [
+    {
+      "id": "desktop",
+      "width": 1000,
+      "height": 800
+    },
+    {
+      "id": "mobile",
+      "width": 390,
+      "height": 844,
+      "isMobile": true,
+      "hasTouch": true,
+      "deviceScaleFactor": 3
+    }
+  ],
+  "sessions": {
+    "guest": {},
+    "admin": {
+      "username": "admin",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_ADMIN_PASSWORD"
+    },
+    "artvandelay": {
+      "username": "artvandelay",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_ARTVANDELAY_PASSWORD"
+    },
+    "newman": {
+      "username": "newman",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_NEWMAN_PASSWORD"
+    }
+  },
+  "scenes": [
+    {
+      "slug": "auth-admin-directory-verified",
+      "title": "Directory - Verified (admin)",
+      "path": "/directory",
+      "session": "admin",
+      "waitForSelector": "#verified.tab-content.active"
+    },
+    {
+      "slug": "auth-admin-directory-all",
+      "title": "Directory - All (admin)",
+      "path": "/directory",
+      "session": "admin",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#all.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "auth-admin-profile",
+      "title": "Profile - admin (authenticated)",
+      "path": "/to/admin",
+      "session": "admin",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-admin-inbox",
+      "title": "Inbox - admin",
+      "path": "/inbox",
+      "session": "admin",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-admin-settings-profile",
+      "title": "Settings - Profile (admin)",
+      "path": "/settings/profile",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-aliases",
+      "title": "Settings - Aliases (admin)",
+      "path": "/settings/aliases",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-auth",
+      "title": "Settings - Authentication (admin)",
+      "path": "/settings/auth",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-branding",
+      "title": "Settings - Branding (admin)",
+      "path": "/settings/branding",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-encryption",
+      "title": "Settings - Encryption (admin)",
+      "path": "/settings/encryption",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-replies",
+      "title": "Settings - Message Statuses (admin)",
+      "path": "/settings/replies",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-notifications",
+      "title": "Settings - Notifications (admin)",
+      "path": "/settings/notifications",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-guidance",
+      "title": "Settings - User Guidance (admin)",
+      "path": "/settings/guidance",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-registration",
+      "title": "Settings - Registration (admin)",
+      "path": "/settings/registration",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-advanced",
+      "title": "Settings - Advanced (admin)",
+      "path": "/settings/advanced",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-admin",
+      "title": "Settings - Admin (admin)",
+      "path": "/settings/admin",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-profile",
+      "title": "Profile - artvandelay (authenticated)",
+      "path": "/to/artvandelay",
+      "session": "artvandelay",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-artvandelay-inbox",
+      "title": "Inbox - artvandelay",
+      "path": "/inbox",
+      "session": "artvandelay",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-newman-profile",
+      "title": "Profile - newman (authenticated)",
+      "path": "/to/newman",
+      "session": "newman",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-newman-inbox",
+      "title": "Inbox - newman",
+      "path": "/inbox",
+      "session": "newman"
+    },
+    {
+      "slug": "guest-directory-verified",
+      "title": "Directory - Verified",
+      "path": "/directory",
+      "session": "guest",
+      "waitForSelector": "#verified.tab-content.active"
+    },
+    {
+      "slug": "guest-directory-all",
+      "title": "Directory - All",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#all.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "guest-profile-admin",
+      "title": "Profile - admin",
+      "path": "/to/admin",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-profile-artvandelay",
+      "title": "Profile - artvandelay",
+      "path": "/to/artvandelay",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-profile-newman",
+      "title": "Profile - newman",
+      "path": "/to/newman",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-login",
+      "title": "Login",
+      "path": "/login",
+      "session": "guest",
+      "waitForSelector": "#username"
+    },
+    {
+      "slug": "guest-register",
+      "title": "Register",
+      "path": "/register",
+      "session": "guest",
+      "waitForSelector": "#captcha_answer"
+    },
+    {
+      "slug": "guest-2fa-page",
+      "title": "2FA Page",
+      "path": "/verify-2fa-login",
+      "session": "guest",
+      "waitForSelector": "main"
+    },
+    {
+      "slug": "guest-message-submitted",
+      "title": "Message Submitted",
+      "path": "/to/artvandelay",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#field_1, [name='field_1'], #content, textarea.form-field",
+          "value": "Screenshot test message body."
+        },
+        {
+          "type": "solve_math_captcha"
+        },
+        {
+          "type": "submit_form",
+          "selector": "#messageForm",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "#reply-url"
+        }
+      ]
+    },
+    {
+      "slug": "guest-message-status",
+      "title": "Message Status",
+      "path": "/reply/sample-reply-artvandelay",
+      "session": "guest",
+      "waitForSelector": "main"
+    },
+    {
+      "slug": "guest-directory-verified-search-art",
+      "title": "Directory - Verified search 'art'",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#searchInput",
+          "value": "art"
+        },
+        {
+          "type": "wait_for",
+          "selector": "mark.search-highlight"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-all-search-art",
+      "title": "Directory - All search 'art'",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "fill",
+          "selector": "#searchInput",
+          "value": "art"
+        },
+        {
+          "type": "wait_for",
+          "selector": "mark.search-highlight"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-js-disabled",
+      "title": "Directory (JS disabled)",
+      "path": "/directory",
+      "session": "guest",
+      "javaScriptEnabled": false,
+      "waitForSelector": "#directory-title"
+    }
+  ]
+}

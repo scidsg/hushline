@@ -84,3 +84,16 @@ TESTS ?= ./tests/
 .PHONY: test
 test: ## Run the test suite
 	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)
+
+.PHONY: docs-screenshots
+docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<release>
+	docker compose run --rm dev_data && \
+	npm install --no-save playwright@1.54.2 && \
+	npx playwright install chromium && \
+	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
+	SCREENSHOT_ARTVANDELAY_PASSWORD="$${SCREENSHOT_ARTVANDELAY_PASSWORD:-Test-testtesttesttest-1}" \
+	SCREENSHOT_NEWMAN_PASSWORD="$${SCREENSHOT_NEWMAN_PASSWORD:-Test-testtesttesttest-1}" \
+	node scripts/capture-doc-screenshots.mjs \
+		--base-url "$(or $(BASE_URL),http://localhost:8080)" \
+		--release "$(or $(RELEASE),local)" \
+		--manifest docs/screenshots/scenes.json
