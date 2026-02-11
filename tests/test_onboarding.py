@@ -28,26 +28,41 @@ def _run_onboarding_flow_through_step_four(client: FlaskClient) -> None:
     response = client.post(
         url_for("onboarding"),
         data={"step": "profile", "display_name": "Test User", "bio": "Short bio"},
-        follow_redirects=True,
+        follow_redirects=False,
     )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("onboarding", step="encryption"))
+
+    response = client.get(url_for("onboarding", step="encryption"))
     assert response.status_code == 200
+    assert "Step 2 of 4" in response.text
     assert "Now, let's set up encryption" in response.text
 
     response = client.post(
         url_for("onboarding"),
         data={"step": "encryption", "method": "manual", "pgp_key": _load_test_pgp_key()},
-        follow_redirects=True,
+        follow_redirects=False,
     )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("onboarding", step="notifications"))
+
+    response = client.get(url_for("onboarding", step="notifications"))
     assert response.status_code == 200
-    assert "Finally, where should we send new tips?" in response.text
+    assert "Step 3 of 4" in response.text
+    assert "Where should we send new tips?" in response.text
 
     response = client.post(
         url_for("onboarding"),
         data={"step": "notifications", "email_address": "test@example.com"},
-        follow_redirects=True,
+        follow_redirects=False,
     )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("onboarding", step="directory"))
+
+    response = client.get(url_for("onboarding", step="directory"))
     assert response.status_code == 200
-    assert "One last thing: join the User Directory?" in response.text
+    assert "Step 4 of 4" in response.text
+    assert "Finally, join the User Directory!" in response.text
 
     response = client.post(
         url_for("onboarding"),
@@ -67,35 +82,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
     assert response.status_code == 200
     assert "First, tell us about yourself" in response.text
 
-    response = client.post(
-        url_for("onboarding"),
-        data={"step": "profile", "display_name": "Test User", "bio": "Short bio"},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Now, let's set up encryption" in response.text
-    response = client.post(
-        url_for("onboarding"),
-        data={"step": "encryption", "method": "manual", "pgp_key": _load_test_pgp_key()},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "Finally, where should we send new tips?" in response.text
-    response = client.post(
-        url_for("onboarding"),
-        data={"step": "notifications", "email_address": "test@example.com"},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "One last thing: join the User Directory?" in response.text
-
-    response = client.post(
-        url_for("onboarding"),
-        data={"step": "directory", "show_in_directory": "y"},
-        follow_redirects=True,
-    )
-    assert response.status_code == 200
-    assert "🎉 Congratulations! Your account setup is complete!" in response.text
+    _run_onboarding_flow_through_step_four(client)
     db.session.refresh(user)
     assert user.onboarding_complete is True
     assert user.enable_email_notifications is True
