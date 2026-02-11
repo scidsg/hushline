@@ -241,18 +241,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (topLink) {
       topLink.addEventListener("click", (event) => {
         event.preventDefault();
-        const header = document.querySelector("header");
-        const banner = document.querySelector(".banner");
-        const headerHeight = header ? header.getBoundingClientRect().height : 0;
-        const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
-        const stickyTop = headerHeight + bannerHeight;
-        const tabsTop = directoryTabs.getBoundingClientRect().top;
-        const isSticky = tabsTop <= stickyTop;
-        if (!isSticky || tabsInitialTop === null) {
-          updateTabsInitialTop();
-        }
-        const targetY = Math.max(0, tabsInitialTop - stickyTop);
-        window.scrollTo({ top: targetY, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     }
 
