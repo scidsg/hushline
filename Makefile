@@ -24,6 +24,25 @@ run: ## Run the app in a limited mode
 run-full: ## Run the app with all features enabled
 	docker compose -f docker-compose.stripe.yaml up --build
 
+.PHONY: clean
+clean: ## Fully reset local dev state (containers, volumes, caches, generated assets)
+	docker compose down --volumes --remove-orphans || true
+	docker compose -f docker-compose.stripe.yaml down --volumes --remove-orphans || true
+	rm -rf \
+		.pytest_cache \
+		.mypy_cache \
+		.ruff_cache \
+		htmlcov \
+		node_modules \
+		hushline/static/js \
+		hushline/static/css \
+		hushline/static/fonts \
+		hushline/static/img
+	rm -f \
+		.coverage \
+		.coverage.* \
+		hushline/static/data/users_directory.json
+
 .PHONY: migrate-dev
 migrate-dev: ## Run dev env migrations
 	$(CMD) poetry run ./scripts/dev_migrations.py
