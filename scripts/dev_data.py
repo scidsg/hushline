@@ -360,9 +360,9 @@ def create_users() -> None:
         primary.create_default_field_defs()
 
         if created:
-            print(f"Test user created:\n  username = {username}\n  password = {password}")
+            print(f"Test user created:\n  username = {username}")
         else:
-            print(f"User updated:\n  username = {username}\n  password = {password}")
+            print(f"User updated:\n  username = {username}")
 
 
 def apply_user_overrides(users: list[dict[str, object]]) -> list[dict[str, object]]:
