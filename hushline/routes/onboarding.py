@@ -109,9 +109,9 @@ def register_onboarding_routes(app: Flask) -> None:
                                     )
                                     status_code = 400
                                 else:
-                                    user.pgp_key = resp.text
-                                    db.session.commit()
-                                    return redirect(url_for("onboarding", step="notifications"))
+                                    # Prefill the manual key field so users can review/edit,
+                                    # then continue with the normal save-and-advance action.
+                                    pgp_key_form.pgp_key.data = resp.text
                             else:
                                 flash("⛔️ No PGP key found for that email address.")
                                 status_code = 400
