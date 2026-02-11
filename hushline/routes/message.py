@@ -124,7 +124,7 @@ def register_message_routes(app: Flask) -> None:
                             email_body = (
                                 encrypt_message(value, user.pgp_key) if user.pgp_key else None
                             )
-                        except Exception as e:
+                        except (RuntimeError, TypeError, ValueError) as e:
                             current_app.logger.error(
                                 "Failed to encrypt email body: %s", str(e), exc_info=True
                             )

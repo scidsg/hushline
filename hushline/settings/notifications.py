@@ -1,3 +1,4 @@
+import smtplib
 from typing import Optional, Tuple
 
 from flask import (
@@ -64,7 +65,7 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
             )
             with smtp_config.smtp_login():
                 pass
-        except Exception as e:
+        except (OSError, ValueError, smtplib.SMTPException) as e:
             current_app.logger.debug(e)
             flash("⛔️ Unable to validate SMTP connection settings")
             return None

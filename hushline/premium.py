@@ -367,7 +367,15 @@ async def worker(app: Flask) -> None:
                     elif event.type == "invoice.updated":
                         handle_invoice_updated(invoice)
 
-            except Exception as e:
+            except (
+                json.JSONDecodeError,
+                KeyError,
+                TypeError,
+                ValueError,
+                RuntimeError,
+                sa.exc.SQLAlchemyError,
+                stripe._error.StripeError,
+            ) as e:
                 current_app.logger.error(
                     f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}",  # noqa: E501
                     exc_info=True,

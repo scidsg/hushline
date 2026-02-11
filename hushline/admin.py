@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, current_app, flash, redirect, request, session, url_for
 from flask_wtf.csrf import validate_csrf
 from werkzeug.wrappers.response import Response
+from wtforms.validators import ValidationError
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
@@ -28,7 +29,7 @@ def _validate_csrf() -> None:
         abort(400)
     try:
         validate_csrf(token)
-    except Exception:
+    except ValidationError:
         abort(400)
 
 
