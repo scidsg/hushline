@@ -4071,59 +4071,58 @@ li.tab .badge {
   margin-top: 0; 
 }
 
-@media (max-width: 640px) {
-  .onboarding-main .container {
-    padding: 4rem 2rem 2rem 2rem;
-  }
+.onboarding-main .container {
+  padding: 4rem 2rem 2rem 2rem;
+}
 
-  .onboarding-wizard {
-    padding: 3rem 1.5rem;
-    margin-top: env(safe-area-inset-top);
-  }
+.onboarding-wizard {
+  padding: 3rem 1.5rem;
+  margin-top: env(safe-area-inset-top);
+}
 
-  .contBtn,
-  .onboarding-skip,
-  .backBtn,
-  .finishBtn {
-    position: fixed !important;
-    bottom: 1rem !important;
-    z-index: 2;
-    margin: 0 !important;
-  }
+.contBtn,
+.onboarding-skip,
+.backBtn,
+.finishBtn {
+  position: fixed !important;
+  bottom: 1rem !important;
+  z-index: 2;
+  margin: 0 !important;
+}
 
-  .backBtn {
-    left: 6.75rem !important;
-    bottom: 1.625rem !important;
-    top: initial !important;
-  }
+.backBtn {
+  left: 6.75rem !important;
+  bottom: 1.625rem !important;
+  top: initial !important;
+}
 
-  .finishBtn {
-    left: 1rem !important;
-  }
+.finishBtn {
+  left: 1rem !important;
+}
 
-  .secondBack {
-    left: 8.125rem !important;
-  }
+.secondBack,
+.thirdBack {
+  left: 8.125rem !important;
+}
 
-  .contBtn {
-    bottom: 0;
-    left: 1rem;
-  }
+.contBtn {
+  bottom: 0;
+  left: 1rem;
+}
 
-  .onboarding-skip {
-    bottom: 0;
-    right: 1rem;
-    width: auto;
-  }
-  .onboarding-footer {
-    display: inherit;
-    position: fixed;
-    bottom: 0;
-    height: 72px !important;
-    left: 0;
-    right: 0;  
-    z-index: 1;
-  }
+.onboarding-skip {
+  bottom: 0;
+  right: 1rem;
+  width: auto;
+}
+.onboarding-footer {
+  display: inherit;
+  position: fixed;
+  bottom: 0;
+  height: 72px !important;
+  left: 0;
+  right: 0;  
+  z-index: 1;
 }
 
 @media (max-width: 480px) {
