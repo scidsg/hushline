@@ -287,8 +287,9 @@ def create_users() -> None:
         email = cast(Optional[str], data.get("email", f"{username}@hushline.local"))
 
         primary = db.session.scalars(
-            select(Username)
-            .where(func.lower(Username._username) == username.lower(), Username.is_primary.is_(True))
+            select(Username).where(
+                func.lower(Username._username) == username.lower(), Username.is_primary.is_(True)
+            )
         ).one_or_none()
 
         if primary is None:

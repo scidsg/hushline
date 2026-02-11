@@ -23,4 +23,3 @@ Each release stores images by session under `releases/<version>/<session>/`.
 ```sh
 make docs-screenshots RELEASE=v0.5.53
 ```
-
