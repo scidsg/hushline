@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_key:
-        description: "Folder key under docs/screenshots/releases/"
+        description: "Release key (optional, e.g. v0.5.53). Leave blank to auto-use version."
         required: false
-        default: "manual"
+        default: ""
 
 permissions:
   contents: read
