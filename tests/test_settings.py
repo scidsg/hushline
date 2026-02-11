@@ -249,6 +249,30 @@ def test_add_pgp_key_without_encryption_subkey(client: FlaskClient, user: User) 
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.can_encrypt_with_pgp_key", return_value=True)
+@patch("hushline.settings.proton.is_valid_pgp_key", return_value=True)
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_redirects_to_encryption(
+    requests_get: MagicMock,
+    is_valid_pgp_key: MagicMock,
+    can_encrypt_with_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    requests_get.return_value = MagicMock(status_code=200, text="dummy-pgp-key")
+    is_valid_pgp_key.return_value = True
+    can_encrypt_with_pgp_key.return_value = True
+
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "user@proton.me"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.encryption"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.settings.notifications.is_safe_smtp_host", return_value=False)
 def test_update_smtp_settings_reject_private_host(
