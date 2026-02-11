@@ -73,13 +73,16 @@ jobs:
             --manifest docs/screenshots/scenes.json
 
       - name: Publish screenshots to external repo
-        if: ${{ vars.SCREENSHOTS_REPO != '' && secrets.SCREENSHOTS_PUSH_TOKEN != '' }}
         env:
           SCREENSHOTS_REPO: ${{ vars.SCREENSHOTS_REPO }}
           SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
           RELEASE_KEY: ${{ steps.vars.outputs.release_key }}
         run: |
           set -euo pipefail
+          if [ -z "${SCREENSHOTS_REPO:-}" ] || [ -z "${SCREENSHOTS_PUSH_TOKEN:-}" ]; then
+            echo "Skipping publish: SCREENSHOTS_REPO variable or SCREENSHOTS_PUSH_TOKEN secret is missing."
+            exit 0
+          fi
 
           SRC_ROOT="docs/screenshots/releases/${RELEASE_KEY}"
           if [ ! -d "$SRC_ROOT" ]; then
