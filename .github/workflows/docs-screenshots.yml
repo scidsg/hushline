@@ -1,0 +1,121 @@
+name: Docs Screenshots
+
+on:
+  workflow_run:
+    workflows: ["Build release container image"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_key:
+        description: "Folder key under docs/screenshots/releases/"
+        required: false
+        default: "manual"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright package
+        run: npm install --no-save playwright@1.54.2
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build assets
+        run: npm run build:prod
+
+      - name: Start local app
+        run: |
+          docker compose up -d postgres blob-storage
+          docker compose run --rm dev_data
+          docker compose up -d app
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Resolve release key
+        id: vars
+        run: |
+          RELEASE_KEY="${{ github.event.inputs.release_key }}"
+          if [ -z "$RELEASE_KEY" ]; then
+            VERSION=$(cut -d'"' -f2 hushline/version.py)
+            RELEASE_KEY="v$VERSION"
+          fi
+          echo "release_key=$RELEASE_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Capture screenshots
+        env:
+          SCREENSHOT_ADMIN_PASSWORD: Test-testtesttesttest-1
+          SCREENSHOT_ARTVANDELAY_PASSWORD: Test-testtesttesttest-1
+          SCREENSHOT_NEWMAN_PASSWORD: Test-testtesttesttest-1
+        run: |
+          node scripts/capture-doc-screenshots.mjs \
+            --base-url "http://localhost:8080" \
+            --release "${{ steps.vars.outputs.release_key }}" \
+            --manifest docs/screenshots/scenes.json
+
+      - name: Publish screenshots to external repo
+        if: ${{ vars.SCREENSHOTS_REPO != '' && secrets.SCREENSHOTS_PUSH_TOKEN != '' }}
+        env:
+          SCREENSHOTS_REPO: ${{ vars.SCREENSHOTS_REPO }}
+          SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
+          RELEASE_KEY: ${{ steps.vars.outputs.release_key }}
+        run: |
+          set -euo pipefail
+
+          SRC_ROOT="docs/screenshots/releases/${RELEASE_KEY}"
+          if [ ! -d "$SRC_ROOT" ]; then
+            echo "Expected screenshot source directory not found: $SRC_ROOT"
+            exit 1
+          fi
+
+          git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPO}.git" /tmp/hushline-screenshots
+          cd /tmp/hushline-screenshots
+
+          mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
+          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "releases/${RELEASE_KEY}/"
+          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "releases/latest/"
+
+          cat > README.md <<'EOF'
+          # Hush Line Screenshots
+
+          Automated screenshots published by the Hush Line app repo workflow.
+
+          - Latest: `releases/latest/`
+          - Versioned sets: `releases/<version>/`
+          EOF
+
+          git add README.md releases
+          if git diff --cached --quiet; then
+            echo "No screenshot changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update screenshots for ${RELEASE_KEY}"
+          git push origin HEAD
+
+      - name: Upload screenshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-screenshots-${{ steps.vars.outputs.release_key }}
+          path: docs/screenshots/releases/${{ steps.vars.outputs.release_key }}
