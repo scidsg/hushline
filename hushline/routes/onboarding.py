@@ -48,7 +48,7 @@ def register_onboarding_routes(app: Flask) -> None:
             or not username.show_in_directory
         )
 
-        step = request.args.get("step", "profile")
+        step = request.form.get("step", request.args.get("step", "profile"))
         if user.onboarding_complete and not setup_incomplete and step == "profile":
             return redirect(url_for("inbox"))
 
