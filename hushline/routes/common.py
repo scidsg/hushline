@@ -1,4 +1,5 @@
 import re
+import smtplib
 import socket
 import unicodedata
 from typing import Sequence
@@ -59,7 +60,7 @@ def get_ip_address() -> str:
     try:
         s.connect(("1.1.1.1", 1))
         ip_address = s.getsockname()[0]
-    except Exception:
+    except OSError:
         ip_address = "127.0.0.1"
     finally:
         s.close()
@@ -91,7 +92,7 @@ def do_send_email(user: User, body: str) -> None:
             )
 
         send_email(user.email, "New Hush Line Message Received", body, smtp_config)
-    except Exception as e:
+    except (KeyError, OSError, TypeError, ValueError, smtplib.SMTPException) as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
 
 

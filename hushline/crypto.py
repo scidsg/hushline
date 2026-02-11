@@ -104,7 +104,7 @@ def is_valid_pgp_key(key: str) -> bool:
         # Attempt to load the PGP key to verify its validity
         Cert.from_bytes(key.encode())
         return True
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError) as e:
         current_app.logger.error(f"Error validating PGP key: {e}")
         return False
 
@@ -118,7 +118,7 @@ def can_encrypt_with_pgp_key(key: str) -> bool:
         test_message = b"pgp-encryption-test"
         encrypted = encrypt([recipient_cert], test_message)
         return bool(encrypted)
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError) as e:
         current_app.logger.error(f"Error during encryption test: {e}")
         return False
 
@@ -144,7 +144,7 @@ def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:
         if isinstance(encrypted, str):
             return encrypted.encode("utf-8")
         return encrypted
-    except Exception as e:
+    except (RuntimeError, TypeError, ValueError) as e:
         current_app.logger.error(f"Error during encryption: {e}")
         return None
 
