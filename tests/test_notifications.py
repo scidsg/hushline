@@ -198,7 +198,7 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.do_send_email")
-def test_notifications_enabled_yes_content_yes_encrypted_body_missing_client_payload_uses_server_fallback(
+def test_notifications_full_body_encryption_server_fallback(
     mock_do_send_email: MagicMock, client: FlaskClient, user: User
 ) -> None:
     # Enable email notifications, with no message content

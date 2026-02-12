@@ -35,10 +35,7 @@ from hushline.safe_template import safe_render_template
 
 def register_profile_routes(app: Flask) -> None:
     def _is_armored_pgp_message(value: str) -> bool:
-        return (
-            "-----BEGIN PGP MESSAGE-----" in value
-            and "-----END PGP MESSAGE-----" in value
-        )
+        return "-----BEGIN PGP MESSAGE-----" in value and "-----END PGP MESSAGE-----" in value
 
     def _get_math_problem(force_new: bool = False) -> str:
         if not force_new and session.get("math_problem") and session.get("math_answer"):
@@ -158,7 +155,7 @@ def register_profile_routes(app: Flask) -> None:
                     )
                     db.session.add(field_value)
                     db.session.flush()
-                    extracted_fields.append((field_definition.label, field_value.value))
+                    extracted_fields.append((field_definition.label, field_value.value or ""))
 
                 db.session.commit()
 
@@ -176,7 +173,9 @@ def register_profile_routes(app: Flask) -> None:
                                 fallback_body = format_full_message_email_body(raw_extracted_fields)
                                 try:
                                     if fallback_body and uname.user.pgp_key:
-                                        email_body = encrypt_message(fallback_body, uname.user.pgp_key)
+                                        email_body = encrypt_message(
+                                            fallback_body, uname.user.pgp_key
+                                        )
                                         current_app.logger.warning(
                                             "Missing/invalid client encrypted email body; "
                                             "used server-side full-body encryption fallback."
@@ -195,7 +194,8 @@ def register_profile_routes(app: Flask) -> None:
                                     )
                                     email_body = plaintext_new_message_body
                         else:
-                            # If we don't want to encrypt the entire body, keep field-level behavior.
+                            # Keep the existing field-level email behavior
+                            # when full-body encryption is disabled.
                             email_body = format_message_email_fields(extracted_fields)
                             current_app.logger.debug("Sending email with unencrypted body")
                     else:
