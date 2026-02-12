@@ -253,15 +253,18 @@ async function main() {
 
         const jsEnabled = scene.javaScriptEnabled !== false;
         const ctx = await getContext(sessionId, viewport, theme, jsEnabled);
-        const okAuth = await maybeAuthenticate(
-          sessionId,
-          viewport,
-          theme,
-          jsEnabled,
-          ctx,
-        );
-        if (!okAuth && sessionId !== "guest") {
-          continue;
+        const skipAuthentication = scene.skipAuthentication === true;
+        if (!skipAuthentication) {
+          const okAuth = await maybeAuthenticate(
+            sessionId,
+            viewport,
+            theme,
+            jsEnabled,
+            ctx,
+          );
+          if (!okAuth && sessionId !== "guest") {
+            continue;
+          }
         }
 
         const page = await ctx.newPage();
@@ -440,11 +443,13 @@ async function main() {
     "- admin (admin and org settings scenes)",
     "- artvandelay (authenticated user settings scenes)",
     "- newman (authenticated and onboarding-state settings scenes)",
+    "- first-user admin creation scene (captured via a separate manifest on a brand-new instance)",
     "",
     "## Regenerate",
     "",
     "```sh",
     `make docs-screenshots RELEASE=${release}`,
+    `make docs-screenshots-first-user RELEASE=${release}`,
     "```",
     "",
   ];

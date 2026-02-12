@@ -97,3 +97,13 @@ docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<re
 		--base-url "$(or $(BASE_URL),http://localhost:8080)" \
 		--release "$(or $(RELEASE),local)" \
 		--manifest docs/screenshots/scenes.json
+
+.PHONY: docs-screenshots-first-user
+docs-screenshots-first-user: migrate-dev ## Capture first-user admin-creation screenshot (brand-new instance) into admin session dir
+	npm install --no-save playwright@1.54.2 && \
+	npx playwright install chromium && \
+	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
+	node scripts/capture-doc-screenshots.mjs \
+		--base-url "$(or $(BASE_URL),http://localhost:8080)" \
+		--release "$(or $(RELEASE),local)" \
+		--manifest docs/screenshots/scenes.first-user.json
