@@ -30,6 +30,7 @@ services:
       BLOB_STORAGE_PUBLIC_S3_CDN_ENDPOINT: "http://localhost:4566/public/"
       BLOB_STORAGE_PUBLIC_S3_ACCESS_KEY: "test"  # from localstack defaults
       BLOB_STORAGE_PUBLIC_S3_SECRET_KEY: "test"  # from localstack defaults
+      RUN_STARTUP_MIGRATIONS: "false"
     volumes:
       - ./:/app
     depends_on:
@@ -37,6 +38,8 @@ services:
         condition: service_healthy
       blob-storage:
         condition: service_healthy
+      dev_data:
+        condition: service_completed_successfully
     restart: always
 
   dev_data:
@@ -67,11 +70,10 @@ services:
     image: localstack/localstack:latest
     environment:
       SERVICES: s3
-      EDGE_PORT: "4566"
       HOSTNAME: blob-storage
-      HOSTNAME_EXTERNAL: localhost:4566
+      GATEWAY_LISTEN: "0.0.0.0:4566"
+      LOCALSTACK_HOST: "localhost.localstack.cloud:4566"
       START_WEB: "0"
-      SKIP_INFRA_DOWNLOADS: "true"
     restart: on-failure
     ports:
       - "127.0.0.1:4566:4566"
@@ -86,9 +88,13 @@ services:
     image: node:18.20.4-alpine3.20
     volumes:
       - ./:/app/
+      - hushline-node-modules:/app/node_modules
     working_dir: /app/
     command:
       - ash
       - -c
-      - 'npm install && npm run build:dev'
-    restart: always
+      - 'rm -rf /app/node_modules/.playwright* && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
+    restart: on-failure
+
+volumes:
+  hushline-node-modules:
