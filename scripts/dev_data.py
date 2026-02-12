@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import FieldValue, Message, Tier, User, Username
+from hushline.model import FieldValue, Message, MessageStatus, Tier, User, Username
 from hushline.storage import S3Driver, public_store
 
 with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:
@@ -433,22 +433,56 @@ def create_org_settings() -> None:
 
 
 def create_sample_messages() -> None:
-    samples = [
-        {
-            "owner": "admin",
-            "public_id": "11111111-1111-1111-1111-111111111111",
-            "reply_slug": "sample-reply-admin",
-            "status": "PENDING",
-            "field_text": "Sample message for admin message drill-in screenshots.",
-        },
-        {
-            "owner": "artvandelay",
-            "public_id": "22222222-2222-2222-2222-222222222222",
-            "reply_slug": "sample-reply-artvandelay",
-            "status": "PENDING",
-            "field_text": "Sample message for Art Vandelay status and reply screenshots.",
-        },
+    samples = []
+
+    admin_status_counts = [
+        (MessageStatus.ACCEPTED, 10),
+        (MessageStatus.DECLINED, 5),
+        (MessageStatus.ARCHIVED, 3),
+        (MessageStatus.PENDING, 2),
     ]
+    admin_idx = 1
+    for status, count in admin_status_counts:
+        for _ in range(count):
+            samples.append(
+                {
+                    "owner": "admin",
+                    "public_id": f"11111111-1111-1111-1111-{admin_idx:012d}",
+                    "reply_slug": f"sample-reply-admin-{admin_idx:03d}",
+                    "status": status.value,
+                    "field_text": (
+                        f"Admin sample message {admin_idx} for {status.display_str.lower()} "
+                        "inbox screenshots."
+                    ),
+                }
+            )
+            admin_idx += 1
+
+    samples.extend(
+        [
+            {
+                "owner": "artvandelay",
+                "public_id": "22222222-2222-2222-2222-222222222222",
+                "reply_slug": "sample-reply-artvandelay",
+                "status": "PENDING",
+                "field_text": "Sample message for Art Vandelay status and reply screenshots.",
+            },
+            {
+                "owner": "artvandelay",
+                "public_id": "22222222-2222-2222-2222-222222222223",
+                "reply_slug": "sample-reply-artvandelay-accepted",
+                "status": "ACCEPTED",
+                "field_text": "Art Vandelay example message that appears under accepted.",
+            },
+            {
+                "owner": "artvandelay",
+                "public_id": "22222222-2222-2222-2222-222222222224",
+                "reply_slug": "sample-reply-artvandelay-declined",
+                "status": "DECLINED",
+                "field_text": "Art Vandelay example message for declined workflow screenshots.",
+            },
+        ]
+    )
 
     for item in samples:
         owner = db.session.scalars(
@@ -480,6 +514,8 @@ def create_sample_messages() -> None:
             db.session.add(fv)
         else:
             msg.reply_slug = cast(str, item["reply_slug"])
+
+        msg.status = MessageStatus[cast(str, item["status"]).upper()]
 
         db.session.commit()
 
