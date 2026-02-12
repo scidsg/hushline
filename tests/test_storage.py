@@ -17,6 +17,10 @@ from hushline.storage import BlobStorage, FsDriver, S3Driver, StorageDriver, pub
 
 PATH = "data.bin"
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:datetime.datetime.utcnow\\(\\) is deprecated.*:DeprecationWarning:botocore.auth"
+)
+
 
 def mock_drivers(skip: type, mocker: MockFixture) -> None:
     for attr in ["put", "delete", "serve"]:

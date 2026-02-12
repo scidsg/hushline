@@ -47,7 +47,7 @@ class FieldDefinition(Model):
         encrypted: bool,
         choices: list[str],
     ) -> None:
-        self.username = username
+        self.username_id = username.id
         self.label = label
         self.field_type = field_type
         self.required = required
@@ -56,10 +56,10 @@ class FieldDefinition(Model):
         self.choices = choices
 
         # Calculate sort_order
-        self.sort_order = (
-            db.session.query(FieldDefinition)
-            .filter(FieldDefinition.username_id == username.id)
-            .count()
+        self.sort_order = db.session.scalar(
+            db.select(db.func.count(FieldDefinition.id)).where(
+                FieldDefinition.username_id == username.id
+            )
         )
 
     @property

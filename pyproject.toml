@@ -51,6 +51,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 pythonpath = "."
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     # passlib unmaintianed, see: https://github.com/scidsg/hushline/issues/553
     "ignore:.*'crypt' is deprecated.*:DeprecationWarning",

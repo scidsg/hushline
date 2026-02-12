@@ -1,11 +1,8 @@
-import runpy
-import sys
-
 import pytest
 from flask import Flask
 
 from hushline.db import db
-from hushline.make_admin import toggle_admin
+from hushline.make_admin import main, toggle_admin
 from hushline.model import User, Username
 
 
@@ -42,22 +39,13 @@ def test_toggle_admin_flips_admin_flag_case_insensitive(
 
 
 def test_make_admin_main_without_username_exits(capsys: pytest.CaptureFixture[str]) -> None:
-    original_argv = sys.argv
-    try:
-        sys.argv = ["make_admin.py"]
-        with pytest.raises(SystemExit):
-            runpy.run_module("hushline.make_admin", run_name="__main__")
-    finally:
-        sys.argv = original_argv
+    rc = main(["make_admin.py"])
 
+    assert rc == 1
     captured = capsys.readouterr()
     assert "Usage: python make_admin.py <username>" in captured.out
 
 
 def test_make_admin_main_with_username_runs(app: Flask, user: User) -> None:
-    original_argv = sys.argv
-    try:
-        sys.argv = ["make_admin.py", user.primary_username.username]
-        runpy.run_module("hushline.make_admin", run_name="__main__")
-    finally:
-        sys.argv = original_argv
+    rc = main(["make_admin.py", user.primary_username.username])
+    assert rc == 0
