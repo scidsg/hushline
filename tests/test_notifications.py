@@ -198,7 +198,7 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.do_send_email")
-def test_notifications_enabled_yes_content_yes_encrypted_body_failed_client_encryption(
+def test_notifications_full_body_encryption_server_fallback(
     mock_do_send_email: MagicMock, client: FlaskClient, user: User
 ) -> None:
     # Enable email notifications, with no message content
@@ -234,8 +234,11 @@ def test_notifications_enabled_yes_content_yes_encrypted_body_failed_client_encr
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
-    # Check if do_send_email was called with plaintext message
-    mock_do_send_email.assert_called_once_with(user, plaintext_new_message_body)
+    mock_do_send_email.assert_called_once()
+    args, _ = mock_do_send_email.call_args
+    assert args[0] == user
+    assert pgp_message_sig in args[1]
+    assert plaintext_new_message_body not in args[1]
 
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
