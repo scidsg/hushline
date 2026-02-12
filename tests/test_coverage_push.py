@@ -8,6 +8,7 @@ import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask, Response, url_for
 from flask.sessions import SecureCookieSession
+from flask.testing import FlaskClient
 from stripe import InvalidRequestError
 from werkzeug.exceptions import ServiceUnavailable
 from wtforms import Form, StringField
@@ -34,7 +35,7 @@ from hushline.utils import if_not_none, parse_bool
 
 
 class _Cfg(email_mod.SMTPConfig):
-    def smtp_login(self, timeout: int = 10):  # type: ignore[override]
+    def smtp_login(self, timeout: int = 10) -> None:  # type: ignore[override]
         _ = timeout
         raise AssertionError("smtp_login should not be called in this test")
 
@@ -65,7 +66,7 @@ def test_button_widgets_and_coerce_status() -> None:
     form = DummyForm()
     button_html = str(forms_mod.Button()(form.required_field))
     assert "required" in button_html
-    assert "type=\"submit\"" in button_html
+    assert 'type="submit"' in button_html
 
     display_none_html = str(forms_mod.DisplayNoneButton()(form.required_field, **{"class": "x"}))
     assert "x display-none" in display_none_html
@@ -165,7 +166,7 @@ def test_send_email_decodes_bytes_and_returns_false_when_no_attempts(app: Flask)
     )
     with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
         app.config["SMTP_SEND_ATTEMPTS"] = 0
-        assert email_mod.send_email("to@example.com", "subject", b"bytes body", cfg) is False
+        assert email_mod.send_email("to@example.com", "subject", b"bytes body", cfg) is False  # type: ignore[arg-type]
 
 
 def test_message_status_text_upsert_delete_paths(app: Flask, user: User) -> None:
@@ -443,7 +444,7 @@ def test_notifications_toggle_include_content_true_path(client) -> None:  # type
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_authentication_required_redirects_to_2fa_when_not_authenticated(
-    client, user: User
+    client: FlaskClient, user: User
 ) -> None:  # type: ignore[no-untyped-def]
     with client.session_transaction() as sess:
         sess["user_id"] = user.id

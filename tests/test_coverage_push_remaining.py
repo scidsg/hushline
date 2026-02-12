@@ -11,9 +11,8 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.exceptions import NotFound
 
-from hushline import crypto
 from hushline import create_app as create_hushline_app
-from hushline import register_error_handlers
+from hushline import crypto, register_error_handlers
 from hushline.db import db
 from hushline.model import (
     FieldType,
@@ -40,11 +39,11 @@ def test_enums_defensive_paths() -> None:
         ARCHIVED=object(),
     )
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.display_str.fget(fake_status)  # type: ignore[arg-type]
+        _ = MessageStatus.display_str(fake_status)  # type: ignore[arg-type]
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.emoji.fget(fake_status)  # type: ignore[arg-type]
+        _ = MessageStatus.emoji(fake_status)  # type: ignore[arg-type]
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.default_text.fget(fake_status)  # type: ignore[arg-type]
+        _ = MessageStatus.default_text(fake_status)  # type: ignore[arg-type]
 
     fake_field_type = SimpleNamespace(
         TEXT=object(),
@@ -76,7 +75,7 @@ def test_field_value_remaining_paths(user: User) -> None:
     field_def = user.primary_username.message_fields[-1]
     fv = FieldValue(field_def, msg, "x", False)
     db.session.add(fv)
-    fv.value = ["a", "b"]
+    fv.value = ["a", "b"]  # type: ignore[assignment]
     assert "a\nb" in (fv.value or "")
     assert "FieldValue" in repr(fv)
 
@@ -93,11 +92,13 @@ def test_field_value_remaining_paths(user: User) -> None:
 
 
 def test_hushline_init_remaining_paths(app) -> None:  # type: ignore[no-untyped-def]
-    with patch.dict(os.environ, {"FLASK_DEBUG": "1"}):
-        with patch.object(logging.Logger, "setLevel") as set_level_mock:
-            extra_app = create_hushline_app(dict(app.config))
-            assert isinstance(extra_app, Flask)
-            set_level_mock.assert_any_call(logging.DEBUG)
+    with (
+        patch.dict(os.environ, {"FLASK_DEBUG": "1"}),
+        patch.object(logging.Logger, "setLevel") as set_level_mock,
+    ):
+        extra_app = create_hushline_app(dict(app.config))
+        assert isinstance(extra_app, Flask)
+        set_level_mock.assert_any_call(logging.DEBUG)
 
     debug_app = Flask(__name__)
     debug_app.config["DEBUG"] = True
@@ -146,7 +147,9 @@ def test_stripe_invoice_remaining_paths(user: User) -> None:
         total=0,
         status="open",
         created=None,
-        lines=SimpleNamespace(data=[SimpleNamespace(plan=SimpleNamespace(product=business_tier.stripe_product_id))]),
+        lines=SimpleNamespace(
+            data=[SimpleNamespace(plan=SimpleNamespace(product=business_tier.stripe_product_id))]
+        ),
     )
     invoice = StripeInvoice(invoice_ok)  # type: ignore[arg-type]
     assert invoice.total == 0
