@@ -7,6 +7,7 @@ from helpers import get_captcha_from_session
 
 from hushline.db import db
 from hushline.model import Message, User
+from hushline.routes.common import format_full_message_email_body
 
 msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
@@ -148,9 +149,13 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
 def test_notifications_enabled_yes_content_yes_encrypted_body(
-    mock_do_send_email: MagicMock, client: FlaskClient, user: User
+    mock_do_send_email: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
 ) -> None:
     # Enable email notifications, with no message content
     user.enable_email_notifications = True
@@ -189,6 +194,8 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
 
     # Check if do_send_email was called with encrypted email body
     mock_do_send_email.assert_called_once_with(user, encrypted_email_body)
+    # Frontend-provided encrypted body should be sent as-is without server re-encryption.
+    mock_encrypt_message.assert_not_called()
 
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
@@ -197,9 +204,13 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
 def test_notifications_full_body_encryption_server_fallback(
-    mock_do_send_email: MagicMock, client: FlaskClient, user: User
+    mock_do_send_email: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
 ) -> None:
     # Enable email notifications, with no message content
     user.enable_email_notifications = True
@@ -208,6 +219,10 @@ def test_notifications_full_body_encryption_server_fallback(
     db.session.commit()
 
     encrypted_email_body = ""
+    server_encrypted_email_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    mock_encrypt_message.return_value = server_encrypted_email_body
 
     response = client.post(
         url_for("profile", username=user.primary_username.username),
@@ -234,10 +249,15 @@ def test_notifications_full_body_encryption_server_fallback(
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
 
+    expected_fallback_body = format_full_message_email_body(
+        [("Contact Method", msg_contact_method), ("Message", msg_content)]
+    )
+    mock_encrypt_message.assert_called_once_with(expected_fallback_body, user.pgp_key)
+
     mock_do_send_email.assert_called_once()
     args, _ = mock_do_send_email.call_args
     assert args[0] == user
-    assert pgp_message_sig in args[1]
+    assert args[1] == server_encrypted_email_body
     assert plaintext_new_message_body not in args[1]
 
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
