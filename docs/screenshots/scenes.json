@@ -229,7 +229,14 @@
       "title": "Onboarding - Step 1 Profile (newman)",
       "path": "/onboarding?step=profile",
       "session": "newman",
-      "waitForSelector": "#display_name"
+      "waitForSelector": "#display_name",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#display_name",
+          "value": ""
+        }
+      ]
     },
     {
       "slug": "auth-newman-onboarding-encryption",
