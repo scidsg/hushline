@@ -18,13 +18,8 @@ def register_delete_account_routes(bp: Blueprint) -> None:
     @bp.route("/delete-account", methods=["POST"])
     @authentication_required
     def delete_account() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            flash("Please log in to continue.")
-            return redirect(url_for("login"))
-
         with db.session.begin_nested():
-            user = db.session.get(User, user_id)
+            user = db.session.get(User, session["user_id"])
             if user:
                 if user.is_admin:
                     admin_count = db.session.query(User).filter_by(is_admin=True).count()

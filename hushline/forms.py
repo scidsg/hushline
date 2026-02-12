@@ -21,8 +21,6 @@ class Button:
         kwargs.setdefault("type", "submit")
         kwargs.setdefault("value", field.label.text)
 
-        if "value" not in kwargs:
-            kwargs["value"] = field._value()
         if "required" not in kwargs and "required" in getattr(field, "flags", []):
             kwargs["required"] = True
 

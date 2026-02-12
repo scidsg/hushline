@@ -26,11 +26,7 @@ def register_2fa_routes(bp: Blueprint) -> None:
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required
     def toggle_2fa() -> Response:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, session["user_id"])
         if user and user.totp_secret:
             return redirect(url_for(".disable_2fa"))
 
@@ -84,11 +80,7 @@ def register_2fa_routes(bp: Blueprint) -> None:
     @bp.route("/disable-2fa", methods=["POST"])
     @authentication_required
     def disable_2fa() -> Response | str:
-        user_id = session.get("user_id")
-        if not user_id:
-            return redirect(url_for("login"))
-
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, session["user_id"])
         if user:
             user.totp_secret = None
         db.session.commit()

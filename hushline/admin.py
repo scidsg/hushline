@@ -146,17 +146,9 @@ def create_blueprint() -> Blueprint:
             if user is None:
                 abort(404)
 
-            if user.is_admin:
-                admin_count = db.session.query(User).filter_by(is_admin=True).count()
-                if admin_count == 1:
-                    flash("⛔️ You cannot delete the only admin account")
-                    return abort(400)
-
             delete_user_and_related(user)
 
         db.session.commit()
-        if session.get("user_id") == user_id:
-            session.clear()
         flash("🔥 User account and all related information have been deleted.", "success")
         return redirect(url_for("settings.admin"))
 

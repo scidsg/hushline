@@ -166,8 +166,6 @@ def register_onboarding_routes(app: Flask) -> None:
                     return redirect(url_for("inbox"))
                 else:
                     status_code = 400
-            else:
-                status_code = 400
 
         return render_template(
             "onboarding.html",

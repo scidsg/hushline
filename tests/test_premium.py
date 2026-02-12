@@ -968,3 +968,103 @@ async def test_worker_waits_for_tables_before_starting(app: Flask, mocker: MockF
 
     with pytest.raises(RuntimeError, match="stop waiting"):
         await worker(app)
+
+
+@pytest.mark.asyncio()
+async def test_worker_processes_subscription_updated_and_deleted_events(
+    app: Flask, mocker: MockFixture
+) -> None:
+    pending_updated = StripeEvent(
+        MagicMock(id="evt_worker_updated", created=1, type="customer.subscription.updated")
+    )
+    pending_updated.event_data = json.dumps({"id": "evt_worker_updated"})
+    pending_updated.status = StripeEventStatusEnum.PENDING
+
+    pending_deleted = StripeEvent(
+        MagicMock(id="evt_worker_deleted", created=2, type="customer.subscription.deleted")
+    )
+    pending_deleted.event_data = json.dumps({"id": "evt_worker_deleted"})
+    pending_deleted.status = StripeEventStatusEnum.PENDING
+
+    db.session.add_all([pending_updated, pending_deleted])
+    db.session.commit()
+
+    mocker.patch("hushline.premium.sa.create_engine", return_value=MagicMock())
+    inspect_obj = MagicMock()
+    inspect_obj.has_table.return_value = True
+    mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
+
+    subscription_obj = MagicMock()
+    mocker.patch(
+        "hushline.premium.stripe.Subscription.construct_from", return_value=subscription_obj
+    )
+    handle_updated = mocker.patch("hushline.premium.handle_subscription_updated")
+    handle_deleted = mocker.patch("hushline.premium.handle_subscription_deleted")
+    mocker.patch(
+        "hushline.premium.stripe.Event.construct_from",
+        side_effect=[
+            MagicMock(
+                type="customer.subscription.updated",
+                data=MagicMock(object={"id": "sub_updated"}),
+            ),
+            MagicMock(
+                type="customer.subscription.deleted",
+                data=MagicMock(object={"id": "sub_deleted"}),
+            ),
+        ],
+    )
+
+    sleep_counter = {"calls": 0}
+
+    async def _stop_after_processed(_seconds: int) -> None:
+        sleep_counter["calls"] += 1
+        if sleep_counter["calls"] > 0:
+            raise RuntimeError("stop worker")
+
+    mocker.patch("hushline.premium.asyncio.sleep", side_effect=_stop_after_processed)
+
+    with pytest.raises(RuntimeError, match="stop worker"):
+        await worker(app)
+
+    db.session.refresh(pending_updated)
+    db.session.refresh(pending_deleted)
+    assert pending_updated.status == StripeEventStatusEnum.FINISHED
+    assert pending_deleted.status == StripeEventStatusEnum.FINISHED
+    handle_updated.assert_called_once_with(subscription_obj)
+    handle_deleted.assert_called_once_with(subscription_obj)
+
+
+@pytest.mark.asyncio()
+async def test_worker_processes_invoice_created_event(app: Flask, mocker: MockFixture) -> None:
+    pending = StripeEvent(
+        MagicMock(id="evt_worker_invoice_created", created=1, type="invoice.created")
+    )
+    pending.event_data = json.dumps({"id": "evt_worker_invoice_created"})
+    pending.status = StripeEventStatusEnum.PENDING
+    db.session.add(pending)
+    db.session.commit()
+
+    mocker.patch("hushline.premium.sa.create_engine", return_value=MagicMock())
+    inspect_obj = MagicMock()
+    inspect_obj.has_table.return_value = True
+    mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
+
+    invoice_obj = MagicMock()
+    mocker.patch("hushline.premium.stripe.Invoice.construct_from", return_value=invoice_obj)
+    handle_invoice_created_mock = mocker.patch("hushline.premium.handle_invoice_created")
+    mocker.patch(
+        "hushline.premium.stripe.Event.construct_from",
+        return_value=MagicMock(type="invoice.created", data=MagicMock(object={"id": "inv_abc"})),
+    )
+
+    async def _stop_sleep(_seconds: int) -> None:
+        raise RuntimeError("stop worker")
+
+    mocker.patch("hushline.premium.asyncio.sleep", side_effect=_stop_sleep)
+
+    with pytest.raises(RuntimeError, match="stop worker"):
+        await worker(app)
+
+    db.session.refresh(pending)
+    assert pending.status == StripeEventStatusEnum.FINISHED
+    handle_invoice_created_mock.assert_called_once_with(invoice_obj)

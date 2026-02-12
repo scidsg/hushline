@@ -60,6 +60,13 @@ markers = [
     "local_only",
 ]
 
+[tool.coverage.report]
+exclude_also = [
+    "^\\s*if TYPE_CHECKING:",
+    "^\\s*if __name__ == [\"']__main__[\"']:",
+    "^\\s*raise Exception\\(f\"Programming error\\..*",
+]
+
 [tool.ruff]
 line-length = 100
 indent-width = 4
