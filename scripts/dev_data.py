@@ -46,7 +46,7 @@ def create_users() -> None:
             ],
             "pgp_key": PGP_KEY,
             "onboarding_complete": True,
-            "email": "admin@hushline.local",
+            "email": "admin@hushline.app",
         },
         {
             "username": "artvandelay",
@@ -64,7 +64,7 @@ def create_users() -> None:
             ],
             "pgp_key": PGP_KEY,
             "onboarding_complete": True,
-            "email": "artvandelay@hushline.local",
+            "email": "artvandelay@hushline.app",
         },
         {
             "username": "jerryseinfeld",
@@ -284,7 +284,7 @@ def create_users() -> None:
         extra_fields = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
         pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
         onboarding_complete = cast(bool, data.get("onboarding_complete", True))
-        email = cast(Optional[str], data.get("email", f"{username}@hushline.local"))
+        email = cast(Optional[str], data.get("email", f"{username}@hushline.app"))
 
         primary = db.session.scalars(
             select(Username).where(
