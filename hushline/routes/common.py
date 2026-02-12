@@ -82,12 +82,24 @@ def do_send_email(user: User, body: str) -> None:
                 encryption=user.smtp_encryption,
             )
         else:
+            smtp_username = current_app.config.get("SMTP_USERNAME")
+            smtp_server = current_app.config.get("SMTP_SERVER")
+            smtp_port = current_app.config.get("SMTP_PORT")
+            smtp_password = current_app.config.get("SMTP_PASSWORD")
+            notifications_address = current_app.config.get("NOTIFICATIONS_ADDRESS")
+            if not all(
+                [smtp_username, smtp_server, smtp_port, smtp_password, notifications_address]
+            ):
+                current_app.logger.warning(
+                    "Skipping email send: default SMTP is not fully configured"
+                )
+                return
             smtp_config = create_smtp_config(
-                current_app.config["SMTP_USERNAME"],
-                current_app.config["SMTP_SERVER"],
-                current_app.config["SMTP_PORT"],
-                current_app.config["SMTP_PASSWORD"],
-                current_app.config["NOTIFICATIONS_ADDRESS"],
+                smtp_username,
+                smtp_server,
+                smtp_port,
+                smtp_password,
+                notifications_address,
                 encryption=SMTPEncryption[current_app.config["SMTP_ENCRYPTION"]],
             )
 
