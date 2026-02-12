@@ -235,6 +235,10 @@
           "type": "fill",
           "selector": "#display_name",
           "value": ""
+        },
+        {
+          "type": "click",
+          "selector": ".onboarding-wizard h3"
         }
       ]
     },
