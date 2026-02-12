@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -38,12 +39,18 @@ def test_enums_defensive_paths() -> None:
         DECLINED=object(),
         ARCHIVED=object(),
     )
+    display_str_prop = cast(property, MessageStatus.__dict__["display_str"])
+    emoji_prop = cast(property, MessageStatus.__dict__["emoji"])
+    default_text_prop = cast(property, MessageStatus.__dict__["default_text"])
+    assert display_str_prop.fget is not None
+    assert emoji_prop.fget is not None
+    assert default_text_prop.fget is not None
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.display_str(fake_status)  # type: ignore[arg-type]
+        _ = display_str_prop.fget(fake_status)
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.emoji(fake_status)  # type: ignore[arg-type]
+        _ = emoji_prop.fget(fake_status)
     with pytest.raises(Exception, match="Programming error"):
-        _ = MessageStatus.default_text(fake_status)  # type: ignore[arg-type]
+        _ = default_text_prop.fget(fake_status)
 
     fake_field_type = SimpleNamespace(
         TEXT=object(),
