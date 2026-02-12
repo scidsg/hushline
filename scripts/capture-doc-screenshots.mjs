@@ -125,6 +125,42 @@ async function runAction(page, action) {
   }
 }
 
+async function getPageDimensions(page) {
+  return page.evaluate(() => {
+    const doc = document.documentElement;
+    const body = document.body;
+    const scrollHeight = Math.max(
+      doc?.scrollHeight || 0,
+      body?.scrollHeight || 0,
+      doc?.offsetHeight || 0,
+      body?.offsetHeight || 0,
+      doc?.clientHeight || 0,
+      body?.clientHeight || 0,
+    );
+    const viewportHeight = Math.max(window.innerHeight || 0, doc?.clientHeight || 0);
+    return { scrollHeight, viewportHeight };
+  });
+}
+
+function buildScrollOffsets(scrollHeight, viewportHeight) {
+  if (viewportHeight <= 0) return [0];
+  const maxOffset = Math.max(0, scrollHeight - viewportHeight);
+  const offsets = [0];
+  for (let y = viewportHeight; y < maxOffset; y += viewportHeight) {
+    offsets.push(y);
+  }
+  if (maxOffset > 0 && offsets[offsets.length - 1] !== maxOffset) {
+    offsets.push(maxOffset);
+  }
+  return offsets;
+}
+
+async function screenshotAtOffset(page, offsetY, filePath) {
+  await page.evaluate((y) => window.scrollTo(0, y), offsetY);
+  await sleep(120);
+  await page.screenshot({ path: filePath, fullPage: false });
+}
+
 function makeContextOptions(viewport, jsEnabled, colorScheme) {
   const opts = {
     viewport: { width: viewport.width, height: viewport.height },
@@ -327,29 +363,60 @@ async function main() {
         const captureModes =
           Array.isArray(scene.captureModes) && scene.captureModes.length
             ? scene.captureModes
-            : ["fold", "full"];
+            : ["fold", "scroll", "full"];
         for (const mode of captureModes) {
-          const normalizedMode = mode === "full" ? "full" : "fold";
-          const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-${normalizedMode}.png`;
-          try {
-            await page.screenshot({
-              path: path.join(targetDir, fileName),
-              fullPage: normalizedMode === "full",
-            });
+          if (mode === "fold") {
+            const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-fold.png`;
+            await screenshotAtOffset(page, 0, path.join(targetDir, fileName));
             files.push({
-              mode: normalizedMode,
+              mode: "fold",
               file: `${sessionDir}/${fileName}`,
             });
-          } catch (err) {
-            const fullPageOptional = scene.fullPageOptional !== false;
-            if (normalizedMode === "full" && fullPageOptional) {
-              process.stdout.write(
-                `Skipping full-page capture for ${scene.slug} (${viewport.id}, ${theme}): ${err}\n`,
-              );
-              continue;
-            }
-            throw err;
+            continue;
           }
+
+          if (mode === "scroll") {
+            const { scrollHeight, viewportHeight } = await getPageDimensions(page);
+            const offsets = buildScrollOffsets(scrollHeight, viewportHeight).filter(
+              (y) => y > 0,
+            );
+            for (let i = 0; i < offsets.length; i += 1) {
+              const modeName = `window-${String(i + 2).padStart(2, "0")}`;
+              const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-${modeName}.png`;
+              await screenshotAtOffset(page, offsets[i], path.join(targetDir, fileName));
+              files.push({
+                mode: modeName,
+                file: `${sessionDir}/${fileName}`,
+              });
+            }
+            continue;
+          }
+
+          if (mode === "full") {
+            const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-full.png`;
+            try {
+              await page.screenshot({
+                path: path.join(targetDir, fileName),
+                fullPage: true,
+              });
+              files.push({
+                mode: "full",
+                file: `${sessionDir}/${fileName}`,
+              });
+            } catch (err) {
+              const fullPageOptional = scene.fullPageOptional !== false;
+              if (fullPageOptional) {
+                process.stdout.write(
+                  `Skipping full-page capture for ${scene.slug} (${viewport.id}, ${theme}): ${err}\n`,
+                );
+                continue;
+              }
+              throw err;
+            }
+            continue;
+          }
+
+          throw new Error(`Unknown capture mode: ${mode}`);
         }
 
         await page.close();
@@ -428,7 +495,8 @@ async function main() {
     "This folder stores generated screenshot sets for docs.",
     "Captures are generated from local app state using scripted scenes.",
     "Each scene captures both light and dark mode by default.",
-    "Each scene captures above-the-fold and full-page by default (full-page is skipped when unsupported).",
+    "Each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.",
+    "Full-page capture is skipped when unsupported.",
     "Each release stores images by session under `releases/<version>/<session>/`.",
     "",
     "## Latest run",
