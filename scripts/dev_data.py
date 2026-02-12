@@ -133,6 +133,7 @@ def create_users() -> None:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": False,
+            "display_name": "",
             # Keep newman as an intentionally incomplete account for onboarding screenshots.
             "onboarding_complete": False,
         },
