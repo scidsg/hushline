@@ -6,7 +6,7 @@ from sqlalchemy import func
 
 from hushline import create_app
 from hushline.db import db
-from hushline.models import Username
+from hushline.model import Username
 
 
 def toggle_admin(username: str) -> None:

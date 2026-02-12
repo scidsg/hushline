@@ -275,6 +275,7 @@ def handle_invoice_created(invoice: stripe.Invoice) -> None:
         new_invoice = StripeInvoice(invoice)
     except ValueError as e:
         current_app.logger.error(f"Error creating invoice: {e}")
+        return
 
     db.session.add(new_invoice)
     db.session.commit()

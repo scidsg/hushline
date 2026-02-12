@@ -1,9 +1,12 @@
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from pytest_mock import MockFixture
+from wtforms.validators import ValidationError
 
 from hushline.db import db
 from hushline.model import (
+    Tier,
     User,
     Username,
 )
@@ -192,3 +195,135 @@ def test_admin_actions_require_csrf_token(
     assert response.status_code == 400
 
     app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_verified_user_not_found(app: Flask, client: FlaskClient) -> None:
+    app.config["USER_VERIFICATION_ENABLED"] = True
+    response = client.post(
+        url_for("admin.toggle_verified", user_id=999999),
+        data={"is_verified": "true"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_verified_username_nonmanaged_forbidden(
+    app: Flask, client: FlaskClient, user_alias: Username
+) -> None:
+    app.config["USER_VERIFICATION_ENABLED"] = False
+    response = client.post(
+        url_for("admin.toggle_verified_username", username_id=user_alias.id),
+        data={"is_verified": "true"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_verified_username_not_found(app: Flask, client: FlaskClient) -> None:
+    app.config["USER_VERIFICATION_ENABLED"] = True
+    response = client.post(
+        url_for("admin.toggle_verified_username", username_id=999999),
+        data={"is_verified": "true"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_admin_missing_bool_field_returns_bad_request(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(url_for("admin.toggle_admin", user_id=user.id), data={})
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_admin_invalid_bool_field_returns_bad_request(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(
+        url_for("admin.toggle_admin", user_id=user.id),
+        data={"is_admin": "not-a-bool"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_admin_user_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.toggle_admin", user_id=999999),
+        data={"is_admin": "true"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_tier_missing_tier_returns_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.update_tier", tier_id=999999),
+        data={"monthly_price": "20"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_tier_missing_monthly_price(client: FlaskClient) -> None:
+    response = client.post(url_for("admin.update_tier", tier_id=Tier.business_tier_id()), data={})
+    assert response.status_code == 302
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_tier_invalid_monthly_price(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.update_tier", tier_id=Tier.business_tier_id()),
+        data={"monthly_price": "abc"},
+    )
+    assert response.status_code == 302
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_tier_success(client: FlaskClient, app: Flask, mocker: MockFixture) -> None:
+    update_price = mocker.patch("hushline.admin.update_price")
+    response = client.post(
+        url_for("admin.update_tier", tier_id=Tier.business_tier_id()),
+        data={"monthly_price": "25.50"},
+    )
+    assert response.status_code == 302
+
+    business_tier = db.session.get(Tier, Tier.business_tier_id())
+    assert business_tier is not None
+    assert business_tier.monthly_amount == 2550
+    update_price.assert_called_once_with(business_tier)
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_user_not_found(client: FlaskClient) -> None:
+    response = client.post(url_for("admin.delete_user", user_id=999999))
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_username_not_found(client: FlaskClient) -> None:
+    response = client.post(url_for("admin.delete_username", username_id=999999))
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_primary_username_blocked(client: FlaskClient, admin_user: User) -> None:
+    response = client.post(
+        url_for("admin.delete_username", username_id=admin_user.primary_username.id)
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_csrf_invalid_token_returns_bad_request(
+    app: Flask, client: FlaskClient, mocker: MockFixture, user: User
+) -> None:
+    app.config["WTF_CSRF_ENABLED"] = True
+    mocker.patch("hushline.admin.validate_csrf", side_effect=ValidationError("bad csrf"))
+    response = client.post(
+        url_for("admin.toggle_admin", user_id=user.id),
+        data={"csrf_token": "bad", "is_admin": "true"},
+    )
+    assert response.status_code == 400

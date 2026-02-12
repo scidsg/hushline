@@ -25,7 +25,7 @@ def register_proton_routes(bp: Blueprint) -> None:
 
         if not form.validate_on_submit():
             flash("⛔️ Invalid email address.")
-            return redirect(url_for(".index"))
+            return redirect(url_for(".encryption"))
 
         email = form.email.data
 

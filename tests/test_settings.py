@@ -4,6 +4,7 @@ from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+import requests
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -15,6 +16,7 @@ from hushline.model import (
     Message,
     OrganizationSetting,
     SMTPEncryption,
+    Tier,
     User,
     Username,
 )
@@ -39,6 +41,11 @@ from hushline.settings import (
     UserGuidancePromptContentForm,
 )
 from hushline.settings.branding import ToggleDonateButtonForm
+from hushline.settings.notifications import (
+    ToggleEncryptEntireBodyForm,
+    ToggleIncludeContentForm,
+    ToggleNotificationsForm,
+)
 from tests.helpers import form_to_data
 
 
@@ -273,6 +280,84 @@ def test_add_pgp_key_proton_redirects_to_encryption(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_add_pgp_key_proton_invalid_form_redirects_index(client: FlaskClient) -> None:
+    response = client.post(url_for("settings.update_pgp_key_proton"), data={"email": ""})
+    assert response.status_code == 302
+    assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_request_exception_redirects_encryption(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.side_effect = requests.exceptions.RequestException("network error")
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "user@proton.me"},
+    )
+    assert response.status_code == 302
+    assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.can_encrypt_with_pgp_key", return_value=False)
+@patch("hushline.settings.proton.is_valid_pgp_key", return_value=True)
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_non_encryptable_key_redirects_encryption(
+    requests_get: MagicMock,
+    is_valid_pgp_key: MagicMock,
+    can_encrypt_with_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    _ = (is_valid_pgp_key, can_encrypt_with_pgp_key)
+    requests_get.return_value = MagicMock(status_code=200, text="dummy-pgp-key")
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "user@proton.me"},
+    )
+    assert response.status_code == 302
+    assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.is_valid_pgp_key", return_value=False)
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_invalid_key_redirects_encryption(
+    requests_get: MagicMock, is_valid_pgp_key: MagicMock, client: FlaskClient
+) -> None:
+    _ = is_valid_pgp_key
+    requests_get.return_value = MagicMock(status_code=200, text="not-a-key")
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "user@proton.me"},
+    )
+    assert response.status_code == 302
+    assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_non_200_redirects_encryption(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.return_value = MagicMock(status_code=404, text="")
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "user@proton.me"},
+    )
+    assert response.status_code == 302
+    assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_advanced_settings_page_loads(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.advanced"))
+    assert response.status_code == 200
+    assert "Download My Data" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.settings.notifications.is_safe_smtp_host", return_value=False)
 def test_update_smtp_settings_reject_private_host(
@@ -480,6 +565,70 @@ def test_update_smtp_settings_default_forwarding(
     assert updated_user.smtp_password is None
     assert updated_user.smtp_encryption.value == SMTPEncryption.default().value
     assert updated_user.smtp_sender is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_notifications_setting(client: FlaskClient, user: User) -> None:
+    user.enable_email_notifications = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            ToggleNotificationsForm.submit.name: "",
+            "enable_email_notifications": "y",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Email notifications enabled" in response.text
+    assert user.enable_email_notifications
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_include_content_setting(client: FlaskClient, user: User) -> None:
+    user.email_include_message_content = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            ToggleIncludeContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Email message content disabled" in response.text
+    assert not user.email_include_message_content
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_encrypt_entire_body_setting(client: FlaskClient, user: User) -> None:
+    user.email_encrypt_entire_body = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            ToggleEncryptEntireBodyForm.submit.name: "",
+            "encrypt_entire_body": "y",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "The entire body of email messages will be encrypted" in response.text
+    assert user.email_encrypt_entire_body
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_invalid_post_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("settings.notifications"),
+        data={"not_a_real_form": "1"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "Your submitted form could not be processed" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1122,6 +1271,51 @@ def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_intro_text_reset_to_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryTextForm.validate",
+        lambda *_a, **_k: True,
+    )
+    OrganizationSetting.upsert(OrganizationSetting.DIRECTORY_INTRO_TEXT, "to be cleared")
+    db.session.commit()
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"markdown": "   ", UpdateDirectoryTextForm.submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory intro text was reset to defaults" in resp.text
+    assert OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT) is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_intro_text_reset_aborts_when_multiple_rows_would_delete(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryTextForm.validate",
+        lambda *_a, **_k: True,
+    )
+
+    class _Result:
+        rowcount = 2
+
+    monkeypatch.setattr(
+        "hushline.settings.branding.db.session.execute", lambda *_a, **_k: _Result()
+    )
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"markdown": "", UpdateDirectoryTextForm.submit.name: ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 503
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
 def test_homepage_user(client: FlaskClient, user: User, admin: User) -> None:
     resp = client.post(
         url_for("settings.branding"),
@@ -1170,6 +1364,64 @@ def test_homepage_user(client: FlaskClient, user: User, admin: User) -> None:
     resp = client.get(url_for("index"))
     assert resp.status_code == 302
     assert resp.headers["Location"] == url_for("directory")
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_homepage_reset_when_already_default(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={SetHomepageUsernameForm.delete_submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Homepage reset to default" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_homepage_reset_multiple_rows_error(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _Result:
+        rowcount = 2
+
+    monkeypatch.setattr(
+        "hushline.settings.branding.db.session.execute", lambda *_a, **_k: _Result()
+    )
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={SetHomepageUsernameForm.delete_submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 500
+    assert "setting could not reset" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_index_clears_invalid_session_user(client: FlaskClient) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = 999999
+        session["is_authenticated"] = True
+
+    resp = client.get(url_for("index"), follow_redirects=True)
+    assert resp.status_code == 200
+    assert "User not found. Please log in again." in resp.text
+
+
+def test_index_warns_when_homepage_username_missing(client: FlaskClient, user: User) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.HOMEPAGE_USER_NAME, "missing-user")
+    db.session.commit()
+
+    resp = client.get(url_for("index"))
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == url_for("directory")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_index_redirects_authenticated_user_to_inbox(client: FlaskClient) -> None:
+    resp = client.get(url_for("index"))
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == url_for("inbox")
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
@@ -1223,6 +1475,36 @@ def test_update_profile_header(client: FlaskClient, admin: User) -> None:
         ).one_or_none()
         is None
     )
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_profile_header_reset_when_already_default(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"template": "", UpdateProfileHeaderForm.submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Profile header template reset to default" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_profile_header_reset_multiple_rows_error(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _Result:
+        rowcount = 2
+
+    monkeypatch.setattr(
+        "hushline.settings.branding.db.session.execute", lambda *_a, **_k: _Result()
+    )
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"template": "", UpdateProfileHeaderForm.submit.name: ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1281,3 +1563,115 @@ def test_hide_donate_button(client: FlaskClient, app: Flask, admin: User) -> Non
 
     setting = OrganizationSetting.query.filter_by(key=OrganizationSetting.HIDE_DONATE_BUTTON).one()
     assert setting.value is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_encryption_post_invalid_form_returns_400(client: FlaskClient, app: Flask) -> None:
+    app.config["WTF_CSRF_ENABLED"] = True
+    response = client.post(url_for("settings.encryption"), data={}, follow_redirects=False)
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_route_missing_alias_returns_404(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.alias", username_id=999999), follow_redirects=False)
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_alias_missing_alias_returns_404(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("settings.delete_alias", username_id=999999), follow_redirects=False
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_missing_alias_redirects_index(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("settings.alias_fields", username_id=999999), follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.aliases"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_route_invalid_post_returns_400(
+    client: FlaskClient, app: Flask, user_alias: Username
+) -> None:
+    app.config["WTF_CSRF_ENABLED"] = True
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_post_uses_handle_field_post_result(
+    client: FlaskClient, app: Flask, user_alias: Username, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    monkeypatch.setattr(
+        "hushline.settings.aliases.handle_field_post",
+        lambda _alias: ("handled", 201),
+    )
+    response = client.post(
+        url_for("settings.alias_fields", username_id=user_alias.id),
+        data={"any": "value"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_route_raises_if_primary_username_missing(client: FlaskClient, user: User) -> None:
+    user.primary_username.is_primary = False
+    db.session.commit()
+
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 500
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_raises_if_primary_username_missing(client: FlaskClient, user: User) -> None:
+    user.primary_username.is_primary = False
+    db.session.commit()
+
+    response = client.get(url_for("settings.profile_fields"), follow_redirects=False)
+    assert response.status_code == 500
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_invalid_post_returns_400(client: FlaskClient, app: Flask) -> None:
+    app.config["WTF_CSRF_ENABLED"] = True
+    response = client.post(url_for("settings.profile"), data={}, follow_redirects=False)
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_renders_business_price_with_two_decimals(client: FlaskClient) -> None:
+    business_tier = db.session.scalars(db.select(Tier).filter_by(name="Business")).one()
+    business_tier.monthly_amount = 2055
+    db.session.commit()
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 200
+    assert "$20.55/mo to unlock more features!" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_post_uses_handle_field_post_result(
+    client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    monkeypatch.setattr(
+        "hushline.settings.profile.handle_field_post",
+        lambda _username: ("handled", 202),
+    )
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={"any": "value"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 202
