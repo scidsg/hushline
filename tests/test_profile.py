@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -55,6 +56,12 @@ def test_profile_accepts_case_insensitive_username(
     response = client.get(url_for("profile", username=alt_username))
     assert response.status_code == 200
     assert user_alias.username in response.text
+
+
+def test_profile_404_for_unknown_username(client: FlaskClient) -> None:
+    response = client.get(url_for("profile", username="does-not-exist"), follow_redirects=True)
+    assert response.status_code == 404
+    assert "404: Not Found" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -171,6 +178,115 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, user: User) -> None:
+    user.pgp_key = None
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "username_user_id": user.id,
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "cannot submit messages to users who have not set a PGP key" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_post_form_validation_errors_are_rendered(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": "",
+            "field_1": "",
+            "username_user_id": user.id,
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "There was an error submitting your message" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_full_body_encryption_fallback_to_generic_when_no_fields(
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    db.session.commit()
+
+    for field_def in user.primary_username.message_fields:
+        field_def.enabled = False
+    db.session.commit()
+
+    sent: list[str] = []
+
+    def fake_send_email(_user: User, body: str) -> None:
+        sent.append(body)
+
+    monkeypatch.setattr("hushline.routes.profile.do_send_email", fake_send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "username_user_id": user.id,
+            "encrypted_email_body": "",
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Message submitted successfully." in response.text
+    assert sent == ["You have a new Hush Line message! Please log in to read it."]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message", side_effect=ValueError("boom"))
+def test_profile_full_body_encryption_exception_falls_back_to_generic(
+    encrypt_message_mock: MagicMock,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = encrypt_message_mock
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    db.session.commit()
+
+    sent: list[str] = []
+
+    def fake_send_email(_user: User, body: str) -> None:
+        sent.append(body)
+
+    monkeypatch.setattr("hushline.routes.profile.do_send_email", fake_send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "username_user_id": user.id,
+            "encrypted_email_body": "",
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Message submitted successfully." in response.text
+    assert sent == ["You have a new Hush Line message! Please log in to read it."]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> None:
     user.primary_username.extra_field_label1 = "Signal username"
     user.primary_username.extra_field_value1 = "singleusername.666"
@@ -202,3 +318,29 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
         or "&lt;script&gt;alert('xss')&lt;/script&gt;" in html_str
     )
     assert "<script>alert('xss')</script>" not in html_str
+
+
+def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:
+    response = client.get(
+        url_for("redirect_submit_message", username=user.primary_username.username),
+        follow_redirects=False,
+    )
+    assert response.status_code == 301
+    assert response.headers["Location"].endswith(
+        url_for("profile", username=user.primary_username.username)
+    )
+
+
+def test_submission_success_without_reply_slug_redirects_directory(client: FlaskClient) -> None:
+    response = client.get(url_for("submission_success"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("directory"))
+
+
+def test_submission_success_404_when_message_missing(client: FlaskClient) -> None:
+    with client.session_transaction() as sess:
+        sess["reply_slug"] = "does-not-exist"
+
+    response = client.get(url_for("submission_success"), follow_redirects=True)
+    assert response.status_code == 404
+    assert "404: Not Found" in response.text

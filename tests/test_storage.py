@@ -2,6 +2,7 @@ import os
 import random
 import string
 from io import BytesIO
+from pathlib import Path
 from typing import Callable, Generator, Mapping
 from unittest.mock import MagicMock, Mock
 
@@ -10,11 +11,15 @@ import requests
 from _pytest._py.path import LocalPath
 from flask import Flask
 from pytest_mock import MockFixture
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import HTTPException, NotFound
 
-from hushline.storage import FsDriver, S3Driver, StorageDriver, public_store
+from hushline.storage import BlobStorage, FsDriver, S3Driver, StorageDriver, public_store
 
 PATH = "data.bin"
+
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:datetime.datetime.utcnow\\(\\) is deprecated.*:DeprecationWarning:botocore.auth"
+)
 
 
 def mock_drivers(skip: type, mocker: MockFixture) -> None:
@@ -144,3 +149,79 @@ class TestS3Driver:
 
         s3_resp = requests.get(resp.headers["location"], timeout=2)
         assert s3_resp.status_code == 404
+
+
+def test_storage_driver_methods_raise_not_implemented() -> None:
+    driver = StorageDriver()
+    with pytest.raises(NotImplementedError):
+        driver.put(PATH, BytesIO(b"x"))
+    with pytest.raises(NotImplementedError):
+        driver.delete(PATH)
+    with pytest.raises(NotImplementedError):
+        driver.serve(PATH)
+
+
+def test_fs_driver_rejects_relative_root() -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_FS_ROOT"] = "relative/path"
+    with pytest.raises(ValueError, match="not absolute"):
+        FsDriver(app)
+
+
+def test_fs_driver_rejects_non_absolute_full_path(tmpdir: LocalPath) -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_FS_ROOT"] = str(tmpdir)
+    driver = FsDriver(app)
+    setattr(driver, "_FsDriver__root", Path("relative/root"))
+    with pytest.raises(ValueError, match="not absolute"):
+        driver.put("escape.bin", BytesIO(b"x"))
+
+
+def test_s3_driver_private_serve_uses_presigned_url(mocker: MockFixture) -> None:
+    app = MagicMock()
+    app.config = {
+        "BLOB_STORAGE_PRIVATE_S3_BUCKET": "bucket",
+        "BLOB_STORAGE_PRIVATE_S3_CDN_ENDPOINT": "https://cdn.example",
+        "BLOB_STORAGE_PRIVATE_S3_REGION": "us-east-1",
+        "BLOB_STORAGE_PRIVATE_S3_ENDPOINT": "https://s3.example",
+        "BLOB_STORAGE_PRIVATE_S3_ACCESS_KEY": "ak",
+        "BLOB_STORAGE_PRIVATE_S3_SECRET_KEY": "sk",
+    }
+    fake_client = MagicMock()
+    fake_client.generate_presigned_url.return_value = "https://signed.example/object"
+    mocker.patch("hushline.storage.boto3.session.Session.client", return_value=fake_client)
+
+    driver = S3Driver(app, "PRIVATE", is_public=False)
+    response = driver.serve("object.bin")
+
+    assert response.status_code == 302
+    assert response.location == "https://signed.example/object"
+    fake_client.generate_presigned_url.assert_called_once()
+
+
+def test_blob_storage_init_rejects_unknown_driver() -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_DRIVER"] = "bad-driver"
+    store = BlobStorage()
+    with pytest.raises(ValueError, match="Unknown storage driver"):
+        store.init_app(app)
+
+
+def test_blob_storage_init_rejects_double_registration() -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_DRIVER"] = "none"
+    store = BlobStorage()
+    store.init_app(app)
+
+    with pytest.raises(RuntimeError, match="Extension already loaded"):
+        store.init_app(app)
+
+
+def test_blob_storage_abort_when_driver_not_configured() -> None:
+    app = Flask(__name__)
+    app.extensions["BLOB_STORAGE"] = None
+    store = BlobStorage()
+
+    with app.app_context(), pytest.raises(HTTPException) as exc:
+        store.put(PATH, BytesIO(b"data"))
+    assert exc.value.code == 503

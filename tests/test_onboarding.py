@@ -2,7 +2,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import url_for
+import requests
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
@@ -180,3 +181,304 @@ def test_onboarding_requires_all_steps_when_any_value_incomplete(
     assert "First, tell us about yourself" in response.text
 
     _run_onboarding_flow_through_step_four(client)
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_redirects_to_inbox_when_already_complete(
+    client: FlaskClient, user: User
+) -> None:
+    _set_all_onboarding_values_complete(user)
+    db.session.commit()
+
+    response = client.get(url_for("onboarding"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_handles_missing_primary_username(client: FlaskClient, user: User) -> None:
+    user.primary_username.is_primary = False
+    db.session.commit()
+
+    response = client.get(url_for("onboarding"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_unknown_method_returns_bad_request(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "not-a-method"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_manual_invalid_key_shows_error(client: FlaskClient) -> None:
+    with patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=False):
+        response = client.post(
+            url_for("onboarding"),
+            data={"step": "encryption", "method": "manual", "pgp_key": "not-a-key"},
+            follow_redirects=False,
+        )
+    assert response.status_code == 400
+    assert "Invalid PGP key format or import failed." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_fetch_failure_shows_error(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.side_effect = requests.exceptions.RequestException("network error")
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "Error fetching PGP key from Proton Mail." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_notifications_requires_pgp_key(client: FlaskClient, user: User) -> None:
+    user.pgp_key = None
+    db.session.commit()
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "notifications", "email_address": "tips@example.com"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "Add a PGP key before enabling notifications." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_missing_user_redirects_login(client: FlaskClient) -> None:
+    with client.session_transaction() as sess:
+        sess["user_id"] = 999999
+        sess["is_authenticated"] = True
+        sess["username"] = "missing"
+
+    response = client.get(url_for("onboarding"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_invalid_step_defaults_to_profile(client: FlaskClient) -> None:
+    response = client.get(url_for("onboarding", step="nope-step"))
+    assert response.status_code == 200
+    assert "First, tell us about yourself" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_post_invalid_step_defaults_to_profile(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "not-a-step", "display_name": "Test User", "bio": "Short bio"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("onboarding", step="encryption"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_profile_invalid_form_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "profile", "display_name": "", "bio": "bio"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_proton_invalid_form_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": ""},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.can_encrypt_with_pgp_key", return_value=False)
+@patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=True)
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_key_without_encryption_subkey_returns_400(
+    requests_get: MagicMock,
+    is_valid_pgp_key: MagicMock,
+    can_encrypt_with_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    _ = (is_valid_pgp_key, can_encrypt_with_pgp_key)
+    requests_get.return_value.status_code = 200
+    requests_get.return_value.text = _load_test_pgp_key()
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "cannot be used for encryption" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=False)
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_no_key_found_returns_400(
+    requests_get: MagicMock, is_valid_pgp_key: MagicMock, client: FlaskClient
+) -> None:
+    _ = is_valid_pgp_key
+    requests_get.return_value.status_code = 200
+    requests_get.return_value.text = "not-a-key"
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "No PGP key found for that email address." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_manual_missing_key_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "manual", "pgp_key": ""},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_manual_invalid_form_returns_400_with_csrf(
+    app: Flask, client: FlaskClient
+) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("onboarding"),
+            data={"step": "encryption", "method": "manual", "pgp_key": _load_test_pgp_key()},
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.can_encrypt_with_pgp_key", return_value=False)
+@patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=True)
+def test_onboarding_encryption_manual_non_encryptable_key_returns_400(
+    is_valid_pgp_key: MagicMock, can_encrypt_with_pgp_key: MagicMock, client: FlaskClient
+) -> None:
+    _ = (is_valid_pgp_key, can_encrypt_with_pgp_key)
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "manual", "pgp_key": _load_test_pgp_key()},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "cannot be used for encryption" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_notifications_invalid_form_returns_400(client: FlaskClient, user: User) -> None:
+    user.pgp_key = _load_test_pgp_key()
+    db.session.commit()
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "notifications", "email_address": ""},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_directory_invalid_form_returns_400_with_csrf(
+    app: Flask, client: FlaskClient
+) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("onboarding"), data={"step": "directory"}, follow_redirects=False
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_unknown_step_post_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"), data={"step": "unknown-step"}, follow_redirects=False
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_directory_redirects_to_select_tier_when_stripe_enabled(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["STRIPE_SECRET_KEY"] = "sk_test_123"
+    user.tier_id = None
+    db.session.commit()
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "directory", "show_in_directory": "y"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("premium.select_tier"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_skip_missing_user_redirects_login(client: FlaskClient) -> None:
+    with client.session_transaction() as sess:
+        sess["user_id"] = 999999
+        sess["is_authenticated"] = True
+        sess["username"] = "missing"
+
+    response = client.post(url_for("onboarding_skip"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_skip_invalid_form_redirects_onboarding_with_csrf(
+    app: Flask, client: FlaskClient
+) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(url_for("onboarding_skip"), follow_redirects=False)
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("onboarding"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_skip_redirects_to_select_tier_when_enabled(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["STRIPE_SECRET_KEY"] = "sk_test_123"
+    user.tier_id = None
+    db.session.commit()
+
+    response = client.post(url_for("onboarding_skip"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("premium.select_tier"))

@@ -61,7 +61,6 @@ def await_verification_app(port: int) -> None:
     raise Exception("App could not be reached")
 
 
-@pytest.mark.local_only()
 @pytest.fixture(scope="module")
 def verification_server() -> Generator[int, None, None]:
     port = unused_port()

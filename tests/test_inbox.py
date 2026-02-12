@@ -118,3 +118,19 @@ def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username)
                 assert (
                     f'href="{url_for("message", public_id=other_msg.public_id)}"' not in resp.text
                 )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_inbox_invalid_status_returns_bad_request(client: FlaskClient) -> None:
+    response = client.get(url_for("inbox", status="not-a-status"), follow_redirects=False)
+    assert response.status_code == 400
+
+
+def test_inbox_missing_user_row_returns_404(client: FlaskClient) -> None:
+    with client.session_transaction() as sess:
+        sess["is_authenticated"] = True
+        sess["user_id"] = 999999
+        sess["username"] = "ghost"
+
+    response = client.get(url_for("inbox"), follow_redirects=False)
+    assert response.status_code == 404

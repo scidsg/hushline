@@ -36,3 +36,13 @@ def test_site_webmanifest_reflects_branding(app: Flask) -> None:
         assert payload["name"] == "Test Brand"
         assert payload["short_name"] == "Test Brand"
         assert payload["theme_color"] == "#112233"
+
+
+def test_site_webmanifest_includes_uploaded_logo_icon(app: Flask) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, "brand/logo.png")
+
+    with app.test_client() as client:
+        response = client.get(url_for("site_webmanifest"))
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert payload["icons"][0]["src"].endswith("/assets/public/brand/logo.png")
