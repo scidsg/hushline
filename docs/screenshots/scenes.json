@@ -225,6 +225,34 @@
       "waitForSelector": ".inbox-content"
     },
     {
+      "slug": "auth-newman-onboarding-profile",
+      "title": "Onboarding - Step 1 Profile (newman)",
+      "path": "/onboarding?step=profile",
+      "session": "newman",
+      "waitForSelector": "#display_name"
+    },
+    {
+      "slug": "auth-newman-onboarding-encryption",
+      "title": "Onboarding - Step 2 Encryption (newman)",
+      "path": "/onboarding?step=encryption",
+      "session": "newman",
+      "waitForSelector": "#searchInput"
+    },
+    {
+      "slug": "auth-newman-onboarding-notifications",
+      "title": "Onboarding - Step 3 Notifications (newman)",
+      "path": "/onboarding?step=notifications",
+      "session": "newman",
+      "waitForSelector": "#email_address"
+    },
+    {
+      "slug": "auth-newman-onboarding-directory",
+      "title": "Onboarding - Step 4 Directory (newman)",
+      "path": "/onboarding?step=directory",
+      "session": "newman",
+      "waitForSelector": "#show_in_directory"
+    },
+    {
       "slug": "auth-newman-settings-profile",
       "title": "Settings - Profile (newman)",
       "path": "/settings/profile",
