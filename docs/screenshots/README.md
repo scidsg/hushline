@@ -14,9 +14,9 @@ Each release stores images by session under `releases/<version>/<session>/`.
 
 ## Required accounts
 
-- admin (admin settings scenes)
-- artvandelay (populated account profile scene)
-- newman (new-user onboarding scenes)
+- admin (admin and org settings scenes)
+- artvandelay (authenticated user settings scenes)
+- newman (authenticated and onboarding-state settings scenes)
 
 ## Regenerate
 
