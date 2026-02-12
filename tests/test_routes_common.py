@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -149,6 +149,33 @@ def test_do_send_email_catches_errors(
         routes_common.do_send_email(user, "body")
 
     send_email.assert_not_called()
+
+
+def test_do_send_email_skips_when_default_smtp_incomplete(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "person@example.com"
+    user.smtp_server = None
+
+    app.config.pop("SMTP_USERNAME", None)
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock()
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context(), patch.object(app.logger, "warning") as warning_log:
+        routes_common.do_send_email(user, "body")
+
+    create_smtp_config.assert_not_called()
+    send_email.assert_not_called()
+    warning_log.assert_called_once_with("Skipping email send: default SMTP is not fully configured")
 
 
 def test_formatters() -> None:

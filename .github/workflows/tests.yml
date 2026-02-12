@@ -1,7 +1,8 @@
 ---
 name: Run Linter and Tests
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 on:
   push:
@@ -38,9 +39,46 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Test
-        run: make test
-        env:
-          PYTEST_ADDOPTS: "--skip-local-only"
+        run: |
+          make test PYTEST_ADDOPTS="--skip-local-only" | tee test-output.txt
+      - name: Generate coverage badge JSON
+        if: always()
+        run: |
+          COVERAGE=$(grep -E '^TOTAL' test-output.txt | awk '{print $4}' | tr -d '%' | tail -n 1)
+          if [ -z "$COVERAGE" ]; then
+            echo "Could not parse TOTAL coverage from test output"
+            exit 1
+          fi
+          if [ "$COVERAGE" -ge 95 ]; then
+            COLOR="brightgreen"
+          elif [ "$COVERAGE" -ge 90 ]; then
+            COLOR="green"
+          elif [ "$COVERAGE" -ge 80 ]; then
+            COLOR="yellowgreen"
+          elif [ "$COVERAGE" -ge 70 ]; then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"$COLOR\"}" > badge-coverage.json
+      - name: Create coverage badge update PR
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Update test coverage badge [skip ci]"
+          title: "Update test coverage badge"
+          body: "Automated update of `badge-coverage.json` from test workflow."
+          branch: "automation/test-coverage-badge"
+          delete-branch: true
+          add-paths: |
+            badge-coverage.json
+      - name: Upload coverage badge artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: |
+            badge-coverage.json
 
   test-with-alembic:
     runs-on: ubuntu-latest
