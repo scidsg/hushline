@@ -404,6 +404,13 @@ def create_org_settings() -> None:
 
     OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
     OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    OrganizationSetting.upsert(
+        OrganizationSetting.DIRECTORY_INTRO_TEXT,
+        (
+            "👋 Find lawyers, journalists, and others who support whistleblowers using the "
+            "Hush Line User Directory. An account is not required to send a message."
+        ),
+    )
     OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_ENABLED, True)
     OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT, "Leave")
     OrganizationSetting.upsert(
