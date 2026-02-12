@@ -1,7 +1,7 @@
 import csv
 import io
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Iterable
 
 from flask import Blueprint, abort, flash, redirect, send_file, session, url_for
@@ -245,7 +245,7 @@ def register_data_export_routes(bp: Blueprint) -> None:
                 return redirect(url_for("settings.advanced"))
             export_bytes = encrypted
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         username_slug = user.primary_username.username if user else "user"
         suffix = "zip.asc" if encrypt_export else "zip"
         download_name = f"hushline-data-{username_slug}-{timestamp}.{suffix}"

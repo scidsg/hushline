@@ -261,9 +261,7 @@ def register_profile_routes(app: Flask) -> None:
             )
             return redirect(url_for("directory"))
 
-        msg = db.session.scalars(
-            db.session.query(Message).filter_by(reply_slug=reply_slug)
-        ).one_or_none()
+        msg = db.session.scalars(db.select(Message).filter_by(reply_slug=reply_slug)).one_or_none()
         if msg is None:
             abort(404)
 

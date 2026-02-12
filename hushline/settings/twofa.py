@@ -93,7 +93,7 @@ def register_2fa_routes(bp: Blueprint) -> None:
             user.totp_secret = None
         db.session.commit()
         flash("🔓 2FA has been disabled.")
-        return redirect(url_for(".index"))
+        return redirect(url_for(".auth"))
 
     @bp.route("/confirm-disable-2fa")
     @authentication_required
@@ -109,13 +109,13 @@ def register_2fa_routes(bp: Blueprint) -> None:
 
         if not user.totp_secret:
             flash("⛔️ 2FA setup failed. Please try again.")
-            return redirect(url_for("show_qr_code"))
+            return redirect(url_for(".enable_2fa"))
 
         verification_code = request.form["verification_code"]
         totp = pyotp.TOTP(user.totp_secret)
         if not totp.verify(verification_code, valid_window=1):
             flash("⛔️ Invalid 2FA code. Please try again.")
-            return redirect(url_for("show_qr_code"))
+            return redirect(url_for(".enable_2fa"))
 
         flash("👍 2FA setup successful. Please log in again.")
         session.pop("is_setting_up_2fa", None)

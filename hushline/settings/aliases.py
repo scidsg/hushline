@@ -146,7 +146,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
         ).one_or_none()
         if not alias:
             flash("Alias not found.")
-            return redirect(url_for(".index"))
+            return redirect(url_for(".aliases"))
 
         if not alias.user.fields_enabled:
             return abort(401)
