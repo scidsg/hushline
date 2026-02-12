@@ -20,9 +20,12 @@ services:
       DIRECTORY_VERIFIED_TAB_ENABLED: "false"
       BLOB_STORAGE_PUBLIC_DRIVER: file-system
       BLOB_STORAGE_PUBLIC_FS_ROOT: /hushline-public-files
+      RUN_STARTUP_MIGRATIONS: "false"
     depends_on:
       postgres:
         condition: service_healthy
+      dev_data:
+        condition: service_completed_successfully
     volumes:
       - ./:/app
       - hushline-public-files:/hushline-public-files
@@ -56,12 +59,14 @@ services:
     image: node:18.20.4-alpine3.20
     volumes:
       - ./:/app/
+      - hushline-node-modules:/app/node_modules
     working_dir: /app/
     command:
       - ash
       - -c
-      - 'npm install && npm run build:dev'
-    restart: always
+      - 'rm -rf /app/node_modules/.playwright* && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
+    restart: on-failure
 
 volumes:
   hushline-public-files:
+  hushline-node-modules:
