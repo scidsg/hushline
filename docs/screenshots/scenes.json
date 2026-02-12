@@ -162,6 +162,55 @@
       "waitForSelector": ".inbox-content"
     },
     {
+      "slug": "auth-artvandelay-settings-profile",
+      "title": "Settings - Profile (artvandelay)",
+      "path": "/settings/profile",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-aliases",
+      "title": "Settings - Aliases (artvandelay)",
+      "path": "/settings/aliases",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-auth",
+      "title": "Settings - Authentication (artvandelay)",
+      "path": "/settings/auth",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-encryption",
+      "title": "Settings - Encryption (artvandelay)",
+      "path": "/settings/encryption",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-replies",
+      "title": "Settings - Message Statuses (artvandelay)",
+      "path": "/settings/replies",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-notifications",
+      "title": "Settings - Notifications (artvandelay)",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-advanced",
+      "title": "Settings - Advanced (artvandelay)",
+      "path": "/settings/advanced",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
       "slug": "auth-newman-profile",
       "title": "Profile - newman (authenticated)",
       "path": "/to/newman",
@@ -172,7 +221,57 @@
       "slug": "auth-newman-inbox",
       "title": "Inbox - newman",
       "path": "/inbox",
-      "session": "newman"
+      "session": "newman",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-newman-settings-profile",
+      "title": "Settings - Profile (newman)",
+      "path": "/settings/profile",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-aliases",
+      "title": "Settings - Aliases (newman)",
+      "path": "/settings/aliases",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-auth",
+      "title": "Settings - Authentication (newman)",
+      "path": "/settings/auth",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-encryption",
+      "title": "Settings - Encryption (newman)",
+      "path": "/settings/encryption",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-replies",
+      "title": "Settings - Message Statuses (newman)",
+      "path": "/settings/replies",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-notifications",
+      "title": "Settings - Notifications (newman)",
+      "path": "/settings/notifications",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-advanced",
+      "title": "Settings - Advanced (newman)",
+      "path": "/settings/advanced",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "guest-directory-verified",
