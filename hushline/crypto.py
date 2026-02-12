@@ -132,8 +132,10 @@ def encrypt_message(message: str, user_pgp_key: str) -> str:
     message_bytes = message.encode("utf-8")
 
     # Assuming there is no signer (i.e., unsigned encryption).
-    # Adjust the call to encrypt by passing the encoded message
-    return encrypt([recipient_cert], message_bytes)  # Use message_bytes
+    encrypted = encrypt([recipient_cert], message_bytes)
+    if isinstance(encrypted, bytes):
+        return encrypted.decode("utf-8")
+    return encrypted
 
 
 def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:

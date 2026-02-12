@@ -14,6 +14,7 @@ from flask import (
 from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
+from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.model import (
     FieldDefinition,
@@ -22,12 +23,23 @@ from hushline.model import (
     OrganizationSetting,
     Username,
 )
-from hushline.routes.common import do_send_email, validate_captcha
+from hushline.routes.common import (
+    do_send_email,
+    format_full_message_email_body,
+    format_message_email_fields,
+    validate_captcha,
+)
 from hushline.routes.forms import DynamicMessageForm
 from hushline.safe_template import safe_render_template
 
 
 def register_profile_routes(app: Flask) -> None:
+    def _is_armored_pgp_message(value: str) -> bool:
+        return (
+            "-----BEGIN PGP MESSAGE-----" in value
+            and "-----END PGP MESSAGE-----" in value
+        )
+
     def _get_math_problem(force_new: bool = False) -> str:
         if not force_new and session.get("math_problem") and session.get("math_answer"):
             return session["math_problem"]
@@ -130,11 +142,14 @@ def register_profile_routes(app: Flask) -> None:
                 db.session.flush()
 
                 extracted_fields = []
+                raw_extracted_fields = []
                 # Add the field values
                 for data in dynamic_form.field_data():
                     field_name: str = data["name"]  # type: ignore
                     field_definition: FieldDefinition = data["field"]  # type: ignore
                     value = getattr(form, field_name).data
+                    raw_value = "\n".join(value) if isinstance(value, list) else (value or "")
+                    raw_extracted_fields.append((field_definition.label, str(raw_value)))
                     field_value = FieldValue(
                         field_definition,
                         message,
@@ -152,25 +167,36 @@ def register_profile_routes(app: Flask) -> None:
                 )
                 if uname.user.enable_email_notifications:
                     if uname.user.email_include_message_content:
-                        # Only encrypt the entire body if we got the encrypted body from the form
                         if uname.user.email_encrypt_entire_body:
-                            if form.encrypted_email_body.data.startswith(
-                                "-----BEGIN PGP MESSAGE-----"
-                            ):
-                                email_body = form.encrypted_email_body.data
+                            encrypted_email_body = (form.encrypted_email_body.data or "").strip()
+                            if _is_armored_pgp_message(encrypted_email_body):
+                                email_body = encrypted_email_body
                                 current_app.logger.debug("Sending email with encrypted body")
                             else:
-                                # If the body is not encrypted, we should not send it
-                                email_body = plaintext_new_message_body
-                                current_app.logger.debug(
-                                    "Email body is not encrypted, sending email with generic body"
-                                )
+                                fallback_body = format_full_message_email_body(raw_extracted_fields)
+                                try:
+                                    if fallback_body and uname.user.pgp_key:
+                                        email_body = encrypt_message(fallback_body, uname.user.pgp_key)
+                                        current_app.logger.warning(
+                                            "Missing/invalid client encrypted email body; "
+                                            "used server-side full-body encryption fallback."
+                                        )
+                                    else:
+                                        email_body = plaintext_new_message_body
+                                        current_app.logger.debug(
+                                            "No fallback email content available; "
+                                            "sending generic body."
+                                        )
+                                except (RuntimeError, TypeError, ValueError) as e:
+                                    current_app.logger.error(
+                                        "Failed to encrypt fallback full email body: %s",
+                                        str(e),
+                                        exc_info=True,
+                                    )
+                                    email_body = plaintext_new_message_body
                         else:
-                            # If we don't want to encrypt the entire body, or if client-side
-                            # encryption of the body failed
-                            email_body = ""
-                            for name, value in extracted_fields:
-                                email_body += f"\n\n{name}\n\n{value}\n\n=============="
+                            # If we don't want to encrypt the entire body, keep field-level behavior.
+                            email_body = format_message_email_fields(extracted_fields)
                             current_app.logger.debug("Sending email with unencrypted body")
                     else:
                         email_body = plaintext_new_message_body
