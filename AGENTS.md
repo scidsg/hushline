@@ -13,14 +13,14 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 ## Core Users
 
-| Message Senders        | Message Recipients            | Administrators           |
-|------------------------|-------------------------------|--------------------------|
-| Whistleblowers         | Journalists and Newsrooms     | Platform Administrators  |
-| Concerned citizens     | Lawyers and Law Offices       |                          |
-| Engaged citizens       | Employers and Boards          |                          |
-| Activists              | Educators and Administrators  |                          |
-| Students               | Organizers and Activists      |                          |
-| Bug bounty hunters     | Software developers           |                          |
+| Message Senders    | Message Recipients           | Administrators          |
+| ------------------ | ---------------------------- | ----------------------- |
+| Whistleblowers     | Journalists and Newsrooms    | Platform Administrators |
+| Concerned citizens | Lawyers and Law Offices      |                         |
+| Engaged citizens   | Employers and Boards         |                         |
+| Activists          | Educators and Administrators |                         |
+| Students           | Organizers and Activists     |                         |
+| Bug bounty hunters | Software developers          |                         |
 
 ## Geographic Location
 
@@ -41,7 +41,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 ### Core Flows
 
 | Unauthenticated Users         | Authenticated, All Users             | Authenticated, Paid Users      | Authenticated, Admin Users              |
-|-------------------------------|--------------------------------------|--------------------------------|-----------------------------------------|
+| ----------------------------- | ------------------------------------ | ------------------------------ | --------------------------------------- |
 | Send a message                | Send a message                       | Cancel subscription            | Update directory intro text             |
 | Register a new account        | E2EE defaults and behavior           | Resubscribe to Super User tier | Change primary color                    |
 | Browse user directory         | View messages in Inbox               | Add/remove an Alias            | Change app name                         |
