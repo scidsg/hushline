@@ -40,25 +40,25 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 ### Core Flows
 
-| Unauthenticated Users         | Authenticated, All Users             | Authenticated, Paid Users      | Authenticated, Admin Users              |
-| ----------------------------- | ------------------------------------ | ------------------------------ | --------------------------------------- |
-| Send a message                | Send a message                       | Cancel subscription            | Update directory intro text             |
-| Register/login, 2FA challenge | E2EE defaults and behavior           | Resubscribe to Super User tier | Change primary color                    |
-| Browse user directory         | View messages in Inbox               | Add/remove an Alias            | Change app name                         |
-| Search Verified tab           | Change message status                | View Vision tab in nav         | Upload new logo                         |
-| Search All tab                | Delete a message                     | Add an image to Vision for OCR | Hide donation link                      |
-| E2EE defaults and behavior    | Resend message to email (if enabled) |                                | Customize profile header                |
-|                               | Upgrade to Super User                |                                | Change homepage; Enable/disable User Guidance |
-|                               | Add PGP key via Proton Key Lookup    |                                | Update Emergency Exit link              |
-|                               | Add PGP key manually                 |                                | Update prompt heading/body              |
-|                               | Add display name                     |                                | Add new prompt                          |
-|                               | Add bio                              |                                | Enable/disable new registrations        |
-|                               | Add additional profile fields        |                                | Enable/disable registration code gating |
-|                               | Opt in to user directory             |                                | Make user account admin                 |
-|                               | Change username/password             |                                | Verify a primary user account           |
-|                               | Enable/disable 2FA                   |                                | Verify an alias user account            |
-|                               | Download account data                |                                | Delete a user account                   |
-|                               | Delete own user account              |                                |                                         |
+| Unauthenticated Users         | Authenticated, All Users             | Authenticated, Paid Users        | Authenticated, Admin Users                    |
+| ----------------------------- | ------------------------------------ | -------------------------------- | --------------------------------------------- |
+| Send a message                | Send a message                       | Cancel subscription              | Update directory intro text                   |
+| Register/login, 2FA challenge | E2EE defaults and behavior           | Resubscribe to Super User tier   | Change primary color                          |
+| Browse user directory         | View messages in Inbox               | Add/remove an Alias              | Change app name                               |
+| Search Verified tab           | Change message status                | View Vision tab in nav           | Upload new logo                               |
+| Search All tab                | Delete a message                     | Add an image to Vision for OCR   | Hide donation link                            |
+| E2EE defaults and behavior    | Resend message to email (if enabled) | Add/remove custom profile fields | Customize profile header                      |
+|                               | Upgrade to Super User                |                                  | Change homepage; Enable/disable User Guidance |
+|                               | Add PGP key via Proton Key Lookup    |                                  | Update Emergency Exit link                    |
+|                               | Add PGP key manually                 |                                  | Update prompt heading/body                    |
+|                               | Add display name                     |                                  | Add new prompt                                |
+|                               | Add bio                              |                                  | Enable/disable new registrations              |
+|                               | Add additional profile fields        |                                  | Enable/disable registration code gating       |
+|                               | Opt in to user directory             |                                  | Make user account admin                       |
+|                               | Change username/password             |                                  | Verify a primary user account                 |
+|                               | Enable/disable 2FA                   |                                  | Verify an alias user account                  |
+|                               | Download account data                |                                  | Delete a user account                         |
+|                               | Delete own user account              |                                  |                                               |
 
 ## Local Commands
 
