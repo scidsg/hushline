@@ -12,6 +12,7 @@ from helpers import get_captcha_from_session, get_captcha_from_session_register
 from hushline.db import db
 from hushline.model import Message, MessageStatus, User, Username
 from hushline.routes.common import format_full_message_email_body
+
 GENERIC_EMAIL_BODY = "You have a new Hush Line message! Please log in to read it."
 PGP_SIG = "-----BEGIN PGP MESSAGE-----"
 
