@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pyotp
 import pytest
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
-from helpers import get_captcha_from_session
+from helpers import get_captcha_from_session, get_captcha_from_session_register
 
 from hushline.db import db
-from hushline.model import Message, User
+from hushline.model import Message, MessageStatus, User, Username
 from hushline.routes.common import format_full_message_email_body
 
 GENERIC_EMAIL_BODY = "You have a new Hush Line message! Please log in to read it."
@@ -42,6 +43,47 @@ def _latest_message_for(user: User) -> Message:
     ).first()
     assert message is not None
     return message
+
+
+def test_contract_register_login_and_2fa_challenge(client: FlaskClient, app: Flask) -> None:
+    app.config["STRIPE_SECRET_KEY"] = ""
+    username = f"contract-{uuid.uuid4().hex[:8]}"
+    password = "SecurePassword123!"
+    captcha_answer = get_captcha_from_session_register(client)
+
+    register_response = client.post(
+        url_for("register"),
+        data={"username": username, "password": password, "captcha_answer": captcha_answer},
+        follow_redirects=True,
+    )
+    assert register_response.status_code == 200
+    assert "Registration successful!" in register_response.text
+
+    created_username = db.session.scalars(
+        db.select(Username).where(Username._username == username)
+    ).one()
+    created_user = db.session.get(User, created_username.user_id)
+    assert created_user is not None
+    created_user.onboarding_complete = True
+    created_user.tier_id = 1
+    created_user.totp_secret = pyotp.random_base32()
+    db.session.commit()
+
+    login_response = client.post(
+        url_for("login"),
+        data={"username": username, "password": password},
+        follow_redirects=True,
+    )
+    assert login_response.status_code == 200
+    assert "Enter your 2FA Code" in login_response.text
+
+    verify_response = client.post(
+        url_for("verify_2fa_login"),
+        data={"verification_code": pyotp.TOTP(created_user.totp_secret).now()},
+        follow_redirects=True,
+    )
+    assert verify_response.status_code == 200
+    assert "Inbox" in verify_response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
@@ -200,3 +242,59 @@ def test_contract_onboarding_notifications_and_directory_persist_expected_state(
     db.session.refresh(user)
     assert user.onboarding_complete is True
     assert user.primary_username.show_in_directory is True
+
+
+@pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
+def test_contract_whistleblower_message_flow_defaults_and_actions(
+    client: FlaskClient, user: User
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.email = "contracts@example.com"
+    db.session.commit()
+
+    _submit_message(client, user)
+    message = _latest_message_for(user)
+    assert message.field_values
+    for value in message.field_values:
+        assert PGP_SIG in (value.value or "")
+
+    inbox_response = client.get(url_for("inbox"), follow_redirects=True)
+    assert inbox_response.status_code == 200
+    assert message.public_id in inbox_response.text
+
+    message_response = client.get(
+        url_for("message", public_id=message.public_id), follow_redirects=True
+    )
+    assert message_response.status_code == 200
+
+    status_response = client.post(
+        url_for("set_message_status", public_id=message.public_id),
+        data={"status": MessageStatus.ACCEPTED.value},
+        follow_redirects=True,
+    )
+    assert status_response.status_code == 200
+    db.session.refresh(message)
+    assert message.status == MessageStatus.ACCEPTED
+
+    with patch("hushline.routes.message.do_send_email", new=MagicMock()) as send_email_mock:
+        resend_response = client.post(
+            url_for("resend_message", public_id=message.public_id),
+            data={"submit": ""},
+            follow_redirects=True,
+        )
+        assert resend_response.status_code == 200
+        assert "Message resent to your email inbox." in resend_response.text
+        assert send_email_mock.call_count >= 1
+
+    delete_response = client.post(
+        url_for("delete_message", public_id=message.public_id),
+        data={"submit": ""},
+        follow_redirects=True,
+    )
+    assert delete_response.status_code == 200
+    assert "Message deleted successfully." in delete_response.text
+    assert (
+        db.session.scalars(db.select(Message).where(Message.id == message.id)).one_or_none() is None
+    )
