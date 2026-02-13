@@ -1,11 +1,21 @@
 # AGENTS.md
 
-This file provides operating guidance for coding agents working in the Hush Line repository.
+This file provides operating guidance for coding agents working in the Hush Line repository. We are a 501(c)(3) non-profit based in the United States, and this software is critical for our users' operational security, physical safety, and digital security.
+
+## Principles
+
+- Usability of the Software
+- Authenticity of the Receiver
+- Plausible Deniability of the Whistleblower
+- Availability of the System
+- Anonymity of the Whistleblower
+- Confidentiality and Integrity of the Disclosures
 
 ## Core Users
 
 - Message senders: whistleblowers, concerned citizens, engaged citizens, activists, students, bug bounty hunters.
 - Message recipients: journalists and newsrooms, legal teams, employers and boards, educators and administrators, organizers and activists, software developers.
+- Platform administrators
 
 ## Geographic Location
 
