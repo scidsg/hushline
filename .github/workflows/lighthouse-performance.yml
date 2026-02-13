@@ -3,7 +3,27 @@ name: Lighthouse Performance
 on:
   push:
     branches: [main]
+    paths:
+      - "hushline/**"
+      - "assets/**"
+      - "migrations/**"
+      - "docker-compose*.yaml"
+      - "Dockerfile*"
+      - "package.json"
+      - "package-lock.json"
+      - "webpack.config.js"
+      - ".github/workflows/lighthouse-performance.yml"
   pull_request:
+    paths:
+      - "hushline/**"
+      - "assets/**"
+      - "migrations/**"
+      - "docker-compose*.yaml"
+      - "Dockerfile*"
+      - "package.json"
+      - "package-lock.json"
+      - "webpack.config.js"
+      - ".github/workflows/lighthouse-performance.yml"
 
 permissions:
   contents: write
