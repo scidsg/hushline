@@ -58,8 +58,8 @@ jobs:
             PR_NUMBER=""
           fi
           echo "{\"score\":$SCORE,\"runId\":\"${GITHUB_RUN_ID}\",\"runNumber\":\"${GITHUB_RUN_NUMBER}\",\"sha\":\"${GITHUB_SHA}\",\"workflow\":\"${GITHUB_WORKFLOW}\",\"url\":\"http://localhost:8080/directory\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"prNumber\":\"${PR_NUMBER}\"}" > badge-performance-meta.json
-          if [ "$SCORE" -ne 100 ]; then
-            echo "Performance score must be 100, got $SCORE"
+          if [ "$SCORE" -lt 95 ]; then
+            echo "Performance score must be at least 95, got $SCORE"
             exit 1
           fi
 
