@@ -183,6 +183,31 @@
       "waitForSelector": ".settings-tabs"
     },
     {
+      "slug": "auth-artvandelay-enable-2fa",
+      "title": "Settings - Enable 2FA (artvandelay)",
+      "path": "/settings/auth",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "button:has-text('Enable 2FA')",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "h2"
+        }
+      ]
+    },
+    {
+      "slug": "auth-artvandelay-disable-2fa-confirm",
+      "title": "Settings - Disable 2FA Confirm (artvandelay)",
+      "path": "/settings/confirm-disable-2fa",
+      "session": "artvandelay",
+      "waitForSelector": "button:has-text('Yes, Disable 2FA')"
+    },
+    {
       "slug": "auth-artvandelay-settings-encryption",
       "title": "Settings - Encryption (artvandelay)",
       "path": "/settings/encryption",
