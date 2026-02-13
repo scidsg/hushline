@@ -88,6 +88,21 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Avoid changing production behavior just to satisfy coverage; add tests first.
 - If non-test code changes are needed for testability, document why in PR description.
 
+## Security and Privacy Requirements
+
+- Treat all whistleblower data paths as security-critical.
+- Do not weaken E2EE behavior, encryption defaults, or anonymization controls.
+- Run dependency vulnerability checks before PR:
+  - Python: `poetry run pip-audit`
+  - Node runtime deps: `npm audit --omit=dev`
+  - Run full Node audit when frontend/runtime dependencies change: `npm audit`
+- If a CVE is found in reachable runtime code, block merge until fixed or formally risk-accepted.
+- For security-related changes, include in PR:
+  - threat or risk summary
+  - affected data paths
+  - mitigation and tests added
+- Never log secrets, plaintext disclosures, private keys, or sensitive tokens.
+
 ## Database / Docker Notes
 
 - If tests fail with Postgres shared memory or recovery-mode errors, run `docker compose down -v` and rerun tests on a fresh stack.
