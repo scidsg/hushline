@@ -43,13 +43,12 @@ This file provides operating guidance for coding agents working in the Hush Line
 | Unauthenticated Users         | Authenticated, All Users             | Authenticated, Paid Users      | Authenticated, Admin Users              |
 | ----------------------------- | ------------------------------------ | ------------------------------ | --------------------------------------- |
 | Send a message                | Send a message                       | Cancel subscription            | Update directory intro text             |
-| Register a new account        | E2EE defaults and behavior           | Resubscribe to Super User tier | Change primary color                    |
+| Register/login, 2FA challenge | E2EE defaults and behavior           | Resubscribe to Super User tier | Change primary color                    |
 | Browse user directory         | View messages in Inbox               | Add/remove an Alias            | Change app name                         |
 | Search Verified tab           | Change message status                | View Vision tab in nav         | Upload new logo                         |
 | Search All tab                | Delete a message                     | Add an image to Vision for OCR | Hide donation link                      |
 | E2EE defaults and behavior    | Resend message to email (if enabled) |                                | Customize profile header                |
-| Registration, login, 2FA flow | Login and 2FA challenge              |                                | Change homepage                         |
-|                               | Upgrade to Super User                |                                | Enable/disable User Guidance            |
+|                               | Upgrade to Super User                |                                | Change homepage; Enable/disable User Guidance |
 |                               | Add PGP key via Proton Key Lookup    |                                | Update Emergency Exit link              |
 |                               | Add PGP key manually                 |                                | Update prompt heading/body              |
 |                               | Add display name                     |                                | Add new prompt                          |
