@@ -89,6 +89,13 @@ async def test_is_safe_verification_url_missing_hostname_rejected(app: Flask) ->
 
 
 @pytest.mark.asyncio()
+async def test_is_safe_verification_url_testing_short_circuit(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = True
+        assert await _is_safe_verification_url("http://example.com") is True
+
+
+@pytest.mark.asyncio()
 async def test_is_safe_verification_url_dns_error_rejected(app: Flask) -> None:
     with app.app_context():
         app.config["TESTING"] = False
@@ -150,6 +157,72 @@ async def test_verify_url_handles_client_error(user: User) -> None:
         await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
 
     db.session.refresh(username)
+    assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_marks_field_verified_when_profile_link_present(user: User) -> None:
+    username = user.primary_username
+    profile_url = "https://example.com/profile"
+
+    class _SuccessResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        async def text(self) -> str:
+            return (
+                '<html><body><a href="https://example.com/profile" '
+                'rel="me">Profile</a></body></html>'
+            )
+
+    class _SuccessContext:
+        async def __aenter__(self) -> _SuccessResponse:
+            return _SuccessResponse()
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+    class _Session:
+        def get(self, url: str, timeout: aiohttp.ClientTimeout) -> _SuccessContext:
+            _ = (url, timeout)
+            return _SuccessContext()
+
+    with patch("hushline.settings.common._is_safe_verification_url", return_value=True):
+        await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
+
+    assert username.extra_field_verified1 is True
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_leaves_field_unverified_when_no_matching_profile_link(user: User) -> None:
+    username = user.primary_username
+    profile_url = "https://example.com/profile"
+
+    class _SuccessResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        async def text(self) -> str:
+            return (
+                '<html><body><a href="https://elsewhere.example" '
+                'rel="nofollow">Other</a></body></html>'
+            )
+
+    class _SuccessContext:
+        async def __aenter__(self) -> _SuccessResponse:
+            return _SuccessResponse()
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+    class _Session:
+        def get(self, url: str, timeout: aiohttp.ClientTimeout) -> _SuccessContext:
+            _ = (url, timeout)
+            return _SuccessContext()
+
+    with patch("hushline.settings.common._is_safe_verification_url", return_value=True):
+        await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
+
     assert username.extra_field_verified1 is False
 
 
