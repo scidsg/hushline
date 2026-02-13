@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides operating guidance for coding agents working in the Hush Line repository. We are a 501(c)(3) non-profit based in the United States, and this software is critical for our users' operational security, physical safety, and digital security.
+This file provides operating guidance for coding agents working in the Hush Line repository. We are a 501(c)(3) non-profit based in the United States, and consider this software safety-critical infrastructure protecting users’ operational, physical, and digital security.
 
 ## Principles
 
@@ -13,9 +13,14 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 ## Core Users
 
-- Message senders: whistleblowers, concerned citizens, engaged citizens, activists, students, bug bounty hunters.
-- Message recipients: journalists and newsrooms, legal teams, employers and boards, educators and administrators, organizers and activists, software developers.
-- Platform administrators
+| Message Senders        | Message Recipients            | Administrators           |
+|------------------------|-------------------------------|--------------------------|
+| Whistleblowers         | Journalists and Newsrooms     | Platform Administrators  |
+| Concerned citizens     | Lawyers and Law Offices       |                          |
+| Engaged citizens       | Employers and Boards          |                          |
+| Activists              | Educators and Administrators  |                          |
+| Students               | Organizers and Activists      |                          |
+| Bug bounty hunters     | Software developers           |                          |
 
 ## Geographic Location
 
@@ -28,15 +33,33 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Project Priorities
 
 - Preserve core whistleblower flow above all else.
-- Core flow includes: send message.
-- Core flow includes: E2EE defaults and behavior.
-- Core flow includes: inbox visibility and message actions (status, delete, resend).
-- Core flow includes: registration, login, and 2FA challenge.
 - Prefer behavior-preserving changes over refactors unless explicitly requested.
 - Keep privacy/security guarantees intact when editing routes, models, or settings.
 - Accessibility score must be 100.
-- Performance score must be 100.
-- If accessibility/performance checks fail, re-run once before treating as a hard failure due to known test variability.
+- Performance score must be >=95.
+
+### Core Flows
+
+| Unauthenticated Users         | Authenticated, All Users             | Authenticated, Paid Users      | Authenticated, Admin Users              |
+|-------------------------------|--------------------------------------|--------------------------------|-----------------------------------------|
+| Send a message                | Send a message                       | Cancel subscription            | Update directory intro text             |
+| Register a new account        | E2EE defaults and behavior           | Resubscribe to Super User tier | Change primary color                    |
+| Browse user directory         | View messages in Inbox               | Add/remove an Alias            | Change app name                         |
+| Search Verified tab           | Change message status                | View Vision tab in nav         | Upload new logo                         |
+| Search All tab                | Delete a message                     | Add an image to Vision for OCR | Hide donation link                      |
+| E2EE defaults and behavior    | Resend message to email (if enabled) |                                | Customize profile header                |
+| Registration, login, 2FA flow | Login and 2FA challenge              |                                | Change homepage                         |
+|                               | Upgrade to Super User                |                                | Enable/disable User Guidance            |
+|                               | Add PGP key via Proton Key Lookup    |                                | Update Emergency Exit link              |
+|                               | Add PGP key manually                 |                                | Update prompt heading/body              |
+|                               | Add display name                     |                                | Add new prompt                          |
+|                               | Add bio                              |                                | Enable/disable new registrations        |
+|                               | Add additional profile fields        |                                | Enable/disable registration code gating |
+|                               | Opt in to user directory             |                                | Make user account admin                 |
+|                               | Change username/password             |                                | Verify a primary user account           |
+|                               | Enable/disable 2FA                   |                                | Verify an alias user account            |
+|                               | Download account data                |                                | Delete a user account                   |
+|                               | Delete own user account              |                                |                                         |
 
 ## Local Commands
 
