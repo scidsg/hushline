@@ -30,6 +30,10 @@
 - 💬 Unique reply status URL for submitters
 - 🤖 Local, Private CAPTCHA
 
+## Resources
+
+[View the latest Hush Line screenshots](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest).
+
 ## In The Media
 
 ### Privacy Guides
