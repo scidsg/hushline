@@ -329,7 +329,7 @@ jobs:
         if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: cpr
         continue-on-error: true
-        uses: peter-evans/create-pull-request@22a90890345897f4f8d3825d3bde2f0562359ec5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
           commit-message: "feat: address issue #${{ github.event.issue.number }}"
@@ -347,7 +347,7 @@ jobs:
       - name: create pull request with codex changes (retry)
         if: ${{ steps.triage.outputs.action == 'proceed' && steps.cpr.outcome == 'failure' }}
         id: cpr_retry
-        uses: peter-evans/create-pull-request@22a90890345897f4f8d3825d3bde2f0562359ec5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
           commit-message: "feat: address issue #${{ github.event.issue.number }}"
