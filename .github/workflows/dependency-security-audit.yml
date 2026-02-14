@@ -1,0 +1,48 @@
+---
+name: Dependency Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "poetry.lock"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dependency-security-audit.yml"
+  push:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "poetry.lock"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dependency-security-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  python-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Python dependency audit
+        run: docker compose run --rm app poetry run pip-audit
+
+  node-runtime-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Node runtime dependency audit
+        run: npm audit --omit=dev --package-lock-only
+
+  node-full-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Full Node dependency audit
+        run: npm audit --package-lock-only
