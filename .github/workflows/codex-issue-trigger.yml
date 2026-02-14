@@ -173,6 +173,7 @@ jobs:
       - name: triage issue safety and legitimacy (retry)
         if: ${{ steps.triage_codex.outcome == 'failure' }}
         id: triage_codex_retry
+        continue-on-error: true
         uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
@@ -303,6 +304,7 @@ jobs:
       - name: run codex implementation (retry)
         if: ${{ steps.triage.outputs.action == 'proceed' && steps.run_codex.outcome == 'failure' }}
         id: run_codex_retry
+        continue-on-error: true
         uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
