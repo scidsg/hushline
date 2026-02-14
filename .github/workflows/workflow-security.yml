@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           # Block common untrusted text fields being interpolated in shell run steps.
-          PATTERN='\${{\s*github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)\s*}}'
+          PATTERN='github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)'
           if rg -n --glob ".github/workflows/*.yml" --glob ".github/workflows/*.yaml" "$PATTERN" .github/workflows; then
             echo "Unsafe interpolation of untrusted event text found in workflow run context."
             echo "Use actions/github-script (or equivalent) to handle untrusted strings safely."
