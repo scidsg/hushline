@@ -1,0 +1,48 @@
+---
+name: Workflow Security Checks
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+
+      - name: install actionlint
+        run: |
+          set -euo pipefail
+          curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash
+          echo "$PWD" >> "$GITHUB_PATH"
+
+      - name: run actionlint
+        run: actionlint -color
+
+  disallow-unsafe-event-interpolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+
+      - name: fail on untrusted github.event interpolation in run blocks
+        run: |
+          set -euo pipefail
+          # Block common untrusted text fields being interpolated in shell run steps.
+          PATTERN='\${{\s*github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)\s*}}'
+          if rg -n --glob ".github/workflows/*.yml" --glob ".github/workflows/*.yaml" "$PATTERN" .github/workflows; then
+            echo "Unsafe interpolation of untrusted event text found in workflow run context."
+            echo "Use actions/github-script (or equivalent) to handle untrusted strings safely."
+            exit 1
+          fi
+          echo "No unsafe event text interpolation patterns found."

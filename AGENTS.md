@@ -125,3 +125,5 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Include known risks or follow-ups.
 - Keep title specific and behavior-oriented.
 - Check when the PR was created and explicitly flag if it appears stale or no longer relevant before proceeding.
+- Never interpolate untrusted GitHub event text fields (issue/PR/comment title or body) directly in shell `run:` steps in workflows.
+- Enforce branch protection required checks before merge: `Workflow Security Checks`, CodeQL scanning, and `Run Linter and Tests`.
