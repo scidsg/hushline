@@ -52,8 +52,10 @@ jobs:
           docker compose up -d postgres blob-storage
           docker compose run --rm dev_data
           docker compose up -d app
-          for i in {1..30}; do
-            if curl -fsS http://localhost:8080/ > /dev/null; then
+          attempt=0
+          until curl -fsS http://localhost:8080/ > /dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
               break
             fi
             sleep 2

@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Make sure the version string matches the tag
         run: |
-          HUSHLINE_VERSION=$(cat hushline/version.py | cut -d'"' -f2)
+          HUSHLINE_VERSION=$(cut -d'"' -f2 hushline/version.py)
           TAG_VERSION=${GITHUB_REF#refs/tags/}
           TAG_VERSION=${TAG_VERSION#v} # strip the leading 'v' from the tag
           if [ "$HUSHLINE_VERSION" != "$TAG_VERSION" ]; then
