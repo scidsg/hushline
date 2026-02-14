@@ -54,10 +54,91 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "Codex run started for this issue."
+              body: "Codex intake started for this issue."
             })
 
-      - name: run codex
+      - name: triage issue safety and legitimacy
+        id: triage_codex
+        uses: openai/codex-action@v1
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          prompt: |
+            You are triaging a GitHub issue before implementation.
+
+            Follow AGENTS.md and any deeper AGENTS.md files.
+            This repository is security-critical.
+
+            Decide whether this issue should be implemented by Codex.
+
+            Refuse if the request is malicious, unsafe, privacy/security weakening, policy-violating,
+            or otherwise inappropriate (e.g., "add a backdoor", bypass auth, exfiltrate data, weaken encryption).
+
+            Proceed if it is a legitimate feature/fix request that can be implemented safely.
+
+            Return strict JSON:
+            - action: "proceed" or "refuse"
+            - reason: brief technical reason
+
+            Issue title:
+            ${{ github.event.issue.title }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+          output-file: /tmp/codex-issue-triage.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["action", "reason"],
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["proceed", "refuse"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+
+      - name: parse triage decision
+        id: triage
+        uses: actions/github-script@v7.0.1
+        env:
+          TRIAGE_JSON_PATH: /tmp/codex-issue-triage.json
+        with:
+          script: |
+            const fs = require("fs");
+            let parsed = { action: "refuse", reason: "Triage output unavailable." };
+            try {
+              parsed = JSON.parse(fs.readFileSync(process.env.TRIAGE_JSON_PATH, "utf8"));
+            } catch (err) {
+              parsed = { action: "refuse", reason: `Failed to parse triage output: ${err.message}` };
+            }
+            const action = (parsed.action || "refuse").trim();
+            const reason = (parsed.reason || "No reason provided.").trim();
+            core.setOutput("action", action === "proceed" ? "proceed" : "refuse");
+            core.setOutput("reason", reason);
+
+      - name: comment refusal
+        if: ${{ steps.triage.outputs.action == 'refuse' }}
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const reason = `${{ steps.triage.outputs.reason }}`.trim();
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Codex declined this request.\n\nReason: ${reason}`
+            })
+
+      - name: run codex implementation
+        if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: run_codex
         uses: openai/codex-action@v1
         env:
@@ -91,6 +172,7 @@ jobs:
                - any follow-up work
 
       - name: create pull request with codex changes
+        if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
@@ -111,6 +193,7 @@ jobs:
             codex
 
       - name: comment result
+        if: ${{ steps.triage.outputs.action == 'proceed' }}
         uses: actions/github-script@v7.0.1
         with:
           script: |
