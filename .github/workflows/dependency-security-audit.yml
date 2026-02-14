@@ -29,7 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Python dependency audit
-        run: docker compose run --rm app poetry run pip-audit
+        run: |
+          docker compose run --rm app bash -lc \
+            'poetry run pip install --disable-pip-version-check pip-audit && poetry run pip-audit'
 
   node-runtime-audit:
     runs-on: ubuntu-latest
