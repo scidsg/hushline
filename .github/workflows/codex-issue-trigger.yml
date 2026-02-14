@@ -128,7 +128,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: read-only
           prompt: |
             You are triaging a GitHub issue before implementation.
@@ -177,7 +177,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: read-only
           prompt: |
             Retry: evaluate this issue with the same safety criteria as the prior step.
@@ -270,7 +270,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: workspace-write
           prompt: |
             You are implementing GitHub issue #${{ github.event.issue.number }} in ${{ github.repository }}.
@@ -305,7 +305,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: workspace-write
           prompt: |
             Retry: implement this issue safely with the same instructions as the previous step.
