@@ -55,48 +55,54 @@ jobs:
             ${{ github.event.pull_request.base.ref }} \
             +refs/pull/${{ github.event.pull_request.number }}/head
 
-      - name: build review prompt
+      - name: capture PR diff
         run: |
           set -euo pipefail
-          DIFF_FILE=/tmp/codex-pr.diff
-          PROMPT_FILE=/tmp/codex-pr-review-prompt.md
-          git diff --unified=0 ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} > "$DIFF_FILE"
+          git diff --unified=0 \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
+            > /tmp/codex-pr.diff
 
-          cat > "$PROMPT_FILE" <<'EOF'
-          You are reviewing a pull request in a security-critical repository.
+      - name: build review prompt
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const fs = require("fs");
+            const diff = fs.readFileSync("/tmp/codex-pr.diff", "utf8");
+            const pr = context.payload.pull_request;
+            const prompt = [
+              "You are reviewing a pull request in a security-critical repository.",
+              "",
+              "Follow AGENTS.md and any deeper AGENTS.md files.",
+              "Focus on bugs, regressions, security/privacy issues, and missing tests.",
+              "Keep feedback concrete and tied to changed lines in this PR.",
+              "",
+              "Return JSON matching the provided schema.",
+              "",
+              "Requirements for inline suggestions:",
+              "- Suggest only edits on changed lines in the PR.",
+              "- Each suggestion must replace exactly one line.",
+              "- `path` must be a changed file path.",
+              "- `line` must be the right-side (head) line number in that file.",
+              "- `original` must match the current line content at `path:line`.",
+              "- `replacement` must be a single line with no surrounding backticks.",
+              "- Prefer high-impact suggestions that are safe to auto-apply.",
+              "- If no safe one-line edit is appropriate, return zero suggestions.",
+              "",
+              "PR metadata:",
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `PR number: ${pr.number}`,
+              `Title: ${pr.title || ""}`,
+              "Body:",
+              pr.body || "",
+              "",
+              "Review only changes between:",
+              `${pr.base.sha}...${pr.head.sha}`,
+              "",
+              "Unified diff (U0):",
+              diff
+            ].join("\n");
 
-          Follow AGENTS.md and any deeper AGENTS.md files.
-          Focus on bugs, regressions, security/privacy issues, and missing tests.
-          Keep feedback concrete and tied to changed lines in this PR.
-
-          Return JSON matching the provided schema.
-
-          Requirements for inline suggestions:
-          - Suggest only edits on changed lines in the PR.
-          - Each suggestion must replace exactly one line.
-          - `path` must be a changed file path.
-          - `line` must be the right-side (head) line number in that file.
-          - `original` must match the current line content at `path:line`.
-          - `replacement` must be a single line with no surrounding backticks.
-          - Prefer high-impact suggestions that are safe to auto-apply.
-          - If no safe one-line edit is appropriate, return zero suggestions.
-          EOF
-
-          {
-            echo
-            echo "PR metadata:"
-            echo "Repository: ${{ github.repository }}"
-            echo "PR number: ${{ github.event.pull_request.number }}"
-            echo "Title: ${{ github.event.pull_request.title }}"
-            echo "Body:"
-            echo "${{ github.event.pull_request.body }}"
-            echo
-            echo "Review only changes between:"
-            echo "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
-            echo
-            echo "Unified diff (U0):"
-            cat "$DIFF_FILE"
-          } >> "$PROMPT_FILE"
+            fs.writeFileSync("/tmp/codex-pr-review-prompt.md", prompt, "utf8");
 
       - name: run codex review
         id: run_codex
