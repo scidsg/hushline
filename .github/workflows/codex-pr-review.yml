@@ -221,6 +221,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-review-1
           allow-users: glenn-sorrentino
           safety-strategy: unsafe
           sandbox: workspace-write
@@ -264,6 +265,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-review-2
           allow-users: glenn-sorrentino
           safety-strategy: unsafe
           sandbox: workspace-write
@@ -573,6 +575,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-followup-1
           safety-strategy: unsafe
           sandbox: read-only
           prompt-file: /tmp/codex-followup-prompt.md
@@ -600,6 +603,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-followup-2
           safety-strategy: unsafe
           sandbox: read-only
           prompt-file: /tmp/codex-followup-prompt.md
