@@ -31,7 +31,7 @@ jobs:
       - name: Python dependency audit
         run: |
           docker compose run --rm app bash -lc \
-            'poetry run pip install --disable-pip-version-check pip-audit && poetry run pip-audit'
+            'poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit && pip-audit -r /tmp/requirements.txt'
 
   node-runtime-audit:
     runs-on: ubuntu-latest
