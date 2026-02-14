@@ -124,3 +124,4 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Include validation commands run.
 - Include known risks or follow-ups.
 - Keep title specific and behavior-oriented.
+- Check when the PR was created and explicitly flag if it appears stale or no longer relevant before proceeding.
