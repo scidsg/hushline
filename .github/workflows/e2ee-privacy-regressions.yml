@@ -1,0 +1,23 @@
+---
+name: E2EE and Privacy Regressions
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  e2ee-privacy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Run E2EE and privacy regression tests
+        run: |
+          make test \
+            TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" \
+            PYTEST_ADDOPTS="--skip-local-only"
