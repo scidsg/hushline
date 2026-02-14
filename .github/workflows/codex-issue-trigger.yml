@@ -116,9 +116,23 @@ jobs:
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: "Codex intake started for this issue."
+                body: `Codex intake started for issue #${context.issue.number}: "${context.payload.issue.title}".`
               });
             });
+
+      - name: prepare issue metadata
+        id: issue_meta
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const raw = (context.payload.issue?.title || "").trim().replace(/\s+/g, " ");
+            const short = raw.length > 90 ? `${raw.slice(0, 87)}...` : raw;
+            const safe = short || "Issue update";
+            const prTitle = `Codex: #${context.issue.number} ${safe}`.slice(0, 255);
+            const commitMessage = `feat: #${context.issue.number} ${safe}`.slice(0, 120);
+            core.setOutput("issue_title", safe);
+            core.setOutput("pr_title", prTitle);
+            core.setOutput("commit_message", commitMessage);
 
       - name: triage issue safety and legitimacy (attempt 1)
         id: triage_codex
@@ -338,14 +352,15 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
-          commit-message: "feat: address issue #${{ github.event.issue.number }}"
+          commit-message: ${{ steps.issue_meta.outputs.commit_message }}
           branch: "codex/issue-${{ github.event.issue.number }}"
           delete-branch: true
-          title: "Codex: resolve #${{ github.event.issue.number }}"
+          title: ${{ steps.issue_meta.outputs.pr_title }}
           body: |
             Automated Codex run for issue #${{ github.event.issue.number }}.
 
             Source issue: ${{ github.event.issue.html_url }}
+            Issue title: ${{ steps.issue_meta.outputs.issue_title }}
             Triggered by: @${{ github.actor }}
           labels: |
             codex
@@ -356,14 +371,15 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
-          commit-message: "feat: address issue #${{ github.event.issue.number }}"
+          commit-message: ${{ steps.issue_meta.outputs.commit_message }}
           branch: "codex/issue-${{ github.event.issue.number }}"
           delete-branch: true
-          title: "Codex: resolve #${{ github.event.issue.number }}"
+          title: ${{ steps.issue_meta.outputs.pr_title }}
           body: |
             Automated Codex run for issue #${{ github.event.issue.number }}.
 
             Source issue: ${{ github.event.issue.html_url }}
+            Issue title: ${{ steps.issue_meta.outputs.issue_title }}
             Triggered by: @${{ github.actor }}
           labels: |
             codex
@@ -374,12 +390,14 @@ jobs:
         env:
           PR_URL_PRIMARY: ${{ steps.cpr.outputs.pull-request-url }}
           PR_URL_RETRY: ${{ steps.cpr_retry.outputs.pull-request-url }}
+          ISSUE_TITLE: ${{ steps.issue_meta.outputs.issue_title }}
         with:
           script: |
             const prUrl = (process.env.PR_URL_PRIMARY || process.env.PR_URL_RETRY || "").trim();
+            const issueTitle = (process.env.ISSUE_TITLE || "").trim();
             const body = prUrl
-              ? `Codex completed work and opened PR: ${prUrl}`
-              : "Codex run completed but no file changes were detected, so no PR was opened.";
+              ? `Codex completed work for issue #${context.issue.number} (${issueTitle}) and opened PR: ${prUrl}`
+              : `Codex run completed for issue #${context.issue.number} (${issueTitle}), but no file changes were detected, so no PR was opened.`;
             async function callWithRetry(fn, attempts = 3) {
               let lastErr;
               for (let i = 1; i <= attempts; i++) {
