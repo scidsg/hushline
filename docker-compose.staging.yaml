@@ -28,11 +28,14 @@ services:
       BLOB_STORAGE_PUBLIC_S3_CDN_ENDPOINT: "http://localhost:4566/public/"
       BLOB_STORAGE_PUBLIC_S3_ACCESS_KEY: "test"  # from localstack defaults
       BLOB_STORAGE_PUBLIC_S3_SECRET_KEY: "test"  # from localstack defaults
+      RUN_STARTUP_MIGRATIONS: "false"
     depends_on:
       postgres:
         condition: service_healthy
       blob-storage:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     env_file:
       - .env.stripe
     restart: always
@@ -45,6 +48,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  migrations:
+    <<: *app_env
+    ports: []
+    command: ./scripts/prod_migrations.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
 
   postgres:
     image: postgres:16.4-alpine3.20
