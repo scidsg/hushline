@@ -216,7 +216,7 @@ jobs:
         if: ${{ steps.freshness.outputs.stale == 'false' }}
         id: run_codex
         continue-on-error: true
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -259,7 +259,7 @@ jobs:
       - name: run codex review (retry)
         if: ${{ steps.freshness.outputs.stale == 'false' && steps.run_codex.outcome == 'failure' }}
         id: run_codex_retry
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -568,7 +568,7 @@ jobs:
         if: ${{ steps.identify.outputs.should_respond == 'true' }}
         id: followup_codex
         continue-on-error: true
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -595,7 +595,7 @@ jobs:
 
       - name: run codex follow-up response (retry)
         if: ${{ steps.identify.outputs.should_respond == 'true' && steps.followup_codex.outcome == 'failure' }}
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:

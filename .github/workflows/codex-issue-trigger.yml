@@ -123,7 +123,7 @@ jobs:
       - name: triage issue safety and legitimacy (attempt 1)
         id: triage_codex
         continue-on-error: true
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -172,7 +172,7 @@ jobs:
       - name: triage issue safety and legitimacy (retry)
         if: ${{ steps.triage_codex.outcome == 'failure' }}
         id: triage_codex_retry
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -265,7 +265,7 @@ jobs:
         if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: run_codex
         continue-on-error: true
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
@@ -300,7 +300,7 @@ jobs:
       - name: run codex implementation (retry)
         if: ${{ steps.triage.outputs.action == 'proceed' && steps.run_codex.outcome == 'failure' }}
         id: run_codex_retry
-        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        uses: openai/codex-action@v1
         env:
           GITHUB_TOKEN: ""
         with:
