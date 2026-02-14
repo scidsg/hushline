@@ -1,0 +1,434 @@
+---
+name: Codex PR Review
+
+on:
+  pull_request:
+    types: [labeled]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: codex-pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  reject-unauthorized-label:
+    if: ${{ github.event.label.name == 'codex-review' && github.actor != 'glenn-sorrentino' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: remove codex-review label
+        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        with:
+          github_token: ${{ github.token }}
+          labels: |
+            codex-review
+
+      - name: comment unauthorized attempt
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "The `codex-review` label can only be applied by `glenn-sorrentino`. The label was removed."
+            })
+
+  review-pr:
+    if: ${{ github.event.label.name == 'codex-review' && github.actor == 'glenn-sorrentino' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+
+      - name: prefetch base/head refs
+        run: |
+          git fetch --no-tags origin \
+            ${{ github.event.pull_request.base.ref }} \
+            +refs/pull/${{ github.event.pull_request.number }}/head
+
+      - name: build review prompt
+        run: |
+          set -euo pipefail
+          DIFF_FILE=/tmp/codex-pr.diff
+          PROMPT_FILE=/tmp/codex-pr-review-prompt.md
+          git diff --unified=0 ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} > "$DIFF_FILE"
+
+          cat > "$PROMPT_FILE" <<'EOF'
+          You are reviewing a pull request in a security-critical repository.
+
+          Follow AGENTS.md and any deeper AGENTS.md files.
+          Focus on bugs, regressions, security/privacy issues, and missing tests.
+          Keep feedback concrete and tied to changed lines in this PR.
+
+          Return JSON matching the provided schema.
+
+          Requirements for inline suggestions:
+          - Suggest only edits on changed lines in the PR.
+          - Each suggestion must replace exactly one line.
+          - `path` must be a changed file path.
+          - `line` must be the right-side (head) line number in that file.
+          - `original` must match the current line content at `path:line`.
+          - `replacement` must be a single line with no surrounding backticks.
+          - Prefer high-impact suggestions that are safe to auto-apply.
+          - If no safe one-line edit is appropriate, return zero suggestions.
+          EOF
+
+          {
+            echo
+            echo "PR metadata:"
+            echo "Repository: ${{ github.repository }}"
+            echo "PR number: ${{ github.event.pull_request.number }}"
+            echo "Title: ${{ github.event.pull_request.title }}"
+            echo "Body:"
+            echo "${{ github.event.pull_request.body }}"
+            echo
+            echo "Review only changes between:"
+            echo "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+            echo
+            echo "Unified diff (U0):"
+            cat "$DIFF_FILE"
+          } >> "$PROMPT_FILE"
+
+      - name: run codex review
+        id: run_codex
+        uses: openai/codex-action@v1
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          allow-users: glenn-sorrentino
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt-file: /tmp/codex-pr-review-prompt.md
+          output-file: /tmp/codex-pr-review.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["summary", "findings", "suggestions"],
+              "additionalProperties": false,
+              "properties": {
+                "summary": { "type": "string" },
+                "findings": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "suggestions": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "required": ["path", "line", "original", "replacement", "rationale"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": { "type": "string" },
+                      "line": { "type": "integer", "minimum": 1 },
+                      "original": { "type": "string" },
+                      "replacement": { "type": "string" },
+                      "rationale": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+
+      - name: post review summary
+        uses: actions/github-script@v7.0.1
+        env:
+          REVIEW_JSON_PATH: /tmp/codex-pr-review.json
+        with:
+          script: |
+            const fs = require("fs");
+            let parsed = { summary: "", findings: [], suggestions: [] };
+            try {
+              parsed = JSON.parse(fs.readFileSync(process.env.REVIEW_JSON_PATH, "utf8"));
+            } catch (err) {
+              parsed.summary = "Codex review could not be parsed as JSON.";
+              parsed.findings = [`Parse error: ${err.message}`];
+              parsed.suggestions = [];
+            }
+
+            const findings = (parsed.findings || []).slice(0, 20);
+            const suggestions = parsed.suggestions || [];
+            const findingText = findings.length
+              ? findings.map((f) => `- ${f}`).join("\n")
+              : "- No blocking findings identified.";
+            const body = [
+              "## Codex Review Summary",
+              "",
+              parsed.summary || "No summary provided.",
+              "",
+              "### Findings",
+              findingText,
+              "",
+              `### Inline suggestions queued: ${suggestions.length}`
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body
+            });
+
+      - name: post inline one-click suggestions
+        uses: actions/github-script@v7.0.1
+        env:
+          REVIEW_JSON_PATH: /tmp/codex-pr-review.json
+        with:
+          script: |
+            const fs = require("fs");
+            let parsed = { suggestions: [] };
+            try {
+              parsed = JSON.parse(fs.readFileSync(process.env.REVIEW_JSON_PATH, "utf8"));
+            } catch {
+              parsed = { suggestions: [] };
+            }
+
+            const suggestions = (parsed.suggestions || []).slice(0, 20);
+            let posted = 0;
+            let failed = 0;
+
+            for (const s of suggestions) {
+              const replacement = (s.replacement || "").replace(/\r/g, "");
+              const rationale = (s.rationale || "Proposed improvement").trim();
+              if (!s.path || !Number.isInteger(s.line) || !replacement) {
+                failed++;
+                continue;
+              }
+
+              const body = [
+                `**Codex suggestion:** ${rationale}`,
+                "",
+                "```suggestion",
+                replacement,
+                "```"
+              ].join("\n");
+
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  commit_id: context.payload.pull_request.head.sha,
+                  path: s.path,
+                  line: s.line,
+                  side: "RIGHT",
+                  body
+                });
+                posted++;
+              } catch (err) {
+                core.warning(`Failed suggestion for ${s.path}:${s.line} - ${err.message}`);
+                failed++;
+              }
+            }
+
+            const result = `Codex inline suggestion result: posted=${posted}, failed=${failed}.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: result
+            });
+
+      - name: remove codex-review label after processing
+        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        with:
+          github_token: ${{ github.token }}
+          labels: |
+            codex-review
+
+  respond-to-suggestion-thread:
+    if: ${{ github.event_name == 'pull_request_review_comment' && !endsWith(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: identify codex suggestion thread
+        id: identify
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const inReplyTo = comment?.in_reply_to_id;
+            if (!inReplyTo) {
+              core.setOutput("should_respond", "false");
+              return;
+            }
+
+            const parent = await github.rest.pulls.getReviewComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: inReplyTo
+            });
+            const parentData = parent.data || {};
+            const parentAuthor = parentData.user?.login || "";
+            const parentBody = parentData.body || "";
+            const isCodexSuggestion =
+              parentAuthor === "github-actions[bot]" &&
+              parentBody.includes("**Codex suggestion:**");
+
+            if (!isCodexSuggestion) {
+              core.setOutput("should_respond", "false");
+              return;
+            }
+
+            const prompt = [
+              "You are replying to a contributor in a GitHub PR review thread.",
+              "",
+              "Follow AGENTS.md constraints. Keep response concise, technical, and helpful.",
+              "Decide between: (a) explain why the contributor request is incorrect/risky, or (b) provide a revised one-line code suggestion.",
+              "Choose revised suggestion only when it is safe and clearly better.",
+              "Do not claim to have executed commands unless explicitly stated in context.",
+              "Return strict JSON matching schema.",
+              "",
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `PR: #${context.payload.pull_request.number}`,
+              `File: ${parentData.path || comment.path || ""}`,
+              `Line: ${parentData.line || comment.line || ""}`,
+              "",
+              "Parent Codex suggestion comment:",
+              parentBody,
+              "",
+              "Contributor reply:",
+              comment.body || "",
+              "",
+              "JSON fields:",
+              '- "action": one of ["explain","revise","no_response"]',
+              '- "response": string (required for explain, optional otherwise)',
+              '- "revision_rationale": string (required for revise)',
+              '- "replacement": string one-line replacement code (required for revise, no backticks)'
+            ].join("\n");
+
+            require("fs").writeFileSync("/tmp/codex-followup-prompt.md", prompt, "utf8");
+            core.setOutput("should_respond", "true");
+            core.setOutput("reply_to_comment_id", String(comment.id));
+            core.setOutput("parent_comment_id", String(parentData.id || ""));
+            core.setOutput("parent_path", String(parentData.path || ""));
+            core.setOutput("parent_line", String(parentData.line || ""));
+
+      - name: run codex follow-up response
+        if: ${{ steps.identify.outputs.should_respond == 'true' }}
+        uses: openai/codex-action@v1
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          prompt-file: /tmp/codex-followup-prompt.md
+          output-file: /tmp/codex-followup-response.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["action", "response", "revision_rationale", "replacement"],
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["explain", "revise", "no_response"]
+                },
+                "response": { "type": "string" },
+                "revision_rationale": { "type": "string" },
+                "replacement": { "type": "string" }
+              }
+            }
+
+      - name: post codex follow-up
+        if: ${{ steps.identify.outputs.should_respond == 'true' }}
+        uses: actions/github-script@v7.0.1
+        env:
+          RESPONSE_JSON_PATH: /tmp/codex-followup-response.json
+          REPLY_TO_COMMENT_ID: ${{ steps.identify.outputs.reply_to_comment_id }}
+          PARENT_PATH: ${{ steps.identify.outputs.parent_path }}
+          PARENT_LINE: ${{ steps.identify.outputs.parent_line }}
+        with:
+          script: |
+            const fs = require("fs");
+            let parsed = {
+              action: "no_response",
+              response: "",
+              revision_rationale: "",
+              replacement: ""
+            };
+            try {
+              parsed = JSON.parse(fs.readFileSync(process.env.RESPONSE_JSON_PATH, "utf8"));
+            } catch {
+              parsed = {
+                action: "explain",
+                response: "I could not parse your follow-up request. Please restate the exact change and I will respond.",
+                revision_rationale: "",
+                replacement: ""
+              };
+            }
+
+            const action = (parsed.action || "no_response").trim();
+            if (action === "no_response") {
+              return;
+            }
+
+            if (action === "revise") {
+              const replacement = (parsed.replacement || "").replace(/\r/g, "").trim();
+              const rationale = (parsed.revision_rationale || "Updated suggestion based on contributor feedback.").trim();
+              const path = (process.env.PARENT_PATH || "").trim();
+              const line = Number(process.env.PARENT_LINE || "0");
+
+              if (!replacement || !path || !Number.isInteger(line) || line < 1) {
+                await github.rest.pulls.createReplyForReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  comment_id: Number(process.env.REPLY_TO_COMMENT_ID),
+                  body: "I agree with your direction, but I couldn't safely place an updated inline suggestion on the PR diff. Please point me to the exact line to revise."
+                });
+                return;
+              }
+
+              const body = [
+                `**Codex updated suggestion:** ${rationale}`,
+                "",
+                "```suggestion",
+                replacement,
+                "```"
+              ].join("\n");
+
+              await github.rest.pulls.createReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                commit_id: context.payload.pull_request.head.sha,
+                path,
+                line,
+                side: "RIGHT",
+                body
+              });
+
+              await github.rest.pulls.createReplyForReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                comment_id: Number(process.env.REPLY_TO_COMMENT_ID),
+                body: "Good call. I posted an updated one-click suggestion on that line."
+              });
+              return;
+            }
+
+            if (action === "explain") {
+              const response = (parsed.response || "").trim();
+              if (!response) {
+                return;
+              }
+              await github.rest.pulls.createReplyForReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                comment_id: Number(process.env.REPLY_TO_COMMENT_ID),
+                body: response
+              });
+            }
