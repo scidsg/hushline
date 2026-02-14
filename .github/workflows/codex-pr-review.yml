@@ -221,6 +221,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-review-1
           allow-users: glenn-sorrentino
           safety-strategy: unsafe
@@ -266,6 +267,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-review-2
           allow-users: glenn-sorrentino
           safety-strategy: unsafe
@@ -576,6 +578,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-followup-1
           safety-strategy: unsafe
           sandbox: read-only
@@ -605,6 +608,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-pr-followup-2
           safety-strategy: unsafe
           sandbox: read-only

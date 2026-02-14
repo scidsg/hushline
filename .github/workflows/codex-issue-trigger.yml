@@ -142,6 +142,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-triage-1
           safety-strategy: unsafe
           sandbox: read-only
@@ -193,6 +194,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-triage-2
           safety-strategy: unsafe
           sandbox: read-only
@@ -287,6 +289,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-impl-1
           safety-strategy: unsafe
           sandbox: workspace-write
@@ -324,6 +327,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.3-codex
           codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-impl-2
           safety-strategy: unsafe
           sandbox: workspace-write
@@ -345,6 +349,24 @@ jobs:
           path: /tmp/codex-issue-result.txt
           if-no-files-found: ignore
 
+      - name: prepare codex summary
+        if: ${{ steps.triage.outputs.action == 'proceed' }}
+        id: codex_summary
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const fs = require("fs");
+            let summary = "No Codex summary was produced.";
+            try {
+              const raw = fs.readFileSync("/tmp/codex-issue-result.txt", "utf8").trim();
+              if (raw) {
+                summary = raw.length > 3500 ? `${raw.slice(0, 3497)}...` : raw;
+              }
+            } catch {
+              // Keep default summary text.
+            }
+            core.setOutput("summary", summary);
+
       - name: create pull request with codex changes (attempt 1)
         if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: cpr
@@ -362,6 +384,9 @@ jobs:
             Source issue: ${{ github.event.issue.html_url }}
             Issue title: ${{ steps.issue_meta.outputs.issue_title }}
             Triggered by: @${{ github.actor }}
+
+            Codex summary:
+            ${{ steps.codex_summary.outputs.summary }}
           labels: |
             codex
 
@@ -381,6 +406,9 @@ jobs:
             Source issue: ${{ github.event.issue.html_url }}
             Issue title: ${{ steps.issue_meta.outputs.issue_title }}
             Triggered by: @${{ github.actor }}
+
+            Codex summary:
+            ${{ steps.codex_summary.outputs.summary }}
           labels: |
             codex
 
@@ -391,13 +419,25 @@ jobs:
           PR_URL_PRIMARY: ${{ steps.cpr.outputs.pull-request-url }}
           PR_URL_RETRY: ${{ steps.cpr_retry.outputs.pull-request-url }}
           ISSUE_TITLE: ${{ steps.issue_meta.outputs.issue_title }}
+          CODEX_SUMMARY: ${{ steps.codex_summary.outputs.summary }}
         with:
           script: |
             const prUrl = (process.env.PR_URL_PRIMARY || process.env.PR_URL_RETRY || "").trim();
             const issueTitle = (process.env.ISSUE_TITLE || "").trim();
+            const codexSummary = (process.env.CODEX_SUMMARY || "").trim();
             const body = prUrl
-              ? `Codex completed work for issue #${context.issue.number} (${issueTitle}) and opened PR: ${prUrl}`
-              : `Codex run completed for issue #${context.issue.number} (${issueTitle}), but no file changes were detected, so no PR was opened.`;
+              ? [
+                  `Codex completed work for issue #${context.issue.number} (${issueTitle}) and opened PR: ${prUrl}`,
+                  "",
+                  "Summary:",
+                  codexSummary || "No Codex summary available."
+                ].join("\n")
+              : [
+                  `Codex run completed for issue #${context.issue.number} (${issueTitle}), but no file changes were detected, so no PR was opened.`,
+                  "",
+                  "Summary:",
+                  codexSummary || "No Codex summary available."
+                ].join("\n");
             async function callWithRetry(fn, attempts = 3) {
               let lastErr;
               for (let i = 1; i <= attempts; i++) {
