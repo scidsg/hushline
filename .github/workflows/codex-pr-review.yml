@@ -222,7 +222,7 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           allow-users: glenn-sorrentino
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: workspace-write
           prompt-file: /tmp/codex-pr-review-prompt.md
           output-file: /tmp/codex-pr-review.json
@@ -265,7 +265,7 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           allow-users: glenn-sorrentino
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: workspace-write
           prompt-file: /tmp/codex-pr-review-prompt.md
           output-file: /tmp/codex-pr-review.json
@@ -573,7 +573,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: read-only
           prompt-file: /tmp/codex-followup-prompt.md
           output-file: /tmp/codex-followup-response.json
@@ -600,7 +600,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: none
+          safety-strategy: unprivileged-user
           sandbox: read-only
           prompt-file: /tmp/codex-followup-prompt.md
           output-file: /tmp/codex-followup-response.json
