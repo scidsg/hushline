@@ -13,68 +13,176 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: codex-pr-review-${{ github.event.pull_request.number }}
+  group: codex-pr-review-${{ github.event.pull_request.number || github.event.pull_request_review_comment.pull_request_url }}
   cancel-in-progress: false
 
 jobs:
   reject-unauthorized-label:
-    if: ${{ github.event.label.name == 'codex-review' && github.actor != 'glenn-sorrentino' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.label.name == 'codex-review' && github.actor != 'glenn-sorrentino' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: remove codex-review label
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
-        with:
-          github_token: ${{ github.token }}
-          labels: |
-            codex-review
-
-      - name: comment unauthorized attempt
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "The `codex-review` label can only be applied by `glenn-sorrentino`. The label was removed."
-            })
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: "codex-review"
+                });
+              } catch (err) {
+                if (err.status !== 404) {
+                  throw err;
+                }
+              }
+            });
+
+      - name: comment unauthorized attempt
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: "The `codex-review` label can only be applied by `glenn-sorrentino`. The label was removed."
+              });
+            });
 
   review-pr:
-    if: ${{ github.event.label.name == 'codex-review' && github.actor == 'glenn-sorrentino' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.label.name == 'codex-review' && github.actor == 'glenn-sorrentino' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
 
+      - name: assess PR freshness
+        id: freshness
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          MAX_PR_AGE_DAYS: "45"
+        with:
+          script: |
+            const createdAt = new Date(context.payload.pull_request.created_at);
+            const now = new Date();
+            const ageDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+            const maxAge = Number(process.env.MAX_PR_AGE_DAYS || "45");
+            const stale = ageDays > maxAge;
+            core.setOutput("age_days", String(ageDays));
+            core.setOutput("stale", stale ? "true" : "false");
+
+      - name: comment stale PR gate
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const ageDays = `${{ steps.freshness.outputs.age_days }}`;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Codex review skipped: this PR is ${ageDays} days old and may be stale. Re-apply the label if review is still needed.`
+            });
+
+      - name: remove codex-review label for stale PR
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: "codex-review"
+              });
+            } catch (err) {
+              if (err.status !== 404) {
+                throw err;
+              }
+            }
+
       - name: prefetch base/head refs
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
         run: |
           git fetch --no-tags origin \
             ${{ github.event.pull_request.base.ref }} \
             +refs/pull/${{ github.event.pull_request.number }}/head
 
-      - name: capture PR diff
+      - name: capture PR diff and size
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
+        id: diff_meta
         run: |
           set -euo pipefail
           git diff --unified=0 \
             "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
             > /tmp/codex-pr.diff
+          TOTAL_CHANGED=$(git diff --numstat "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" | awk '{add+=$1; del+=$2} END {print add+del+0}')
+          echo "total_changed_lines=${TOTAL_CHANGED}" >> "$GITHUB_OUTPUT"
+          if [ "${TOTAL_CHANGED}" -gt 2000 ]; then
+            echo "too_large=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "too_large=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: build review prompt
-        uses: actions/github-script@v7.0.1
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             const fs = require("fs");
             const diff = fs.readFileSync("/tmp/codex-pr.diff", "utf8");
             const pr = context.payload.pull_request;
+            const tooLarge = `${{ steps.diff_meta.outputs.too_large }}` === "true";
+            const sizeInstruction = tooLarge
+              ? "Diff is large (>2000 changed lines). Do not emit inline suggestions; provide findings summary only."
+              : "You may emit inline suggestions when safe and high-impact.";
             const prompt = [
               "You are reviewing a pull request in a security-critical repository.",
               "",
               "Follow AGENTS.md and any deeper AGENTS.md files.",
               "Focus on bugs, regressions, security/privacy issues, and missing tests.",
               "Keep feedback concrete and tied to changed lines in this PR.",
+              sizeInstruction,
               "",
               "Return JSON matching the provided schema.",
               "",
@@ -104,9 +212,11 @@ jobs:
 
             fs.writeFileSync("/tmp/codex-pr-review-prompt.md", prompt, "utf8");
 
-      - name: run codex review
+      - name: run codex review (attempt 1)
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
         id: run_codex
-        uses: openai/codex-action@v1
+        continue-on-error: true
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
         env:
           GITHUB_TOKEN: ""
         with:
@@ -146,10 +256,63 @@ jobs:
               }
             }
 
+      - name: run codex review (retry)
+        if: ${{ steps.freshness.outputs.stale == 'false' && steps.run_codex.outcome == 'failure' }}
+        id: run_codex_retry
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          allow-users: glenn-sorrentino
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt-file: /tmp/codex-pr-review-prompt.md
+          output-file: /tmp/codex-pr-review.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["summary", "findings", "suggestions"],
+              "additionalProperties": false,
+              "properties": {
+                "summary": { "type": "string" },
+                "findings": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "suggestions": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "required": ["path", "line", "original", "replacement", "rationale"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": { "type": "string" },
+                      "line": { "type": "integer", "minimum": 1 },
+                      "original": { "type": "string" },
+                      "replacement": { "type": "string" },
+                      "rationale": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+
+      - name: upload review artifact
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: codex-pr-review-${{ github.event.pull_request.number }}
+          path: /tmp/codex-pr-review.json
+          if-no-files-found: ignore
+
       - name: post review summary
-        uses: actions/github-script@v7.0.1
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
           REVIEW_JSON_PATH: /tmp/codex-pr-review.json
+          CHANGED_LINES: ${{ steps.diff_meta.outputs.total_changed_lines }}
         with:
           script: |
             const fs = require("fs");
@@ -172,26 +335,59 @@ jobs:
               "",
               parsed.summary || "No summary provided.",
               "",
+              `### Diff size: ${process.env.CHANGED_LINES || "0"} changed lines`,
+              "",
               "### Findings",
               findingText,
               "",
               `### Inline suggestions queued: ${suggestions.length}`
             ].join("\n");
 
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body
+              });
+            });
+
+      - name: comment suggestions skipped due to large diff
+        if: ${{ steps.freshness.outputs.stale == 'false' && steps.diff_meta.outputs.too_large == 'true' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body
+              body: "Inline suggestions skipped because this PR exceeds the changed-line threshold (2000)."
             });
 
       - name: post inline one-click suggestions
-        uses: actions/github-script@v7.0.1
+        if: ${{ steps.freshness.outputs.stale == 'false' && steps.diff_meta.outputs.too_large == 'false' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
           REVIEW_JSON_PATH: /tmp/codex-pr-review.json
         with:
           script: |
             const fs = require("fs");
+            const crypto = require("crypto");
             let parsed = { suggestions: [] };
             try {
               parsed = JSON.parse(fs.readFileSync(process.env.REVIEW_JSON_PATH, "utf8"));
@@ -200,8 +396,24 @@ jobs:
             }
 
             const suggestions = (parsed.suggestions || []).slice(0, 20);
+            const reviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+
+            const existingMarkers = new Set();
+            for (const c of reviewComments) {
+              const m = (c.body || "").match(/codex-suggestion-id:([a-f0-9]+)/i);
+              if (m) {
+                existingMarkers.add(m[1]);
+              }
+            }
+
             let posted = 0;
             let failed = 0;
+            let deduped = 0;
 
             for (const s of suggestions) {
               const replacement = (s.replacement || "").replace(/\r/g, "");
@@ -211,12 +423,23 @@ jobs:
                 continue;
               }
 
+              const marker = crypto
+                .createHash("sha256")
+                .update(`${s.path}:${s.line}:${replacement}`)
+                .digest("hex")
+                .slice(0, 16);
+              if (existingMarkers.has(marker)) {
+                deduped++;
+                continue;
+              }
+
               const body = [
                 `**Codex suggestion:** ${rationale}`,
                 "",
                 "```suggestion",
                 replacement,
-                "```"
+                "```",
+                `<!-- codex-suggestion-id:${marker} -->`
               ].join("\n");
 
               try {
@@ -237,7 +460,7 @@ jobs:
               }
             }
 
-            const result = `Codex inline suggestion result: posted=${posted}, failed=${failed}.`;
+            const result = `Codex inline suggestion result: posted=${posted}, deduped=${deduped}, failed=${failed}.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -246,22 +469,45 @@ jobs:
             });
 
       - name: remove codex-review label after processing
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        if: ${{ steps.freshness.outputs.stale == 'false' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
-          github_token: ${{ github.token }}
-          labels: |
-            codex-review
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: "codex-review"
+              });
+            } catch (err) {
+              if (err.status !== 404) {
+                throw err;
+              }
+            }
 
   respond-to-suggestion-thread:
     if: ${{ github.event_name == 'pull_request_review_comment' && !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: identify codex suggestion thread
         id: identify
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             const comment = context.payload.comment;
+            const pr = context.payload.pull_request;
+            const trustedAssociations = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+            const isTrustedActor =
+              comment?.user?.login === pr?.user?.login ||
+              trustedAssociations.has(comment?.author_association || "");
+
+            if (!isTrustedActor) {
+              core.setOutput("should_respond", "false");
+              return;
+            }
+
             const inReplyTo = comment?.in_reply_to_id;
             if (!inReplyTo) {
               core.setOutput("should_respond", "false");
@@ -315,13 +561,14 @@ jobs:
             require("fs").writeFileSync("/tmp/codex-followup-prompt.md", prompt, "utf8");
             core.setOutput("should_respond", "true");
             core.setOutput("reply_to_comment_id", String(comment.id));
-            core.setOutput("parent_comment_id", String(parentData.id || ""));
             core.setOutput("parent_path", String(parentData.path || ""));
             core.setOutput("parent_line", String(parentData.line || ""));
 
-      - name: run codex follow-up response
+      - name: run codex follow-up response (attempt 1)
         if: ${{ steps.identify.outputs.should_respond == 'true' }}
-        uses: openai/codex-action@v1
+        id: followup_codex
+        continue-on-error: true
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
         env:
           GITHUB_TOKEN: ""
         with:
@@ -346,9 +593,44 @@ jobs:
               }
             }
 
+      - name: run codex follow-up response (retry)
+        if: ${{ steps.identify.outputs.should_respond == 'true' && steps.followup_codex.outcome == 'failure' }}
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          prompt-file: /tmp/codex-followup-prompt.md
+          output-file: /tmp/codex-followup-response.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["action", "response", "revision_rationale", "replacement"],
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["explain", "revise", "no_response"]
+                },
+                "response": { "type": "string" },
+                "revision_rationale": { "type": "string" },
+                "replacement": { "type": "string" }
+              }
+            }
+
+      - name: upload follow-up artifact
+        if: ${{ steps.identify.outputs.should_respond == 'true' }}
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: codex-followup-${{ github.event.pull_request.number }}-${{ github.event.comment.id }}
+          path: /tmp/codex-followup-response.json
+          if-no-files-found: ignore
+
       - name: post codex follow-up
         if: ${{ steps.identify.outputs.should_respond == 'true' }}
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
           RESPONSE_JSON_PATH: /tmp/codex-followup-response.json
           REPLY_TO_COMMENT_ID: ${{ steps.identify.outputs.reply_to_comment_id }}

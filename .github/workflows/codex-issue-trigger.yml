@@ -18,48 +18,112 @@ jobs:
   reject-unauthorized-label:
     if: ${{ github.event.label.name == 'codex' && github.actor != 'glenn-sorrentino' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: remove codex label
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
-        with:
-          github_token: ${{ github.token }}
-          labels: |
-            codex
-
-      - name: comment unauthorized attempt
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "The `codex` label can only be applied by `glenn-sorrentino`. The label was removed."
-            })
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: "codex"
+                });
+              } catch (err) {
+                if (err.status !== 404) {
+                  throw err;
+                }
+              }
+            });
+
+      - name: comment unauthorized attempt
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: "The `codex` label can only be applied by `glenn-sorrentino`. The label was removed."
+              });
+            });
 
   trigger-codex:
     if: ${{ github.event.label.name == 'codex' && github.actor == 'glenn-sorrentino' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           persist-credentials: false
 
       - name: acknowledge codex run
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "Codex intake started for this issue."
-            })
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
 
-      - name: triage issue safety and legitimacy
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: "Codex intake started for this issue."
+              });
+            });
+
+      - name: triage issue safety and legitimacy (attempt 1)
         id: triage_codex
-        uses: openai/codex-action@v1
+        continue-on-error: true
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
         env:
           GITHUB_TOKEN: ""
         with:
@@ -105,9 +169,45 @@ jobs:
               }
             }
 
+      - name: triage issue safety and legitimacy (retry)
+        if: ${{ steps.triage_codex.outcome == 'failure' }}
+        id: triage_codex_retry
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          prompt: |
+            Retry: evaluate this issue with the same safety criteria as the prior step.
+            Return only strict JSON with fields action (proceed|refuse) and reason.
+
+            Issue title:
+            ${{ github.event.issue.title }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+          output-file: /tmp/codex-issue-triage.json
+          output-schema: |
+            {
+              "type": "object",
+              "required": ["action", "reason"],
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["proceed", "refuse"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+
       - name: parse triage decision
         id: triage
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
           TRIAGE_JSON_PATH: /tmp/codex-issue-triage.json
         with:
@@ -124,23 +224,48 @@ jobs:
             core.setOutput("action", action === "proceed" ? "proceed" : "refuse");
             core.setOutput("reason", reason);
 
+      - name: upload triage artifact
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: codex-issue-triage-${{ github.event.issue.number }}
+          path: /tmp/codex-issue-triage.json
+          if-no-files-found: ignore
+
       - name: comment refusal
         if: ${{ steps.triage.outputs.action == 'refuse' }}
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             const reason = `${{ steps.triage.outputs.reason }}`.trim();
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `Codex declined this request.\n\nReason: ${reason}`
-            })
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `Codex declined this request.\n\nReason: ${reason}`
+              });
+            });
 
-      - name: run codex implementation
+      - name: run codex implementation (attempt 1)
         if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: run_codex
-        uses: openai/codex-action@v1
+        continue-on-error: true
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
         env:
           GITHUB_TOKEN: ""
         with:
@@ -170,11 +295,41 @@ jobs:
                - what changed
                - tests/checks run
                - any follow-up work
+          output-file: /tmp/codex-issue-result.txt
 
-      - name: create pull request with codex changes
+      - name: run codex implementation (retry)
+        if: ${{ steps.triage.outputs.action == 'proceed' && steps.run_codex.outcome == 'failure' }}
+        id: run_codex_retry
+        uses: openai/codex-action@086169432fb5e47eb8c114cf5781f1ca7f52e9ec
+        env:
+          GITHUB_TOKEN: ""
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt: |
+            Retry: implement this issue safely with the same instructions as the previous step.
+
+            Issue title:
+            ${{ github.event.issue.title }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+          output-file: /tmp/codex-issue-result.txt
+
+      - name: upload implementation artifact
+        if: ${{ steps.triage.outputs.action == 'proceed' }}
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: codex-issue-output-${{ github.event.issue.number }}
+          path: /tmp/codex-issue-result.txt
+          if-no-files-found: ignore
+
+      - name: create pull request with codex changes (attempt 1)
         if: ${{ steps.triage.outputs.action == 'proceed' }}
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@22a90890345897f4f8d3825d3bde2f0562359ec5
         with:
           token: ${{ github.token }}
           commit-message: "feat: address issue #${{ github.event.issue.number }}"
@@ -186,31 +341,93 @@ jobs:
 
             Source issue: ${{ github.event.issue.html_url }}
             Triggered by: @${{ github.actor }}
+          labels: |
+            codex
 
-            Codex summary:
-            ${{ steps.run_codex.outputs.final-message }}
+      - name: create pull request with codex changes (retry)
+        if: ${{ steps.triage.outputs.action == 'proceed' && steps.cpr.outcome == 'failure' }}
+        id: cpr_retry
+        uses: peter-evans/create-pull-request@22a90890345897f4f8d3825d3bde2f0562359ec5
+        with:
+          token: ${{ github.token }}
+          commit-message: "feat: address issue #${{ github.event.issue.number }}"
+          branch: "codex/issue-${{ github.event.issue.number }}"
+          delete-branch: true
+          title: "Codex: resolve #${{ github.event.issue.number }}"
+          body: |
+            Automated Codex run for issue #${{ github.event.issue.number }}.
+
+            Source issue: ${{ github.event.issue.html_url }}
+            Triggered by: @${{ github.actor }}
           labels: |
             codex
 
       - name: comment result
         if: ${{ steps.triage.outputs.action == 'proceed' }}
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          PR_URL_PRIMARY: ${{ steps.cpr.outputs.pull-request-url }}
+          PR_URL_RETRY: ${{ steps.cpr_retry.outputs.pull-request-url }}
         with:
           script: |
-            const prUrl = `${{ steps.cpr.outputs.pull-request-url }}`.trim();
+            const prUrl = (process.env.PR_URL_PRIMARY || process.env.PR_URL_RETRY || "").trim();
             const body = prUrl
               ? `Codex completed work and opened PR: ${prUrl}`
               : "Codex run completed but no file changes were detected, so no PR was opened.";
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body
-            })
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+            await callWithRetry(async () => {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            });
 
       - name: remove codex label after processing
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        if: always()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
-          github_token: ${{ github.token }}
-          labels: |
-            codex
+          script: |
+            async function callWithRetry(fn, attempts = 3) {
+              let lastErr;
+              for (let i = 1; i <= attempts; i++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  lastErr = err;
+                  if (i < attempts) {
+                    await new Promise((r) => setTimeout(r, i * 1500));
+                  }
+                }
+              }
+              throw lastErr;
+            }
+
+            await callWithRetry(async () => {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: "codex"
+                });
+              } catch (err) {
+                if (err.status !== 404) {
+                  throw err;
+                }
+              }
+            });
