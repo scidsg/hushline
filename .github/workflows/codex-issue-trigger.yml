@@ -128,6 +128,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-triage-1
           safety-strategy: unsafe
           sandbox: read-only
           prompt: |
@@ -177,6 +178,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-triage-2
           safety-strategy: unsafe
           sandbox: read-only
           prompt: |
@@ -270,6 +272,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-impl-1
           safety-strategy: unsafe
           sandbox: workspace-write
           prompt: |
@@ -305,6 +308,7 @@ jobs:
           GITHUB_TOKEN: ""
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: /tmp/codex-home-${{ github.run_id }}-${{ github.run_attempt }}-issue-impl-2
           safety-strategy: unsafe
           sandbox: workspace-write
           prompt: |
