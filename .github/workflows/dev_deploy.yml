@@ -35,7 +35,7 @@ jobs:
         run: |
           set -e
           resp=$(curl -s -o /dev/null -w "%{http_code}" \
-               -X GET https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${{ env.WORKSPACE_NAME }} \
+               -X GET "https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${{ env.WORKSPACE_NAME }}" \
                -H 'Content-Type: application/vnd.api+json' \
                -H 'Authorization: Bearer ${{ secrets.HUSHLINE_DEV_TF_TOKEN }}')
           echo "Got $resp when looking up workspace"
@@ -63,10 +63,10 @@ jobs:
                      }
                    }
                  }')
-            workspace_id=$(echo $resp | jq -r '.data.id')
+            workspace_id=$(echo "$resp" | jq -r '.data.id')
             echo "Created workspace '${{ env.WORKSPACE_NAME }}' with id '$workspace_id'"
             echo "Tagging workspace with the 'dev' tag..."
-            curl -X POST https://app.terraform.io/api/v2/workspaces/${workspace_id}/relationships/tags \
+            curl -X POST "https://app.terraform.io/api/v2/workspaces/${workspace_id}/relationships/tags" \
                  -H 'Content-Type: application/vnd.api+json' \
                  -H 'Authorization: Bearer ${{ secrets.HUSHLINE_DEV_TF_TOKEN }}' \
                  -d '{

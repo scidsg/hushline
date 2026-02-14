@@ -28,8 +28,10 @@ jobs:
           docker compose up -d postgres blob-storage
           docker compose run --rm dev_data
           docker compose up -d app
-          for i in {1..30}; do
-            if curl -fsS http://localhost:8080/ > /dev/null; then
+          attempt=0
+          until curl -fsS http://localhost:8080/ > /dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
               break
             fi
             sleep 2
@@ -53,11 +55,10 @@ jobs:
           set +e
           success=0
           for i in 1 2 3 4 5; do
-            curl -fsS -o /tmp/w3c/css.json \
+            if curl -fsS -o /tmp/w3c/css.json \
               -F "file=@hushline/static/css/style.css" \
               -F "output=json" \
-              https://jigsaw.w3.org/css-validator/validator
-            if [ $? -eq 0 ]; then
+              https://jigsaw.w3.org/css-validator/validator; then
               success=1
               break
             fi
