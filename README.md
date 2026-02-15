@@ -5,14 +5,44 @@
 ![Accessibility](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge.json)
 ![Performance](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge-performance.json)
 ![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge-coverage.json)
-![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
 ![Tests](https://github.com/scidsg/hushline/actions/workflows/tests.yml/badge.svg)
-![Workflow Security Checks](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml/badge.svg)
-![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)
 ![Database Migration Compatibility Tests](https://github.com/scidsg/hushline/actions/workflows/migration-smoke.yml/badge.svg)
 ![E2EE and Privacy Regressions](https://github.com/scidsg/hushline/actions/workflows/e2ee-privacy-regressions.yml/badge.svg)
+![Workflow Security Checks](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml/badge.svg)
+![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)
+![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
 
 <img width="3627" height="2194" alt="cover" src="https://github.com/user-attachments/assets/442d2a2f-cf64-469c-8f09-0808619df67e" />
+
+## Quickstart (Local)
+
+```sh
+git clone https://github.com/scidsg/hushline.git
+cd hushline
+docker compose up --build
+```
+
+Open `http://localhost:8080`.
+
+Common development commands:
+
+- `make test` to run the test suite
+- `make lint` to run lint/type/style checks
+- `make fix` to auto-format code
+- `make run-full` to run with Stripe-enabled stack
+
+## Security and Privacy
+
+- Threat model: [`THREAT_MODEL.md`](./THREAT_MODEL.md)
+- Security policy / vulnerability reporting: [`SECURITY.md`](./SECURITY.md)
+- Privacy policy: [`docs/PRIVACY.md`](./docs/PRIVACY.md)
+- Legacy threat model notes: [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md)
+
+## Documentation
+
+- Start here: <https://hushline.app/library/docs/getting-started/start-here/>
+- Project docs index: [`docs/README.md`](./docs/README.md)
+- Developer docs: [`docs/DEV.md`](./docs/DEV.md)
 
 ## Hush Line Features
 
