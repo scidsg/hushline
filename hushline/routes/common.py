@@ -13,6 +13,7 @@ from unidecode import unidecode
 from wtforms import Field, Form
 from wtforms.validators import ValidationError
 
+from hushline.content_safety import contains_disallowed_text
 from hushline.db import db
 from hushline.email import create_smtp_config, send_email
 from hushline.model import SMTPEncryption, User, Username
@@ -23,6 +24,8 @@ def valid_username(form: Form, field: Field) -> None:
         raise ValidationError(
             "Username must contain only letters, numbers, underscores, or hyphens."
         )
+    if contains_disallowed_text(field.data):
+        raise ValidationError("Username includes language that is not allowed.")
 
 
 def _dir_sort_key(u: Username) -> str:

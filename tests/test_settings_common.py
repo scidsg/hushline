@@ -8,6 +8,8 @@ import aiohttp
 import pytest
 from flask import Flask
 from sqlalchemy.exc import IntegrityError
+from werkzeug.datastructures import MultiDict
+from wtforms.validators import ValidationError
 
 from hushline.db import db
 from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
@@ -28,8 +30,10 @@ from hushline.settings.common import (
 )
 from hushline.settings.forms import (
     ChangePasswordForm,
+    ChangeUsernameForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
+    FieldForm,
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
@@ -63,6 +67,48 @@ def test_set_input_disabled_toggle(app: Flask) -> None:
         set_input_disabled(field, False)
         assert field.render_kw is not None
         assert "disabled" not in field.render_kw
+
+
+def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
+    def _reject_blocked_token(_self: object, _form: object, field: object) -> None:
+        value = getattr(field, "data", "") or ""
+        if "blocked-token" in value:
+            raise ValidationError("blocked")
+
+    with app.test_request_context():
+        with patch(
+            "hushline.forms.NoDisallowedLanguage.__call__",
+            new=_reject_blocked_token,
+        ):
+            display_form = DisplayNameForm(formdata=MultiDict({"display_name": "blocked-token"}))
+            assert not display_form.validate()
+            assert display_form.display_name.errors
+
+            profile_form = ProfileForm(
+                formdata=MultiDict({"bio": "blocked-token", "extra_field_label1": "label"})
+            )
+            assert not profile_form.validate()
+            assert profile_form.bio.errors
+
+            field_form = FieldForm(
+                formdata=MultiDict({"label": "blocked-token", "field_type": FieldType.TEXT.value})
+            )
+            assert not field_form.validate()
+            assert field_form.label.errors
+
+        with patch(
+            "hushline.routes.common.contains_disallowed_text",
+            side_effect=lambda text: bool(text and "blocked-token" in text),
+        ):
+            alias_form = NewAliasForm(formdata=MultiDict({"username": "blocked-token"}))
+            assert not alias_form.validate()
+            assert alias_form.username.errors
+
+            username_form = ChangeUsernameForm(
+                formdata=MultiDict({"new_username": "blocked-token"})
+            )
+            assert not username_form.validate()
+            assert username_form.new_username.errors
 
 
 def test_is_blocked_ip_classification() -> None:
