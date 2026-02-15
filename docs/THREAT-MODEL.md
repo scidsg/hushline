@@ -1,116 +1,220 @@
 # Hush Line Threat Model
 
-ℹ️ _This is a living document and is subject to change as the app evolves._
+Last updated: 2026-02-15
 
-Adapted from the threat/risk models published by [Cwtch](https://docs.cwtch.im/security/risk/), [SecureDrop](https://docs.securedrop.org/en/latest/threat_model/threat_model.html), and [Pond](https://web.archive.org/web/20150326154506/https://pond.imperialviolet.org/threat.html).
+This document models threats for Hush Line using publicly documented product behavior, deployment guidance, and published audit information.
 
-## Introduction
+## Security Objectives
 
-Hush Line is a secure communication platform designed with a strong focus on privacy and anonymity. This document outlines the threat model for Hush Line, highlighting potential threats, the data Hush Line collects, how it is secured, and what users can expect in terms of privacy and security.
+- Protect submitter anonymity and plausible deniability.
+- Preserve confidentiality and integrity of disclosures.
+- Ensure recipients can verify destination authenticity.
+- Maintain availability under realistic abuse and operational failure.
+- Minimize retained sensitive data and blast radius on compromise.
 
-## Users
+## System Overview
 
-| User Type        | Goal                                                                                |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| Submitter        | Individual who sends a message.                                                     |
-| Tip Line Owner   | Individual or organization representative who reads messages.                       |
-| Verifier         | Staff member who verifies account owners (journalists, public figures, businesses). |
-| Service Provider | Individual or organization who provides Hush Line services.                         |
-| Server Admin     | Individual who maintains the server operating Hush Line.                            |
+Hush Line is a whistleblower/tip-line platform with two primary deployment models:
+
+- Managed service (`tips.hushline.app`) with optional paid features.
+- Personal Server / self-hosted variants, including Tor-only deployments.
+
+Publicly documented properties include:
+
+- End-to-end encryption path when recipients configure a public PGP key (browser-side encryption via OpenPGP.js).
+- Server-side fallback encryption path when JavaScript is disabled.
+- TLS in transit and encrypted data at rest.
+- Tor onion access for site and app.
+- Text-centric workflow (no general file intake in standard message flow).
+- Optional message forwarding via SMTP and optional billing via Stripe.
+- Human-verified recipient accounts in directory/verification flows.
+
+## In-Scope Assets
+
+- Message content and metadata (status, reply identifiers, timestamps).
+- Recipient account credentials and authentication artifacts (password hash, optional 2FA secrets).
+- Recipient encryption material (public PGP key and related settings).
+- SMTP credentials and notification settings.
+- Directory/profile data (display names, bios, custom fields, verification markers).
+- Infrastructure/runtime secrets (encryption/session keys, DB credentials, API keys, tokens).
+- Audit logs, CI/CD workflows, and software supply chain artifacts.
+
+## Trust Boundaries
+
+- Submitter browser/device -> public network/Tor -> Hush Line app edge.
+- App layer -> database and object/blob storage.
+- App layer -> SMTP provider (if forwarding enabled).
+- App layer -> Stripe APIs/webhooks (if billing enabled).
+- CI/CD and repository automation -> deployment/runtime environments.
+- Directory and verification UX -> identity trust decisions by submitters.
+
+## User Roles
+
+- Submitter (usually unauthenticated).
+- Recipient (authenticated account owner; free or paid tier).
+- Platform administrators (service-side operational control).
+- Verification staff (identity verification operations).
+- Infrastructure operators (hosting, deployment, incident response).
 
 ## Adversaries
 
-| User Type        | Goal                                                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Passive Observer | Passively logs client IP addresses and their corresponding inbound/outbound connections (school/work networks, ISPs, DNS providers). |
-| Active Observer  | Targets specific connections.                                                                                                        |
-| Passive Attacker | Scans the internet for vulnerabilities to take advantage of.                                                                         |
-| Active Attacker  | Seeks persistence, exploitation of known vulnerabilities, and seizure of physical equipment.                                         |
+- Passive network observers (ISP, enterprise/school network, hostile hotspot).
+- Active network attackers (MITM attempts, traffic manipulation, censorship).
+- External web attackers (XSS, CSRF, SSRF, injection, auth bypass, abuse automation).
+- Credential attackers (phishing, stuffing, brute force, session theft).
+- Malicious or negligent insiders (recipient/admin/operator misuse).
+- Supply-chain attackers (dependency compromise, CI workflow compromise).
+- Legal/coercive adversaries (subpoenas, compelled disclosure, infrastructure seizure).
+- Targeted deanonymization adversaries with substantial resources.
 
-## Assumptions
+## Threat Scenarios and Mitigations
 
-The following assumptions are accepted in the threat model of the Hush Line product:
+### 1) Deanonymization of submitters
 
-### Assumptions About the Individual Submitting a Message
+Threats:
 
-- The individual submitting a message does so in good faith.
-- The individual submitting a message wants to remain anonymous against a network observer, forensic analysis, or to Hush Line servers.
-- The individual submitting a message is accessing the official Hush Line site.
+- Network-level identification on clearnet.
+- Operational mistakes by submitters.
+- Correlation via external services, endpoint telemetry, or timing.
 
-### Assumptions About the Person or Organization Receiving a Message
+Mitigations:
 
-- The receiver operates Hush Line in good faith.
+- Tor onion access for advanced anonymity needs.
+- No submitter account requirement for message submission.
+- Public guidance discouraging use of work-issued devices/networks.
+- Minimize collection/retention of unnecessary identifying data.
 
-### Assumptions About the Hush Line Server
+Residual risk:
 
-- The server is operated in good faith.
-- The server is single-use and configured with the official scripts on the GitHub main repo.
-- The server has no other software other than what is required for the operation of Hush Line.
+- User operational security errors remain a primary failure mode.
+- Clearnet observers can still see that a user connected to Hush Line.
 
-### Assumptions About the Source’s Computer
+### 2) Message confidentiality compromise
 
-- The computer has an updated version of a popular browser including Chrome, Firefox, or Safari, and for anonymous connections, an updated version of Tor Browser.
-- The computer is not compromised by malware.
+Threats:
 
-### Assumptions About Science & Design
+- Server/database compromise.
+- Key or credential leakage.
+- SMTP forwarding exposure in downstream systems.
 
-- Science & Design wants to preserve the anonymity of its sources.
-- Science & Design acts in the interest of allowing sources to submit messages, regardless of their contents.
-- The users of the system, and those with physical access to the servers, can be trusted to uphold the previous assumptions unless the entire organization has been compromised.
-- Science & Design is prepared to push back on any and all requests to compromise the integrity of the system and its users, including requests to deanonymize sources, block message submissions, or hand over encrypted or decrypted submissions.
+Mitigations:
 
-### Assumptions About the World
+- Recipient-controlled PGP workflow for E2EE path.
+- Encryption at rest and TLS in transit.
+- Optional local decrypt workflow (Mailvelope integration) and Proton-focused key flow.
+- Strong secret handling and key rotation procedures.
 
-- The security assumptions of `scrypt` with randomly generated salts are valid.
-- The security/anonymity assumptions of Tor and the Onion service protocol are valid.
-- The security assumptions of Hush Line dependencies, specifically Debian, the Linux kernel, application packages, and application dependencies, are valid.
+Residual risk:
 
-### Other Assumptions or Factors
+- If recipients do not configure PGP/E2EE, operator or attacker exposure risk is higher.
+- SMTP relay/storage can expand disclosure surface outside core app boundaries.
 
-- The level of press freedom may vary in both geography and time.
-- The number of daily Tor users in a country can greatly vary.
+### 3) Recipient impersonation and destination trust failures
 
-## Threats and Mitigations
+Threats:
 
-### Server Compromise
+- Users send disclosures to spoofed or fraudulent recipients.
 
-- **Impacts:** If an attacker obtains the database encryption key, its contents may be decrypted. Still, we do not require PII. If you have SMTP delivery configured, your forwarding address will be visible. If you haven't added your own public PGP key to your account, message content will be visible.
-- **Mitigation:** Hush Line does not require PII, including an email address, to use the service. To protect message content, users are encouraged to add their own PGP key. We store data encrypted in our database, remove IP addresses and country codes from access logs, and do not store timestamps or associate member data in any way. The database key is never hardcoded and is stored in environment variables, removing the chance of exposure to the source code.
+Mitigations:
 
-### Network Observers
+- Human-verified account badges and verification workflow.
+- Directory UX that surfaces verification state.
 
-- **Impacts:** Adversaries who monitor network connections to our server can see your IP address and the domain you're visiting.
-- **Mitigation:** All data in transit is encrypted using TLS, and users are encouraged to access Hush Line via Tor for additional anonymity. This prevents network observers from deciphering the content or metadata of communications.
+Residual risk:
 
-### Account Compromise
+- Verification process quality is operationally sensitive.
 
-- **Impacts:** Disruption of Hush Line usage, impersonation which could lead to reputational harm or other damages.
-- **Mitigation:** Strong password policies, optional 2FA, and secure password reset mechanisms are in place to protect user accounts. Users are educated on best practices for maintaining account security.
+### 4) Application-layer compromise
 
-### Legal and Coercive Pressure
+Threats:
 
-- **Impacts:** Science & Design, Inc. and Hush Line must comply with legitimate legal requests, which could result in the forfeiture of data that includes your username, SMTP information, public PGP key, or other information you provide to Hush Line. No PII is required to use the Hush Line service, but if you've donated to our Open Collective or purchased anything from our Shopify store, potentially identifying information, including your shipping and billing address, name, email address, and IP address, could be tied back to you with sufficient analysis.
-- **Mitigation:** Hush Line is designed to hold minimal information that could be of interest in legal contexts.
+- Injection vulnerabilities, SSRF, broken access control, CSRF/XSS regressions.
 
-## Verification System
+Mitigations:
 
-Hush Line employs a verification system to ensure that users can trust the source of communication. This system is particularly important for users who are public figures or have a wide audience. The verification system includes:
+- Framework-level protections, security headers/CSP, authz checks, tests, static checks, workflow security controls.
+- Publicly documented independent audits (2024 and 2025) and remediation tracking.
 
-### Verified Accounts
+Residual risk:
 
-- **Display of Verification Status:** Hush Line indicates verified accounts with a distinctive badge (⭐️ Verified Account). This visual indicator helps users distinguish authentic accounts from potential impersonators, reducing the risk of phishing attacks.
-- **Data Retention:** The information used to verify you is never saved, even temporarily.
+- Public 2025 audit summary reports unresolved findings (one medium, two low) that must be tracked to closure.
 
-## User Education
+### 5) Availability and abuse
 
-### Encryption Awareness
+Threats:
 
-- **Encryption Indicators:** The platform informs users whether their messages will be encrypted. For accounts with a public PGP key, messages are encrypted, ensuring that only the intended recipient can decrypt and read them. This feature is highlighted through messages on the submission form, emphasizing the importance of encryption for sensitive information.
+- Spam/flooding, abusive submissions, resource exhaustion, infra outages.
 
-### User Guidance
+Mitigations:
 
-- **Informative Messages for Senders and Receivers:** Hush Line educates its users about the significance of encryption and the steps required to ensure message confidentiality. This includes prompts for receivers to add a public PGP key if they haven't already, and notifications for senders about the encryption status of their message.
+- Abuse controls in submission UX/flows (CAPTCHA, operational controls).
+- CI checks for migration reliability and core regression prevention.
+- Capacity planning and incident response runbooks.
 
-## Conclusion
+Residual risk:
 
-Hush Line's threat model acknowledges the variety of adversaries that users may face and implements a robust security architecture to mitigate these risks. By encrypting data at rest, minimizing data collection, and educating users on security practices, Hush Line aims to offer a secure and private platform for communication.
+- Tor and anonymous access can limit traditional anti-abuse controls.
+
+### 6) CI/CD and supply-chain compromise
+
+Threats:
+
+- Malicious workflow changes, unsafe interpolation in Actions, dependency CVEs.
+
+Mitigations:
+
+- Workflow security checks (actionlint and interpolation guardrails).
+- Dependency security audit workflow for Python and Node.
+- Pinned actions and repository protection with review requirements.
+
+Residual risk:
+
+- Zero-day dependency issues and compromised upstream packages remain possible.
+
+## Known Public Audit Signals
+
+- 2024 Subgraph report: two-phase review across personal-server/self-hosted and managed service architecture.
+- 2025 Subgraph report (Dec 30, 2025): summary table lists:
+  - V-001 Blind SSRF private-network enumeration (Medium, unresolved in report).
+  - V-002 Client-side encryption timeout failure (Low, unresolved in report).
+  - V-003 Sequential message IDs (Low, unresolved in report).
+
+These findings should be treated as explicit risk register inputs until verified remediated.
+
+## Non-Goals
+
+- Guaranteeing perfect anonymity under nation-state-level endpoint compromise.
+- Replacing high-opsec secure file drop systems designed for malicious-file handling workflows.
+
+## Operational Requirements
+
+- Mandatory review for security-sensitive code paths (auth, crypto, workflows, migrations).
+- Routine dependency auditing and patch management.
+- Secrets management with rotation and least privilege.
+- Incident handling for vulnerability reports and coordinated disclosure.
+- Continuous red-team-style validation of anonymity and metadata leakage assumptions.
+
+## Data Minimization and Retention Principles
+
+- Collect only data required for operation of messaging, account security, and optional billing.
+- Keep optional features (SMTP forwarding, billing, directory profile detail) explicitly opt-in where possible.
+- Provide account/message deletion paths and clear retention behavior.
+
+## Open Risks to Track
+
+- Close and verify remediation state for publicly reported unresolved audit findings.
+- Continue hardening around SSRF and outbound request controls.
+- Maintain robust encryption-failure handling and user-visible safety cues.
+- Preserve anti-abuse controls without weakening anonymity guarantees.
+
+## Sources (Public)
+
+- https://hushline.app/
+- https://tips.hushline.app/directory
+- https://hushline.app/library/
+- https://hushline.app/library/docs/getting-started/start-here/
+- https://hushline.app/assets/files/2024-security-audit.pdf
+- https://hushline.app/assets/files/2025-security-audit.pdf
+- https://github.com/scidsg/hushline
+- https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md
+- https://github.com/scidsg/hushline/blob/main/SECURITY.md
