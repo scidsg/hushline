@@ -17,6 +17,11 @@ def test_valid_username_validator() -> None:
     with pytest.raises(ValidationError, match="Username must contain only"):
         routes_common.valid_username(MagicMock(), invalid_field)
 
+    blocked_field = MagicMock(data="blocked-token")
+    with patch("hushline.routes.common.contains_disallowed_text", return_value=True):
+        with pytest.raises(ValidationError, match="not allowed"):
+            routes_common.valid_username(MagicMock(), blocked_field)
+
 
 def test_get_directory_usernames_sorts_admin_first_and_normalized(
     user: User, user2: User, admin_user: User

@@ -8,6 +8,7 @@ from wtforms import Field, Form, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
 from wtforms.widgets.core import html_params
 
+from hushline.content_safety import contains_disallowed_text
 from hushline.model import MessageStatus
 from hushline.safe_template import TemplateError, safe_render_template
 
@@ -74,6 +75,16 @@ class CanonicalHTML:
         text: str = field.data
         if text != html.escape(text).strip():
             raise ValidationError(f"{text=} is ambiguous or unescaped.")
+
+
+class NoDisallowedLanguage:
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or "This text includes language that is not allowed."
+
+    def __call__(self, form: Form, field: Field) -> None:
+        text: str = (field.data or "").strip()
+        if text and contains_disallowed_text(text):
+            raise ValidationError(self.message)
 
 
 class TwoFactorForm(FlaskForm):

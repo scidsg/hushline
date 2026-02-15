@@ -27,9 +27,11 @@ from hushline.settings.common import (
     verify_url,
 )
 from hushline.settings.forms import (
+    ChangeUsernameForm,
     ChangePasswordForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
+    FieldForm,
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
@@ -63,6 +65,42 @@ def test_set_input_disabled_toggle(app: Flask) -> None:
         set_input_disabled(field, False)
         assert field.render_kw is not None
         assert "disabled" not in field.render_kw
+
+
+def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
+    def _mock_contains_disallowed_text(text: str | None) -> bool:
+        return bool(text and "blocked-token" in text)
+
+    with app.test_request_context():
+        with patch(
+            "hushline.forms.contains_disallowed_text",
+            side_effect=_mock_contains_disallowed_text,
+        ):
+            display_form = DisplayNameForm(data={"display_name": "blocked-token"})
+            assert not display_form.validate()
+            assert display_form.display_name.errors
+
+            profile_form = ProfileForm(data={"bio": "blocked-token", "extra_field_label1": "label"})
+            assert not profile_form.validate()
+            assert profile_form.bio.errors
+
+            field_form = FieldForm(
+                data={"label": "blocked-token", "field_type": FieldType.TEXT.value}
+            )
+            assert not field_form.validate()
+            assert field_form.label.errors
+
+        with patch(
+            "hushline.routes.common.contains_disallowed_text",
+            side_effect=_mock_contains_disallowed_text,
+        ):
+            alias_form = NewAliasForm(data={"username": "blocked-token"})
+            assert not alias_form.validate()
+            assert alias_form.username.errors
+
+            username_form = ChangeUsernameForm(data={"new_username": "blocked-token"})
+            assert not username_form.validate()
+            assert username_form.new_username.errors
 
 
 def test_is_blocked_ip_classification() -> None:

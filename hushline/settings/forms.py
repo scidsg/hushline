@@ -30,7 +30,14 @@ from wtforms.validators import (
 from wtforms.validators import Optional as OptionalField
 
 from hushline.db import db
-from hushline.forms import Button, CanonicalHTML, ComplexPassword, HexColor, ValidTemplate
+from hushline.forms import (
+    Button,
+    CanonicalHTML,
+    ComplexPassword,
+    HexColor,
+    NoDisallowedLanguage,
+    ValidTemplate,
+)
 from hushline.model import FieldDefinition, FieldType, MessageStatus, SMTPEncryption, User, Username
 from hushline.routes.common import valid_username
 
@@ -54,6 +61,7 @@ class ChangeUsernameForm(FlaskForm):
         validators=[
             DataRequired(),
             Length(min=Username.USERNAME_MIN_LENGTH, max=Username.USERNAME_MAX_LENGTH),
+            valid_username,
         ],
     )
     submit = SubmitField("Change Username", name="update_display_name", widget=Button())
@@ -152,6 +160,7 @@ class DisplayNameForm(FlaskForm):
         validators=[
             OptionalField(),
             Length(min=Username.DISPLAY_NAME_MIN_LENGTH, max=Username.DISPLAY_NAME_MAX_LENGTH),
+            NoDisallowedLanguage(),
         ],
     )
     submit = SubmitField("Update Display Name", name="update_display_name", widget=Button())
@@ -186,12 +195,18 @@ def strip_whitespace(value: Optional[Any]) -> Optional[str]:
 
 class ProfileForm(FlaskForm):
     bio = TextAreaField(
-        "Bio", filters=[strip_whitespace], validators=[Length(max=Username.BIO_MAX_LENGTH)]
+        "Bio",
+        filters=[strip_whitespace],
+        validators=[Length(max=Username.BIO_MAX_LENGTH), NoDisallowedLanguage()],
     )
     extra_field_label1 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
+        validators=[
+            OptionalField(),
+            Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH),
+            NoDisallowedLanguage(),
+        ],
     )
     extra_field_value1 = StringField(
         "Content",
@@ -201,7 +216,11 @@ class ProfileForm(FlaskForm):
     extra_field_label2 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
+        validators=[
+            OptionalField(),
+            Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH),
+            NoDisallowedLanguage(),
+        ],
     )
     extra_field_value2 = StringField(
         "Content",
@@ -211,7 +230,11 @@ class ProfileForm(FlaskForm):
     extra_field_label3 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
+        validators=[
+            OptionalField(),
+            Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH),
+            NoDisallowedLanguage(),
+        ],
     )
     extra_field_value3 = StringField(
         "Content",
@@ -221,7 +244,11 @@ class ProfileForm(FlaskForm):
     extra_field_label4 = StringField(
         "Label",
         filters=[strip_whitespace],
-        validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH)],
+        validators=[
+            OptionalField(),
+            Length(max=Username.EXTRA_FIELD_LABEL_MAX_LENGTH),
+            NoDisallowedLanguage(),
+        ],
     )
     extra_field_value4 = StringField(
         "Content",
@@ -330,13 +357,18 @@ class UpdateProfileHeaderForm(FlaskForm):
 
 
 class FieldChoiceForm(Form):
-    choice = StringField("Choice", validators=[DataRequired()])
+    choice = StringField("Choice", validators=[DataRequired(), NoDisallowedLanguage()])
 
 
 class FieldForm(FlaskForm):
     id = HiddenField()
     label = StringField(
-        "Label", validators=[DataRequired(), Length(max=FieldDefinition.LABEL_MAX_LENGTH)]
+        "Label",
+        validators=[
+            DataRequired(),
+            Length(max=FieldDefinition.LABEL_MAX_LENGTH),
+            NoDisallowedLanguage(),
+        ],
     )
     field_type = SelectField(
         "Field Type",

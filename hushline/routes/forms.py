@@ -13,7 +13,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
-from hushline.forms import ComplexPassword
+from hushline.forms import ComplexPassword, NoDisallowedLanguage
 from hushline.model import (
     AuthenticationLog,
     FieldDefinition,
@@ -95,9 +95,13 @@ class OnboardingProfileForm(FlaskForm):
         validators=[
             DataRequired(),
             Length(min=Username.DISPLAY_NAME_MIN_LENGTH, max=Username.DISPLAY_NAME_MAX_LENGTH),
+            NoDisallowedLanguage(),
         ],
     )
-    bio = TextAreaField("Bio", validators=[DataRequired(), Length(max=Username.BIO_MAX_LENGTH)])
+    bio = TextAreaField(
+        "Bio",
+        validators=[DataRequired(), Length(max=Username.BIO_MAX_LENGTH), NoDisallowedLanguage()],
+    )
 
 
 class OnboardingNotificationsForm(FlaskForm):

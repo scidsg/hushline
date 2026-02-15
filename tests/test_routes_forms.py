@@ -1,11 +1,12 @@
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
 from wtforms.validators import Length
 
 from hushline.model import FieldType
-from hushline.routes.forms import DynamicMessageForm, LoginForm, RegistrationForm
+from hushline.routes.forms import DynamicMessageForm, LoginForm, OnboardingProfileForm, RegistrationForm
 
 
 def _get_length_validator(form_class: type, field_name: str) -> Length | None:
@@ -109,3 +110,20 @@ def test_dynamic_message_form_choice_fields_select_and_multicheckbox(app: Flask)
     form.field_0.errors = ["Not a valid choice.", "another"]
     skip_invalid_choice(form, form.field_0)
     assert form.field_0.errors == ["another"]
+
+
+def test_onboarding_profile_form_rejects_disallowed_language(app: Flask) -> None:
+    def _mock_contains_disallowed_text(text: str | None) -> bool:
+        return bool(text and "blocked-token" in text)
+
+    with app.test_request_context(), patch(
+        "hushline.forms.contains_disallowed_text",
+        side_effect=_mock_contains_disallowed_text,
+    ):
+        form = OnboardingProfileForm(data={"display_name": "blocked-token", "bio": "clean bio"})
+        assert not form.validate()
+        assert form.display_name.errors
+
+        form = OnboardingProfileForm(data={"display_name": "clean-name", "bio": "blocked-token"})
+        assert not form.validate()
+        assert form.bio.errors
