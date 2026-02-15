@@ -8,6 +8,7 @@ import aiohttp
 import pytest
 from flask import Flask
 from sqlalchemy.exc import IntegrityError
+from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
@@ -79,16 +80,20 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             "hushline.forms.NoDisallowedLanguage.__call__",
             new=_reject_blocked_token,
         ):
-            display_form = DisplayNameForm(data={"display_name": "blocked-token"})
+            display_form = DisplayNameForm(formdata=MultiDict({"display_name": "blocked-token"}))
             assert not display_form.validate()
             assert display_form.display_name.errors
 
-            profile_form = ProfileForm(data={"bio": "blocked-token", "extra_field_label1": "label"})
+            profile_form = ProfileForm(
+                formdata=MultiDict({"bio": "blocked-token", "extra_field_label1": "label"})
+            )
             assert not profile_form.validate()
             assert profile_form.bio.errors
 
             field_form = FieldForm(
-                data={"label": "blocked-token", "field_type": FieldType.TEXT.value}
+                formdata=MultiDict(
+                    {"label": "blocked-token", "field_type": FieldType.TEXT.value}
+                )
             )
             assert not field_form.validate()
             assert field_form.label.errors
@@ -97,11 +102,11 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             "hushline.routes.common.contains_disallowed_text",
             side_effect=lambda text: bool(text and "blocked-token" in text),
         ):
-            alias_form = NewAliasForm(data={"username": "blocked-token"})
+            alias_form = NewAliasForm(formdata=MultiDict({"username": "blocked-token"}))
             assert not alias_form.validate()
             assert alias_form.username.errors
 
-            username_form = ChangeUsernameForm(data={"new_username": "blocked-token"})
+            username_form = ChangeUsernameForm(formdata=MultiDict({"new_username": "blocked-token"}))
             assert not username_form.validate()
             assert username_form.new_username.errors
 
