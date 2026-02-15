@@ -19,7 +19,7 @@
 ```sh
 git clone https://github.com/scidsg/hushline.git
 cd hushline
-docker compose up --build
+docker compose up
 ```
 
 Open `http://localhost:8080`.
@@ -33,10 +33,9 @@ Common development commands:
 
 ## Security and Privacy
 
-- Threat model: [`THREAT_MODEL.md`](./THREAT_MODEL.md)
+- Threat model: [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md)
 - Security policy / vulnerability reporting: [`SECURITY.md`](./SECURITY.md)
 - Privacy policy: [`docs/PRIVACY.md`](./docs/PRIVACY.md)
-- Legacy threat model notes: [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md)
 
 ## Documentation
 
