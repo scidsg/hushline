@@ -91,9 +91,7 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             assert profile_form.bio.errors
 
             field_form = FieldForm(
-                formdata=MultiDict(
-                    {"label": "blocked-token", "field_type": FieldType.TEXT.value}
-                )
+                formdata=MultiDict({"label": "blocked-token", "field_type": FieldType.TEXT.value})
             )
             assert not field_form.validate()
             assert field_form.label.errors
@@ -106,7 +104,9 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             assert not alias_form.validate()
             assert alias_form.username.errors
 
-            username_form = ChangeUsernameForm(formdata=MultiDict({"new_username": "blocked-token"}))
+            username_form = ChangeUsernameForm(
+                formdata=MultiDict({"new_username": "blocked-token"})
+            )
             assert not username_form.validate()
             assert username_form.new_username.errors
 
