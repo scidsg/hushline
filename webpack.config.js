@@ -13,7 +13,6 @@ modules = [
   "mailvelope",
   "message",
   "message_success",
-  "onboarding",
   "premium",
   "premium-waiting",
   "service-worker",
