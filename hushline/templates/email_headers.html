@@ -1,0 +1,122 @@
+{% extends "tools/base.html" %}
+{% block title %}Email Validation{% endblock %}
+
+{% block tools_content %}
+  <h3>Email Validation</h3>
+  <p>
+    How do you know if an email is authentic? Paste raw message headers to inspect
+    DKIM/SPF/DMARC results and fetch DKIM signing-key records from DNS.
+  </p>
+  <p class="meta">
+    ⚠️ Disclaimer: older emails can appear inauthentic even when they were valid at send time.
+    DKIM keys can be rotated or removed, domains can change ownership, and current DNS records
+    may not match historical records.
+  </p>
+
+  <form method="POST" action="{{ url_for('email_headers') }}">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.raw_headers.label(for="raw_headers") }}
+      {{ form.raw_headers(id="raw_headers") }}
+      {% if form.raw_headers.errors %}
+        <span class="error">{{ form.raw_headers.errors[0] }}</span>
+      {% endif %}
+    </div>
+    <div>
+      {{ form.submit(class="btn-primary") }}
+      {% if report %}
+        <button type="submit" class="btn" formaction="{{ url_for('email_headers_evidence_zip') }}">
+          Download Report
+        </button>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if report %}
+    <section aria-labelledby="email-summary">
+      <h4 id="email-summary">Email Summary</h4>
+      <p><strong>{{ report.executive_summary.headline }}</strong></p>
+      <ul>
+        {% for reason in report.executive_summary.reasons %}
+          <li>{{ reason }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section aria-labelledby="email-headers-summary">
+      <h4 id="email-headers-summary">Validation Summary</h4>
+      <p class="meta">{{ report.note }}</p>
+      <ul>
+        <li>From domain: <code>{{ report.from_domain or "not found" }}</code></li>
+        <li>Return-Path domain: <code>{{ report.return_path_domain or "not found" }}</code></li>
+        <li>Reply-To domain: <code>{{ report.reply_to_domain or "not found" }}</code></li>
+        <li>
+          From/Return-Path alignment:
+          <code>{{ "yes" if report.alignment.from_matches_return_path else "no" }}</code>
+        </li>
+        <li>
+          From/DKIM alignment:
+          <code>{{ "yes" if report.alignment.from_matches_any_dkim_domain else "no" }}</code>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="auth-results">
+      <h4 id="auth-results">Authentication-Results</h4>
+      <ul>
+        <li>DKIM: <code>{{ report.auth_results.get("dkim", "not present") }}</code></li>
+        <li>SPF: <code>{{ report.auth_results.get("spf", "not present") }}</code></li>
+        <li>DMARC: <code>{{ report.auth_results.get("dmarc", "not present") }}</code></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="dkim-signatures">
+      <h4 id="dkim-signatures">DKIM Signatures</h4>
+      {% if report.dkim_signatures %}
+        <ul>
+          {% for sig in report.dkim_signatures %}
+            <li>
+              domain=<code>{{ sig.domain or "missing" }}</code>,
+              selector=<code>{{ sig.selector or "missing" }}</code>,
+              algorithm=<code>{{ sig.algorithm or "missing" }}</code>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No DKIM-Signature headers were found.</p>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="dkim-keys">
+      <h4 id="dkim-keys">DKIM Key Lookup</h4>
+      {% if report.dkim_key_lookups %}
+        <ul>
+          {% for item in report.dkim_key_lookups %}
+            <li>
+              <code>{{ item.query_name }}</code>: <code>{{ item.status }}</code>
+              {% if item.has_public_key %}
+                (public key present)
+              {% endif %}
+              {% if item.error %}
+                - {{ item.error }}
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No DKIM key lookups were attempted.</p>
+      {% endif %}
+    </section>
+
+    {% if report.warnings %}
+      <section aria-labelledby="warnings">
+        <h4 id="warnings">Warnings</h4>
+        <ul>
+          {% for warning in report.warnings %}
+            <li>{{ warning }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

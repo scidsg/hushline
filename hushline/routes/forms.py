@@ -13,7 +13,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, Length, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 
-from hushline.forms import ComplexPassword, NoDisallowedLanguage
+from hushline.forms import Button, ComplexPassword, NoDisallowedLanguage
 from hushline.model import (
     AuthenticationLog,
     FieldDefinition,
@@ -117,6 +117,32 @@ class OnboardingDirectoryForm(FlaskForm):
 
 class OnboardingSkipForm(FlaskForm):
     submit = SubmitField("Skip")
+
+
+class RawEmailHeadersForm(FlaskForm):
+    raw_headers = TextAreaField(
+        "Raw Email Headers",
+        validators=[DataRequired(), Length(max=200000)],
+        render_kw={
+            "rows": 16,
+            "autocomplete": "off",
+            "placeholder": (
+                "Authentication-Results: mx.example.net; dkim=pass header.d=example.org; "
+                "spf=pass smtp.mailfrom=example.org; dmarc=pass header.from=example.org\n"
+                "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; "
+                "bh=...; b=...\n"
+                "From: Reporter <reporter@example.org>\n"
+                "Return-Path: <bounce@example.org>\n"
+                "Reply-To: reporter@example.org"
+            ),
+        },
+    )
+    submit = SubmitField("Validate Headers", widget=Button())
+
+
+class RawEmailHeadersExportForm(FlaskForm):
+    raw_headers = HiddenField(validators=[DataRequired(), Length(max=200000)])
+    submit = SubmitField("Download Report", widget=Button())
 
 
 class DynamicMessageForm:

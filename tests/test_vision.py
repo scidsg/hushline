@@ -23,13 +23,15 @@ def test_vision_redirects_to_login_when_session_user_missing(client: FlaskClient
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_vision_redirects_unpaid_user_to_tier_selection(client: FlaskClient, user: User) -> None:
+def test_vision_renders_for_free_user(client: FlaskClient, user: User) -> None:
     user.tier_id = None
     db.session.commit()
 
-    response = client.get(url_for("vision"), follow_redirects=False)
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("premium.select_tier"))
+    response = client.get(url_for("vision"))
+    assert response.status_code == 200
+    assert "Vision Assistant" in response.text
+    assert "Email Validation" in response.text
+    assert 'aria-current="page"' in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

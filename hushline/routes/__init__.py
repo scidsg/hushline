@@ -9,6 +9,7 @@ from werkzeug.wrappers.response import Response
 from hushline.routes.auth import register_auth_routes
 from hushline.routes.common import get_ip_address
 from hushline.routes.directory import register_directory_routes
+from hushline.routes.email_headers import register_email_headers_routes
 from hushline.routes.forms import (  # noqa: F401
     DynamicMessageForm,
     LoginForm,
@@ -35,6 +36,7 @@ def init_app(app: Flask) -> None:
     register_onboarding_routes(app)
     register_directory_routes(app)
     register_vision_routes(app)
+    register_email_headers_routes(app)
 
     @app.route("/info")
     def server_info() -> Response | str:
