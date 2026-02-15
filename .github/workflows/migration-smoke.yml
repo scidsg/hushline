@@ -1,5 +1,5 @@
 ---
-name: Migration Smoke
+name: Database Migration Compatibility Tests
 
 on:
   pull_request:
