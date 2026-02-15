@@ -65,8 +65,9 @@ def test_email_headers_export_requires_authentication(client: FlaskClient) -> No
     assert response.headers["Location"].endswith(url_for("login"))
 
 
+@pytest.mark.usefixtures("_authenticated_user")
 def test_email_headers_page_renders_authenticated(
-    client: FlaskClient, _authenticated_user: None
+    client: FlaskClient,
 ) -> None:
     response = client.get(url_for("email_headers"))
     assert response.status_code == 200
@@ -77,8 +78,9 @@ def test_email_headers_page_renders_authenticated(
     assert 'aria-current="page"' in response.text
 
 
+@pytest.mark.usefixtures("_authenticated_user")
 def test_email_headers_post_without_dkim_still_reports_auth_results(
-    client: FlaskClient, _authenticated_user: None
+    client: FlaskClient,
 ) -> None:
     raw_headers = (
         "From: Person <person@example.org>\n"
@@ -108,8 +110,9 @@ def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
     assert report["executive_summary"]["verdict"] == "likely forged"
 
 
+@pytest.mark.usefixtures("_authenticated_user")
 def test_email_headers_export_zip_contains_evidence_artifacts(
-    client: FlaskClient, mocker: MockFixture, _authenticated_user: None
+    client: FlaskClient, mocker: MockFixture
 ) -> None:
     mocker.patch("hushline.email_headers.dns.resolver.Resolver", return_value=_FakeResolver())
     raw_headers = (
