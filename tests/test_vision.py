@@ -30,7 +30,7 @@ def test_vision_renders_for_free_user(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("vision"))
     assert response.status_code == 200
     assert "Vision Assistant" in response.text
-    assert "Validate Email Headers" in response.text
+    assert "Email Validation" in response.text
     assert 'aria-current="page"' in response.text
 
 
