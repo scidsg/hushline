@@ -142,9 +142,13 @@ def _build_executive_summary(
             "reasons": reasons or ["DKIM, SPF, and DMARC all failed in Authentication-Results."],
         }
 
-    strong_auth_success = dkim == "pass" and (spf == "pass" or dmarc == "pass")
     aligned = alignment.get("from_matches_any_dkim_domain") or alignment.get(
         "from_matches_return_path"
+    )
+    strong_auth_success = (
+        dmarc == "pass"
+        or (spf == "pass" and aligned)
+        or (dkim == "pass" and alignment.get("from_matches_any_dkim_domain"))
     )
     if strong_auth_success and aligned and not warnings:
         return {

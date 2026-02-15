@@ -126,6 +126,19 @@ def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
     assert report["executive_summary"]["verdict"] == "likely forged"
 
 
+def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() -> None:
+    raw_headers = (
+        "From: Notifications <notifications@hushline.app>\n"
+        "Return-Path: <notifications@hushline.app>\n"
+        "Authentication-Results: mx.example.net; spf=pass smtp.mailfrom=hushline.app; "
+        "dmarc=pass header.from=hushline.app\n"
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+    assert report["executive_summary"]["verdict"] == "looks valid"
+    assert report["executive_summary"]["headline"] == "👍 This email looks valid."
+
+
 def test_analyze_raw_email_headers_rejects_empty_input() -> None:
     with pytest.raises(ValueError, match="No email headers detected"):
         analyze_raw_email_headers("")
