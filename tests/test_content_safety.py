@@ -45,6 +45,13 @@ def test_profanity_engine_returns_none_and_logs_once_when_library_missing(
     warning.assert_called_once()
 
 
+def test_contains_disallowed_text_returns_false_when_engine_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(content_safety, "_profanity_engine", lambda: None)
+    assert content_safety.contains_disallowed_text("blocked-token") is False
+
+
 def test_profanity_engine_loads_library_wordlist(monkeypatch: pytest.MonkeyPatch) -> None:
     content_safety._profanity_engine.cache_clear()
     content_safety._log_missing_library_once.cache_clear()
