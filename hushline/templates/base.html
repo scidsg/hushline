@@ -246,6 +246,7 @@
             {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>
             {% if 'user_id' in session and (session.get('is_authenticated', False)) %}
+              <li><a href="{{ url_for('email_headers') }}">Tools</a></li>
               <li>
                 <a href="{{ url_for('inbox') }}">Inbox</a>
               </li>
