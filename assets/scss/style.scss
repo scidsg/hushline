@@ -1973,11 +1973,9 @@ img.alert {
 .tab-list li {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .tab-list li a {
-  padding: 1rem 0;
   text-decoration: none;
 }
 
@@ -3110,8 +3108,6 @@ p.bio+.extra-fields {
 
 .tools-main .tools-tabs .tab-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -3205,7 +3201,6 @@ p.bio+.extra-fields {
 
   .settings-main .settings-content .tab-list li a,
   .inbox-main .inbox-content .tab-list li a {
-    padding: 1rem 0;
     transition: none;
   }
 
@@ -3213,7 +3208,6 @@ p.bio+.extra-fields {
   .inbox-main .inbox-content .tab-list {
     display: flex;
     flex-direction: row;
-    gap: 1.25rem;
     padding-top: 0;
   }
 
@@ -3221,8 +3215,9 @@ p.bio+.extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab.active {
-    padding: 1rem 0;
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .tab {
+    padding: 0.75rem 0.5rem;
   }
 
   .settings-main .settings-content .settings-tabs,
