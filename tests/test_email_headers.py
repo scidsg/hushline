@@ -3,6 +3,7 @@ import zipfile
 
 from flask import url_for
 from flask.testing import FlaskClient
+import pytest
 from pytest_mock import MockFixture
 
 from hushline.email_headers import analyze_raw_email_headers
