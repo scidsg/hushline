@@ -63,6 +63,7 @@ Common development commands:
 - 🧠 Automated message replies based on status
 - 💬 Unique reply status URL for submitters
 - 🤖 Local, Private CAPTCHA
+- 🙊 Profanity filter with `better-profanity`
 
 ## Resources
 

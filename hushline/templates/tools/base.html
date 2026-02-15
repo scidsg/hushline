@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Tools{% endblock %}
+{% block main_class %}tools-main{% endblock %}
+
+{% block content %}
+  <h2>Tools</h2>
+  <p>Use these free tools to support investigations with practical, evidence-focused workflows. Each
+  tool is designed to produce clear, defensible outputs you can review, share, and act on.</p>
+  <div class="tools-content{% if tools_sidebar %} tools-content-sidebar{% endif %}">
+    {% include "tools/nav.html" %}
+    <div class="tool-tab-content">
+      {% block tools_content %}{% endblock %}
+    </div>
+  </div>
+{% endblock %}

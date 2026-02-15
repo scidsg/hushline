@@ -134,11 +134,17 @@
     background-color: white;
   }
 
-  .directory-tabs .tab:hover::before {
+  .directory-tabs .tab:hover::before,
+  .settings-tabs .tab:hover::before,
+  .inbox-tabs .tab:hover::before,
+  .tools-tabs .tab:hover::before {
     background: var(--color-brand-bg);
     box-shadow: 0 -3px 0 inset var(--color-brand);
   }
-  .directory-tabs .tab:not(.active):hover::before {
+  .directory-tabs .tab:not(.active):hover::before,
+  .settings-tabs .tab:not(.active):hover::before,
+  .inbox-tabs .tab:not(.active):hover::before,
+  .tools-tabs .tab:not(.active):hover::before {
     background: var(--color-brand-bg);
     box-shadow: 0 -1.5px 0 inset var(--color-brand);
   }
@@ -266,7 +272,8 @@
   }
 
   .settings-main .settings-content .tab.active:focus-visible,
-  .inbox-main .inbox-content .tab.active:focus-visible {
+  .inbox-main .inbox-content .tab.active:focus-visible,
+  .directory-tabs .tab.active:focus-visible {
     box-shadow:
       3px 0 0 inset var(--color-brand),
       inset 0 0 0 3px var(--color-brand-min-contrast);
@@ -274,8 +281,7 @@
 
   .settings-main .settings-content .tab:hover,
   .inbox-main .inbox-content .tab:hover {
-    background-color: transparent;
-    text-decoration: underline;
+    text-decoration: none;
   }
 
   /* Create an active/current tablink class */
@@ -543,7 +549,7 @@
 
     .settings-main .settings-content .tab:hover,
     .inbox-main .inbox-content .tab:hover {
-      text-decoration: underline;
+      text-decoration: none;
     }
   }
 
@@ -640,11 +646,17 @@
     color: var(--color-text);
   }
 
-  .directory-tabs .tab:hover::before {
+  .directory-tabs .tab:hover::before,
+  .settings-tabs .tab:hover::before,
+  .inbox-tabs .tab:hover::before,
+  .tools-tabs .tab:hover::before {
     background: var(--color-dark-bg-alt-1);
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
-  .directory-tabs .tab:not(.active):hover::before {
+  .directory-tabs .tab:not(.active):hover::before,
+  .settings-tabs .tab:not(.active):hover::before,
+  .inbox-tabs .tab:not(.active):hover::before,
+  .tools-tabs .tab:not(.active):hover::before {
     background: var(--color-dark-bg-alt-1);
     box-shadow: 0 -1.5px 0 inset var(--color-brand-dark-min-saturation);
   }
@@ -749,7 +761,7 @@
   }
 
   /* Change background color of tabs on hover */
-  .tab:hover:not(.directory-tabs .tab) {
+  .tab:hover {
     background-color: var(--color-dark-bg-alt-1);
   }
 
@@ -786,8 +798,7 @@
 
   .settings-main .tab:hover,
   .inbox-main .tab:hover {
-    background-color: transparent;
-    text-decoration: underline;
+    text-decoration: none;
   }
 
   /* Create an active/current tablink class */
@@ -875,7 +886,7 @@
 
     .settings-main .settings-content .tab:hover,
     .inbox-main .inbox-content .tab:hover {
-      text-decoration: underline;
+      text-decoration: none;
     }
   }
 
@@ -1970,14 +1981,17 @@ img.alert {
   border-radius: 0.25rem;
 }
 
+.inbox-tabs .tab,
+.settings-tabs .tab {
+  padding: 0;
+}
+
 .tab-list li {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .tab-list li a {
-  padding: 1rem 0;
   text-decoration: none;
 }
 
@@ -2009,7 +2023,11 @@ img.alert {
   font-family: var(--font-sans-bold);
 }
 
-.directory-tabs .tab::before {
+.directory-tabs .tab::before,
+.settings-tabs .tab::before,
+.inbox-tabs .tab::before,
+.inbox-tabs-nav .tab::before,
+.tools-tabs .tab::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2021,7 +2039,11 @@ img.alert {
   border-radius: 0.25rem 0.25rem 0 0;
 }
 
-.directory-tabs .tab {
+.directory-tabs .tab,
+.settings-tabs .tab,
+.inbox-tabs .tab,
+.inbox-tabs-nav .tab,
+.tools-tabs .tab {
   isolation: isolate;
   transform: translateZ(0); 
   -webkit-font-smoothing: antialiased;
@@ -2029,7 +2051,14 @@ img.alert {
 }
 
 .directory-tabs .tab:hover::before,
-.directory-tabs .tab:focus-visible::before {
+.settings-tabs .tab:hover::before,
+.inbox-tabs .tab:hover::before,
+.inbox-tabs-nav .tab:hover::before,
+.tools-tabs .tab:hover::before,
+.settings-tabs .tab:focus-visible::before,
+.inbox-tabs .tab:focus-visible::before,
+.inbox-tabs-nav .tab:focus-visible::before,
+.tools-tabs .tab:focus-visible::before {
   transform: translateZ(0) scaleY(1);
 }
 
@@ -3052,6 +3081,10 @@ p.bio+.extra-fields {
   padding-right: 1rem;
 }
 
+.inbox-tabs .tab {
+  gap: 0.5rem;
+}
+
 .settings-main .settings-content .tab-list li button,
 .inbox-main .inbox-content .tab-list li button {
   padding: 0 0.625rem 0 0;
@@ -3098,6 +3131,73 @@ p.bio+.extra-fields {
   max-width: 960px;
 }
 
+.tools-main .tools-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.tools-main textarea {
+  height: 100px;
+}
+
+.tools-main .tools-tabs .tab-list {
+  display: flex;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tools-main .tool-tab-content {
+  width: 100%;
+}
+
+.tools-main .tool-tab-content ul {
+  padding: 0 0 0 1rem;
+}
+
+.tool-tab-content h3 {
+  margin-top: 1.25rem !important;
+}
+
+@media (min-width: 960px) {
+  .tools-main .tools-content.tools-content-sidebar {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+
+  .tools-main .tools-content.tools-content-sidebar .tools-tabs {
+    width: 240px;
+    flex-shrink: 0;
+  }
+
+  .tools-main .tools-content.tools-content-sidebar .tools-tabs .tab-list {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+/* Desktop vertical tabs (Settings/Inbox) use underline-only hover */
+@media (min-width: 641px) {
+  .settings-main .settings-content .settings-tabs .tab::before,
+  .inbox-main .inbox-content .inbox-tabs-nav .tab::before {
+    content: none;
+  }
+
+  .settings-main .settings-content .settings-tabs .tab:hover:not(.active),
+  .inbox-main .inbox-content .inbox-tabs-nav .tab:hover:not(.active) {
+    text-decoration: underline;
+    background: none;
+    box-shadow: none;
+  }
+
+  .settings-main .settings-content .settings-tabs .tab.active:hover,
+  .inbox-main .inbox-content .inbox-tabs-nav .tab.active:hover {
+    text-decoration: underline;
+  }
+}
+
 .settings-main .tab-list li,
 .inbox-main .tab-list li {
   margin-bottom: 1rem;
@@ -3106,6 +3206,33 @@ p.bio+.extra-fields {
 .settings-main .tab-list li:last-of-type,
 .inbox-main .tab-list li:last-of-type {
   margin-bottom: 0;
+}
+
+/* Desktop vertical tabs: underline-only hover (supports current Settings + legacy Inbox markup) */
+@media (min-width: 641px) {
+  .settings-tabs .tab::before {
+    content: none;
+  }
+
+  .settings-tabs .tab:hover:not(.active) {
+    text-decoration: underline;
+    background: none;
+    box-shadow: none;
+  }
+
+  .settings-tabs .tab.active:hover {
+    text-decoration: underline;
+  }
+
+  .inbox-tabs .tab:hover:not(.active) {
+    background: none;
+    box-shadow: none;
+  }
+
+  .inbox-tabs .tab:hover a,
+  .inbox-tabs .tab.active:hover a {
+    text-decoration: underline;
+  }
 }
 
 .settings-content,
@@ -3122,6 +3249,13 @@ p.bio+.extra-fields {
   .extra-fields {
     flex-direction: column;
     width: 100%;
+  }
+
+  .inbox-tabs .tab,
+  .settings-tabs .tab,
+  .inbox-tabs .tab.active,
+  .settings-tabs .tab.active {
+    padding: 0.75rem 0.5rem !important;
   }
 
   .tab-content>h3 {
@@ -3156,7 +3290,6 @@ p.bio+.extra-fields {
 
   .settings-main .settings-content .tab-list li a,
   .inbox-main .inbox-content .tab-list li a {
-    padding: 1rem 0;
     transition: none;
   }
 
@@ -3164,7 +3297,6 @@ p.bio+.extra-fields {
   .inbox-main .inbox-content .tab-list {
     display: flex;
     flex-direction: row;
-    gap: 1.25rem;
     padding-top: 0;
   }
 
@@ -3172,8 +3304,9 @@ p.bio+.extra-fields {
     width: 100%;
   }
 
-  .settings-main .settings-content .tab.active {
-    padding: 1rem 0;
+  .settings-main .settings-content .tab.active,
+  .settings-main .settings-content .tab {
+    padding: 0.75rem 0.5rem;
   }
 
   .settings-main .settings-content .settings-tabs,
@@ -4029,10 +4162,6 @@ li.tab a {
   color: inherit;
 }
 
-li.tab {
-  padding: 0;
-}
-
 li.tab:not(.active) .badge {
   filter: saturate(0);
   opacity: 0.5;
@@ -4205,4 +4334,54 @@ header nav ul li.dropdown ul {
 
 .directory-search.is-sticky + .tab-content .dirMeta {
   margin-top: 0;
+}
+
+/* Final desktop vertical tab hover rules: hover affects text decoration only */
+@media (min-width: 641px) {
+  .settings-main .settings-content .settings-tabs .tab::before,
+  .inbox-main .inbox-content .inbox-tabs-nav .tab::before,
+  .inbox-main .inbox-content .inbox-tabs .tab::before {
+    content: none !important;
+  }
+
+  .settings-main .settings-content .settings-tabs .tab:hover:not(.active),
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active),
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active) > a {
+    text-decoration: underline !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .settings-main .settings-content .settings-tabs .tab.active:hover,
+  .inbox-main .inbox-content .inbox-tabs .tab.active:hover > a {
+    text-decoration: underline !important;
+    background: none !important;
+  }
+
+  .inbox-main .inbox-content .inbox-tabs .tab:hover::before {
+    transform: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Hard override: legacy inbox vertical tabs must never show hover shadow on non-active tabs */
+@media (min-width: 641px) {
+  .inbox-main .inbox-content .inbox-tabs .tab::before,
+  .inbox-main .inbox-content .inbox-tabs .tab:hover::before {
+    content: none !important;
+    transform: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active) {
+    text-decoration: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active) > a {
+    text-decoration: underline !important;
+  }
 }
