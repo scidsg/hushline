@@ -83,6 +83,7 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("onboarding"))
     assert response.status_code == 200
     assert "First, tell us about yourself" in response.text
+    assert '<span class="bio-count">0</span>/250' in response.text
 
     _run_onboarding_flow_through_step_four(client)
     db.session.refresh(user)

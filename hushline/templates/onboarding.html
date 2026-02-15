@@ -28,7 +28,10 @@
           <span class="error">{{ error }}</span>
         {% endfor %}
 
-        {{ profile_form.bio.label }}
+        <div class="formLabel">
+          {{ profile_form.bio.label }}
+          <span class="meta"><span class="bio-count">0</span>/250</span>
+        </div>
         {{ profile_form.bio(id="bio", rows="4", maxlength="250") }}
         {% for error in profile_form.bio.errors %}
           <span class="error">{{ error }}</span>
@@ -140,4 +143,8 @@
     {% endif %}
     <div class="onboarding-footer"></div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
 {% endblock %}
