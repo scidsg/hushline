@@ -8,6 +8,7 @@ import aiohttp
 import pytest
 from flask import Flask
 from sqlalchemy.exc import IntegrityError
+from wtforms.validators import ValidationError
 
 from hushline.db import db
 from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
@@ -68,13 +69,15 @@ def test_set_input_disabled_toggle(app: Flask) -> None:
 
 
 def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
-    def _mock_contains_disallowed_text(text: str | None) -> bool:
-        return bool(text and "blocked-token" in text)
+    def _reject_blocked_token(_self: object, _form: object, field: object) -> None:
+        value = getattr(field, "data", "") or ""
+        if "blocked-token" in value:
+            raise ValidationError("blocked")
 
     with app.test_request_context():
         with patch(
-            "hushline.forms.contains_disallowed_text",
-            side_effect=_mock_contains_disallowed_text,
+            "hushline.forms.NoDisallowedLanguage.__call__",
+            new=_reject_blocked_token,
         ):
             display_form = DisplayNameForm(data={"display_name": "blocked-token"})
             assert not display_form.validate()
@@ -92,7 +95,7 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
 
         with patch(
             "hushline.routes.common.contains_disallowed_text",
-            side_effect=_mock_contains_disallowed_text,
+            side_effect=lambda text: bool(text and "blocked-token" in text),
         ):
             alias_form = NewAliasForm(data={"username": "blocked-token"})
             assert not alias_form.validate()
