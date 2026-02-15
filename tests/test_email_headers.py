@@ -58,7 +58,9 @@ def test_email_headers_page_renders(client: FlaskClient) -> None:
 
 
 def test_email_headers_export_requires_authentication(client: FlaskClient) -> None:
-    response = client.post(url_for("email_headers_evidence_zip"), data={"raw_headers": "From: x@y\n"})
+    response = client.post(
+        url_for("email_headers_evidence_zip"), data={"raw_headers": "From: x@y\n"}
+    )
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("login"))
 
