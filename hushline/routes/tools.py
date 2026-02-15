@@ -1,5 +1,5 @@
 TOOL_TABS: list[tuple[str, str]] = [
-    ("email_headers", "Validate Email Headers"),
+    ("email_headers", "Email Validation"),
     ("vision", "Vision Assistant"),
 ]
 

@@ -1,12 +1,15 @@
 import io
+import json
 import zipfile
 
+import dns.exception
+import dns.resolver
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
-from hushline.email_headers import analyze_raw_email_headers
+from hushline.email_headers import analyze_raw_email_headers, create_evidence_zip
 
 
 class _FakeTXTRecord:
@@ -26,6 +29,18 @@ class _FakeResolver:
         assert qname == "selector1._domainkey.example.org"
         assert rdtype == "TXT"
         return [_FakeTXTRecord("v=DKIM1; k=rsa; p=MIIB12345")]
+
+
+class _RaisingResolver:
+    def __init__(self, exc: Exception) -> None:
+        self._exc = exc
+        self.timeout = 0.0
+        self.lifetime = 0.0
+
+    def resolve(self, qname: str, rdtype: str) -> list[_FakeTXTRecord]:
+        assert qname == "selector1._domainkey.example.org"
+        assert rdtype == "TXT"
+        raise self._exc
 
 
 def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: MockFixture) -> None:
@@ -72,7 +87,7 @@ def test_email_headers_page_renders_authenticated(
 ) -> None:
     response = client.get(url_for("email_headers"))
     assert response.status_code == 200
-    assert "Validate Raw Email Headers" in response.text
+    assert "Email Validation" in response.text
     assert "Tools" in response.text
     assert "Vision Assistant" in response.text
     assert "Download Report" not in response.text
@@ -109,6 +124,84 @@ def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
     )
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "likely forged"
+
+
+def test_analyze_raw_email_headers_rejects_empty_input() -> None:
+    with pytest.raises(ValueError, match="No email headers detected"):
+        analyze_raw_email_headers("")
+
+
+def test_analyze_raw_email_headers_with_header_body_mix_parses_headers_only() -> None:
+    raw_email = (
+        "From: Reporter <reporter@example.org>\n"
+        "Authentication-Results: mx.example.net; dkim=pass; spf=pass; dmarc=pass\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; bh=abc=; b=def=\n"
+        "\n"
+        "This is message body content and should not affect header parsing.\n"
+    )
+    report = analyze_raw_email_headers(raw_email)
+    assert report["from_domain"] == "example.org"
+    assert report["auth_results"]["dkim"] == "pass"
+
+
+def test_analyze_raw_email_headers_warns_on_unparseable_from_and_incomplete_dkim() -> None:
+    raw_headers = (
+        "From: not-an-address\n"
+        "Authentication-Results: mx.example.net; dkim=fail\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; bh=abc=; b=def=\n"
+    )
+    report = analyze_raw_email_headers(raw_headers)
+    assert "From header does not contain a parseable email domain." in report["warnings"]
+    assert "DKIM signature found, but selector/domain tags were incomplete." in report["warnings"]
+    assert "DKIM did not show a pass result in Authentication-Results." in report["warnings"]
+    assert report["dkim_key_lookups"] == []
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected_status", "expected_error_snippet"),
+    [
+        (dns.resolver.NXDOMAIN(), "not_found", "No DKIM key found"),
+        (dns.resolver.NoAnswer(), "error", "DNS lookup failed: NoAnswer"),
+        (dns.resolver.NoNameservers(), "error", "DNS lookup failed: NoNameservers"),
+        (dns.exception.Timeout(), "error", "DNS lookup failed: Timeout"),
+        (dns.exception.DNSException("boom"), "error", "DNS error: DNSException"),
+    ],
+)
+def test_analyze_raw_email_headers_handles_dns_lookup_errors(
+    mocker: MockFixture, raised: Exception, expected_status: str, expected_error_snippet: str
+) -> None:
+    mocker.patch(
+        "hushline.email_headers.dns.resolver.Resolver", return_value=_RaisingResolver(raised)
+    )
+    raw_headers = (
+        "From: Alerts <alerts@example.org>\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; bh=abc=; b=def=\n"
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+    lookup = report["dkim_key_lookups"][0]
+    assert lookup["status"] == expected_status
+    assert expected_error_snippet in (lookup["error"] or "")
+
+
+def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockFixture) -> None:
+    mocker.patch("hushline.email_headers.dns.resolver.Resolver", return_value=_FakeResolver())
+    raw_headers = (
+        "From: Alerts <alerts@example.org>\n"
+        "Authentication-Results: mx.example.net; dkim=pass header.d=example.org\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; bh=abc=; b=def=\n"
+    )
+
+    archive = zipfile.ZipFile(io.BytesIO(create_evidence_zip(raw_headers)))
+    report_json = json.loads(archive.read("report.json").decode("utf-8"))
+    report_pdf = archive.read("report.pdf")
+    checksums = archive.read("checksums.sha256").decode("utf-8")
+
+    assert report_json["from_domain"] == "example.org"
+    assert report_json["executive_summary"]["headline"]
+    assert report_pdf.startswith(b"%PDF-1.4")
+    assert "report.json" in checksums
+    assert "report.pdf" in checksums
 
 
 @pytest.mark.usefixtures("_authenticated_user")
