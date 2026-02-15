@@ -11,6 +11,7 @@ from werkzeug.wrappers.response import Response
 from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import User
+from hushline.routes.tools import TOOL_TABS, TOOLS_SIDEBAR_THRESHOLD
 
 
 def register_vision_routes(app: Flask) -> None:
@@ -22,8 +23,8 @@ def register_vision_routes(app: Flask) -> None:
             flash("⛔️ Please log in to access this feature.")
             return redirect(url_for("login"))
 
-        if not user.tier_id:  # Assuming tier_id is None for unpaid users
-            flash("⛔️ This feature is only available to paid users.")
-            return redirect(url_for("premium.select_tier"))
-
-        return render_template("vision.html")
+        return render_template(
+            "vision.html",
+            tool_tabs=TOOL_TABS,
+            tools_sidebar=len(TOOL_TABS) >= TOOLS_SIDEBAR_THRESHOLD,
+        )

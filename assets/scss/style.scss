@@ -3098,6 +3098,55 @@ p.bio+.extra-fields {
   max-width: 960px;
 }
 
+.tools-main .tools-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.tools-main textarea {
+  height: 100px;
+}
+
+.tools-main .tools-tabs .tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tools-main .tool-tab-content {
+  width: 100%;
+}
+
+.tools-main .tool-tab-content ul {
+  padding: 0 0 0 1rem;
+}
+
+.tool-tab-content h3 {
+  margin-top: 1.25rem !important;
+}
+
+@media (min-width: 960px) {
+  .tools-main .tools-content.tools-content-sidebar {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+
+  .tools-main .tools-content.tools-content-sidebar .tools-tabs {
+    width: 240px;
+    flex-shrink: 0;
+  }
+
+  .tools-main .tools-content.tools-content-sidebar .tools-tabs .tab-list {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
 .settings-main .tab-list li,
 .inbox-main .tab-list li {
   margin-bottom: 1rem;
