@@ -1,7 +1,8 @@
+import logging
 import os
 import re
-import logging
 from functools import lru_cache
+from typing import Protocol
 
 try:
     from better_profanity import profanity
@@ -10,7 +11,10 @@ except ModuleNotFoundError:  # pragma: no cover
 
 _ALLOWLIST_ENV_VAR = "HUSHLINE_CONTENT_FILTER_ALLOWLIST"
 _logger = logging.getLogger(__name__)
-_MISSING_LIB_LOGGED = False
+
+
+class _ProfanityEngine(Protocol):
+    def contains_profanity(self, text: str) -> bool: ...
 
 
 def _allowlist() -> set[str]:
@@ -26,14 +30,16 @@ def _strip_allowlisted_terms(text: str, allowlist: set[str]) -> str:
 
 
 @lru_cache(maxsize=1)
-def _profanity_engine() -> object | None:
-    global _MISSING_LIB_LOGGED
+def _log_missing_library_once() -> None:
+    _logger.warning(
+        "better-profanity is not installed; content safety checks are temporarily disabled."
+    )
+
+
+@lru_cache(maxsize=1)
+def _profanity_engine() -> _ProfanityEngine | None:
     if profanity is None:
-        if not _MISSING_LIB_LOGGED:
-            _logger.warning(
-                "better-profanity is not installed; content safety checks are temporarily disabled."
-            )
-            _MISSING_LIB_LOGGED = True
+        _log_missing_library_once()
         return None
     # Load the package-provided local wordlist once.
     profanity.load_censor_words()

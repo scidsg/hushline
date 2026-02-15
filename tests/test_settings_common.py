@@ -27,8 +27,8 @@ from hushline.settings.common import (
     verify_url,
 )
 from hushline.settings.forms import (
-    ChangeUsernameForm,
     ChangePasswordForm,
+    ChangeUsernameForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
     FieldForm,
