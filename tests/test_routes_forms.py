@@ -6,7 +6,12 @@ from flask import Flask
 from wtforms.validators import Length
 
 from hushline.model import FieldType
-from hushline.routes.forms import DynamicMessageForm, LoginForm, OnboardingProfileForm, RegistrationForm
+from hushline.routes.forms import (
+    DynamicMessageForm,
+    LoginForm,
+    OnboardingProfileForm,
+    RegistrationForm,
+)
 
 
 def _get_length_validator(form_class: type, field_name: str) -> Length | None:
