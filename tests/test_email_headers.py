@@ -254,3 +254,42 @@ def test_email_headers_export_zip_contains_evidence_artifacts(
     assert "report.pdf" in names
     assert "checksums.sha256" in names
     assert "dkim-keys/selector1._domainkey.example.org.txt" in names
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_post_invalid_form_shows_validation_flash(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("email_headers"),
+        data={"raw_headers": ""},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Please paste valid raw headers before submitting." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_post_value_error_shows_flash(
+    client: FlaskClient, mocker: MockFixture
+) -> None:
+    mocker.patch(
+        "hushline.routes.email_headers.analyze_raw_email_headers",
+        side_effect=ValueError("No email headers detected. Paste the raw headers and try again."),
+    )
+    response = client.post(
+        url_for("email_headers"),
+        data={"raw_headers": "From: not-an-address\n"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "No email headers detected. Paste the raw headers and try again." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("email_headers_evidence_zip"),
+        data={"raw_headers": ""},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Could not generate report. Re-run validation first." in response.text
