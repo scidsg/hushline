@@ -302,6 +302,13 @@ These configs are needed for the web app.
       <td>Email address to use for sending message notifications</td>
     </tr>
     <tr>
+      <td><code>NOTIFICATIONS_REPLY_TO</code></td>
+      <td>false</td>
+      <td>email address</td>
+      <td><code>NOTIFICATIONS_ADDRESS</code></td>
+      <td>Optional reply-to address for notification emails. If unset, NOTIFICATIONS_ADDRESS is used.</td>
+    </tr>
+    <tr>
       <td><code>REGISTRATION_SETTINGS_ENABLED</code></td>
       <td>false</td>
       <td>boolean</td>

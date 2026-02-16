@@ -118,6 +118,7 @@ def test_do_send_email_uses_default_smtp(
     app.config["SMTP_PORT"] = 587
     app.config["SMTP_PASSWORD"] = "default-pass"
     app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
     app.config["SMTP_ENCRYPTION"] = "StartTLS"
 
     create_smtp_config = MagicMock(return_value=MagicMock())
@@ -129,7 +130,45 @@ def test_do_send_email_uses_default_smtp(
         routes_common.do_send_email(user, "body")
 
     create_smtp_config.assert_called_once()
-    send_email.assert_called_once()
+    send_email.assert_called_once_with(
+        user.email,
+        "New Hush Line Message Received",
+        "body",
+        create_smtp_config.return_value,
+        "reply@example.com",
+    )
+
+
+def test_do_send_email_uses_notifications_address_as_reply_to_fallback(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "person@example.com"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config.pop("NOTIFICATIONS_REPLY_TO", None)
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context():
+        routes_common.do_send_email(user, "body")
+
+    send_email.assert_called_once_with(
+        user.email,
+        "New Hush Line Message Received",
+        "body",
+        create_smtp_config.return_value,
+        "notify@example.com",
+    )
 
 
 def test_do_send_email_catches_errors(
