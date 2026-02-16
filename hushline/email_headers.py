@@ -172,27 +172,28 @@ def _build_executive_summary(
     }
 
 
-def _build_interpretation(
-    auth_results: dict[str, str],
-    alignment: dict[str, bool],
-    dkim_signatures: list[dict[str, Any]],
-    dkim_key_lookups: list[dict[str, Any]],
-    dkim_overview: dict[str, bool],
-    from_domain: str | None,
-    warnings: list[str],
-) -> dict[str, list[str]]:
+def _build_interpretation(report: dict[str, Any]) -> dict[str, list[str]]:
     interpretation: dict[str, list[str]] = {}
+    auth_results = report["auth_results"]
+    alignment = report["alignment"]
+    dkim_signatures = report["dkim_signatures"]
+    dkim_key_lookups = report["dkim_key_lookups"]
+    dkim_overview = report["dkim_overview"]
+    from_domain = report["from_domain"]
+    warnings = report["warnings"]
 
     has_dkim_key = dkim_overview["key_advertised_in_dns"]
     dnssec_ok = dkim_overview["dnssec_validated"]
     auth_chain_lines: list[str] = []
     if has_dkim_key and dnssec_ok:
         auth_chain_lines.append(
-            "This DNS evidence is strong: a DKIM key is present and the DNS answer was DNSSEC-validated."
+            "This DNS evidence is strong: a DKIM key is present and the DNS answer was "
+            "DNSSEC-validated."
         )
     elif has_dkim_key:
         auth_chain_lines.append(
-            "This DNS evidence is moderate: a DKIM key is present, but DNSSEC validation was not observed."
+            "This DNS evidence is moderate: a DKIM key is present, but DNSSEC validation "
+            "was not observed."
         )
     else:
         auth_chain_lines.append(
@@ -204,11 +205,13 @@ def _build_interpretation(
         )
     else:
         auth_chain_lines.append(
-            "No DKIM key in current DNS means this lookup cannot independently corroborate the signer."
+            "No DKIM key in current DNS means this lookup cannot independently corroborate "
+            "the signer."
         )
     if dnssec_ok:
         auth_chain_lines.append(
-            "DNSSEC validation strengthens confidence that this DNS answer was not tampered with in transit."
+            "DNSSEC validation strengthens confidence that this DNS answer was not tampered "
+            "with in transit."
         )
     else:
         auth_chain_lines.append(
@@ -240,7 +243,8 @@ def _build_interpretation(
         )
     if align_rp and align_dkim:
         header_lines.append(
-            "Consistent domain alignment supports that the visible sender identity matches authenticated paths."
+            "Consistent domain alignment supports that the visible sender identity matches "
+            "authenticated paths."
         )
     elif align_rp or align_dkim:
         header_lines.append(
@@ -248,7 +252,8 @@ def _build_interpretation(
         )
     else:
         header_lines.append(
-            "Misalignment raises spoofing risk, though forwarding or list services can also cause this pattern."
+            "Misalignment raises spoofing risk, though forwarding or list services can also "
+            "cause this pattern."
         )
     interpretation["header_context"] = header_lines
 
@@ -258,15 +263,18 @@ def _build_interpretation(
     auth_results_lines: list[str] = []
     if dmarc == "pass":
         auth_results_lines.append(
-            "DMARC pass is the strongest signal here because it requires aligned domain authentication."
+            "DMARC pass is the strongest signal here because it requires aligned domain "
+            "authentication."
         )
     elif dkim == "pass" or spf == "pass":
         auth_results_lines.append(
-            "DKIM/SPF pass provides partial evidence, but without DMARC pass sender identity assurance is weaker."
+            "DKIM/SPF pass provides partial evidence, but without DMARC pass sender "
+            "identity assurance is weaker."
         )
     else:
         auth_results_lines.append(
-            "Missing or failing results across DKIM/SPF/DMARC materially reduce confidence in sender authenticity."
+            "Missing or failing results across DKIM/SPF/DMARC materially reduce confidence "
+            "in sender authenticity."
         )
     if dkim == "pass":
         auth_results_lines.append(
@@ -278,7 +286,8 @@ def _build_interpretation(
         )
     if dkim != "pass" and spf != "pass" and dmarc != "pass":
         auth_results_lines.append(
-            "Combined failures or missing values across these checks should be treated as high risk."
+            "Combined failures or missing values across these checks should be treated as "
+            "high risk."
         )
     interpretation["auth_results"] = auth_results_lines
 
@@ -294,7 +303,9 @@ def _build_interpretation(
         )
     if dkim_signatures:
         dkim_signature_lines.append(
-            "A DKIM signature shows a signer took responsibility for selected headers at send time, but it does not by itself prove ownership of the visible From address."
+            "A DKIM signature shows a signer took responsibility for selected headers at "
+            "send time, but it does not by itself prove ownership of the visible From "
+            "address."
         )
     else:
         dkim_signature_lines.append(
@@ -302,7 +313,8 @@ def _build_interpretation(
         )
     if alignment["from_matches_any_dkim_domain"]:
         dkim_signature_lines.append(
-            "From/DKIM domain alignment improves confidence that the visible sender matches the signer."
+            "From/DKIM domain alignment improves confidence that the visible sender matches "
+            "the signer."
         )
     elif dkim_signatures:
         dkim_signature_lines.append(
@@ -328,11 +340,13 @@ def _build_interpretation(
         dkim_key_lines.append("No lookup corroboration is available from the provided DKIM fields.")
     if dkim_key_lookups and dkim_overview["key_advertised_in_dns"]:
         dkim_key_lines.append(
-            "Current DNS corroborates that at least one DKIM public key is published for a detected signer."
+            "Current DNS corroborates that at least one DKIM public key is published for a "
+            "detected signer."
         )
     elif dkim_key_lookups:
         dkim_key_lines.append(
-            "Key lookups did not corroborate a usable DKIM key, which weakens present-day verification."
+            "Key lookups did not corroborate a usable DKIM key, which weakens present-day "
+            "verification."
         )
     else:
         dkim_key_lines.append(
@@ -341,11 +355,14 @@ def _build_interpretation(
     interpretation["dkim_keys"] = dkim_key_lines
 
     warning_lines: list[str] = []
-    if len(warnings) >= 3:
+    medium_warning_threshold = 2
+    high_warning_threshold = 3
+    if len(warnings) >= high_warning_threshold:
         warning_lines.append(
-            "Multiple warning conditions are present, so treat authentication conclusions as low confidence."
+            "Multiple warning conditions are present, so treat authentication conclusions "
+            "as low confidence."
         )
-    elif len(warnings) == 2:
+    elif len(warnings) == medium_warning_threshold:
         warning_lines.append(
             "Two warning conditions are present, so conclusions should be treated cautiously."
         )
@@ -355,7 +372,8 @@ def _build_interpretation(
         )
     if warnings:
         warning_lines.append(
-            "These warnings indicate ambiguity or conflicting signals, so conclusions should be treated conservatively."
+            "These warnings indicate ambiguity or conflicting signals, so conclusions "
+            "should be treated conservatively."
         )
     interpretation["warnings"] = warning_lines
 
@@ -437,13 +455,15 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
         and all(lookup["dnssec_validated"] for lookup in found_key_lookups),
     }
     interpretation = _build_interpretation(
-        auth_results=auth_results,
-        alignment=alignment,
-        dkim_signatures=dkim_signatures,
-        dkim_key_lookups=dkim_key_lookups,
-        dkim_overview=dkim_overview,
-        from_domain=from_domain,
-        warnings=warnings,
+        {
+            "auth_results": auth_results,
+            "alignment": alignment,
+            "dkim_signatures": dkim_signatures,
+            "dkim_key_lookups": dkim_key_lookups,
+            "dkim_overview": dkim_overview,
+            "from_domain": from_domain,
+            "warnings": warnings,
+        }
     )
 
     return {
@@ -465,7 +485,8 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
             "Header analysis improves confidence but cannot prove authenticity on its own. "
             "The visible From header is not the SMTP envelope sender (MAIL FROM), and that "
             "envelope value is often unavailable in pasted headers. "
-            "Some providers can DKIM-sign the visible From header without proving mailbox ownership. "
+            "Some providers can DKIM-sign the visible From header without proving mailbox "
+            "ownership. "
             "Forwarding, mailing lists, and partial headers can alter results. "
             "For older email, DKIM keys may have rotated or been removed, so present-day DNS "
             "may not reflect the original signing state."
