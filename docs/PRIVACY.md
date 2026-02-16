@@ -1,6 +1,6 @@
 # Hush Line Privacy Policy
 
-Effective date: 2026-01-09
+Effective date: 2026-02-16
 
 ## Privacy Nutrition Facts
 
@@ -69,10 +69,51 @@ We comply with applicable privacy and accessibility laws, including:
 - U.S. Federal Trade Commission Act (Section 5)
 - Americans with Disabilities Act (ADA) and Section 508 (accessibility)
 
+For GDPR processing, our legal bases may include performance of a contract, legitimate interests
+in securing and operating the service, legal obligations, and consent where required.
+
 ## 9) Your Choices & Rights
 
-You can update or delete your account information and messages in the app.
-If you need help accessing, correcting, or deleting data, contact us and we will respond.
+You can exercise data rights in-product and by contacting us.
+
+### GDPR (where applicable)
+
+- Right of access
+- Right to rectification
+- Right to erasure
+- Right to data portability
+- Right to restriction or objection to processing
+- Right to withdraw consent (where processing is based on consent)
+- Right to lodge a complaint with your local data protection authority
+
+### CCPA/CPRA (California residents, where applicable)
+
+- Right to Know categories and specific pieces of personal information we collect, use, and disclose
+- Right to Delete personal information, subject to applicable exceptions
+- Right to Correct inaccurate personal information
+- Right to Opt-Out of Sale/Sharing of personal information
+- Right to Non-Discrimination for exercising privacy rights
+
+We do not sell personal information and we do not share personal information for cross-context
+behavioral advertising.
+
+### Implementation Evidence (Code References)
+
+The following source files implement rights-related functionality referenced in this policy:
+
+- Data access/export (Right of Access / Right to Know / Data Portability):
+  [`hushline/settings/data_export.py`](https://github.com/scidsg/hushline/blob/main/hushline/settings/data_export.py)
+- Account deletion (Right to Erasure / Right to Delete):
+  [`hushline/settings/delete_account.py`](https://github.com/scidsg/hushline/blob/main/hushline/settings/delete_account.py)
+- Cascading deletion of related records:
+  [`hushline/user_deletion.py`](https://github.com/scidsg/hushline/blob/main/hushline/user_deletion.py)
+- Profile update flows (Rectification/Correction controls):
+  [`hushline/settings/profile.py`](https://github.com/scidsg/hushline/blob/main/hushline/settings/profile.py)
+- Cookie/session protection defaults:
+  [`hushline/config.py`](https://github.com/scidsg/hushline/blob/main/hushline/config.py)
+
+For requests that cannot be completed in-app, contact us and we will respond consistent with
+applicable law.
 
 ## 10) Third-Party Policies
 
