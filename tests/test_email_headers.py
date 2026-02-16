@@ -1,6 +1,7 @@
 import io
 import json
 import zipfile
+from datetime import UTC, datetime
 
 import dns.exception
 import dns.resolver
@@ -9,6 +10,7 @@ from flask import url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
+from hushline import email_headers
 from hushline.email_headers import analyze_raw_email_headers, create_evidence_zip
 
 
@@ -318,3 +320,108 @@ def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskCli
     )
     assert response.status_code == 200
     assert "Could not generate report. Re-run validation first." in response.text
+
+
+def test_parse_tag_value_pairs_ignores_invalid_parts_and_empty_keys() -> None:
+    tags = email_headers._parse_tag_value_pairs("no-equals; =blank; s=selector1; d=example.org")
+    assert tags == {"s": "selector1", "d": "example.org"}
+
+
+def test_build_interpretation_includes_strong_chain_multiple_signatures_and_strong_keys() -> None:
+    interpretation = email_headers._build_interpretation(
+        {
+            "auth_results": {"dkim": "pass", "spf": "pass", "dmarc": "pass"},
+            "alignment": {
+                "from_matches_return_path": True,
+                "from_matches_any_dkim_domain": True,
+            },
+            "dkim_signatures": [
+                {"domain": "example.org"},
+                {"domain": "example.org"},
+            ],
+            "dkim_key_lookups": [
+                {
+                    "query_name": "selector1._domainkey.example.org",
+                    "status": "found",
+                    "has_public_key": True,
+                    "dnssec_validated": True,
+                }
+            ],
+            "dkim_overview": {"key_advertised_in_dns": True, "dnssec_validated": True},
+            "from_domain": "example.org",
+            "warnings": [],
+        }
+    )
+    assert any("DNS evidence is strong" in line for line in interpretation["auth_chain"])
+    assert any(
+        "DNSSEC validation strengthens confidence" in line for line in interpretation["auth_chain"]
+    )
+    assert any(
+        "Multiple DKIM signatures may reflect forwarding/list handling or layered signing." in line
+        for line in interpretation["dkim_signatures"]
+    )
+    assert any(
+        "Key lookup corroboration is strong for current DNS state." in line
+        for line in interpretation["dkim_keys"]
+    )
+
+
+def test_render_minimal_pdf_renders_when_no_lines_provided() -> None:
+    pdf = email_headers._render_minimal_pdf([])
+    assert pdf.startswith(b"%PDF-1.4")
+
+
+def test_render_report_pdf_includes_none_sections_and_warnings_block() -> None:
+    report = {
+        "executive_summary": {
+            "headline": "⚠️ This email might not be from the stated sender.",
+            "reasons": [],
+        },
+        "dkim_overview": {"key_advertised_in_dns": False, "dnssec_validated": False},
+        "interpretation": {
+            "auth_chain": [],
+            "header_context": [],
+            "auth_results": [],
+            "dkim_signatures": [],
+            "dkim_keys": [],
+            "warnings": ["Treat this result cautiously."],
+        },
+        "from_header": "",
+        "return_path_header": "",
+        "reply_to_header": "",
+        "from_domain": None,
+        "return_path_domain": None,
+        "reply_to_domain": None,
+        "alignment": {"from_matches_return_path": False, "from_matches_any_dkim_domain": False},
+        "auth_results": {},
+        "dkim_signatures": [],
+        "dkim_key_lookups": [],
+        "warnings": ["DKIM did not show a pass result in Authentication-Results."],
+        "note": "Note.",
+    }
+    pdf_text = email_headers._render_report_pdf(report, datetime.now(UTC)).decode(
+        "latin-1", errors="ignore"
+    )
+    assert "DKIM Signatures:" in pdf_text
+    assert "  None" in pdf_text
+    assert "DKIM Key Lookups:" in pdf_text
+    assert "Warnings:" in pdf_text
+    assert "DKIM did not show a pass result in Authentication-Results." in pdf_text
+    assert "Treat this result cautiously." in pdf_text
+
+
+def test_create_evidence_zip_includes_lookup_error_details(mocker: MockFixture) -> None:
+    mocker.patch(
+        "hushline.email_headers.dns.resolver.Resolver",
+        return_value=_RaisingResolver(dns.resolver.NoAnswer()),
+    )
+    raw_headers = (
+        "From: Alerts <alerts@example.org>\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; bh=abc=; b=def=\n"
+    )
+    archive = zipfile.ZipFile(io.BytesIO(create_evidence_zip(raw_headers)))
+    dkim_key_details = archive.read("dkim-keys/selector1._domainkey.example.org.txt").decode(
+        "utf-8"
+    )
+    assert "status: error" in dkim_key_details
+    assert "error: DNS lookup failed: NoAnswer" in dkim_key_details
