@@ -138,7 +138,7 @@ def _build_executive_summary(
     if strong_auth_failure and from_domain:
         return {
             "verdict": "likely forged",
-            "headline": "🚨 This email is likely forged.",
+            "headline": "🚨 This email appears forged.",
             "reasons": reasons or ["DKIM, SPF, and DMARC all failed in Authentication-Results."],
         }
 
@@ -153,7 +153,7 @@ def _build_executive_summary(
     if strong_auth_success and aligned and not warnings:
         return {
             "verdict": "looks valid",
-            "headline": "👍 This email looks valid.",
+            "headline": "✅ This email appears valid.",
             "reasons": reasons or ["Key authentication checks passed and domains are aligned."],
         }
 
