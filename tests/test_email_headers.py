@@ -246,7 +246,10 @@ def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockF
     assert "Header Context:" in report_pdf_text
     assert "DKIM Signatures:" in report_pdf_text
     assert "signed_headers=from, subject, sender" in report_pdf_text
-    assert "DKIM indicates the message was signed by a key linked to the signing domain." in report_pdf_text
+    assert (
+        "DKIM indicates the message was signed by a key linked to the signing domain."
+        in report_pdf_text
+    )
     assert "report.json" in checksums
     assert "report.pdf" in checksums
 

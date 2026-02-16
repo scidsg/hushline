@@ -211,7 +211,9 @@ def _build_interpretation(
             "DNSSEC validation strengthens confidence that this DNS answer was not tampered with in transit."
         )
     else:
-        auth_chain_lines.append("Without DNSSEC validation, treat DNS-based evidence as lower-confidence.")
+        auth_chain_lines.append(
+            "Without DNSSEC validation, treat DNS-based evidence as lower-confidence."
+        )
     auth_chain_lines.append("Technical note: DNSSEC status is based on the resolver AD flag.")
     interpretation["auth_chain"] = auth_chain_lines
 
@@ -223,19 +225,27 @@ def _build_interpretation(
     elif from_domain and (align_rp or align_dkim):
         header_lines.append("Header context is mixed: some identity signals align, others do not.")
     elif from_domain:
-        header_lines.append("Header context is weak for sender identity due to domain misalignment.")
+        header_lines.append(
+            "Header context is weak for sender identity due to domain misalignment."
+        )
     else:
-        header_lines.append("Header context is incomplete because a parseable From domain is missing.")
+        header_lines.append(
+            "Header context is incomplete because a parseable From domain is missing."
+        )
     if from_domain:
         header_lines.append("A parseable From domain lets alignment checks be evaluated.")
     else:
-        header_lines.append("Without a parseable From domain, sender-identity interpretation is limited.")
+        header_lines.append(
+            "Without a parseable From domain, sender-identity interpretation is limited."
+        )
     if align_rp and align_dkim:
         header_lines.append(
             "Consistent domain alignment supports that the visible sender identity matches authenticated paths."
         )
     elif align_rp or align_dkim:
-        header_lines.append("Partial alignment provides some support, but identity assurance is incomplete.")
+        header_lines.append(
+            "Partial alignment provides some support, but identity assurance is incomplete."
+        )
     else:
         header_lines.append(
             "Misalignment raises spoofing risk, though forwarding or list services can also cause this pattern."
@@ -279,13 +289,17 @@ def _build_interpretation(
             "Multiple DKIM signatures may reflect forwarding/list handling or layered signing."
         )
     elif sig_count == 1:
-        dkim_signature_lines.append("A single DKIM signature provides one cryptographic signing path to evaluate.")
+        dkim_signature_lines.append(
+            "A single DKIM signature provides one cryptographic signing path to evaluate."
+        )
     if dkim_signatures:
         dkim_signature_lines.append(
             "A DKIM signature shows a signer took responsibility for selected headers at send time, but it does not by itself prove ownership of the visible From address."
         )
     else:
-        dkim_signature_lines.append("Without a DKIM-Signature header, there is no cryptographic DKIM evidence to evaluate.")
+        dkim_signature_lines.append(
+            "Without a DKIM-Signature header, there is no cryptographic DKIM evidence to evaluate."
+        )
     if alignment["from_matches_any_dkim_domain"]:
         dkim_signature_lines.append(
             "From/DKIM domain alignment improves confidence that the visible sender matches the signer."
@@ -298,10 +312,16 @@ def _build_interpretation(
 
     lookup_count = len(dkim_key_lookups)
     dkim_key_lines: list[str] = []
-    if lookup_count > 0 and dkim_overview["key_advertised_in_dns"] and dkim_overview["dnssec_validated"]:
+    if (
+        lookup_count > 0
+        and dkim_overview["key_advertised_in_dns"]
+        and dkim_overview["dnssec_validated"]
+    ):
         dkim_key_lines.append("Key lookup corroboration is strong for current DNS state.")
     elif lookup_count > 0 and dkim_overview["key_advertised_in_dns"]:
-        dkim_key_lines.append("Key lookup corroboration is partial: key present, but without DNSSEC validation.")
+        dkim_key_lines.append(
+            "Key lookup corroboration is partial: key present, but without DNSSEC validation."
+        )
     elif lookup_count > 0:
         dkim_key_lines.append("Key lookup corroboration is weak for current DNS state.")
     else:
@@ -315,7 +335,9 @@ def _build_interpretation(
             "Key lookups did not corroborate a usable DKIM key, which weakens present-day verification."
         )
     else:
-        dkim_key_lines.append("No key lookup means DNS evidence could not be checked from the provided signatures.")
+        dkim_key_lines.append(
+            "No key lookup means DNS evidence could not be checked from the provided signatures."
+        )
     interpretation["dkim_keys"] = dkim_key_lines
 
     warning_lines: list[str] = []
@@ -324,9 +346,13 @@ def _build_interpretation(
             "Multiple warning conditions are present, so treat authentication conclusions as low confidence."
         )
     elif len(warnings) == 2:
-        warning_lines.append("Two warning conditions are present, so conclusions should be treated cautiously.")
+        warning_lines.append(
+            "Two warning conditions are present, so conclusions should be treated cautiously."
+        )
     elif len(warnings) == 1:
-        warning_lines.append("One warning condition is present and should be reviewed before relying on the result.")
+        warning_lines.append(
+            "One warning condition is present and should be reviewed before relying on the result."
+        )
     if warnings:
         warning_lines.append(
             "These warnings indicate ambiguity or conflicting signals, so conclusions should be treated conservatively."
