@@ -1,0 +1,484 @@
+{
+  "viewports": [
+    {
+      "id": "desktop",
+      "width": 1000,
+      "height": 800
+    },
+    {
+      "id": "mobile",
+      "width": 390,
+      "height": 844,
+      "isMobile": true,
+      "hasTouch": true,
+      "deviceScaleFactor": 3
+    }
+  ],
+  "sessions": {
+    "guest": {},
+    "admin": {
+      "username": "admin",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_ADMIN_PASSWORD"
+    },
+    "artvandelay": {
+      "username": "artvandelay",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_ARTVANDELAY_PASSWORD"
+    },
+    "newman": {
+      "username": "newman",
+      "password": "Test-testtesttesttest-1",
+      "passwordEnv": "SCREENSHOT_NEWMAN_PASSWORD"
+    }
+  },
+  "scenes": [
+    {
+      "slug": "auth-admin-directory-verified",
+      "title": "Directory - Verified (admin)",
+      "path": "/directory",
+      "session": "admin",
+      "waitForSelector": "#verified.tab-content.active"
+    },
+    {
+      "slug": "auth-admin-directory-all",
+      "title": "Directory - All (admin)",
+      "path": "/directory",
+      "session": "admin",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#all.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "auth-admin-profile",
+      "title": "Profile - admin (authenticated)",
+      "path": "/to/admin",
+      "session": "admin",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-admin-inbox",
+      "title": "Inbox - admin",
+      "path": "/inbox",
+      "session": "admin",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-admin-settings-profile",
+      "title": "Settings - Profile (admin)",
+      "path": "/settings/profile",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-aliases",
+      "title": "Settings - Aliases (admin)",
+      "path": "/settings/aliases",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-auth",
+      "title": "Settings - Authentication (admin)",
+      "path": "/settings/auth",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-branding",
+      "title": "Settings - Branding (admin)",
+      "path": "/settings/branding",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-encryption",
+      "title": "Settings - Encryption (admin)",
+      "path": "/settings/encryption",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-replies",
+      "title": "Settings - Message Statuses (admin)",
+      "path": "/settings/replies",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-notifications",
+      "title": "Settings - Notifications (admin)",
+      "path": "/settings/notifications",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-guidance",
+      "title": "Settings - User Guidance (admin)",
+      "path": "/settings/guidance",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-registration",
+      "title": "Settings - Registration (admin)",
+      "path": "/settings/registration",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-advanced",
+      "title": "Settings - Advanced (admin)",
+      "path": "/settings/advanced",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-admin",
+      "title": "Settings - Admin (admin)",
+      "path": "/settings/admin",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-profile",
+      "title": "Profile - artvandelay (authenticated)",
+      "path": "/to/artvandelay",
+      "session": "artvandelay",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-artvandelay-inbox",
+      "title": "Inbox - artvandelay",
+      "path": "/inbox",
+      "session": "artvandelay",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-artvandelay-settings-profile",
+      "title": "Settings - Profile (artvandelay)",
+      "path": "/settings/profile",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-aliases",
+      "title": "Settings - Aliases (artvandelay)",
+      "path": "/settings/aliases",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-auth",
+      "title": "Settings - Authentication (artvandelay)",
+      "path": "/settings/auth",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-enable-2fa",
+      "title": "Settings - Enable 2FA (artvandelay)",
+      "path": "/settings/auth",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "button:has-text('Enable 2FA')",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "h2"
+        }
+      ]
+    },
+    {
+      "slug": "auth-artvandelay-disable-2fa-confirm",
+      "title": "Settings - Disable 2FA Confirm (artvandelay)",
+      "path": "/settings/confirm-disable-2fa",
+      "session": "artvandelay",
+      "waitForSelector": "button:has-text('Yes, Disable 2FA')"
+    },
+    {
+      "slug": "auth-artvandelay-settings-encryption",
+      "title": "Settings - Encryption (artvandelay)",
+      "path": "/settings/encryption",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-replies",
+      "title": "Settings - Message Statuses (artvandelay)",
+      "path": "/settings/replies",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-notifications",
+      "title": "Settings - Notifications (artvandelay)",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-artvandelay-settings-advanced",
+      "title": "Settings - Advanced (artvandelay)",
+      "path": "/settings/advanced",
+      "session": "artvandelay",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-profile",
+      "title": "Profile - newman (authenticated)",
+      "path": "/to/newman",
+      "session": "newman",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "auth-newman-inbox",
+      "title": "Inbox - newman",
+      "path": "/inbox",
+      "session": "newman",
+      "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-newman-onboarding-profile",
+      "title": "Onboarding - Step 1 Profile (newman)",
+      "path": "/onboarding?step=profile",
+      "session": "newman",
+      "waitForSelector": "#display_name",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#display_name",
+          "value": ""
+        },
+        {
+          "type": "click",
+          "selector": ".onboarding-wizard h3"
+        }
+      ]
+    },
+    {
+      "slug": "auth-newman-onboarding-encryption",
+      "title": "Onboarding - Step 2 Encryption (newman)",
+      "path": "/onboarding?step=encryption",
+      "session": "newman",
+      "waitForSelector": "#searchInput"
+    },
+    {
+      "slug": "auth-newman-onboarding-notifications",
+      "title": "Onboarding - Step 3 Notifications (newman)",
+      "path": "/onboarding?step=notifications",
+      "session": "newman",
+      "waitForSelector": "#email_address"
+    },
+    {
+      "slug": "auth-newman-onboarding-directory",
+      "title": "Onboarding - Step 4 Directory (newman)",
+      "path": "/onboarding?step=directory",
+      "session": "newman",
+      "waitForSelector": "#show_in_directory"
+    },
+    {
+      "slug": "auth-newman-settings-profile",
+      "title": "Settings - Profile (newman)",
+      "path": "/settings/profile",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-aliases",
+      "title": "Settings - Aliases (newman)",
+      "path": "/settings/aliases",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-auth",
+      "title": "Settings - Authentication (newman)",
+      "path": "/settings/auth",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-encryption",
+      "title": "Settings - Encryption (newman)",
+      "path": "/settings/encryption",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-replies",
+      "title": "Settings - Message Statuses (newman)",
+      "path": "/settings/replies",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-notifications",
+      "title": "Settings - Notifications (newman)",
+      "path": "/settings/notifications",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-newman-settings-advanced",
+      "title": "Settings - Advanced (newman)",
+      "path": "/settings/advanced",
+      "session": "newman",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "guest-directory-verified",
+      "title": "Directory - Verified",
+      "path": "/directory",
+      "session": "guest",
+      "waitForSelector": "#verified.tab-content.active"
+    },
+    {
+      "slug": "guest-directory-all",
+      "title": "Directory - All",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#all.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "guest-profile-admin",
+      "title": "Profile - admin",
+      "path": "/to/admin",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-profile-artvandelay",
+      "title": "Profile - artvandelay",
+      "path": "/to/artvandelay",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-profile-newman",
+      "title": "Profile - newman",
+      "path": "/to/newman",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-login",
+      "title": "Login",
+      "path": "/login",
+      "session": "guest",
+      "waitForSelector": "#username"
+    },
+    {
+      "slug": "guest-register",
+      "title": "Register",
+      "path": "/register",
+      "session": "guest",
+      "waitForSelector": "#captcha_answer"
+    },
+    {
+      "slug": "guest-2fa-page",
+      "title": "2FA Page",
+      "path": "/verify-2fa-login",
+      "session": "guest",
+      "waitForSelector": "main"
+    },
+    {
+      "slug": "guest-message-submitted",
+      "title": "Message Submitted",
+      "path": "/to/artvandelay",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#field_1, [name='field_1'], #content, textarea.form-field",
+          "value": "Screenshot test message body."
+        },
+        {
+          "type": "solve_math_captcha"
+        },
+        {
+          "type": "submit_form",
+          "selector": "#messageForm",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "#reply-url"
+        }
+      ]
+    },
+    {
+      "slug": "guest-message-status",
+      "title": "Message Status",
+      "path": "/reply/sample-reply-artvandelay",
+      "session": "guest",
+      "waitForSelector": "main"
+    },
+    {
+      "slug": "guest-directory-verified-search-art",
+      "title": "Directory - Verified search 'art'",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#searchInput",
+          "value": "art"
+        },
+        {
+          "type": "wait_for",
+          "selector": "mark.search-highlight"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-all-search-art",
+      "title": "Directory - All search 'art'",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#all-tab"
+        },
+        {
+          "type": "fill",
+          "selector": "#searchInput",
+          "value": "art"
+        },
+        {
+          "type": "wait_for",
+          "selector": "mark.search-highlight"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-js-disabled",
+      "title": "Directory (JS disabled)",
+      "path": "/directory",
+      "session": "guest",
+      "javaScriptEnabled": false,
+      "waitForSelector": "#directory-title"
+    }
+  ]
+}
