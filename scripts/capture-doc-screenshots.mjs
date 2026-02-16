@@ -181,57 +181,6 @@ async function hideFooters(page) {
   });
 }
 
-async function normalizeLayoutForFullPage(page) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll("*")) {
-      if (!(el instanceof HTMLElement)) continue;
-      const pos = window.getComputedStyle(el).position;
-      if (pos !== "fixed" && pos !== "sticky") continue;
-      el.setAttribute("data-hushline-prev-position", el.style.position || "");
-      el.setAttribute("data-hushline-prev-top", el.style.top || "");
-      el.setAttribute("data-hushline-prev-right", el.style.right || "");
-      el.setAttribute("data-hushline-prev-bottom", el.style.bottom || "");
-      el.setAttribute("data-hushline-prev-left", el.style.left || "");
-      el.style.position = "static";
-      el.style.top = "auto";
-      el.style.right = "auto";
-      el.style.bottom = "auto";
-      el.style.left = "auto";
-    }
-  });
-}
-
-async function restoreLayoutAfterFullPage(page) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll("*")) {
-      if (!(el instanceof HTMLElement)) continue;
-      const prevPosition = el.getAttribute("data-hushline-prev-position");
-      if (prevPosition === null) continue;
-      const prevTop = el.getAttribute("data-hushline-prev-top") || "";
-      const prevRight = el.getAttribute("data-hushline-prev-right") || "";
-      const prevBottom = el.getAttribute("data-hushline-prev-bottom") || "";
-      const prevLeft = el.getAttribute("data-hushline-prev-left") || "";
-
-      if (prevPosition) el.style.position = prevPosition;
-      else el.style.removeProperty("position");
-      if (prevTop) el.style.top = prevTop;
-      else el.style.removeProperty("top");
-      if (prevRight) el.style.right = prevRight;
-      else el.style.removeProperty("right");
-      if (prevBottom) el.style.bottom = prevBottom;
-      else el.style.removeProperty("bottom");
-      if (prevLeft) el.style.left = prevLeft;
-      else el.style.removeProperty("left");
-
-      el.removeAttribute("data-hushline-prev-position");
-      el.removeAttribute("data-hushline-prev-top");
-      el.removeAttribute("data-hushline-prev-right");
-      el.removeAttribute("data-hushline-prev-bottom");
-      el.removeAttribute("data-hushline-prev-left");
-    }
-  });
-}
-
 async function scrollAllToTop(page) {
   await page.evaluate(() => {
     window.scrollTo(0, 0);
@@ -473,7 +422,11 @@ async function main() {
           Array.isArray(scene.captureModes) && scene.captureModes.length
             ? scene.captureModes
             : ["fold", "scroll", "full"];
-        for (const mode of captureModes) {
+        const orderedCaptureModes = [
+          ...captureModes.filter((mode) => mode === "full"),
+          ...captureModes.filter((mode) => mode !== "full"),
+        ];
+        for (const mode of orderedCaptureModes) {
           if (mode === "fold") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-fold.png`;
             await screenshotAtOffset(page, 0, path.join(targetDir, fileName));
@@ -512,7 +465,6 @@ async function main() {
             try {
               await scrollAllToTop(page);
               await sleep(120);
-              await normalizeLayoutForFullPage(page);
               await hideFooters(page);
               await page.screenshot({
                 path: path.join(targetDir, fileName),
@@ -532,7 +484,6 @@ async function main() {
               }
               throw err;
             } finally {
-              await restoreLayoutAfterFullPage(page);
               await restoreFooters(page);
             }
             continue;
