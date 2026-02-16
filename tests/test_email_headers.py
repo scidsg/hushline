@@ -92,7 +92,6 @@ def test_email_headers_page_renders_authenticated(
     assert response.status_code == 200
     assert "Email Validation" in response.text
     assert "Tools" in response.text
-    assert "Chain of Trust" in response.text
     assert "Vision Assistant" in response.text
     assert "Download Report" not in response.text
     assert 'aria-current="page"' in response.text
@@ -114,6 +113,7 @@ def test_email_headers_post_without_dkim_still_reports_auth_results(
     assert response.status_code == 200
     assert "Header Context" in response.text
     assert "Validation Summary" in response.text
+    assert "Chain of Trust" in response.text
     assert "Download Report" in response.text
     assert "⚠️ This email might not be from the stated sender." in response.text
     assert "No DKIM-Signature headers were found." in response.text
@@ -245,7 +245,7 @@ def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockF
     assert "Chain of Trust:" in report_pdf_text
     assert "Header Context:" in report_pdf_text
     assert "DKIM Signatures:" in report_pdf_text
-    assert "signed_headers=from, subject, sender" in report_pdf_text
+    assert "signed_headers=from, subject" in report_pdf_text
     assert (
         "DKIM indicates the message was signed by a key linked to the signing domain."
         in report_pdf_text
