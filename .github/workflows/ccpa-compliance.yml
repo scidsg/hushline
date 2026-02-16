@@ -1,4 +1,4 @@
-name: CCPRA Compliance
+name: CCPA Compliance
 
 on:
   pull_request:
