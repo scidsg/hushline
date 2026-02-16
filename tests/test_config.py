@@ -89,3 +89,10 @@ def test_preferred_url_scheme_invalid_value() -> None:
 
     with pytest.raises(ConfigParseError, match="PREFERRED_URL_SCHEME must be"):
         load_config(env)
+
+
+def test_smtp_notification_reply_to_loads() -> None:
+    env = dict(**os.environ)
+    env["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    cfg = load_config(env)
+    assert cfg["NOTIFICATIONS_REPLY_TO"] == "reply@example.com"

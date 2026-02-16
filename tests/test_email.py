@@ -136,3 +136,25 @@ def test_send_email_recipient_refusal_returns_false(app: Flask) -> None:
     with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
         app.config["SMTP_SEND_ATTEMPTS"] = 1
         assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+
+def test_send_email_sets_reply_to_header(app: Flask) -> None:
+    smtp_server = MagicMock()
+    smtp_server.send_message.return_value = {}
+    cfg = _DummyConfig(smtp_server=smtp_server)
+
+    with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
+        app.config["SMTP_SEND_ATTEMPTS"] = 1
+        assert (
+            email_mod.send_email(
+                "to@example.com",
+                "subject",
+                "body",
+                cfg,
+                reply_to="reply@example.com",
+            )
+            is True
+        )
+
+    sent_message = smtp_server.send_message.call_args.args[0]
+    assert sent_message["Reply-To"] == "reply@example.com"

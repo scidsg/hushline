@@ -17,6 +17,7 @@ services:
       ALIAS_MODE: always
       SESSION_COOKIE_NAME: session
       NOTIFICATIONS_ADDRESS: notifications@hushline.app
+      NOTIFICATIONS_REPLY_TO: no-reply@hushline.app
       DIRECTORY_VERIFIED_TAB_ENABLED: "${DIRECTORY_VERIFIED_TAB_ENABLED:-true}"
       SMTP_FORWARDING_MESSAGE_HTML: |
         ✊ Email forwarding is powered by

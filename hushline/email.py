@@ -95,7 +95,9 @@ def is_safe_smtp_host(host: str) -> bool:
     return True
 
 
-def send_email(to_email: str, subject: str, body: str, smtp_config: SMTPConfig) -> bool:
+def send_email(
+    to_email: str, subject: str, body: str, smtp_config: SMTPConfig, reply_to: str | None = None
+) -> bool:
     if not is_safe_smtp_host(smtp_config.server):
         current_app.logger.error(f"Blocked SMTP delivery to unsafe host {smtp_config.server!r}")
         return False
@@ -108,6 +110,8 @@ def send_email(to_email: str, subject: str, body: str, smtp_config: SMTPConfig) 
     message["From"] = smtp_config.sender
     message["To"] = to_email
     message["Subject"] = subject
+    if reply_to:
+        message["Reply-To"] = reply_to
 
     # Check if body is a bytes object
     if isinstance(body, bytes):
