@@ -90,3 +90,15 @@ jobs:
         run: make test
         env:
           PYTEST_ADDOPTS: "--alembic --skip-local-only"
+
+  privacy-compliance-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run GDPR and CCPA compliance evidence tests
+        run: |
+          make test \
+            TESTS="tests/test_gdpr_compliance.py tests/test_ccpa_compliance.py" \
+            PYTEST_ADDOPTS="--skip-local-only"
