@@ -82,7 +82,7 @@
       "title": "Tools - Vision Assistant (admin)",
       "path": "/vision",
       "session": "admin",
-      "waitForSelector": "#results"
+      "waitForSelector": "#fileInput"
     },
     {
       "slug": "auth-admin-settings-profile",
