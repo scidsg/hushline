@@ -78,6 +78,75 @@
       "waitForSelector": "#raw_headers"
     },
     {
+      "slug": "auth-admin-tools-email-validation-status-valid",
+      "title": "Tools - Email Validation status: appears valid (admin)",
+      "path": "/email-headers",
+      "session": "admin",
+      "waitForSelector": "#raw_headers",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#raw_headers",
+          "value": "From: Notifications <notifications@hushline.app>\\nReturn-Path: <notifications@hushline.app>\\nAuthentication-Results: mx.example.net; spf=pass smtp.mailfrom=hushline.app; dmarc=pass header.from=hushline.app\\n"
+        },
+        {
+          "type": "click",
+          "selector": ".btn-primary",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "#email-summary"
+        }
+      ]
+    },
+    {
+      "slug": "auth-admin-tools-email-validation-status-inauthentic",
+      "title": "Tools - Email Validation status: appears inauthentic (admin)",
+      "path": "/email-headers",
+      "session": "admin",
+      "waitForSelector": "#raw_headers",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#raw_headers",
+          "value": "From: Person <person@example.org>\\nAuthentication-Results: mx.example.net; spf=neutral; dmarc=fail\\n"
+        },
+        {
+          "type": "click",
+          "selector": ".btn-primary",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "#email-summary"
+        }
+      ]
+    },
+    {
+      "slug": "auth-admin-tools-email-validation-status-forged",
+      "title": "Tools - Email Validation status: appears forged (admin)",
+      "path": "/email-headers",
+      "session": "admin",
+      "waitForSelector": "#raw_headers",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#raw_headers",
+          "value": "From: Person <person@example.org>\\nAuthentication-Results: mx.example.net; dkim=fail; spf=fail; dmarc=fail\\n"
+        },
+        {
+          "type": "click",
+          "selector": ".btn-primary",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "#email-summary"
+        }
+      ]
+    },
+    {
       "slug": "auth-admin-tools-vision-assistant",
       "title": "Tools - Vision Assistant (admin)",
       "path": "/vision",

@@ -124,6 +124,7 @@ def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
     )
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "likely forged"
+    assert report["executive_summary"]["headline"] == "🚨 This email appears forged."
 
 
 def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() -> None:
@@ -137,6 +138,17 @@ def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() 
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "looks valid"
     assert report["executive_summary"]["headline"] == "✅ This email appears valid."
+
+
+def test_analyze_raw_email_headers_marks_appears_inauthentic() -> None:
+    raw_headers = (
+        "From: Person <person@example.org>\n"
+        "Authentication-Results: mx.example.net; spf=neutral; dmarc=fail\n"
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+    assert report["executive_summary"]["verdict"] == "appears inauthentic"
+    assert report["executive_summary"]["headline"] == "⚠️ This email appears inauthentic."
 
 
 def test_analyze_raw_email_headers_rejects_empty_input() -> None:
