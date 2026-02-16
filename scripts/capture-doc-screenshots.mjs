@@ -176,6 +176,31 @@ async function hideFooters(page) {
   });
 }
 
+async function normalizeHeaderForFullPage(page) {
+  await page.evaluate(() => {
+    let style = document.getElementById("hushline-fullpage-header-normalize");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "hushline-fullpage-header-normalize";
+      document.head.appendChild(style);
+    }
+    // Prevent sticky/fixed header duplication in full-page stitched captures.
+    style.textContent = `
+      header {
+        position: static !important;
+        top: auto !important;
+      }
+    `;
+  });
+}
+
+async function restoreHeaderAfterFullPage(page) {
+  await page.evaluate(() => {
+    const style = document.getElementById("hushline-fullpage-header-normalize");
+    if (style) style.remove();
+  });
+}
+
 async function restoreFooters(page) {
   await page.evaluate(() => {
     for (const el of document.querySelectorAll("footer")) {
@@ -425,6 +450,9 @@ async function main() {
           if (mode === "full") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-full.png`;
             try {
+              await page.evaluate(() => window.scrollTo(0, 0));
+              await sleep(120);
+              await normalizeHeaderForFullPage(page);
               await hideFooters(page);
               await page.screenshot({
                 path: path.join(targetDir, fileName),
@@ -444,6 +472,7 @@ async function main() {
               }
               throw err;
             } finally {
+              await restoreHeaderAfterFullPage(page);
               await restoreFooters(page);
             }
             continue;
