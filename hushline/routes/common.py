@@ -106,7 +106,10 @@ def do_send_email(user: User, body: str) -> None:
                 encryption=SMTPEncryption[current_app.config["SMTP_ENCRYPTION"]],
             )
 
-        send_email(user.email, "New Hush Line Message Received", body, smtp_config)
+        reply_to = current_app.config.get("NOTIFICATIONS_REPLY_TO") or current_app.config.get(
+            "NOTIFICATIONS_ADDRESS"
+        )
+        send_email(user.email, "New Hush Line Message Received", body, smtp_config, reply_to)
     except (KeyError, OSError, TypeError, ValueError, smtplib.SMTPException) as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
 

@@ -121,7 +121,13 @@ def clean_html(html_str: str) -> Markup:
 def _load_smtp(env: Mapping[str, str]) -> Mapping[str, Any]:
     data: dict[str, Any] = {}
 
-    for key in ["NOTIFICATIONS_ADDRESS", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_SERVER"]:
+    for key in [
+        "NOTIFICATIONS_ADDRESS",
+        "NOTIFICATIONS_REPLY_TO",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "SMTP_SERVER",
+    ]:
         if val := env.get(key):
             data[key] = val
 
