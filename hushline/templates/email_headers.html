@@ -29,7 +29,7 @@
 
   {% if report %}
     <section aria-labelledby="email-summary">
-      <h4 id="email-summary">Email Summary</h4>
+      <h4 id="email-summary">Validation Summary</h4>
       <p><strong>{{ report.executive_summary.headline }}</strong></p>
       <ul>
         {% for reason in report.executive_summary.reasons %}
@@ -37,15 +37,34 @@
         {% endfor %}
       </ul>
       <p class="meta">
-        ⚠️ Disclaimer: Older emails can appear inauthentic even when they were valid at send time.
-        DKIM keys can be rotated or removed, domains can change ownership, and current DNS records
-        may not match historical records. This tool may produce false negatives.
+        ⚠️ Disclaimer: This tool analyzes pasted message headers. Older emails can also 
+        appear inauthentic if DKIM keys rotated or were removed.
       </p>
     </section>
 
+    <section aria-labelledby="trust-chain">
+      <h4 id="trust-chain">Authentication Chain</h4>
+      <ul>
+        <li>
+          DKIM key found in DNS:
+          <code>{{ "yes" if report.dkim_overview.key_advertised_in_dns else "no" }}</code>
+        </li>
+        <li>
+          DNSSEC-validated DNS answer:
+          <code>{{ "yes" if report.dkim_overview.dnssec_validated else "no" }}</code>
+        </li>
+      </ul>
+      <h5>Summary</h5>
+      <ul>
+        {% for line in report.interpretation.auth_chain %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
     <section aria-labelledby="email-headers-summary">
-      <h4 id="email-headers-summary">Validation Summary</h4>
-      <p class="meta">{{ report.note }}</p>
+      <h4 id="email-headers-summary">Header Context</h4>
+      <p>Note: {{ report.note }}</p>
       <ul>
         <li>From domain: <code>{{ report.from_domain or "not found" }}</code></li>
         <li>Return-Path domain: <code>{{ report.return_path_domain or "not found" }}</code></li>
@@ -59,6 +78,12 @@
           <code>{{ "yes" if report.alignment.from_matches_any_dkim_domain else "no" }}</code>
         </li>
       </ul>
+      <h5>Summary</h5>
+      <ul>
+        {% for line in report.interpretation.header_context %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
     </section>
 
     <section aria-labelledby="auth-results">
@@ -67,6 +92,12 @@
         <li>DKIM: <code>{{ report.auth_results.get("dkim", "not present") }}</code></li>
         <li>SPF: <code>{{ report.auth_results.get("spf", "not present") }}</code></li>
         <li>DMARC: <code>{{ report.auth_results.get("dmarc", "not present") }}</code></li>
+      </ul>
+      <h5>Summary</h5>
+      <ul>
+        {% for line in report.interpretation.auth_results %}
+          <li>{{ line }}</li>
+        {% endfor %}
       </ul>
     </section>
 
@@ -78,13 +109,20 @@
             <li>
               domain=<code>{{ sig.domain or "missing" }}</code>,
               selector=<code>{{ sig.selector or "missing" }}</code>,
-              algorithm=<code>{{ sig.algorithm or "missing" }}</code>
+              algorithm=<code>{{ sig.algorithm or "missing" }}</code>,
+              signed headers=<code>{{ sig.signed_headers|join(", ") if sig.signed_headers else "not present" }}</code>
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p>No DKIM-Signature headers were found.</p>
       {% endif %}
+      <h5>Summary</h5>
+      <ul>
+        {% for line in report.interpretation.dkim_signatures %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
     </section>
 
     <section aria-labelledby="dkim-keys">
@@ -97,6 +135,7 @@
               {% if item.has_public_key %}
                 (public key present)
               {% endif %}
+              (dnssec validated: <code>{{ "yes" if item.dnssec_validated else "no" }}</code>)
               {% if item.error %}
                 - {{ item.error }}
               {% endif %}
@@ -106,6 +145,12 @@
       {% else %}
         <p>No DKIM key lookups were attempted.</p>
       {% endif %}
+      <h5>Summary</h5>
+      <ul>
+        {% for line in report.interpretation.dkim_keys %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
     </section>
 
     {% if report.warnings %}
@@ -114,6 +159,12 @@
         <ul>
           {% for warning in report.warnings %}
             <li>{{ warning }}</li>
+          {% endfor %}
+        </ul>
+        <h5>Summary</h5>
+        <ul>
+          {% for line in report.interpretation.warnings %}
+            <li>{{ line }}</li>
           {% endfor %}
         </ul>
       </section>

@@ -52,7 +52,7 @@ def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: Mo
         "Authentication-Results: mx.example.net; dkim=pass header.d=example.org; "
         "spf=pass smtp.mailfrom=example.org; dmarc=pass header.from=example.org\n"
         "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; "
-        "c=relaxed/relaxed; bh=abc123=; b=def456=\n"
+        "c=relaxed/relaxed; h=from:subject:sender; bh=abc123=; b=def456=\n"
     )
 
     report = analyze_raw_email_headers(raw_headers)
@@ -64,6 +64,9 @@ def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: Mo
     assert report["alignment"]["from_matches_any_dkim_domain"] is True
     assert report["dkim_key_lookups"][0]["status"] == "found"
     assert report["dkim_key_lookups"][0]["has_public_key"] is True
+    assert report["dkim_key_lookups"][0]["dnssec_validated"] is False
+    assert report["dkim_overview"]["key_advertised_in_dns"] is True
+    assert report["dkim_signatures"][0]["signed_headers"] == ["from", "subject", "sender"]
     assert report["executive_summary"]["verdict"] == "looks valid"
 
 
@@ -89,6 +92,7 @@ def test_email_headers_page_renders_authenticated(
     assert response.status_code == 200
     assert "Email Validation" in response.text
     assert "Tools" in response.text
+    assert "Trust Chain" in response.text
     assert "Vision Assistant" in response.text
     assert "Download Report" not in response.text
     assert 'aria-current="page"' in response.text
@@ -108,10 +112,10 @@ def test_email_headers_post_without_dkim_still_reports_auth_results(
         follow_redirects=True,
     )
     assert response.status_code == 200
+    assert "Header Context" in response.text
     assert "Validation Summary" in response.text
-    assert "Email Summary" in response.text
     assert "Download Report" in response.text
-    assert "⚠️ This email appears inauthentic." in response.text
+    assert "⚠️ This email might not be from the stated sender." in response.text
     assert "No DKIM-Signature headers were found." in response.text
     assert "SPF result is neutral." in response.text
     assert "DMARC result is fail." in response.text
@@ -124,7 +128,10 @@ def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
     )
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "likely forged"
-    assert report["executive_summary"]["headline"] == "🚨 This email appears forged."
+    assert (
+        report["executive_summary"]["headline"]
+        == "🚨 This email likely did not originate from the stated sender."
+    )
 
 
 def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() -> None:
@@ -137,7 +144,10 @@ def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() 
 
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "looks valid"
-    assert report["executive_summary"]["headline"] == "✅ This email appears valid."
+    assert (
+        report["executive_summary"]["headline"]
+        == "✅ This email appears to originate from the stated sender."
+    )
 
 
 def test_analyze_raw_email_headers_marks_appears_inauthentic() -> None:
@@ -148,7 +158,10 @@ def test_analyze_raw_email_headers_marks_appears_inauthentic() -> None:
 
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "appears inauthentic"
-    assert report["executive_summary"]["headline"] == "⚠️ This email appears inauthentic."
+    assert (
+        report["executive_summary"]["headline"]
+        == "⚠️ This email might not be from the stated sender."
+    )
 
 
 def test_analyze_raw_email_headers_rejects_empty_input() -> None:
@@ -214,17 +227,26 @@ def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockF
     raw_headers = (
         "From: Alerts <alerts@example.org>\n"
         "Authentication-Results: mx.example.net; dkim=pass header.d=example.org\n"
-        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; bh=abc=; b=def=\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; "
+        "h=from:subject:sender; bh=abc=; b=def=\n"
     )
 
     archive = zipfile.ZipFile(io.BytesIO(create_evidence_zip(raw_headers)))
     report_json = json.loads(archive.read("report.json").decode("utf-8"))
     report_pdf = archive.read("report.pdf")
+    report_pdf_text = report_pdf.decode("latin-1", errors="ignore")
     checksums = archive.read("checksums.sha256").decode("utf-8")
 
     assert report_json["from_domain"] == "example.org"
     assert report_json["executive_summary"]["headline"]
+    assert report_json["interpretation"]["auth_results"]
     assert report_pdf.startswith(b"%PDF-1.4")
+    assert "Validation Summary:" in report_pdf_text
+    assert "Trust Chain:" in report_pdf_text
+    assert "Header Context:" in report_pdf_text
+    assert "DKIM Signatures:" in report_pdf_text
+    assert "signed_headers=from, subject, sender" in report_pdf_text
+    assert "DKIM indicates the message was signed by a key linked to the signing domain." in report_pdf_text
     assert "report.json" in checksums
     assert "report.pdf" in checksums
 
