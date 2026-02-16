@@ -71,6 +71,20 @@
       "waitForSelector": ".inbox-content"
     },
     {
+      "slug": "auth-admin-tools-email-validation",
+      "title": "Tools - Email Validation (admin)",
+      "path": "/email-headers",
+      "session": "admin",
+      "waitForSelector": "#raw_headers"
+    },
+    {
+      "slug": "auth-admin-tools-vision-assistant",
+      "title": "Tools - Vision Assistant (admin)",
+      "path": "/vision",
+      "session": "admin",
+      "waitForSelector": "#results"
+    },
+    {
       "slug": "auth-admin-settings-profile",
       "title": "Settings - Profile (admin)",
       "path": "/settings/profile",
