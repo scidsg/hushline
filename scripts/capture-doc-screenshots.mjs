@@ -161,6 +161,36 @@ async function screenshotAtOffset(page, offsetY, filePath) {
   await page.screenshot({ path: filePath, fullPage: false });
 }
 
+async function hideFooters(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("footer")) {
+      const hasPrivacyLink = Boolean(
+        el.querySelector('a[href*="/docs/PRIVACY.md"]'),
+      );
+      const hasTermsLink = Boolean(el.querySelector('a[href*="/docs/TERMS.md"]'));
+      // Only hide the app footer block (Privacy | Terms | version / Powered by).
+      if (!hasPrivacyLink || !hasTermsLink) continue;
+      el.setAttribute("data-hushline-prev-display", el.style.display || "");
+      el.style.display = "none";
+    }
+  });
+}
+
+async function restoreFooters(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("footer")) {
+      const previous = el.getAttribute("data-hushline-prev-display");
+      if (previous === null) continue;
+      if (previous) {
+        el.style.display = previous;
+      } else {
+        el.style.removeProperty("display");
+      }
+      el.removeAttribute("data-hushline-prev-display");
+    }
+  });
+}
+
 function makeContextOptions(viewport, jsEnabled, colorScheme) {
   const opts = {
     viewport: { width: viewport.width, height: viewport.height },
@@ -395,6 +425,7 @@ async function main() {
           if (mode === "full") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-full.png`;
             try {
+              await hideFooters(page);
               await page.screenshot({
                 path: path.join(targetDir, fileName),
                 fullPage: true,
@@ -412,6 +443,8 @@ async function main() {
                 continue;
               }
               throw err;
+            } finally {
+              await restoreFooters(page);
             }
             continue;
           }
