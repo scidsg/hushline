@@ -87,7 +87,7 @@
         {
           "type": "fill",
           "selector": "#raw_headers",
-          "value": "Return-Path: <notifications@hushline.app>\\nX-Original-To: glenn@scidsg.org\\nDelivered-To: glenn@scidsg.org\\nAuthentication-Results: mail.protonmail.ch; dmarc=pass (p=none dis=none) header.from=hushline.app\\nAuthentication-Results: mail.protonmail.ch; spf=pass smtp.mailfrom=hushline.app\\nAuthentication-Results: mail.protonmail.ch; arc=none smtp.remote-ip=198.252.153.129\\nAuthentication-Results: mail.protonmail.ch; dkim=none\\nContent-Type: text/plain\\nMime-Version: 1.0\\nFrom: notifications@hushline.app\\nTo: glenn@scidsg.org\\nSubject: New Hush Line Message Received\\nReply-To: notifications@hushline.app\\nDate: Mon, 16 Feb 2026 00:31:10 +0000\\n"
+          "value": "Return-Path: <notifications@hushline.app>\nX-Original-To: glenn@scidsg.org\nDelivered-To: glenn@scidsg.org\nAuthentication-Results: mail.protonmail.ch; dmarc=pass (p=none dis=none) header.from=hushline.app\nAuthentication-Results: mail.protonmail.ch; spf=pass smtp.mailfrom=hushline.app\nAuthentication-Results: mail.protonmail.ch; arc=none smtp.remote-ip=198.252.153.129\nAuthentication-Results: mail.protonmail.ch; dkim=none\nContent-Type: text/plain\nMime-Version: 1.0\nFrom: notifications@hushline.app\nTo: glenn@scidsg.org\nSubject: New Hush Line Message Received\nReply-To: notifications@hushline.app\nDate: Mon, 16 Feb 2026 00:31:10 +0000\n"
         },
         {
           "type": "click",
@@ -110,7 +110,7 @@
         {
           "type": "fill",
           "selector": "#raw_headers",
-          "value": "From: Person <person@example.org>\\nAuthentication-Results: mx.example.net; spf=neutral; dmarc=fail\\n"
+          "value": "From: Person <person@example.org>\nAuthentication-Results: mx.example.net; spf=neutral; dmarc=fail\n"
         },
         {
           "type": "click",
@@ -133,7 +133,7 @@
         {
           "type": "fill",
           "selector": "#raw_headers",
-          "value": "From: Person <person@example.org>\\nAuthentication-Results: mx.example.net; dkim=fail; spf=fail; dmarc=fail\\n"
+          "value": "From: Person <person@example.org>\nAuthentication-Results: mx.example.net; dkim=fail; spf=fail; dmarc=fail\n"
         },
         {
           "type": "click",
