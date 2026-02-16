@@ -136,7 +136,7 @@ def test_analyze_raw_email_headers_marks_valid_on_spf_dmarc_pass_without_dkim() 
 
     report = analyze_raw_email_headers(raw_headers)
     assert report["executive_summary"]["verdict"] == "looks valid"
-    assert report["executive_summary"]["headline"] == "✅ This email looks valid."
+    assert report["executive_summary"]["headline"] == "✅ This email appears valid."
 
 
 def test_analyze_raw_email_headers_rejects_empty_input() -> None:
