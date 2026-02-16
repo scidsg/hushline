@@ -45,9 +45,9 @@ This file provides operating guidance for coding agents working in the Hush Line
 | Send a message                | Send a message                       | Cancel subscription              | Update directory intro text                   |
 | Register/login, 2FA challenge | E2EE defaults and behavior           | Resubscribe to Super User tier   | Change primary color                          |
 | Browse user directory         | View messages in Inbox               | Add/remove an Alias              | Change app name                               |
-| Search Verified tab           | Change message status                | View Vision tab in nav           | Upload new logo                               |
-| Search All tab                | Delete a message                     | Add an image to Vision for OCR   | Hide donation link                            |
-| E2EE defaults and behavior    | Resend message to email (if enabled) | Add/remove custom profile fields | Customize profile header                      |
+| Search Verified tab           | Change message status                | Add/remove custom profile fields | Upload new logo                               |
+| Search All tab                | Delete a message                     |                                  | Hide donation link                            |
+| E2EE defaults and behavior    | Resend message to email (if enabled) |                                  | Customize profile header                      |
 |                               | Upgrade to Super User                |                                  | Change homepage; Enable/disable User Guidance |
 |                               | Add PGP key via Proton Key Lookup    |                                  | Update Emergency Exit link                    |
 |                               | Add PGP key manually                 |                                  | Update prompt heading/body                    |
@@ -59,6 +59,9 @@ This file provides operating guidance for coding agents working in the Hush Line
 |                               | Enable/disable 2FA                   |                                  | Verify an alias user account                  |
 |                               | Download account data                |                                  | Delete a user account                         |
 |                               | Delete own user account              |                                  |                                               |
+|                               | Validate Raw Email Headers           |                                  |                                               |
+|                               | Add an image to Vision for OCR       |                                  |                                               |
+|                               | View Tools tab in nav                |                                  |                                               |
 
 ## Local Commands
 
