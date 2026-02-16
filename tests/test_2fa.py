@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 
 import pyotp
 import pytest
@@ -104,13 +104,14 @@ def test_invalid_2fa_should_not_login(client: FlaskClient, user: User, user_pass
 def test_reuse_of_2fa_code_should_fail(
     client: FlaskClient, user: User, user_password: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Keep both verification attempts in the same TOTP interval so replay detection is deterministic.
+    # Keep both verification attempts in the same TOTP interval
+    # so replay detection is deterministic.
     current_now = datetime.now().replace(microsecond=0)
     fixed_now = current_now - timedelta(seconds=current_now.second % 30) + timedelta(seconds=5)
 
     class FrozenDateTime(datetime):
         @classmethod
-        def now(cls, tz=None):  # type: ignore[override]
+        def now(cls, tz: tzinfo | None = None) -> datetime:  # type: ignore[override]
             if tz is not None:
                 return tz.fromutc(fixed_now.replace(tzinfo=tz))
             return fixed_now
