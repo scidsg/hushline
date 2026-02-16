@@ -13,6 +13,7 @@
 ![Workflow Security Checks](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml/badge.svg)
 ![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)
 ![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
+![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)
 
 <img width="3627" height="2194" alt="cover" src="https://github.com/user-attachments/assets/442d2a2f-cf64-469c-8f09-0808619df67e" />
 
