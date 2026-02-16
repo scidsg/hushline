@@ -137,7 +137,10 @@ async function getPageDimensions(page) {
       doc?.clientHeight || 0,
       body?.clientHeight || 0,
     );
-    const viewportHeight = Math.max(window.innerHeight || 0, doc?.clientHeight || 0);
+    const viewportHeight = Math.max(
+      window.innerHeight || 0,
+      doc?.clientHeight || 0,
+    );
     return { scrollHeight, viewportHeight };
   });
 }
@@ -167,7 +170,9 @@ async function hideFooters(page) {
       const hasPrivacyLink = Boolean(
         el.querySelector('a[href*="/docs/PRIVACY.md"]'),
       );
-      const hasTermsLink = Boolean(el.querySelector('a[href*="/docs/TERMS.md"]'));
+      const hasTermsLink = Boolean(
+        el.querySelector('a[href*="/docs/TERMS.md"]'),
+      );
       // Only hide the app footer block (Privacy | Terms | version / Powered by).
       if (!hasPrivacyLink || !hasTermsLink) continue;
       el.setAttribute("data-hushline-prev-display", el.style.display || "");
@@ -176,28 +181,69 @@ async function hideFooters(page) {
   });
 }
 
-async function normalizeHeaderForFullPage(page) {
+async function normalizeLayoutForFullPage(page) {
   await page.evaluate(() => {
-    let style = document.getElementById("hushline-fullpage-header-normalize");
-    if (!style) {
-      style = document.createElement("style");
-      style.id = "hushline-fullpage-header-normalize";
-      document.head.appendChild(style);
+    for (const el of document.querySelectorAll("*")) {
+      if (!(el instanceof HTMLElement)) continue;
+      const pos = window.getComputedStyle(el).position;
+      if (pos !== "fixed" && pos !== "sticky") continue;
+      el.setAttribute("data-hushline-prev-position", el.style.position || "");
+      el.setAttribute("data-hushline-prev-top", el.style.top || "");
+      el.setAttribute("data-hushline-prev-right", el.style.right || "");
+      el.setAttribute("data-hushline-prev-bottom", el.style.bottom || "");
+      el.setAttribute("data-hushline-prev-left", el.style.left || "");
+      el.style.position = "static";
+      el.style.top = "auto";
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      el.style.left = "auto";
     }
-    // Prevent sticky/fixed header duplication in full-page stitched captures.
-    style.textContent = `
-      header {
-        position: static !important;
-        top: auto !important;
-      }
-    `;
   });
 }
 
-async function restoreHeaderAfterFullPage(page) {
+async function restoreLayoutAfterFullPage(page) {
   await page.evaluate(() => {
-    const style = document.getElementById("hushline-fullpage-header-normalize");
-    if (style) style.remove();
+    for (const el of document.querySelectorAll("*")) {
+      if (!(el instanceof HTMLElement)) continue;
+      const prevPosition = el.getAttribute("data-hushline-prev-position");
+      if (prevPosition === null) continue;
+      const prevTop = el.getAttribute("data-hushline-prev-top") || "";
+      const prevRight = el.getAttribute("data-hushline-prev-right") || "";
+      const prevBottom = el.getAttribute("data-hushline-prev-bottom") || "";
+      const prevLeft = el.getAttribute("data-hushline-prev-left") || "";
+
+      if (prevPosition) el.style.position = prevPosition;
+      else el.style.removeProperty("position");
+      if (prevTop) el.style.top = prevTop;
+      else el.style.removeProperty("top");
+      if (prevRight) el.style.right = prevRight;
+      else el.style.removeProperty("right");
+      if (prevBottom) el.style.bottom = prevBottom;
+      else el.style.removeProperty("bottom");
+      if (prevLeft) el.style.left = prevLeft;
+      else el.style.removeProperty("left");
+
+      el.removeAttribute("data-hushline-prev-position");
+      el.removeAttribute("data-hushline-prev-top");
+      el.removeAttribute("data-hushline-prev-right");
+      el.removeAttribute("data-hushline-prev-bottom");
+      el.removeAttribute("data-hushline-prev-left");
+    }
+  });
+}
+
+async function scrollAllToTop(page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const root = document.scrollingElement || document.documentElement;
+    if (root) root.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+
+    for (const el of document.querySelectorAll("*")) {
+      if (el instanceof HTMLElement && el.scrollTop > 0) {
+        el.scrollTop = 0;
+      }
+    }
   });
 }
 
@@ -329,7 +375,9 @@ async function main() {
         : viewports.map((v) => v.id);
 
     const targetThemes =
-      Array.isArray(scene.themes) && scene.themes.length ? scene.themes : themes;
+      Array.isArray(scene.themes) && scene.themes.length
+        ? scene.themes
+        : themes;
     for (const viewportId of targetViewportIds) {
       const viewport = viewports.find((v) => v.id === viewportId);
       if (!viewport) {
@@ -339,7 +387,9 @@ async function main() {
       }
       for (const theme of targetThemes) {
         if (theme !== "light" && theme !== "dark") {
-          throw new Error(`Scene ${scene.slug} references unknown theme ${theme}`);
+          throw new Error(
+            `Scene ${scene.slug} references unknown theme ${theme}`,
+          );
         }
 
         const jsEnabled = scene.javaScriptEnabled !== false;
@@ -377,7 +427,9 @@ async function main() {
           }
         }
 
-        await page.goto(`${baseUrl}${scene.path}`, { waitUntil: "networkidle" });
+        await page.goto(`${baseUrl}${scene.path}`, {
+          waitUntil: "networkidle",
+        });
 
         if (scene.waitForSelector) {
           try {
@@ -406,7 +458,9 @@ async function main() {
         }
 
         // Let UI transitions/animations settle before we capture.
-        const settleDelayMs = Number(scene.settleDelayMs ?? defaultSettleDelayMs);
+        const settleDelayMs = Number(
+          scene.settleDelayMs ?? defaultSettleDelayMs,
+        );
         if (settleDelayMs > 0) {
           await sleep(settleDelayMs);
         }
@@ -431,14 +485,20 @@ async function main() {
           }
 
           if (mode === "scroll") {
-            const { scrollHeight, viewportHeight } = await getPageDimensions(page);
-            const offsets = buildScrollOffsets(scrollHeight, viewportHeight).filter(
-              (y) => y > 0,
-            );
+            const { scrollHeight, viewportHeight } =
+              await getPageDimensions(page);
+            const offsets = buildScrollOffsets(
+              scrollHeight,
+              viewportHeight,
+            ).filter((y) => y > 0);
             for (let i = 0; i < offsets.length; i += 1) {
               const modeName = `window-${String(i + 2).padStart(2, "0")}`;
               const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-${modeName}.png`;
-              await screenshotAtOffset(page, offsets[i], path.join(targetDir, fileName));
+              await screenshotAtOffset(
+                page,
+                offsets[i],
+                path.join(targetDir, fileName),
+              );
               files.push({
                 mode: modeName,
                 file: `${sessionDir}/${fileName}`,
@@ -450,9 +510,9 @@ async function main() {
           if (mode === "full") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-full.png`;
             try {
-              await page.evaluate(() => window.scrollTo(0, 0));
+              await scrollAllToTop(page);
               await sleep(120);
-              await normalizeHeaderForFullPage(page);
+              await normalizeLayoutForFullPage(page);
               await hideFooters(page);
               await page.screenshot({
                 path: path.join(targetDir, fileName),
@@ -472,7 +532,7 @@ async function main() {
               }
               throw err;
             } finally {
-              await restoreHeaderAfterFullPage(page);
+              await restoreLayoutAfterFullPage(page);
               await restoreFooters(page);
             }
             continue;
