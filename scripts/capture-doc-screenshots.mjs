@@ -358,6 +358,7 @@ async function main() {
         }
 
         const page = await ctx.newPage();
+        await page.emulateMedia({ colorScheme: theme });
 
         if (Array.isArray(scene.preNavigationActions)) {
           let hasOriginLoaded = false;

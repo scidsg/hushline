@@ -1,0 +1,36 @@
+{
+  "release": "dark-target-check",
+  "baseUrl": "http://localhost:8080",
+  "capturedAt": "2026-02-16T22:59:51.915Z",
+  "viewports": [
+    {
+      "id": "desktop",
+      "width": 1000,
+      "height": 800
+    }
+  ],
+  "themes": [
+    "dark"
+  ],
+  "sessions": {
+    "admin": {
+      "username": "admin"
+    }
+  },
+  "scenes": [
+    {
+      "title": "Directory - All (admin)",
+      "slug": "auth-admin-directory-all",
+      "path": "/directory",
+      "session": "admin",
+      "viewport": "desktop",
+      "theme": "dark",
+      "files": [
+        {
+          "mode": "full",
+          "file": "admin/auth-admin-directory-all-desktop-dark-full.png"
+        }
+      ]
+    }
+  ]
+}
