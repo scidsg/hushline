@@ -595,7 +595,7 @@ def _render_report_pdf(report: dict[str, Any], created_at: datetime) -> bytes:
     lines.extend(
         [
             "",
-            "Trust Chain:",
+            "Chain of Trust:",
             (
                 "  DKIM key advertised in DNS: "
                 f"{'yes' if report['dkim_overview']['key_advertised_in_dns'] else 'no'}"

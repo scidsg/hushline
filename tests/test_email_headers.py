@@ -92,7 +92,7 @@ def test_email_headers_page_renders_authenticated(
     assert response.status_code == 200
     assert "Email Validation" in response.text
     assert "Tools" in response.text
-    assert "Trust Chain" in response.text
+    assert "Chain of Trust" in response.text
     assert "Vision Assistant" in response.text
     assert "Download Report" not in response.text
     assert 'aria-current="page"' in response.text
@@ -242,7 +242,7 @@ def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockF
     assert report_json["interpretation"]["auth_results"]
     assert report_pdf.startswith(b"%PDF-1.4")
     assert "Validation Summary:" in report_pdf_text
-    assert "Trust Chain:" in report_pdf_text
+    assert "Chain of Trust:" in report_pdf_text
     assert "Header Context:" in report_pdf_text
     assert "DKIM Signatures:" in report_pdf_text
     assert "signed_headers=from, subject, sender" in report_pdf_text
