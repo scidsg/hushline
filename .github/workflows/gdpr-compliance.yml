@@ -1,0 +1,22 @@
+name: GDPR Compliance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gdpr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run GDPR compliance evidence tests
+        run: |
+          make test \
+            TESTS="tests/test_gdpr_compliance.py" \
+            PYTEST_ADDOPTS="--skip-local-only"
