@@ -153,7 +153,7 @@ def _build_executive_summary(
     if strong_auth_success and aligned and not warnings:
         return {
             "verdict": "looks valid",
-            "headline": "👍 This email looks valid.",
+            "headline": "✅ This email looks valid.",
             "reasons": reasons or ["Key authentication checks passed and domains are aligned."],
         }
 

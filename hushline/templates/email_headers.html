@@ -7,11 +7,6 @@
     How do you know if an email is authentic? Paste raw message headers to inspect
     DKIM/SPF/DMARC results and fetch DKIM signing-key records from DNS.
   </p>
-  <p class="meta">
-    ⚠️ Disclaimer: older emails can appear inauthentic even when they were valid at send time.
-    DKIM keys can be rotated or removed, domains can change ownership, and current DNS records
-    may not match historical records.
-  </p>
 
   <form method="POST" action="{{ url_for('email_headers') }}">
     {{ form.hidden_tag() }}
@@ -41,6 +36,11 @@
           <li>{{ reason }}</li>
         {% endfor %}
       </ul>
+      <p class="meta">
+        ⚠️ Disclaimer: older emails can appear inauthentic even when they were valid at send time.
+        DKIM keys can be rotated or removed, domains can change ownership, and current DNS records
+        may not match historical records.
+      </p>
     </section>
 
     <section aria-labelledby="email-headers-summary">
