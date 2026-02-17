@@ -263,6 +263,20 @@
       "waitForSelector": ".inbox-content"
     },
     {
+      "slug": "auth-artvandelay-tools-email-validation",
+      "title": "Tools - Email Validation (artvandelay)",
+      "path": "/email-headers",
+      "session": "artvandelay",
+      "waitForSelector": "#raw_headers"
+    },
+    {
+      "slug": "auth-artvandelay-tools-vision",
+      "title": "Tools - Vision Assistant (artvandelay)",
+      "path": "/vision",
+      "session": "artvandelay",
+      "waitForSelector": "main .container"
+    },
+    {
       "slug": "auth-artvandelay-settings-profile",
       "title": "Settings - Profile (artvandelay)",
       "path": "/settings/profile",
