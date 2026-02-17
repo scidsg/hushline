@@ -19,13 +19,13 @@
 
 <table>
   <tr>
-    <td valign="bottom" width="72%">
+    <td valign="bottom" width="74%">
       <img
         src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png?raw=true"
         width="100%"
       />
     </td>
-    <td valign="bottom" width="24%">
+    <td valign="bottom" width="26%">
       <img
         src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/newman/auth-newman-onboarding-profile-mobile-light-fold.png?raw=true"
         width="100%"
