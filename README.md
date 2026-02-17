@@ -15,7 +15,6 @@
 ![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
 ![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)
 
-
 ## Latest Screenshots
 
 <table>
@@ -36,7 +35,6 @@
 </table>
 
 [View the latest Hush Line screenshots](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest).
-
 
 ## Quickstart (Local)
 
