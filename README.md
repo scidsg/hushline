@@ -15,7 +15,28 @@
 ![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
 ![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)
 
-<img width="3627" height="2194" alt="cover" src="https://github.com/user-attachments/assets/442d2a2f-cf64-469c-8f09-0808619df67e" />
+
+## Latest Screenshots
+
+<table>
+  <tr>
+    <td valign="bottom" width="72%">
+      <img
+        src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png?raw=true"
+        width="100%"
+      />
+    </td>
+    <td valign="bottom" width="24%">
+      <img
+        src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/newman/auth-newman-onboarding-profile-mobile-light-fold.png?raw=true"
+        width="100%"
+      />
+    </td>
+  </tr>
+</table>
+
+[View the latest Hush Line screenshots](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest).
+
 
 ## Quickstart (Local)
 
@@ -67,10 +88,6 @@ Common development commands:
 - 💬 Unique reply status URL for submitters
 - 🤖 Local, Private CAPTCHA
 - 🙊 Profanity filter with `better-profanity`
-
-## Resources
-
-[View the latest Hush Line screenshots](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest).
 
 ## In The Media
 
