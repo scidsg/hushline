@@ -713,8 +713,32 @@
       "session": "guest",
       "actions": [
         {
-          "type": "fill",
-          "selector": "#field_1, [name='field_1'], #content, textarea.form-field",
+          "type": "fill_if_exists",
+          "selector": "#field_1, [name='field_1']",
+          "value": "Technology"
+        },
+        {
+          "type": "fill_if_exists",
+          "selector": "#field_2, [name='field_2']",
+          "value": "Screenshot test value 2"
+        },
+        {
+          "type": "fill_if_exists",
+          "selector": "#field_3, [name='field_3']",
+          "value": "Screenshot test value 3"
+        },
+        {
+          "type": "fill_if_exists",
+          "selector": "#field_4, [name='field_4']",
+          "value": "Screenshot test value 4"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": "#messageForm input[type='checkbox']"
+        },
+        {
+          "type": "fill_if_exists",
+          "selector": "#content, textarea#content, textarea.form-field",
           "value": "Screenshot test message body."
         },
         {
