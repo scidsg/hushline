@@ -240,6 +240,7 @@
 {% endblock %}
 
 {% block scripts %}
+  <script defer src="{{ url_for('static', filename='js/user_search.js') }}"></script>
   {% if directory_verified_tab_enabled %}
     <script defer src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
   {% else %}
