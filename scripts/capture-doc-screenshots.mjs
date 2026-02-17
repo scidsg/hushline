@@ -89,6 +89,17 @@ async function runAction(page, action) {
       await page.fill(action.selector, action.value || "");
       return;
     }
+    case "fill_if_exists": {
+      const locator = page.locator(action.selector).first();
+      const count = await locator.count();
+      if (count > 0) {
+        const isVisible = await locator.isVisible();
+        if (isVisible) {
+          await locator.fill(action.value || "");
+        }
+      }
+      return;
+    }
     case "select_option": {
       await page.selectOption(action.selector, action.value || "");
       return;
