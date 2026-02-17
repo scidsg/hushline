@@ -256,6 +256,188 @@
       "waitForSelector": "h2.submit"
     },
     {
+      "slug": "auth-artvandelay-profile-default-form",
+      "title": "Profile - artvandelay default form",
+      "path": "/to/artvandelay",
+      "session": "artvandelay",
+      "waitForSelector": "#messageForm"
+    },
+    {
+      "slug": "auth-artvandelay-profile-custom-form-setup-industry",
+      "title": "Profile custom form setup - industry choices (artvandelay)",
+      "path": "/settings/profile",
+      "session": "artvandelay",
+      "viewports": ["desktop"],
+      "themes": ["light"],
+      "waitForSelector": ".field-form-new .field-form-toggle",
+      "actions": [
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .field-form-toggle"
+        },
+        {
+          "type": "wait_for",
+          "selector": ".field-form-new .field-form-content"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new input[id^='label-']",
+          "value": "Industry"
+        },
+        {
+          "type": "select_option",
+          "selector": ".field-form-new select.field-type",
+          "value": "choice_multiple"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .add-choice"
+        },
+        {
+          "type": "wait_for",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(1) input[type='text']"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(1) input[type='text']",
+          "value": "Technology"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .add-choice"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(2) input[type='text']",
+          "value": "Healthcare"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .add-choice"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(3) input[type='text']",
+          "value": "Finance"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .add-choice"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(4) input[type='text']",
+          "value": "Government"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .add-choice"
+        },
+        {
+          "type": "fill",
+          "selector": ".field-form-new .choices-list .choice-item:nth-child(5) input[type='text']",
+          "value": "Other"
+        },
+        {
+          "type": "click",
+          "selector": ".field-form-new .choice-items button[type='submit']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": ".field-form-label-container .field-form-label"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) .field-form-toggle"
+        },
+        {
+          "type": "click_if_exists",
+          "selector": ".field-form:has(.field-form-label:has-text('Industry')) button[name='move_up']",
+          "waitForNetworkIdle": true
+        }
+      ]
+    },
+    {
+      "slug": "auth-artvandelay-profile-custom-form-industry",
+      "title": "Profile - artvandelay custom form (industry checkboxes)",
+      "path": "/to/artvandelay",
+      "session": "artvandelay",
+      "waitForSelector": "#messageForm input[type='checkbox']"
+    },
+    {
       "slug": "auth-artvandelay-inbox",
       "title": "Inbox - artvandelay",
       "path": "/inbox",
@@ -488,6 +670,13 @@
       "path": "/to/artvandelay",
       "session": "guest",
       "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-profile-artvandelay-custom-form",
+      "title": "Profile - artvandelay custom form",
+      "path": "/to/artvandelay",
+      "session": "guest",
+      "waitForSelector": "#messageForm input[type='checkbox']"
     },
     {
       "slug": "guest-profile-newman",
