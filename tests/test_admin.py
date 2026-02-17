@@ -24,6 +24,16 @@ def test_admin_settings_shows_verified_on_managed_service(
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) -> None:
+    response = client.get(url_for("settings.admin"), follow_redirects=True)
+    assert response.status_code == 200
+    assert 'id="searchInput"' in response.text
+    assert 'id="admin-users-list"' in response.text
+    assert "/static/js/settings_admin.js" in response.text
+    assert 'data-search="' in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_admin_settings_hides_verified_on_nonmanaged_service(
     app: Flask, client: FlaskClient, user: User
 ) -> None:

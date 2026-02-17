@@ -2092,7 +2092,7 @@ img.alert {
 
 .user .tableActions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.325rem;
 }
 
 .user form {
@@ -2488,6 +2488,18 @@ label.search+input {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+#admin-users-list {
+  margin-top: 1rem;
+}
+
+.settings-search #searchIcon {
+  top: 27%;
+}
+
+.settings-search #searchInput {
+  margin-bottom: 0 !important;
 }
 
 #clearIcon img {
@@ -3529,6 +3541,7 @@ h3 {
 
 .action-model select {
   width: fit-content;
+  height: 42px;
 }
 
 .message-container .message {
@@ -3595,25 +3608,64 @@ strong {
   font-weight: normal;
 }
 
-@media (max-width: 640px) {
-  .alert {
-    flex-direction: column;
-    align-items: start;
-    gap: 0.75rem;
-  }
-
-  .reply-header,
-  .message-header {
-    flex-direction: column;
-    align-items: start;
-    margin-bottom: 0.5rem;
-  }
-
-  .message-header button {
-    margin: 0;
-    white-space: nowrap;
-  }
+.alert {
+  flex-direction: column;
+  align-items: start;
+  gap: 0.75rem;
 }
+
+.reply-header,
+.message-header {
+  flex-direction: column;
+  align-items: start;
+  margin-bottom: 0.5rem;
+}
+
+.message-header button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.action-model {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.325rem;
+}
+
+.action-model form {
+  margin: 0;
+}
+
+.action-model .btn,
+.action-model button,
+.action-model input[type="submit"] {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.user .tableActions {
+  flex-wrap: wrap;
+}
+
+.user .tableActions form {
+  flex: 0 0 auto;
+}
+
+.user .tableActions button,
+.user .tableActions input[type="submit"] {
+  width: auto;
+  white-space: nowrap;
+}
+
+.tableActions {
+  margin-top: 0.75rem;
+}
+
+.tableActions form {
+  margin-top: 0 !important;
+}
+
 
 @keyframes fadeInUp {
   0% {

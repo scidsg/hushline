@@ -231,6 +231,24 @@
       "waitForSelector": ".settings-tabs"
     },
     {
+      "slug": "auth-admin-settings-admin-search-buster",
+      "title": "Settings - Admin Search 'buster' (admin)",
+      "path": "/settings/admin",
+      "session": "admin",
+      "waitForSelector": "#searchInput",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#searchInput",
+          "value": "buster"
+        },
+        {
+          "type": "sleep",
+          "ms": 250
+        }
+      ]
+    },
+    {
       "slug": "auth-artvandelay-profile",
       "title": "Profile - artvandelay (authenticated)",
       "path": "/to/artvandelay",

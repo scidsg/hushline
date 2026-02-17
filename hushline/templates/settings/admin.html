@@ -20,12 +20,43 @@
   </div>
 
   <h4>All Usernames</h4>
+  <div class="settings-search">
+    <div class="search-box">
+      <label id="searchIcon" for="searchInput">
+        <img
+          src="{{ url_for('static', filename='img/icon-search.png') }}"
+          alt=""
+        />
+      </label>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search users..."
+        aria-label="Search users"
+      />
+      <button
+        id="clearIcon"
+        type="button"
+        aria-label="Clear search field"
+        style="cursor: pointer; background: none; border: none; padding: 0"
+      >
+        <img
+          src="{{ url_for('static', filename='img/icon-clear.png') }}"
+          alt=""
+        />
+      </button>
+    </div>
+  </div>
   {% if all_usernames %}
+    <div id="admin-users-list">
     {% for username in all_usernames %}
-      <div class="user">
+      <div
+        class="user"
+        data-search="{{ (username.username ~ ' ' ~ (username.display_name or '')) | lower }}"
+      >
         <h5>{{ username.username }}</h5>
         <p class="meta">
-          Display Name: {{ username.display_name or 'No display name' }}
+          Display Name: <span class="admin-display-name">{{ username.display_name or 'No display name' }}</span>
         </p>
         <p class="meta">
           Type: {{ "Primary" if username.is_primary else "Alias" }}
@@ -87,6 +118,10 @@
         </div>
       </div>
     {% endfor %}
+    </div>
+    <p id="admin-users-empty-message" class="empty-message" hidden>
+      <span class="emoji-message">🫥</span><br>No users found.
+    </p>
   {% else %}
     <p>No users found.</p>
   {% endif %}
@@ -94,4 +129,5 @@
 
 {% block scripts %}
   <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/settings_admin.js') }}"></script>
 {% endblock %}
