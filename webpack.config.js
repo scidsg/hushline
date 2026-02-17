@@ -18,8 +18,10 @@ modules = [
   "service-worker",
   "settings-fields",
   "settings",
+  "settings_admin",
   "submit-message",
   "time-shadows",
+  "user_search",
   "vision",
   // dummies for css
   "style",

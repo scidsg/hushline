@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const userSearch = window.HushlineUserSearch;
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const tabs = document.querySelectorAll(".tab[data-tab]");
   const tabPanels = document.querySelectorAll(".tab-content");
@@ -48,17 +49,17 @@ document.addEventListener("DOMContentLoaded", function () {
         return true;
       }
 
-      const searchText = `${user.primary_username} ${user.display_name} ${
-        user.bio
-      }`.toLowerCase();
-      return searchText.includes(q);
+      const searchText = userSearch.normalizeSearchText([
+        user.primary_username,
+        user.display_name,
+        user.bio,
+      ]);
+      return userSearch.matchesQuery(searchText, q);
     });
   }
 
   function highlightMatch(text, query) {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    return userSearch.highlightQuery(text, query);
   }
 
   function buildUserCard(user, query) {
