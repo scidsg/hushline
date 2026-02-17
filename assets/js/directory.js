@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const userSearch = window.HushlineUserSearch;
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
@@ -25,16 +26,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function filterUsers(query) {
     return userData.filter((user) => {
-      const searchText =
-        `${user.primary_username} ${user.display_name} ${user.bio}`.toLowerCase();
-      return searchText.includes(query.toLowerCase());
+      const searchText = userSearch.normalizeSearchText([
+        user.primary_username,
+        user.display_name,
+        user.bio,
+      ]);
+      return userSearch.matchesQuery(searchText, query);
     });
   }
 
   function highlightMatch(text, query) {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    return userSearch.highlightQuery(text, query);
   }
 
   function buildUserCard(user, query) {
