@@ -19,13 +19,13 @@
 
 <table>
   <tr>
-    <td valign="bottom" width="74%">
+    <td valign="bottom" width="73%">
       <img
         src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png?raw=true"
         width="100%"
       />
     </td>
-    <td valign="bottom" width="26%">
+    <td valign="bottom" width="27%">
       <img
         src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/newman/auth-newman-onboarding-profile-mobile-light-fold.png?raw=true"
         width="100%"
@@ -67,6 +67,7 @@ Common development commands:
 
 ## Hush Line Features
 
+- 📋 Email Header Validation and Report
 - 👋 New User Onboarding
 - ⭐️ Verified accounts
 - 🙋 Opt-in user directory
