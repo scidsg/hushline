@@ -68,7 +68,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Update Lighthouse accessibility badge [skip ci]"
+          commit-message: "Update Lighthouse accessibility badge"
           title: "Update Lighthouse accessibility badge"
           body: "Automated update of `badge.json` from Lighthouse workflow."
           branch: "automation/lighthouse-badge"
