@@ -52,6 +52,7 @@ Common development commands:
 - `make lint` to run lint/type/style checks
 - `make fix` to auto-format code
 - `make run-full` to run with Stripe-enabled stack
+- `docker compose down -v` to reset local Docker volumes for a clean database state
 
 ## Security and Privacy
 
@@ -123,3 +124,4 @@ _Around the Bend_<br>
 ## Contribution Guidelines
 
 ❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you agree to and follow our [Code of Conduct](https://github.com/scidsg/business-resources/blob/main/Policies%20%26%20Procedures/Code%20of%20Conduct.md).
+
