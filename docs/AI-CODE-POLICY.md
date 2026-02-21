@@ -41,11 +41,12 @@ All funding-related work is human-owned end-to-end. AI may be used only for inte
 
 ## A Note from Our Executive Director
 
-> Coding models are improving fast, and Codex 5.3 CLI has genuinely impressed me. For a small tech nonprofit like ours, the question is: do we
+> Coding models are improving fast, and Codex 5.3 CLI has genuinely impressed me. For a small tech non-profit like ours, the question is: do we
 > use AI to ship high-quality iterations people need now, or build a backlog, apply for grants, wait six months, and maybe still not get
-> funded? In that case, product gaps remain, and that isn’t responsible product development. It’s also often outside our control. We’ve even
-> been told by funders not to apply because we haven’t managed millions of dollars in the prior fiscal year. Chicken or the egg? Even if we do
-> get funded, expecting users to wait half a year for improvements isn’t responsible product stewardship.
+> funded? In that case, product gaps remain, and that isn’t responsible product development.
+>
+> It’s also outside our control and we’ve even been told by funders not to apply because we haven’t managed millions of dollars in the prior fiscal
+> year. Chicken or the egg? Even if we do get funded, expecting users to wait half a year for improvements isn’t responsible product stewardship.
 >
 > Practically, this is also about quality. At what point does it become product malpractice to ignore a technology that can improve output
 > quality and speed when used responsibly, in turn helping journalists and lawyers in the field, even when we can hire a team of humans?
