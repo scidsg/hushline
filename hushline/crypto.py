@@ -10,6 +10,7 @@ from pysequoia import Cert, encrypt
 
 with open(Path(__file__).parent / "files" / "diceware.txt") as f:
     DICEWARE_WORDS = [x.strip() for x in f]
+SLUG_DICEWARE_WORDS = [word for word in DICEWARE_WORDS if "-" not in word]
 
 # https://cryptography.io/en/latest/hazmat/primitives/key-derivation-functions/#scrypt
 SCRYPT_LENGTH = 32  # The desired length of the derived key in bytes.
@@ -153,4 +154,4 @@ def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:
 
 def gen_reply_slug() -> str:
     # 4 words = 7776**4 = 51.7 bits of entropy
-    return "-".join(secrets.choice(DICEWARE_WORDS) for _ in range(4))
+    return "-".join(secrets.choice(SLUG_DICEWARE_WORDS) for _ in range(4))
