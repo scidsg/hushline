@@ -124,3 +124,5 @@ _Around the Bend_<br>
 ## Contribution Guidelines
 
 ❤️ We're excited that you're interested in contributing to Hush Line. To maintain the quality of our codebase and ensure the best experience for everyone, we ask that you agree to and follow our [Code of Conduct](https://github.com/scidsg/business-resources/blob/main/Policies%20%26%20Procedures/Code%20of%20Conduct.md).
+
+_Branch protection check-run validation update._
