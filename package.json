@@ -7,7 +7,7 @@
     "build:prod": "webpack --config webpack.config.js"
   },
   "dependencies": {
-    "openpgp": "^5.11.3"
+    "openpgp": "^6.3.0"
   },
   "devDependencies": {
     "css-loader": "^6.7.2",
