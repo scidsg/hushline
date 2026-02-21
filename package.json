@@ -2,6 +2,9 @@
   "name": "hushline",
   "version": "0.0.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build:dev": "webpack --config webpack.config.js --watch",
     "build:prod": "webpack --config webpack.config.js"
