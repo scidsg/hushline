@@ -87,8 +87,9 @@ jobs:
 
       - name: Create badge update PR
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
+          sign-commits: true
           commit-message: "Update Lighthouse performance badge"
           title: "Update Lighthouse performance badge"
           body: "Automated update of `badge-performance.json` from Lighthouse workflow."

@@ -374,6 +374,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
+          sign-commits: true
           commit-message: ${{ steps.issue_meta.outputs.commit_message }}
           branch: "codex/issue-${{ github.event.issue.number }}"
           delete-branch: true
@@ -396,6 +397,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
+          sign-commits: true
           commit-message: ${{ steps.issue_meta.outputs.commit_message }}
           branch: "codex/issue-${{ github.event.issue.number }}"
           delete-branch: true

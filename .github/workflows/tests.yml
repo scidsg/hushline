@@ -63,8 +63,9 @@ jobs:
           echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"$COLOR\"}" > badge-coverage.json
       - name: Create coverage badge update PR
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
+          sign-commits: true
           commit-message: "Update test coverage badge"
           title: "Update test coverage badge"
           body: "Automated update of `badge-coverage.json` from test workflow."
