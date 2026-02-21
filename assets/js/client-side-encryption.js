@@ -1,5 +1,21 @@
 import * as openpgp from "./../../node_modules/openpgp/dist/openpgp.mjs";
 
+function assertClientCryptoSupport() {
+  // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.
+  if (!window.isSecureContext) {
+    throw new Error("Encryption requires a secure browser context (HTTPS).");
+  }
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error("Encryption requires Web Crypto support in this browser.");
+  }
+  if (typeof window.ReadableStream === "undefined") {
+    throw new Error("Encryption requires Web Streams support in this browser.");
+  }
+  if (typeof BigInt === "undefined") {
+    throw new Error("Encryption requires BigInt support in this browser.");
+  }
+}
+
 function addPadding(value, blockSize = 512) {
   /**
    * To hide what field is being encrypted, we need to pad the value to a (roughly) fixed block size.
@@ -100,6 +116,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     try {
+      assertClientCryptoSupport();
+
       // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
       let emailBody = "";
       document.querySelectorAll(".form-field").forEach((field) => {
