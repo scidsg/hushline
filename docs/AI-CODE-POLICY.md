@@ -1,5 +1,7 @@
 # AI Code Policy for Hush Line
 
+Have thoughts? Read this document first, then contribute to the conversation here: https://github.com/orgs/scidsg/discussions/1313
+
 This policy defines when Hush Line work can be AI-first versus human-first, based on risk and operational impact. Use it as a gating checklist before implementation: if a task touches funding, production infrastructure, authentication, payments, or other high-risk surfaces, human ownership is required; low-risk work can be AI-led with a qualified human operator. For example, an engineer should lead engineering tasks, and a designer should lead design tasks.
 
 ## Decision Matrix
