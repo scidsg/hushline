@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -18,5 +17,5 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "window.isSecureContext" in js
     assert "window.crypto.subtle" in js
     assert "window.ReadableStream" in js
-    assert "typeof BigInt === \"undefined\"" in js
+    assert 'typeof BigInt === "undefined"' in js
     assert "assertClientCryptoSupport();" in js
