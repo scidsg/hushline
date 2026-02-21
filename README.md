@@ -52,6 +52,7 @@ Common development commands:
 - `make lint` to run lint/type/style checks
 - `make fix` to auto-format code
 - `make run-full` to run with Stripe-enabled stack
+- `docker compose down -v` to reset local Docker volumes for a clean database state
 
 ## Security and Privacy
 
