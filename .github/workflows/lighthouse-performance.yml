@@ -89,7 +89,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Update Lighthouse performance badge [skip ci]"
+          commit-message: "Update Lighthouse performance badge"
           title: "Update Lighthouse performance badge"
           body: "Automated update of `badge-performance.json` from Lighthouse workflow."
           branch: "automation/lighthouse-performance-badge"

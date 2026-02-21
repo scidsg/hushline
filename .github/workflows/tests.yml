@@ -65,7 +65,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Update test coverage badge [skip ci]"
+          commit-message: "Update test coverage badge"
           title: "Update test coverage badge"
           body: "Automated update of `badge-coverage.json` from test workflow."
           branch: "automation/test-coverage-badge"
