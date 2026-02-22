@@ -2,9 +2,9 @@
 
 [Hush Line](https://hushline.app) is a whistleblower platform that provides secure, anonymous tip lines with no self-hosting required. Sign up for a free account at <https://tips.hushline.app/register>
 
-![Accessibility](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge.json)
-![Performance](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge-performance.json)
-![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/main/badge-coverage.json)
+![Accessibility](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/badges/badge.json)
+![Performance](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/badges/badge-performance.json)
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline/badges/badge-coverage.json)
 ![Tests](https://github.com/scidsg/hushline/actions/workflows/tests.yml/badge.svg)
 ![GDPR Compliance](https://github.com/scidsg/hushline/actions/workflows/gdpr-compliance.yml/badge.svg)
 ![CCPA Compliance](https://github.com/scidsg/hushline/actions/workflows/ccpa-compliance.yml/badge.svg)
