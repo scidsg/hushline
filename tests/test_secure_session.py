@@ -40,6 +40,10 @@ class Fixtures:
         def session_length() -> str:
             return str(len(session))
 
+        @app_.route("/iterate")
+        def iterate_session_keys() -> str:
+            return ",".join(sorted(str(key) for key in session))
+
         @app_.route("/no-session", methods=["GET", "POST"])
         def no_session() -> str:
             return ""
@@ -72,6 +76,11 @@ class TestSessionEnabled(Fixtures):
         assert length_resp.status_code == 200
         assert length_resp.text == "1"
         assert "Cookie" in length_resp.vary
+
+        iterate_resp = client.get(url_for("iterate_session_keys"))
+        assert iterate_resp.status_code == 200
+        assert iterate_resp.text == SESSION_KEY
+        assert "Cookie" in iterate_resp.vary
 
         expected = "test data"
         resp = client.post(url_for("has_session", **{ARG_KEY: expected}))  # type: ignore[arg-type]

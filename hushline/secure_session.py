@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from json import JSONDecodeError
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -16,6 +17,10 @@ class AccessTrackingSecureCookieSession(SecureCookieSession):
     def __len__(self) -> int:
         self.accessed = True
         return super().__len__()
+
+    def __iter__(self) -> Iterator[str]:
+        self.accessed = True
+        return super().__iter__()
 
 
 class EncryptedSessionInterface(SessionInterface):
