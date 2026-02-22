@@ -94,6 +94,10 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 - Treat all whistleblower data paths as security-critical.
 - Do not weaken E2EE behavior, encryption defaults, or anonymization controls.
+- Insecure flags are explicitly disallowed in commands, scripts, CI, Docker, and documentation examples.
+  - Never use or suggest flags that disable signature, TLS/certificate, keyring, or encryption protections (for example: `--insecure-storage`, `--no-sign`, `--no-verify`, `--allow-unauthenticated`, `--insecure`, `--skip-verify`, `--tls-skip-verify`, `--disable-encryption`).
+  - Never bypass supply-chain or integrity controls with flags such as `--ignore-signatures`, `--trusted-host`, or equivalent unless there is a formally documented emergency exception approved by maintainers.
+  - If a task appears to require any such flag, stop and ask for a security review path instead of proceeding.
 - Run dependency vulnerability checks before PR:
   - Python: `poetry run pip-audit`
   - Node runtime deps: `npm audit --omit=dev`
@@ -144,6 +148,7 @@ Local workflow:
 ## PR Guidance
 
 - Before opening a PR, always run `make lint` and `make test` and fix any issues first.
+- All commits must be cryptographically signed (GPG or SSH signing) and verifiable on the remote.
 - Include what changed.
 - Include why it changed.
 - Include validation commands run.

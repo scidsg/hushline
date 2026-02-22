@@ -56,6 +56,26 @@ def test_reg_code_commands_create_list_and_delete(app: Flask) -> None:
     assert "Invite code not found." in missing_result.output
 
 
+def test_reg_code_create_avoids_dash_prefixed_codes(app: Flask) -> None:
+    runner = app.test_cli_runner()
+
+    with patch(
+        "hushline.model.invite_code.secrets.token_urlsafe",
+        side_effect=["-dashprefixed", "safe-code-token"],
+    ):
+        create_result = runner.invoke(args=["reg", "code-create"])
+
+    assert create_result.exit_code == 0
+    invite_code = db.session.scalar(db.select(InviteCode))
+    assert invite_code is not None
+    assert invite_code.code == "safe-code-token"
+    assert not invite_code.code.startswith("-")
+
+    delete_result = runner.invoke(args=["reg", "code-delete", invite_code.code])
+    assert delete_result.exit_code == 0
+    assert f"Invite code {invite_code.code} deleted." in delete_result.output
+
+
 def test_stripe_configure_skips_when_secret_missing(app: Flask) -> None:
     app.config["STRIPE_SECRET_KEY"] = ""
     runner = app.test_cli_runner()
