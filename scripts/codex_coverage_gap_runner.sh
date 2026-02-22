@@ -141,11 +141,8 @@ Follow AGENTS.md and any deeper AGENTS.md files exactly. This repository is secu
 Required output:
 1) Raise coverage to at least ${TARGET_COVERAGE}%.
 2) Prefer adding/updating tests. Avoid production behavior changes unless required for testability.
-3) Run and pass:
-   - make lint
-   - make test PYTEST_ADDOPTS="--skip-local-only"
-   - docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under=${TARGET_COVERAGE}
-4) Summarize what changed, checks run, and residual risks.
+3) Do not run lint/test/coverage commands; the runner executes required checks after your code changes are complete.
+4) Summarize what changed and any residual risks.
 
 Important:
 - Do not weaken E2EE, auth, anonymity, or privacy protections.
@@ -177,7 +174,6 @@ run_check() {
 
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then
   run_check "lint" make lint
-  run_check "tests" make test PYTEST_ADDOPTS="--skip-local-only"
   run_check "coverage threshold >= ${TARGET_COVERAGE}%" \
     docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$TARGET_COVERAGE"
 fi
