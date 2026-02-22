@@ -29,6 +29,7 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
+BOT_LOGIN="${HUSHLINE_BOT_LOGIN:-hushline-dev}"
 NO_GPG_SIGN="${HUSHLINE_DAILY_NO_GPG_SIGN:-0}"
 RUN_LOCAL_CHECKS="${HUSHLINE_DAILY_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
@@ -52,16 +53,17 @@ require_cmd make
 
 gh auth status -h github.com >/dev/null
 
-OPEN_DAILY_PR_COUNT="$(
+OPEN_BOT_PR_COUNT="$(
   gh pr list \
     --repo "$REPO_SLUG" \
     --state open \
+    --author "$BOT_LOGIN" \
     --limit 100 \
-    --json headRefName \
-    --jq "[.[] | select(.headRefName | startswith(\"${BRANCH_PREFIX}\"))] | length"
+    --json number \
+    --jq 'length'
 )"
-if [[ "$OPEN_DAILY_PR_COUNT" != "0" ]]; then
-  echo "Skipped: an open daily Codex PR already exists."
+if [[ "$OPEN_BOT_PR_COUNT" != "0" ]]; then
+  echo "Skipped: open PR(s) by ${BOT_LOGIN} already exist (${OPEN_BOT_PR_COUNT})."
   exit 0
 fi
 
@@ -73,14 +75,14 @@ else
       --repo "$REPO_SLUG" \
       --state open \
       --limit 200 \
-      --json number,title,body,createdAt,labels,url \
+      --json number,title,body,createdAt,labels,url,author \
     | node -e '
       const fs = require("fs");
       const issues = JSON.parse(fs.readFileSync(0, "utf8"));
-      const excluded = new Set([
-        "blocked", "duplicate", "invalid", "question", "wontfix", "security",
-        "high-risk", "needs-discussion", "codex", "codex-auto-daily"
+      const hardExcluded = new Set([
+        "blocked", "duplicate", "invalid", "question", "wontfix", "codex", "codex-auto-daily"
       ]);
+      const excludedForNonDependabot = new Set(["security", "high-risk", "needs-discussion"]);
       const safeBoost = new Set(["bug", "chore", "docs", "documentation", "tests", "good first issue"]);
       const riskPenalty = new Set([
         "auth", "authentication", "authorization", "crypto", "cryptography",
@@ -96,13 +98,19 @@ else
           .map((l) => (l && l.name ? String(l.name) : ""))
           .map((name) => name.toLowerCase().trim())
           .filter(Boolean);
-        if (labels.some((l) => excluded.has(l))) return null;
-        if (!labels.some((l) => safeBoost.has(l))) return null;
+        if (labels.some((l) => hardExcluded.has(l))) return null;
+
+        const authorLogin = String(issue.author && issue.author.login ? issue.author.login : "").toLowerCase();
+        const isDependabot = authorLogin.includes("dependabot");
+
+        if (!isDependabot && labels.some((l) => excludedForNonDependabot.has(l))) return null;
+        if (!isDependabot && !labels.some((l) => safeBoost.has(l))) return null;
 
         const titleBody = `${issue.title || ""}\n${issue.body || ""}`.toLowerCase();
-        if (riskyKeywords.some((kw) => titleBody.includes(kw))) return null;
+        if (!isDependabot && riskyKeywords.some((kw) => titleBody.includes(kw))) return null;
 
         let score = 0;
+        if (isDependabot) score += 100;
         if (labels.some((l) => safeBoost.has(l))) score += 3;
         if (labels.some((l) => riskPenalty.has(l))) score -= 4;
         if ((issue.title || "").length <= 90) score += 1;
@@ -112,6 +120,7 @@ else
           number: issue.number,
           title: (issue.title || "").trim(),
           createdAt: issue.createdAt,
+          isDependabot,
           score
         };
       }).filter(Boolean);
@@ -119,6 +128,7 @@ else
       if (candidates.length === 0) process.exit(2);
 
       candidates.sort((a, b) => {
+        if (a.isDependabot !== b.isDependabot) return a.isDependabot ? -1 : 1;
         if (b.score !== a.score) return b.score - a.score;
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       });

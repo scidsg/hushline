@@ -25,6 +25,7 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BRANCH_PREFIX="${HUSHLINE_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
+BOT_LOGIN="${HUSHLINE_BOT_LOGIN:-hushline-dev}"
 NO_GPG_SIGN="${HUSHLINE_COVERAGE_NO_GPG_SIGN:-0}"
 RUN_LOCAL_CHECKS="${HUSHLINE_COVERAGE_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
@@ -60,16 +61,17 @@ full_rebuild() {
 
 gh auth status -h github.com >/dev/null
 
-OPEN_COVERAGE_PR_COUNT="$(
+OPEN_BOT_PR_COUNT="$(
   gh pr list \
     --repo "$REPO_SLUG" \
     --state open \
+    --author "$BOT_LOGIN" \
     --limit 100 \
-    --json headRefName \
-    --jq "[.[] | select(.headRefName | startswith(\"${BRANCH_PREFIX}\"))] | length"
+    --json number \
+    --jq 'length'
 )"
-if [[ "$OPEN_COVERAGE_PR_COUNT" != "0" ]]; then
-  echo "Skipped: an open Codex coverage PR already exists."
+if [[ "$OPEN_BOT_PR_COUNT" != "0" ]]; then
+  echo "Skipped: open PR(s) by ${BOT_LOGIN} already exist (${OPEN_BOT_PR_COUNT})."
   exit 0
 fi
 

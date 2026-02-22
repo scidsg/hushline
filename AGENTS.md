@@ -153,6 +153,7 @@ Local workflow:
 - Include why it changed.
 - Include validation commands run.
 - Include known risks or follow-ups.
+- If PR scope changes after opening, update the PR description so it reflects the final state before merge.
 - Keep title specific and behavior-oriented.
 - Check when the PR was created and explicitly flag if it appears stale or no longer relevant before proceeding.
 - Never interpolate untrusted GitHub event text fields (issue/PR/comment title or body) directly in shell `run:` steps in workflows.
