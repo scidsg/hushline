@@ -3,13 +3,10 @@ name: Lighthouse Accessibility
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "badges/**"
   pull_request:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   lighthouse:
@@ -54,57 +51,7 @@ jobs:
       - name: Extract score
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse.json','utf8')).categories.accessibility.score*100))")
-          echo "{\"schemaVersion\":1,\"label\":\"accessibility\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge.json
-          PR_NUMBER="${GITHUB_REF#refs/pull/}"
-          PR_NUMBER="${PR_NUMBER%/merge}"
-          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
-            PR_NUMBER=""
-          fi
-          echo "{\"score\":$SCORE,\"runId\":\"${GITHUB_RUN_ID}\",\"runNumber\":\"${GITHUB_RUN_NUMBER}\",\"sha\":\"${GITHUB_SHA}\",\"workflow\":\"${GITHUB_WORKFLOW}\",\"url\":\"http://localhost:8080\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"prNumber\":\"${PR_NUMBER}\"}" > badge-meta.json
           if [ "$SCORE" -ne 100 ]; then
             echo "Accessibility score must be 100, got $SCORE"
             exit 1
           fi
-
-      - name: Publish accessibility badge to main
-        if: github.ref == 'refs/heads/main'
-        env:
-          REPO_SLUG: ${{ github.repository }}
-          PUSH_TOKEN: ${{ secrets.BADGE_PUSH_TOKEN }}
-          DEFAULT_GITHUB_TOKEN: ${{ github.token }}
-          TARGET_BRANCH: main
-          BADGE_FILE: badge.json
-        run: |
-          set -euo pipefail
-          TOKEN="${PUSH_TOKEN:-${DEFAULT_GITHUB_TOKEN:-}}"
-          if [ -z "${TOKEN}" ]; then
-            echo "No token available for badge publish."
-            exit 1
-          fi
-
-          WORKDIR="$(mktemp -d /tmp/hushline-badges.XXXXXX)"
-          git clone --depth 1 --branch "${TARGET_BRANCH}" "https://x-access-token:${TOKEN}@github.com/${REPO_SLUG}.git" "${WORKDIR}"
-
-          cd "${WORKDIR}"
-          mkdir -p badges
-          cp "${GITHUB_WORKSPACE}/${BADGE_FILE}" "badges/${BADGE_FILE}"
-          git add "badges/${BADGE_FILE}"
-          if git diff --cached --quiet; then
-            echo "No badge changes to publish."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update accessibility badge [skip ci]"
-          if ! git push origin "HEAD:${TARGET_BRANCH}"; then
-            echo "Push to ${TARGET_BRANCH} failed. If branch protection blocks workflow pushes, configure BADGE_PUSH_TOKEN with bypass rights."
-            exit 1
-          fi
-
-      - name: Upload badge artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: accessibility-badge
-          path: |
-            badge.json
