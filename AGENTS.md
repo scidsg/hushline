@@ -70,6 +70,22 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Tests: `make test`
 - Coverage (CI-style): `docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only`
 
+## Automation Runners
+
+- Runner docs: `docs/RUNNERS.md`
+- Coverage runner script: `scripts/codex_coverage_gap_runner.sh`
+- Daily issue runner script: `scripts/codex_daily_issue_runner.sh`
+- Run order and schedule:
+  - Coverage first at `00:00`
+  - Daily issue second at `02:00`, and it only proceeds when no bot PR is open from the coverage run.
+- One-bot-PR guard:
+  - Both runners must exit early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
+  - This enforces one bot PR at a time and avoids duplicate compute.
+- Required runner behavior:
+  - Start real runs with a destructive rebuild (`docker compose down -v --remove-orphans`, then `docker compose build app`).
+  - Run required validation checks locally before opening PRs (`make lint`, `make test`, plus runner-specific checks).
+  - Use signed commits that verify on GitHub.
+
 ## Required Checks Before PR
 
 - `make lint` passes
