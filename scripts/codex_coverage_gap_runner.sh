@@ -25,7 +25,7 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BRANCH_PREFIX="${HUSHLINE_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
-NO_GPG_SIGN="${HUSHLINE_COVERAGE_NO_GPG_SIGN:-1}"
+NO_GPG_SIGN="${HUSHLINE_COVERAGE_NO_GPG_SIGN:-0}"
 RUN_LOCAL_CHECKS="${HUSHLINE_COVERAGE_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 TARGET_COVERAGE="${HUSHLINE_TARGET_COVERAGE:-100}"
@@ -46,6 +46,18 @@ require_cmd codex
 require_cmd docker
 require_cmd make
 
+run_check() {
+  local name="$1"
+  shift
+  echo "==> Invariant check: $name"
+  "$@"
+}
+
+full_rebuild() {
+  run_check "docker reset (down -v)" docker compose down -v --remove-orphans
+  run_check "docker rebuild app image" docker compose build app
+}
+
 gh auth status -h github.com >/dev/null
 
 OPEN_COVERAGE_PR_COUNT="$(
@@ -64,6 +76,14 @@ fi
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Working tree is dirty. Commit or stash changes before running." >&2
   exit 1
+fi
+
+git fetch origin "$BASE_BRANCH" --prune
+git checkout "$BASE_BRANCH"
+git pull --ff-only origin "$BASE_BRANCH"
+
+if [[ "$DRY_RUN" != "1" ]]; then
+  full_rebuild
 fi
 
 COVERAGE_OUTPUT_FILE="$(mktemp)"
@@ -121,9 +141,6 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-git fetch origin "$BASE_BRANCH" --prune
-git checkout "$BASE_BRANCH"
-git pull --ff-only origin "$BASE_BRANCH"
 git checkout -B "$BRANCH_NAME"
 
 {
@@ -142,7 +159,7 @@ Required output:
 1) Raise coverage to at least ${TARGET_COVERAGE}%.
 2) Prefer adding/updating tests. Avoid production behavior changes unless required for testability.
 3) Do not run lint/test/coverage commands; the runner executes required checks after your code changes are complete.
-4) Summarize what changed and any residual risks.
+4) Summarize code changes only. Do not include local lint/test/coverage status; the runner reports those separately.
 
 Important:
 - Do not weaken E2EE, auth, anonymity, or privacy protections.
@@ -165,15 +182,9 @@ if [[ -z "$(git status --porcelain)" ]]; then
   exit 0
 fi
 
-run_check() {
-  local name="$1"
-  shift
-  echo "==> Invariant check: $name"
-  "$@"
-}
-
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then
   run_check "lint" make lint
+  run_check "tests" make test PYTEST_ADDOPTS="--skip-local-only"
   run_check "coverage threshold >= ${TARGET_COVERAGE}%" \
     docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$TARGET_COVERAGE"
 fi
@@ -188,7 +199,12 @@ fi
 
 git push -u origin "$BRANCH_NAME"
 
-SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
+CHANGED_FILES="$(
+  git diff --name-only "${BASE_BRANCH}...${BRANCH_NAME}" | sed 's/^/- /'
+)"
+if [[ -z "$CHANGED_FILES" ]]; then
+  CHANGED_FILES="- (unable to determine changed files)"
+fi
 PR_TITLE="Codex Coverage: raise coverage to ${TARGET_COVERAGE}%"
 
 {
@@ -199,9 +215,18 @@ Coverage before run: ${CURRENT_COVERAGE}%
 Coverage target: ${TARGET_COVERAGE}%
 Branch: $BRANCH_NAME
 
-Codex summary:
+Changed files:
+${CHANGED_FILES}
+
+Runner validation commands:
+- make lint
+- make test PYTEST_ADDOPTS="--skip-local-only"
+- docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under=${TARGET_COVERAGE}
+
+Codex implementation summary (model output):
 EOF
-  printf '%s\n' "$SUMMARY"
+  head -c 3000 "$CODEX_OUTPUT_FILE" || true
+  printf '\n'
 } > "$PR_BODY_FILE"
 
 PR_URL="$(

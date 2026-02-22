@@ -156,6 +156,11 @@ run_check() {
   "$@"
 }
 
+full_rebuild() {
+  run_check "docker reset (down -v)" docker compose down -v --remove-orphans
+  run_check "docker rebuild app image" docker compose build app
+}
+
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
   echo "Issue URL: $ISSUE_URL"
@@ -172,6 +177,7 @@ git fetch origin "$BASE_BRANCH" --prune
 git checkout "$BASE_BRANCH"
 git pull --ff-only origin "$BASE_BRANCH"
 git checkout -B "$BRANCH_NAME"
+full_rebuild
 
 {
   cat <<EOF
