@@ -46,6 +46,18 @@ require_cmd codex
 require_cmd docker
 require_cmd make
 
+run_check() {
+  local name="$1"
+  shift
+  echo "==> Invariant check: $name"
+  "$@"
+}
+
+full_rebuild() {
+  run_check "docker reset (down -v)" docker compose down -v --remove-orphans
+  run_check "docker rebuild app image" docker compose build app
+}
+
 gh auth status -h github.com >/dev/null
 
 OPEN_COVERAGE_PR_COUNT="$(
@@ -64,6 +76,14 @@ fi
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Working tree is dirty. Commit or stash changes before running." >&2
   exit 1
+fi
+
+git fetch origin "$BASE_BRANCH" --prune
+git checkout "$BASE_BRANCH"
+git pull --ff-only origin "$BASE_BRANCH"
+
+if [[ "$DRY_RUN" != "1" ]]; then
+  full_rebuild
 fi
 
 COVERAGE_OUTPUT_FILE="$(mktemp)"
@@ -121,9 +141,6 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-git fetch origin "$BASE_BRANCH" --prune
-git checkout "$BASE_BRANCH"
-git pull --ff-only origin "$BASE_BRANCH"
 git checkout -B "$BRANCH_NAME"
 
 {
@@ -164,13 +181,6 @@ if [[ -z "$(git status --porcelain)" ]]; then
   git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
   exit 0
 fi
-
-run_check() {
-  local name="$1"
-  shift
-  echo "==> Invariant check: $name"
-  "$@"
-}
 
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then
   run_check "lint" make lint
