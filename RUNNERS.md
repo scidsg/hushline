@@ -27,14 +27,16 @@ This prevents repeated rebuilds and duplicate automation work while an existing 
 
 Current schedule target:
 
-- Daily issue runner: `00:00` (midnight)
-- Coverage runner: `02:00`
+- Coverage runner: `00:00` (midnight)
+- Daily issue runner: `02:00`
+
+Because both runners enforce the one-bot-PR gate, the 02:00 daily run proceeds only when the 00:00 coverage run did not open a bot PR.
 
 Example cron entries:
 
 ```cron
-0 0 * * * /Users/scidsg/.codex/bin/codex_daily_cron.sh >> /Users/scidsg/.codex/logs/codex-daily.log 2>&1
-0 2 * * * /Users/scidsg/.codex/bin/codex_coverage_cron.sh >> /Users/scidsg/.codex/logs/codex-coverage.log 2>&1
+0 0 * * * /Users/scidsg/.codex/bin/codex_coverage_cron.sh >> /Users/scidsg/.codex/logs/codex-coverage.log 2>&1
+0 2 * * * /Users/scidsg/.codex/bin/codex_daily_cron.sh >> /Users/scidsg/.codex/logs/codex-daily.log 2>&1
 ```
 
 ## Shared Execution Pattern
