@@ -13,6 +13,14 @@ Both runners are designed to:
 - open a PR as the end state when changes are made
 - avoid wasting compute by allowing only one open bot PR at a time
 
+## Session Ruleset
+
+Both runners instruct Codex to follow repository policy from the root ruleset file first:
+
+- `AGENTS.md` at repo root
+
+Then Codex must follow any deeper `AGENTS.md` files that apply to changed paths.
+
 ## One-Bot-PR Gate
 
 Both scripts check open PRs before doing any heavy work.
