@@ -70,7 +70,7 @@ Script: `scripts/codex_daily_issue_runner.sh`
 
 ### Purpose
 
-Pick one safe open issue, implement it with Codex, run required checks, and open a PR.
+Pick one open issue labeled for automation, implement it with Codex, run required checks, and open a PR.
 
 ### CLI flags
 
@@ -81,9 +81,14 @@ Pick one safe open issue, implement it with Codex, run required checks, and open
 
 If `--issue` is not provided:
 
-- Dependabot-authored issues are prioritized first.
-- Non-Dependabot issues use conservative safety filters.
-- If no sufficiently safe issue is found, the run exits without changes.
+- Only issues with label `agent-eligible` are considered (default behavior).
+- Dependabot-authored issues are prioritized first within eligible issues.
+- If no eligible issue is found, the run exits without changes.
+
+If `--issue <number>` is provided:
+
+- The issue must still include the required eligibility label when enforcement is enabled.
+- If the required label is missing, the run is blocked.
 
 ### Main checks (when `HUSHLINE_DAILY_RUN_CHECKS=1`)
 
@@ -105,6 +110,8 @@ If `--issue` is not provided:
 - `HUSHLINE_DAILY_MIN_COVERAGE` (default `100`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
+- `HUSHLINE_DAILY_ELIGIBLE_LABEL` (default `agent-eligible`)
+- `HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL` (default `1`)
 
 ## Coverage Gap Runner
 
