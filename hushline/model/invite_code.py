@@ -22,9 +22,17 @@ class InviteCode(Model):
     code: Mapped[str] = mapped_column(db.String(CODE_MAX_LENGTH), unique=True)
     expiration_date: Mapped[datetime]
 
+    @staticmethod
+    def _generate_code() -> str:
+        # Avoid leading "-" so CLI arguments cannot be misparsed as options.
+        code = secrets.token_urlsafe(16)
+        while code.startswith("-"):
+            code = secrets.token_urlsafe(16)
+        return code
+
     def __init__(self) -> None:
         super().__init__(
-            code=secrets.token_urlsafe(16),  # type: ignore[call-arg]
+            code=self._generate_code(),  # type: ignore[call-arg]
             expiration_date=datetime.now(timezone.utc) + timedelta(days=365),  # type: ignore[call-arg]
         )
 
