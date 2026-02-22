@@ -61,18 +61,38 @@ jobs:
             COLOR="red"
           fi
           echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"$COLOR\"}" > badge-coverage.json
-      - name: Create coverage badge update PR
+      - name: Publish coverage badge to external repo
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          sign-commits: true
-          commit-message: "Update test coverage badge"
-          title: "Update test coverage badge"
-          body: "Automated update of `badge-coverage.json` from test workflow."
-          branch: "automation/test-coverage-badge"
-          delete-branch: true
-          add-paths: |
-            badge-coverage.json
+        env:
+          SCREENSHOTS_REPO: ${{ vars.SCREENSHOTS_REPO }}
+          SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
+          BADGE_FILE: badge-coverage.json
+        run: |
+          set -euo pipefail
+          if [ -z "${SCREENSHOTS_REPO:-}" ] || [ -z "${SCREENSHOTS_PUSH_TOKEN:-}" ]; then
+            echo "Skipping publish: SCREENSHOTS_REPO variable or SCREENSHOTS_PUSH_TOKEN secret is missing."
+            exit 0
+          fi
+          if [ ! -f "${BADGE_FILE}" ]; then
+            echo "Expected badge file not found: ${BADGE_FILE}"
+            exit 1
+          fi
+
+          WORKDIR="$(mktemp -d /tmp/hushline-badges.XXXXXX)"
+          git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPO}.git" "${WORKDIR}"
+          cd "${WORKDIR}"
+          cp "${GITHUB_WORKSPACE}/${BADGE_FILE}" "${BADGE_FILE}"
+
+          git add "${BADGE_FILE}"
+          if git diff --cached --quiet; then
+            echo "No badge changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update coverage badge"
+          git push origin HEAD
       - name: Upload coverage badge artifact
         if: always()
         uses: actions/upload-artifact@v4
