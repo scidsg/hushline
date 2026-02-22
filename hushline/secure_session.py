@@ -6,13 +6,25 @@ from flask import Flask, Request, Response
 from flask.sessions import SecureCookieSession, SessionInterface, SessionMixin
 
 
+class AccessTrackingSecureCookieSession(SecureCookieSession):
+    """Ensure key-only reads count as access for cache-vary/session semantics."""
+
+    def __contains__(self, key: object) -> bool:
+        self.accessed = True
+        return super().__contains__(key)
+
+    def __len__(self) -> int:
+        self.accessed = True
+        return super().__len__()
+
+
 class EncryptedSessionInterface(SessionInterface):
     """
     Config:
     - SESSION_FERNET_KEY: string representing a Fernet key
     """
 
-    session_class = SecureCookieSession
+    session_class = AccessTrackingSecureCookieSession
 
     def _get_fernet(self, app: Flask) -> Fernet | None:
         if key := app.config.get("SESSION_FERNET_KEY"):

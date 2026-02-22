@@ -58,6 +58,31 @@ class FsDriver(StorageDriver):
     - BLOB_STORAGE_FS_ROOT
     """
 
+    _WINDOWS_RESERVED_DEVICE_NAMES = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9",
+    }
+
     def __init__(
         self, app: Flask, config_prefix: Optional[str] = None, is_public: bool = False
     ) -> None:
@@ -68,7 +93,22 @@ class FsDriver(StorageDriver):
             raise ValueError(f"Path {root!r} was not absolute")
         self.__root = root
 
+    def __reject_windows_device_path_segments(self, path: str) -> None:
+        # Keep path safety consistent across platforms, including Windows-reserved device names.
+        for segment in path.replace("\\", "/").split("/"):
+            if not segment:
+                continue
+
+            normalized = segment.rstrip(" .")
+            if not normalized:
+                continue
+
+            stem = normalized.split(".", 1)[0].upper()
+            if stem in self._WINDOWS_RESERVED_DEVICE_NAMES:
+                raise ValueError(f"Path segment {segment!r} is not allowed")
+
     def __full_path(self, path: str) -> Path:
+        self.__reject_windows_device_path_segments(path)
         full_path = self.__root / path
         if full_path.absolute() != full_path:
             raise ValueError(f"Path {full_path!r} was not absolute")
@@ -88,6 +128,7 @@ class FsDriver(StorageDriver):
             os.remove(full_path)
 
     def serve(self, path: str) -> Response:
+        self.__reject_windows_device_path_segments(path)
         return send_from_directory(self.__root, path)
 
 

@@ -177,6 +177,19 @@ def test_fs_driver_rejects_non_absolute_full_path(tmpdir: LocalPath) -> None:
         driver.put("escape.bin", BytesIO(b"x"))
 
 
+def test_fs_driver_rejects_windows_reserved_device_names(tmpdir: LocalPath) -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_FS_ROOT"] = str(tmpdir)
+    driver = FsDriver(app)
+
+    with pytest.raises(ValueError, match="not allowed"):
+        driver.put("nested/CON.txt", BytesIO(b"x"))
+    with pytest.raises(ValueError, match="not allowed"):
+        driver.delete("AUX/report.txt")
+    with pytest.raises(ValueError, match="not allowed"), app.test_request_context():
+        driver.serve("docs/PRN.txt")
+
+
 def test_s3_driver_private_serve_uses_presigned_url(mocker: MockFixture) -> None:
     app = MagicMock()
     app.config = {
