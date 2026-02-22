@@ -190,6 +190,23 @@ def test_fs_driver_rejects_windows_reserved_device_names(tmpdir: LocalPath) -> N
         driver.serve("docs/PRN.txt")
 
 
+def test_fs_driver_allows_empty_and_dot_only_path_segments(tmpdir: LocalPath) -> None:
+    app = Flask(__name__)
+    app.config["BLOB_STORAGE_FS_ROOT"] = str(tmpdir)
+    driver = FsDriver(app)
+
+    path = "nested//./data.bin"
+    payload = b"x"
+
+    driver.put(path, BytesIO(payload))
+
+    stored_path = Path(str(tmpdir)) / "nested" / "data.bin"
+    assert stored_path.read_bytes() == payload
+
+    driver.delete(path)
+    assert not stored_path.exists()
+
+
 def test_s3_driver_private_serve_uses_presigned_url(mocker: MockFixture) -> None:
     app = MagicMock()
     app.config = {
