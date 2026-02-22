@@ -1,9 +1,26 @@
 import json
+from collections.abc import Iterator
 from json import JSONDecodeError
 
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask, Request, Response
 from flask.sessions import SecureCookieSession, SessionInterface, SessionMixin
+
+
+class AccessTrackingSecureCookieSession(SecureCookieSession):
+    """Ensure key-only reads count as access for cache-vary/session semantics."""
+
+    def __contains__(self, key: object) -> bool:
+        self.accessed = True
+        return super().__contains__(key)
+
+    def __len__(self) -> int:
+        self.accessed = True
+        return super().__len__()
+
+    def __iter__(self) -> Iterator[str]:
+        self.accessed = True
+        return super().__iter__()
 
 
 class EncryptedSessionInterface(SessionInterface):
@@ -12,7 +29,7 @@ class EncryptedSessionInterface(SessionInterface):
     - SESSION_FERNET_KEY: string representing a Fernet key
     """
 
-    session_class = SecureCookieSession
+    session_class = AccessTrackingSecureCookieSession
 
     def _get_fernet(self, app: Flask) -> Fernet | None:
         if key := app.config.get("SESSION_FERNET_KEY"):

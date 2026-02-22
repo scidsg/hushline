@@ -24,7 +24,8 @@ RUN apt-get update && \
     build-essential curl libpcsclite-dev clang llvm pkg-config nettle-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install poetry
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" && \
+    python -m pip install --no-cache-dir poetry
 
 # Install Rust (for SequoiaPGP)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

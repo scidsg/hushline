@@ -32,6 +32,18 @@ class Fixtures:
                 del session[SESSION_KEY]
             return session.get(SESSION_KEY, MISSING)
 
+        @app_.route("/contains")
+        def contains_session_key() -> str:
+            return str(SESSION_KEY in session)
+
+        @app_.route("/length")
+        def session_length() -> str:
+            return str(len(session))
+
+        @app_.route("/iterate")
+        def iterate_session_keys() -> str:
+            return ",".join(sorted(str(key) for key in session))
+
         @app_.route("/no-session", methods=["GET", "POST"])
         def no_session() -> str:
             return ""
@@ -50,6 +62,25 @@ class TestSessionEnabled(Fixtures):
         resp = client.get(url_for("has_session"))
         assert resp.status_code == 200
         assert resp.text == MISSING
+
+    def test_key_only_session_access_sets_vary_cookie(self, client: FlaskClient) -> None:
+        resp = client.post(url_for("has_session", **{ARG_KEY: "value"}))  # type: ignore[arg-type]
+        assert resp.status_code == 200
+
+        contains_resp = client.get(url_for("contains_session_key"))
+        assert contains_resp.status_code == 200
+        assert contains_resp.text == "True"
+        assert "Cookie" in contains_resp.vary
+
+        length_resp = client.get(url_for("session_length"))
+        assert length_resp.status_code == 200
+        assert length_resp.text == "1"
+        assert "Cookie" in length_resp.vary
+
+        iterate_resp = client.get(url_for("iterate_session_keys"))
+        assert iterate_resp.status_code == 200
+        assert iterate_resp.text == SESSION_KEY
+        assert "Cookie" in iterate_resp.vary
 
         expected = "test data"
         resp = client.post(url_for("has_session", **{ARG_KEY: expected}))  # type: ignore[arg-type]
