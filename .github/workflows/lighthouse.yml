@@ -3,6 +3,8 @@ name: Lighthouse Accessibility
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "badges/**"
   pull_request:
 
 permissions:
@@ -64,26 +66,29 @@ jobs:
             exit 1
           fi
 
-      - name: Publish accessibility badge
+      - name: Publish accessibility badge to main
         if: github.ref == 'refs/heads/main'
         env:
           REPO_SLUG: ${{ github.repository }}
-          PUSH_TOKEN: ${{ github.token }}
-          BADGE_BRANCH: badges
+          PUSH_TOKEN: ${{ secrets.BADGE_PUSH_TOKEN }}
+          DEFAULT_GITHUB_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: main
           BADGE_FILE: badge.json
         run: |
           set -euo pipefail
-          WORKDIR="$(mktemp -d /tmp/hushline-badges.XXXXXX)"
-          if ! git clone --depth 1 --branch "${BADGE_BRANCH}" "https://x-access-token:${PUSH_TOKEN}@github.com/${REPO_SLUG}.git" "${WORKDIR}"; then
-            git clone --depth 1 "https://x-access-token:${PUSH_TOKEN}@github.com/${REPO_SLUG}.git" "${WORKDIR}"
-            cd "${WORKDIR}"
-            git checkout --orphan "${BADGE_BRANCH}"
-            git rm -rf . >/dev/null 2>&1 || true
+          TOKEN="${PUSH_TOKEN:-${DEFAULT_GITHUB_TOKEN:-}}"
+          if [ -z "${TOKEN}" ]; then
+            echo "No token available for badge publish."
+            exit 1
           fi
 
+          WORKDIR="$(mktemp -d /tmp/hushline-badges.XXXXXX)"
+          git clone --depth 1 --branch "${TARGET_BRANCH}" "https://x-access-token:${TOKEN}@github.com/${REPO_SLUG}.git" "${WORKDIR}"
+
           cd "${WORKDIR}"
-          cp "${GITHUB_WORKSPACE}/${BADGE_FILE}" "${BADGE_FILE}"
-          git add "${BADGE_FILE}"
+          mkdir -p badges
+          cp "${GITHUB_WORKSPACE}/${BADGE_FILE}" "badges/${BADGE_FILE}"
+          git add "badges/${BADGE_FILE}"
           if git diff --cached --quiet; then
             echo "No badge changes to publish."
             exit 0
@@ -91,8 +96,11 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update accessibility badge"
-          git push origin "HEAD:${BADGE_BRANCH}"
+          git commit -m "Update accessibility badge [skip ci]"
+          if ! git push origin "HEAD:${TARGET_BRANCH}"; then
+            echo "Push to ${TARGET_BRANCH} failed. If branch protection blocks workflow pushes, configure BADGE_PUSH_TOKEN with bypass rights."
+            exit 1
+          fi
 
       - name: Upload badge artifact
         uses: actions/upload-artifact@v4
