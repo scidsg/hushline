@@ -26,8 +26,7 @@ on:
       - ".github/workflows/lighthouse-performance.yml"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   lighthouse:
@@ -73,57 +72,7 @@ jobs:
       - name: Extract score
         run: |
           SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse-performance.json','utf8')).categories.performance.score*100))")
-          echo "{\"schemaVersion\":1,\"label\":\"performance\",\"message\":\"$SCORE\",\"color\":\"brightgreen\"}" > badge-performance.json
-          PR_NUMBER="${GITHUB_REF#refs/pull/}"
-          PR_NUMBER="${PR_NUMBER%/merge}"
-          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
-            PR_NUMBER=""
-          fi
-          echo "{\"score\":$SCORE,\"runId\":\"${GITHUB_RUN_ID}\",\"runNumber\":\"${GITHUB_RUN_NUMBER}\",\"sha\":\"${GITHUB_SHA}\",\"workflow\":\"${GITHUB_WORKFLOW}\",\"url\":\"http://localhost:8080/directory\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"prNumber\":\"${PR_NUMBER}\"}" > badge-performance-meta.json
           if [ "$SCORE" -lt 95 ]; then
             echo "Performance score must be at least 95, got $SCORE"
             exit 1
           fi
-
-      - name: Publish performance badge to main
-        if: github.ref == 'refs/heads/main'
-        env:
-          REPO_SLUG: ${{ github.repository }}
-          PUSH_TOKEN: ${{ secrets.BADGE_PUSH_TOKEN }}
-          DEFAULT_GITHUB_TOKEN: ${{ github.token }}
-          TARGET_BRANCH: main
-          BADGE_FILE: badge-performance.json
-        run: |
-          set -euo pipefail
-          TOKEN="${PUSH_TOKEN:-${DEFAULT_GITHUB_TOKEN:-}}"
-          if [ -z "${TOKEN}" ]; then
-            echo "No token available for badge publish."
-            exit 1
-          fi
-
-          WORKDIR="$(mktemp -d /tmp/hushline-badges.XXXXXX)"
-          git clone --depth 1 --branch "${TARGET_BRANCH}" "https://x-access-token:${TOKEN}@github.com/${REPO_SLUG}.git" "${WORKDIR}"
-
-          cd "${WORKDIR}"
-          mkdir -p badges
-          cp "${GITHUB_WORKSPACE}/${BADGE_FILE}" "badges/${BADGE_FILE}"
-          git add "badges/${BADGE_FILE}"
-          if git diff --cached --quiet; then
-            echo "No badge changes to publish."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update performance badge [skip ci]"
-          if ! git push origin "HEAD:${TARGET_BRANCH}"; then
-            echo "Push to ${TARGET_BRANCH} failed. If branch protection blocks workflow pushes, configure BADGE_PUSH_TOKEN with bypass rights."
-            exit 1
-          fi
-
-      - name: Upload badge artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-badge
-          path: |
-            badge-performance.json
