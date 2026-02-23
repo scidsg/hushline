@@ -1,0 +1,98 @@
+name: Audit Report
+description: Submit one focused audit with reproducible findings and prioritized fixes
+title: "[Audit][Track] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for one focused Hush Line audit.
+        Include reproducible evidence and concrete recommendations maintainers can act on.
+  - type: dropdown
+    id: track
+    attributes:
+      label: Audit Track
+      description: Pick exactly one track.
+      options:
+        - Usability
+        - Security
+        - Accessibility
+        - Writing/Docs
+        - Performance
+        - Code Quality
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 1) Scope
+      description: What you audited and the environment used.
+      placeholder: |
+        - What you audited:
+        - Environment (OS, browser/device, app version/commit):
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: 2) Method
+      description: Tools/checklists and user flows or files reviewed.
+      placeholder: |
+        - Tools/checklists used:
+        - User flows or files reviewed:
+    validations:
+      required: true
+  - type: textarea
+    id: findings
+    attributes:
+      label: 3) Findings
+      description: Include at least 3 concrete findings, or explicitly state none were found.
+      placeholder: |
+        Finding 1
+        - Severity: Critical | High | Medium | Low
+        - Location: page/feature/file
+        - Reproduction steps:
+        - Expected behavior:
+        - Actual behavior:
+        - Evidence (screenshot/log/snippet):
+    validations:
+      required: true
+  - type: textarea
+    id: recommendations
+    attributes:
+      label: 4) Recommendations
+      description: Provide concrete fixes in priority order with estimated effort (S/M/L).
+      placeholder: |
+        1. [Priority] Recommendation - Effort: S/M/L
+        2. [Priority] Recommendation - Effort: S/M/L
+    validations:
+      required: true
+  - type: textarea
+    id: optional_contribution
+    attributes:
+      label: 5) Optional contribution
+      description: If you also opened a fix PR, link it here.
+      placeholder: PR URL (optional)
+  - type: markdown
+    attributes:
+      value: |
+        Track-specific minimum checklist:
+
+        - Usability: Navigation clarity; label/button clarity; consistency across core flows.
+        - Security: Input validation and injection risk checks; authn/authz review; sensitive data handling; dependency/security tooling output (if run).
+        - Accessibility: Keyboard-only navigation; screen reader basics; contrast; alt text quality; WCAG 2.2 AA gaps.
+        - Writing/Docs: Clarity and concision; terminology consistency; setup/usage accuracy; grammar/spelling.
+        - Performance: Load/interaction bottlenecks; heavy assets/unnecessary requests; re-render/layout shift hotspots; optimization impact.
+        - Code Quality: Readability/structure; duplication/dead code; error handling/logging gaps; test coverage gaps.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: This report includes at least 3 concrete findings, or an explicit statement that none were found.
+          required: true
+        - label: Each finding includes severity, location, reproducible evidence, and expected vs actual behavior.
+          required: true
+        - label: Recommendations are actionable and prioritized.
+          required: true
+        - label: I removed secrets and sensitive data from this report.
+          required: true
