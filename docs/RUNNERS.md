@@ -183,6 +183,11 @@ These controls are intentionally conservative. They reduce the chance that user-
 - `HUSHLINE_DAILY_MIN_COVERAGE` (default `100`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
+- `HUSHLINE_ENFORCE_BOT_GIT_IDENTITY` (default `1`)
+- `HUSHLINE_BOT_GIT_NAME` (default `hushline-dev`)
+- `HUSHLINE_BOT_GIT_EMAIL` (default `git-dev@scidsg.org`)
+- `HUSHLINE_BOT_GIT_GPG_FORMAT` (default `ssh`)
+- `HUSHLINE_BOT_GIT_SIGNING_KEY` (default empty; optional explicit signing key path)
 - `HUSHLINE_DAILY_ELIGIBLE_LABEL` (default `agent-eligible`)
 - `HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL` (default `1`)
 - `HUSHLINE_DAILY_REBUILD_STRATEGY` (default `on-change`, options: `always`, `on-change`, `never`)
@@ -231,13 +236,21 @@ Measure current test coverage, ask Codex to close gaps, run checks, and open a P
 - `HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS` (default `0`, meaning unlimited retries)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
+- `HUSHLINE_ENFORCE_BOT_GIT_IDENTITY` (default `1`)
+- `HUSHLINE_BOT_GIT_NAME` (default `hushline-dev`)
+- `HUSHLINE_BOT_GIT_EMAIL` (default `git-dev@scidsg.org`)
+- `HUSHLINE_BOT_GIT_GPG_FORMAT` (default `ssh`)
+- `HUSHLINE_BOT_GIT_SIGNING_KEY` (default empty; optional explicit signing key path)
 
 ## Signing and Identity
 
 Both scripts commit with signing enabled by default.
 
+Both scripts also set local repository git identity on each run (unless disabled) so automated commits are consistently authored by the bot account.
+
 - Daily runner opt-out: `HUSHLINE_DAILY_NO_GPG_SIGN=1`
 - Coverage runner opt-out: `HUSHLINE_COVERAGE_NO_GPG_SIGN=1`
+- Identity enforcement opt-out: `HUSHLINE_ENFORCE_BOT_GIT_IDENTITY=0`
 
 For GitHub "Verified" status, the signing key must be registered as a signing key on the account used as commit author.
 
