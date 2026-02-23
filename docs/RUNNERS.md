@@ -212,6 +212,12 @@ Agentic surface area (small and bounded): code-change runners only.
                                     |
                                     v
                      +-----------------------------+
+                     | Eligibility Gate            |
+                     | (daily only: agent-eligible)|
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
                      | Prep: Clean/sync/rebuild    |
                      | - git sync with main        |
                      | - docker compose down -v    |
