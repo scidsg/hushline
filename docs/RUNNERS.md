@@ -190,7 +190,7 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 - The one-bot-PR gate is intentional and is the primary control for compute and PR churn.
 - If you need parallel bot PRs, disable or override this behavior explicitly (not recommended by default).
 
-## Agentic Flow (ASCII)
+## Agentic Flow
 
 Agentic surface area (small and bounded): code-change runners only.
 
