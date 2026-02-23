@@ -1,0 +1,99 @@
+name: Feature Request
+description: Propose a concrete improvement with clear scope and acceptance criteria
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please define the problem and expected outcome clearly. Keep requests testable.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem are we solving?
+      placeholder: Describe current pain or limitation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe desired behavior in concrete terms.
+      placeholder: Describe how the product should behave.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired Outcome
+      description: What does success look like after implementation?
+      placeholder: Define measurable or observable success.
+    validations:
+      required: true
+  - type: textarea
+    id: in_scope
+    attributes:
+      label: In Scope
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: out_scope
+    attributes:
+      label: Out Of Scope
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: List objective, testable criteria.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      placeholder: Describe alternatives and why they were not chosen.
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Tradeoffs
+      placeholder: Known risks, regressions, or tradeoffs.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation Plan
+      description: How should this be validated?
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links to docs, designs, related issues, or screenshots.
+      placeholder: |
+        - ...
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched for existing issues before opening this request.
+          required: true
+        - label: This issue does not include secrets or sensitive data.
+          required: true

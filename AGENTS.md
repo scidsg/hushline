@@ -127,6 +127,14 @@ This file provides operating guidance for coding agents working in the Hush Line
   - mitigation and tests added
 - Never log secrets, plaintext disclosures, private keys, or sensitive tokens.
 
+## Dependabot Triage Priority
+
+- Before starting any new non-dependency work, check for open Dependabot updates (PRs/issues/security alerts).
+- If Dependabot updates exist, review upstream release notes/changelogs/security advisories first.
+- Determine what applies to Hush Line (runtime, build, CI, tests, and operational/security impact).
+- Address applicable updates before starting unrelated work.
+- If an update is deferred, document why, residual risk, and follow-up plan in the PR description.
+
 ## Approved Models
 
 - Only approved models may be used for code changes.
