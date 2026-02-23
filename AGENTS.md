@@ -166,6 +166,7 @@ Local workflow:
 ## PR Guidance
 
 - Before opening a PR, always run `make lint` and `make test` and fix any issues first.
+- Before requesting merge, ensure the PR branch is conflict-free with `main` (for example, `git fetch origin && git rebase origin/main`). If the branch changes, rerun `make lint` and `make test`.
 - All commits must be cryptographically signed (GPG or SSH signing) and verifiable on the remote.
 - Include what changed.
 - Include why it changed.
