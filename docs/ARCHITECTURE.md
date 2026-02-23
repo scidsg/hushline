@@ -1,4 +1,4 @@
-# Runtime Architecture
+# Release and Deployment Architecture
 
 Human-owned only (non-agentic): release and infrastructure control plane.
 
