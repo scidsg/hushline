@@ -45,11 +45,7 @@ Both scripts check open PRs before doing any heavy work.
 
 This prevents repeated rebuilds and duplicate automation work while an existing bot PR is still pending.
 
-## Scheduler (LaunchAgent, macOS-only)
-
-Automation no longer uses `cron` on this machine.
-
-It uses a macOS LaunchAgent:
+## Scheduler
 
 - Label: `org.scidsg.agent-runner`
 - Plist: `/Users/scidsg/.codex/launchd/org.scidsg.agent-runner.plist`
