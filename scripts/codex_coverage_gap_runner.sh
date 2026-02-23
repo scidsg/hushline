@@ -31,6 +31,8 @@ RUN_LOCAL_CHECKS="${HUSHLINE_COVERAGE_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 TARGET_COVERAGE="${HUSHLINE_TARGET_COVERAGE:-100}"
 MAX_REPORT_LINES="${HUSHLINE_COVERAGE_REPORT_LINES:-80}"
+RUN_HEALTHCHECK="${HUSHLINE_COVERAGE_RUN_HEALTHCHECK:-1}"
+HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
 cd "$REPO_DIR"
 
@@ -46,6 +48,15 @@ require_cmd gh
 require_cmd codex
 require_cmd docker
 require_cmd make
+
+if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
+  if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
+    echo "Healthcheck script is not executable: $HEALTHCHECK_SCRIPT" >&2
+    exit 1
+  fi
+  echo "==> Invariant check: healthcheck (coverage)"
+  "$HEALTHCHECK_SCRIPT" --mode coverage
+fi
 
 run_check() {
   local name="$1"

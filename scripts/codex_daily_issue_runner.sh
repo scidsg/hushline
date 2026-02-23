@@ -36,6 +36,8 @@ CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 MIN_COVERAGE="${HUSHLINE_DAILY_MIN_COVERAGE:-100}"
 ELIGIBLE_LABEL="${HUSHLINE_DAILY_ELIGIBLE_LABEL:-agent-eligible}"
 REQUIRE_ELIGIBLE_LABEL="${HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL:-1}"
+RUN_HEALTHCHECK="${HUSHLINE_DAILY_RUN_HEALTHCHECK:-1}"
+HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
 cd "$REPO_DIR"
 
@@ -52,6 +54,15 @@ require_cmd codex
 require_cmd node
 require_cmd docker
 require_cmd make
+
+if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
+  if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
+    echo "Healthcheck script is not executable: $HEALTHCHECK_SCRIPT" >&2
+    exit 1
+  fi
+  echo "==> Invariant check: healthcheck (daily)"
+  "$HEALTHCHECK_SCRIPT" --mode daily
+fi
 
 gh auth status -h github.com >/dev/null
 
