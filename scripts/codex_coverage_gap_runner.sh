@@ -33,8 +33,6 @@ TARGET_COVERAGE="${HUSHLINE_TARGET_COVERAGE:-100}"
 MAX_REPORT_LINES="${HUSHLINE_COVERAGE_REPORT_LINES:-80}"
 RUN_HEALTHCHECK="${HUSHLINE_COVERAGE_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
-HEALTH_BADGE_UPDATER="${HUSHLINE_HEALTH_BADGE_UPDATER:-$REPO_DIR/scripts/update_agent_health_badge.sh}"
-PUBLISH_HEALTH_BADGE_ON_DRY_RUN="${HUSHLINE_HEALTH_BADGE_PUBLISH_ON_DRY_RUN:-0}"
 
 cd "$REPO_DIR"
 
@@ -51,35 +49,13 @@ require_cmd codex
 require_cmd docker
 require_cmd make
 
-publish_health_badge() {
-  local status="$1"
-
-  if [[ "$DRY_RUN" == "1" && "$PUBLISH_HEALTH_BADGE_ON_DRY_RUN" != "1" ]]; then
-    return 0
-  fi
-
-  if [[ ! -x "$HEALTH_BADGE_UPDATER" ]]; then
-    echo "Warning: health badge updater is not executable: $HEALTH_BADGE_UPDATER" >&2
-    return 0
-  fi
-
-  if ! "$HEALTH_BADGE_UPDATER" "$status" "coverage"; then
-    echo "Warning: failed to publish agent health badge ($status)." >&2
-  fi
-}
-
 if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
   if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
     echo "Healthcheck script is not executable: $HEALTHCHECK_SCRIPT" >&2
     exit 1
   fi
   echo "==> Invariant check: healthcheck (coverage)"
-  if "$HEALTHCHECK_SCRIPT" --mode coverage; then
-    publish_health_badge healthy
-  else
-    publish_health_badge unhealthy
-    exit 1
-  fi
+  "$HEALTHCHECK_SCRIPT" --mode coverage
 fi
 
 run_check() {

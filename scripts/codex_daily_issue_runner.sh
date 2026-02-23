@@ -38,8 +38,6 @@ ELIGIBLE_LABEL="${HUSHLINE_DAILY_ELIGIBLE_LABEL:-agent-eligible}"
 REQUIRE_ELIGIBLE_LABEL="${HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL:-1}"
 RUN_HEALTHCHECK="${HUSHLINE_DAILY_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
-HEALTH_BADGE_UPDATER="${HUSHLINE_HEALTH_BADGE_UPDATER:-$REPO_DIR/scripts/update_agent_health_badge.sh}"
-PUBLISH_HEALTH_BADGE_ON_DRY_RUN="${HUSHLINE_HEALTH_BADGE_PUBLISH_ON_DRY_RUN:-0}"
 
 cd "$REPO_DIR"
 
@@ -57,35 +55,13 @@ require_cmd node
 require_cmd docker
 require_cmd make
 
-publish_health_badge() {
-  local status="$1"
-
-  if [[ "$DRY_RUN" == "1" && "$PUBLISH_HEALTH_BADGE_ON_DRY_RUN" != "1" ]]; then
-    return 0
-  fi
-
-  if [[ ! -x "$HEALTH_BADGE_UPDATER" ]]; then
-    echo "Warning: health badge updater is not executable: $HEALTH_BADGE_UPDATER" >&2
-    return 0
-  fi
-
-  if ! "$HEALTH_BADGE_UPDATER" "$status" "daily"; then
-    echo "Warning: failed to publish agent health badge ($status)." >&2
-  fi
-}
-
 if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
   if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
     echo "Healthcheck script is not executable: $HEALTHCHECK_SCRIPT" >&2
     exit 1
   fi
   echo "==> Invariant check: healthcheck (daily)"
-  if "$HEALTHCHECK_SCRIPT" --mode daily; then
-    publish_health_badge healthy
-  else
-    publish_health_badge unhealthy
-    exit 1
-  fi
+  "$HEALTHCHECK_SCRIPT" --mode daily
 fi
 
 gh auth status -h github.com >/dev/null

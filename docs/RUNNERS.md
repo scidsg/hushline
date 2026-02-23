@@ -87,7 +87,6 @@ Checks currently include:
 - Wake-on-LAN (`womp`) disabled
 
 If any check fails, the runner exits before expensive rebuild/test work begins.
-When healthcheck runs on the automation machine, runners publish a live agent-health badge JSON to the configured badge repository. The README badge reads that JSON endpoint.
 
 ## Daily Issue Runner
 
@@ -219,13 +218,6 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 - `HUSHLINE_HEALTHCHECK_REQUIRE_WOMP_DISABLED` (default `1`)
 - `HUSHLINE_COVERAGE_RUN_HEALTHCHECK` (default `1`)
 - `HUSHLINE_DAILY_RUN_HEALTHCHECK` (default `1`)
-- `HUSHLINE_HEALTH_BADGE_ENABLED` (default `1`)
-- `HUSHLINE_HEALTH_BADGE_UPDATER` (default `scripts/update_agent_health_badge.sh`)
-- `HUSHLINE_HEALTH_BADGE_REPO` (default `scidsg/hushline-screenshots`)
-- `HUSHLINE_HEALTH_BADGE_PATH` (default `badge-agent-health.json`)
-- `HUSHLINE_HEALTH_BADGE_BRANCH` (default `main`)
-- `HUSHLINE_HEALTH_BADGE_LABEL` (default `agent health`)
-- `HUSHLINE_HEALTH_BADGE_PUBLISH_ON_DRY_RUN` (default `0`)
 
 ## Operational Notes
 
