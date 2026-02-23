@@ -21,6 +21,10 @@ Both runners instruct Codex to follow repository policy from the root ruleset fi
 
 Then Codex must follow any deeper `AGENTS.md` files that apply to changed paths.
 
+## Architecture Diagram
+
+Runtime infrastructure is documented in `docs/ARCHITECTURE.md`.
+
 ## One-Bot-PR Gate
 
 Both scripts check open PRs before doing any heavy work.
@@ -185,3 +189,79 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 - These runners are intentionally conservative and may skip work when conditions are not safe or useful.
 - The one-bot-PR gate is intentional and is the primary control for compute and PR churn.
 - If you need parallel bot PRs, disable or override this behavior explicitly (not recommended by default).
+
+## Agentic Flow (ASCII)
+
+Agentic surface area (small and bounded): code-change runners only.
+
+```text
+   00:00 cron                                  02:00 cron
++-----------------------------+       +-----------------------------+
+| codex_coverage_gap_runner   |       | codex_daily_issue_runner    |
++---------------+-------------+       +---------------+-------------+
+                |                                     |
+                +------------------+------------------+
+                                   |
+                                   v
+                     +-----------------------------+
+                     | Gate: One-Bot-PR           |
+                     | (HUSHLINE_BOT_LOGIN)       |
+                     +--------------+--------------+
+                                    |
+                         no open bot PR only
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Eligibility Gate            |
+                     | (daily only: agent-eligible)|
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Prep: Clean/sync/rebuild    |
+                     | - git sync with main        |
+                     | - docker compose down -v    |
+                     | - docker compose build app  |
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Execute: Codex task         |
+                     | - coverage gap OR issue     |
+                     | - follows AGENTS.md         |
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Validate: Required checks   |
+                     | - make lint                 |
+                     | - make test                 |
+                     | - runner-specific audits    |
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Sign: Signed commit         |
+                     | author: hushline-dev bot    |
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | Push: Push branch + open PR |
+                     +--------------+--------------+
+                                    |
+                                    v
+                     +-----------------------------+
+                     | HUMAN HANDOFF: PR / CI      |
+                     +-----------------------------+
+                                    |
+                                    v
+                      /-----------------------------/
+                     /   Human review + merge      /
+                    /_____________________________/
+```
+
+Boundary summary:
+
+- Agentic: runner execution from gate through push/open PR.
+- Human-only: release tagging, infrastructure changes, Terraform applies, and merge/deploy decisions.
