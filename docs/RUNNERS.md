@@ -1,9 +1,18 @@
 # Runner Automation
 
-This repository has two automation runners:
+This repository has two automation runner scripts:
 
 - `scripts/codex_daily_issue_runner.sh`
 - `scripts/codex_coverage_gap_runner.sh`
+
+Scheduling now happens through a single machine-local entrypoint:
+
+- `/Users/scidsg/.codex/bin/agent-runner`
+
+`agent-runner` executes:
+
+1. `/Users/scidsg/.codex/bin/codex_coverage_cron.sh`
+2. `/Users/scidsg/.codex/bin/codex_daily_cron.sh` (only if coverage runner exits cleanly)
 
 Both runners are designed to:
 
@@ -36,21 +45,34 @@ Both scripts check open PRs before doing any heavy work.
 
 This prevents repeated rebuilds and duplicate automation work while an existing bot PR is still pending.
 
-## Cron Schedule
+## Scheduler (LaunchAgent, macOS-only)
 
-Current schedule target:
+Automation no longer uses `cron` on this machine.
 
-- Coverage runner: `00:00` (midnight)
-- Daily issue runner: `02:00`
+It uses a macOS LaunchAgent:
 
-Because both runners enforce the one-bot-PR gate, the 02:00 daily run proceeds only when the 00:00 coverage run did not open a bot PR.
+- Label: `org.scidsg.agent-runner`
+- Plist: `/Users/scidsg/.codex/launchd/org.scidsg.agent-runner.plist`
+- Entrypoint: `/Users/scidsg/.codex/bin/agent-runner`
+- Schedule: `00:00` local time (daily)
+- Log file: `/Users/scidsg/.codex/logs/agent-runner.log`
 
-Example cron entries:
+LaunchAgents are a macOS mechanism. Linux/Windows require a different scheduler.
 
-```cron
-0 0 * * * /Users/scidsg/.codex/bin/codex_coverage_cron.sh >> /Users/scidsg/.codex/logs/codex-coverage.log 2>&1
-0 2 * * * /Users/scidsg/.codex/bin/codex_daily_cron.sh >> /Users/scidsg/.codex/logs/codex-daily.log 2>&1
-```
+## Local Config Files
+
+Machine-local scheduler/wrapper files (not committed in this repo):
+
+- `/Users/scidsg/.codex/launchd/org.scidsg.agent-runner.plist`
+- `/Users/scidsg/.codex/bin/agent-runner`
+- `/Users/scidsg/.codex/bin/codex_coverage_cron.sh`
+- `/Users/scidsg/.codex/bin/codex_daily_cron.sh`
+
+Repository scripts (committed):
+
+- `scripts/codex_coverage_gap_runner.sh`
+- `scripts/codex_daily_issue_runner.sh`
+- `scripts/healthcheck.sh`
 
 ## Shared Execution Pattern
 
@@ -78,7 +100,6 @@ Both runners call this script before they do any issue/coverage work.
 
 Checks currently include:
 
-- Keychain GitHub token exists for `hushline-dev` (or `HUSHLINE_GH_ACCOUNT`)
 - plaintext token file is absent (default path `~/.config/hushline/gh_token`)
 - Docker daemon is reachable
 - free disk space is above threshold (default 8 GB)
@@ -87,6 +108,11 @@ Checks currently include:
 - Wake-on-LAN (`womp`) disabled
 
 If any check fails, the runner exits before expensive rebuild/test work begins.
+
+Note:
+
+- In the machine-local wrappers, `HUSHLINE_HEALTHCHECK_REQUIRE_KEYCHAIN_TOKEN` is set to `0`.
+- Authentication is injected before runner execution via `gh auth token` in wrapper scripts.
 
 ## Daily Issue Runner
 
@@ -230,14 +256,23 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 Agentic surface area (small and bounded): code-change runners only.
 
 ```text
-   00:00 cron                                  02:00 cron
-+-----------------------------+       +-----------------------------+
-| codex_coverage_gap_runner   |       | codex_daily_issue_runner    |
-+---------------+-------------+       +---------------+-------------+
-                |                                     |
-                +------------------+------------------+
-                                   |
-                                   v
+   00:00 LaunchAgent (macOS)
++-----------------------------+
+| agent-runner                |
++---------------+-------------+
+                |
+                v
+   +-----------------------------+
+   | codex_coverage_gap_runner   |
+   +---------------+-------------+
+                   |
+                   v
+   +-----------------------------+
+   | codex_daily_issue_runner    |
+   | (coverage step must pass)   |
+   +---------------+-------------+
+                   |
+                   v
                      +-----------------------------+
                      | Gate: One-Bot-PR           |
                      | (HUSHLINE_BOT_LOGIN)       |
