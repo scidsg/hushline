@@ -1,0 +1,101 @@
+name: Agent-Eligible Task
+description: Structured task for automation runners and coding agents
+title: "[Agent Task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for tasks intended for automation runners.
+        Keep instructions concrete, bounded, and testable.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the change needed in 1-3 sentences.
+      placeholder: Concise task summary.
+    validations:
+      required: true
+  - type: textarea
+    id: desired_outcome
+    attributes:
+      label: Desired Outcome
+      description: Define the exact end state.
+      placeholder: What will be true when this issue is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: in_scope
+    attributes:
+      label: In Scope
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: out_scope
+    attributes:
+      label: Out Of Scope
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Must be objective and testable.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and Guardrails
+      description: Include policy, security, and behavioral constraints.
+      value: |
+        - Follow AGENTS.md.
+        - Keep changes minimal and behavior-preserving unless explicitly required.
+        - Do not include secrets or sensitive data in issue text.
+    validations:
+      required: true
+  - type: textarea
+    id: validation_requirements
+    attributes:
+      label: Validation Requirements
+      description: List required checks and any task-specific checks.
+      value: |
+        - make lint
+        - make test
+      placeholder: Add additional checks if needed.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Context and References
+      description: Files, docs, PRs, screenshots, links.
+      placeholder: |
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Known regressions, rollout concerns, or unknowns.
+      placeholder: |
+        - ...
+  - type: checkboxes
+    id: gating
+    attributes:
+      label: Automation Gating
+      options:
+        - label: This issue is safe and appropriate for automation.
+          required: true
+        - label: I understand automation may stop and report back if constraints are unclear or unsafe.
+          required: true
