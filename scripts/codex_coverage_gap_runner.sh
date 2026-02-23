@@ -31,6 +31,7 @@ RUN_LOCAL_CHECKS="${HUSHLINE_COVERAGE_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 TARGET_COVERAGE="${HUSHLINE_TARGET_COVERAGE:-100}"
 MAX_REPORT_LINES="${HUSHLINE_COVERAGE_REPORT_LINES:-80}"
+REBUILD_STRATEGY="${HUSHLINE_COVERAGE_REBUILD_STRATEGY:-on-gap}"
 RUN_HEALTHCHECK="${HUSHLINE_COVERAGE_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
@@ -70,6 +71,15 @@ full_rebuild() {
   run_check "docker rebuild app image" docker compose build app
 }
 
+case "$REBUILD_STRATEGY" in
+  always|on-gap|never)
+    ;;
+  *)
+    echo "Invalid HUSHLINE_COVERAGE_REBUILD_STRATEGY: '$REBUILD_STRATEGY' (expected: always, on-gap, never)" >&2
+    exit 1
+    ;;
+esac
+
 gh auth status -h github.com >/dev/null
 
 OPEN_BOT_PR_COUNT="$(
@@ -94,10 +104,6 @@ fi
 git fetch origin "$BASE_BRANCH" --prune
 git checkout "$BASE_BRANCH"
 git pull --ff-only origin "$BASE_BRANCH"
-
-if [[ "$DRY_RUN" != "1" ]]; then
-  full_rebuild
-fi
 
 COVERAGE_OUTPUT_FILE="$(mktemp)"
 CODEX_OUTPUT_FILE="$(mktemp)"
@@ -127,6 +133,10 @@ fi
 if [[ "$FORCE_RUN" != "1" ]] && [[ "$CURRENT_COVERAGE" -ge "$TARGET_COVERAGE" ]]; then
   echo "Coverage ${CURRENT_COVERAGE}% already meets target ${TARGET_COVERAGE}%."
   exit 0
+fi
+
+if [[ "$DRY_RUN" != "1" ]] && [[ "$REBUILD_STRATEGY" != "never" ]]; then
+  full_rebuild
 fi
 
 MISSING_TABLE="$(
