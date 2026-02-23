@@ -1,8 +1,6 @@
 name: Agent-Eligible Task
 description: Structured task for automation runners and coding agents
 title: "[Agent Task] "
-labels:
-  - agent-eligible
 body:
   - type: markdown
     attributes:
