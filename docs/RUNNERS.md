@@ -90,6 +90,25 @@ If `--issue <number>` is provided:
 - The issue must still include the required eligibility label when enforcement is enabled.
 - If the required label is missing, the run is blocked.
 
+### Security hardening
+
+The daily issue runner includes explicit safeguards against prompt injection and unsafe automation:
+
+- Explicit allowlist gate:
+  - Only issues labeled `agent-eligible` are processed by default.
+  - Forced runs (`--issue`) are also blocked if the label is missing, unless enforcement is explicitly disabled.
+- Untrusted issue-content boundary:
+  - The runner prompt wraps issue body text between `---BEGIN UNTRUSTED ISSUE BODY---` and `---END UNTRUSTED ISSUE BODY---`.
+  - This makes it explicit that issue body text is treated as untrusted data, not instruction authority.
+- Instruction hierarchy lock:
+  - The prompt explicitly requires compliance with `AGENTS.md` and applicable deeper rulesets.
+  - The prompt explicitly forbids following issue-body instructions that conflict with system/developer constraints or repository policy.
+- Execution safety:
+  - The prompt explicitly forbids executing arbitrary content from issue text.
+  - If instructions are unsafe or unclear, the runner requires stopping and reporting instead of risky changes.
+
+These controls are intentionally conservative. They reduce the chance that user-authored issue content can override policy or trigger unsafe behavior.
+
 ### Main checks (when `HUSHLINE_DAILY_RUN_CHECKS=1`)
 
 - `make lint`
