@@ -36,6 +36,7 @@ CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 MIN_COVERAGE="${HUSHLINE_DAILY_MIN_COVERAGE:-100}"
 ELIGIBLE_LABEL="${HUSHLINE_DAILY_ELIGIBLE_LABEL:-agent-eligible}"
 REQUIRE_ELIGIBLE_LABEL="${HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL:-1}"
+REBUILD_STRATEGY="${HUSHLINE_DAILY_REBUILD_STRATEGY:-on-change}"
 RUN_HEALTHCHECK="${HUSHLINE_DAILY_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
@@ -191,6 +192,15 @@ full_rebuild() {
   run_check "docker rebuild app image" docker compose build app
 }
 
+case "$REBUILD_STRATEGY" in
+  always|on-change|never)
+    ;;
+  *)
+    echo "Invalid HUSHLINE_DAILY_REBUILD_STRATEGY: '$REBUILD_STRATEGY' (expected: always, on-change, never)" >&2
+    exit 1
+    ;;
+esac
+
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
   echo "Issue URL: $ISSUE_URL"
@@ -207,7 +217,6 @@ git fetch origin "$BASE_BRANCH" --prune
 git checkout "$BASE_BRANCH"
 git pull --ff-only origin "$BASE_BRANCH"
 git checkout -B "$BRANCH_NAME"
-full_rebuild
 
 {
   cat <<EOF
@@ -228,16 +237,8 @@ EOF
 Required output:
 1) Implement only what is needed for this issue with a minimal diff.
 2) Add or update tests for any behavior changes.
-3) Run and pass invariant local checks:
-   - make lint
-   - make test PYTEST_ADDOPTS="--skip-local-only"
-   - make test TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" PYTEST_ADDOPTS="--skip-local-only"
-   - make test TESTS="tests/test_gdpr_compliance.py tests/test_ccpa_compliance.py" PYTEST_ADDOPTS="--skip-local-only"
-   - docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under=100
-   - docker compose run --rm app bash -lc "poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt"
-   - npm audit --omit=dev --package-lock-only
-   - npm audit --package-lock-only
-4) Summarize what changed, what checks were run, and any residual risks.
+3) Do not run lint/test/coverage/audit commands; the runner executes required checks after your code changes are complete.
+4) Summarize only the code and test changes needed for this issue.
 
 Important:
 - Do not weaken E2EE, auth, anonymity, or privacy protections.
@@ -260,6 +261,10 @@ if [[ -z "$(git status --porcelain)" ]]; then
   git checkout "$BASE_BRANCH"
   git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
   exit 0
+fi
+
+if [[ "$REBUILD_STRATEGY" != "never" ]]; then
+  full_rebuild
 fi
 
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then

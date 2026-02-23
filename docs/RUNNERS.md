@@ -84,10 +84,10 @@ Both runners perform these core steps (with runner-specific logic in the middle)
 4. Exit early if bot PR gate is active.
 5. Ensure local working tree is clean.
 6. Sync with `main`.
-7. Start with destructive Docker rebuild:
+7. Run runner-specific Codex task.
+8. Run destructive Docker rebuild only when needed by runner strategy:
    - `docker compose down -v --remove-orphans`
    - `docker compose build app`
-8. Run runner-specific Codex task.
 9. Run required local checks.
 10. Create signed commit (unless explicitly disabled by env var).
 11. Push branch and open PR.
@@ -121,6 +121,8 @@ Script: `scripts/codex_daily_issue_runner.sh`
 ### Purpose
 
 Pick one open issue labeled for automation, implement it with Codex, run required checks, and open a PR.
+
+The prompt directs Codex to make only code/test changes; invariant checks are run once by the runner after Codex finishes.
 
 ### CLI flags
 
@@ -181,6 +183,7 @@ These controls are intentionally conservative. They reduce the chance that user-
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
 - `HUSHLINE_DAILY_ELIGIBLE_LABEL` (default `agent-eligible`)
 - `HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL` (default `1`)
+- `HUSHLINE_DAILY_REBUILD_STRATEGY` (default `on-change`, options: `always`, `on-change`, `never`)
 
 ## Coverage Gap Runner
 
@@ -200,6 +203,8 @@ Measure current test coverage, ask Codex to close gaps, run checks, and open a P
 - Measures coverage first.
 - If current coverage already meets target and `--force` is not set, exits without changes.
 - Otherwise generates a prompt including uncovered coverage rows.
+- Prompts Codex for code/test changes only; runner executes checks itself.
+- Rebuild timing is strategy-controlled and defaults to rebuilding only when coverage is below target.
 - Runs Codex to make targeted test-oriented improvements.
 - Runs local checks, commits, and opens PR.
 
@@ -218,6 +223,7 @@ Measure current test coverage, ask Codex to close gaps, run checks, and open a P
 - `HUSHLINE_COVERAGE_NO_GPG_SIGN` (default `0`)
 - `HUSHLINE_TARGET_COVERAGE` (default `100`)
 - `HUSHLINE_COVERAGE_REPORT_LINES` (default `80`)
+- `HUSHLINE_COVERAGE_REBUILD_STRATEGY` (default `on-gap`, options: `always`, `on-gap`, `never`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
 
@@ -285,10 +291,9 @@ Agentic surface area (small and bounded): code-change runners only.
                |
                v
 +-----------------------------+
-| Prep: Clean/sync/rebuild    |
+| Prep: Clean/sync            |
 | - git sync with main        |
-| - docker compose down -v    |
-| - docker compose build app  |
+| - rebuild is strategy-based |
 +--------------+--------------+
                |
                v
