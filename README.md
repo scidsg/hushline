@@ -10,6 +10,7 @@
 ![Database Migration Compatibility Tests](https://github.com/scidsg/hushline/actions/workflows/migration-smoke.yml/badge.svg)
 ![E2EE and Privacy Regressions](https://github.com/scidsg/hushline/actions/workflows/e2ee-privacy-regressions.yml/badge.svg)
 ![Workflow Security Checks](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml/badge.svg)
+![Agent Health](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-agent-health.json)
 ![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)
 ![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)
 ![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)

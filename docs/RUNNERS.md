@@ -8,6 +8,7 @@ This repository has two automation runners:
 Both runners are designed to:
 
 - operate on a clean checkout
+- run a preflight machine healthcheck before doing work
 - enforce local validation before opening a PR
 - run with signed commits by default
 - open a PR as the end state when changes are made
@@ -52,17 +53,37 @@ Example cron entries:
 Both runners perform these core steps (with runner-specific logic in the middle):
 
 1. Verify required commands are present.
-2. Verify GitHub CLI authentication.
-3. Exit early if bot PR gate is active.
-4. Ensure local working tree is clean.
-5. Sync with `main`.
-6. Start with destructive Docker rebuild:
+2. Run preflight healthcheck (`scripts/healthcheck.sh`).
+3. Verify GitHub CLI authentication.
+4. Exit early if bot PR gate is active.
+5. Ensure local working tree is clean.
+6. Sync with `main`.
+7. Start with destructive Docker rebuild:
    - `docker compose down -v --remove-orphans`
    - `docker compose build app`
-7. Run runner-specific Codex task.
-8. Run required local checks.
-9. Create signed commit (unless explicitly disabled by env var).
-10. Push branch and open PR.
+8. Run runner-specific Codex task.
+9. Run required local checks.
+10. Create signed commit (unless explicitly disabled by env var).
+11. Push branch and open PR.
+
+## Preflight Healthcheck
+
+Script: `scripts/healthcheck.sh`
+
+Both runners call this script before they do any issue/coverage work.
+
+Checks currently include:
+
+- Keychain GitHub token exists for `hushline-dev` (or `HUSHLINE_GH_ACCOUNT`)
+- plaintext token file is absent (default path `~/.config/hushline/gh_token`)
+- Docker daemon is reachable
+- free disk space is above threshold (default 8 GB)
+- firewall enabled
+- firewall stealth mode on
+- Wake-on-LAN (`womp`) disabled
+
+If any check fails, the runner exits before expensive rebuild/test work begins.
+When healthcheck runs on the automation machine, runners publish a live agent-health badge JSON to the configured badge repository. The README badge reads that JSON endpoint.
 
 ## Daily Issue Runner
 
@@ -179,6 +200,28 @@ Both scripts commit with signing enabled by default.
 - Coverage runner opt-out: `HUSHLINE_COVERAGE_NO_GPG_SIGN=1`
 
 For GitHub "Verified" status, the signing key must be registered as a signing key on the account used as commit author.
+
+## Healthcheck Environment Variables
+
+- `HUSHLINE_HEALTHCHECK_SCRIPT` (default `scripts/healthcheck.sh`)
+- `HUSHLINE_GH_ACCOUNT` (default `hushline-dev`)
+- `HUSHLINE_GH_TOKEN_FILE` (default `/Users/scidsg/.config/hushline/gh_token`)
+- `HUSHLINE_HEALTHCHECK_MIN_FREE_GB` (default `8`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_KEYCHAIN_TOKEN` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_DOCKER` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_GH` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_FIREWALL` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_STEALTH` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_WOMP_DISABLED` (default `1`)
+- `HUSHLINE_COVERAGE_RUN_HEALTHCHECK` (default `1`)
+- `HUSHLINE_DAILY_RUN_HEALTHCHECK` (default `1`)
+- `HUSHLINE_HEALTH_BADGE_ENABLED` (default `1`)
+- `HUSHLINE_HEALTH_BADGE_UPDATER` (default `scripts/update_agent_health_badge.sh`)
+- `HUSHLINE_HEALTH_BADGE_REPO` (default `scidsg/hushline-screenshots`)
+- `HUSHLINE_HEALTH_BADGE_PATH` (default `badge-agent-health.json`)
+- `HUSHLINE_HEALTH_BADGE_BRANCH` (default `main`)
+- `HUSHLINE_HEALTH_BADGE_LABEL` (default `agent health`)
+- `HUSHLINE_HEALTH_BADGE_PUBLISH_ON_DRY_RUN` (default `0`)
 
 ## Operational Notes
 
