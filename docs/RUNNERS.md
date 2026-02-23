@@ -342,8 +342,8 @@ Agentic surface area (small and bounded): code-change runners only.
 +-----------------------------+
                |
                v
-/-----------------------------/
-/   Human review + merge      /
+  /-----------------------------/
+ /   Human review + merge      /
 /_____________________________/
 ```
 
