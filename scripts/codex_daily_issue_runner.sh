@@ -30,6 +30,11 @@ REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 BOT_LOGIN="${HUSHLINE_BOT_LOGIN:-hushline-dev}"
+BOT_GIT_NAME="${HUSHLINE_BOT_GIT_NAME:-$BOT_LOGIN}"
+BOT_GIT_EMAIL="${HUSHLINE_BOT_GIT_EMAIL:-git-dev@scidsg.org}"
+BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
+BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
+ENFORCE_BOT_GIT_IDENTITY="${HUSHLINE_ENFORCE_BOT_GIT_IDENTITY:-1}"
 NO_GPG_SIGN="${HUSHLINE_DAILY_NO_GPG_SIGN:-0}"
 RUN_LOCAL_CHECKS="${HUSHLINE_DAILY_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
@@ -214,6 +219,32 @@ full_rebuild() {
   run_check "docker rebuild app image" docker compose build app
 }
 
+configure_bot_git_identity() {
+  if [[ "$ENFORCE_BOT_GIT_IDENTITY" != "1" ]]; then
+    return 0
+  fi
+
+  if [[ -z "$BOT_GIT_NAME" || -z "$BOT_GIT_EMAIL" ]]; then
+    echo "Invalid bot git identity configuration. Set HUSHLINE_BOT_GIT_NAME and HUSHLINE_BOT_GIT_EMAIL." >&2
+    exit 1
+  fi
+
+  git config user.name "$BOT_GIT_NAME"
+  git config user.email "$BOT_GIT_EMAIL"
+
+  if [[ "$NO_GPG_SIGN" != "1" ]]; then
+    git config commit.gpgsign true
+    if [[ -n "$BOT_GIT_GPG_FORMAT" ]]; then
+      git config gpg.format "$BOT_GIT_GPG_FORMAT"
+    fi
+    if [[ -n "$BOT_GIT_SIGNING_KEY" ]]; then
+      git config user.signingkey "$BOT_GIT_SIGNING_KEY"
+    fi
+  fi
+
+  echo "Configured git identity: $(git config user.name) <$(git config user.email)>"
+}
+
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
@@ -287,6 +318,7 @@ fi
 git fetch origin "$BASE_BRANCH" --prune
 git checkout "$BASE_BRANCH"
 git pull --ff-only origin "$BASE_BRANCH"
+configure_bot_git_identity
 git checkout -B "$BRANCH_NAME"
 
 {
