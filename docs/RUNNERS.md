@@ -105,7 +105,7 @@ Checks currently include:
 - Docker daemon is reachable
 - free disk space is above threshold (default 8 GB)
 - firewall enabled
-- firewall stealth mode on
+- firewall stealth mode on (optional; non-blocking by default)
 - Wake-on-LAN (`womp`) disabled
 
 If any check fails, the runner exits before expensive rebuild/test work begins.
@@ -264,7 +264,7 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 - `HUSHLINE_HEALTHCHECK_REQUIRE_DOCKER` (default `1`)
 - `HUSHLINE_HEALTHCHECK_REQUIRE_GH` (default `1`)
 - `HUSHLINE_HEALTHCHECK_REQUIRE_FIREWALL` (default `1`)
-- `HUSHLINE_HEALTHCHECK_REQUIRE_STEALTH` (default `1`)
+- `HUSHLINE_HEALTHCHECK_REQUIRE_STEALTH` (default `0`)
 - `HUSHLINE_HEALTHCHECK_REQUIRE_WOMP_DISABLED` (default `1`)
 - `HUSHLINE_COVERAGE_RUN_HEALTHCHECK` (default `1`)
 - `HUSHLINE_DAILY_RUN_HEALTHCHECK` (default `1`)
