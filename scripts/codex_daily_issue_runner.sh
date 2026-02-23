@@ -37,6 +37,7 @@ MIN_COVERAGE="${HUSHLINE_DAILY_MIN_COVERAGE:-100}"
 ELIGIBLE_LABEL="${HUSHLINE_DAILY_ELIGIBLE_LABEL:-agent-eligible}"
 REQUIRE_ELIGIBLE_LABEL="${HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL:-1}"
 REBUILD_STRATEGY="${HUSHLINE_DAILY_REBUILD_STRATEGY:-on-change}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-0}"
 RUN_HEALTHCHECK="${HUSHLINE_DAILY_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
@@ -55,6 +56,7 @@ require_cmd codex
 require_cmd node
 require_cmd docker
 require_cmd make
+require_cmd shasum
 
 if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
   if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
@@ -124,6 +126,15 @@ else
       const hardExcluded = new Set([
         "blocked", "duplicate", "invalid", "question", "wontfix", "codex", "codex-auto-daily"
       ]);
+      const lowRiskSignals = new Set([
+        "low-risk", "risk:low", "risk-low", "good first issue", "good-first-issue",
+        "documentation", "docs", "test", "tests", "chore", "ci", "maintenance",
+        "dependencies", "dependabot"
+      ]);
+      const mediumRiskSignals = new Set(["risk:medium", "risk-medium"]);
+      const highRiskSignals = new Set([
+        "risk:high", "risk-high", "security-critical", "breaking-change", "migration", "schema"
+      ]);
 
       const candidates = issues.map((issue) => {
         const labels = (issue.labels || [])
@@ -135,18 +146,28 @@ else
 
         const authorLogin = String(issue.author && issue.author.login ? issue.author.login : "").toLowerCase();
         const isDependabot = authorLogin.includes("dependabot");
+        let riskScore = 1;
+        if (labels.some((l) => highRiskSignals.has(l))) {
+          riskScore = 2;
+        } else if (labels.some((l) => mediumRiskSignals.has(l))) {
+          riskScore = 1;
+        } else if (labels.some((l) => lowRiskSignals.has(l))) {
+          riskScore = 0;
+        }
 
         return {
           number: issue.number,
           title: (issue.title || "").trim(),
           createdAt: issue.createdAt,
-          isDependabot
+          isDependabot,
+          riskScore
         };
       }).filter(Boolean);
 
       if (candidates.length === 0) process.exit(2);
 
       candidates.sort((a, b) => {
+        if (a.riskScore !== b.riskScore) return a.riskScore - b.riskScore;
         if (a.isDependabot !== b.isDependabot) return a.isDependabot ? -1 : 1;
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       });
@@ -174,9 +195,10 @@ BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 CODEX_OUTPUT_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
+CHECK_LOG_FILE="$(mktemp)"
 
 cleanup() {
-  rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE"
+  rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
 }
 trap cleanup EXIT
 
@@ -192,6 +214,50 @@ full_rebuild() {
   run_check "docker rebuild app image" docker compose build app
 }
 
+run_codex_from_prompt() {
+  codex exec \
+    --model "$CODEX_MODEL" \
+    --full-auto \
+    --sandbox workspace-write \
+    -C "$REPO_DIR" \
+    -o "$CODEX_OUTPUT_FILE" \
+    - < "$PROMPT_FILE"
+}
+
+working_tree_patch_hash() {
+  {
+    git diff --binary
+    git diff --cached --binary
+  } | shasum -a 256 | awk '{print $1}'
+}
+
+run_check_capture() {
+  local name="$1"
+  shift
+  echo "==> Invariant check: $name" | tee -a "$CHECK_LOG_FILE"
+  "$@" 2>&1 | tee -a "$CHECK_LOG_FILE"
+}
+
+run_required_checks() {
+  : > "$CHECK_LOG_FILE"
+  run_check_capture "lint" make lint || return 1
+  run_check_capture "tests" make test PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "E2EE/privacy regressions" \
+    make test \
+      TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" \
+      PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "GDPR/CCPA compliance tests" \
+    make test \
+      TESTS="tests/test_gdpr_compliance.py tests/test_ccpa_compliance.py" \
+      PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "coverage threshold >= ${MIN_COVERAGE}%" \
+    docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$MIN_COVERAGE" || return 1
+  run_check_capture "Python dependency vulnerability audit (pip-audit)" \
+    docker compose run --rm app bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt' || return 1
+  run_check_capture "Node runtime dependency audit" npm audit --omit=dev --package-lock-only || return 1
+  run_check_capture "Full Node dependency audit" npm audit --package-lock-only || return 1
+}
+
 case "$REBUILD_STRATEGY" in
   always|on-change|never)
     ;;
@@ -200,6 +266,11 @@ case "$REBUILD_STRATEGY" in
     exit 1
     ;;
 esac
+
+if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 0)" >&2
+  exit 1
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
@@ -248,13 +319,7 @@ Important:
 EOF
 } > "$PROMPT_FILE"
 
-codex exec \
-  --model "$CODEX_MODEL" \
-  --full-auto \
-  --sandbox workspace-write \
-  -C "$REPO_DIR" \
-  -o "$CODEX_OUTPUT_FILE" \
-  - < "$PROMPT_FILE"
+run_codex_from_prompt
 
 if [[ -z "$(git status --porcelain)" ]]; then
   echo "Codex produced no changes for issue #$ISSUE_NUMBER."
@@ -268,22 +333,54 @@ if [[ "$REBUILD_STRATEGY" != "never" ]]; then
 fi
 
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then
-  run_check "lint" make lint
-  run_check "tests" make test PYTEST_ADDOPTS="--skip-local-only"
-  run_check "E2EE/privacy regressions" \
-    make test \
-      TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" \
-      PYTEST_ADDOPTS="--skip-local-only"
-  run_check "GDPR/CCPA compliance tests" \
-    make test \
-      TESTS="tests/test_gdpr_compliance.py tests/test_ccpa_compliance.py" \
-      PYTEST_ADDOPTS="--skip-local-only"
-  run_check "coverage threshold >= ${MIN_COVERAGE}%" \
-    docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$MIN_COVERAGE"
-  run_check "Python dependency vulnerability audit (pip-audit)" \
-    docker compose run --rm app bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'
-  run_check "Node runtime dependency audit" npm audit --omit=dev --package-lock-only
-  run_check "Full Node dependency audit" npm audit --package-lock-only
+  attempt=1
+  while true; do
+    if run_required_checks; then
+      break
+    fi
+
+    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]] && (( attempt >= MAX_FIX_ATTEMPTS )); then
+      echo "Invariant checks failed after ${attempt} attempt(s) and reached configured retry limit ${MAX_FIX_ATTEMPTS}." >&2
+      exit 1
+    fi
+
+    echo "Invariant checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to apply a minimal fix." >&2
+    FAILURE_LOG_TAIL="$(tail -n 240 "$CHECK_LOG_FILE")"
+    PRE_FIX_HASH="$(working_tree_patch_hash)"
+
+    {
+      cat <<EOF
+You are continuing work on GitHub issue #$ISSUE_NUMBER in $REPO_SLUG on branch $BRANCH_NAME.
+
+The previous implementation failed invariant checks. Apply the smallest safe changes needed to make checks pass.
+
+Do not run lint/test/coverage/audit commands yourself; the runner executes them.
+
+Most recent failed check output:
+---BEGIN CHECK OUTPUT---
+EOF
+      printf '%s\n' "$FAILURE_LOG_TAIL"
+      cat <<'EOF'
+---END CHECK OUTPUT---
+
+Requirements:
+1) Fix only what is required for checks to pass.
+2) Keep diffs minimal and focused.
+3) Do not weaken E2EE, auth, anonymity, or privacy protections.
+4) Follow AGENTS.md and repository policy.
+EOF
+    } > "$PROMPT_FILE"
+
+    run_codex_from_prompt
+
+    POST_FIX_HASH="$(working_tree_patch_hash)"
+    if [[ "$PRE_FIX_HASH" == "$POST_FIX_HASH" ]]; then
+      echo "Codex produced no file changes while checks were failing; retrying." >&2
+      sleep 1
+    fi
+
+    attempt=$((attempt + 1))
+  done
 fi
 
 git add -A

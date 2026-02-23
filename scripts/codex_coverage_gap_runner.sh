@@ -31,7 +31,8 @@ RUN_LOCAL_CHECKS="${HUSHLINE_COVERAGE_RUN_CHECKS:-1}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 TARGET_COVERAGE="${HUSHLINE_TARGET_COVERAGE:-100}"
 MAX_REPORT_LINES="${HUSHLINE_COVERAGE_REPORT_LINES:-80}"
-REBUILD_STRATEGY="${HUSHLINE_COVERAGE_REBUILD_STRATEGY:-on-gap}"
+REBUILD_STRATEGY="${HUSHLINE_COVERAGE_REBUILD_STRATEGY:-always}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS:-0}"
 RUN_HEALTHCHECK="${HUSHLINE_COVERAGE_RUN_HEALTHCHECK:-1}"
 HEALTHCHECK_SCRIPT="${HUSHLINE_HEALTHCHECK_SCRIPT:-$REPO_DIR/scripts/healthcheck.sh}"
 
@@ -49,6 +50,7 @@ require_cmd gh
 require_cmd codex
 require_cmd docker
 require_cmd make
+require_cmd shasum
 
 if [[ "$RUN_HEALTHCHECK" == "1" ]]; then
   if [[ ! -x "$HEALTHCHECK_SCRIPT" ]]; then
@@ -66,6 +68,38 @@ run_check() {
   "$@"
 }
 
+run_codex_from_prompt() {
+  codex exec \
+    --model "$CODEX_MODEL" \
+    --full-auto \
+    --sandbox workspace-write \
+    -C "$REPO_DIR" \
+    -o "$CODEX_OUTPUT_FILE" \
+    - < "$PROMPT_FILE"
+}
+
+working_tree_patch_hash() {
+  {
+    git diff --binary
+    git diff --cached --binary
+  } | shasum -a 256 | awk '{print $1}'
+}
+
+run_check_capture() {
+  local name="$1"
+  shift
+  echo "==> Invariant check: $name" | tee -a "$CHECK_LOG_FILE"
+  "$@" 2>&1 | tee -a "$CHECK_LOG_FILE"
+}
+
+run_required_checks() {
+  : > "$CHECK_LOG_FILE"
+  run_check_capture "lint" make lint || return 1
+  run_check_capture "tests" make test PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "coverage threshold >= ${TARGET_COVERAGE}%" \
+    docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$TARGET_COVERAGE" || return 1
+}
+
 full_rebuild() {
   run_check "docker reset (down -v)" docker compose down -v --remove-orphans
   run_check "docker rebuild app image" docker compose build app
@@ -79,6 +113,11 @@ case "$REBUILD_STRATEGY" in
     exit 1
     ;;
 esac
+
+if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 0)" >&2
+  exit 1
+fi
 
 gh auth status -h github.com >/dev/null
 
@@ -105,13 +144,18 @@ git fetch origin "$BASE_BRANCH" --prune
 git checkout "$BASE_BRANCH"
 git pull --ff-only origin "$BASE_BRANCH"
 
+if [[ "$DRY_RUN" != "1" ]] && [[ "$REBUILD_STRATEGY" == "always" ]]; then
+  full_rebuild
+fi
+
 COVERAGE_OUTPUT_FILE="$(mktemp)"
 CODEX_OUTPUT_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
+CHECK_LOG_FILE="$(mktemp)"
 
 cleanup() {
-  rm -f "$COVERAGE_OUTPUT_FILE" "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE"
+  rm -f "$COVERAGE_OUTPUT_FILE" "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
 }
 trap cleanup EXIT
 
@@ -135,7 +179,7 @@ if [[ "$FORCE_RUN" != "1" ]] && [[ "$CURRENT_COVERAGE" -ge "$TARGET_COVERAGE" ]]
   exit 0
 fi
 
-if [[ "$DRY_RUN" != "1" ]] && [[ "$REBUILD_STRATEGY" != "never" ]]; then
+if [[ "$DRY_RUN" != "1" ]] && [[ "$REBUILD_STRATEGY" == "on-gap" ]]; then
   full_rebuild
 fi
 
@@ -190,13 +234,7 @@ Important:
 EOF
 } > "$PROMPT_FILE"
 
-codex exec \
-  --model "$CODEX_MODEL" \
-  --full-auto \
-  --sandbox workspace-write \
-  -C "$REPO_DIR" \
-  -o "$CODEX_OUTPUT_FILE" \
-  - < "$PROMPT_FILE"
+run_codex_from_prompt
 
 if [[ -z "$(git status --porcelain)" ]]; then
   echo "Codex produced no changes while coverage was ${CURRENT_COVERAGE}%."
@@ -206,10 +244,56 @@ if [[ -z "$(git status --porcelain)" ]]; then
 fi
 
 if [[ "$RUN_LOCAL_CHECKS" == "1" ]]; then
-  run_check "lint" make lint
-  run_check "tests" make test PYTEST_ADDOPTS="--skip-local-only"
-  run_check "coverage threshold >= ${TARGET_COVERAGE}%" \
-    docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only --cov-fail-under="$TARGET_COVERAGE"
+  attempt=1
+  while true; do
+    if run_required_checks; then
+      break
+    fi
+
+    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]] && (( attempt >= MAX_FIX_ATTEMPTS )); then
+      echo "Invariant checks failed after ${attempt} attempt(s) and reached configured retry limit ${MAX_FIX_ATTEMPTS}." >&2
+      exit 1
+    fi
+
+    echo "Invariant checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to apply a minimal fix." >&2
+    FAILURE_LOG_TAIL="$(tail -n 240 "$CHECK_LOG_FILE")"
+    PRE_FIX_HASH="$(working_tree_patch_hash)"
+
+    {
+      cat <<EOF
+You are continuing coverage work in $REPO_SLUG on branch $BRANCH_NAME.
+
+Current measured line coverage is ${CURRENT_COVERAGE}% and the target is ${TARGET_COVERAGE}%.
+The previous implementation failed invariant checks. Apply the smallest safe changes needed to make checks pass.
+
+Do not run lint/test/coverage commands yourself; the runner executes them.
+
+Most recent failed check output:
+---BEGIN CHECK OUTPUT---
+EOF
+      printf '%s\n' "$FAILURE_LOG_TAIL"
+      cat <<'EOF'
+---END CHECK OUTPUT---
+
+Requirements:
+1) Fix only what is required for checks to pass.
+2) Keep diffs minimal and focused.
+3) Prefer test-only changes; avoid production behavior changes unless required.
+4) Do not weaken E2EE, auth, anonymity, or privacy protections.
+5) Follow AGENTS.md and repository policy.
+EOF
+    } > "$PROMPT_FILE"
+
+    run_codex_from_prompt
+
+    POST_FIX_HASH="$(working_tree_patch_hash)"
+    if [[ "$PRE_FIX_HASH" == "$POST_FIX_HASH" ]]; then
+      echo "Codex produced no file changes while checks were failing; retrying." >&2
+      sleep 1
+    fi
+
+    attempt=$((attempt + 1))
+  done
 fi
 
 git add -A

@@ -89,6 +89,7 @@ Both runners perform these core steps (with runner-specific logic in the middle)
    - `docker compose down -v --remove-orphans`
    - `docker compose build app`
 9. Run required local checks.
+   - If checks fail, rerun Codex with failure output and retry checks (up to a configured attempt limit).
 10. Create signed commit (unless explicitly disabled by env var).
 11. Push branch and open PR.
 
@@ -122,7 +123,7 @@ Script: `scripts/codex_daily_issue_runner.sh`
 
 Pick one open issue labeled for automation, implement it with Codex, run required checks, and open a PR.
 
-The prompt directs Codex to make only code/test changes; invariant checks are run once by the runner after Codex finishes.
+The prompt directs Codex to make only code/test changes. The runner executes invariant checks and, on failure, asks Codex for a focused fix before retrying checks.
 
 ### CLI flags
 
@@ -134,7 +135,8 @@ The prompt directs Codex to make only code/test changes; invariant checks are ru
 If `--issue` is not provided:
 
 - Only issues with label `agent-eligible` are considered (default behavior).
-- Dependabot-authored issues are prioritized first within eligible issues.
+- Eligible issues are sorted by lowest-risk first using label signals (`risk:low`, `low-risk`, docs/tests/chore/dependencies style labels).
+- Within the same risk level, Dependabot-authored issues are prioritized first.
 - If no eligible issue is found, the run exits without changes.
 
 If `--issue <number>` is provided:
@@ -184,6 +186,7 @@ These controls are intentionally conservative. They reduce the chance that user-
 - `HUSHLINE_DAILY_ELIGIBLE_LABEL` (default `agent-eligible`)
 - `HUSHLINE_DAILY_REQUIRE_ELIGIBLE_LABEL` (default `1`)
 - `HUSHLINE_DAILY_REBUILD_STRATEGY` (default `on-change`, options: `always`, `on-change`, `never`)
+- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `0`, meaning unlimited retries)
 
 ## Coverage Gap Runner
 
@@ -204,8 +207,9 @@ Measure current test coverage, ask Codex to close gaps, run checks, and open a P
 - If current coverage already meets target and `--force` is not set, exits without changes.
 - Otherwise generates a prompt including uncovered coverage rows.
 - Prompts Codex for code/test changes only; runner executes checks itself.
-- Rebuild timing is strategy-controlled and defaults to rebuilding only when coverage is below target.
+- Rebuild timing is strategy-controlled and defaults to rebuilding at runner start (`always`).
 - Runs Codex to make targeted test-oriented improvements.
+- If checks fail, reruns Codex with failure output and retries checks up to the configured attempt limit.
 - Runs local checks, commits, and opens PR.
 
 ### Main checks (when `HUSHLINE_COVERAGE_RUN_CHECKS=1`)
@@ -223,7 +227,8 @@ Measure current test coverage, ask Codex to close gaps, run checks, and open a P
 - `HUSHLINE_COVERAGE_NO_GPG_SIGN` (default `0`)
 - `HUSHLINE_TARGET_COVERAGE` (default `100`)
 - `HUSHLINE_COVERAGE_REPORT_LINES` (default `80`)
-- `HUSHLINE_COVERAGE_REBUILD_STRATEGY` (default `on-gap`, options: `always`, `on-gap`, `never`)
+- `HUSHLINE_COVERAGE_REBUILD_STRATEGY` (default `always`, options: `always`, `on-gap`, `never`)
+- `HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS` (default `0`, meaning unlimited retries)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
 
