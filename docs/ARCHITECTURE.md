@@ -1,4 +1,4 @@
-# Runtime Architecture (ASCII)
+# Runtime Architecture
 
 Human-owned only (non-agentic): release and infrastructure control plane.
 
