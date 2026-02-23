@@ -78,6 +78,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Run order and schedule:
   - Coverage first at `00:00`
   - Daily issue second at `02:00`, and it only proceeds when no bot PR is open from the coverage run.
+- Daily issue eligibility:
+  - Daily issue automation must only process issues explicitly labeled `agent-eligible`.
 - One-bot-PR guard:
   - Both runners must exit early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
   - This enforces one bot PR at a time and avoids duplicate compute.
