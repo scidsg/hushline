@@ -131,7 +131,8 @@ run_with_timeout() {
   timeout_flag="$(mktemp)"
   rm -f "$timeout_flag" >/dev/null 2>&1 || true
 
-  "$@" &
+  # Preserve stdin for backgrounded commands (needed for codex prompt via "< file").
+  "$@" <&0 &
   cmd_pid=$!
 
   # Use a single-process watchdog so we can reliably terminate it without leaving
