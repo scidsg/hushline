@@ -72,21 +72,18 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 ## Automation Runners
 
-- Runner docs: `docs/RUNNERS.md`
-- Coverage runner script: `scripts/codex_coverage_gap_runner.sh`
-- Daily issue runner script: `scripts/codex_daily_issue_runner.sh`
-- Run order and schedule:
-  - Coverage first at `00:00`
-  - Daily issue second at `02:00`, and it only proceeds when no bot PR is open from the coverage run.
+- Runner docs: `docs/AGENT_RUNNER.md`
+- Daily issue runner script: `scripts/agent_daily_issue_runner.sh`
 - Daily issue eligibility:
-  - Daily issue automation must only process issues explicitly labeled `agent-eligible`.
+  - Daily issue automation processes one open issue labeled `agent-eligible` or `low-risk`.
 - One-bot-PR guard:
-  - Both runners must exit early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
-  - This enforces one bot PR at a time and avoids duplicate compute.
+  - Runner exits early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
 - Required runner behavior:
   - Start real runs with a destructive rebuild (`docker compose down -v --remove-orphans`, then `docker compose build app`).
   - Run required validation checks locally before opening PRs (`make lint`, `make test`, plus runner-specific checks).
   - Use signed commits that verify on GitHub.
+  - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.
+  - Return to `main` after PR creation.
 
 ## Required Checks Before PR
 
