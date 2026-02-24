@@ -27,7 +27,9 @@ Behavior:
    - `docker compose down -v --remove-orphans`
    - `docker compose build app`
 6. Run Codex on the issue.
-7. Run local workflow-equivalent checks before PR creation.
+7. Run required local checks before PR creation:
+   - `make lint`
+   - `make test`
 8. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks.
 9. Commit with signing enabled and open a PR.
 10. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
@@ -38,20 +40,12 @@ Reliability controls:
 - Bounded command execution with timeout guards.
 - Stale-lock reclamation if a previous process died unexpectedly.
 
-## Local Workflow-Equivalent Checks
+## Local Required Checks
 
-The runner executes local equivalents of PR workflows:
+The runner enforces these local checks before opening a PR:
 
-- Run Linter and Tests (`lint`, `test`, `test-with-alembic`)
-- Database Migration Compatibility Tests
-- E2EE and Privacy Regressions
-- GDPR Compliance
-- CCPA Compliance
-- Dependency Security Audit (Python + Node runtime + full Node audit)
-- Workflow Security Checks (`actionlint` + unsafe interpolation guard)
-- Lighthouse Accessibility (must be `100`)
-- Lighthouse Performance (must be `>=95`)
-- W3C HTML/CSS validation flow
+- `make lint`
+- `make test`
 
 ## Install LaunchAgent (macOS)
 
@@ -120,7 +114,7 @@ Dry run:
 - `HUSHLINE_DAILY_PRIMARY_LABEL` (default `agent-eligible`)
 - `HUSHLINE_DAILY_FALLBACK_LABEL` (default `low-risk`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
-- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `3`, `0` means unlimited)
+- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `0` for unlimited retries)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
 - `HUSHLINE_DAILY_DESTROY_AT_END` (default `1`)
 - `HUSHLINE_RETRY_MAX_ATTEMPTS` (default `3`)

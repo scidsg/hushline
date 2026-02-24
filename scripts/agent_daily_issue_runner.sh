@@ -35,7 +35,7 @@ BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
-MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-3}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-0}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS:-3600}"
 DESTROY_AT_END="${HUSHLINE_DAILY_DESTROY_AT_END:-1}"
 PRIMARY_LABEL="${HUSHLINE_DAILY_PRIMARY_LABEL:-agent-eligible}"
@@ -120,48 +120,46 @@ run_with_timeout() {
     return $?
   fi
 
-  if [[ -n "$TIMEOUT_BIN" ]]; then
+  local command_name="${1:-}"
+  if [[ -n "$TIMEOUT_BIN" && -n "$command_name" ]] && ! declare -F "$command_name" >/dev/null 2>&1; then
     "$TIMEOUT_BIN" "$timeout_seconds" "$@"
     return $?
   fi
 
-  # Fallback timeout implementation that preserves stdin/stdout/stderr.
-  # Use a temp script file so stdin remains available to child commands.
-  local timeout_helper rc
-  timeout_helper="$(mktemp)"
-  cat > "$timeout_helper" <<'PY'
-import subprocess
-import sys
+  # Shell fallback keeps function calls working (e.g. ensure_actionlint).
+  local timeout_flag cmd_pid watchdog_pid rc
+  timeout_flag="$(mktemp)"
+  rm -f "$timeout_flag" >/dev/null 2>&1 || true
 
-timeout_seconds = int(sys.argv[1])
-command = sys.argv[2:]
+  "$@" &
+  cmd_pid=$!
 
-process = subprocess.Popen(
-    command,
-    stdin=sys.stdin,
-    stdout=sys.stdout,
-    stderr=sys.stderr,
-)
-
-try:
-    process.wait(timeout=timeout_seconds)
-except subprocess.TimeoutExpired:
-    process.terminate()
-    try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
-    sys.exit(124)
-
-sys.exit(process.returncode)
-PY
+  (
+    sleep "$timeout_seconds"
+    if kill -0 "$cmd_pid" >/dev/null 2>&1; then
+      : > "$timeout_flag"
+      kill -TERM "$cmd_pid" >/dev/null 2>&1 || true
+      sleep 10
+      if kill -0 "$cmd_pid" >/dev/null 2>&1; then
+        kill -KILL "$cmd_pid" >/dev/null 2>&1 || true
+      fi
+    fi
+  ) &
+  watchdog_pid=$!
 
   set +e
-  "$PYTHON_BIN" "$timeout_helper" "$timeout_seconds" "$@"
+  wait "$cmd_pid"
   rc=$?
   set -e
-  rm -f "$timeout_helper" >/dev/null 2>&1 || true
+
+  kill "$watchdog_pid" >/dev/null 2>&1 || true
+  wait "$watchdog_pid" 2>/dev/null || true
+
+  if [[ -f "$timeout_flag" ]]; then
+    rm -f "$timeout_flag" >/dev/null 2>&1 || true
+    return 124
+  fi
+  rm -f "$timeout_flag" >/dev/null 2>&1 || true
   return "$rc"
 }
 
@@ -483,33 +481,6 @@ run_local_workflow_checks() {
 
   run_check_capture "Run Linter and Tests / lint" make lint || return 1
   run_check_capture "Run Linter and Tests / test" make test PYTEST_ADDOPTS="--skip-local-only" || return 1
-  run_check_capture "Run Linter and Tests / test-with-alembic" make test PYTEST_ADDOPTS="--alembic --skip-local-only" || return 1
-  run_check_capture "Database Migration Compatibility Tests" make test TESTS=tests/test_migrations.py PYTEST_ADDOPTS="--alembic --skip-local-only" || return 1
-
-  run_check_capture "E2EE and Privacy Regressions" \
-    make test \
-      TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" \
-      PYTEST_ADDOPTS="--skip-local-only" || return 1
-  run_check_capture "GDPR Compliance" \
-    make test \
-      TESTS="tests/test_gdpr_compliance.py" \
-      PYTEST_ADDOPTS="--skip-local-only" || return 1
-  run_check_capture "CCPA Compliance" \
-    make test \
-      TESTS="tests/test_ccpa_compliance.py" \
-      PYTEST_ADDOPTS="--skip-local-only" || return 1
-
-  run_check_capture "Dependency Security Audit / Python" \
-    docker compose run --rm app bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt' || return 1
-  run_check_capture "Dependency Security Audit / Node Runtime" npm audit --omit=dev --package-lock-only || return 1
-  run_check_capture "Dependency Security Audit / Node Full" npm audit --package-lock-only || return 1
-
-  run_check_capture "Workflow Security / install actionlint" ensure_actionlint || return 1
-  run_check_capture "Workflow Security / actionlint" actionlint -color || return 1
-  run_check_capture "Workflow Security / unsafe interpolation guard" run_workflow_security_interpolation_check || return 1
-
-  run_check_capture "Install Lighthouse CLI" npm install -g lighthouse || return 1
-  run_check_capture "Lighthouse + W3C Validators" run_web_quality_workflows || return 1
 }
 
 run_codex_from_prompt() {
@@ -680,7 +651,11 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
       exit 1
     fi
 
-    echo "Workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
+    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]]; then
+      echo "Workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
+    else
+      echo "Workflow checks failed (attempt ${attempt}/unlimited); asking Codex to self-heal." >&2
+    fi
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     PRE_FIX_HASH="$(working_tree_patch_hash)"
     build_fix_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$BRANCH_NAME" "$FAILURE_LOG_TAIL"
@@ -715,14 +690,7 @@ Issue: $ISSUE_URL
 Branch: $BRANCH_NAME
 
 Local workflow-equivalent checks executed:
-- Run Linter and Tests (lint, test, test-with-alembic)
-- Database Migration Compatibility Tests
-- E2EE and Privacy Regressions
-- GDPR Compliance
-- CCPA Compliance
-- Dependency Security Audit (Python + Node runtime + Node full)
-- Workflow Security Checks (actionlint + interpolation guard)
-- W3C Validators + Lighthouse Accessibility + Lighthouse Performance
+- Run Linter and Tests (lint, test)
 
 Codex summary:
 $SUMMARY
