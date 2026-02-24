@@ -126,7 +126,10 @@ run_with_timeout() {
   fi
 
   # Fallback timeout implementation that preserves stdin/stdout/stderr.
-  "$PYTHON_BIN" - "$timeout_seconds" "$@" <<'PY'
+  # Use a temp script file so stdin remains available to child commands.
+  local timeout_helper rc
+  timeout_helper="$(mktemp)"
+  cat > "$timeout_helper" <<'PY'
 import subprocess
 import sys
 
@@ -153,6 +156,13 @@ except subprocess.TimeoutExpired:
 
 sys.exit(process.returncode)
 PY
+
+  set +e
+  "$PYTHON_BIN" "$timeout_helper" "$timeout_seconds" "$@"
+  rc=$?
+  set -e
+  rm -f "$timeout_helper" >/dev/null 2>&1 || true
+  return "$rc"
 }
 
 run_check() {
