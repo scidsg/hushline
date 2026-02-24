@@ -7,12 +7,12 @@ This repository has two automation runner scripts:
 
 Scheduling now happens through a single machine-local entrypoint:
 
-- `/Users/scidsg/.codex/bin/agent-runner`
+- `$HOME/.codex/bin/agent-runner`
 
 `agent-runner` executes:
 
-1. `/Users/scidsg/.codex/bin/codex_coverage_cron.sh`
-2. `/Users/scidsg/.codex/bin/codex_daily_cron.sh` (only if coverage runner exits cleanly)
+1. `$HOME/.codex/bin/codex_coverage_cron.sh`
+2. `$HOME/.codex/bin/codex_daily_cron.sh` (only if coverage runner exits cleanly)
 
 Both runners are designed to:
 
@@ -48,10 +48,10 @@ This prevents repeated rebuilds and duplicate automation work while an existing 
 ## Scheduler
 
 - Label: `org.scidsg.agent-runner`
-- Plist: `/Users/scidsg/.codex/launchd/org.scidsg.agent-runner.plist`
-- Entrypoint: `/Users/scidsg/.codex/bin/agent-runner`
+- Plist: `$HOME/.codex/launchd/org.scidsg.agent-runner.plist`
+- Entrypoint: `$HOME/.codex/bin/agent-runner`
 - Schedule: `00:00` local time (daily)
-- Log file: `/Users/scidsg/.codex/logs/agent-runner.log`
+- Log file: `$HOME/.codex/logs/agent-runner.log`
 
 LaunchAgents are a macOS mechanism. Linux/Windows require a different scheduler.
 
@@ -59,10 +59,10 @@ LaunchAgents are a macOS mechanism. Linux/Windows require a different scheduler.
 
 Machine-local scheduler/wrapper files (not committed in this repo):
 
-- `/Users/scidsg/.codex/launchd/org.scidsg.agent-runner.plist`
-- `/Users/scidsg/.codex/bin/agent-runner`
-- `/Users/scidsg/.codex/bin/codex_coverage_cron.sh`
-- `/Users/scidsg/.codex/bin/codex_daily_cron.sh`
+- `$HOME/.codex/launchd/org.scidsg.agent-runner.plist`
+- `$HOME/.codex/bin/agent-runner`
+- `$HOME/.codex/bin/codex_coverage_cron.sh`
+- `$HOME/.codex/bin/codex_daily_cron.sh`
 
 Repository scripts (committed):
 
@@ -254,7 +254,7 @@ For GitHub "Verified" status, the signing key must be registered as a signing ke
 
 - `HUSHLINE_HEALTHCHECK_SCRIPT` (default `scripts/healthcheck.sh`)
 - `HUSHLINE_GH_ACCOUNT` (default `hushline-dev`)
-- `HUSHLINE_GH_TOKEN_FILE` (default `/Users/scidsg/.config/hushline/gh_token`)
+- `HUSHLINE_GH_TOKEN_FILE` (default `$HOME/.config/hushline/gh_token`)
 - `HUSHLINE_HEALTHCHECK_MIN_FREE_GB` (default `8`)
 - `HUSHLINE_HEALTHCHECK_REQUIRE_KEYCHAIN_TOKEN` (default `1`)
 - `HUSHLINE_HEALTHCHECK_REQUIRE_DOCKER` (default `1`)
