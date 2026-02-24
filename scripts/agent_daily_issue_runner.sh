@@ -125,37 +125,34 @@ run_with_timeout() {
     return $?
   fi
 
-  # Fallback timeout implementation for macOS when timeout/gtimeout is unavailable.
-  # Do not read/copy stdin here; launchd stdin can be non-tty and block forever.
-  local command_pid watcher_pid rc
+  # Fallback timeout implementation that preserves stdin/stdout/stderr.
+  "$PYTHON_BIN" - "$timeout_seconds" "$@" <<'PY'
+import subprocess
+import sys
 
-  (
-    "$@"
-  ) &
-  command_pid=$!
+timeout_seconds = int(sys.argv[1])
+command = sys.argv[2:]
 
-  (
-    sleep "$timeout_seconds"
-    if kill -0 "$command_pid" 2>/dev/null; then
-      kill -TERM "$command_pid" 2>/dev/null || true
-      sleep 5
-      kill -KILL "$command_pid" 2>/dev/null || true
-    fi
-  ) &
-  watcher_pid=$!
+process = subprocess.Popen(
+    command,
+    stdin=sys.stdin,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+)
 
-  set +e
-  wait "$command_pid"
-  rc=$?
-  set -e
+try:
+    process.wait(timeout=timeout_seconds)
+except subprocess.TimeoutExpired:
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+    sys.exit(124)
 
-  kill "$watcher_pid" >/dev/null 2>&1 || true
-  wait "$watcher_pid" >/dev/null 2>&1 || true
-
-  if [[ "$rc" == "143" || "$rc" == "137" ]]; then
-    return 124
-  fi
-  return "$rc"
+sys.exit(process.returncode)
+PY
 }
 
 run_check() {
