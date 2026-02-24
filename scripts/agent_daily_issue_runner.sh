@@ -126,19 +126,11 @@ run_with_timeout() {
   fi
 
   # Fallback timeout implementation for macOS when timeout/gtimeout is unavailable.
-  local command_pid watcher_pid rc stdin_file=""
-
-  if [[ ! -t 0 ]]; then
-    stdin_file="$(mktemp)"
-    cat > "$stdin_file"
-  fi
+  # Do not read/copy stdin here; launchd stdin can be non-tty and block forever.
+  local command_pid watcher_pid rc
 
   (
-    if [[ -n "$stdin_file" ]]; then
-      "$@" < "$stdin_file"
-    else
-      "$@"
-    fi
+    "$@"
   ) &
   command_pid=$!
 
@@ -159,10 +151,6 @@ run_with_timeout() {
 
   kill "$watcher_pid" >/dev/null 2>&1 || true
   wait "$watcher_pid" >/dev/null 2>&1 || true
-
-  if [[ -n "$stdin_file" ]]; then
-    rm -f "$stdin_file" >/dev/null 2>&1 || true
-  fi
 
   if [[ "$rc" == "143" || "$rc" == "137" ]]; then
     return 124
