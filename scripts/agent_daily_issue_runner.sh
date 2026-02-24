@@ -134,17 +134,18 @@ run_with_timeout() {
   "$@" &
   cmd_pid=$!
 
-  (
-    sleep "$timeout_seconds"
-    if kill -0 "$cmd_pid" >/dev/null 2>&1; then
-      : > "$timeout_flag"
-      kill -TERM "$cmd_pid" >/dev/null 2>&1 || true
-      sleep 10
-      if kill -0 "$cmd_pid" >/dev/null 2>&1; then
-        kill -KILL "$cmd_pid" >/dev/null 2>&1 || true
-      fi
-    fi
-  ) &
+  # Use a single-process watchdog so we can reliably terminate it without leaving
+  # orphaned sleep children that keep check-output pipes open.
+  perl -e '
+    my ($timeout, $pid, $flag) = @ARGV;
+    sleep $timeout;
+    exit 0 unless kill 0, $pid;
+    open(my $fh, ">", $flag) or exit 0;
+    close($fh);
+    kill "TERM", $pid;
+    sleep 10;
+    kill "KILL", $pid if kill 0, $pid;
+  ' "$timeout_seconds" "$cmd_pid" "$timeout_flag" >/dev/null 2>&1 &
   watchdog_pid=$!
 
   set +e
@@ -556,6 +557,7 @@ require_cmd npm
 require_cmd curl
 require_cmd rg
 require_cmd shasum
+require_cmd perl
 
 if command -v python >/dev/null 2>&1; then
   PYTHON_BIN="python"
