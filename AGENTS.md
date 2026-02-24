@@ -138,8 +138,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Approved Models
 
 - Only approved models may be used for code changes.
-- Approved OpenAI models (as of 2026-02-13):
-  - `gpt-5.3-codex` (primary/default for coding tasks)
+- Approved models:
+  - `gpt-5.3-codex xhigh`
 - Unapproved models must not be used to author or modify production code without explicit changes to this document.
 - If an approved model is unavailable, stop and do not substitute another model unless this document is updated first.
 - If an agent believes another model should be approved, an Issue must be opened with clear rationale. Data must support the request.
