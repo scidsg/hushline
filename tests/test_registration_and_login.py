@@ -137,6 +137,15 @@ def test_register_page_loads(client: FlaskClient) -> None:
     response = client.get(url_for("register"))
     assert response.status_code == 200
     assert "<h2>Register</h2>" in response.text
+    assert 'data-submit-spinner="true"' in response.text
+
+
+def test_login_page_loads(client: FlaskClient) -> None:
+    """Test if the login page loads successfully."""
+    response = client.get(url_for("login"))
+    assert response.status_code == 200
+    assert "<h2>Login</h2>" in response.text
+    assert 'data-submit-spinner="true"' in response.text
 
 
 def test_user_login_after_registration(client: FlaskClient) -> None:

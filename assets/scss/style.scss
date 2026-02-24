@@ -1825,6 +1825,41 @@ input[type="file"]::file-selector-button {
   box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
 }
 
+button[data-submit-spinner-init="true"] {
+  position: relative;
+}
+
+button[data-submit-spinner-init="true"] .submit-button-label {
+  display: inline-block;
+}
+
+button[data-submit-spinner-init="true"] .submit-button-spinner {
+  display: none;
+  width: 1rem;
+  height: 1rem;
+  border: 0.125rem solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+}
+
+button[data-submit-spinner-init="true"].is-loading .submit-button-label {
+  opacity: 0;
+}
+
+button[data-submit-spinner-init="true"].is-loading .submit-button-spinner {
+  display: block;
+  position: absolute;
+  top: calc(50% - 0.5rem);
+  left: calc(50% - 0.5rem);
+  animation: submit-button-spinner-rotate 0.75s linear infinite;
+}
+
+@keyframes submit-button-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 textarea {
   height: 320px;
 }

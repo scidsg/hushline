@@ -95,6 +95,7 @@
     method="POST"
     action="{{ url_for('profile', username=username.username) }}"
     id="messageForm"
+    data-submit-spinner="true"
     onsubmit="return false;"
   >
     {{ form.hidden_tag() }}
