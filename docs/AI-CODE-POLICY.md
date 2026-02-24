@@ -1,12 +1,12 @@
-# AI Code Policy for Hush Line
+# Agentic Code Policy for Hush Line
 
 Have thoughts? Read this document first, then contribute to the conversation here: https://github.com/orgs/scidsg/discussions/1313
 
-This policy defines when Hush Line work can be AI-first versus human-first, based on risk and operational impact. Use it as a gating checklist before implementation: if a task touches funding, production infrastructure, authentication, payments, or other high-risk surfaces, human ownership is required; low-risk work can be AI-led with a qualified human operator. For example, an engineer should lead engineering tasks, and a designer should lead design tasks. The target operating mix is roughly 70% human-first and 30% AI-first, measured quarterly from merged PRs using an `ownership-mode` classification (`human-first` or `ai-first`).
+This policy defines when Hush Line work can be agent-first versus human-first, based on risk and operational impact. Use it as a gating checklist before implementation: if a task touches funding, production infrastructure, authentication, payments, or other high-risk surfaces, human ownership is required; low-risk work can be AI-led with a qualified human operator. For example, an engineer should lead engineering tasks, and a designer should lead design tasks. The target operating mix is roughly 70% human-first and 30% AI-first, measured quarterly from merged PRs using an `ownership-mode` classification (`human-first` or `agent-first`).
 
 ## Decision Matrix
 
-| #   | Decision / Stage                                                                         | Risk                | Ownership Mode | Human Lead                | AI Usage Guidance (Codex 5.3+ or equivalent)                                          | Human Required When...                                                                                        | Recommended Outcome                                                       |
+| #   | Decision / Stage                                                                         | Risk                | Ownership Mode | Human Lead                | AI Usage Guidance                                          | Human Required When...                                                                                        | Recommended Outcome                                                       |
 | --- | ---------------------------------------------------------------------------------------- | ------------------- | -------------- | ------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | 1   | Build a prototype that solves a real problem                                             | Low                 | AI-First       | Any                       | Use AI agents to rapidly scaffold, iterate, and test assumptions                      | Scope becomes unclear, or domain constraints are legal/safety-critical                                        | Produce a working prototype and clear problem statement                   |
 | 2   | Are you seeking funding?                                                                 | Very High           | Human-First    | Executive + Finance/Legal | AI optional, but should be used minimally for better results                          | Any fundraising strategy, investor materials, diligence, financial modeling, legal structure, and commitments | Funding work is human-owned end-to-end                                    |
@@ -22,20 +22,20 @@ This policy defines when Hush Line work can be AI-first versus human-first, base
 
 ## Practical Policy
 
-| Risk Tier | Typical Work                                                  | Delivery Model           |
-| --------- | ------------------------------------------------------------- | ------------------------ |
-| Very High | Payments/financial data, sensitive compliance scope, strategy | Human-owned end-to-end   |
-| High      | Databases, auth, CI/CD, production infra                      | Human-owned end-to-end   |
-| Medium    | Productization artifacts, early architecture decisions        | AI drafts, human decides |
-| Low       | UI tweaks, internal tools, non-sensitive logic, local apps    | AI builds, human reviews |
+| Risk Tier | Typical Work                                                  | Delivery Model              |
+| --------- | ------------------------------------------------------------- | --------------------------- |
+| Very High | Payments/financial data, sensitive compliance scope, strategy | Human-owned end-to-end      |
+| High      | Databases, auth, CI/CD, production infra                      | Human-owned end-to-end      |
+| Medium    | Productization artifacts, early architecture decisions        | Agent drafts, human decides |
+| Low       | UI tweaks, internal tools, non-sensitive logic, local apps    | Agent builds, human reviews |
 
 ## Funding Rule
 
-All funding-related work is human-owned end-to-end. AI may be used only for internal brainstorming or research notes and should not be used to generate investor-facing deliverables without full human authorship and review.
+All funding-related work is human-owned end-to-end. Agents may be used only for internal brainstorming or research notes and should not be used to generate investor-facing deliverables without full human authorship and review.
 
 ## Operating Rules
 
-1. Default to AI-first for low-risk work.
+1. Default to agent-first for low-risk work.
 2. Require human ownership for anything high-risk or very high-risk.
 3. Escalate from low-risk to high-risk immediately if scope starts touching DB, auth, env vars, or payments.
 4. Keep auditability: document who approved risk classification, deployment path, and `ownership-mode`.
