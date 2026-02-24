@@ -71,9 +71,9 @@ Open <http://localhost:8080>.
 
 Report security issues through GitHub Security Advisories when possible, or via: <https://tips.hushline.app/to/hushline-security>.
 
-## AI Coding Policy
+## Agentic Coding Policy
 
-Hush Line uses a risk-based model for AI-assisted development. Canonical policy: [`docs/AI-CODE-POLICY.md`](./docs/AI-CODE-POLICY.md).
+Hush Line uses a risk-based model for agentic software development. Canonical policy: [`docs/AI-CODE-POLICY.md`](./docs/AI-CODE-POLICY.md).
 
 Quick summary:
 
