@@ -73,6 +73,72 @@ document.addEventListener("DOMContentLoaded", function () {
 
   setupFlashDismiss();
 
+  function setupSubmitSpinners() {
+    const forms = document.querySelectorAll("form[data-submit-spinner='true']");
+    forms.forEach((form) => {
+      const method = (form.getAttribute("method") || "GET").toUpperCase();
+      if (method !== "POST" && method !== "GET") {
+        return;
+      }
+
+      const submitButton = form.querySelector(
+        "button[type='submit'], input[type='submit']",
+      );
+      if (
+        !submitButton ||
+        submitButton.tagName !== "BUTTON" ||
+        submitButton.dataset.submitSpinnerInit === "true"
+      ) {
+        return;
+      }
+
+      const labelText = submitButton.textContent.trim();
+      submitButton.textContent = "";
+
+      const label = document.createElement("span");
+      label.className = "submit-button-label";
+      label.textContent = labelText;
+
+      const spinner = document.createElement("span");
+      spinner.className = "submit-button-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+
+      submitButton.appendChild(label);
+      submitButton.appendChild(spinner);
+      submitButton.dataset.submitSpinnerInit = "true";
+
+      const setLoading = () => {
+        submitButton.classList.add("is-loading");
+        submitButton.setAttribute("aria-busy", "true");
+      };
+
+      const clearLoading = () => {
+        submitButton.classList.remove("is-loading");
+        submitButton.removeAttribute("aria-busy");
+      };
+
+      form.addEventListener("submit", function () {
+        setLoading();
+      });
+
+      const observer = new MutationObserver(function () {
+        if (submitButton.classList.contains("is-loading") && !submitButton.disabled) {
+          clearLoading();
+        }
+      });
+      observer.observe(submitButton, {
+        attributes: true,
+        attributeFilter: ["disabled"],
+      });
+
+      window.addEventListener("pageshow", function () {
+        clearLoading();
+      });
+    });
+  }
+
+  setupSubmitSpinners();
+
   function setupStatusForm() {
     const statusForm = document.getElementById("statusForm");
     if (!statusForm) return;
