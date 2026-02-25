@@ -90,7 +90,6 @@ CODEX_OUTPUT_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
 CHECK_LOG_FILE="$(mktemp)"
-MANUAL_TESTING_PROMPT_REQUIREMENT=$'5) End your final response with this exact block and issue-specific steps:\nMANUAL_TESTING_STEPS_BEGIN\n1. ...\n2. ...\nMANUAL_TESTING_STEPS_END'
 
 cleanup() {
   rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
@@ -501,21 +500,12 @@ run_codex_from_prompt() {
       - < "$PROMPT_FILE"
 }
 
-extract_manual_testing_steps() {
-  awk '
-    BEGIN {capture=0}
-    /^MANUAL_TESTING_STEPS_BEGIN$/ {capture=1; next}
-    /^MANUAL_TESTING_STEPS_END$/ {capture=0; exit}
-    capture {print}
-  ' "$CODEX_OUTPUT_FILE" \
-    | sed 's/\r$//' \
-    | sed '/^[[:space:]]*$/d'
-}
-
-generate_manual_testing_steps_fallback() {
+generate_manual_testing_steps() {
   local issue_number="$1"
-  local branch_name="$2"
-  local changed_files changed_files_line
+  local issue_title="$2"
+  local issue_body="$3"
+  local branch_name="$4"
+  local changed_files changed_files_line issue_bullets issue_checks_line
 
   changed_files="$(
     git diff --name-only "${BASE_BRANCH}...${branch_name}" \
@@ -528,12 +518,31 @@ generate_manual_testing_steps_fallback() {
     changed_files_line="$(printf '%s\n' "$changed_files" | tr '\n' ',' | sed 's/,$//')"
   fi
 
+  issue_bullets="$(
+    printf '%s\n' "$issue_body" \
+      | sed 's/\r$//' \
+      | awk '
+          /^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/ {
+            line=$0
+            sub(/^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/, "", line)
+            if (length(line) > 0) print line
+          }
+        ' \
+      | head -n 6
+  )"
+
+  issue_checks_line="review the issue body details"
+  if [[ -n "$issue_bullets" ]]; then
+    issue_checks_line="$(printf '%s\n' "$issue_bullets" | tr '\n' '; ' | sed 's/; $//' | cut -c1-500)"
+  fi
+
   cat <<EOF2
 1. Run make issue-bootstrap.
 2. Start the required app services for QA (for example: docker compose up -d app).
-3. Validate the acceptance criteria for issue #$issue_number end-to-end.
-4. Manually verify behavior touched by changed paths: $changed_files_line.
-5. Run regression smoke checks for login, the primary flow, and logout.
+3. Reproduce and verify issue #$issue_number ($issue_title) end-to-end.
+4. Confirm issue-specific checks: $issue_checks_line.
+5. Manually verify behavior touched by changed paths: $changed_files_line.
+6. Run regression smoke checks for login, the primary flow, and logout.
 EOF2
 }
 
@@ -559,7 +568,6 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
-$MANUAL_TESTING_PROMPT_REQUIREMENT
 EOF2
 }
 
@@ -587,7 +595,6 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
-$MANUAL_TESTING_PROMPT_REQUIREMENT
 EOF2
 }
 
@@ -725,10 +732,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
 
   SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
-  MANUAL_TESTING_STEPS="$(extract_manual_testing_steps)"
-  if [[ -z "$MANUAL_TESTING_STEPS" ]]; then
-    MANUAL_TESTING_STEPS="$(generate_manual_testing_steps_fallback "$ISSUE_NUMBER" "$BRANCH_NAME")"
-  fi
+  MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
   {
     cat <<EOF2
 Automated daily issue runner.

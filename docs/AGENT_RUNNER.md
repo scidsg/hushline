@@ -32,7 +32,7 @@ Behavior:
    - `make lint`
    - `make test`
 8. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks.
-9. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from Codex output, with diff-based fallback).
+9. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
 10. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
 
 Reliability controls:
