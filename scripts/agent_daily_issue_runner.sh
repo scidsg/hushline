@@ -810,10 +810,11 @@ run_coverage_gap_first() {
   run_issue_bootstrap
 
   local coverage_rc=0
-  set +e
-  run_coverage_target_check
-  coverage_rc=$?
-  set -e
+  if run_coverage_target_check; then
+    coverage_rc=0
+  else
+    coverage_rc=$?
+  fi
 
   if [[ "$coverage_rc" == "0" ]]; then
     echo "Coverage pre-check passed at ${LAST_COVERAGE_PERCENT}%."
@@ -844,10 +845,11 @@ run_coverage_gap_first() {
   local attempt=1
   while true; do
     if run_full_workflow_checks; then
-      set +e
-      run_coverage_target_check
-      coverage_rc=$?
-      set -e
+      if run_coverage_target_check; then
+        coverage_rc=0
+      else
+        coverage_rc=$?
+      fi
       if [[ "$coverage_rc" == "0" ]]; then
         break
       fi
