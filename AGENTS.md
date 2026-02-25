@@ -76,9 +76,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Runner docs: `docs/AGENT_RUNNER.md`
 - Daily issue runner script: `scripts/agent_daily_issue_runner.sh`
 - Daily issue eligibility:
-  - Runner first performs a live coverage pre-pass and prioritizes closing coverage gaps to target before issue work.
-  - Daily issue automation processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
-  - When coverage target is satisfied, daily issue automation processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
+  - Runner first performs a live coverage pre-pass and prioritizes closing coverage gaps to `100%` before issue work.
+  - Only when coverage is `100%`, daily issue automation processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
 - One-bot-PR guard:
   - Runner exits early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
 - Required runner behavior:
