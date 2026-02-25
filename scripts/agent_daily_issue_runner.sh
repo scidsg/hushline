@@ -35,7 +35,7 @@ BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
-MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-0}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-3}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS:-3600}"
 DESTROY_AT_END="${HUSHLINE_DAILY_DESTROY_AT_END:-1}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
@@ -51,13 +51,22 @@ KEYCHAIN_PATH="${HUSHLINE_GH_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keycha
 RETRY_MAX_ATTEMPTS="${HUSHLINE_RETRY_MAX_ATTEMPTS:-3}"
 RETRY_BASE_DELAY_SECONDS="${HUSHLINE_RETRY_BASE_DELAY_SECONDS:-5}"
 LOCK_DIR="${HUSHLINE_DAILY_LOCK_DIR:-/tmp/hushline-agent-runner.lock}"
+RUN_LOG_GIT_PATH="docs/agent-run-log/"
+RUN_LOG_DIR="$REPO_DIR/${RUN_LOG_GIT_PATH%/}"
+RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_LOG_FILE="$RUN_LOG_DIR/run-${RUN_LOG_TIMESTAMP}-pid$$.log"
 
 PYTHON_BIN=""
 TIMEOUT_BIN=""
 LAST_COVERAGE_PERCENT=""
 
-if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[0-9]+$ ]]; then
-  echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 0)" >&2
+mkdir -p "$RUN_LOG_DIR"
+: > "$RUN_LOG_FILE"
+echo "Run log file: $RUN_LOG_FILE" | tee -a "$RUN_LOG_FILE"
+exec >> "$RUN_LOG_FILE" 2>&1
+
+if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 1)" >&2
   exit 1
 fi
 
@@ -258,11 +267,12 @@ repair_cleanup_permissions() {
 
 run_git_clean_with_auto_repair() {
   local clean_flag="$1"
+  shift
   local clean_output=""
   local rc=0
 
   set +e
-  clean_output="$(git clean "$clean_flag" 2>&1)"
+  clean_output="$(git clean "$clean_flag" "$@" 2>&1)"
   rc=$?
   set -e
   if [[ -n "$clean_output" ]]; then
@@ -275,7 +285,7 @@ run_git_clean_with_auto_repair() {
   if grep -Eiq 'failed to remove .*node_modules|permission denied' <<<"$clean_output"; then
     repair_cleanup_permissions "$REPO_DIR/node_modules"
     set +e
-    clean_output="$(git clean "$clean_flag" 2>&1)"
+    clean_output="$(git clean "$clean_flag" "$@" 2>&1)"
     rc=$?
     set -e
     if [[ -n "$clean_output" ]]; then
@@ -331,6 +341,8 @@ working_tree_patch_hash() {
 
 sync_repo_to_remote_base() {
   local clean_flag="-fdx"
+  local clean_exclude_flag="-e"
+  local clean_exclude_path="$RUN_LOG_GIT_PATH"
   echo "Synchronizing repository to origin/${BASE_BRANCH}."
   run_with_retry "fetch latest ${BASE_BRANCH}" run_check "Fetch latest ${BASE_BRANCH}" git fetch origin "$BASE_BRANCH" --prune
 
@@ -339,11 +351,11 @@ sync_repo_to_remote_base() {
   fi
 
   git reset --hard >/dev/null 2>&1 || true
-  run_git_clean_with_auto_repair "$clean_flag" >/dev/null 2>&1 || true
+  run_git_clean_with_auto_repair "$clean_flag" "$clean_exclude_flag" "$clean_exclude_path" >/dev/null 2>&1 || true
 
   run_check "Checkout ${BASE_BRANCH} from origin" git checkout -B "$BASE_BRANCH" "origin/$BASE_BRANCH"
   run_check "Reset to origin/${BASE_BRANCH}" git reset --hard "origin/$BASE_BRANCH"
-  run_check "Clean repository files" run_git_clean_with_auto_repair "$clean_flag"
+  run_check "Clean repository files" run_git_clean_with_auto_repair "$clean_flag" "$clean_exclude_flag" "$clean_exclude_path"
 }
 
 configure_bot_git_identity() {
@@ -367,6 +379,23 @@ count_open_bot_prs() {
     --limit 100 \
     --json number \
     --jq 'length'
+}
+
+count_open_human_prs() {
+  gh pr list \
+    --repo "$REPO_SLUG" \
+    --state open \
+    --limit 200 \
+    --json author \
+    --jq '
+      [
+        .[]
+        | (.author.login // "")
+        | select(length > 0)
+        | select(. != "'"$BOT_LOGIN"'")
+        | select(test("\\[bot\\]$") | not)
+      ] | length
+    '
 }
 
 issue_is_open() {
@@ -705,7 +734,7 @@ run_full_workflow_checks() {
 
   run_check_capture "Workflow Security Checks / actionlint" ensure_actionlint || return 1
   run_check_capture "Workflow Security Checks / event text interpolation" run_workflow_security_interpolation_check || return 1
-  run_check_capture "Dependency Security Audit / python" docker compose run --rm --no-deps app poetry run pip-audit || return 1
+  run_check_capture "Dependency Security Audit / python" docker compose run --rm --no-deps app bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && python -m pip_audit -r /tmp/requirements.txt' || return 1
   run_check_capture "Dependency Security Audit / node runtime" docker compose run --rm --no-deps app npm audit --omit=dev --package-lock-only || return 1
   run_check_capture "Dependency Security Audit / node full" docker compose run --rm --no-deps app npm audit --package-lock-only || return 1
   run_check_capture "Web Quality Checks / lighthouse + w3c" run_web_quality_workflows || return 1
@@ -859,16 +888,12 @@ run_coverage_gap_first() {
       fi
     fi
 
-    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]] && (( attempt >= MAX_FIX_ATTEMPTS )); then
+    if (( attempt >= MAX_FIX_ATTEMPTS )); then
       echo "Coverage work failed after ${attempt} attempt(s); reached retry limit ${MAX_FIX_ATTEMPTS}." >&2
       return 1
     fi
 
-    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]]; then
-      echo "Coverage or workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
-    else
-      echo "Coverage or workflow checks failed (attempt ${attempt}/unlimited); asking Codex to self-heal." >&2
-    fi
+    echo "Coverage or workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     PRE_FIX_HASH="$(working_tree_patch_hash)"
     build_coverage_fix_prompt "$FAILURE_LOG_TAIL"
@@ -1064,6 +1089,13 @@ run_with_retry "load GitHub token" load_gh_token
 acquire_run_lock
 run_with_retry "verify GitHub auth" gh auth status -h github.com >/dev/null
 
+OPEN_HUMAN_PRS="$(run_with_retry "list open human PRs" count_open_human_prs)"
+if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+  echo "Humans are at work, I'll check back in tomorrow..."
+  echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+  exit 0
+fi
+
 sync_repo_to_remote_base
 configure_bot_git_identity
 
@@ -1145,16 +1177,12 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
       break
     fi
 
-    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]] && (( attempt >= MAX_FIX_ATTEMPTS )); then
+    if (( attempt >= MAX_FIX_ATTEMPTS )); then
       echo "Workflow checks failed after ${attempt} attempt(s); reached retry limit ${MAX_FIX_ATTEMPTS}." >&2
       exit 1
     fi
 
-    if [[ "$MAX_FIX_ATTEMPTS" -gt 0 ]]; then
-      echo "Workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
-    else
-      echo "Workflow checks failed (attempt ${attempt}/unlimited); asking Codex to self-heal." >&2
-    fi
+    echo "Workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     PRE_FIX_HASH="$(working_tree_patch_hash)"
     build_fix_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$BRANCH_NAME" "$FAILURE_LOG_TAIL"
