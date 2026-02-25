@@ -31,10 +31,11 @@ jobs:
       - name: Run Lighthouse
         run: |
           for i in 1 2 3; do
-            if docker run --rm --network host \
+            if docker run --rm --network host --shm-size=1g \
               femtopixel/google-lighthouse \
               http://localhost:8080 \
               --only-categories=accessibility \
+              --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
               --output=json \
               --output-path=stdout \
               --quiet > lighthouse.json; then

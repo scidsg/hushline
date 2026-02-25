@@ -498,11 +498,12 @@ run_web_quality_workflows() {
   local lighthouse_attempt=0
   while true; do
     lighthouse_attempt=$((lighthouse_attempt + 1))
-    if docker run --rm \
+    if docker run --rm --shm-size=1g \
       "${lighthouse_network_args[@]}" \
       femtopixel/google-lighthouse \
       "${lighthouse_base_url}/" \
       --only-categories=accessibility \
+      --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
       --output=json \
       --output-path=stdout \
       --quiet > "$lh_accessibility"; then
@@ -527,12 +528,13 @@ run_web_quality_workflows() {
   lighthouse_attempt=0
   while true; do
     lighthouse_attempt=$((lighthouse_attempt + 1))
-    if docker run --rm \
+    if docker run --rm --shm-size=1g \
       "${lighthouse_network_args[@]}" \
       femtopixel/google-lighthouse \
       "${lighthouse_base_url}/directory" \
       --only-categories=performance \
       --preset=desktop \
+      --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
       --output=json \
       --output-path=stdout \
       --quiet > "$lh_performance"; then
