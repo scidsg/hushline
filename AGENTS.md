@@ -66,6 +66,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Local Commands
 
 - Start stack: `docker compose up`
+- Issue bootstrap (required before issue work): `./scripts/agent_issue_bootstrap.sh`
 - Lint: `make lint`
 - Tests: `make test`
 - Coverage (CI-style): `docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only`
@@ -79,7 +80,10 @@ This file provides operating guidance for coding agents working in the Hush Line
 - One-bot-PR guard:
   - Runner exits early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
 - Required runner behavior:
-  - Start real runs with a destructive rebuild (`docker compose down -v --remove-orphans`, then `docker compose build app`).
+  - Start each issue attempt with the issue bootstrap sequence:
+    - `docker compose down -v --remove-orphans`
+    - `docker compose up -d postgres blob-storage`
+    - `docker compose run --rm dev_data`
   - Run required validation checks locally before opening PRs (`make lint`, `make test`, plus runner-specific checks).
   - Use signed commits that verify on GitHub.
   - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.
@@ -145,6 +149,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Database / Docker Notes
 
 - If tests fail with Postgres shared memory or recovery-mode errors, run `docker compose down -v` and rerun tests on a fresh stack.
+- Before starting issue work, run the issue bootstrap sequence via `./scripts/agent_issue_bootstrap.sh`.
 - `dev_data` container is expected to exit after seeding.
 
 ## Documentation

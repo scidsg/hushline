@@ -55,6 +55,10 @@ migrate-prod: ## Run prod env (alembic) migrations
 dev-data: migrate-dev ## Run dev env migrations, and add dev data
 	$(CMD) poetry run ./scripts/dev_data.py
 
+.PHONY: issue-bootstrap
+issue-bootstrap: ## Reset Docker state and reseed dev_data before issue work
+	./scripts/agent_issue_bootstrap.sh
+
 .PHONY: lint
 lint: ## Lint the code
 	$(CMD) poetry run ruff format --check && \

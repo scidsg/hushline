@@ -73,6 +73,7 @@ def _latest_message_for(user: User) -> Message:
 def _authenticate_as(client: FlaskClient, user: User) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = user.id
+        sess["session_id"] = user.session_id
         sess["username"] = user.primary_username.username
         sess["is_authenticated"] = True
 
@@ -225,6 +226,7 @@ def test_contract_2fa_enable_then_disable_round_trip(client: FlaskClient, user: 
 
     with client.session_transaction() as sess:
         sess["user_id"] = user.id
+        sess["session_id"] = user.session_id
         sess["username"] = user.primary_username.username
         sess["is_authenticated"] = True
 

@@ -739,6 +739,7 @@ def test_premium_routes_redirect_to_login_when_user_missing_after_auth(
 ) -> None:
     with client.session_transaction() as session:
         session["user_id"] = 999999
+        session["session_id"] = "invalid-session-id"
         session["is_authenticated"] = True
         session["username"] = "ghost"
 

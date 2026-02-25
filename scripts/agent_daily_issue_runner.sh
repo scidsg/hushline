@@ -478,6 +478,10 @@ run_web_quality_workflows() {
   "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); errors=data.get("cssvalidation",{}).get("errors",[]); print("W3C CSS validation passed.") if not errors else (_ for _ in ()).throw(SystemExit(f"W3C CSS validation failed with {len(errors)} error(s)."))' "$css_json"
 }
 
+run_issue_bootstrap() {
+  run_check "Issue bootstrap" ./scripts/agent_issue_bootstrap.sh
+}
+
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
 
@@ -494,6 +498,52 @@ run_codex_from_prompt() {
       -C "$REPO_DIR" \
       -o "$CODEX_OUTPUT_FILE" \
       - < "$PROMPT_FILE"
+}
+
+generate_manual_testing_steps() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local issue_body="$3"
+  local branch_name="$4"
+  local changed_files changed_files_line issue_bullets issue_checks_line
+
+  changed_files="$(
+    git diff --name-only "${BASE_BRANCH}...${branch_name}" \
+      | sed '/^[[:space:]]*$/d' \
+      | head -n 12
+  )"
+
+  changed_files_line="see git diff"
+  if [[ -n "$changed_files" ]]; then
+    changed_files_line="$(printf '%s\n' "$changed_files" | tr '\n' ',' | sed 's/,$//')"
+  fi
+
+  issue_bullets="$(
+    printf '%s\n' "$issue_body" \
+      | sed 's/\r$//' \
+      | awk '
+          /^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/ {
+            line=$0
+            sub(/^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/, "", line)
+            if (length(line) > 0) print line
+          }
+        ' \
+      | head -n 6
+  )"
+
+  issue_checks_line="review the issue body details"
+  if [[ -n "$issue_bullets" ]]; then
+    issue_checks_line="$(printf '%s\n' "$issue_bullets" | tr '\n' '; ' | sed 's/; $//' | cut -c1-500)"
+  fi
+
+  cat <<EOF2
+1. Run make issue-bootstrap.
+2. Start the required app services for QA (for example: docker compose up -d app).
+3. Reproduce and verify issue #$issue_number ($issue_title) end-to-end.
+4. Confirm issue-specific checks: $issue_checks_line.
+5. Manually verify behavior touched by changed paths: $changed_files_line.
+6. Run regression smoke checks for login, the primary flow, and logout.
+EOF2
 }
 
 build_issue_prompt() {
@@ -630,8 +680,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
 
   run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
 
-  run_check "Docker reset (down -v)" docker compose down -v --remove-orphans
-  run_check "Docker rebuild app image" docker compose build app
+  run_issue_bootstrap
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_with_retry "run Codex for issue #$ISSUE_NUMBER" run_codex_from_prompt
@@ -683,6 +732,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
 
   SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
+  MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
   {
     cat <<EOF2
 Automated daily issue runner.
@@ -694,6 +744,9 @@ Branch: $BRANCH_NAME
 
 Local workflow-equivalent checks executed:
 - Run Linter and Tests (lint, test)
+
+Manual testing steps:
+$MANUAL_TESTING_STEPS
 
 Codex summary:
 $SUMMARY
