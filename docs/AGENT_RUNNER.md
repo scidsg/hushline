@@ -13,7 +13,7 @@ This runner automates one issue per day from this repository checkout only.
 
 Behavior:
 
-1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream full run output there.
+1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream run-scoped output there, while also appending full output to `~/.codex/logs/hushline-agent-runner.log`.
 2. Acquire an inter-run lock to prevent overlapping executions.
 3. Exit cleanly with `Humans are at work, I'll check back in tomorrow...` when any open human-authored PR exists.
 4. Force-sync to latest `main` on startup:
@@ -160,4 +160,5 @@ Dry run:
 - `HUSHLINE_RETRY_MAX_ATTEMPTS` (default `3`)
 - `HUSHLINE_RETRY_BASE_DELAY_SECONDS` (default `5`)
 - `HUSHLINE_DAILY_LOCK_DIR` (default `/tmp/hushline-agent-runner.lock`)
+- `HUSHLINE_DAILY_GLOBAL_LOG_FILE` (default `~/.codex/logs/hushline-agent-runner.log`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)

@@ -55,15 +55,39 @@ RUN_LOG_GIT_PATH="docs/agent-run-log/"
 RUN_LOG_DIR="$REPO_DIR/${RUN_LOG_GIT_PATH%/}"
 RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_FILE="$RUN_LOG_DIR/run-${RUN_LOG_TIMESTAMP}-pid$$.log"
+GLOBAL_LOG_FILE="${HUSHLINE_DAILY_GLOBAL_LOG_FILE:-$HOME/.codex/logs/hushline-agent-runner.log}"
+GLOBAL_LOG_DIR="$(dirname "$GLOBAL_LOG_FILE")"
 
 PYTHON_BIN=""
 TIMEOUT_BIN=""
 LAST_COVERAGE_PERCENT=""
+LOG_PIPE_FILE=""
+LOG_TEE_PID=""
 
-mkdir -p "$RUN_LOG_DIR"
+mkdir -p "$RUN_LOG_DIR" "$GLOBAL_LOG_DIR"
 : > "$RUN_LOG_FILE"
-echo "Run log file: $RUN_LOG_FILE" | tee -a "$RUN_LOG_FILE"
-exec >> "$RUN_LOG_FILE" 2>&1
+touch "$GLOBAL_LOG_FILE"
+LOG_PIPE_FILE="$(mktemp "/tmp/hushline-agent-runner-log-pipe.XXXXXX")"
+rm -f "$LOG_PIPE_FILE"
+mkfifo "$LOG_PIPE_FILE"
+tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" &
+LOG_TEE_PID=$!
+exec > "$LOG_PIPE_FILE" 2>&1
+echo "Run log file: $RUN_LOG_FILE"
+echo "Global log file: $GLOBAL_LOG_FILE"
+
+cleanup_log_fanout() {
+  if [[ -n "$LOG_PIPE_FILE" ]]; then
+    exec 1>&- 2>&- || true
+  fi
+  if [[ -n "$LOG_TEE_PID" ]]; then
+    wait "$LOG_TEE_PID" 2>/dev/null || true
+  fi
+  if [[ -n "$LOG_PIPE_FILE" ]]; then
+    rm -f "$LOG_PIPE_FILE" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_log_fanout EXIT
 
 if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
   echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 1)" >&2
@@ -128,6 +152,7 @@ PR_BODY_FILE="$(mktemp)"
 CHECK_LOG_FILE="$(mktemp)"
 
 cleanup() {
+  cleanup_log_fanout
   rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
   if [[ "$DESTROY_AT_END" == "1" ]]; then
     docker compose down -v --remove-orphans >/dev/null 2>&1 || true
