@@ -2393,10 +2393,17 @@ textarea#bio {
 }
 
 .directory-tabs {
+  display: flex;
+  align-items: center;
   position: sticky;
   top: calc(65px + env(safe-area-inset-top));
   z-index: 10;
   margin-top: 0.25rem;
+}
+
+.directory-tabs .tab-list {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
  .directory-top-anchor {
