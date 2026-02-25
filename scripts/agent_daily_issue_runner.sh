@@ -70,7 +70,7 @@ touch "$GLOBAL_LOG_FILE"
 LOG_PIPE_FILE="$(mktemp "/tmp/hushline-agent-runner-log-pipe.XXXXXX")"
 rm -f "$LOG_PIPE_FILE"
 mkfifo "$LOG_PIPE_FILE"
-tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" &
+tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" >/dev/null &
 LOG_TEE_PID=$!
 exec > "$LOG_PIPE_FILE" 2>&1
 echo "Run log file: $RUN_LOG_FILE"
