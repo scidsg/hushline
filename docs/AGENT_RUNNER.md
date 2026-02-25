@@ -24,23 +24,21 @@ Behavior:
    - `git reset --hard origin/main`
    - `git clean -fdx -e docs/agent-run-log/`
 5. Exit cleanly when any open PR exists authored by `hushline-dev`.
-6. Run a coverage pre-check (`pytest --cov hushline --cov-report term-missing -q --skip-local-only`).
-7. If coverage gate is enabled and coverage is below the required `100%` target, run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
-8. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, once coverage is `100%` (or immediately when coverage gate is disabled).
-9. Start each issue attempt with the issue bootstrap sequence:
+6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order.
+7. Start each issue attempt with the issue bootstrap sequence:
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
    - `docker compose run --rm dev_data`
-10. Run Codex on the issue.
-11. Run required local checks before PR creation:
+8. Run Codex on the issue.
+9. Run required local checks before PR creation:
    - `make lint`
    - `make test`
    - Workflow security checks (`actionlint`, untrusted event interpolation guard)
    - Dependency audits (`pip-audit`, `npm audit --omit=dev`, `npm audit`)
    - Web quality checks (Lighthouse accessibility/performance and W3C HTML/CSS validation)
-12. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks up to the configured retry limit.
-13. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
-14. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
+10. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks up to the configured retry limit.
+11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
+12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
 
 ## Workflow Diagram
 
@@ -51,19 +49,14 @@ Behavior:
 [Acquire lock + auth + human PR guard + sync to origin/main + bot PR guard]
    |
    v
-[Coverage gate enabled?] -- no --> [Select top issue from Roadmap/Agent Eligible]
-   |
-  yes
+[Select top issue from Roadmap/Agent Eligible]
    |
    v
-[Run coverage check]
+[Run Codex + workflow-equivalent checks]
    |
-   +-- coverage = 100% --> [Select top issue from Roadmap/Agent Eligible]
+   +-- checks pass --> [Open PR]
    |
-   +-- coverage < 100% --> [Generate coverage fixes + run checks]
-                              |
-                              v
-                         [Open coverage-gap PR and exit]
+   +-- checks fail after retry limit --> [Exit with failure]
 ```
 
 Reliability controls:
@@ -149,10 +142,7 @@ Dry run:
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
-- `HUSHLINE_DAILY_COVERAGE_GATE_ENABLED` (default `1`; set `0` to skip coverage pre-pass)
-- `HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT` (must be `100` when coverage gate is enabled)
-- `HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX` (default `codex/coverage-gap-`)
-- `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test plus coverage gate)
+- `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test)
 - `HUSHLINE_DAILY_PRETTIER_VERSION` (default `3.3.3`; used for runner tooling bootstrap)
 - `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `3`; must be integer `>= 1`)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
