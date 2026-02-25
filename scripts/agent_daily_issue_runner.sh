@@ -531,9 +531,24 @@ run_issue_bootstrap() {
   run_check "Issue bootstrap" ./scripts/agent_issue_bootstrap.sh
 }
 
+ensure_node_tooling() {
+  if [[ -x node_modules/.bin/prettier ]]; then
+    return 0
+  fi
+
+  echo "Prettier is missing; installing Node dependencies with npm ci."
+  run_check_capture "Install Node dependencies / npm ci" npm ci || return 1
+
+  if [[ ! -x node_modules/.bin/prettier ]]; then
+    echo "Prettier is still unavailable after npm ci." | tee -a "$CHECK_LOG_FILE" >&2
+    return 1
+  fi
+}
+
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
 
+  ensure_node_tooling || return 1
   run_check_capture "Run Linter and Tests / lint" make lint || return 1
   run_check_capture "Run Linter and Tests / test" make test PYTEST_ADDOPTS="--skip-local-only" || return 1
 }
