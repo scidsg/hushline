@@ -30,13 +30,23 @@ jobs:
 
       - name: Run Lighthouse
         run: |
-          docker run --rm --network host \
-            femtopixel/google-lighthouse \
-            http://localhost:8080 \
-            --only-categories=accessibility \
-            --output=json \
-            --output-path=stdout \
-            --quiet > lighthouse.json
+          for i in 1 2 3; do
+            if docker run --rm --network host \
+              femtopixel/google-lighthouse \
+              http://localhost:8080 \
+              --only-categories=accessibility \
+              --output=json \
+              --output-path=stdout \
+              --quiet > lighthouse.json; then
+              break
+            fi
+
+            if [ "$i" -eq 3 ]; then
+              echo "Lighthouse accessibility failed after ${i} attempts."
+              exit 1
+            fi
+            sleep $((i * 5))
+          done
 
       - name: Extract score
         run: |

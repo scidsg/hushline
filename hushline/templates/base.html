@@ -157,6 +157,22 @@
         --color-brand: oklch(from {{ brand_primary_color }} l c h);
         --theme-color-dark: {{ brand_primary_color_dark }};
       }
+
+      #primary-nav a,
+      .directory-tabs .tab,
+      .directory-tabs .tab-top-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2rem;
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
+      }
+
+      #primary-nav li,
+      .directory-tabs .tab-list li,
+      .directory-tabs .tab-top-item {
+        margin-bottom: 0.25rem;
+      }
     </style>
   </head>
 

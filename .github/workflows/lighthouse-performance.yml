@@ -50,14 +50,24 @@ jobs:
 
       - name: Run Lighthouse
         run: |
-          docker run --rm --network host \
-            femtopixel/google-lighthouse \
-            http://localhost:8080/directory \
-            --only-categories=performance \
-            --preset=desktop \
-            --output=json \
-            --output-path=stdout \
-            --quiet > lighthouse-performance.json
+          for i in 1 2 3; do
+            if docker run --rm --network host \
+              femtopixel/google-lighthouse \
+              http://localhost:8080/directory \
+              --only-categories=performance \
+              --preset=desktop \
+              --output=json \
+              --output-path=stdout \
+              --quiet > lighthouse-performance.json; then
+              break
+            fi
+
+            if [ "$i" -eq 3 ]; then
+              echo "Lighthouse performance failed after ${i} attempts."
+              exit 1
+            fi
+            sleep $((i * 5))
+          done
 
       - name: Extract score
         run: |
