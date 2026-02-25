@@ -532,14 +532,17 @@ run_issue_bootstrap() {
 }
 
 ensure_node_tooling() {
-  if [[ -x node_modules/.bin/prettier ]]; then
+  if docker compose run --rm --no-deps app sh -lc '[ -x node_modules/.bin/prettier ]'; then
     return 0
   fi
 
-  echo "Prettier is missing; installing Node dependencies with npm ci."
-  run_check_capture "Install Node dependencies / npm ci" npm ci || return 1
+  echo "Node tooling is missing; installing dependencies with npm ci in app container."
+  run_check_capture \
+    "Install Node dependencies / npm ci" \
+    docker compose run --rm --no-deps app sh -lc 'npm_config_update_notifier=false npm ci --no-audit --no-fund' \
+    || return 1
 
-  if [[ ! -x node_modules/.bin/prettier ]]; then
+  if ! docker compose run --rm --no-deps app sh -lc '[ -x node_modules/.bin/prettier ]'; then
     echo "Prettier is still unavailable after npm ci." | tee -a "$CHECK_LOG_FILE" >&2
     return 1
   fi
@@ -547,10 +550,11 @@ ensure_node_tooling() {
 
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
+  local runner_make_cmd="docker compose run --rm --no-deps app"
 
   ensure_node_tooling || return 1
-  run_check_capture "Run Linter and Tests / lint" make lint || return 1
-  run_check_capture "Run Linter and Tests / test" make test PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "Run Linter and Tests / lint" make lint CMD="$runner_make_cmd" || return 1
+  run_check_capture "Run Linter and Tests / test" make test CMD="$runner_make_cmd" PYTEST_ADDOPTS="--skip-local-only" || return 1
 }
 
 run_codex_from_prompt() {
