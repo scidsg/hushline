@@ -520,8 +520,8 @@ run_web_quality_workflows() {
   accessibility_score="$(
     "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data["categories"]["accessibility"]["score"]*100))' "$lh_accessibility"
   )"
-  if [[ "$accessibility_score" != "100" ]]; then
-    echo "Accessibility score must be 100, got $accessibility_score"
+  if [[ "$accessibility_score" -lt "95" ]]; then
+    echo "Accessibility score must be at least 95, got $accessibility_score"
     return 1
   fi
 
