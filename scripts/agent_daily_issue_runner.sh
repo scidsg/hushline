@@ -44,6 +44,7 @@ PRETTIER_VERSION="${HUSHLINE_DAILY_PRETTIER_VERSION:-3.3.3}"
 COVERAGE_GATE_ENABLED="${HUSHLINE_DAILY_COVERAGE_GATE_ENABLED:-1}"
 COVERAGE_TARGET_PERCENT="${HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT:-100}"
 COVERAGE_BRANCH_PREFIX="${HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
+FULL_SUITE_ENABLED="${HUSHLINE_DAILY_FULL_SUITE_ENABLED:-1}"
 GH_ACCOUNT="${HUSHLINE_GH_ACCOUNT:-hushline-dev}"
 KEYCHAIN_PATH="${HUSHLINE_GH_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keychain-db}"
 RETRY_MAX_ATTEMPTS="${HUSHLINE_RETRY_MAX_ATTEMPTS:-3}"
@@ -81,6 +82,11 @@ fi
 
 if ! [[ "$COVERAGE_TARGET_PERCENT" =~ ^[0-9]+$ ]] || (( COVERAGE_TARGET_PERCENT < 1 || COVERAGE_TARGET_PERCENT > 100 )); then
   echo "Invalid HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT: '$COVERAGE_TARGET_PERCENT' (expected integer 1-100)" >&2
+  exit 1
+fi
+
+if ! [[ "$FULL_SUITE_ENABLED" =~ ^[01]$ ]]; then
+  echo "Invalid HUSHLINE_DAILY_FULL_SUITE_ENABLED: '$FULL_SUITE_ENABLED' (expected 0 or 1)" >&2
   exit 1
 fi
 
@@ -464,10 +470,11 @@ run_web_quality_workflows() {
   local css_json="/tmp/hushline-agent-w3c-css.json"
   local lh_accessibility="/tmp/hushline-agent-lighthouse-accessibility.json"
   local lh_performance="/tmp/hushline-agent-lighthouse-performance.json"
+  local lighthouse_base_url="http://localhost:8080"
+  local -a lighthouse_network_args=()
 
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  npm install
-  npm run build:prod
+  docker compose run --rm webpack ash -lc 'npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:prod'
 
   docker compose up -d postgres blob-storage
   docker compose run --rm dev_data
@@ -483,31 +490,45 @@ run_web_quality_workflows() {
     sleep 2
   done
 
-  lighthouse http://localhost:8080 \
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    lighthouse_base_url="http://host.docker.internal:8080"
+  else
+    lighthouse_network_args=(--network host)
+  fi
+
+  docker run --rm \
+    "${lighthouse_network_args[@]}" \
+    -v "$REPO_DIR:/work" \
+    -w /work \
+    femtopixel/google-lighthouse \
+    "${lighthouse_base_url}/" \
     --only-categories=accessibility \
-    --chrome-flags="--headless" \
     --output=json \
     --output-path="$lh_accessibility"
 
   local accessibility_score
   accessibility_score="$(
-    node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); console.log(Math.round(data.categories.accessibility.score*100));' "$lh_accessibility"
+    "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data["categories"]["accessibility"]["score"]*100))' "$lh_accessibility"
   )"
   if [[ "$accessibility_score" != "100" ]]; then
     echo "Accessibility score must be 100, got $accessibility_score"
     return 1
   fi
 
-  lighthouse http://localhost:8080/directory \
+  docker run --rm \
+    "${lighthouse_network_args[@]}" \
+    -v "$REPO_DIR:/work" \
+    -w /work \
+    femtopixel/google-lighthouse \
+    "${lighthouse_base_url}/directory" \
     --only-categories=performance \
     --preset=desktop \
-    --chrome-flags="--headless" \
     --output=json \
     --output-path="$lh_performance"
 
   local performance_score
   performance_score="$(
-    node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); console.log(Math.round(data.categories.performance.score*100));' "$lh_performance"
+    "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data["categories"]["performance"]["score"]*100))' "$lh_performance"
   )"
   if [[ "$performance_score" -lt 95 ]]; then
     echo "Performance score must be at least 95, got $performance_score"
@@ -570,6 +591,35 @@ run_local_workflow_checks() {
   ensure_node_tooling || return 1
   run_check_capture "Run Linter and Tests / lint" make lint CMD="$runner_make_cmd" || return 1
   run_check_capture "Run Linter and Tests / test" make test CMD="$runner_make_cmd" PYTEST_ADDOPTS="--skip-local-only" || return 1
+}
+
+run_full_workflow_checks() {
+  run_local_workflow_checks || return 1
+
+  if [[ "$FULL_SUITE_ENABLED" != "1" ]]; then
+    return 0
+  fi
+
+  run_check_capture "Workflow Security Checks / actionlint" ensure_actionlint || return 1
+  run_check_capture "Workflow Security Checks / event text interpolation" run_workflow_security_interpolation_check || return 1
+  run_check_capture "Dependency Security Audit / python" docker compose run --rm --no-deps app poetry run pip-audit || return 1
+  run_check_capture "Dependency Security Audit / node runtime" docker compose run --rm --no-deps app npm audit --omit=dev --package-lock-only || return 1
+  run_check_capture "Dependency Security Audit / node full" docker compose run --rm --no-deps app npm audit --package-lock-only || return 1
+  run_check_capture "Web Quality Checks / lighthouse + w3c" run_web_quality_workflows || return 1
+}
+
+workflow_checks_summary_lines() {
+  cat <<EOF2
+- Run Linter and Tests (lint, test)
+EOF2
+
+  if [[ "$FULL_SUITE_ENABLED" == "1" ]]; then
+    cat <<EOF2
+- Workflow Security Checks (actionlint, event interpolation)
+- Dependency Security Audit (pip-audit, npm audit runtime/full)
+- Web quality checks (Lighthouse accessibility/performance, W3C HTML/CSS)
+EOF2
+  fi
 }
 
 extract_coverage_percent_from_log() {
@@ -689,7 +739,7 @@ run_coverage_gap_first() {
 
   local attempt=1
   while true; do
-    if run_local_workflow_checks; then
+    if run_full_workflow_checks; then
       set +e
       run_coverage_target_check
       coverage_rc=$?
@@ -736,6 +786,7 @@ run_coverage_gap_first() {
   run_with_retry "push branch ${coverage_branch_name}" git push -u origin "$coverage_branch_name"
 
   SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
+  CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
   {
     cat <<EOF2
 Automated coverage-gap runner.
@@ -745,7 +796,7 @@ Coverage achieved: ${LAST_COVERAGE_PERCENT}%
 Branch: $coverage_branch_name
 
 Local checks executed:
-- Run Linter and Tests (lint, test)
+$CHECKS_SUMMARY
 - Coverage gate (pytest --cov hushline --cov-report term-missing -q --skip-local-only)
 
 Codex summary:
@@ -980,7 +1031,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
 
   attempt=1
   while true; do
-    if run_local_workflow_checks; then
+    if run_full_workflow_checks; then
       break
     fi
 
@@ -1018,6 +1069,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
 
   SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
+  CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
   MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
   {
     cat <<EOF2
@@ -1029,7 +1081,7 @@ Issue: $ISSUE_URL
 Branch: $BRANCH_NAME
 
 Local workflow-equivalent checks executed:
-- Run Linter and Tests (lint, test)
+$CHECKS_SUMMARY
 
 Manual testing steps:
 $MANUAL_TESTING_STEPS

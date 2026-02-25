@@ -34,17 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Lighthouse
-        run: npm install -g lighthouse
-
       - name: Build assets
         run: |
-          npm install
-          npm run build:prod
+          docker compose run --rm webpack ash -lc 'npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:prod'
 
       - name: Start app
         run: |
@@ -62,16 +54,19 @@ jobs:
 
       - name: Run Lighthouse
         run: |
-          lighthouse http://localhost:8080/directory \
+          docker run --rm --network host \
+            -v "$PWD:/work" \
+            -w /work \
+            femtopixel/google-lighthouse \
+            http://localhost:8080/directory \
             --only-categories=performance \
             --preset=desktop \
-            --chrome-flags="--headless" \
             --output=json \
             --output-path=./lighthouse-performance.json
 
       - name: Extract score
         run: |
-          SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('lighthouse-performance.json','utf8')).categories.performance.score*100))")
+          SCORE=$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))")
           if [ "$SCORE" -lt 95 ]; then
             echo "Performance score must be at least 95, got $SCORE"
             exit 1

@@ -33,6 +33,9 @@ Behavior:
 9. Run required local checks before PR creation:
    - `make lint`
    - `make test`
+   - Workflow security checks (`actionlint`, untrusted event interpolation guard)
+   - Dependency audits (`pip-audit`, `npm audit --omit=dev`, `npm audit`)
+   - Web quality checks (Lighthouse accessibility/performance and W3C HTML/CSS validation)
 10. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks.
 11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
 12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
@@ -120,6 +123,7 @@ Dry run:
 - `HUSHLINE_DAILY_COVERAGE_GATE_ENABLED` (default `1`; set `0` to skip coverage pre-pass)
 - `HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT` (default `100`)
 - `HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX` (default `codex/coverage-gap-`)
+- `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test plus coverage gate)
 - `HUSHLINE_DAILY_PRETTIER_VERSION` (default `3.3.3`; used for runner tooling bootstrap)
 - `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `0` for unlimited retries)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
