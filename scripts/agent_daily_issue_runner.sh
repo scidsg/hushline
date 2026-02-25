@@ -500,6 +500,42 @@ run_codex_from_prompt() {
       - < "$PROMPT_FILE"
 }
 
+extract_manual_testing_steps() {
+  awk '
+    BEGIN {capture=0}
+    /^MANUAL_TESTING_STEPS_BEGIN$/ {capture=1; next}
+    /^MANUAL_TESTING_STEPS_END$/ {capture=0; exit}
+    capture {print}
+  ' "$CODEX_OUTPUT_FILE" \
+    | sed 's/\r$//' \
+    | sed '/^[[:space:]]*$/d'
+}
+
+generate_manual_testing_steps_fallback() {
+  local issue_number="$1"
+  local branch_name="$2"
+  local changed_files changed_files_line
+
+  changed_files="$(
+    git diff --name-only "${BASE_BRANCH}...${branch_name}" \
+      | sed '/^[[:space:]]*$/d' \
+      | head -n 12
+  )"
+
+  changed_files_line="see git diff"
+  if [[ -n "$changed_files" ]]; then
+    changed_files_line="$(printf '%s\n' "$changed_files" | tr '\n' ',' | sed 's/,$//')"
+  fi
+
+  cat <<EOF2
+1. Run make issue-bootstrap.
+2. Start the required app services for QA (for example: docker compose up -d app).
+3. Validate the acceptance criteria for issue #$issue_number end-to-end.
+4. Manually verify behavior touched by changed paths: $changed_files_line.
+5. Run regression smoke checks for login, the primary flow, and logout.
+EOF2
+}
+
 build_issue_prompt() {
   local issue_number="$1"
   local issue_title="$2"
@@ -522,6 +558,11 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) End your final response with this exact block and issue-specific steps:
+MANUAL_TESTING_STEPS_BEGIN
+1. ...
+2. ...
+MANUAL_TESTING_STEPS_END
 EOF2
 }
 
@@ -549,6 +590,11 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) End your final response with this exact block and issue-specific steps:
+MANUAL_TESTING_STEPS_BEGIN
+1. ...
+2. ...
+MANUAL_TESTING_STEPS_END
 EOF2
 }
 
@@ -686,6 +732,10 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
 
   SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
+  MANUAL_TESTING_STEPS="$(extract_manual_testing_steps)"
+  if [[ -z "$MANUAL_TESTING_STEPS" ]]; then
+    MANUAL_TESTING_STEPS="$(generate_manual_testing_steps_fallback "$ISSUE_NUMBER" "$BRANCH_NAME")"
+  fi
   {
     cat <<EOF2
 Automated daily issue runner.
@@ -699,11 +749,7 @@ Local workflow-equivalent checks executed:
 - Run Linter and Tests (lint, test)
 
 Manual testing steps:
-1. Run `make issue-bootstrap`
-2. Start the app stack needed for manual QA (for example: `docker compose up -d app`)
-3. Validate the issue acceptance criteria from the linked issue end-to-end in the browser
-4. Run authenticated smoke checks: login, inbox, key changed setting/page, logout
-5. Verify no obvious regressions in changed routes/templates/settings
+$MANUAL_TESTING_STEPS
 
 Codex summary:
 $SUMMARY
