@@ -10,3 +10,7 @@ When your code changes are ready, create a migration by running the command the 
 Migrations are tested as part of the test suite.
 You will need to write your own tests to ensure the upgrade and downgrade behave as expected.
 See [`./tests/test_migrations.py`](./tests/test_migrations.py) and [`./tests/migrations/`](./tests/migrations/) for examples.
+
+## Submit Loading Feedback
+
+The login, registration, and public submit-message forms use a submit-button spinner while POST/GET requests from those submit actions are in progress.

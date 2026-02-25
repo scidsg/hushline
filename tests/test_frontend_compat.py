@@ -19,3 +19,15 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "window.ReadableStream" in js
     assert 'typeof BigInt === "undefined"' in js
     assert "assertClientCryptoSupport();" in js
+
+
+def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
+    js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert "form[data-submit-spinner='true']" in js
+    assert "submit-button-label" in js
+    assert "submit-button-spinner" in js
+    assert 'attributeFilter: ["disabled"]' in js
+    assert 'button[data-submit-spinner-init="true"]' in scss
+    assert "@keyframes submit-button-spinner-rotate" in scss

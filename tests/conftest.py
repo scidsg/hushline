@@ -277,6 +277,7 @@ def admin_user2(app: Flask, user_password: str, database: str) -> User:
 def _authenticated_user(client: FlaskClient, user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = user.id
+        session["session_id"] = user.session_id
         session["username"] = user.primary_username.username
         session["is_authenticated"] = True
 
@@ -285,6 +286,7 @@ def _authenticated_user(client: FlaskClient, user: User) -> None:
 def _authenticated_admin_user(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin_user.id
+        session["session_id"] = admin_user.session_id
         session["username"] = admin_user.primary_username.username
         session["is_authenticated"] = True
 
@@ -307,6 +309,7 @@ def admin(app: Flask, user_password: str, database: str) -> User:
 def _authenticated_admin(client: FlaskClient, admin: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin.id
+        session["session_id"] = admin.session_id
         session["username"] = admin.primary_username.username
         session["is_authenticated"] = True
 

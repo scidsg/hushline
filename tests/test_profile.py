@@ -167,6 +167,7 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> No
     assert response.status_code == 200
 
     assert 'id="messageForm"' in response.text
+    assert 'data-submit-spinner="true"' in response.text
     assert "You can't send encrypted messages to this user through Hush Line" not in response.text
 
     user.pgp_key = None

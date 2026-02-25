@@ -1343,6 +1343,7 @@ def test_homepage_user(client: FlaskClient, user: User, admin: User) -> None:
     # "log in" the user to make the change
     with client.session_transaction() as session:
         session["user_id"] = admin.id
+        session["session_id"] = admin.session_id
         session["username"] = admin.primary_username.username
         session["is_authenticated"] = True
 
@@ -1401,6 +1402,7 @@ def test_homepage_reset_multiple_rows_error(
 def test_index_clears_invalid_session_user(client: FlaskClient) -> None:
     with client.session_transaction() as session:
         session["user_id"] = 999999
+        session["session_id"] = "invalid-session-id"
         session["is_authenticated"] = True
 
     resp = client.get(url_for("index"), follow_redirects=True)

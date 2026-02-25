@@ -139,6 +139,7 @@ def test_verify_2fa_login_redirects_to_login_and_clears_session_for_missing_user
 ) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = 999999
+        sess["session_id"] = "invalid-session-id"
         sess["is_authenticated"] = False
         sess["username"] = "missing-user"
 

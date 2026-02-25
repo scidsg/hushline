@@ -15,7 +15,13 @@ from flask import (
 from sqlalchemy import func
 from werkzeug.wrappers.response import Response
 
-from hushline.auth import authentication_required
+from hushline.auth import (
+    authentication_required,
+    clear_auth_session,
+    get_session_user,
+    rotate_user_session_id,
+    set_session_user,
+)
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -30,11 +36,7 @@ from hushline.routes.forms import LoginForm, RegistrationForm, TwoFactorForm
 def register_auth_routes(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str:
-        if (
-            session.get("is_authenticated", False)
-            and (user_id := session.get("user_id", False))
-            and db.session.get(User, user_id)
-        ):
+        if session.get("is_authenticated", False) and get_session_user():
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
@@ -153,7 +155,7 @@ def register_auth_routes(app: Flask) -> None:
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
-        if "user_id" in session and session.get("is_authenticated", False):
+        if session.get("is_authenticated", False) and get_session_user():
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
@@ -166,26 +168,26 @@ def register_auth_routes(app: Flask) -> None:
                 )
             ).one_or_none()
             if username and username.user.check_password(form.password.data):
-                session.permanent = True
-                session["user_id"] = username.user_id
-                session["username"] = username.username
-                session["is_authenticated"] = True
+                user = username.user
+                rotate_user_session_id(user)
 
                 # 2FA enabled?
-                if username.user.totp_secret:
-                    session["is_authenticated"] = False
+                if user.totp_secret:
+                    set_session_user(user=user, username=username.username, is_authenticated=False)
+                    db.session.commit()
                     return redirect(url_for("verify_2fa_login"))
 
-                auth_log = AuthenticationLog(user_id=username.user_id, successful=True)
+                set_session_user(user=user, username=username.username, is_authenticated=True)
+
+                auth_log = AuthenticationLog(user_id=user.id, successful=True)
                 db.session.add(auth_log)
                 db.session.commit()
 
-                user = db.session.get(User, username.user_id)
-                if user and not user.onboarding_complete:
+                if not user.onboarding_complete:
                     return redirect(url_for("onboarding"))
 
                 # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY") and user and user.tier_id is None:
+                if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
                 return redirect(url_for("inbox"))
@@ -196,9 +198,9 @@ def register_auth_routes(app: Flask) -> None:
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:
         # Redirect to login if the login process has not started yet
-        user = db.session.get(User, session.get("user_id"))
+        user = get_session_user()
         if not user:
-            session.clear()
+            clear_auth_session()
             return redirect(url_for("login"))
 
         if session.get("is_authenticated", False):
@@ -280,6 +282,11 @@ def register_auth_routes(app: Flask) -> None:
     @app.route("/logout")
     @authentication_required
     def logout() -> Response:
+        user = get_session_user()
+        if user:
+            rotate_user_session_id(user)
+            db.session.commit()
+
         session.clear()
         flash("👋 You have been logged out successfully.", "info")
         response = make_response(redirect(url_for("index")))
