@@ -81,13 +81,13 @@ if ! [[ "$PROJECT_ITEM_LIMIT" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-if [[ "$COVERAGE_GATE_ENABLED" != "1" ]]; then
-  echo "Invalid HUSHLINE_DAILY_COVERAGE_GATE_ENABLED: '$COVERAGE_GATE_ENABLED' (must be 1; coverage pre-pass is required)" >&2
+if ! [[ "$COVERAGE_GATE_ENABLED" =~ ^[01]$ ]]; then
+  echo "Invalid HUSHLINE_DAILY_COVERAGE_GATE_ENABLED: '$COVERAGE_GATE_ENABLED' (expected 0 or 1)" >&2
   exit 1
 fi
 
-if [[ "$COVERAGE_TARGET_PERCENT" != "100" ]]; then
-  echo "Invalid HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT: '$COVERAGE_TARGET_PERCENT' (must be 100)" >&2
+if [[ "$COVERAGE_GATE_ENABLED" == "1" && "$COVERAGE_TARGET_PERCENT" != "100" ]]; then
+  echo "Invalid HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT: '$COVERAGE_TARGET_PERCENT' (must be 100 when coverage gate is enabled)" >&2
   exit 1
 fi
 
@@ -802,6 +802,11 @@ EOF2
 }
 
 run_coverage_gap_first() {
+  if [[ "$COVERAGE_GATE_ENABLED" != "1" ]]; then
+    echo "Coverage pre-pass skipped (HUSHLINE_DAILY_COVERAGE_GATE_ENABLED=0)."
+    return 0
+  fi
+
   run_issue_bootstrap
 
   local coverage_rc=0

@@ -23,8 +23,8 @@ Behavior:
    - `git clean -fdx`
 3. Exit cleanly when any open PR exists authored by `hushline-dev`.
 4. Run a coverage pre-check (`pytest --cov hushline --cov-report term-missing -q --skip-local-only`).
-5. If coverage is below the required `100%` target, run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
-6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, only when coverage is `100%`.
+5. If coverage gate is enabled and coverage is below the required `100%` target, run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
+6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, once coverage is `100%` (or immediately when coverage gate is disabled).
 7. Start each issue attempt with the issue bootstrap sequence:
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
@@ -122,8 +122,8 @@ Dry run:
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
-- `HUSHLINE_DAILY_COVERAGE_GATE_ENABLED` (must be `1`; coverage pre-pass cannot be disabled)
-- `HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT` (must be `100`)
+- `HUSHLINE_DAILY_COVERAGE_GATE_ENABLED` (default `1`; set `0` to skip coverage pre-pass)
+- `HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT` (must be `100` when coverage gate is enabled)
 - `HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX` (default `codex/coverage-gap-`)
 - `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test plus coverage gate)
 - `HUSHLINE_DAILY_PRETTIER_VERSION` (default `3.3.3`; used for runner tooling bootstrap)
