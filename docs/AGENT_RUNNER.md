@@ -13,32 +13,34 @@ This runner automates one issue per day from this repository checkout only.
 
 Behavior:
 
-1. Acquire an inter-run lock to prevent overlapping executions.
-2. Force-sync to latest `main` on startup:
+1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream full run output there.
+2. Acquire an inter-run lock to prevent overlapping executions.
+3. Exit cleanly with `Humans are at work, I'll check back in tomorrow...` when any open human-authored PR exists.
+4. Force-sync to latest `main` on startup:
    - `git fetch origin main --prune`
    - `git reset --hard`
-   - `git clean -fdx`
+   - `git clean -fdx -e docs/agent-run-log/`
    - `git checkout -B main origin/main`
    - `git reset --hard origin/main`
-   - `git clean -fdx`
-3. Exit cleanly when any open PR exists authored by `hushline-dev`.
-4. Run a coverage pre-check (`pytest --cov hushline --cov-report term-missing -q --skip-local-only`).
-5. If coverage gate is enabled and coverage is below the required `100%` target, run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
-6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, once coverage is `100%` (or immediately when coverage gate is disabled).
-7. Start each issue attempt with the issue bootstrap sequence:
+   - `git clean -fdx -e docs/agent-run-log/`
+5. Exit cleanly when any open PR exists authored by `hushline-dev`.
+6. Run a coverage pre-check (`pytest --cov hushline --cov-report term-missing -q --skip-local-only`).
+7. If coverage gate is enabled and coverage is below the required `100%` target, run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
+8. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, once coverage is `100%` (or immediately when coverage gate is disabled).
+9. Start each issue attempt with the issue bootstrap sequence:
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
    - `docker compose run --rm dev_data`
-8. Run Codex on the issue.
-9. Run required local checks before PR creation:
+10. Run Codex on the issue.
+11. Run required local checks before PR creation:
    - `make lint`
    - `make test`
    - Workflow security checks (`actionlint`, untrusted event interpolation guard)
    - Dependency audits (`pip-audit`, `npm audit --omit=dev`, `npm audit`)
    - Web quality checks (Lighthouse accessibility/performance and W3C HTML/CSS validation)
-10. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks.
-11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
-12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
+12. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks up to the configured retry limit.
+13. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
+14. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
 
 ## Workflow Diagram
 
@@ -46,7 +48,7 @@ Behavior:
 [Start]
    |
    v
-[Acquire lock + sync to origin/main + bot PR guard]
+[Acquire lock + auth + human PR guard + sync to origin/main + bot PR guard]
    |
    v
 [Coverage gate enabled?] -- no --> [Select top issue from Roadmap/Agent Eligible]
@@ -68,6 +70,7 @@ Reliability controls:
 
 - Retry with backoff for transient fetch/GitHub/Codex/push/PR operations.
 - Bounded command execution with timeout guards.
+- Bounded self-heal attempts (`HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `3`).
 - Stale-lock reclamation if a previous process died unexpectedly.
 
 ## Local Required Checks
@@ -151,7 +154,7 @@ Dry run:
 - `HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX` (default `codex/coverage-gap-`)
 - `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test plus coverage gate)
 - `HUSHLINE_DAILY_PRETTIER_VERSION` (default `3.3.3`; used for runner tooling bootstrap)
-- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `0` for unlimited retries)
+- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `3`; must be integer `>= 1`)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
 - `HUSHLINE_DAILY_DESTROY_AT_END` (default `1`)
 - `HUSHLINE_RETRY_MAX_ATTEMPTS` (default `3`)
