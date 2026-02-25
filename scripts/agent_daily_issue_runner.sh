@@ -90,6 +90,7 @@ CODEX_OUTPUT_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
 CHECK_LOG_FILE="$(mktemp)"
+MANUAL_TESTING_PROMPT_REQUIREMENT=$'5) End your final response with this exact block and issue-specific steps:\nMANUAL_TESTING_STEPS_BEGIN\n1. ...\n2. ...\nMANUAL_TESTING_STEPS_END'
 
 cleanup() {
   rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
@@ -558,11 +559,7 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
-5) End your final response with this exact block and issue-specific steps:
-MANUAL_TESTING_STEPS_BEGIN
-1. ...
-2. ...
-MANUAL_TESTING_STEPS_END
+$MANUAL_TESTING_PROMPT_REQUIREMENT
 EOF2
 }
 
@@ -590,11 +587,7 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
-5) End your final response with this exact block and issue-specific steps:
-MANUAL_TESTING_STEPS_BEGIN
-1. ...
-2. ...
-MANUAL_TESTING_STEPS_END
+$MANUAL_TESTING_PROMPT_REQUIREMENT
 EOF2
 }
 
