@@ -31,13 +31,12 @@ jobs:
       - name: Run Lighthouse
         run: |
           docker run --rm --network host \
-            -v "$PWD:/work" \
-            -w /work \
             femtopixel/google-lighthouse \
             http://localhost:8080 \
             --only-categories=accessibility \
             --output=json \
-            --output-path=./lighthouse.json
+            --output-path=stdout \
+            --quiet > lighthouse.json
 
       - name: Extract score
         run: |

@@ -498,13 +498,12 @@ run_web_quality_workflows() {
 
   docker run --rm \
     "${lighthouse_network_args[@]}" \
-    -v "$REPO_DIR:/work" \
-    -w /work \
     femtopixel/google-lighthouse \
     "${lighthouse_base_url}/" \
     --only-categories=accessibility \
     --output=json \
-    --output-path="$lh_accessibility"
+    --output-path=stdout \
+    --quiet > "$lh_accessibility"
 
   local accessibility_score
   accessibility_score="$(
@@ -517,14 +516,13 @@ run_web_quality_workflows() {
 
   docker run --rm \
     "${lighthouse_network_args[@]}" \
-    -v "$REPO_DIR:/work" \
-    -w /work \
     femtopixel/google-lighthouse \
     "${lighthouse_base_url}/directory" \
     --only-categories=performance \
     --preset=desktop \
     --output=json \
-    --output-path="$lh_performance"
+    --output-path=stdout \
+    --quiet > "$lh_performance"
 
   local performance_score
   performance_score="$(

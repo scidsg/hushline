@@ -51,14 +51,13 @@ jobs:
       - name: Run Lighthouse
         run: |
           docker run --rm --network host \
-            -v "$PWD:/work" \
-            -w /work \
             femtopixel/google-lighthouse \
             http://localhost:8080/directory \
             --only-categories=performance \
             --preset=desktop \
             --output=json \
-            --output-path=./lighthouse-performance.json
+            --output-path=stdout \
+            --quiet > lighthouse-performance.json
 
       - name: Extract score
         run: |
