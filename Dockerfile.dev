@@ -26,10 +26,6 @@ RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" && \
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-
-RUN npm_config_update_notifier=false npm ci --omit=dev --no-audit --no-fund
-
 ENV PYTHONPATH=/app
 
 COPY pyproject.toml poetry.lock ./
