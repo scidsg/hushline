@@ -698,6 +698,13 @@ Branch: $BRANCH_NAME
 Local workflow-equivalent checks executed:
 - Run Linter and Tests (lint, test)
 
+Manual testing steps:
+1. Run `make issue-bootstrap`
+2. Start the app stack needed for manual QA (for example: `docker compose up -d app`)
+3. Validate the issue acceptance criteria from the linked issue end-to-end in the browser
+4. Run authenticated smoke checks: login, inbox, key changed setting/page, logout
+5. Verify no obvious regressions in changed routes/templates/settings
+
 Codex summary:
 $SUMMARY
 EOF2
