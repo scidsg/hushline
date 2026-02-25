@@ -29,7 +29,16 @@ async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function resolveTimeoutMs(value, fallbackMs) {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallbackMs;
+}
+
 async function login(baseUrl, context, username, password) {
+  await context.clearCookies();
   const page = await context.newPage();
   // Ensure the guidance modal does not block login interactions in auth sessions.
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
@@ -51,18 +60,19 @@ async function login(baseUrl, context, username, password) {
   await page.close();
 }
 
-async function runAction(page, action) {
+async function runAction(page, action, defaultWaitTimeoutMs) {
+  const timeoutMs = resolveTimeoutMs(action.timeoutMs, defaultWaitTimeoutMs);
   switch (action.type) {
     case "wait_for": {
       await page.waitForSelector(action.selector, {
-        timeout: action.timeoutMs || 10000,
+        timeout: timeoutMs,
       });
       return;
     }
     case "click": {
       if (action.waitForSelector) {
         await page.waitForSelector(action.waitForSelector, {
-          timeout: action.timeoutMs || 10000,
+          timeout: timeoutMs,
         });
       }
       await page.click(action.selector);
@@ -272,6 +282,10 @@ async function main() {
       ? manifest.themes
       : ["light", "dark"];
   const defaultSettleDelayMs = Number(manifest.settleDelayMs ?? 1000);
+  const defaultWaitTimeoutMs = resolveTimeoutMs(
+    process.env.SCREENSHOT_WAIT_TIMEOUT_MS || manifest.waitTimeoutMs,
+    20000,
+  );
   const sessions = manifest.sessions || {};
   const scenes = Array.isArray(manifest.scenes) ? manifest.scenes : [];
 
@@ -285,7 +299,6 @@ async function main() {
 
   const browser = await chromium.launch({ headless: true });
   const contexts = new Map();
-  const authenticatedContextKeys = new Set();
   const captured = [];
 
   function contextKey(sessionId, viewportId, theme, jsEnabled) {
@@ -331,13 +344,10 @@ async function main() {
       return false;
     }
 
-    const authKey = contextKey(sessionId, viewport.id, theme, jsEnabled);
-    if (authenticatedContextKeys.has(authKey)) {
-      return true;
-    }
-
+    // Authentication now rotates a server-side session id on each login.
+    // Re-authenticate each non-guest scene/context so captured pages never
+    // depend on stale cookies from a prior viewport/theme login.
     await login(baseUrl, ctx, sess.username, password);
-    authenticatedContextKeys.add(authKey);
     return true;
   }
 
@@ -402,7 +412,7 @@ async function main() {
                 hasOriginLoaded = true;
               }
             }
-            await runAction(page, action);
+            await runAction(page, action, defaultWaitTimeoutMs);
           }
         }
 
@@ -413,7 +423,7 @@ async function main() {
         if (scene.waitForSelector) {
           try {
             await page.waitForSelector(scene.waitForSelector, {
-              timeout: scene.timeoutMs || 10000,
+              timeout: resolveTimeoutMs(scene.timeoutMs, defaultWaitTimeoutMs),
             });
           } catch (err) {
             const sessionDir = sanitizeSlug(sessionId || "guest");
@@ -432,7 +442,7 @@ async function main() {
 
         if (Array.isArray(scene.actions)) {
           for (const action of scene.actions) {
-            await runAction(page, action);
+            await runAction(page, action, defaultWaitTimeoutMs);
           }
         }
 
