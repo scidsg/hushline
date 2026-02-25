@@ -101,6 +101,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Prefer tests that lock in user-visible behavior and security-critical outcomes.
 - For notification/email changes, validate all three modes: generic notification only, include message content, encrypt entire email body.
 - For encryption changes, ensure client-side encryption is covered and server-side fallback (JS disabled or no client payload) is covered.
+- For any change touching templates, static JS/CSS, response headers, or external integrations, add/update tests to verify CSP remains enforced and is not broadened unintentionally (for example in tests/test_security_headers.py).
+- If a CSP directive/source must be broadened, document explicit maintainer approval and risk rationale, and add tests that lock the change to the minimal required scope.
 
 ## Change Guidelines
 
