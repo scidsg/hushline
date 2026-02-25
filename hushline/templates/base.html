@@ -152,6 +152,12 @@
     {% block scripts %}{% endblock %}
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
+    <style>
+      :root {
+        --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        --theme-color-dark: {{ brand_primary_color_dark }};
+      }
+    </style>
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
