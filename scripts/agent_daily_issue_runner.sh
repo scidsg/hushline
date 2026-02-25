@@ -42,9 +42,6 @@ PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
 PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
-COVERAGE_GATE_ENABLED="${HUSHLINE_DAILY_COVERAGE_GATE_ENABLED:-1}"
-COVERAGE_TARGET_PERCENT="${HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT:-100}"
-COVERAGE_BRANCH_PREFIX="${HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
 FULL_SUITE_ENABLED="${HUSHLINE_DAILY_FULL_SUITE_ENABLED:-1}"
 GH_ACCOUNT="${HUSHLINE_GH_ACCOUNT:-hushline-dev}"
 KEYCHAIN_PATH="${HUSHLINE_GH_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keychain-db}"
@@ -60,7 +57,6 @@ GLOBAL_LOG_DIR="$(dirname "$GLOBAL_LOG_FILE")"
 
 PYTHON_BIN=""
 TIMEOUT_BIN=""
-LAST_COVERAGE_PERCENT=""
 LOG_PIPE_FILE=""
 LOG_TEE_PID=""
 
@@ -117,16 +113,6 @@ fi
 
 if ! [[ "$PROJECT_ITEM_LIMIT" =~ ^[1-9][0-9]*$ ]]; then
   echo "Invalid HUSHLINE_DAILY_PROJECT_ITEM_LIMIT: '$PROJECT_ITEM_LIMIT' (expected integer >= 1)" >&2
-  exit 1
-fi
-
-if ! [[ "$COVERAGE_GATE_ENABLED" =~ ^[01]$ ]]; then
-  echo "Invalid HUSHLINE_DAILY_COVERAGE_GATE_ENABLED: '$COVERAGE_GATE_ENABLED' (expected 0 or 1)" >&2
-  exit 1
-fi
-
-if [[ "$COVERAGE_GATE_ENABLED" == "1" && "$COVERAGE_TARGET_PERCENT" != "100" ]]; then
-  echo "Invalid HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT: '$COVERAGE_TARGET_PERCENT' (must be 100 when coverage gate is enabled)" >&2
   exit 1
 fi
 
@@ -785,207 +771,6 @@ EOF2
   fi
 }
 
-extract_coverage_percent_from_log() {
-  awk '
-    /^TOTAL[[:space:]]+/ {
-      for (i = 1; i <= NF; i++) {
-        if ($i ~ /%$/) {
-          gsub(/%/, "", $i)
-          print $i
-          exit
-        }
-      }
-    }
-  ' "$CHECK_LOG_FILE"
-}
-
-run_coverage_target_check() {
-  : > "$CHECK_LOG_FILE"
-  run_check_capture \
-    "Coverage gate / test" \
-    docker compose run --rm --no-deps app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only \
-    || return 1
-
-  local coverage_percent=""
-  coverage_percent="$(extract_coverage_percent_from_log)"
-  if [[ -z "$coverage_percent" ]] || ! [[ "$coverage_percent" =~ ^[0-9]+$ ]]; then
-    echo "Unable to determine coverage percent from pytest output." | tee -a "$CHECK_LOG_FILE" >&2
-    return 1
-  fi
-
-  LAST_COVERAGE_PERCENT="$coverage_percent"
-  if (( coverage_percent < COVERAGE_TARGET_PERCENT )); then
-    echo "Coverage gate: ${coverage_percent}% is below target ${COVERAGE_TARGET_PERCENT}%." | tee -a "$CHECK_LOG_FILE"
-    return 2
-  fi
-
-  echo "Coverage gate: ${coverage_percent}% meets target ${COVERAGE_TARGET_PERCENT}%." | tee -a "$CHECK_LOG_FILE"
-  return 0
-}
-
-build_coverage_prompt() {
-  cat > "$PROMPT_FILE" <<EOF2
-You are improving automated test coverage in $REPO_SLUG.
-
-Current measured line coverage: ${LAST_COVERAGE_PERCENT}%
-Target line coverage: at least ${COVERAGE_TARGET_PERCENT}%
-
-Requirements:
-1) Raise coverage to at least ${COVERAGE_TARGET_PERCENT}% with the smallest safe diff.
-2) Prefer test-only changes. If non-test changes are required for testability, keep behavior unchanged.
-3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
-4) Keep security, privacy, and E2EE protections intact.
-EOF2
-}
-
-build_coverage_fix_prompt() {
-  local failure_tail="$1"
-  cat > "$PROMPT_FILE" <<EOF2
-You are continuing coverage-gap work in $REPO_SLUG.
-
-Current measured line coverage: ${LAST_COVERAGE_PERCENT}%
-Target line coverage: at least ${COVERAGE_TARGET_PERCENT}%
-
-The previous attempt failed checks or still missed the coverage target.
-
-Most recent failed check output:
----BEGIN CHECK OUTPUT---
-$failure_tail
----END CHECK OUTPUT---
-
-Requirements:
-1) Fix only what is required for checks to pass and coverage to reach ${COVERAGE_TARGET_PERCENT}%.
-2) Keep diffs minimal and focused.
-3) Prefer test-only changes and preserve production behavior.
-4) Do not run lint/test/audit/lighthouse/w3c checks yourself.
-EOF2
-}
-
-run_coverage_gap_first() {
-  if [[ "$COVERAGE_GATE_ENABLED" != "1" ]]; then
-    echo "Coverage pre-pass skipped (HUSHLINE_DAILY_COVERAGE_GATE_ENABLED=0)."
-    return 0
-  fi
-
-  run_issue_bootstrap
-
-  local coverage_rc=0
-  if run_coverage_target_check; then
-    coverage_rc=0
-  else
-    coverage_rc=$?
-  fi
-
-  if [[ "$coverage_rc" == "0" ]]; then
-    echo "Coverage pre-check passed at ${LAST_COVERAGE_PERCENT}%."
-    return 0
-  fi
-
-  if [[ "$coverage_rc" != "2" ]]; then
-    echo "Coverage pre-check failed before issue selection." >&2
-    return 1
-  fi
-
-  if [[ "$DRY_RUN" == "1" ]]; then
-    echo "Dry run: coverage is ${LAST_COVERAGE_PERCENT}% (<${COVERAGE_TARGET_PERCENT}%). Coverage gaps would be handled first."
-    exit 0
-  fi
-
-  local coverage_branch_name="${COVERAGE_BRANCH_PREFIX}$(date +%Y%m%d-%H%M%S)"
-  run_check "Checkout branch for coverage gaps" git checkout -B "$coverage_branch_name" "$BASE_BRANCH"
-
-  build_coverage_prompt
-  run_with_retry "run Codex for coverage gaps" run_codex_from_prompt
-
-  if [[ -z "$(git status --porcelain)" ]]; then
-    echo "Coverage is below target, but Codex produced no changes." >&2
-    return 1
-  fi
-
-  local attempt=1
-  while true; do
-    if run_full_workflow_checks; then
-      if run_coverage_target_check; then
-        coverage_rc=0
-      else
-        coverage_rc=$?
-      fi
-      if [[ "$coverage_rc" == "0" ]]; then
-        break
-      fi
-      if [[ "$coverage_rc" != "2" ]]; then
-        echo "Coverage check command failed after Codex changes." >&2
-        return 1
-      fi
-    fi
-
-    if (( attempt >= MAX_FIX_ATTEMPTS )); then
-      echo "Coverage work failed after ${attempt} attempt(s); reached retry limit ${MAX_FIX_ATTEMPTS}." >&2
-      return 1
-    fi
-
-    echo "Coverage or workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
-    FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
-    PRE_FIX_HASH="$(working_tree_patch_hash)"
-    build_coverage_fix_prompt "$FAILURE_LOG_TAIL"
-    run_with_retry "run Codex coverage self-heal" run_codex_from_prompt
-    POST_FIX_HASH="$(working_tree_patch_hash)"
-    if [[ "$PRE_FIX_HASH" == "$POST_FIX_HASH" ]]; then
-      echo "Codex produced no file changes while coverage/checks were failing; retrying." >&2
-      sleep 1
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  OPEN_BOT_PRS="$(run_with_retry "re-check open bot PRs" count_open_bot_prs)"
-  if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-    echo "Skipped coverage-gap PR creation: another open PR by ${BOT_LOGIN} exists (${OPEN_BOT_PRS})."
-    exit 0
-  fi
-
-  git add -A
-  git commit -m "test: close coverage gaps to ${COVERAGE_TARGET_PERCENT}%"
-  run_with_retry "push branch ${coverage_branch_name}" git push -u origin "$coverage_branch_name"
-
-  SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
-  CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
-  {
-    cat <<EOF2
-Automated coverage-gap runner.
-
-Coverage target: >= ${COVERAGE_TARGET_PERCENT}%
-Coverage achieved: ${LAST_COVERAGE_PERCENT}%
-Branch: $coverage_branch_name
-
-Local checks executed:
-$CHECKS_SUMMARY
-- Coverage gate (pytest --cov hushline --cov-report term-missing -q --skip-local-only)
-
-Codex summary:
-$SUMMARY
-EOF2
-  } > "$PR_BODY_FILE"
-
-  PR_TITLE="Codex Coverage Gap: reach ${COVERAGE_TARGET_PERCENT}%"
-  PR_URL="$(
-    run_with_retry \
-      "create coverage-gap PR" \
-      gh pr create \
-        --repo "$REPO_SLUG" \
-        --base "$BASE_BRANCH" \
-        --head "$coverage_branch_name" \
-        --title "$PR_TITLE" \
-        --body-file "$PR_BODY_FILE"
-  )"
-
-  if ! run_check "Return to ${BASE_BRANCH}" git checkout "$BASE_BRANCH"; then
-    echo "Warning: unable to switch back to ${BASE_BRANCH} after coverage-gap PR creation." >&2
-  fi
-
-  echo "Opened coverage-gap PR: $PR_URL"
-  exit 0
-}
-
 run_codex_from_prompt() {
   run_with_timeout "$CHECK_TIMEOUT_SECONDS" \
     codex exec \
@@ -1135,8 +920,6 @@ if [[ "$OPEN_BOT_PRS" != "0" ]]; then
   echo "Skipped: open PR(s) by ${BOT_LOGIN} already exist (${OPEN_BOT_PRS})."
   exit 0
 fi
-
-run_coverage_gap_first
 
 ISSUE_CANDIDATE_NUMBERS=()
 if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
