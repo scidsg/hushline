@@ -40,6 +40,30 @@ Behavior:
 11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
 12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
 
+## Workflow Diagram
+
+```text
+[Start]
+   |
+   v
+[Acquire lock + sync to origin/main + bot PR guard]
+   |
+   v
+[Coverage gate enabled?] -- no --> [Select top issue from Roadmap/Agent Eligible]
+   |
+  yes
+   |
+   v
+[Run coverage check]
+   |
+   +-- coverage = 100% --> [Select top issue from Roadmap/Agent Eligible]
+   |
+   +-- coverage < 100% --> [Generate coverage fixes + run checks]
+                              |
+                              v
+                         [Open coverage-gap PR and exit]
+```
+
 Reliability controls:
 
 - Retry with backoff for transient fetch/GitHub/Codex/push/PR operations.
