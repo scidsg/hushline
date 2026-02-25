@@ -70,7 +70,13 @@ touch "$GLOBAL_LOG_FILE"
 LOG_PIPE_FILE="$(mktemp "/tmp/hushline-agent-runner-log-pipe.XXXXXX")"
 rm -f "$LOG_PIPE_FILE"
 mkfifo "$LOG_PIPE_FILE"
-tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" >/dev/null &
+# Under LaunchAgent, stdout/stderr are already redirected to the global log file.
+# Avoid writing GLOBAL_LOG_FILE directly in that mode to prevent duplicate lines.
+if [[ "${XPC_SERVICE_NAME:-}" == "org.scidsg.hushline-agent-runner" ]]; then
+  tee -a "$RUN_LOG_FILE" < "$LOG_PIPE_FILE" &
+else
+  tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" >/dev/null &
+fi
 LOG_TEE_PID=$!
 exec > "$LOG_PIPE_FILE" 2>&1
 echo "Run log file: $RUN_LOG_FILE"
