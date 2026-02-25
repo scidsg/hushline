@@ -24,7 +24,7 @@ Behavior:
 3. Exit cleanly when any open PR exists authored by `hushline-dev`.
 4. Run a coverage pre-check (`pytest --cov hushline --cov-report term-missing -q --skip-local-only`).
 5. If coverage is below the configured target (default `100%`), run Codex to close coverage gaps first and open a dedicated coverage-gap PR, then exit.
-6. Select one open issue labeled `agent-eligible` or `low-risk` only when coverage meets the target.
+6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order, only when coverage meets the target.
 7. Start each issue attempt with the issue bootstrap sequence:
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
@@ -117,8 +117,10 @@ Dry run:
 - `HUSHLINE_REPO_SLUG` (default `scidsg/hushline`)
 - `HUSHLINE_BASE_BRANCH` (default `main`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
-- `HUSHLINE_DAILY_PRIMARY_LABEL` (default `agent-eligible`)
-- `HUSHLINE_DAILY_FALLBACK_LABEL` (default `low-risk`)
+- `HUSHLINE_DAILY_PROJECT_OWNER` (default repo owner from `HUSHLINE_REPO_SLUG`, typically `scidsg`)
+- `HUSHLINE_DAILY_PROJECT_TITLE` (default `Hush Line Roadmap`)
+- `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
+- `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_COVERAGE_GATE_ENABLED` (default `1`; set `0` to skip coverage pre-pass)
 - `HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT` (default `100`)

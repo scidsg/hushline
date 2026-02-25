@@ -38,8 +38,10 @@ CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
 MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-0}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS:-3600}"
 DESTROY_AT_END="${HUSHLINE_DAILY_DESTROY_AT_END:-1}"
-PRIMARY_LABEL="${HUSHLINE_DAILY_PRIMARY_LABEL:-agent-eligible}"
-FALLBACK_LABEL="${HUSHLINE_DAILY_FALLBACK_LABEL:-low-risk}"
+PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
+PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
+PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
+PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 COVERAGE_GATE_ENABLED="${HUSHLINE_DAILY_COVERAGE_GATE_ENABLED:-1}"
 COVERAGE_TARGET_PERCENT="${HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT:-100}"
 COVERAGE_BRANCH_PREFIX="${HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
@@ -71,6 +73,11 @@ fi
 
 if ! [[ "$RETRY_BASE_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
   echo "Invalid HUSHLINE_RETRY_BASE_DELAY_SECONDS: '$RETRY_BASE_DELAY_SECONDS' (expected integer >= 0)" >&2
+  exit 1
+fi
+
+if ! [[ "$PROJECT_ITEM_LIMIT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Invalid HUSHLINE_DAILY_PROJECT_ITEM_LIMIT: '$PROJECT_ITEM_LIMIT' (expected integer >= 1)" >&2
   exit 1
 fi
 
@@ -362,45 +369,133 @@ count_open_bot_prs() {
     --jq 'length'
 }
 
-issue_has_allowed_label() {
+issue_is_open() {
   local issue_number="$1"
-  local labels_lower
-  labels_lower="$({
-    gh issue view "$issue_number" --repo "$REPO_SLUG" --json labels --jq '.labels[].name' \
-      | tr '[:upper:]' '[:lower:]'
+  local state
+  state="$({
+    gh issue view "$issue_number" --repo "$REPO_SLUG" --json state --jq .state
   } || true)"
-
-  local primary_lower fallback_lower
-  primary_lower="$(printf '%s' "$PRIMARY_LABEL" | tr '[:upper:]' '[:lower:]')"
-  fallback_lower="$(printf '%s' "$FALLBACK_LABEL" | tr '[:upper:]' '[:lower:]')"
-  printf '%s\n' "$labels_lower" | grep -Fx -- "$primary_lower" >/dev/null && return 0
-  printf '%s\n' "$labels_lower" | grep -Fx -- "$fallback_lower" >/dev/null && return 0
-  return 1
+  [[ "$state" == "OPEN" ]]
 }
 
-collect_issue_candidates() {
+resolve_project_number() {
+  local number
+  number="$({
+    gh api graphql \
+      -f owner="$PROJECT_OWNER" \
+      -f query='
+        query($owner: String!) {
+          user(login: $owner) {
+            projectsV2(first: 100) {
+              nodes {
+                number
+                title
+              }
+            }
+          }
+          organization(login: $owner) {
+            projectsV2(first: 100) {
+              nodes {
+                number
+                title
+              }
+            }
+          }
+        }
+      ' \
+      | PROJECT_TITLE="$PROJECT_TITLE" node -e '
+        const fs = require("fs");
+        const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+        const data = payload && payload.data ? payload.data : {};
+        const userProjects = data.user && data.user.projectsV2 && Array.isArray(data.user.projectsV2.nodes)
+          ? data.user.projectsV2.nodes
+          : [];
+        const orgProjects = data.organization && data.organization.projectsV2 && Array.isArray(data.organization.projectsV2.nodes)
+          ? data.organization.projectsV2.nodes
+          : [];
+        const projects = [...userProjects, ...orgProjects];
+        const target = String(process.env.PROJECT_TITLE || "").trim().toLowerCase();
+        const match = projects.find(
+          (project) => String((project && project.title) || "").trim().toLowerCase() === target,
+        );
+        if (match && Number.isInteger(match.number) && match.number > 0) {
+          process.stdout.write(String(match.number));
+        }
+      '
+  } || true)"
+  printf '%s\n' "$number"
+}
+
+collect_issue_candidates_from_project() {
+  local project_number="$1"
   local selected
   selected="$({
-    gh issue list \
-      --repo "$REPO_SLUG" \
-      --state open \
-      --limit 200 \
-      --json number,createdAt,labels \
-      | PRIMARY_LABEL="$PRIMARY_LABEL" FALLBACK_LABEL="$FALLBACK_LABEL" node -e '
+    gh project item-list \
+      "$project_number" \
+      --owner "$PROJECT_OWNER" \
+      --limit "$PROJECT_ITEM_LIMIT" \
+      --query "is:issue is:open status:\"$PROJECT_COLUMN\"" \
+      --format json \
+      | REPO_SLUG="$REPO_SLUG" node -e '
         const fs = require("fs");
-        const issues = JSON.parse(fs.readFileSync(0, "utf8"));
-        const primary = String(process.env.PRIMARY_LABEL || "").toLowerCase().trim();
-        const fallback = String(process.env.FALLBACK_LABEL || "").toLowerCase().trim();
-        const out = issues.filter((issue) => {
-          const labels = (issue.labels || [])
-            .map((l) => String(l && l.name ? l.name : "").toLowerCase().trim())
-            .filter(Boolean);
-          return labels.includes(primary) || labels.includes(fallback);
-        }).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        for (const item of out) process.stdout.write(`${item.number}\n`);
+        const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+        const items = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.items)
+            ? payload.items
+            : [];
+        const expectedRepo = String(process.env.REPO_SLUG || "").trim().toLowerCase();
+        const unique = new Set();
+
+        function getRepositorySlug(content) {
+          const repo = content && content.repository;
+          if (!repo) return "";
+          if (typeof repo === "string") return repo.toLowerCase();
+          const ownerLogin = repo.owner && repo.owner.login ? String(repo.owner.login) : "";
+          const repoName = repo.name ? String(repo.name) : "";
+          if (ownerLogin && repoName) return `${ownerLogin}/${repoName}`.toLowerCase();
+          return "";
+        }
+
+        function getIssueNumberFromUrl(url) {
+          const match = String(url || "").match(/\/issues\/(\d+)(?:$|[/?#])/);
+          return match ? Number(match[1]) : NaN;
+        }
+
+        for (const item of items) {
+          const content = item && item.content;
+          if (!content) continue;
+
+          const contentType = String(content.type || "").toLowerCase();
+          if (contentType && contentType !== "issue") continue;
+
+          const contentRepo = getRepositorySlug(content);
+          if (expectedRepo && contentRepo && contentRepo !== expectedRepo) continue;
+
+          let number = Number(content.number);
+          if (!Number.isInteger(number) || number <= 0) {
+            number = getIssueNumberFromUrl(content.url);
+          }
+          if (!Number.isInteger(number) || number <= 0) continue;
+          if (unique.has(number)) continue;
+          unique.add(number);
+          process.stdout.write(`${number}\n`);
+        }
       '
   } || true)"
   printf '%s\n' "$selected"
+}
+
+collect_issue_candidates() {
+  local project_number
+  project_number="$({
+    resolve_project_number
+  } || true)"
+  if [[ -z "$project_number" ]]; then
+    echo "Project '${PROJECT_TITLE}' was not found for owner '${PROJECT_OWNER}'." >&2
+    return 0
+  fi
+  collect_issue_candidates_from_project "$project_number"
 }
 
 ensure_actionlint() {
@@ -979,13 +1074,17 @@ run_coverage_gap_first
 
 ISSUE_CANDIDATE_NUMBERS=()
 if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
-  if ! issue_has_allowed_label "$FORCE_ISSUE_NUMBER"; then
-    echo "Blocked: forced issue #$FORCE_ISSUE_NUMBER does not include '$PRIMARY_LABEL' or '$FALLBACK_LABEL'." >&2
+  if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
+    echo "Blocked: forced issue #$FORCE_ISSUE_NUMBER is not open." >&2
     exit 1
   fi
   ISSUE_CANDIDATE_NUMBERS+=("$FORCE_ISSUE_NUMBER")
 else
-  ISSUE_CANDIDATE_OUTPUT="$(run_with_retry "collect eligible issue candidates" collect_issue_candidates)"
+  ISSUE_CANDIDATE_OUTPUT="$(
+    run_with_retry \
+      "collect project issue candidates (${PROJECT_TITLE} / ${PROJECT_COLUMN})" \
+      collect_issue_candidates
+  )"
   while IFS= read -r issue_number; do
     if [[ -n "$issue_number" ]]; then
       ISSUE_CANDIDATE_NUMBERS+=("$issue_number")
@@ -994,7 +1093,7 @@ else
 fi
 
 if [[ "${#ISSUE_CANDIDATE_NUMBERS[@]}" -eq 0 ]]; then
-  echo "Skipped: no open issue labeled '$PRIMARY_LABEL' or '$FALLBACK_LABEL'."
+  echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
   exit 0
 fi
 
