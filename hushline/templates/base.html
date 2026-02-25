@@ -152,38 +152,6 @@
     {% block scripts %}{% endblock %}
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
-    <style>
-      :root {
-        --color-brand: oklch(from {{ brand_primary_color }} l c h);
-        --theme-color-dark: {{ brand_primary_color_dark }};
-      }
-
-      #primary-nav a,
-      .directory-tabs .tab,
-      .directory-tabs .tab-top-link {
-        display: inline-flex;
-        align-items: center;
-        min-height: 2rem;
-        padding-top: 0.35rem;
-        padding-bottom: 0.35rem;
-      }
-
-      #primary-nav li,
-      .directory-tabs .tab-list li,
-      .directory-tabs .tab-top-item {
-        margin-bottom: 0.25rem;
-      }
-
-      .directory-tabs {
-        display: flex;
-        align-items: center;
-      }
-
-      .directory-tabs .tab-list {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-    </style>
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
