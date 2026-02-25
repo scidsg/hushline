@@ -262,6 +262,7 @@ def test_onboarding_notifications_requires_pgp_key(client: FlaskClient, user: Us
 def test_onboarding_missing_user_redirects_login(client: FlaskClient) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = 999999
+        sess["session_id"] = "invalid-session-id"
         sess["is_authenticated"] = True
         sess["username"] = "missing"
 
@@ -450,6 +451,7 @@ def test_onboarding_directory_redirects_to_select_tier_when_stripe_enabled(
 def test_onboarding_skip_missing_user_redirects_login(client: FlaskClient) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = 999999
+        sess["session_id"] = "invalid-session-id"
         sess["is_authenticated"] = True
         sess["username"] = "missing"
 

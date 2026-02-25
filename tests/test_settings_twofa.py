@@ -71,6 +71,7 @@ def test_verify_2fa_setup_redirects_to_login_for_missing_user(client: FlaskClien
     with client.session_transaction() as sess:
         sess["is_authenticated"] = True
         sess["user_id"] = 999999
+        sess["session_id"] = "invalid-session-id"
         sess["username"] = "missing-user"
 
     response = client.post(

@@ -23,9 +23,10 @@ Behavior:
    - `git clean -fdx`
 3. Exit cleanly when any open PR exists authored by `hushline-dev`.
 4. Select one open issue labeled `agent-eligible` or `low-risk`.
-5. Start each issue attempt with a destructive rebuild:
+5. Start each issue attempt with the issue bootstrap sequence:
    - `docker compose down -v --remove-orphans`
-   - `docker compose build app`
+   - `docker compose up -d postgres blob-storage`
+   - `docker compose run --rm dev_data`
 6. Run Codex on the issue.
 7. Run required local checks before PR creation:
    - `make lint`

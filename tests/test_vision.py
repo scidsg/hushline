@@ -16,6 +16,7 @@ def test_vision_redirects_to_login_when_session_user_missing(client: FlaskClient
     with client.session_transaction() as session:
         session["is_authenticated"] = True
         session["user_id"] = 999999
+        session["session_id"] = "invalid-session-id"
 
     response = client.get(url_for("vision"), follow_redirects=False)
     assert response.status_code == 302

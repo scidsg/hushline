@@ -79,6 +79,7 @@ def test_delete_account_redirects_to_login_when_user_missing(client: FlaskClient
         sess["is_authenticated"] = True
         sess["username"] = "missing-user"
         sess["user_id"] = 999999
+        sess["session_id"] = "invalid-session-id"
 
     response = client.post(url_for("settings.delete_account"), follow_redirects=False)
     assert response.status_code == 302

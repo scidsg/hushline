@@ -1,3 +1,4 @@
+import secrets
 from typing import TYPE_CHECKING, Any, Optional
 
 from flask import current_app
@@ -21,6 +22,10 @@ else:
     Model = db.Model
 
 
+def _generate_session_id() -> str:
+    return secrets.token_urlsafe(48)
+
+
 class User(Model):
     __tablename__ = "users"
 
@@ -34,9 +39,17 @@ class User(Model):
     SMTP_PASSWORD_MAX_LENGTH = 255
     SMTP_SENDER_MAX_LENGTH = 255
     STRIPE_ID_MAX_LENGTH = 255
+    SESSION_ID_MAX_LENGTH = 255
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
+    session_id: Mapped[str] = mapped_column(
+        db.String(SESSION_ID_MAX_LENGTH),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=_generate_session_id,
+    )
     _password_hash: Mapped[str] = mapped_column(
         "password_hash", db.String(PASSWORD_HASH_MAX_LENGTH)
     )
@@ -100,6 +113,10 @@ class User(Model):
     onboarding_complete: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
 
     _PREMIUM_ALIAS_COUNT = 100
+
+    @staticmethod
+    def new_session_id() -> str:
+        return _generate_session_id()
 
     @property
     def password_hash(self) -> str:

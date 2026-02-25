@@ -448,6 +448,7 @@ def test_authentication_required_redirects_to_2fa_when_not_authenticated(
 ) -> None:  # type: ignore[no-untyped-def]
     with client.session_transaction() as sess:
         sess["user_id"] = user.id
+        sess["session_id"] = user.session_id
         sess["username"] = user.primary_username.username
         sess["is_authenticated"] = False
 
