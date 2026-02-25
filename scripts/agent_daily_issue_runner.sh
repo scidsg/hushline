@@ -612,7 +612,7 @@ run_web_quality_workflows() {
   local lh_performance="/tmp/hushline-agent-lighthouse-performance.json"
   local lighthouse_base_url="http://localhost:8080"
   local css_path="hushline/static/css/style.css"
-  local -a lighthouse_network_args=()
+  local use_host_network="0"
 
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
 
@@ -633,22 +633,35 @@ run_web_quality_workflows() {
   if [[ "$(uname -s)" == "Darwin" ]]; then
     lighthouse_base_url="http://host.docker.internal:8080"
   else
-    lighthouse_network_args=(--network host)
+    use_host_network="1"
   fi
 
   local lighthouse_attempt=0
   while true; do
     lighthouse_attempt=$((lighthouse_attempt + 1))
-    if docker run --rm --shm-size=1g \
-      "${lighthouse_network_args[@]}" \
-      femtopixel/google-lighthouse \
-      "${lighthouse_base_url}/" \
-      --only-categories=accessibility \
-      --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-      --output=json \
-      --output-path=stdout \
-      --quiet > "$lh_accessibility"; then
-      break
+    if [[ "$use_host_network" == "1" ]]; then
+      if docker run --rm --shm-size=1g \
+        --network host \
+        femtopixel/google-lighthouse \
+        "${lighthouse_base_url}/" \
+        --only-categories=accessibility \
+        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+        --output=json \
+        --output-path=stdout \
+        --quiet > "$lh_accessibility"; then
+        break
+      fi
+    else
+      if docker run --rm --shm-size=1g \
+        femtopixel/google-lighthouse \
+        "${lighthouse_base_url}/" \
+        --only-categories=accessibility \
+        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+        --output=json \
+        --output-path=stdout \
+        --quiet > "$lh_accessibility"; then
+        break
+      fi
     fi
     if [[ "$lighthouse_attempt" -ge 3 ]]; then
       echo "Lighthouse accessibility failed after ${lighthouse_attempt} attempts."
@@ -669,17 +682,31 @@ run_web_quality_workflows() {
   lighthouse_attempt=0
   while true; do
     lighthouse_attempt=$((lighthouse_attempt + 1))
-    if docker run --rm --shm-size=1g \
-      "${lighthouse_network_args[@]}" \
-      femtopixel/google-lighthouse \
-      "${lighthouse_base_url}/directory" \
-      --only-categories=performance \
-      --preset=desktop \
-      --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-      --output=json \
-      --output-path=stdout \
-      --quiet > "$lh_performance"; then
-      break
+    if [[ "$use_host_network" == "1" ]]; then
+      if docker run --rm --shm-size=1g \
+        --network host \
+        femtopixel/google-lighthouse \
+        "${lighthouse_base_url}/directory" \
+        --only-categories=performance \
+        --preset=desktop \
+        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+        --output=json \
+        --output-path=stdout \
+        --quiet > "$lh_performance"; then
+        break
+      fi
+    else
+      if docker run --rm --shm-size=1g \
+        femtopixel/google-lighthouse \
+        "${lighthouse_base_url}/directory" \
+        --only-categories=performance \
+        --preset=desktop \
+        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+        --output=json \
+        --output-path=stdout \
+        --quiet > "$lh_performance"; then
+        break
+      fi
     fi
     if [[ "$lighthouse_attempt" -ge 3 ]]; then
       echo "Lighthouse performance failed after ${lighthouse_attempt} attempts."
