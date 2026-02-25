@@ -18,7 +18,19 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "window.crypto.subtle" in js
     assert "window.ReadableStream" in js
     assert 'typeof BigInt === "undefined"' in js
+    assert 'typeof openpgp === "undefined"' in js
+    assert "function getDicewareWords()" in js
+    assert "Encryption module failed to initialize." in js
+    assert "Encryption padding dictionary is unavailable." in js
+    assert "Encrypted email body field is missing." in js
     assert "assertClientCryptoSupport();" in js
+
+
+def test_profile_template_avoids_inline_submit_handlers() -> None:
+    template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
+
+    assert 'id="messageForm"' in template
+    assert 'onsubmit="' not in template
 
 
 def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:

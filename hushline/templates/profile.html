@@ -96,7 +96,6 @@
     action="{{ url_for('profile', username=username.username) }}"
     id="messageForm"
     data-submit-spinner="true"
-    onsubmit="return false;"
   >
     {{ form.hidden_tag() }}
     <input type="hidden" name="username_user_id" value="{{ username.user_id }}" />
