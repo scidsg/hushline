@@ -215,6 +215,55 @@ run_with_retry() {
   done
 }
 
+repair_cleanup_permissions() {
+  local target="$1"
+  if [[ ! -e "$target" ]]; then
+    return 0
+  fi
+
+  echo "Attempting permission repair for: $target"
+  if command -v chflags >/dev/null 2>&1; then
+    chflags -R nouchg "$target" >/dev/null 2>&1 || true
+  fi
+  chmod -R u+rwX "$target" >/dev/null 2>&1 || true
+  chown -R "$(id -un):$(id -gn)" "$target" >/dev/null 2>&1 || true
+}
+
+run_git_clean_with_auto_repair() {
+  local clean_flag="$1"
+  local clean_output=""
+  local rc=0
+
+  set +e
+  clean_output="$(git clean "$clean_flag" 2>&1)"
+  rc=$?
+  set -e
+  if [[ -n "$clean_output" ]]; then
+    printf '%s\n' "$clean_output"
+  fi
+  if [[ "$rc" -eq 0 ]]; then
+    return 0
+  fi
+
+  if grep -Eiq 'failed to remove .*node_modules|permission denied' <<<"$clean_output"; then
+    repair_cleanup_permissions "$REPO_DIR/node_modules"
+    set +e
+    clean_output="$(git clean "$clean_flag" 2>&1)"
+    rc=$?
+    set -e
+    if [[ -n "$clean_output" ]]; then
+      printf '%s\n' "$clean_output"
+    fi
+    if [[ "$rc" -eq 0 ]]; then
+      return 0
+    fi
+    echo "Unable to clean repository files after repairing node_modules permissions." >&2
+    echo "Manual fix: sudo chflags -R nouchg \"$REPO_DIR/node_modules\" && sudo chown -R \"$(id -un):$(id -gn)\" \"$REPO_DIR/node_modules\" && chmod -R u+rwX \"$REPO_DIR/node_modules\"" >&2
+  fi
+
+  return "$rc"
+}
+
 acquire_run_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     printf '%s\n' "$$" > "$LOCK_PID_FILE"
@@ -263,11 +312,11 @@ sync_repo_to_remote_base() {
   fi
 
   git reset --hard >/dev/null 2>&1 || true
-  git clean "$clean_flag" >/dev/null 2>&1 || true
+  run_git_clean_with_auto_repair "$clean_flag" >/dev/null 2>&1 || true
 
   run_check "Checkout ${BASE_BRANCH} from origin" git checkout -B "$BASE_BRANCH" "origin/$BASE_BRANCH"
   run_check "Reset to origin/${BASE_BRANCH}" git reset --hard "origin/$BASE_BRANCH"
-  run_check "Clean repository files" git clean "$clean_flag"
+  run_check "Clean repository files" run_git_clean_with_auto_repair "$clean_flag"
 }
 
 configure_bot_git_identity() {
