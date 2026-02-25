@@ -40,7 +40,6 @@ CHECK_TIMEOUT_SECONDS="${HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS:-3600}"
 DESTROY_AT_END="${HUSHLINE_DAILY_DESTROY_AT_END:-1}"
 PRIMARY_LABEL="${HUSHLINE_DAILY_PRIMARY_LABEL:-agent-eligible}"
 FALLBACK_LABEL="${HUSHLINE_DAILY_FALLBACK_LABEL:-low-risk}"
-PRETTIER_VERSION="${HUSHLINE_DAILY_PRETTIER_VERSION:-3.3.3}"
 COVERAGE_GATE_ENABLED="${HUSHLINE_DAILY_COVERAGE_GATE_ENABLED:-1}"
 COVERAGE_TARGET_PERCENT="${HUSHLINE_DAILY_COVERAGE_TARGET_PERCENT:-100}"
 COVERAGE_BRANCH_PREFIX="${HUSHLINE_DAILY_COVERAGE_BRANCH_PREFIX:-codex/coverage-gap-}"
@@ -570,28 +569,10 @@ run_issue_bootstrap() {
   run_check "Issue bootstrap" ./scripts/agent_issue_bootstrap.sh
 }
 
-ensure_node_tooling() {
-  if docker compose run --rm --no-deps app sh -lc '[ -x node_modules/.bin/prettier ]'; then
-    return 0
-  fi
-
-  echo "Prettier is missing; installing prettier@${PRETTIER_VERSION} in app container."
-  run_check_capture \
-    "Install Node tooling / prettier" \
-    docker compose run --rm --no-deps app sh -lc "npm_config_update_notifier=false npm install --no-save --omit=dev --omit=optional --no-audit --no-fund prettier@${PRETTIER_VERSION}" \
-    || return 1
-
-  if ! docker compose run --rm --no-deps app sh -lc '[ -x node_modules/.bin/prettier ]'; then
-    echo "Prettier is still unavailable after installation." | tee -a "$CHECK_LOG_FILE" >&2
-    return 1
-  fi
-}
-
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
   local runner_make_cmd="docker compose run --rm --no-deps app"
 
-  ensure_node_tooling || return 1
   run_check_capture "Run Linter and Tests / lint" make lint CMD="$runner_make_cmd" || return 1
   run_check_capture "Run Linter and Tests / test" make test CMD="$runner_make_cmd" PYTEST_ADDOPTS="--skip-local-only" || return 1
 }

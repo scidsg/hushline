@@ -5,6 +5,7 @@ CMD := docker compose run --rm app
 else
 CMD :=
 endif
+PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
 
 .PHONY: help
 help: ## Print the help message
@@ -64,13 +65,13 @@ lint: ## Lint the code
 	$(CMD) poetry run ruff format --check && \
 	$(CMD) poetry run ruff check --output-format full && \
 	$(CMD) poetry run mypy . && \
-	$(CMD) npx prettier --check ./*.md ./docs ./.github/workflows/* ./hushline
+	$(CMD) sh -lc 'if [ -x node_modules/.bin/prettier ]; then node_modules/.bin/prettier --check $(PRETTIER_TARGETS); elif command -v prettier >/dev/null 2>&1; then prettier --check $(PRETTIER_TARGETS); else echo "Skipping prettier check: prettier is unavailable in this environment."; fi'
 
 .PHONY: fix
 fix: ## Format the code
 	$(CMD) poetry run ruff format && \
 	$(CMD) poetry run ruff check --fix && \
-	$(CMD) npx prettier --write ./*.md ./docs ./.github/workflows/* ./hushline
+	$(CMD) sh -lc 'if [ -x node_modules/.bin/prettier ]; then node_modules/.bin/prettier --write $(PRETTIER_TARGETS); elif command -v prettier >/dev/null 2>&1; then prettier --write $(PRETTIER_TARGETS); else echo "Skipping prettier write: prettier is unavailable in this environment."; fi'
 
 .PHONY: new-database-migration
 new-database-migration: ## Create a new migration
