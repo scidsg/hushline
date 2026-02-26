@@ -14,7 +14,9 @@ RUN apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::http
     libffi-dev \
     libpq-dev \
     libpcsclite-dev \
-    nettle-dev && \
+    nettle-dev \
+    nodejs \
+    npm && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -22,6 +24,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" && \
     python -m pip install --no-cache-dir poetry
+
+RUN npm install --global prettier@3.3.3
 
 WORKDIR /app
 
