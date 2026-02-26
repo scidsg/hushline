@@ -40,9 +40,14 @@ CHECK_LOG_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
 CODEX_OUTPUT_FILE="$(mktemp)"
+RUN_LOG_TMP_FILE="$(mktemp)"
+RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_LOG_GIT_PATH=""
+
+exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
 
 cleanup() {
-  rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE"
+  rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$RUN_LOG_TMP_FILE"
   if [[ -d "$REPO_DIR/.git" ]]; then
     git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1 || true
   fi
@@ -391,6 +396,7 @@ write_pr_body() {
   local issue_url="$3"
   local branch_name="$4"
   local issue_labels="$5"
+  local run_log_git_path="$6"
   local test_gap_target
   test_gap_target="$(extract_referenced_file_path "$issue_title" "$ISSUE_BODY")"
 
@@ -404,6 +410,7 @@ Closes #$issue_number
 ## Context
 - Issue: $issue_url
 - Branch: $branch_name
+- Runner log: $run_log_git_path
 
 ## Changed Files
 EOF2
@@ -423,6 +430,21 @@ EOF2
       printf -- "- `test-gap` gate: active for this issue.\n" >> "$PR_BODY_FILE"
     fi
   fi
+}
+
+persist_run_log() {
+  local issue_number="$1"
+  local log_dir="$REPO_DIR/docs/agent-logs"
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-${RUN_LOG_TIMESTAMP}-issue-${issue_number}.txt"
+
+  mkdir -p "$log_dir"
+  {
+    printf 'Daily runner log\n'
+    printf 'Timestamp (UTC): %s\n' "$RUN_LOG_TIMESTAMP"
+    printf 'Issue: #%s\n' "$issue_number"
+    printf 'Repository: %s\n\n' "$REPO_SLUG"
+    cat "$RUN_LOG_TMP_FILE"
+  } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
 }
 
 run_codex_from_prompt() {
@@ -590,6 +612,8 @@ while true; do
   issue_attempt=$((issue_attempt + 1))
 done
 
+persist_run_log "$ISSUE_NUMBER"
+
 git add -A
 if git diff --cached --quiet; then
   echo "Blocked: no changes staged for issue #$ISSUE_NUMBER." >&2
@@ -602,7 +626,7 @@ git commit -m "$COMMIT_MESSAGE"
 # Keep branch update simple while preventing blind overwrite.
 git push -u --force-with-lease origin "$BRANCH_NAME"
 
-write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS"
+write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
 
 PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
 PR_URL="$({
