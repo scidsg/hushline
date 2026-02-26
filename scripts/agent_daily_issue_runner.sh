@@ -447,6 +447,14 @@ persist_run_log() {
   } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
 }
 
+append_pr_url_to_run_log() {
+  local pr_url="$1"
+  if [[ -z "$RUN_LOG_GIT_PATH" ]]; then
+    return 0
+  fi
+  printf '\nOpened PR: %s\n' "$pr_url" >> "$REPO_DIR/$RUN_LOG_GIT_PATH"
+}
+
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
@@ -639,3 +647,11 @@ PR_URL="$({
 } )"
 
 echo "Opened PR: $PR_URL"
+append_pr_url_to_run_log "$PR_URL"
+
+# Ensure committed runner log includes the final PR URL line.
+git add "$RUN_LOG_GIT_PATH"
+if ! git diff --cached --quiet; then
+  git commit -m "chore: append opened PR URL to runner log"
+  git push origin "$BRANCH_NAME"
+fi
