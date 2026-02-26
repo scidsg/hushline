@@ -197,6 +197,18 @@ def test_onboarding_redirects_to_inbox_when_already_complete(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_allows_non_profile_step_when_already_complete(
+    client: FlaskClient, user: User
+) -> None:
+    _set_all_onboarding_values_complete(user)
+    db.session.commit()
+
+    response = client.get(url_for("onboarding", step="encryption"), follow_redirects=False)
+    assert response.status_code == 200
+    assert "Now, let's set up encryption" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_onboarding_handles_missing_primary_username(client: FlaskClient, user: User) -> None:
     user.primary_username.is_primary = False
     db.session.commit()
@@ -262,13 +274,15 @@ def test_onboarding_notifications_requires_pgp_key(client: FlaskClient, user: Us
 def test_onboarding_missing_user_redirects_login(client: FlaskClient) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = 999999
-        sess["session_id"] = "invalid-session-id"
-        sess["is_authenticated"] = True
-        sess["username"] = "missing"
-
-    response = client.get(url_for("onboarding"), follow_redirects=False)
+    with patch("hushline.auth.get_session_user", return_value=object()):
+        response = client.get(url_for("onboarding"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("login"))
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "session_id" not in sess
+        assert "username" not in sess
+        assert "is_authenticated" not in sess
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -352,6 +366,23 @@ def test_onboarding_proton_no_key_found_returns_400(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_non_200_response_returns_400(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.return_value.status_code = 404
+    requests_get.return_value.text = ""
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "No PGP key found for that email address." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_onboarding_encryption_manual_missing_key_returns_400(client: FlaskClient) -> None:
     response = client.post(
         url_for("onboarding"),
@@ -359,6 +390,17 @@ def test_onboarding_encryption_manual_missing_key_returns_400(client: FlaskClien
         follow_redirects=False,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_manual_whitespace_key_returns_400(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "manual", "pgp_key": "   "},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "PGP key is required." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -451,13 +493,15 @@ def test_onboarding_directory_redirects_to_select_tier_when_stripe_enabled(
 def test_onboarding_skip_missing_user_redirects_login(client: FlaskClient) -> None:
     with client.session_transaction() as sess:
         sess["user_id"] = 999999
-        sess["session_id"] = "invalid-session-id"
-        sess["is_authenticated"] = True
-        sess["username"] = "missing"
-
-    response = client.post(url_for("onboarding_skip"), follow_redirects=False)
+    with patch("hushline.auth.get_session_user", return_value=object()):
+        response = client.post(url_for("onboarding_skip"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("login"))
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "session_id" not in sess
+        assert "username" not in sess
+        assert "is_authenticated" not in sess
 
 
 @pytest.mark.usefixtures("_authenticated_user")
