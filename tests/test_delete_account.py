@@ -74,13 +74,23 @@ def test_delete_account_redirects_to_login_without_user_id(client: FlaskClient) 
     assert response.headers["Location"].endswith(url_for("login"))
 
 
-def test_delete_account_redirects_to_login_when_user_missing(client: FlaskClient) -> None:
+def test_delete_account_redirects_to_login_when_user_missing(
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("hushline.auth.get_session_user", lambda: user)
+
     with client.session_transaction() as sess:
         sess["is_authenticated"] = True
         sess["username"] = "missing-user"
         sess["user_id"] = 999999
-        sess["session_id"] = "invalid-session-id"
+        sess["session_id"] = user.session_id
 
     response = client.post(url_for("settings.delete_account"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("login"))
+
+    with client.session_transaction() as sess:
+        assert any(
+            tuple(entry) == ("message", "User not found. Please log in again.")
+            for entry in sess["_flashes"]
+        )
