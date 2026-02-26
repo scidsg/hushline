@@ -3124,3 +3124,5 @@ Coverage HTML written to dir htmlcov
 ================== 586 passed, 1 xfailed in 180.27s (0:03:00) ==================
 ==> Enforce test-gap coverage for hushline/routes/inbox.py
 test-gap coverage satisfied for hushline/routes/inbox.py.
+
+Opened PR: https://github.com/scidsg/hushline/pull/1421
