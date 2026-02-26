@@ -1,79 +1,70 @@
 # Daily Agent Runner
 
-This runner automates one issue per day from this repository checkout only.
+Script: `scripts/agent_daily_issue_runner.sh`
 
-## One-Repo Policy
+This runner is live-only (no dry-run mode). It is designed for deterministic daily issue execution with a disposable clone, strict PR gates, signed commits, and required local validation.
 
-- The runner uses the current repository (`/Users/scidsg/hushline`) and does not use a second clone.
-- Remove any old runner clone (for example `~/hushline-cron`) so only one repo remains.
+## Execution Flow
 
-## Runner Script
-
-- Script: `scripts/agent_daily_issue_runner.sh`
-
-Behavior:
-
-1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream run-scoped output there, while also appending the same redacted output to `~/.codex/logs/hushline-agent-runner.log` (session IDs, user home paths, token/secret-like values, and private-key blocks are redacted to `[REDACTED]`).
+1. Create a unique run log at `docs/agent-run-log/run-<timestamp>-pid<pid>.log` and mirror redacted output to the global log at `~/.codex/logs/hushline-agent-runner.log`.
 2. Acquire an inter-run lock to prevent overlapping executions.
-3. Exit cleanly with `I'm still waiting for my open PR's approval...` when any open PR authored by `hushline-dev` exists.
-4. Exit cleanly with `Humans are working, I'll check back tomorrow...` when any open human-authored PR exists.
-5. Force-sync to latest `main` on startup:
-   - `git fetch origin main --prune`
-   - `git reset --hard`
-   - `git clean -fdx -e docs/agent-run-log/`
-   - `git checkout -B main origin/main`
-   - `git reset --hard origin/main`
-   - `git clean -fdx -e docs/agent-run-log/`
-6. Select exactly one open issue from the `Hush Line Roadmap` project column `Agent Eligible` (highest-priority/top item).
-7. Start issue work with the issue bootstrap sequence:
+3. Exit if any bot-authored PR is open with:
+   - `I'm still waiting for my open PR's approval...`
+4. Exit if any human-authored PR is open with:
+   - `Humans are working, I'll check back tomorrow...`
+5. Select the highest-priority open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
+6. If no eligible issue exists, exit cleanly.
+7. Purge stale temp clone workspace, then clone a fresh repo from `origin/main` into a disposable directory under `/tmp`.
+8. Configure bot git identity and commit signing.
+9. Run issue bootstrap:
    - `docker compose build`
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
    - `docker compose run --rm dev_data`
-8. Run Codex on the issue.
-9. Run required local checks before PR creation:
+10. Run Codex on the selected issue.
+11. Run required local checks before PR creation:
    - `make lint`
    - `make test`
-10. If checks fail, pass failure output back to Codex for self-heal and re-run checks until they pass (no retry cap).
-11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
-12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
-13. After a successful PR open, truncate the global runner log (`~/.codex/logs/hushline-agent-runner.log`) to avoid unbounded growth.
+12. If checks fail, feed failures back to Codex and repeat until checks pass.
+13. Commit signed changes, push branch, and open PR.
+14. On successful PR open:
+   - clear global runner log contents (keeps file, truncates to zero)
+   - tear down Docker (`docker compose down -v --remove-orphans`)
+   - delete disposable clone
 
-## Workflow Diagram
+## Reliability Controls
 
-```text
-[Start]
-   |
-   v
-[Acquire lock + auth + bot PR guard + human PR guard + sync to origin/main]
-   |
-   v
-[Select top issue from Roadmap/Agent Eligible]
-   |
-   v
-[Run Codex + lint/test checks]
-   |
-   +-- checks fail --> [Codex self-heal + rerun checks]
-   |
-   +-- checks pass --> [Open PR]
-```
+- Stale lock reclamation when prior pid is dead.
+- Infinite retry loop with backoff for transient operations (GitHub API/auth, Codex invocation, push/PR creation, etc).
+- Timeout guards for long-running checks.
+- Remote-branch divergence handling for stale bot branches (delete/re-push branch when needed).
 
-Reliability controls:
+## Logging and Redaction
 
-- Retry with backoff for transient fetch/GitHub/Codex/push/PR operations.
-- Bounded command execution with timeout guards.
-- Stale-lock reclamation if a previous process died unexpectedly.
+- Per-run logs always write to `docs/agent-run-log/`.
+- Global log aggregates runner activity in `~/.codex/logs/hushline-agent-runner.log` (LaunchAgent and manual runs).
+- Redaction pipeline masks:
+  - user home path segments
+  - `session id:` values
+  - bearer tokens and common PAT/token formats
+  - key/value secret-like assignments (`API_KEY=...`, `TOKEN: ...`, `password=...`, etc)
+  - full private key block contents
 
-## Local Required Checks
+## Required Commands
 
-The runner enforces these local checks before opening a PR:
+The runner requires:
 
-- `make lint`
-- `make test`
+- `git`
+- `gh`
+- `codex`
+- `docker`
+- `make`
+- `node`
+- `rg`
+- `shasum`
+- `perl`
 
-## Install LaunchAgent (macOS)
-
-Install at 9:00 AM:
+## LaunchAgent Example (macOS)
 
 ```bash
 mkdir -p "$HOME/.codex/launchd" "$HOME/.codex/logs"
@@ -124,26 +115,25 @@ Manual run:
 ./scripts/agent_daily_issue_runner.sh
 ```
 
-Dry run:
-
-```bash
-./scripts/agent_daily_issue_runner.sh --dry-run
-```
-
 ## Environment Variables
 
 - `HUSHLINE_REPO_SLUG` (default `scidsg/hushline`)
 - `HUSHLINE_BASE_BRANCH` (default `main`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
-- `HUSHLINE_DAILY_PROJECT_OWNER` (default repo owner from `HUSHLINE_REPO_SLUG`, typically `scidsg`)
+- `HUSHLINE_BOT_GIT_NAME` (default `HUSHLINE_BOT_LOGIN`)
+- `HUSHLINE_BOT_GIT_EMAIL` (default `git-dev@scidsg.org`)
+- `HUSHLINE_BOT_GIT_GPG_FORMAT` (default `ssh`)
+- `HUSHLINE_BOT_GIT_SIGNING_KEY` (optional)
+- `HUSHLINE_DAILY_PROJECT_OWNER` (default owner from `HUSHLINE_REPO_SLUG`)
 - `HUSHLINE_DAILY_PROJECT_TITLE` (default `Hush Line Roadmap`)
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
-- `HUSHLINE_DAILY_DESTROY_AT_END` (default `1`)
-- `HUSHLINE_RETRY_MAX_ATTEMPTS` (default `3`)
 - `HUSHLINE_RETRY_BASE_DELAY_SECONDS` (default `5`)
+- `HUSHLINE_RETRY_MAX_DELAY_SECONDS` (default `300`)
 - `HUSHLINE_DAILY_LOCK_DIR` (default `/tmp/hushline-agent-runner.lock`)
+- `HUSHLINE_DAILY_CLONE_ROOT_DIR` (default `/tmp/hushline-agent-runner-clones`)
+- `HUSHLINE_DAILY_DESTROY_AT_END` (default `1`)
 - `HUSHLINE_DAILY_GLOBAL_LOG_FILE` (default `~/.codex/logs/hushline-agent-runner.log`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
