@@ -2,6 +2,7 @@ import pyotp
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
+from pytest_mock import MockFixture
 
 from hushline.db import db
 from hushline.model import User
@@ -67,12 +68,13 @@ def test_confirm_disable_2fa_page_loads(client: FlaskClient) -> None:
     assert "Are you sure" in response.text
 
 
-def test_verify_2fa_setup_redirects_to_login_for_missing_user(client: FlaskClient) -> None:
-    with client.session_transaction() as sess:
-        sess["is_authenticated"] = True
-        sess["user_id"] = 999999
-        sess["session_id"] = "invalid-session-id"
-        sess["username"] = "missing-user"
+@pytest.mark.usefixtures("_authenticated_user")
+def test_verify_2fa_setup_redirects_to_login_for_missing_user(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    # Simulate a race where auth succeeds but the user lookup inside the route misses.
+    mocker.patch("hushline.auth.get_session_user", return_value=user)
+    mocker.patch("hushline.settings.twofa.db.session.get", return_value=None)
 
     response = client.post(
         url_for("settings.verify_2fa_setup"),
