@@ -69,7 +69,10 @@ mkfifo "$LOG_PIPE_FILE"
 
 redact_log_stream() {
   perl -pe '
-    BEGIN { $in_private_key = 0; }
+    BEGIN {
+      $in_private_key = 0;
+      $| = 1;
+    }
 
     if ($in_private_key) {
       if (/-----END (?:PGP )?(?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY(?: BLOCK)?-----/) {
@@ -119,6 +122,14 @@ cleanup_log_fanout() {
   fi
 }
 trap cleanup_log_fanout EXIT
+
+clear_global_log_after_pr() {
+  if : > "$GLOBAL_LOG_FILE"; then
+    printf 'Cleared global runner log after PR creation.\n' >> "$RUN_LOG_FILE"
+  else
+    printf 'Warning: unable to clear global runner log after PR creation.\n' >> "$RUN_LOG_FILE"
+  fi
+}
 
 if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
   echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 1)" >&2
@@ -1140,6 +1151,7 @@ EOF2
   fi
 
   echo "Opened PR: $PR_URL"
+  clear_global_log_after_pr
   exit 0
 done
 

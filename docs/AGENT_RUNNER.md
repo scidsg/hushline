@@ -39,6 +39,7 @@ Behavior:
 10. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks up to the configured retry limit.
 11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
 12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
+13. After a successful PR open, truncate the global runner log (`~/.codex/logs/hushline-agent-runner.log`) to avoid unbounded growth.
 
 ## Workflow Diagram
 
