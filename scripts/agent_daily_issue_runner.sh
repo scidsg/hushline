@@ -285,6 +285,51 @@ run_local_workflow_checks() {
   run_check_capture "Run test" make test || return 1
 }
 
+extract_test_gap_target_path() {
+  local issue_title="$1"
+  if [[ "$issue_title" =~ ^\[Test[[:space:]]+Gap\][[:space:]]+(.+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+  fi
+}
+
+run_issue_specific_checks() {
+  local issue_title="$1"
+  local test_gap_target
+  test_gap_target="$(extract_test_gap_target_path "$issue_title")"
+  if [[ -z "$test_gap_target" ]]; then
+    return 0
+  fi
+
+  echo "==> Validate test gap coverage target: ${test_gap_target}" | tee -a "$CHECK_LOG_FILE"
+
+  local coverage_row missed cover
+  coverage_row="$(
+    awk -v target="$test_gap_target" '
+      $1 == target { row = $0; missed = $3; cover = $4 }
+      END {
+        if (row != "") {
+          print row;
+        }
+      }
+    ' "$CHECK_LOG_FILE"
+  )"
+  if [[ -z "$coverage_row" ]]; then
+    echo "Coverage row for ${test_gap_target} not found in test output." | tee -a "$CHECK_LOG_FILE"
+    return 1
+  fi
+
+  missed="$(printf '%s\n' "$coverage_row" | awk '{print $3}')"
+  cover="$(printf '%s\n' "$coverage_row" | awk '{print $4}')"
+  cover="${cover%\%}"
+
+  if [[ "$missed" != "0" || "$cover" != "100" ]]; then
+    echo "Coverage gap remains for ${test_gap_target}: missed=${missed}, cover=${cover}%." | tee -a "$CHECK_LOG_FILE"
+    return 1
+  fi
+
+  echo "Coverage gap resolved for ${test_gap_target}." | tee -a "$CHECK_LOG_FILE"
+}
+
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
@@ -430,7 +475,10 @@ while true; do
   fi
 
   fix_attempt=1
-  while ! run_local_workflow_checks; do
+  while true; do
+    if run_local_workflow_checks && run_issue_specific_checks "$ISSUE_TITLE"; then
+      break
+    fi
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     build_fix_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$BRANCH_NAME" "$FAILURE_LOG_TAIL"
