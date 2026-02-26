@@ -77,7 +77,9 @@ run_check_capture() {
 
 kill_all_docker_containers() {
   local ids=()
-  mapfile -t ids < <(docker ps -aq)
+  while IFS= read -r id; do
+    [[ -n "$id" ]] && ids+=("$id")
+  done < <(docker ps -aq)
   if (( ${#ids[@]} == 0 )); then
     return 0
   fi
