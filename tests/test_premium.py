@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +18,7 @@ from hushline.model import (
     StripeSubscriptionStatusEnum,
     Tier,
     User,
+    Username,
 )
 from hushline.premium import (
     create_customer,
@@ -734,14 +736,14 @@ def test_premium_index_warns_on_incomplete_subscription(
         ("premium.status", "get"),
     ],
 )
+@pytest.mark.usefixtures("_authenticated_user")
 def test_premium_routes_redirect_to_login_when_user_missing_after_auth(
-    client: FlaskClient, endpoint: str, method: str
+    client: FlaskClient, user: User, endpoint: str, method: str
 ) -> None:
-    with client.session_transaction() as session:
-        session["user_id"] = 999999
-        session["session_id"] = "invalid-session-id"
-        session["is_authenticated"] = True
-        session["username"] = "ghost"
+    for username in db.session.query(Username).filter_by(user_id=user.id).all():
+        db.session.delete(username)
+    db.session.delete(user)
+    db.session.commit()
 
     if method == "post":
         response = client.post(url_for(endpoint), follow_redirects=False)
@@ -750,6 +752,50 @@ def test_premium_routes_redirect_to_login_when_user_missing_after_auth(
 
     assert response.status_code == 302
     assert response.location == url_for("login")
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "method"),
+    [
+        ("premium.index", "get"),
+        ("premium.select_tier", "get"),
+        ("premium.select_free", "post"),
+        ("premium.upgrade", "post"),
+        ("premium.disable_autorenew", "post"),
+        ("premium.enable_autorenew", "post"),
+        ("premium.cancel", "post"),
+        ("premium.status", "get"),
+    ],
+)
+@pytest.mark.usefixtures("_authenticated_user")
+def test_premium_routes_clear_session_when_user_missing_inside_route(
+    client: FlaskClient, user: User, endpoint: str, method: str, mocker: MockFixture
+) -> None:
+    original_get = db.session.get
+    user_get_calls = 0
+
+    def _get_with_mid_request_user_loss(model: Any, ident: Any, **kwargs: Any) -> object:
+        nonlocal user_get_calls
+        if model is User:
+            user_get_calls += 1
+            if user_get_calls == 1:
+                return user
+            if user_get_calls == 2:
+                return None
+        return original_get(model, ident, **kwargs)
+
+    mocker.patch.object(db.session, "get", side_effect=_get_with_mid_request_user_loss)
+
+    if method == "post":
+        response = client.post(url_for(endpoint), follow_redirects=False)
+    else:
+        response = client.get(url_for(endpoint), follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.location == url_for("login")
+    assert user_get_calls == 2
+    with client.session_transaction() as sess:
+        assert not sess
 
 
 @pytest.mark.usefixtures("_authenticated_user")
