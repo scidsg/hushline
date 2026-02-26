@@ -358,6 +358,41 @@ run_git_clean_with_auto_repair() {
   return "$rc"
 }
 
+push_issue_branch() {
+  local branch_name="$1"
+  local push_output=""
+  local push_rc=0
+
+  set +e
+  push_output="$(git push -u origin "$branch_name" 2>&1)"
+  push_rc=$?
+  set -e
+  if [[ -n "$push_output" ]]; then
+    printf '%s\n' "$push_output"
+  fi
+  if [[ "$push_rc" -eq 0 ]]; then
+    return 0
+  fi
+
+  if ! grep -qi "non-fast-forward" <<<"$push_output"; then
+    return "$push_rc"
+  fi
+
+  echo "Detected stale remote branch ${branch_name}. Replacing remote branch and retrying push."
+  set +e
+  push_output="$(git push origin --delete "$branch_name" 2>&1)"
+  push_rc=$?
+  set -e
+  if [[ -n "$push_output" ]]; then
+    printf '%s\n' "$push_output"
+  fi
+  if [[ "$push_rc" -ne 0 ]] && ! grep -qi "remote ref does not exist" <<<"$push_output"; then
+    return "$push_rc"
+  fi
+
+  git push -u origin "$branch_name"
+}
+
 acquire_run_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     printf '%s\n' "$$" > "$LOCK_PID_FILE"
@@ -1112,7 +1147,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
 
   COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
   git commit -m "$COMMIT_MESSAGE"
-  run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
+  run_with_retry "push branch ${BRANCH_NAME}" push_issue_branch "$BRANCH_NAME"
 
   CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
   MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
