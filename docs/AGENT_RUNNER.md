@@ -28,6 +28,7 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 11. Run required checks:
    - `make lint`
    - `make test`
+   - For issues with `[Test Gap] <path>` in the title or a `test-gap` label, require target file coverage to report `0` missed and `100%` in the test output table.
 12. If checks fail, feed failures back to Codex and retry until checks pass.
 13. Commit, push branch (`--force-with-lease`), and open PR.
 14. Return to `main` on exit.
