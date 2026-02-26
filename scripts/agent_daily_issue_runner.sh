@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DRY_RUN=0
 FORCE_ISSUE_NUMBER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dry-run)
-      DRY_RUN=1
-      shift
-      ;;
     --issue)
       FORCE_ISSUE_NUMBER="${2:-}"
       if [[ -z "$FORCE_ISSUE_NUMBER" ]]; then
@@ -25,7 +20,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE_REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="$SOURCE_REPO_DIR"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BOT_LOGIN="${HUSHLINE_BOT_LOGIN:-hushline-dev}"
@@ -43,15 +39,18 @@ PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 GH_ACCOUNT="${HUSHLINE_GH_ACCOUNT:-hushline-dev}"
 KEYCHAIN_PATH="${HUSHLINE_GH_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keychain-db}"
-RETRY_MAX_ATTEMPTS="${HUSHLINE_RETRY_MAX_ATTEMPTS:-3}"
 RETRY_BASE_DELAY_SECONDS="${HUSHLINE_RETRY_BASE_DELAY_SECONDS:-5}"
+RETRY_MAX_DELAY_SECONDS="${HUSHLINE_RETRY_MAX_DELAY_SECONDS:-300}"
 LOCK_DIR="${HUSHLINE_DAILY_LOCK_DIR:-/tmp/hushline-agent-runner.lock}"
+CLONE_ROOT_DIR="${HUSHLINE_DAILY_CLONE_ROOT_DIR:-/tmp/hushline-agent-runner-clones}"
 RUN_LOG_GIT_PATH="docs/agent-run-log/"
-RUN_LOG_DIR="$REPO_DIR/${RUN_LOG_GIT_PATH%/}"
+RUN_LOG_DIR="$SOURCE_REPO_DIR/${RUN_LOG_GIT_PATH%/}"
 RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_FILE="$RUN_LOG_DIR/run-${RUN_LOG_TIMESTAMP}-pid$$.log"
 GLOBAL_LOG_FILE="${HUSHLINE_DAILY_GLOBAL_LOG_FILE:-$HOME/.codex/logs/hushline-agent-runner.log}"
 GLOBAL_LOG_DIR="$(dirname "$GLOBAL_LOG_FILE")"
+CLONE_REPO_DIR=""
+PR_OPENED=0
 
 TIMEOUT_BIN=""
 LOG_PIPE_FILE=""
@@ -133,13 +132,13 @@ if ! [[ "$CHECK_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-if ! [[ "$RETRY_MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Invalid HUSHLINE_RETRY_MAX_ATTEMPTS: '$RETRY_MAX_ATTEMPTS' (expected integer >= 1)" >&2
+if ! [[ "$RETRY_BASE_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid HUSHLINE_RETRY_BASE_DELAY_SECONDS: '$RETRY_BASE_DELAY_SECONDS' (expected integer >= 0)" >&2
   exit 1
 fi
 
-if ! [[ "$RETRY_BASE_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
-  echo "Invalid HUSHLINE_RETRY_BASE_DELAY_SECONDS: '$RETRY_BASE_DELAY_SECONDS' (expected integer >= 0)" >&2
+if ! [[ "$RETRY_MAX_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid HUSHLINE_RETRY_MAX_DELAY_SECONDS: '$RETRY_MAX_DELAY_SECONDS' (expected integer >= 0)" >&2
   exit 1
 fi
 
@@ -150,6 +149,11 @@ fi
 
 if [[ "$LOCK_DIR" != /tmp/* && "$LOCK_DIR" != /var/tmp/* ]]; then
   echo "Invalid HUSHLINE_DAILY_LOCK_DIR: '$LOCK_DIR' must be under /tmp or /var/tmp." >&2
+  exit 1
+fi
+
+if [[ "$CLONE_ROOT_DIR" != /tmp/* && "$CLONE_ROOT_DIR" != /var/tmp/* ]]; then
+  echo "Invalid HUSHLINE_DAILY_CLONE_ROOT_DIR: '$CLONE_ROOT_DIR' must be under /tmp or /var/tmp." >&2
   exit 1
 fi
 
@@ -173,8 +177,13 @@ CHECK_LOG_FILE="$(mktemp)"
 cleanup() {
   cleanup_log_fanout
   rm -f "$CODEX_OUTPUT_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CHECK_LOG_FILE"
-  if [[ "$DESTROY_AT_END" == "1" ]]; then
-    docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  if [[ "$PR_OPENED" == "1" ]]; then
+    if [[ "$DESTROY_AT_END" == "1" ]]; then
+      docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$CLONE_REPO_DIR" ]] && [[ -d "$CLONE_REPO_DIR" ]]; then
+      rm -rf "$CLONE_REPO_DIR" >/dev/null 2>&1 || true
+    fi
   fi
   if [[ "$LOCK_HELD" == "1" ]]; then
     rm -f "$LOCK_PID_FILE" >/dev/null 2>&1 || true
@@ -206,7 +215,7 @@ run_with_timeout() {
     return $?
   fi
 
-  # Shell fallback keeps function calls working (e.g. ensure_actionlint).
+  # Shell fallback keeps function calls working.
   local timeout_flag cmd_pid watchdog_pid rc
   timeout_flag="$(mktemp)"
   rm -f "$timeout_flag" >/dev/null 2>&1 || true
@@ -283,66 +292,17 @@ run_with_retry() {
       return 0
     fi
 
-    if (( attempt >= RETRY_MAX_ATTEMPTS )); then
-      echo "Failed: ${description} after ${attempt} attempt(s), exit=${rc}." >&2
-      return "$rc"
+    local backoff_seconds=$((RETRY_BASE_DELAY_SECONDS * attempt))
+    if (( backoff_seconds > RETRY_MAX_DELAY_SECONDS )); then
+      backoff_seconds="$RETRY_MAX_DELAY_SECONDS"
     fi
 
-    local backoff_seconds=$((RETRY_BASE_DELAY_SECONDS * attempt))
-    echo "Retrying ${description} in ${backoff_seconds}s (attempt $((attempt + 1))/${RETRY_MAX_ATTEMPTS})." >&2
-    sleep "$backoff_seconds"
+    echo "Retrying ${description} in ${backoff_seconds}s (attempt $((attempt + 1)), last exit=${rc})." >&2
+    if (( backoff_seconds > 0 )); then
+      sleep "$backoff_seconds"
+    fi
     attempt=$((attempt + 1))
   done
-}
-
-repair_cleanup_permissions() {
-  local target="$1"
-  if [[ ! -e "$target" ]]; then
-    return 0
-  fi
-
-  echo "Attempting permission repair for: $target"
-  if command -v chflags >/dev/null 2>&1; then
-    chflags -R nouchg "$target" >/dev/null 2>&1 || true
-  fi
-  chmod -R u+rwX "$target" >/dev/null 2>&1 || true
-  chown -R "$(id -un):$(id -gn)" "$target" >/dev/null 2>&1 || true
-}
-
-run_git_clean_with_auto_repair() {
-  local clean_flag="$1"
-  shift
-  local clean_output=""
-  local rc=0
-
-  set +e
-  clean_output="$(git clean "$clean_flag" "$@" 2>&1)"
-  rc=$?
-  set -e
-  if [[ -n "$clean_output" ]]; then
-    printf '%s\n' "$clean_output"
-  fi
-  if [[ "$rc" -eq 0 ]]; then
-    return 0
-  fi
-
-  if grep -Eiq 'failed to remove .*node_modules|permission denied' <<<"$clean_output"; then
-    repair_cleanup_permissions "$REPO_DIR/node_modules"
-    set +e
-    clean_output="$(git clean "$clean_flag" "$@" 2>&1)"
-    rc=$?
-    set -e
-    if [[ -n "$clean_output" ]]; then
-      printf '%s\n' "$clean_output"
-    fi
-    if [[ "$rc" -eq 0 ]]; then
-      return 0
-    fi
-    echo "Unable to clean repository files after repairing node_modules permissions." >&2
-    echo "Manual fix: sudo chflags -R nouchg \"$REPO_DIR/node_modules\" && sudo chown -R \"$(id -un):$(id -gn)\" \"$REPO_DIR/node_modules\" && chmod -R u+rwX \"$REPO_DIR/node_modules\"" >&2
-  fi
-
-  return "$rc"
 }
 
 push_issue_branch() {
@@ -426,23 +386,21 @@ stage_non_log_changes() {
   git add -A -- . ':(exclude)docs/agent-run-log/*.log'
 }
 
-sync_repo_to_remote_base() {
-  local clean_flag="-fdx"
-  local clean_exclude_flag="-e"
-  local clean_exclude_path="$RUN_LOG_GIT_PATH"
-  echo "Synchronizing repository to origin/${BASE_BRANCH}."
-  run_with_retry "fetch latest ${BASE_BRANCH}" run_check "Fetch latest ${BASE_BRANCH}" git fetch origin "$BASE_BRANCH" --prune
-
-  if [[ -n "$(git status --porcelain)" ]]; then
-    echo "Dirty working tree detected. Discarding local tracked and untracked changes."
+purge_clone_workspace_root() {
+  if [[ -d "$CLONE_ROOT_DIR" ]]; then
+    run_check "Remove stale clone workspace root" rm -rf "$CLONE_ROOT_DIR"
   fi
+  run_check "Create clone workspace root" mkdir -p "$CLONE_ROOT_DIR"
+}
 
-  git reset --hard >/dev/null 2>&1 || true
-  run_git_clean_with_auto_repair "$clean_flag" "$clean_exclude_flag" "$clean_exclude_path" >/dev/null 2>&1 || true
-
-  run_check "Checkout ${BASE_BRANCH} from origin" git checkout -B "$BASE_BRANCH" "origin/$BASE_BRANCH"
-  run_check "Reset to origin/${BASE_BRANCH}" git reset --hard "origin/$BASE_BRANCH"
-  run_check "Clean repository files" run_git_clean_with_auto_repair "$clean_flag" "$clean_exclude_flag" "$clean_exclude_path"
+clone_repo_for_run() {
+  local origin_url
+  origin_url="$(git -C "$SOURCE_REPO_DIR" remote get-url origin)"
+  CLONE_REPO_DIR="$CLONE_ROOT_DIR/repo-${RUN_LOG_TIMESTAMP}-pid$$"
+  run_check "Clone fresh repository from origin/${BASE_BRANCH}" \
+    git clone --branch "$BASE_BRANCH" --single-branch "$origin_url" "$CLONE_REPO_DIR"
+  REPO_DIR="$CLONE_REPO_DIR"
+  cd "$REPO_DIR"
 }
 
 configure_bot_git_identity() {
@@ -614,33 +572,6 @@ collect_issue_candidates() {
   collect_issue_candidates_from_project "$project_number"
 }
 
-ensure_actionlint() {
-  if command -v actionlint >/dev/null 2>&1; then
-    return 0
-  fi
-  local tools_dir="/tmp/hushline-agent-runner-tools"
-  mkdir -p "$tools_dir"
-  if [[ ! -x "$tools_dir/actionlint" ]]; then
-    (
-      cd "$tools_dir"
-      curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash
-    )
-  fi
-  export PATH="$tools_dir:$PATH"
-  command -v actionlint >/dev/null 2>&1
-}
-
-run_workflow_security_interpolation_check() {
-  local pattern
-  pattern='github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)'
-  if rg -n --glob ".github/workflows/*.yml" --glob ".github/workflows/*.yaml" "$pattern" .github/workflows; then
-    echo "Unsafe interpolation of untrusted event text found in workflow run context."
-    echo "Use actions/github-script (or equivalent) to handle untrusted strings safely."
-    return 1
-  fi
-  echo "No unsafe event text interpolation patterns found."
-}
-
 load_gh_token() {
   local token=""
 
@@ -675,158 +606,6 @@ load_gh_token() {
   return 1
 }
 
-run_web_quality_workflows() {
-  local html_dir="/tmp/hushline-agent-w3c"
-  local css_json="/tmp/hushline-agent-w3c-css.json"
-  local lh_accessibility="/tmp/hushline-agent-lighthouse-accessibility.json"
-  local lh_performance="/tmp/hushline-agent-lighthouse-performance.json"
-  local lighthouse_base_url="http://localhost:8080"
-  local css_path="hushline/static/css/style.css"
-  local use_host_network="0"
-
-  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-
-  docker compose up -d postgres blob-storage
-  docker compose run --rm dev_data
-  docker compose up -d app
-
-  local attempt=0
-  until curl -fsS http://localhost:8080/ >/dev/null; do
-    attempt=$((attempt + 1))
-    if [[ "$attempt" -ge 30 ]]; then
-      echo "App did not become ready on http://localhost:8080/"
-      return 1
-    fi
-    sleep 2
-  done
-
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    lighthouse_base_url="http://host.docker.internal:8080"
-  else
-    use_host_network="1"
-  fi
-
-  local lighthouse_attempt=0
-  while true; do
-    lighthouse_attempt=$((lighthouse_attempt + 1))
-    if [[ "$use_host_network" == "1" ]]; then
-      if docker run --rm --shm-size=1g \
-        --network host \
-        femtopixel/google-lighthouse \
-        "${lighthouse_base_url}/" \
-        --only-categories=accessibility \
-        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-        --output=json \
-        --output-path=stdout \
-        --quiet > "$lh_accessibility"; then
-        break
-      fi
-    else
-      if docker run --rm --shm-size=1g \
-        femtopixel/google-lighthouse \
-        "${lighthouse_base_url}/" \
-        --only-categories=accessibility \
-        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-        --output=json \
-        --output-path=stdout \
-        --quiet > "$lh_accessibility"; then
-        break
-      fi
-    fi
-    if [[ "$lighthouse_attempt" -ge 3 ]]; then
-      echo "Lighthouse accessibility failed after ${lighthouse_attempt} attempts."
-      return 1
-    fi
-    sleep $((lighthouse_attempt * 5))
-  done
-
-  local accessibility_score
-  accessibility_score="$(
-    "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data["categories"]["accessibility"]["score"]*100))' "$lh_accessibility"
-  )"
-  if [[ "$accessibility_score" -lt "95" ]]; then
-    echo "Accessibility score must be at least 95, got $accessibility_score"
-    return 1
-  fi
-
-  lighthouse_attempt=0
-  while true; do
-    lighthouse_attempt=$((lighthouse_attempt + 1))
-    if [[ "$use_host_network" == "1" ]]; then
-      if docker run --rm --shm-size=1g \
-        --network host \
-        femtopixel/google-lighthouse \
-        "${lighthouse_base_url}/directory" \
-        --only-categories=performance \
-        --preset=desktop \
-        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-        --output=json \
-        --output-path=stdout \
-        --quiet > "$lh_performance"; then
-        break
-      fi
-    else
-      if docker run --rm --shm-size=1g \
-        femtopixel/google-lighthouse \
-        "${lighthouse_base_url}/directory" \
-        --only-categories=performance \
-        --preset=desktop \
-        --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
-        --output=json \
-        --output-path=stdout \
-        --quiet > "$lh_performance"; then
-        break
-      fi
-    fi
-    if [[ "$lighthouse_attempt" -ge 3 ]]; then
-      echo "Lighthouse performance failed after ${lighthouse_attempt} attempts."
-      return 1
-    fi
-    sleep $((lighthouse_attempt * 5))
-  done
-
-  local performance_score
-  performance_score="$(
-    "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data["categories"]["performance"]["score"]*100))' "$lh_performance"
-  )"
-  if [[ "$performance_score" -lt 95 ]]; then
-    echo "Performance score must be at least 95, got $performance_score"
-    return 1
-  fi
-
-  mkdir -p "$html_dir"
-  curl -fsS http://localhost:8080/ -o "$html_dir/index.html"
-  curl -fsS http://localhost:8080/directory -o "$html_dir/directory.html"
-
-  docker run --rm \
-    -v "$html_dir:/work" \
-    ghcr.io/validator/validator:latest \
-    java -jar /vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
-
-  local success=0
-  if [[ ! -f "$css_path" ]]; then
-    echo "W3C CSS validation skipped: $css_path not found."
-    return 0
-  fi
-
-  for i in 1 2 3 4 5; do
-    if curl -fsS -o "$css_json" \
-      -F "file=@${css_path}" \
-      -F "output=json" \
-      https://jigsaw.w3.org/css-validator/validator; then
-      success=1
-      break
-    fi
-    sleep $((i * 5))
-  done
-  if [[ "$success" -ne 1 ]]; then
-    echo "W3C CSS validator unavailable (rate limited or error); skipping CSS validation."
-    return 0
-  fi
-
-  "$PYTHON_BIN" -c 'import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); errors=data.get("cssvalidation",{}).get("errors",[]); print("W3C CSS validation passed.") if not errors else (_ for _ in ()).throw(SystemExit(f"W3C CSS validation failed with {len(errors)} error(s)."))' "$css_json"
-}
-
 run_issue_bootstrap() {
   run_check "Issue bootstrap" ./scripts/agent_issue_bootstrap.sh
 }
@@ -836,7 +615,7 @@ run_local_workflow_checks() {
   local runner_make_cmd="docker compose run --rm --no-deps app"
 
   run_check_capture "Run Linter and Tests / lint" make lint CMD="$runner_make_cmd" || return 1
-  run_check_capture "Run Linter and Tests / test" make test CMD="$runner_make_cmd" PYTEST_ADDOPTS="--skip-local-only" || return 1
+  run_check_capture "Run Linter and Tests / test" make test CMD="$runner_make_cmd" || return 1
 }
 
 run_full_workflow_checks() {
@@ -988,9 +767,6 @@ if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
   exit 0
 fi
 
-sync_repo_to_remote_base
-configure_bot_git_identity
-
 ISSUE_NUMBER=""
 if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
   if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
@@ -1029,16 +805,10 @@ ISSUE_URL="$(
 )"
 BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 
-if [[ "$DRY_RUN" == "1" ]]; then
-  echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
-  echo "Issue URL: $ISSUE_URL"
-  echo "Branch that would be used: $BRANCH_NAME"
-  exit 0
-fi
+purge_clone_workspace_root
+clone_repo_for_run
+configure_bot_git_identity
 
-if git show-ref --quiet --verify "refs/heads/$BRANCH_NAME"; then
-  run_check "Delete existing local branch $BRANCH_NAME" git branch -D "$BRANCH_NAME"
-fi
 run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
 
 run_issue_bootstrap
@@ -1126,10 +896,7 @@ PR_URL="$(
       --body-file "$PR_BODY_FILE"
 )"
 
-if ! run_check "Return to ${BASE_BRANCH}" git checkout "$BASE_BRANCH"; then
-  echo "Warning: unable to switch back to ${BASE_BRANCH} after PR creation." >&2
-fi
-
 echo "Opened PR: $PR_URL"
+PR_OPENED=1
 clear_global_log_after_pr
 exit 0
