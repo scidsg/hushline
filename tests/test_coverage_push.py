@@ -457,6 +457,26 @@ def test_authentication_required_redirects_to_2fa_when_not_authenticated(
     assert "/verify-2fa-login" in response.location
 
 
+def test_authentication_required_clears_session_on_session_id_mismatch(
+    client: FlaskClient, user: User
+) -> None:
+    with client.session_transaction() as sess:
+        sess["user_id"] = user.id
+        sess["session_id"] = "tampered-session-id"
+        sess["username"] = user.primary_username.username
+        sess["is_authenticated"] = True
+
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "session_id" not in sess
+        assert "username" not in sess
+        assert "is_authenticated" not in sess
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_admin_authentication_required_forbids_non_admin(client) -> None:  # type: ignore[no-untyped-def]
     response = client.get(url_for("settings.admin"))
