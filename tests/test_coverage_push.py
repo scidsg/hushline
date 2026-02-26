@@ -477,6 +477,26 @@ def test_authentication_required_clears_session_on_session_id_mismatch(
         assert "is_authenticated" not in sess
 
 
+def test_authentication_required_clears_session_when_user_id_missing(
+    client: FlaskClient,
+) -> None:
+    with client.session_transaction() as sess:
+        sess["session_id"] = "stale-session-id"
+        sess["username"] = "stale-user"
+        sess["is_authenticated"] = True
+        sess.pop("user_id", None)
+
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "session_id" not in sess
+        assert "username" not in sess
+        assert "is_authenticated" not in sess
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_admin_authentication_required_forbids_non_admin(client) -> None:  # type: ignore[no-untyped-def]
     response = client.get(url_for("settings.admin"))
