@@ -35,14 +35,12 @@ BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
-MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-3}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS:-3600}"
 DESTROY_AT_END="${HUSHLINE_DAILY_DESTROY_AT_END:-1}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
 PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
-FULL_SUITE_ENABLED="${HUSHLINE_DAILY_FULL_SUITE_ENABLED:-1}"
 GH_ACCOUNT="${HUSHLINE_GH_ACCOUNT:-hushline-dev}"
 KEYCHAIN_PATH="${HUSHLINE_GH_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keychain-db}"
 RETRY_MAX_ATTEMPTS="${HUSHLINE_RETRY_MAX_ATTEMPTS:-3}"
@@ -55,7 +53,6 @@ RUN_LOG_FILE="$RUN_LOG_DIR/run-${RUN_LOG_TIMESTAMP}-pid$$.log"
 GLOBAL_LOG_FILE="${HUSHLINE_DAILY_GLOBAL_LOG_FILE:-$HOME/.codex/logs/hushline-agent-runner.log}"
 GLOBAL_LOG_DIR="$(dirname "$GLOBAL_LOG_FILE")"
 
-PYTHON_BIN=""
 TIMEOUT_BIN=""
 LOG_PIPE_FILE=""
 LOG_TEE_PID=""
@@ -131,11 +128,6 @@ clear_global_log_after_pr() {
   fi
 }
 
-if ! [[ "$MAX_FIX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '$MAX_FIX_ATTEMPTS' (expected integer >= 1)" >&2
-  exit 1
-fi
-
 if ! [[ "$CHECK_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
   echo "Invalid HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS: '$CHECK_TIMEOUT_SECONDS' (expected integer >= 0)" >&2
   exit 1
@@ -153,11 +145,6 @@ fi
 
 if ! [[ "$PROJECT_ITEM_LIMIT" =~ ^[1-9][0-9]*$ ]]; then
   echo "Invalid HUSHLINE_DAILY_PROJECT_ITEM_LIMIT: '$PROJECT_ITEM_LIMIT' (expected integer >= 1)" >&2
-  exit 1
-fi
-
-if ! [[ "$FULL_SUITE_ENABLED" =~ ^[01]$ ]]; then
-  echo "Invalid HUSHLINE_DAILY_FULL_SUITE_ENABLED: '$FULL_SUITE_ENABLED' (expected 0 or 1)" >&2
   exit 1
 fi
 
@@ -853,32 +840,13 @@ run_local_workflow_checks() {
 }
 
 run_full_workflow_checks() {
-  run_local_workflow_checks || return 1
-
-  if [[ "$FULL_SUITE_ENABLED" != "1" ]]; then
-    return 0
-  fi
-
-  run_check_capture "Workflow Security Checks / actionlint" ensure_actionlint || return 1
-  run_check_capture "Workflow Security Checks / event text interpolation" run_workflow_security_interpolation_check || return 1
-  run_check_capture "Dependency Security Audit / python" docker compose run --rm --no-deps app bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && python -m pip_audit -r /tmp/requirements.txt' || return 1
-  run_check_capture "Dependency Security Audit / node runtime" docker compose run --rm --no-deps app npm audit --omit=dev --package-lock-only || return 1
-  run_check_capture "Dependency Security Audit / node full" docker compose run --rm --no-deps app npm audit --package-lock-only || return 1
-  run_check_capture "Web Quality Checks / lighthouse + w3c" run_web_quality_workflows || return 1
+  run_local_workflow_checks
 }
 
 workflow_checks_summary_lines() {
   cat <<EOF2
 - Run Linter and Tests (lint, test)
 EOF2
-
-  if [[ "$FULL_SUITE_ENABLED" == "1" ]]; then
-    cat <<EOF2
-- Workflow Security Checks (actionlint, event interpolation)
-- Dependency Security Audit (pip-audit, npm audit runtime/full)
-- Web quality checks (Lighthouse accessibility/performance, W3C HTML/CSS)
-EOF2
-  fi
 }
 
 run_codex_from_prompt() {
@@ -998,28 +966,24 @@ require_cmd codex
 require_cmd docker
 require_cmd make
 require_cmd node
-require_cmd npm
-require_cmd curl
 require_cmd rg
 require_cmd shasum
 require_cmd perl
-
-if command -v python >/dev/null 2>&1; then
-  PYTHON_BIN="python"
-elif command -v python3 >/dev/null 2>&1; then
-  PYTHON_BIN="python3"
-else
-  echo "Missing required command: python or python3" >&2
-  exit 1
-fi
 
 run_with_retry "load GitHub token" load_gh_token
 acquire_run_lock
 run_with_retry "verify GitHub auth" gh auth status -h github.com >/dev/null
 
+OPEN_BOT_PRS="$(run_with_retry "list open bot PRs" count_open_bot_prs)"
+if [[ "$OPEN_BOT_PRS" != "0" ]]; then
+  echo "I'm still waiting for my open PR's approval..."
+  echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
+  exit 0
+fi
+
 OPEN_HUMAN_PRS="$(run_with_retry "list open human PRs" count_open_human_prs)"
 if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-  echo "Humans are at work, I'll check back in tomorrow..."
+  echo "Humans are working, I'll check back tomorrow..."
   echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
   exit 0
 fi
@@ -1027,91 +991,73 @@ fi
 sync_repo_to_remote_base
 configure_bot_git_identity
 
-OPEN_BOT_PRS="$(run_with_retry "list open bot PRs" count_open_bot_prs)"
-if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-  echo "Skipped: open PR(s) by ${BOT_LOGIN} already exist (${OPEN_BOT_PRS})."
-  exit 0
-fi
-
-ISSUE_CANDIDATE_NUMBERS=()
+ISSUE_NUMBER=""
 if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
   if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
     echo "Blocked: forced issue #$FORCE_ISSUE_NUMBER is not open." >&2
     exit 1
   fi
-  ISSUE_CANDIDATE_NUMBERS+=("$FORCE_ISSUE_NUMBER")
+  ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
 else
-  ISSUE_CANDIDATE_OUTPUT="$(
+  ISSUE_NUMBER="$(
     run_with_retry \
       "collect project issue candidates (${PROJECT_TITLE} / ${PROJECT_COLUMN})" \
-      collect_issue_candidates
+      collect_issue_candidates \
+      | sed -n '1p'
   )"
-  while IFS= read -r issue_number; do
-    if [[ -n "$issue_number" ]]; then
-      ISSUE_CANDIDATE_NUMBERS+=("$issue_number")
-    fi
-  done <<< "$ISSUE_CANDIDATE_OUTPUT"
 fi
 
-if [[ "${#ISSUE_CANDIDATE_NUMBERS[@]}" -eq 0 ]]; then
+if [[ -z "$ISSUE_NUMBER" ]]; then
   echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
   exit 0
 fi
 
-for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
-  ISSUE_TITLE="$(
-    run_with_retry \
-      "fetch title for issue #$ISSUE_NUMBER" \
-      gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title
-  )"
-  ISSUE_BODY="$(
-    run_with_retry \
-      "fetch body for issue #$ISSUE_NUMBER" \
-      gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body
-  )"
-  ISSUE_URL="$(
-    run_with_retry \
-      "fetch URL for issue #$ISSUE_NUMBER" \
-      gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url
-  )"
-  BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
+ISSUE_TITLE="$(
+  run_with_retry \
+    "fetch title for issue #$ISSUE_NUMBER" \
+    gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title
+)"
+ISSUE_BODY="$(
+  run_with_retry \
+    "fetch body for issue #$ISSUE_NUMBER" \
+    gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body
+)"
+ISSUE_URL="$(
+  run_with_retry \
+    "fetch URL for issue #$ISSUE_NUMBER" \
+    gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url
+)"
+BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 
-  if [[ "$DRY_RUN" == "1" ]]; then
-    echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
-    echo "Issue URL: $ISSUE_URL"
-    echo "Branch that would be used: $BRANCH_NAME"
-    exit 0
-  fi
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "Dry run selected issue #$ISSUE_NUMBER: $ISSUE_TITLE"
+  echo "Issue URL: $ISSUE_URL"
+  echo "Branch that would be used: $BRANCH_NAME"
+  exit 0
+fi
 
-  if git show-ref --quiet --verify "refs/heads/$BRANCH_NAME"; then
-    run_check "Delete existing local branch $BRANCH_NAME" git branch -D "$BRANCH_NAME"
-  fi
-  run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
+if git show-ref --quiet --verify "refs/heads/$BRANCH_NAME"; then
+  run_check "Delete existing local branch $BRANCH_NAME" git branch -D "$BRANCH_NAME"
+fi
+run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
 
-  run_issue_bootstrap
+run_issue_bootstrap
 
-  build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
+build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
+issue_attempt=1
+while true; do
   run_with_retry "run Codex for issue #$ISSUE_NUMBER" run_codex_from_prompt
 
   if ! has_non_log_changes; then
-    echo "Codex produced no changes for issue #$ISSUE_NUMBER. Trying next candidate."
-    git checkout "$BASE_BRANCH"
-    git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
+    echo "Codex produced no non-log changes for issue #$ISSUE_NUMBER (attempt $issue_attempt); retrying."
+    issue_attempt=$((issue_attempt + 1))
+    sleep 1
     continue
   fi
 
-  attempt=1
-  while true; do
-    if run_full_workflow_checks; then
-      break
-    fi
-
-    if (( attempt >= MAX_FIX_ATTEMPTS )); then
-      echo "Workflow checks failed after ${attempt} attempt(s); reached retry limit ${MAX_FIX_ATTEMPTS}." >&2
-      exit 1
-    fi
-
-    echo "Workflow checks failed (attempt ${attempt}/${MAX_FIX_ATTEMPTS}); asking Codex to self-heal." >&2
+  fix_attempt=1
+  while ! run_full_workflow_checks; do
+    echo "Workflow checks failed; asking Codex to self-heal (attempt $fix_attempt)." >&2
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     PRE_FIX_HASH="$(working_tree_patch_hash)"
     build_fix_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$BRANCH_NAME" "$FAILURE_LOG_TAIL"
@@ -1121,38 +1067,38 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
       echo "Codex produced no file changes while checks were failing; retrying." >&2
       sleep 1
     fi
-    attempt=$((attempt + 1))
+    fix_attempt=$((fix_attempt + 1))
   done
 
-  if ! has_non_log_changes; then
-    echo "No non-log changes detected for issue #$ISSUE_NUMBER after checks. Trying next candidate."
-    git checkout "$BASE_BRANCH"
-    git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
-    continue
+  if has_non_log_changes; then
+    break
   fi
 
-  OPEN_BOT_PRS="$(run_with_retry "re-check open bot PRs" count_open_bot_prs)"
-  if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-    echo "Skipped PR creation: another open PR by ${BOT_LOGIN} exists (${OPEN_BOT_PRS})."
-    exit 0
-  fi
+  echo "Checks passed but no non-log changes remain; retrying issue implementation."
+  build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
+  issue_attempt=$((issue_attempt + 1))
+done
 
-  stage_non_log_changes
-  if git diff --cached --quiet; then
-    echo "No non-log changes staged for issue #$ISSUE_NUMBER. Trying next candidate."
-    git checkout "$BASE_BRANCH"
-    git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
-    continue
-  fi
+OPEN_BOT_PRS="$(run_with_retry "re-check open bot PRs" count_open_bot_prs)"
+if [[ "$OPEN_BOT_PRS" != "0" ]]; then
+  echo "Skipped PR creation: another open PR by ${BOT_LOGIN} exists (${OPEN_BOT_PRS})."
+  exit 0
+fi
 
-  COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
-  git commit -m "$COMMIT_MESSAGE"
-  run_with_retry "push branch ${BRANCH_NAME}" push_issue_branch "$BRANCH_NAME"
+stage_non_log_changes
+if git diff --cached --quiet; then
+  echo "Blocked: no non-log changes staged for issue #$ISSUE_NUMBER." >&2
+  exit 1
+fi
 
-  CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
-  MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
-  {
-    cat <<EOF2
+COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
+git commit -m "$COMMIT_MESSAGE"
+run_with_retry "push branch ${BRANCH_NAME}" push_issue_branch "$BRANCH_NAME"
+
+CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
+MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
+{
+  cat <<EOF2
 Automated daily issue runner.
 
 Closes #$ISSUE_NUMBER
@@ -1166,28 +1112,24 @@ $CHECKS_SUMMARY
 Manual testing steps:
 $MANUAL_TESTING_STEPS
 EOF2
-  } > "$PR_BODY_FILE"
+} > "$PR_BODY_FILE"
 
-  PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
-  PR_URL="$(
-    run_with_retry \
-      "create PR for issue #$ISSUE_NUMBER" \
-      gh pr create \
-        --repo "$REPO_SLUG" \
-        --base "$BASE_BRANCH" \
-        --head "$BRANCH_NAME" \
-        --title "$PR_TITLE" \
-        --body-file "$PR_BODY_FILE"
-  )"
+PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
+PR_URL="$(
+  run_with_retry \
+    "create PR for issue #$ISSUE_NUMBER" \
+    gh pr create \
+      --repo "$REPO_SLUG" \
+      --base "$BASE_BRANCH" \
+      --head "$BRANCH_NAME" \
+      --title "$PR_TITLE" \
+      --body-file "$PR_BODY_FILE"
+)"
 
-  if ! run_check "Return to ${BASE_BRANCH}" git checkout "$BASE_BRANCH"; then
-    echo "Warning: unable to switch back to ${BASE_BRANCH} after PR creation." >&2
-  fi
+if ! run_check "Return to ${BASE_BRANCH}" git checkout "$BASE_BRANCH"; then
+  echo "Warning: unable to switch back to ${BASE_BRANCH} after PR creation." >&2
+fi
 
-  echo "Opened PR: $PR_URL"
-  clear_global_log_after_pr
-  exit 0
-done
-
-echo "Skipped: candidate issues produced no changes."
+echo "Opened PR: $PR_URL"
+clear_global_log_after_pr
 exit 0

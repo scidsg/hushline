@@ -15,17 +15,18 @@ Behavior:
 
 1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream run-scoped output there, while also appending the same redacted output to `~/.codex/logs/hushline-agent-runner.log` (session IDs, user home paths, token/secret-like values, and private-key blocks are redacted to `[REDACTED]`).
 2. Acquire an inter-run lock to prevent overlapping executions.
-3. Exit cleanly with `Humans are at work, I'll check back in tomorrow...` when any open human-authored PR exists.
-4. Force-sync to latest `main` on startup:
+3. Exit cleanly with `I'm still waiting for my open PR's approval...` when any open PR authored by `hushline-dev` exists.
+4. Exit cleanly with `Humans are working, I'll check back tomorrow...` when any open human-authored PR exists.
+5. Force-sync to latest `main` on startup:
    - `git fetch origin main --prune`
    - `git reset --hard`
    - `git clean -fdx -e docs/agent-run-log/`
    - `git checkout -B main origin/main`
    - `git reset --hard origin/main`
    - `git clean -fdx -e docs/agent-run-log/`
-5. Exit cleanly when any open PR exists authored by `hushline-dev`.
-6. Select one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, in top-down order.
-7. Start each issue attempt with the issue bootstrap sequence:
+6. Select exactly one open issue from the `Hush Line Roadmap` project column `Agent Eligible` (highest-priority/top item).
+7. Start issue work with the issue bootstrap sequence:
+   - `docker compose build`
    - `docker compose down -v --remove-orphans`
    - `docker compose up -d postgres blob-storage`
    - `docker compose run --rm dev_data`
@@ -33,10 +34,7 @@ Behavior:
 9. Run required local checks before PR creation:
    - `make lint`
    - `make test`
-   - Workflow security checks (`actionlint`, untrusted event interpolation guard)
-   - Dependency audits (`pip-audit`, `npm audit --omit=dev`, `npm audit`)
-   - Web quality checks (Lighthouse accessibility/performance and W3C HTML/CSS validation)
-10. If checks fail, pass failure output back to Codex for a minimal self-heal fix, then re-run checks up to the configured retry limit.
+10. If checks fail, pass failure output back to Codex for self-heal and re-run checks until they pass (no retry cap).
 11. Commit with signing enabled and open a PR. The PR body includes required issue-specific manual testing steps (generated from issue metadata and branch diff).
 12. After PR creation, switch working copy back to `main`, then run a destructive Docker teardown (`docker compose down -v --remove-orphans`) on exit.
 13. After a successful PR open, truncate the global runner log (`~/.codex/logs/hushline-agent-runner.log`) to avoid unbounded growth.
@@ -47,24 +45,23 @@ Behavior:
 [Start]
    |
    v
-[Acquire lock + auth + human PR guard + sync to origin/main + bot PR guard]
+[Acquire lock + auth + bot PR guard + human PR guard + sync to origin/main]
    |
    v
 [Select top issue from Roadmap/Agent Eligible]
    |
    v
-[Run Codex + workflow-equivalent checks]
+[Run Codex + lint/test checks]
+   |
+   +-- checks fail --> [Codex self-heal + rerun checks]
    |
    +-- checks pass --> [Open PR]
-   |
-   +-- checks fail after retry limit --> [Exit with failure]
 ```
 
 Reliability controls:
 
 - Retry with backoff for transient fetch/GitHub/Codex/push/PR operations.
 - Bounded command execution with timeout guards.
-- Bounded self-heal attempts (`HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `3`).
 - Stale-lock reclamation if a previous process died unexpectedly.
 
 ## Local Required Checks
@@ -143,9 +140,6 @@ Dry run:
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
-- `HUSHLINE_DAILY_FULL_SUITE_ENABLED` (default `1`; set `0` to run only lint/test)
-- `HUSHLINE_DAILY_PRETTIER_VERSION` (default `3.3.3`; used for runner tooling bootstrap)
-- `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `3`; must be integer `>= 1`)
 - `HUSHLINE_RUN_CHECK_TIMEOUT_SECONDS` (default `3600`, `0` disables)
 - `HUSHLINE_DAILY_DESTROY_AT_END` (default `1`)
 - `HUSHLINE_RETRY_MAX_ATTEMPTS` (default `3`)

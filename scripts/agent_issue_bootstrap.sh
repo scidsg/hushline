@@ -44,6 +44,7 @@ ensure_docker_running() {
 
 ensure_docker_running
 
+docker compose build
 docker compose down -v --remove-orphans
 docker compose up -d postgres blob-storage
 docker compose run --rm dev_data
