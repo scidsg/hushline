@@ -352,6 +352,23 @@ def test_onboarding_proton_no_key_found_returns_400(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_non_200_response_returns_400(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.return_value.status_code = 503
+    requests_get.return_value.text = ""
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "No PGP key found for that email address." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_onboarding_encryption_manual_missing_key_returns_400(client: FlaskClient) -> None:
     response = client.post(
         url_for("onboarding"),
@@ -359,6 +376,19 @@ def test_onboarding_encryption_manual_missing_key_returns_400(client: FlaskClien
         follow_redirects=False,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_manual_whitespace_key_returns_required_error(
+    client: FlaskClient,
+) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "manual", "pgp_key": "   "},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "PGP key is required." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
