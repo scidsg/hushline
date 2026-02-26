@@ -287,17 +287,42 @@ run_local_workflow_checks() {
 
 extract_test_gap_target_path() {
   local issue_title="$1"
+  local issue_body="${2:-}"
   if [[ "$issue_title" =~ ^\[Test[[:space:]]+Gap\][[:space:]]+(.+)$ ]]; then
     printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  local body_path
+  body_path="$(printf '%s\n' "$issue_body" | awk '
+    {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^hushline\/[A-Za-z0-9_./-]+\.py$/) {
+          print $i;
+          exit;
+        }
+      }
+    }
+  ')"
+  if [[ -n "$body_path" ]]; then
+    printf '%s\n' "$body_path"
   fi
 }
 
 run_issue_specific_checks() {
   local issue_title="$1"
-  local test_gap_target
-  test_gap_target="$(extract_test_gap_target_path "$issue_title")"
-  if [[ -z "$test_gap_target" ]]; then
+  local issue_body="$2"
+  local issue_labels="$3"
+
+  if [[ "$issue_title" != *"[Test Gap]"* ]] && ! printf '%s\n' "$issue_labels" | grep -qi '^test-gap$'; then
     return 0
+  fi
+
+  local test_gap_target
+  test_gap_target="$(extract_test_gap_target_path "$issue_title" "$issue_body")"
+  if [[ -z "$test_gap_target" ]]; then
+    echo "Test-gap gate is active, but no target path was found in issue title/body." | tee -a "$CHECK_LOG_FILE"
+    return 1
   fi
 
   echo "==> Validate test gap coverage target: ${test_gap_target}" | tee -a "$CHECK_LOG_FILE"
@@ -457,6 +482,7 @@ fi
 ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
 ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
 ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
+ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty')"
 BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 
 run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
@@ -476,7 +502,7 @@ while true; do
 
   fix_attempt=1
   while true; do
-    if run_local_workflow_checks && run_issue_specific_checks "$ISSUE_TITLE"; then
+    if run_local_workflow_checks && run_issue_specific_checks "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS"; then
       break
     fi
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
