@@ -29,7 +29,8 @@ BOT_GIT_EMAIL="${HUSHLINE_BOT_GIT_EMAIL:-git-dev@scidsg.org}"
 BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
-CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex high}"
+CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.3-codex}"
+CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
 PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
@@ -45,6 +46,7 @@ RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_GIT_PATH=""
 
 exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
+echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT"
 
 cleanup() {
   rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$RUN_LOG_TMP_FILE"
@@ -460,6 +462,7 @@ append_pr_url_to_run_log() {
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
+    -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"" \
     --full-auto \
     --sandbox workspace-write \
     -C "$REPO_DIR" \
