@@ -2,6 +2,7 @@ import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 
+from hushline import auth
 from hushline.db import db
 from hushline.model import FieldValue, Message, MessageStatus, User, Username
 
@@ -126,7 +127,11 @@ def test_inbox_invalid_status_returns_bad_request(client: FlaskClient) -> None:
     assert response.status_code == 400
 
 
-def test_inbox_missing_user_row_redirects_to_login(client: FlaskClient) -> None:
+def test_inbox_missing_user_row_returns_not_found(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(auth, "get_session_user", lambda: object())
+
     with client.session_transaction() as sess:
         sess["is_authenticated"] = True
         sess["user_id"] = 999999
@@ -134,5 +139,4 @@ def test_inbox_missing_user_row_redirects_to_login(client: FlaskClient) -> None:
         sess["username"] = "ghost"
 
     response = client.get(url_for("inbox"), follow_redirects=False)
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("login"))
+    assert response.status_code == 404
