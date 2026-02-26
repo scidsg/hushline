@@ -285,6 +285,81 @@ run_local_workflow_checks() {
   run_check_capture "Run test" make test || return 1
 }
 
+issue_has_label() {
+  local labels="$1"
+  local expected="$2"
+  printf '%s\n' "$labels" | grep -Fqi -- "$expected"
+}
+
+extract_referenced_file_path() {
+  local issue_title="$1"
+  local issue_body="$2"
+
+  if [[ "$issue_title" =~ ^\[Test[[:space:]]+Gap\][[:space:]]+(.+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  local body_path
+  body_path="$(
+    printf '%s\n' "$issue_body" | awk '
+      {
+        for (i = 1; i <= NF; i++) {
+          if ($i ~ /^hushline\/[A-Za-z0-9_./-]+\.py$/) {
+            print $i
+            exit
+          }
+        }
+      }
+    '
+  )"
+  if [[ -n "$body_path" ]]; then
+    printf '%s\n' "$body_path"
+  fi
+}
+
+run_test_gap_gate() {
+  local issue_title="$1"
+  local issue_body="$2"
+  local issue_labels="$3"
+
+  if ! issue_has_label "$issue_labels" "test-gap"; then
+    return 0
+  fi
+
+  local target_path
+  target_path="$(extract_referenced_file_path "$issue_title" "$issue_body")"
+  if [[ -z "$target_path" ]]; then
+    echo "test-gap label present but no referenced file path was found in issue title/body." | tee -a "$CHECK_LOG_FILE"
+    return 1
+  fi
+
+  echo "==> Enforce test-gap coverage for ${target_path}" | tee -a "$CHECK_LOG_FILE"
+
+  local coverage_row missed cover
+  coverage_row="$(
+    awk -v target="$target_path" '
+      $1 == target { row = $0 }
+      END { if (row != "") print row }
+    ' "$CHECK_LOG_FILE"
+  )"
+  if [[ -z "$coverage_row" ]]; then
+    echo "Coverage row for ${target_path} not found in test output." | tee -a "$CHECK_LOG_FILE"
+    return 1
+  fi
+
+  missed="$(printf '%s\n' "$coverage_row" | awk '{print $3}')"
+  cover="$(printf '%s\n' "$coverage_row" | awk '{print $4}')"
+  cover="${cover%\%}"
+
+  if [[ "$missed" != "0" || "$cover" != "100" ]]; then
+    echo "Coverage for ${target_path} is ${cover}% with ${missed} misses; continuing self-heal." | tee -a "$CHECK_LOG_FILE"
+    return 1
+  fi
+
+  echo "test-gap coverage satisfied for ${target_path}." | tee -a "$CHECK_LOG_FILE"
+}
+
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
@@ -412,6 +487,7 @@ fi
 ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
 ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
 ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
+ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty')"
 BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 
 run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
@@ -431,7 +507,7 @@ while true; do
 
   fix_attempt=1
   while true; do
-    if run_local_workflow_checks; then
+    if run_local_workflow_checks && run_test_gap_gate "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS"; then
       break
     fi
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
