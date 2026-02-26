@@ -378,7 +378,7 @@ write_pr_changed_files_section() {
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    printf -- "- `%s`\n" "$line"
+    printf -- '- `%s`\n' "$line"
     count=$((count + 1))
     if (( count >= max_files )); then
       break
@@ -425,9 +425,9 @@ EOF2
 
   if issue_has_label "$issue_labels" "test-gap"; then
     if [[ -n "$test_gap_target" ]]; then
-      printf -- "- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n" "$test_gap_target" >> "$PR_BODY_FILE"
+      printf -- '- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n' "$test_gap_target" >> "$PR_BODY_FILE"
     else
-      printf -- "- `test-gap` gate: active for this issue.\n" >> "$PR_BODY_FILE"
+      printf -- '- `test-gap` gate: active for this issue.\n' >> "$PR_BODY_FILE"
     fi
   fi
 }
