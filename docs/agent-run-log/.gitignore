@@ -1,2 +1,1 @@
-*.log
-!.gitignore
+# Run logs in this directory are intentionally tracked.
