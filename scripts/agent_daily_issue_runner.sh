@@ -66,12 +66,41 @@ touch "$GLOBAL_LOG_FILE"
 LOG_PIPE_FILE="$(mktemp "/tmp/hushline-agent-runner-log-pipe.XXXXXX")"
 rm -f "$LOG_PIPE_FILE"
 mkfifo "$LOG_PIPE_FILE"
+
+redact_log_stream() {
+  perl -pe '
+    BEGIN { $in_private_key = 0; }
+
+    if ($in_private_key) {
+      if (/-----END (?:PGP )?(?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY(?: BLOCK)?-----/) {
+        s/.*/-----END [REDACTED PRIVATE KEY]-----/;
+        $in_private_key = 0;
+      } else {
+        s/.*/[REDACTED]/;
+      }
+      next;
+    }
+
+    if (/-----BEGIN (?:PGP )?(?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY(?: BLOCK)?-----/) {
+      s/.*/-----BEGIN [REDACTED PRIVATE KEY]-----/;
+      $in_private_key = 1;
+      next;
+    }
+
+    s#(/Users/)[^/\s]+#${1}[REDACTED]#g;
+    s#(session id:\s*)[A-Za-z0-9-]+#${1}[REDACTED]#ig;
+    s#\b(Bearer\s+)[A-Za-z0-9._~+/=-]+#${1}[REDACTED]#ig;
+    s#\b(github_pat_[A-Za-z0-9_]+|gh[opus]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16})\b#[REDACTED]#g;
+    s#\b(([A-Za-z0-9_]*?(?:api[_-]?key|access[_-]?token|id[_-]?token|refresh[_-]?token|token|password|passwd|secret|client[_-]?secret|authorization))[ \t]*[:=][ \t]*)("(?:[^"\\\\]|\\\\.)*"|\047(?:[^\047\\\\]|\\\\.)*\047|[^ \t\r\n,;]+)#${1}[REDACTED]#ig;
+  '
+}
+
 # Under LaunchAgent, stdout/stderr are already redirected to the global log file.
 # Avoid writing GLOBAL_LOG_FILE directly in that mode to prevent duplicate lines.
 if [[ "${XPC_SERVICE_NAME:-}" == "org.scidsg.hushline-agent-runner" ]]; then
-  tee -a "$RUN_LOG_FILE" < "$LOG_PIPE_FILE" &
+  redact_log_stream < "$LOG_PIPE_FILE" | tee -a "$RUN_LOG_FILE" &
 else
-  tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" < "$LOG_PIPE_FILE" >/dev/null &
+  redact_log_stream < "$LOG_PIPE_FILE" | tee -a "$RUN_LOG_FILE" "$GLOBAL_LOG_FILE" >/dev/null &
 fi
 LOG_TEE_PID=$!
 exec > "$LOG_PIPE_FILE" 2>&1

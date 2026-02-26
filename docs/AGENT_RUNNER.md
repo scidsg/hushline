@@ -13,7 +13,7 @@ This runner automates one issue per day from this repository checkout only.
 
 Behavior:
 
-1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream run-scoped output there, while also appending full output to `~/.codex/logs/hushline-agent-runner.log`.
+1. Create a unique per-run log file under `docs/agent-run-log/` (for example `run-20260225T205501Z-pid12345.log`) and stream run-scoped output there, while also appending the same redacted output to `~/.codex/logs/hushline-agent-runner.log` (session IDs, user home paths, token/secret-like values, and private-key blocks are redacted to `[REDACTED]`).
 2. Acquire an inter-run lock to prevent overlapping executions.
 3. Exit cleanly with `Humans are at work, I'll check back in tomorrow...` when any open human-authored PR exists.
 4. Force-sync to latest `main` on startup:

@@ -1,5 +1,5 @@
-Run log file: /Users/scidsg/hushline/docs/agent-run-log/run-20260225T234902Z-pid77838.log
-Global log file: /Users/scidsg/.codex/logs/hushline-agent-runner.log
+Run log file: /Users/[REDACTED]/hushline/docs/agent-run-log/run-20260225T234902Z-pid77838.log
+Global log file: /Users/[REDACTED]/.codex/logs/hushline-agent-runner.log
 Stale runner lock detected. Reclaiming lock.
 Synchronizing repository to origin/main.
 ==> Fetch latest main
@@ -137,14 +137,14 @@ Dev data added
 Public storage bucket: public
 OpenAI Codex v0.104.0 (research preview)
 --------
-workdir: /Users/scidsg/hushline
+workdir: /Users/[REDACTED]/hushline
 model: gpt-5.3-codex
 provider: openai
 approval: never
 sandbox: workspace-write [workdir, /tmp, $TMPDIR]
 reasoning effort: xhigh
 reasoning summaries: auto
-session id: 019c9735-28dd-7c62-95ca-fdc10ea79a09
+session id: [REDACTED]
 --------
 user
 You are implementing GitHub issue #1386 in scidsg/hushline.
@@ -177,7 +177,7 @@ I’ll locate the exact uncovered path in `hushline/settings/twofa.py`, read the
 thinking
 **Exploring agent files**
 exec
-/bin/zsh -lc "rg --files -g 'AGENTS.md'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "rg --files -g 'AGENTS.md'" in /Users/[REDACTED]/hushline succeeded in 52ms:
 AGENTS.md
 
 thinking
@@ -188,8 +188,8 @@ I confirmed there’s only the top-level `AGENTS.md`, so I’m now inspecting `h
 thinking
 **Planning parallel file reads and searches**
 exec
-/bin/zsh -lc 'nl -ba hushline/settings/twofa.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n \"twofa|2fa|TWOFA|otp|onetime|login_url|webauthn|allauth\" tests hushline -g '*test*'" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc 'nl -ba hushline/settings/twofa.py' in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "rg -n \"twofa|2fa|TWOFA|otp|onetime|login_url|webauthn|allauth\" tests hushline -g '*test*'" in /Users/[REDACTED]/hushline succeeded in 51ms:
      1	import base64
      2	import io
      3	
@@ -213,7 +213,7 @@ exec
  succeeded in 52ms:
 tests/test_coverage_push_remaining.py:271:def test_enable_2fa_invalid_code_path(client: FlaskClient, user: User) -> None:
 tests/test_coverage_push_remaining.py:272:    response = client.get(url_for("settings.enable_2fa"), follow_redirects=False)
-tests/test_coverage_push_remaining.py:275:        secret = sess["temp_totp_secret"]
+tests/test_coverage_push_remaining.py:275:        secret = [REDACTED]
 tests/test_coverage_push_remaining.py:279:        url_for("settings.enable_2fa"),
 tests/test_coverage_push_remaining.py:284:    assert response.headers["Location"].endswith(url_for("settings.enable_2fa"))
 tests/test_routes_auth.py:3:import pyotp
@@ -222,15 +222,15 @@ tests/test_routes_auth.py:146:    response = client.get(url_for("verify_2fa_logi
 tests/test_routes_auth.py:154:def test_verify_2fa_login_redirects_to_inbox_when_already_authenticated(
 tests/test_routes_auth.py:157:    response = client.get(url_for("verify_2fa_login"), follow_redirects=False)
 tests/test_routes_auth.py:163:def test_verify_2fa_login_rejects_when_user_has_no_totp_secret(
-tests/test_routes_auth.py:166:    user.totp_secret = None
+tests/test_routes_auth.py:166:    user.totp_secret = [REDACTED]
 tests/test_routes_auth.py:172:        url_for("verify_2fa_login"),
 tests/test_routes_auth.py:181:def test_verify_2fa_login_success_redirects_to_onboarding(client: FlaskClient, user: User) -> None:
-tests/test_routes_auth.py:182:    totp_secret = pyotp.random_base32()
-tests/test_routes_auth.py:183:    user.totp_secret = totp_secret
+tests/test_routes_auth.py:182:    totp_secret = [REDACTED]
+tests/test_routes_auth.py:183:    user.totp_secret = [REDACTED]
 tests/test_routes_auth.py:190:        url_for("verify_2fa_login"),
 tests/test_routes_auth.py:191:        data={"verification_code": pyotp.TOTP(totp_secret).now()},
 tests/test_routes_auth.py:199:def test_verify_2fa_login_success_redirects_to_select_tier_when_enabled(
-tests/test_routes_auth.py:203:    totp_secret = pyotp.random_base32()
+tests/test_routes_auth.py:203:    totp_secret = [REDACTED]
 
 thinking
 **Inspecting test coverage gap**
@@ -240,7 +240,7 @@ I found existing dedicated tests in `tests/test_settings_twofa.py`; next I’m c
 thinking
 **Running test file**
 exec
-/bin/zsh -lc 'nl -ba tests/test_settings_twofa.py' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'nl -ba tests/test_settings_twofa.py' in /Users/[REDACTED]/hushline succeeded in 52ms:
      1	import pyotp
      2	import pytest
      3	from flask import url_for
@@ -265,7 +265,7 @@ exec
 thinking
 **Inspecting tests for 2FA route**
 exec
-/bin/zsh -lc "nl -ba tests/test_coverage_push_remaining.py | sed -n '220,340p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/test_coverage_push_remaining.py | sed -n '220,340p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
    220	def test_settings_common_remaining_paths(app, user: User) -> None:  # type: ignore[no-untyped-def]
    221	    fake_link_local_ip = SimpleNamespace(
    222	        is_unspecified=False,
@@ -290,7 +290,7 @@ exec
 thinking
 **Inspecting user authentication decorator**
 exec
-/bin/zsh -lc "nl -ba hushline/auth.py | sed -n '1,260p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba hushline/auth.py | sed -n '1,260p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
      1	from functools import wraps
      2	from hmac import compare_digest
      3	from typing import Any, Callable
@@ -315,7 +315,7 @@ exec
 thinking
 **Analyzing missing coverage line**
 exec
-/bin/zsh -lc "nl -ba tests/test_2fa.py | sed -n '1,120p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/test_2fa.py | sed -n '1,120p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
      1	import secrets
      2	from datetime import datetime, timedelta, tzinfo
      3	
@@ -327,12 +327,12 @@ exec
      9	from hushline.db import db
     10	from hushline.model import User
     11	
-    12	TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
+    12	TOTP_SECRET = [REDACTED]
     13	
     14	
     15	@pytest.fixture()
     16	def _2fa_user(client: FlaskClient, user: User) -> None:
-    17	    user.totp_secret = TOTP_SECRET
+    17	    user.totp_secret = [REDACTED]
     18	    db.session.commit()
     19	
     20	
@@ -340,7 +340,7 @@ exec
 thinking
 **Designing test to cover missing user branch**
 exec
-/bin/zsh -lc "rg -n \"__wrapped__|app\\.view_functions|test_request_context\\(\" tests" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "rg -n \"__wrapped__|app\\.view_functions|test_request_context\\(\" tests" in /Users/[REDACTED]/hushline succeeded in 52ms:
 tests/test_settings.py:137:        with app.test_request_context():
 tests/test_settings.py:696:        with app.test_request_context():
 tests/test_coverage_push_remaining.py:247:        app.test_request_context("/settings/fields", method="POST", data={"bogus": ""}),
@@ -370,8 +370,8 @@ I’ve isolated the likely uncovered statement: the `verify_2fa_setup` in-functi
 thinking
 **Inspecting fixture naming conventions**
 exec
-/bin/zsh -lc "nl -ba tests/conftest.py | sed -n '1,260p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n \"def _authenticated_user|@pytest\\.fixture\\(\\).*_authenticated_user|def user\\(\" tests" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/conftest.py | sed -n '1,260p'" in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "rg -n \"def _authenticated_user|@pytest\\.fixture\\(\\).*_authenticated_user|def user\\(\" tests" in /Users/[REDACTED]/hushline succeeded in 52ms:
      1	import os
      2	import random
      3	import string
@@ -393,13 +393,13 @@ exec
     19	from hushline import create_app
     20	from hushline.crypto import _SCRYPT_PARAMS
  succeeded in 51ms:
-tests/conftest.py:249:def user(app: Flask, user_password: str, database: str) -> User:
+tests/conftest.py:249:def user(app: Flask, user_password: [REDACTED], database: str) -> User:
 tests/conftest.py:277:def _authenticated_user(client: FlaskClient, user: User) -> None:
 
 thinking
 **Identifying missing user lines**
 exec
-/bin/zsh -lc "nl -ba tests/conftest.py | sed -n '260,340p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/conftest.py | sed -n '260,340p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
    260	    user = make_user(user_password)
    261	    user.is_admin = True
    262	    db.session.add(user)
@@ -408,7 +408,7 @@ exec
    265	
    266	
    267	@pytest.fixture()
-   268	def admin_user2(app: Flask, user_password: str, database: str) -> User:
+   268	def admin_user2(app: Flask, user_password: [REDACTED], database: str) -> User:
    269	    user = make_user(user_password)
    270	    user.is_admin = True
    271	    db.session.add(user)
@@ -429,13 +429,13 @@ Before editing, I’m doing a quick repository-required check for Dependabot sta
 thinking
 **Testing GitHub CLI command execution**
 exec
-/bin/zsh -lc 'gh pr list --author app/dependabot --state open --limit 5' in /Users/scidsg/hushline succeeded in 524ms:
+/bin/zsh -lc 'gh pr list --author app/dependabot --state open --limit 5' in /Users/[REDACTED]/hushline succeeded in 524ms:
 
 
 thinking
 **Checking Dependabot issues**
 exec
-/bin/zsh -lc 'gh issue list --state open --search "author:app/dependabot" --limit 5' in /Users/scidsg/hushline succeeded in 437ms:
+/bin/zsh -lc 'gh issue list --state open --search "author:app/dependabot" --limit 5' in /Users/[REDACTED]/hushline succeeded in 437ms:
 
 
 thinking
@@ -443,7 +443,7 @@ thinking
 codex
 I confirmed no open Dependabot PRs/issues via `gh` queries in this repo context. I’m now editing `tests/test_settings_twofa.py` to make the “missing user” test exercise the uncovered in-function branch rather than only the auth decorator redirect.
 file update
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 @@ -69,8 +69,9 @@
  
 -def test_verify_2fa_setup_redirects_to_login_for_missing_user(client: FlaskClient) -> None:
@@ -462,7 +462,7 @@ M /Users/scidsg/hushline/tests/test_settings_twofa.py
  
 apply_patch(auto_approved=true) exited 0 in 46ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 file update:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
 index 31451b3903f74d23a64a6894e9e91109ce55e00c..a46015bc45a18623da8596ec102378565f5c8c53
@@ -521,7 +521,7 @@ thinking
 codex
 I found a typing annotation issue in that new test signature and am correcting it now so the test module imports cleanly.
 file update
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 @@ -71,3 +71,3 @@
  def test_verify_2fa_setup_redirects_to_login_for_missing_user(
 -    client: FlaskClient, user: User, mocker: pytest.MockFixture
@@ -529,7 +529,7 @@ M /Users/scidsg/hushline/tests/test_settings_twofa.py
  ) -> None:
 apply_patch(auto_approved=true) exited 0 in 55ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 file update:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
 index 31451b3903f74d23a64a6894e9e91109ce55e00c..adf27244c1b34ec7724028afd036d75592203cfa
@@ -583,7 +583,7 @@ index 31451b3903f74d23a64a6894e9e91109ce55e00c..adf27244c1b34ec7724028afd036d755
          url_for("settings.verify_2fa_setup"),
 
 exec
-/bin/zsh -lc 'git diff -- tests/test_settings_twofa.py' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'git diff -- tests/test_settings_twofa.py' in /Users/[REDACTED]/hushline succeeded in 52ms:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
 index 31451b39..adf27244 100644
 --- a/tests/test_settings_twofa.py
@@ -639,7 +639,7 @@ The test diff is minimal and focused; I’m doing one quick consistency pass acr
 thinking
 **Checking mocker import usage**
 exec
-/bin/zsh -lc "rg -n \"def .*\\(.*mocker\" tests | head -n 20" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "rg -n \"def .*\\(.*mocker\" tests | head -n 20" in /Users/[REDACTED]/hushline succeeded in 52ms:
 tests/test_coverage_push_remaining.py:125:def test_crypto_encrypt_message_string_branch(app, mocker) -> None:  # type: ignore[no-untyped-def]
 tests/test_coverage_push_remaining.py:200:def test_branding_delete_logo_multirow_safety(client: FlaskClient, mocker) -> None:  # type: ignore[no-untyped-def]
 tests/test_coverage_push_remaining.py:288:async def test_worker_no_pending_event_hits_continue(app, mocker) -> None:  # type: ignore[no-untyped-def]
@@ -690,7 +690,7 @@ index 31451b3903f74d23a64a6894e9e91109ce55e00c..adf27244c1b34ec7724028afd036d755
 thinking
 **Planning minimal test changes**
 exec
-/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '60,110p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '60,110p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
     60	    assert response.headers["Location"].endswith(url_for("login"))
     61	
     62	
@@ -741,7 +741,7 @@ index 31451b3903f74d23a64a6894e9e91109ce55e00c..adf27244c1b34ec7724028afd036d755
 thinking
 **Verifying no unstaged changes**
 exec
-/bin/zsh -lc 'git status --short' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'git status --short' in /Users/[REDACTED]/hushline succeeded in 52ms:
  M tests/test_settings_twofa.py
 file update:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
@@ -777,7 +777,7 @@ thinking
 codex
 Implemented a minimal test-only fix for issue #1386 by updating the missing-user 2FA setup test to hit the uncovered in-route branch in `hushline/settings/twofa.py`.
 
-- Updated [tests/test_settings_twofa.py:70](/Users/scidsg/hushline/tests/test_settings_twofa.py:70)
+- Updated [tests/test_settings_twofa.py:70](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py:70)
 - The test now:
   - Uses authenticated session fixture
   - Mocks `hushline.auth.get_session_user` to pass the decorator
@@ -817,7 +817,7 @@ tokens used
 28,592
 Implemented a minimal test-only fix for issue #1386 by updating the missing-user 2FA setup test to hit the uncovered in-route branch in `hushline/settings/twofa.py`.
 
-- Updated [tests/test_settings_twofa.py:70](/Users/scidsg/hushline/tests/test_settings_twofa.py:70)
+- Updated [tests/test_settings_twofa.py:70](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py:70)
 - The test now:
   - Uses authenticated session fixture
   - Mocks `hushline.auth.get_session_user` to pass the decorator
@@ -847,14 +847,14 @@ make: *** [lint] Error 1
 Workflow checks failed (attempt 1/3); asking Codex to self-heal.
 OpenAI Codex v0.104.0 (research preview)
 --------
-workdir: /Users/scidsg/hushline
+workdir: /Users/[REDACTED]/hushline
 model: gpt-5.3-codex
 provider: openai
 approval: never
 sandbox: workspace-write [workdir, /tmp, $TMPDIR]
 reasoning effort: xhigh
 reasoning summaries: auto
-session id: 019c9738-3077-7051-9cdd-cfdd74247d2c
+session id: [REDACTED]
 --------
 user
 You are continuing GitHub issue #1386 in scidsg/hushline on branch codex/daily-issue-1386.
@@ -899,8 +899,8 @@ thinking
 codex
 I’ll make the smallest targeted fix in `tests/test_settings_twofa.py` for the missing type annotation reported by `mypy`, then stop without running any checks. I’m inspecting that file around the failing line now.
 exec
-/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '1,180p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n \"def test_|def .*\\(\" tests/test_settings_twofa.py" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '1,180p'" in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "rg -n \"def test_|def .*\\(\" tests/test_settings_twofa.py" in /Users/[REDACTED]/hushline succeeded in 52ms:
      1	import pyotp
      2	import pytest
      3	from flask import url_for
@@ -938,8 +938,8 @@ thinking
 codex
 I found the failing function: it has an untyped `mocker` fixture argument on line 72. I’m checking the repository’s existing typing convention for this fixture so the fix stays consistent and minimal.
 exec
-/bin/zsh -lc "rg -n \"MockerFixture|mocker:\\s*\" tests hushline | sed -n '1,160p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n \"from pytest_mock import MockerFixture\" . | sed -n '1,120p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "rg -n \"MockerFixture|mocker:\\s*\" tests hushline | sed -n '1,160p'" in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "rg -n \"from pytest_mock import MockerFixture\" . | sed -n '1,120p'" in /Users/[REDACTED]/hushline succeeded in 52ms:
 
  succeeded in 52ms:
 tests/test_info.py:13:    def modifier(mocker: MockFixture) -> None:
@@ -968,9 +968,9 @@ thinking
 codex
 The suite appears to standardize on a `MockFixture` type alias rather than `MockerFixture`. I’m confirming where it comes from so I can apply the same pattern in this file without broader refactoring.
 exec
-/bin/zsh -lc "sed -n '1,80p' tests/test_premium.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,80p' tests/test_info.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,260p' tests/conftest.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,80p' tests/test_premium.py" in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "sed -n '1,80p' tests/test_info.py" in /Users/[REDACTED]/hushlineexec
+/bin/zsh -lc "sed -n '1,260p' tests/conftest.py" in /Users/[REDACTED]/hushline succeeded in 53ms:
 import os
 from typing import Callable
 
@@ -1039,7 +1039,7 @@ thinking
 codex
 I confirmed the repo convention is `from pytest_mock import MockFixture` with `mocker: MockFixture`. I’m applying exactly that to `tests/test_settings_twofa.py` and nothing else.
 file update
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 @@ -4,2 +4,3 @@
  from flask.testing import FlaskClient
 +from pytest_mock import MockFixture
@@ -1051,7 +1051,7 @@ M /Users/scidsg/hushline/tests/test_settings_twofa.py
  ) -> None:
 apply_patch(auto_approved=true) exited 0 in 43ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_settings_twofa.py
+M /Users/[REDACTED]/hushline/tests/test_settings_twofa.py
 file update:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
 index adf27244c1b34ec7724028afd036d75592203cfa..1ba4082685481d488edcb61e000ef8697e703c35
@@ -1104,7 +1104,7 @@ thinking
 codex
 The targeted type annotation is in place. I’m checking the exact diff to verify it stayed minimal and scoped to the reported failure.
 exec
-/bin/zsh -lc 'git diff -- tests/test_settings_twofa.py' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'git diff -- tests/test_settings_twofa.py' in /Users/[REDACTED]/hushline succeeded in 52ms:
 diff --git a/tests/test_settings_twofa.py b/tests/test_settings_twofa.py
 index 31451b39..1ba40826 100644
 --- a/tests/test_settings_twofa.py
@@ -1152,7 +1152,7 @@ index adf27244c1b34ec7724028afd036d75592203cfa..1ba4082685481d488edcb61e000ef869
 thinking
 **Clarifying unexpected file modifications**
 exec
-/bin/zsh -lc 'rg -n "mocker" tests/test_settings_twofa.py' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'rg -n "mocker" tests/test_settings_twofa.py' in /Users/[REDACTED]/hushline succeeded in 52ms:
 73:    client: FlaskClient, user: User, mocker: MockFixture
 76:    mocker.patch("hushline.auth.get_session_user", return_value=user)
 77:    mocker.patch("hushline.settings.twofa.db.session.get", return_value=None)
@@ -1185,7 +1185,7 @@ thinking
 codex
 I verified there are no other `mocker` usages in this test file and kept the change to a single import plus one parameter annotation. I’ll now summarize the exact edit and stop (without running checks).
 exec
-/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '1,95p'" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "nl -ba tests/test_settings_twofa.py | sed -n '1,95p'" in /Users/[REDACTED]/hushline succeeded in 51ms:
      1	import pyotp
      2	import pytest
      3	from flask import url_for
@@ -1235,8 +1235,8 @@ thinking
 codex
 Applied the minimal typing fix for the reported mypy error in issue #1386:
 
-- Added `MockFixture` import in [tests/test_settings_twofa.py#L5](/Users/scidsg/hushline/tests/test_settings_twofa.py#L5).
-- Annotated the `mocker` fixture parameter as `mocker: MockFixture` in [tests/test_settings_twofa.py#L73](/Users/scidsg/hushline/tests/test_settings_twofa.py#L73).
+- Added `MockFixture` import in [tests/test_settings_twofa.py#L5](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py#L5).
+- Annotated the `mocker` fixture parameter as `mocker: MockFixture` in [tests/test_settings_twofa.py#L73](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py#L73).
 
 No other files were changed, and I did not run lint/tests per your requirement.
 
@@ -1268,8 +1268,8 @@ tokens used
 26,992
 Applied the minimal typing fix for the reported mypy error in issue #1386:
 
-- Added `MockFixture` import in [tests/test_settings_twofa.py#L5](/Users/scidsg/hushline/tests/test_settings_twofa.py#L5).
-- Annotated the `mocker` fixture parameter as `mocker: MockFixture` in [tests/test_settings_twofa.py#L73](/Users/scidsg/hushline/tests/test_settings_twofa.py#L73).
+- Added `MockFixture` import in [tests/test_settings_twofa.py#L5](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py#L5).
+- Annotated the `mocker` fixture parameter as `mocker: MockFixture` in [tests/test_settings_twofa.py#L73](/Users/[REDACTED]/hushline/tests/test_settings_twofa.py#L73).
 
 No other files were changed, and I did not run lint/tests per your requirement.
 
