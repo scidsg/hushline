@@ -1,0 +1,3 @@
+Run log file: /Users/scidsg/Documents/Git/hushline/docs/agent-run-log/run-20260225T225257Z-pid73742.log
+Global log file: /tmp/hushline_global_manual.log
+Invalid HUSHLINE_DAILY_MAX_FIX_ATTEMPTS: '0' (expected integer >= 1)
