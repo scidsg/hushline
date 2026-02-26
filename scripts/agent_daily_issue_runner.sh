@@ -496,7 +496,7 @@ resolve_project_number() {
             }
           }
         }
-      ' \
+      ' 2>/dev/null \
       | PROJECT_TITLE="$PROJECT_TITLE" node -e '
         const fs = require("fs");
         const payload = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -529,7 +529,7 @@ collect_issue_candidates_from_project() {
       --owner "$PROJECT_OWNER" \
       --limit "$PROJECT_ITEM_LIMIT" \
       --query "is:issue is:open status:\"$PROJECT_COLUMN\"" \
-      --format json \
+      --format json 2>/dev/null \
       | REPO_SLUG="$REPO_SLUG" node -e '
         const fs = require("fs");
         const payload = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -1048,7 +1048,10 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
     exit 0
   fi
 
-  run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
+  if git show-ref --quiet --verify "refs/heads/$BRANCH_NAME"; then
+    run_check "Delete existing local branch $BRANCH_NAME" git branch -D "$BRANCH_NAME"
+  fi
+  run_check "Checkout branch for issue #$ISSUE_NUMBER" git checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
 
   run_issue_bootstrap
 
@@ -1111,7 +1114,6 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   git commit -m "$COMMIT_MESSAGE"
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
 
-  SUMMARY="$(head -c 3000 "$CODEX_OUTPUT_FILE" || true)"
   CHECKS_SUMMARY="$(workflow_checks_summary_lines)"
   MANUAL_TESTING_STEPS="$(generate_manual_testing_steps "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$BRANCH_NAME")"
   {
@@ -1128,9 +1130,6 @@ $CHECKS_SUMMARY
 
 Manual testing steps:
 $MANUAL_TESTING_STEPS
-
-Codex summary:
-$SUMMARY
 EOF2
   } > "$PR_BODY_FILE"
 
