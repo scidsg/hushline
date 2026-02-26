@@ -385,6 +385,14 @@ working_tree_patch_hash() {
   } | shasum -a 256 | awk '{print $1}'
 }
 
+has_non_log_changes() {
+  [[ -n "$(git status --porcelain -- . ':(exclude)docs/agent-run-log/*.log')" ]]
+}
+
+stage_non_log_changes() {
+  git add -A -- . ':(exclude)docs/agent-run-log/*.log'
+}
+
 sync_repo_to_remote_base() {
   local clean_flag="-fdx"
   local clean_exclude_flag="-e"
@@ -906,6 +914,7 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) Ignore local runner log artifacts under docs/agent-run-log/*.log and do not edit or commit them.
 EOF2
 }
 
@@ -933,6 +942,7 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) Ignore local runner log artifacts under docs/agent-run-log/*.log and do not edit or commit them.
 EOF2
 }
 
@@ -1034,7 +1044,7 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_with_retry "run Codex for issue #$ISSUE_NUMBER" run_codex_from_prompt
 
-  if [[ -z "$(git status --porcelain)" ]]; then
+  if ! has_non_log_changes; then
     echo "Codex produced no changes for issue #$ISSUE_NUMBER. Trying next candidate."
     git checkout "$BASE_BRANCH"
     git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
@@ -1065,13 +1075,27 @@ for ISSUE_NUMBER in "${ISSUE_CANDIDATE_NUMBERS[@]}"; do
     attempt=$((attempt + 1))
   done
 
+  if ! has_non_log_changes; then
+    echo "No non-log changes detected for issue #$ISSUE_NUMBER after checks. Trying next candidate."
+    git checkout "$BASE_BRANCH"
+    git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
+    continue
+  fi
+
   OPEN_BOT_PRS="$(run_with_retry "re-check open bot PRs" count_open_bot_prs)"
   if [[ "$OPEN_BOT_PRS" != "0" ]]; then
     echo "Skipped PR creation: another open PR by ${BOT_LOGIN} exists (${OPEN_BOT_PRS})."
     exit 0
   fi
 
-  git add -A
+  stage_non_log_changes
+  if git diff --cached --quiet; then
+    echo "No non-log changes staged for issue #$ISSUE_NUMBER. Trying next candidate."
+    git checkout "$BASE_BRANCH"
+    git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
+    continue
+  fi
+
   COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
   git commit -m "$COMMIT_MESSAGE"
   run_with_retry "push branch ${BRANCH_NAME}" git push -u origin "$BRANCH_NAME"
