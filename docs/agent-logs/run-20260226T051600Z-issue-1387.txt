@@ -4497,3 +4497,5 @@ Coverage HTML written to dir htmlcov
 ================== 586 passed, 1 xfailed in 177.13s (0:02:57) ==================
 ==> Enforce test-gap coverage for hushline/settings/delete_account.py
 test-gap coverage satisfied for hushline/settings/delete_account.py.
+
+Opened PR: https://github.com/scidsg/hushline/pull/1418
