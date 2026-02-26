@@ -108,6 +108,13 @@ def test_onboarding_skip(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_skip_redirects_to_inbox_by_default(client: FlaskClient) -> None:
+    response = client.post(url_for("onboarding_skip"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @patch("hushline.routes.onboarding.can_encrypt_with_pgp_key", return_value=True)
 @patch("hushline.routes.onboarding.is_valid_pgp_key", return_value=True)
 @patch("hushline.routes.onboarding.requests.get")
@@ -194,6 +201,18 @@ def test_onboarding_redirects_to_inbox_when_already_complete(
     response = client.get(url_for("onboarding"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_allows_non_profile_step_when_already_complete(
+    client: FlaskClient, user: User
+) -> None:
+    _set_all_onboarding_values_complete(user)
+    db.session.commit()
+
+    response = client.get(url_for("onboarding", step="encryption"), follow_redirects=False)
+    assert response.status_code == 200
+    assert "Step 2 of 4" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -349,6 +368,25 @@ def test_onboarding_proton_no_key_found_returns_400(
     )
     assert response.status_code == 400
     assert "No PGP key found for that email address." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.routes.onboarding.is_valid_pgp_key")
+@patch("hushline.routes.onboarding.requests.get")
+def test_onboarding_proton_non_200_response_returns_400(
+    requests_get: MagicMock, is_valid_pgp_key: MagicMock, client: FlaskClient
+) -> None:
+    requests_get.return_value.status_code = 404
+    requests_get.return_value.text = "not-found"
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "user@proton.me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "No PGP key found for that email address." in response.text
+    is_valid_pgp_key.assert_not_called()
 
 
 @pytest.mark.usefixtures("_authenticated_user")
