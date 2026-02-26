@@ -144,7 +144,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 - Only approved models may be used for code changes.
 - Approved models:
-  - `gpt-5.3-codex xhigh`
+  - `gpt-5.3-codex high`
 - Unapproved models must not be used to author or modify production code without explicit changes to this document.
 - If an approved model is unavailable, stop and do not substitute another model unless this document is updated first.
 - If an agent believes another model should be approved, an Issue must be opened with clear rationale. Data must support the request.

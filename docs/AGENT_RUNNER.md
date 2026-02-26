@@ -73,4 +73,4 @@ Optional forced issue:
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
-- `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
+- `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex high`)
