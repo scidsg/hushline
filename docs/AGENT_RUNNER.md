@@ -30,8 +30,10 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
    - `make test`
    - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
 12. If checks fail, feed failures back to Codex and retry until checks pass.
-13. Commit, push branch (`--force-with-lease`), and open PR.
-14. Return to `main` on exit.
+13. Persist a run transcript for successful runs to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+14. Commit, push branch (`--force-with-lease`), and open PR.
+15. Include the runner log path in the PR description.
+16. Return to `main` on exit.
 
 ## Required Commands
 
