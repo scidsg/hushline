@@ -378,7 +378,7 @@ write_pr_changed_files_section() {
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    printf -- "- `%s`\n" "$line"
+    printf -- '- `%s`\n' "$line"
     count=$((count + 1))
     if (( count >= max_files )); then
       break
@@ -425,9 +425,9 @@ EOF2
 
   if issue_has_label "$issue_labels" "test-gap"; then
     if [[ -n "$test_gap_target" ]]; then
-      printf -- "- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n" "$test_gap_target" >> "$PR_BODY_FILE"
+      printf -- '- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n' "$test_gap_target" >> "$PR_BODY_FILE"
     else
-      printf -- "- `test-gap` gate: active for this issue.\n" >> "$PR_BODY_FILE"
+      printf -- '- `test-gap` gate: active for this issue.\n' >> "$PR_BODY_FILE"
     fi
   fi
 }
@@ -445,6 +445,14 @@ persist_run_log() {
     printf 'Repository: %s\n\n' "$REPO_SLUG"
     cat "$RUN_LOG_TMP_FILE"
   } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
+}
+
+append_pr_url_to_run_log() {
+  local pr_url="$1"
+  if [[ -z "$RUN_LOG_GIT_PATH" ]]; then
+    return 0
+  fi
+  printf '\nOpened PR: %s\n' "$pr_url" >> "$REPO_DIR/$RUN_LOG_GIT_PATH"
 }
 
 run_codex_from_prompt() {
@@ -639,3 +647,11 @@ PR_URL="$({
 } )"
 
 echo "Opened PR: $PR_URL"
+append_pr_url_to_run_log "$PR_URL"
+
+# Ensure committed runner log includes the final PR URL line.
+git add "$RUN_LOG_GIT_PATH"
+if ! git diff --cached --quiet; then
+  git commit -m "chore: append opened PR URL to runner log"
+  git push origin "$BRANCH_NAME"
+fi
