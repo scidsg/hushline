@@ -9045,3 +9045,5 @@ Coverage HTML written to dir htmlcov
 ================== 586 passed, 1 xfailed in 177.65s (0:02:57) ==================
 ==> Enforce test-gap coverage for hushline/premium.py
 test-gap coverage satisfied for hushline/premium.py.
+
+Opened PR: https://github.com/scidsg/hushline/pull/1417
