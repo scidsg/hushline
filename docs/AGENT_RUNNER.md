@@ -26,110 +26,112 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 9. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
 10. Run Codex on the issue.
 11. Run required checks:
-   - `make lint`
-   - `make test`
-   - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
-12. If checks fail, feed failures back to Codex and retry until checks pass.
-13. Persist a run transcript for successful runs to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
-14. Commit, push branch (`--force-with-lease`), and open PR.
-15. Include the runner log path in the PR description.
-16. Return to `main` on exit.
+
+- `make lint`
+- `make test`
+- If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
+
+1. If checks fail, feed failures back to Codex and retry until checks pass.
+2. Persist a run transcript for successful runs to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+3. Commit, push branch (`--force-with-lease`), and open PR.
+4. Include the runner log path in the PR description.
+5. Return to `main` on exit.
 
 ## ASCII Workflow (Current)
 
 ```text
-+-------------------------------+
++---------------------------------+
 | Start: agent_daily_issue_runner |
-+-------------------------------+
-               |
-               v
++---------------------------------+
+      |
+      v
 +-------------------------------+
 | Parse args (--issue optional) |
 +-------------------------------+
-               |
-               v
+      |
+      v
 +-----------------------------------------------+
 | Resolve env/config + start log capture        |
 | Log: model + reasoning effort                 |
 +-----------------------------------------------+
-               |
-               v
-+-------------------------------+
-| Require commands + repo exists|
-+-------------------------------+
-               |
-               v
+      |
+      v
++--------------------------------+
+| Require commands + repo exists |
++--------------------------------+
+      |
+      v
++------------------------------------------------+
+| Refresh workspace + configure bot git identity |
+| Docker reset, port cleanup, stack up, seed     |
++------------------------------------------------+
+      |
+      v
++---------------------+
+| Open bot PRs > 0 ?  |--yes--> [Skip + Exit]
++---------------------+
+      |
+      no
+      |
+      v
++------------------------+
+| Open human PRs > 0 ?   |--yes--> [Skip + Exit]
++------------------------+
+      |
+      no
+      |
+      v
 +-----------------------------------------------+
-| Refresh workspace + configure bot git identity|
-| Docker reset, port cleanup, stack up, seed    |
+| Select issue: forced --issue or project queue |
 +-----------------------------------------------+
-               |
-               v
-      +---------------------+
-      | Open bot PRs > 0 ?  |--yes--> [Skip + Exit]
-      +---------------------+
-               |
-              no
-               |
-               v
-      +------------------------+
-      | Open human PRs > 0 ?   |--yes--> [Skip + Exit]
-      +------------------------+
-               |
-              no
-               |
-               v
-+----------------------------------------------+
-| Select issue: forced --issue or project queue|
-+----------------------------------------------+
-               |
-               v
-      +------------------------+
-      | Issue found?           |--no--> [Skip + Exit]
-      +------------------------+
-               |
-              yes
-               |
-               v
+      |
+      v
++------------------------+
+| Issue found?           |--no--> [Skip + Exit]
++------------------------+
+      |
+      yes
+      |
+      v
 +----------------------------------------------+
 | Load issue metadata + checkout issue branch  |
 | Build initial issue prompt                   |
 +----------------------------------------------+
-               |
-               v
-      +------------------------------------+
-      | Issue attempt loop                 |
-      | Run Codex from prompt              |
-      +------------------------------------+
-               |
-               v
-      +------------------------+
-      | Any repo changes?      |--no--> [Retry issue attempt]
-      +------------------------+
-               |
-              yes
-               |
-               v
-      +-----------------------------------------------+
-      | Fix/self-heal loop                            |
-      | Run: make lint, make test, test-gap gate      |
-      +-----------------------------------------------+
-               |
-               v
-      +------------------------+
-      | Checks pass?           |--no--> [Build fix prompt + run Codex + retry]
-      +------------------------+
-               |
-              yes
-               |
-               v
-      +------------------------+
-      | Still has changes?     |--no--> [Rebuild issue prompt + retry issue loop]
-      +------------------------+
-               |
-              yes
-               |
-               v
+      |
+      v
++------------------------------------+
+| Issue attempt loop                 |
+| Run Codex from prompt              |
++------------------------------------+
+      |
+      v
++------------------------+
+| Any repo changes?      |--no--> [Retry issue attempt]
++------------------------+
+      |
+      yes
+      |
+      v
++-----------------------------------------------+
+| Fix/self-heal loop                            |
+| Run: make lint, make test, test-gap gate      |
++-----------------------------------------------+
+      |
+      v
++------------------------+
+| Checks pass?           |--no--> [Build fix prompt + run Codex + retry]
++------------------------+
+      |
+      yes
+      |
+      v
++------------------------+
+| Still has changes?     |--no--> [Rebuild issue prompt + retry issue loop]
++------------------------+
+      |
+      yes
+      |
+      v
 +----------------------------------------------+
 | Persist run log (docs/agent-logs/run-...)    |
 | git add/commit/push branch                    |
@@ -137,8 +139,8 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 | Append PR URL to run log                      |
 | Commit/push updated run log if changed        |
 +----------------------------------------------+
-               |
-               v
+      |
+      v
 +----------------------------------------------+
 | Checkout base branch + trap cleanup runs      |
 +----------------------------------------------+
