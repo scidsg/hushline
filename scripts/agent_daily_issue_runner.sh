@@ -49,7 +49,9 @@ exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
 cleanup() {
   rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$RUN_LOG_TMP_FILE"
   if [[ -d "$REPO_DIR/.git" ]]; then
-    git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1 || true
+    if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
+      echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
+    fi
   fi
 }
 trap cleanup EXIT
@@ -655,3 +657,5 @@ if ! git diff --cached --quiet; then
   git commit -m "chore: append opened PR URL to runner log"
   git push origin "$BRANCH_NAME"
 fi
+
+run_step "Return to $BASE_BRANCH" git checkout "$BASE_BRANCH"
