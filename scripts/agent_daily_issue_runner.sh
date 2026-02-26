@@ -360,6 +360,71 @@ run_test_gap_gate() {
   echo "test-gap coverage satisfied for ${target_path}." | tee -a "$CHECK_LOG_FILE"
 }
 
+write_pr_changed_files_section() {
+  local max_files="${1:-20}"
+  local total_files line count
+  total_files="$(git show --name-only --pretty="" --no-renames HEAD | sed '/^$/d' | wc -l | tr -d ' ')"
+  count=0
+
+  if [[ "$total_files" == "0" ]]; then
+    printf -- "- _No file changes detected._\n"
+    return 0
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    printf -- "- `%s`\n" "$line"
+    count=$((count + 1))
+    if (( count >= max_files )); then
+      break
+    fi
+  done < <(git show --name-only --pretty="" --no-renames HEAD)
+
+  if (( total_files > max_files )); then
+    printf -- "- _...and %d more file(s)_\n" "$((total_files - max_files))"
+  fi
+}
+
+write_pr_body() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local issue_url="$3"
+  local branch_name="$4"
+  local issue_labels="$5"
+  local test_gap_target
+  test_gap_target="$(extract_referenced_file_path "$issue_title" "$ISSUE_BODY")"
+
+  cat > "$PR_BODY_FILE" <<EOF2
+## Summary
+- Automated daily issue runner implementation for #$issue_number.
+- Implements issue goal: ${issue_title}
+
+Closes #$issue_number
+
+## Context
+- Issue: $issue_url
+- Branch: $branch_name
+
+## Changed Files
+EOF2
+  write_pr_changed_files_section >> "$PR_BODY_FILE"
+
+  cat >> "$PR_BODY_FILE" <<'EOF2'
+
+## Validation
+- `make lint`
+- `make test`
+EOF2
+
+  if issue_has_label "$issue_labels" "test-gap"; then
+    if [[ -n "$test_gap_target" ]]; then
+      printf -- "- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n" "$test_gap_target" >> "$PR_BODY_FILE"
+    else
+      printf -- "- `test-gap` gate: active for this issue.\n" >> "$PR_BODY_FILE"
+    fi
+  fi
+}
+
 run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
@@ -537,18 +602,7 @@ git commit -m "$COMMIT_MESSAGE"
 # Keep branch update simple while preventing blind overwrite.
 git push -u --force-with-lease origin "$BRANCH_NAME"
 
-cat > "$PR_BODY_FILE" <<EOF2
-Automated daily issue runner.
-
-Closes #$ISSUE_NUMBER
-
-Issue: $ISSUE_URL
-Branch: $BRANCH_NAME
-
-Validation:
-- make lint
-- make test
-EOF2
+write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS"
 
 PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
 PR_URL="$({
