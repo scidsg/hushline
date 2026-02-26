@@ -2380,7 +2380,13 @@ textarea#bio {
 .directory-tabs.show-top-link .tab-top-item {
   display: flex;
   position: absolute;
-  right: 0.5rem;
+  right: 2rem;
+}
+
+@media only screen and (max-width: 800px) {
+  .directory-tabs.show-top-link .tab-top-item {
+    right: 1.25rem;
+  }
 }
 
 .directory-tabs .tab-top-link {
