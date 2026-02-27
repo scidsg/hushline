@@ -41,15 +41,17 @@ CHECK_LOG_FILE="$(mktemp)"
 PROMPT_FILE="$(mktemp)"
 PR_BODY_FILE="$(mktemp)"
 CODEX_OUTPUT_FILE="$(mktemp)"
+CODEX_TRANSCRIPT_FILE="$(mktemp)"
 RUN_LOG_TMP_FILE="$(mktemp)"
 RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_GIT_PATH=""
+VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 
 exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
-echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT"
+echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
 
 cleanup() {
-  rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$RUN_LOG_TMP_FILE"
+  rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$CODEX_TRANSCRIPT_FILE" "$RUN_LOG_TMP_FILE"
   if [[ -d "$REPO_DIR/.git" ]]; then
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
@@ -314,7 +316,7 @@ extract_referenced_file_path() {
     printf '%s\n' "$issue_body" | awk '
       {
         for (i = 1; i <= NF; i++) {
-          if ($i ~ /^hushline\/[A-Za-z0-9_./-]+\.py$/) {
+          if ($i ~ /^hushline\/[A-Za-z0-9_.\/-]+\.py$/) {
             print $i
             exit
           }
@@ -529,6 +531,11 @@ append_pr_url_to_run_log() {
 }
 
 run_codex_from_prompt() {
+  local rc=0
+  : > "$CODEX_OUTPUT_FILE"
+  : > "$CODEX_TRANSCRIPT_FILE"
+
+  set +e
   codex exec \
     --model "$CODEX_MODEL" \
     -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"" \
@@ -536,7 +543,28 @@ run_codex_from_prompt() {
     --sandbox workspace-write \
     -C "$REPO_DIR" \
     -o "$CODEX_OUTPUT_FILE" \
-    - < "$PROMPT_FILE"
+    - < "$PROMPT_FILE" >"$CODEX_TRANSCRIPT_FILE" 2>&1
+  rc=$?
+  set -e
+
+  if [[ "$VERBOSE_CODEX_OUTPUT" == "1" ]]; then
+    cat "$CODEX_TRANSCRIPT_FILE"
+  fi
+
+  if (( rc != 0 )); then
+    echo "Codex execution failed (exit ${rc})."
+    if [[ "$VERBOSE_CODEX_OUTPUT" != "1" ]]; then
+      echo "Codex transcript tail:"
+      tail -n 160 "$CODEX_TRANSCRIPT_FILE"
+    fi
+    return "$rc"
+  fi
+
+  echo "Codex execution completed."
+  if [[ -s "$CODEX_OUTPUT_FILE" ]]; then
+    echo "Codex final message:"
+    sed -n '1,60p' "$CODEX_OUTPUT_FILE"
+  fi
 }
 
 has_changes() {
@@ -566,6 +594,8 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra and validation.
+6) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
 EOF2
 }
 
@@ -594,6 +624,7 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
 4) Keep security, privacy, and E2EE protections intact.
+5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra and validation.
 EOF2
 }
 
