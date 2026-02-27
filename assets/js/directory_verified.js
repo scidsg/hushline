@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const searchStatus = document.getElementById("directory-search-status");
   const initialMarkup = new Map();
   let userData = [];
   let hasRenderedSearch = false;
@@ -12,6 +13,12 @@ document.addEventListener("DOMContentLoaded", function () {
   tabPanels.forEach((panel) => {
     initialMarkup.set(panel.id, panel.innerHTML);
   });
+
+  function setSearchStatus(message) {
+    if (searchStatus) {
+      searchStatus.textContent = message;
+    }
+  }
 
   function updatePlaceholder() {
     const activeTabElement = document.querySelector(".tab.active");
@@ -140,6 +147,11 @@ document.addEventListener("DOMContentLoaded", function () {
   function handleSearchInput() {
     const query = searchInput.value.trim();
     const activePanel = document.querySelector(".tab-content.active");
+    const activeTabElement = document.querySelector(".tab.active");
+    const activeTab = activeTabElement
+      ? activeTabElement.getAttribute("data-tab")
+      : "verified";
+    const scopeLabel = activeTab === "verified" ? "verified users" : "users";
     const hasQuery = query.length > 0;
     if (clearIcon) {
       clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
@@ -150,11 +162,19 @@ document.addEventListener("DOMContentLoaded", function () {
       if (activePanel && initialMarkup.has(activePanel.id)) {
         activePanel.innerHTML = initialMarkup.get(activePanel.id);
       }
+      if (hasRenderedSearch) {
+        setSearchStatus(`Showing all ${scopeLabel}.`);
+      }
       hasRenderedSearch = false;
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
+    setSearchStatus(
+      filteredUsers.length === 1
+        ? `Found 1 ${scopeLabel.slice(0, -1)} matching "${query}".`
+        : `Found ${filteredUsers.length} ${scopeLabel} matching "${query}".`,
+    );
     hasRenderedSearch = true;
   }
 

@@ -45,3 +45,25 @@ def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     assert "transform: translate(-50%, -50%);" in scss
     assert "translate(-50%, -50%) rotate(360deg)" in scss
     assert "@keyframes submit-button-spinner-rotate" in scss
+
+
+def test_directory_search_accessibility_hooks_exist() -> None:
+    directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
+    directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
+    directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'id="directory-search-status"' in directory_template
+    assert 'class="visually-hidden"' in directory_template
+    assert 'role="status"' in directory_template
+    assert 'aria-live="polite"' in directory_template
+    assert (
+        'const searchStatus = document.getElementById("directory-search-status");' in directory_js
+    )
+    assert (
+        'const searchStatus = document.getElementById("directory-search-status");'
+        in directory_verified_js
+    )
+    assert "Showing all users." in directory_js
+    assert "Showing all" in directory_verified_js
+    assert ".visually-hidden" in scss

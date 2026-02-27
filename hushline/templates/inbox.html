@@ -6,23 +6,26 @@
   <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
 
   <div class="inbox-content">
-    <ul class="tab-list inbox-tabs">
-      {% for pair in [None] + message_statuses %}
-        {% if pair %}
-          {% set display_str = pair[0].display_str %}
-          {% set count = pair[1] %}
-          {% set url = url_for('inbox', status=pair[0].value) %}
-        {% else %}
-          {% set display_str = "All" %}
-          {% set count = total_messages %}
-          {% set url = url_for('inbox') %}
-        {% endif %}
-        <li class="tab{% if (pair and pair[0] == status_filter) or (pair is none and not status_filter) %} active{% endif %}">
-          <a href="{{ url }}">{{ display_str }}</a>
-          <span class="badge">{{ count }}</span>
-        </li>
-      {% endfor %}
-    </ul>
+    <nav class="inbox-tabs-nav" aria-label="Inbox filters">
+      <ul class="tab-list inbox-tabs">
+        {% for pair in [None] + message_statuses %}
+          {% if pair %}
+            {% set display_str = pair[0].display_str %}
+            {% set count = pair[1] %}
+            {% set url = url_for('inbox', status=pair[0].value) %}
+          {% else %}
+            {% set display_str = "All" %}
+            {% set count = total_messages %}
+            {% set url = url_for('inbox') %}
+          {% endif %}
+          {% set is_active = (pair and pair[0] == status_filter) or (pair is none and not status_filter) %}
+          <li class="tab{% if is_active %} active{% endif %}">
+            <a href="{{ url }}"{% if is_active %} aria-current="page"{% endif %}>{{ display_str }}</a>
+            <span class="badge">{{ count }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
     <div class="message-list">
       {% if messages %}
         {% for message in messages %}
