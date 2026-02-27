@@ -72,7 +72,7 @@ jobs:
 
       - name: Extract score
         run: |
-          SCORE=$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))")
+          SCORE=$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))")
           if [ "$SCORE" -lt 95 ]; then
             echo "Performance score must be at least 95, got $SCORE"
             exit 1
