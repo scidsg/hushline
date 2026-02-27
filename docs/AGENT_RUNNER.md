@@ -35,7 +35,8 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 2. Persist a run transcript for successful runs to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
 3. Commit, push branch (`--force-with-lease`), and open PR.
 4. Include the runner log path in the PR description.
-5. Return to `main` on exit.
+5. Start PR descriptions with a short human-friendly narrative summary, then include the structured sections (`Summary`, `Context`, `Changed Files`, `Validation`).
+6. Return to `main` on exit.
 
 ## ASCII Workflow (Current)
 

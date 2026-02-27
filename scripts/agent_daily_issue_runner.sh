@@ -372,7 +372,7 @@ run_test_gap_gate() {
 write_pr_changed_files_section() {
   local max_files="${1:-20}"
   local total_files line count
-  total_files="$(git show --name-only --pretty="" --no-renames HEAD | sed '/^$/d' | wc -l | tr -d ' ')"
+  total_files="$(stream_changed_files | wc -l | tr -d ' ')"
   count=0
 
   if [[ "$total_files" == "0" ]]; then
@@ -387,11 +387,78 @@ write_pr_changed_files_section() {
     if (( count >= max_files )); then
       break
     fi
-  done < <(git show --name-only --pretty="" --no-renames HEAD)
+  done < <(stream_changed_files)
 
   if (( total_files > max_files )); then
     printf -- "- _...and %d more file(s)_\n" "$((total_files - max_files))"
   fi
+}
+
+stream_changed_files() {
+  git show --name-only --pretty="" --no-renames HEAD | sed '/^$/d'
+}
+
+count_non_log_changed_files() {
+  stream_changed_files \
+    | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/' \
+    | sed '/^$/d' \
+    | wc -l \
+    | tr -d ' '
+}
+
+summarize_non_log_changed_areas() {
+  stream_changed_files \
+    | awk '
+        /^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ { next }
+        {
+          n = split($0, parts, "/")
+          if (n >= 2) {
+            print parts[1] "/" parts[2]
+          } else if (n == 1) {
+            print parts[1]
+          }
+        }
+      ' \
+    | sort -u \
+    | head -n 3 \
+    | paste -sd ', ' -
+}
+
+write_pr_narrative_lead() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local issue_labels="$3"
+  local test_gap_target="$4"
+
+  local total_files non_log_files changed_areas scope_line gate_line
+  total_files="$(stream_changed_files | wc -l | tr -d ' ')"
+  non_log_files="$(count_non_log_changed_files)"
+  changed_areas="$(summarize_non_log_changed_areas)"
+  scope_line=""
+  gate_line=""
+
+  if [[ "$non_log_files" == "0" ]]; then
+    scope_line="This run only changes the runner log artifact."
+  elif [[ -n "$changed_areas" ]]; then
+    scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
+  else
+    scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts)."
+  fi
+
+  if issue_has_label "$issue_labels" "test-gap"; then
+    if [[ -n "$test_gap_target" ]]; then
+      gate_line=" As part of the test-gap flow, coverage was gated for \`${test_gap_target}\` before PR creation."
+    else
+      gate_line=" As part of the test-gap flow, coverage gating was enforced before PR creation."
+    fi
+  fi
+
+  cat <<EOF2
+This PR implements #$issue_number (\`$issue_title\`) via the daily runner with a scoped change set focused on the issue requirements.
+
+${scope_line}${gate_line}
+
+EOF2
 }
 
 write_pr_body() {
@@ -404,7 +471,9 @@ write_pr_body() {
   local test_gap_target
   test_gap_target="$(extract_referenced_file_path "$issue_title" "$ISSUE_BODY")"
 
-  cat > "$PR_BODY_FILE" <<EOF2
+  write_pr_narrative_lead "$issue_number" "$issue_title" "$issue_labels" "$test_gap_target" > "$PR_BODY_FILE"
+
+  cat >> "$PR_BODY_FILE" <<EOF2
 ## Summary
 - Automated daily issue runner implementation for #$issue_number.
 - Implements issue goal: ${issue_title}
