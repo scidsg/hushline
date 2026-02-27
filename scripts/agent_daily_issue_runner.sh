@@ -86,6 +86,30 @@ run_check_capture() {
   return "$rc"
 }
 
+remote_branch_exists() {
+  local branch="$1"
+  git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1
+}
+
+push_branch_for_pr() {
+  local branch="$1"
+
+  if remote_branch_exists "$branch"; then
+    echo "Remote branch '$branch' exists; pushing with --force-with-lease."
+    if git push -u --force-with-lease origin "$branch"; then
+      return 0
+    fi
+
+    echo "Push was rejected (likely stale remote info); refreshing and retrying once."
+    git fetch origin "$branch":"refs/remotes/origin/$branch" >/dev/null 2>&1 || true
+    git push -u --force-with-lease origin "$branch"
+    return $?
+  fi
+
+  echo "Remote branch '$branch' does not exist; creating it with a standard push."
+  git push -u origin "$branch"
+}
+
 kill_all_docker_containers() {
   local ids=()
   while IFS= read -r id; do
@@ -737,7 +761,7 @@ COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
 git commit -m "$COMMIT_MESSAGE"
 
 # Keep branch update simple while preventing blind overwrite.
-git push -u --force-with-lease origin "$BRANCH_NAME"
+push_branch_for_pr "$BRANCH_NAME"
 
 write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
 
