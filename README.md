@@ -105,15 +105,17 @@ docker compose run --rm app poetry run pytest --cov hushline --cov-report term-m
 7. Run dependency vulnerability audits:
 
 ```sh
-poetry run pip-audit
-npm audit --omit=dev
+make audit-python
+make audit-node-runtime
 ```
 
 When frontend/runtime dependencies change, also run:
 
 ```sh
-npm audit
+make audit-node-full
 ```
+
+If local audit commands are blocked by network/tooling availability, document that in the PR and wait for a passing `Dependency Security Audit` workflow before merge.
 
 8. Ensure commits are cryptographically signed and verifiable on GitHub.
 

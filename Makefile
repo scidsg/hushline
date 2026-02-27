@@ -90,6 +90,18 @@ TESTS ?= ./tests/
 test: ## Run the test suite
 	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)
 
+.PHONY: audit-python
+audit-python: ## Run Python dependency audit (CI-equivalent)
+	$(CMD) bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'
+
+.PHONY: audit-node-runtime
+audit-node-runtime: ## Run Node runtime dependency audit (CI-equivalent)
+	$(CMD) npm audit --omit=dev --package-lock-only
+
+.PHONY: audit-node-full
+audit-node-full: ## Run full Node dependency audit (CI-equivalent)
+	$(CMD) npm audit --package-lock-only
+
 .PHONY: docs-screenshots
 docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<release>
 	docker compose run --rm dev_data && \

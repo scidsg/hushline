@@ -126,9 +126,10 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Never bypass supply-chain or integrity controls with flags such as `--ignore-signatures`, `--trusted-host`, or equivalent unless there is a formally documented emergency exception approved by maintainers.
   - If a task appears to require any such flag, stop and ask for a security review path instead of proceeding.
 - Run dependency vulnerability checks before PR:
-  - Python: `poetry run pip-audit`
-  - Node runtime deps: `npm audit --omit=dev`
-  - Run full Node audit when frontend/runtime dependencies change: `npm audit`
+  - Python: `make audit-python`
+  - Node runtime deps: `make audit-node-runtime`
+  - Run full Node audit when frontend/runtime dependencies change: `make audit-node-full`
+- If local dependency-audit commands are blocked by environment/network issues, document the failure reason in the PR and require a passing `Dependency Security Audit` workflow before merge.
 - If a CVE is found in reachable runtime code, block merge until fixed or formally risk-accepted.
 - For security-related changes, include in PR:
   - threat or risk summary
