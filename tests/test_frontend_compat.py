@@ -42,4 +42,6 @@ def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     assert "submit-button-spinner" in js
     assert 'attributeFilter: ["disabled"]' in js
     assert 'button[data-submit-spinner-init="true"]' in scss
+    assert "transform: translate(-50%, -50%);" in scss
+    assert "translate(-50%, -50%) rotate(360deg)" in scss
     assert "@keyframes submit-button-spinner-rotate" in scss
