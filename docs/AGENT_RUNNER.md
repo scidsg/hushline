@@ -45,7 +45,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
     - `make lighthouse-accessibility`
     - `make lighthouse-performance` when lighthouse-performance workflow trigger paths change
     - Every executed check gets a local self-heal retry before handing failures to Codex.
-    - Lint failures get a deterministic `make fix` self-heal pass before the runner hands the failure back to Codex.
+    - Lint failures only run deterministic `make fix` self-heal when the failure looks auto-fixable (for example Ruff formatting/check or Prettier); non-auto-fixable lint failures go straight back to Codex.
     - Runtime-dependent checks (tests, W3C, Lighthouse) self-heal by restarting the local stack and reseeding dev data, then retrying once.
     - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
     - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
