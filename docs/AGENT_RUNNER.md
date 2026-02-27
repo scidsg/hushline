@@ -6,37 +6,40 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 
 ## Execution Flow
 
-1. Change into the repo (`$HOME/hushline` by default).
-2. Hard-refresh local state:
+1. Parse arguments (`--issue` optional) and resolve runtime configuration.
+2. Change into the repo (`$HOME/hushline` by default).
+3. Hard-refresh local state:
    - `git fetch origin`
    - `git checkout main`
    - `git reset --hard origin/main`
    - `git clean -fd`
-3. Reset local Docker state:
+4. Configure bot git identity and signed commit settings.
+5. Reset local Docker/runtime state:
    - `docker compose down -v --remove-orphans`
-   - `docker rm -f $(docker ps -aq)`
+   - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
    - `docker system prune -af --volumes`
-4. Kill processes listening on runner ports (`4566 4571 5432 8080` by default).
-5. Start and seed stack:
+   - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
+6. Start and seed stack:
    - `docker compose up -d --build`
    - `docker compose run --rm dev_data`
-6. Exit if any open PR exists from `hushline-dev`.
-7. Exit if any open human-authored PR exists.
-8. Select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-9. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
-10. Run Codex on the issue.
-11. Run required checks:
-
-- `make lint`
-- `make test`
-- If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
-
-1. If checks fail, feed failures back to Codex and retry until checks pass.
-2. Persist a run transcript for successful runs to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
-3. Commit, push branch (`--force-with-lease`), and open PR.
-4. Include the runner log path in the PR description.
-5. Start PR descriptions with a short human-friendly narrative summary, then include the structured sections (`Summary`, `Context`, `Changed Files`, `Validation`).
-6. Return to `main` on exit.
+7. Exit if any open PR exists from `hushline-dev`.
+8. Exit if any open human-authored PR exists.
+9. Select issue target:
+   - Use `--issue <n>` when provided (must still be open), otherwise
+   - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
+10. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
+11. Run Codex issue loop until repository changes exist.
+12. Run required checks in a self-heal loop:
+    - `make lint`
+    - `make test`
+    - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
+13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+14. Commit, push branch, and open PR:
+    - first push uses a normal push when remote branch is absent
+    - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
+15. Include runner log path in PR context and use the narrative + structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
+16. Append opened PR URL to the run log, commit/push that log update when changed.
+17. Return to `main` on exit (explicit checkout + cleanup trap fallback).
 
 ## ASCII Workflow (Current)
 
@@ -187,3 +190,18 @@ Optional forced issue:
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
+- `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output during runs)
+
+## Issue Bootstrap Script
+
+Script: `scripts/agent_issue_bootstrap.sh`
+
+Flow:
+
+1. Ensure Docker is available; on macOS, attempt to start Docker Desktop automatically (`open -a Docker`).
+2. Wait for Docker daemon readiness up to `HUSHLINE_DOCKER_START_TIMEOUT_SECONDS` (default `180`).
+3. Build and seed required local services:
+   - `docker compose build`
+   - `docker compose down -v --remove-orphans`
+   - `docker compose up -d postgres blob-storage`
+   - `docker compose run --rm dev_data`

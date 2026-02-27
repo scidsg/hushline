@@ -82,11 +82,15 @@ This file provides operating guidance for coding agents working in the Hush Line
 - One-bot-PR guard:
   - Runner exits early if any open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
 - Required runner behavior:
-  - Start each issue attempt with the issue bootstrap sequence:
+  - At runner start, perform a full local environment reset and seed sequence:
     - `docker compose down -v --remove-orphans`
-    - `docker compose up -d postgres blob-storage`
+    - Stop/remove all Docker containers (`docker rm -f $(docker ps -aq)`)
+    - `docker system prune -af --volumes`
+    - Kill listener processes on configured runner ports (`HUSHLINE_DAILY_KILL_PORTS`, default `4566 4571 5432 8080`)
+    - `docker compose up -d --build`
     - `docker compose run --rm dev_data`
   - Run required validation checks locally before opening PRs (`make lint`, `make test`, plus runner-specific checks).
+  - Persist per-run logs in `docs/agent-logs/` and include the log path in PR context.
   - Use signed commits that verify on GitHub.
   - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.
   - Return to `main` after PR creation.
@@ -153,7 +157,12 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Database / Docker Notes
 
 - If tests fail with Postgres shared memory or recovery-mode errors, run `docker compose down -v` and rerun tests on a fresh stack.
-- Before starting issue work, run the issue bootstrap sequence via `./scripts/agent_issue_bootstrap.sh`.
+- Before starting issue work, run `./scripts/agent_issue_bootstrap.sh`, which performs:
+  - `docker compose build`
+  - `docker compose down -v --remove-orphans`
+  - `docker compose up -d postgres blob-storage`
+  - `docker compose run --rm dev_data`
+- On macOS, `agent_issue_bootstrap.sh` attempts to start Docker Desktop and waits up to `HUSHLINE_DOCKER_START_TIMEOUT_SECONDS` (default `180`).
 - `dev_data` container is expected to exit after seeding.
 
 ## Documentation
