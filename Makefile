@@ -6,6 +6,8 @@ else
 CMD :=
 endif
 PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
+RUNNER_APP_URL ?= http://localhost:8080
+RUNNER_APP_WAIT_ATTEMPTS ?= 30
 
 .PHONY: help
 help: ## Print the help message
@@ -101,6 +103,133 @@ audit-node-runtime: ## Run Node runtime dependency audit (CI-equivalent)
 .PHONY: audit-node-full
 audit-node-full: ## Run full Node dependency audit (CI-equivalent)
 	$(CMD) npm audit --package-lock-only
+
+.PHONY: test-ci-skip-local-only
+test-ci-skip-local-only: ## Run tests with CI skip-local-only options
+	$(MAKE) test PYTEST_ADDOPTS="--skip-local-only"
+
+.PHONY: test-ci-alembic
+test-ci-alembic: ## Run tests with alembic + CI skip-local-only options
+	$(MAKE) test PYTEST_ADDOPTS="--alembic --skip-local-only"
+
+.PHONY: test-ccpa-compliance
+test-ccpa-compliance: ## Run CCPA compliance evidence tests (CI-equivalent)
+	$(MAKE) test TESTS="tests/test_ccpa_compliance.py" PYTEST_ADDOPTS="--skip-local-only"
+
+.PHONY: test-gdpr-compliance
+test-gdpr-compliance: ## Run GDPR compliance evidence tests (CI-equivalent)
+	$(MAKE) test TESTS="tests/test_gdpr_compliance.py" PYTEST_ADDOPTS="--skip-local-only"
+
+.PHONY: test-e2ee-privacy-regressions
+test-e2ee-privacy-regressions: ## Run E2EE and privacy regression tests (CI-equivalent)
+	$(MAKE) test TESTS="tests/test_behavior_contracts.py tests/test_resend_message.py tests/test_crypto.py tests/test_secure_session.py" PYTEST_ADDOPTS="--skip-local-only"
+
+.PHONY: test-migration-smoke
+test-migration-smoke: ## Run migration compatibility tests (CI-equivalent)
+	$(MAKE) test TESTS="tests/test_migrations.py" PYTEST_ADDOPTS="--alembic --skip-local-only"
+
+.PHONY: workflow-security-checks
+workflow-security-checks: ## Run workflow security checks (CI-equivalent)
+	docker run --rm -v "$(PWD):/work" -w /work rhysd/actionlint:1.7.7 -color
+	@set -euo pipefail; \
+	PATTERN='github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)'; \
+	if rg -n --glob ".github/workflows/*.yml" --glob ".github/workflows/*.yaml" "$$PATTERN" .github/workflows; then \
+	  echo "Unsafe interpolation of untrusted event text found in workflow run context."; \
+	  echo "Use actions/github-script (or equivalent) to handle untrusted strings safely."; \
+	  exit 1; \
+	fi; \
+	echo "No unsafe event text interpolation patterns found."
+
+.PHONY: runner-wait-for-app
+runner-wait-for-app: ## Wait until local app is reachable on localhost:8080
+	@attempt=0; \
+	until curl -fsS "$(RUNNER_APP_URL)/" > /dev/null; do \
+	  attempt=$$((attempt + 1)); \
+	  if [ "$$attempt" -ge "$(RUNNER_APP_WAIT_ATTEMPTS)" ]; then \
+	    echo "App failed health check at $(RUNNER_APP_URL) after $$attempt attempts."; \
+	    exit 1; \
+	  fi; \
+	  sleep 2; \
+	done
+
+.PHONY: w3c-validators
+w3c-validators: runner-wait-for-app ## Run W3C HTML and CSS validators (CI-equivalent)
+	mkdir -p /tmp/w3c
+	curl -fsS "$(RUNNER_APP_URL)/" -o /tmp/w3c/index.html
+	curl -fsS "$(RUNNER_APP_URL)/directory" -o /tmp/w3c/directory.html
+	docker run --rm \
+		-v /tmp/w3c:/work \
+		ghcr.io/validator/validator:latest \
+		java -jar /vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
+	@set +e; \
+	success=0; \
+	for i in 1 2 3 4 5; do \
+	  if curl -fsS -o /tmp/w3c/css.json \
+	    -F "file=@hushline/static/css/style.css" \
+	    -F "output=json" \
+	    https://jigsaw.w3.org/css-validator/validator; then \
+	    success=1; \
+	    break; \
+	  fi; \
+	  sleep $$((i * 5)); \
+	done; \
+	set -e; \
+	if [ "$$success" -ne 1 ]; then \
+	  echo "W3C CSS validator unavailable (rate limited or error); skipping CSS validation."; \
+	  exit 0; \
+	fi; \
+	python -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
+
+.PHONY: lighthouse-accessibility
+lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility check (CI-equivalent)
+	@for i in 1 2 3; do \
+	  if docker run --rm --add-host=host.docker.internal:host-gateway --shm-size=1g \
+	    femtopixel/google-lighthouse \
+	    http://host.docker.internal:8080 \
+	    --only-categories=accessibility \
+	    --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+	    --output=json \
+	    --output-path=stdout \
+	    --quiet > lighthouse.json; then \
+	    break; \
+	  fi; \
+	  if [ "$$i" -eq 3 ]; then \
+	    echo "Lighthouse accessibility failed after $$i attempts."; \
+	    exit 1; \
+	  fi; \
+	  sleep $$((i * 5)); \
+	done
+	@SCORE=$$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse.json').read_text()); print(round(data['categories']['accessibility']['score'] * 100))"); \
+	if [ "$$SCORE" -lt 95 ]; then \
+	  echo "Accessibility score must be at least 95, got $$SCORE"; \
+	  exit 1; \
+	fi
+
+.PHONY: lighthouse-performance
+lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check (CI-equivalent)
+	@for i in 1 2 3; do \
+	  if docker run --rm --add-host=host.docker.internal:host-gateway --shm-size=1g \
+	    femtopixel/google-lighthouse \
+	    http://host.docker.internal:8080/directory \
+	    --only-categories=performance \
+	    --preset=desktop \
+	    --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
+	    --output=json \
+	    --output-path=stdout \
+	    --quiet > lighthouse-performance.json; then \
+	    break; \
+	  fi; \
+	  if [ "$$i" -eq 3 ]; then \
+	    echo "Lighthouse performance failed after $$i attempts."; \
+	    exit 1; \
+	  fi; \
+	  sleep $$((i * 5)); \
+	done
+	@SCORE=$$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))"); \
+	if [ "$$SCORE" -lt 95 ]; then \
+	  echo "Performance score must be at least 95, got $$SCORE"; \
+	  exit 1; \
+	fi
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<release>

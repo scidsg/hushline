@@ -49,6 +49,8 @@ VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
 AUDIT_NOTE=""
 NODE_FULL_AUDIT_REQUIRED=0
+MIGRATION_SMOKE_REQUIRED=0
+LIGHTHOUSE_PERFORMANCE_REQUIRED=0
 
 exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
 echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
@@ -89,9 +91,51 @@ run_check_capture() {
   return "$rc"
 }
 
+run_check_with_self_heal_retry() {
+  local description="$1"
+  shift
+  if run_check_capture "$description" "$@"; then
+    return 0
+  fi
+
+  echo "Self-heal: ${description} failed; retrying once." | tee -a "$CHECK_LOG_FILE"
+  run_check_capture "${description} (self-heal retry)" "$@"
+}
+
+reseed_runtime_for_self_heal() {
+  echo "Self-heal: restarting local runtime stack and reseeding dev data." | tee -a "$CHECK_LOG_FILE"
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  docker compose up -d postgres blob-storage app >/dev/null
+  docker compose run --rm dev_data >/dev/null
+}
+
+run_runtime_check_with_self_heal() {
+  local description="$1"
+  shift
+  if run_check_capture "$description" "$@"; then
+    return 0
+  fi
+
+  reseed_runtime_for_self_heal
+  run_check_capture "${description} (self-heal retry after runtime reset)" "$@"
+}
+
 node_runtime_dependency_files_changed() {
   git diff --name-only "${BASE_BRANCH}...HEAD" \
     | grep -Eq '(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json)$'
+}
+
+changed_files_match() {
+  local pattern="$1"
+  git diff --name-only "${BASE_BRANCH}...HEAD" | grep -Eq "$pattern"
+}
+
+migration_smoke_files_changed() {
+  changed_files_match '^(migrations/|hushline/|tests/test_migrations\.py$|\.github/workflows/migration-smoke\.yml$)'
+}
+
+lighthouse_performance_files_changed() {
+  changed_files_match '^(hushline/|assets/|migrations/|docker-compose.*\.yaml$|Dockerfile.*$|package\.json$|package-lock\.json$|webpack\.config\.js$|\.github/workflows/lighthouse-performance\.yml$)'
 }
 
 audit_failure_looks_environmental() {
@@ -365,21 +409,37 @@ run_local_workflow_checks() {
   AUDIT_STATUS="ok"
   AUDIT_NOTE=""
   NODE_FULL_AUDIT_REQUIRED=0
+  MIGRATION_SMOKE_REQUIRED=0
+  LIGHTHOUSE_PERFORMANCE_REQUIRED=0
   local lint_failure_tail=""
-  if ! run_check_capture "Run lint" make lint; then
+  if ! run_check_with_self_heal_retry "Run lint" make lint; then
     lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
     if ! auto_fix_prettier_markdown_from_failure "$lint_failure_tail"; then
       return 1
     fi
-    run_check_capture "Re-run lint after Prettier auto-fix" make lint || return 1
+    run_check_with_self_heal_retry "Re-run lint after Prettier auto-fix" make lint || return 1
   fi
-  run_check_capture "Run test" make test || return 1
+  run_check_with_self_heal_retry "Run workflow security checks" make workflow-security-checks || return 1
+  run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
+  run_runtime_check_with_self_heal "Run test (CI skip-local-only)" make test-ci-skip-local-only || return 1
+  run_runtime_check_with_self_heal "Run test with alembic (CI)" make test-ci-alembic || return 1
+  run_runtime_check_with_self_heal "Run CCPA compliance tests (CI)" make test-ccpa-compliance || return 1
+  run_runtime_check_with_self_heal "Run GDPR compliance tests (CI)" make test-gdpr-compliance || return 1
+  run_runtime_check_with_self_heal "Run E2EE/privacy regression tests (CI)" make test-e2ee-privacy-regressions || return 1
+
+  if migration_smoke_files_changed; then
+    MIGRATION_SMOKE_REQUIRED=1
+    run_runtime_check_with_self_heal "Run migration smoke tests (CI)" make test-migration-smoke || return 1
+  else
+    echo "==> Run migration smoke tests (CI)" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no migration-smoke workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
+  fi
 
   local audit_failure_tail=""
   local audit_blocked=0
   local -a audit_blocked_reasons=()
 
-  if ! run_check_capture "Run dependency audit (python)" make audit-python; then
+  if ! run_check_with_self_heal_retry "Run dependency audit (python)" make audit-python; then
     audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
     if audit_failure_looks_environmental "$audit_failure_tail"; then
       audit_blocked=1
@@ -389,7 +449,7 @@ run_local_workflow_checks() {
     fi
   fi
 
-  if ! run_check_capture "Run dependency audit (node runtime)" make audit-node-runtime; then
+  if ! run_check_with_self_heal_retry "Run dependency audit (node runtime)" make audit-node-runtime; then
     audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
     if audit_failure_looks_environmental "$audit_failure_tail"; then
       audit_blocked=1
@@ -401,7 +461,7 @@ run_local_workflow_checks() {
 
   if node_runtime_dependency_files_changed; then
     NODE_FULL_AUDIT_REQUIRED=1
-    if ! run_check_capture "Run dependency audit (node full)" make audit-node-full; then
+    if ! run_check_with_self_heal_retry "Run dependency audit (node full)" make audit-node-full; then
       audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
       if audit_failure_looks_environmental "$audit_failure_tail"; then
         audit_blocked=1
@@ -420,6 +480,17 @@ run_local_workflow_checks() {
     AUDIT_NOTE="Blocked local dependency audits: ${audit_blocked_reasons[*]}"
     echo "Dependency audits were blocked by environment/network constraints; continuing with CI gate requirement." \
       | tee -a "$CHECK_LOG_FILE"
+  fi
+
+  run_runtime_check_with_self_heal "Run W3C validators" make w3c-validators || return 1
+  run_runtime_check_with_self_heal "Run Lighthouse accessibility" make lighthouse-accessibility || return 1
+
+  if lighthouse_performance_files_changed; then
+    LIGHTHOUSE_PERFORMANCE_REQUIRED=1
+    run_runtime_check_with_self_heal "Run Lighthouse performance" make lighthouse-performance || return 1
+  else
+    echo "==> Run Lighthouse performance" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no lighthouse-performance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
   fi
 }
 
@@ -622,15 +693,35 @@ EOF2
 
 ## Validation
 - `make lint`
-- `make test`
+- `make workflow-security-checks`
+- `make test` (full suite)
+- `make test-ci-skip-local-only`
+- `make test-ci-alembic`
+- `make test-ccpa-compliance`
+- `make test-gdpr-compliance`
+- `make test-e2ee-privacy-regressions`
 - `make audit-python`
 - `make audit-node-runtime`
+- `make w3c-validators`
+- `make lighthouse-accessibility`
 EOF2
+
+  if (( MIGRATION_SMOKE_REQUIRED != 0 )); then
+    printf -- '- `make test-migration-smoke`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make test-migration-smoke` (not required: no migration-smoke workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
+  fi
 
   if (( NODE_FULL_AUDIT_REQUIRED != 0 )); then
     printf -- '- `make audit-node-full`\n' >> "$PR_BODY_FILE"
   else
     printf -- '- `make audit-node-full` (not required: no Node dependency manifest changes)\n' >> "$PR_BODY_FILE"
+  fi
+
+  if (( LIGHTHOUSE_PERFORMANCE_REQUIRED != 0 )); then
+    printf -- '- `make lighthouse-performance`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make lighthouse-performance` (not required: no lighthouse-performance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
   fi
 
   if [[ "$AUDIT_STATUS" == "blocked" ]]; then
@@ -721,7 +812,7 @@ $issue_body
 Requirements:
 1) Implement only what is needed for this issue with a minimal diff.
 2) Add or update tests for behavior changes.
-3) Focus on implementation and tests only; this runner mirrors CI/CD checks locally (`make lint`, `make test`, dependency audits) before opening a PR.
+3) Focus on implementation and tests only; this runner runs the full local CI-equivalent suite before opening a PR (lint, tests, dependency audits, workflow security, W3C, Lighthouse).
 4) Keep security, privacy, and E2EE protections intact.
 5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
 6) Do not include meta-compliance statements like "per your constraints" in your final summary.
@@ -752,7 +843,7 @@ $failure_tail
 Requirements:
 1) Fix only what is required for checks to pass.
 2) Keep diffs minimal and focused.
-3) Focus on code/test fixes only; this runner mirrors CI/CD checks locally before opening a PR.
+3) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
 5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
 6) Do not include meta-compliance statements like "per your constraints" in your final summary.
