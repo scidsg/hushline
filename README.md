@@ -81,7 +81,7 @@ Quick summary:
 - AI-first is allowed for low-risk work such as scoped docs/process edits and isolated low-risk implementation tasks with clear rollback.
 - If scope expands into high-risk areas (for example DB/auth/env/security), ownership immediately escalates to human-first.
 - Ownership mode is tracked (`human-first` vs `ai-first`) with a quarterly operating target of roughly 70/30.
-- Approved coding model policy is defined in [`AGENTS.md`](./AGENTS.md). As of 2026-02-13, the approved coding model is `gpt-5.3-codex xhigh`.
+- Approved coding model policy is defined in [`AGENTS.md`](./AGENTS.md). As of 2026-02-13, the minimum approved coding model is `gpt-5.3-codex high`.
 
 Policy discussion thread: <https://github.com/orgs/scidsg/discussions/1313>
 
