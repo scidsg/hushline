@@ -159,36 +159,9 @@ audit_failure_looks_environmental() {
     '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|tls|ssl|certificate|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
 }
 
-auto_fix_prettier_markdown_from_failure() {
-  local failure_text="$1"
-
-  if ! printf '%s\n' "$failure_text" | grep -Fq "Code style issues found in the above file. Run Prettier with --write to fix."; then
-    return 1
-  fi
-
-  local -a files=()
-  local file
-  while IFS= read -r file; do
-    [[ -n "$file" ]] && files+=("$file")
-  done < <(
-    printf '%s\n' "$failure_text" \
-      | awk '/^\[warn\] / { print $2 }' \
-      | awk '/\.md$/ { print }' \
-      | sort -u
-  )
-
-  if (( ${#files[@]} == 0 )); then
-    return 1
-  fi
-
-  local prettier_cmd="prettier --write"
-  for file in "${files[@]}"; do
-    prettier_cmd+=" $(printf '%q' "$file")"
-  done
-
-  echo "Detected Prettier markdown lint failure; applying deterministic fix." | tee -a "$CHECK_LOG_FILE"
-  run_check_capture "Auto-fix markdown formatting (Prettier)" \
-    docker compose run --rm app sh -lc "$prettier_cmd"
+auto_fix_lint_with_containerized_tooling() {
+  echo "Self-heal: applying deterministic lint fix via make fix." | tee -a "$CHECK_LOG_FILE"
+  run_check_capture "Auto-fix lint issues (make fix)" make fix
 }
 
 remote_branch_exists() {
@@ -429,13 +402,11 @@ run_local_workflow_checks() {
   CCPA_COMPLIANCE_REQUIRED=0
   GDPR_COMPLIANCE_REQUIRED=0
   E2EE_PRIVACY_REQUIRED=0
-  local lint_failure_tail=""
   if ! run_check_with_self_heal_retry "Run lint" make lint; then
-    lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
-    if ! auto_fix_prettier_markdown_from_failure "$lint_failure_tail"; then
+    if ! auto_fix_lint_with_containerized_tooling; then
       return 1
     fi
-    run_check_with_self_heal_retry "Re-run lint after Prettier auto-fix" make lint || return 1
+    run_check_with_self_heal_retry "Re-run lint after deterministic auto-fix" make lint || return 1
   fi
   run_check_with_self_heal_retry "Run workflow security checks" make workflow-security-checks || return 1
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
@@ -866,9 +837,11 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Focus on implementation and tests only; this runner runs the full local CI-equivalent suite before opening a PR (lint, tests, dependency audits, workflow security, W3C, Lighthouse).
 4) Keep security, privacy, and E2EE protections intact.
-5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
-6) Do not include meta-compliance statements like "per your constraints" in your final summary.
-7) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
+5) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
+6) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
+7) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+8) Do not include meta-compliance statements like "per your constraints" in your final summary.
+9) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
 EOF2
 }
 
@@ -897,8 +870,10 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
-6) Do not include meta-compliance statements like "per your constraints" in your final summary.
+5) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
+6) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
+7) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+8) Do not include meta-compliance statements like "per your constraints" in your final summary.
 EOF2
 }
 
