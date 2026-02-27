@@ -17,27 +17,37 @@
     {{ form.hidden_tag() }}
     <div>
       {{ form.username.label(for="username") }}
-      {{ form.username(id="username") }}
       {% if form.username.errors %}
-        <span class="error">{{ form.username.errors[0] }}</span>
+        {{ form.username(id="username", **{"aria-invalid": "true", "aria-describedby": "username-error"}) }}
+      {% else %}
+        {{ form.username(id="username") }}
+      {% endif %}
+      {% if form.username.errors %}
+        <span id="username-error" class="error" role="alert">{{ form.username.errors[0] }}</span>
       {% endif %}
     </div>
     <div>
       {{ form.password.label(for="password") }}
-      {{ form.password(id="password") }}
       {% if form.password.errors %}
-        {% for error in form.password.errors %}
-          <span class="error">{{ error }}</span>
-        {% endfor %}
+        {{ form.password(id="password", **{"aria-invalid": "true", "aria-describedby": "password-error"}) }}
+      {% else %}
+        {{ form.password(id="password") }}
+      {% endif %}
+      {% if form.password.errors %}
+        <span id="password-error" class="error" role="alert">{{ form.password.errors | join(" ") }}</span>
       {% endif %}
     </div>
     {% if registration_codes_required %}
       <div>
         {{ form.invite_code.label }}
-        {{ form.invite_code(size=32) }}
-        {% for error in form.invite_code.errors %}
-          <span>{{ error }}</span>
-        {% endfor %}
+        {% if form.invite_code.errors %}
+          {{ form.invite_code(size=32, **{"aria-invalid": "true", "aria-describedby": "invite-code-error"}) }}
+        {% else %}
+          {{ form.invite_code(size=32) }}
+        {% endif %}
+        {% if form.invite_code.errors %}
+          <span id="invite-code-error" class="error" role="alert">{{ form.invite_code.errors | join(" ") }}</span>
+        {% endif %}
       </div>
     {% endif %}
     <div class="captcha">

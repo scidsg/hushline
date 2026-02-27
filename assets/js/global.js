@@ -263,6 +263,20 @@ document.addEventListener("DOMContentLoaded", function () {
           "aria-labelledby",
           "guidance-heading-" + activePage,
         );
+        guidanceDiv.setAttribute(
+          "aria-describedby",
+          "guidance-body-" + activePage,
+        );
+        guidanceDiv
+          .querySelectorAll(".page-bullet-" + activePage)
+          .forEach((bullet) => {
+            bullet.setAttribute("aria-current", "step");
+          });
+        guidanceDiv
+          .querySelectorAll(".page-bullets button:not(.page-bullet-" + activePage + ")")
+          .forEach((bullet) => {
+            bullet.removeAttribute("aria-current");
+          });
       }
 
       function leaveClicked() {

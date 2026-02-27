@@ -212,7 +212,7 @@
         {% endif %}
         <h1>{{ brand_name }}</h1>
       </div>
-      <nav>
+      <nav aria-label="Primary navigation">
         <div class="navGroup">
           <button
             type="button"
@@ -329,6 +329,8 @@
         role="dialog"
         aria-modal="true"
         aria-hidden="true"
+        aria-labelledby="guidance-heading-0"
+        aria-describedby="guidance-body-0"
         tabindex="-1"
       >
         {% for prompt in guidance_prompts %}
@@ -336,7 +338,9 @@
             <h2 class="heading-text" id="guidance-heading-{{ loop.index - 1 }}">
               {{ prompt.heading_text }}
             </h2>
-            <div class="prompt-text">{{ prompt.prompt_text|markdown }}</div>
+            <div class="prompt-text" id="guidance-body-{{ loop.index - 1 }}">
+              {{ prompt.prompt_text|markdown }}
+            </div>
             <div class="modal-buttons-container">
               <div class="modal-buttons">
                 <span class="page-bullets">

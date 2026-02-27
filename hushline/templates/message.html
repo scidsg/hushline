@@ -8,7 +8,7 @@
   <div class="action-model">
     <form id="statusForm" class="formBody" method="POST" action="{{ url_for('set_message_status', public_id=message.public_id) }}">
       {{ update_status_form.hidden_tag() }}
-      {{ update_status_form.status }}
+      {{ update_status_form.status(**{"aria-label": "Message status"}) }}
     </form>
     {% if message.username.user.enable_email_notifications and message.username.user.email_include_message_content %}
     <form

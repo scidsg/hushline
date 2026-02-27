@@ -56,7 +56,12 @@
           <span class="extra-field-label">{{ field.label }}</span>
           <span class="extra-field-value">
             {% if field.is_verified %}
-              <span class="icon verifiedURL" title="Verified Address"></span>
+              <span
+                class="icon verifiedURL"
+                role="img"
+                aria-label="Verified address"
+                title="Verified Address"
+              ></span>
             {% endif %}
             {% if field.value.startswith('https://') %}
               <a
