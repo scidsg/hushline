@@ -10,14 +10,55 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 ensure_docker_running() {
+  docker_desktop_app_running() {
+    pgrep -f "/Applications/Docker.app/Contents/MacOS/com.docker.backend" >/dev/null 2>&1 \
+      || pgrep -f "/Applications/Docker.app/Contents/MacOS/Docker Desktop.app/Contents/MacOS/Docker Desktop" >/dev/null 2>&1
+  }
+
+  local docker_probe
+  docker_probe="$(docker info --format '{{.ServerVersion}}' 2>&1)" && return 0
+
+  if [[ "$docker_probe" == *"permission denied while trying to connect to the docker API"* ]]; then
+    local active_context
+    active_context="$(docker context show 2>/dev/null || echo "unknown")"
+    if docker_desktop_app_running; then
+      echo "Docker Desktop app is running, but this process lacks Docker socket access (context: ${active_context})." >&2
+    else
+      echo "Docker daemon is reachable but this process lacks socket access (context: ${active_context})." >&2
+    fi
+    echo "Details: ${docker_probe}" >&2
+    echo "Run outside sandboxed/restricted execution or grant Docker socket access, then rerun." >&2
+    return 1
+  fi
+
+  if [[ "$docker_probe" == *"context"* && "$docker_probe" == *"not found"* ]]; then
+    echo "Docker context is invalid. Run 'docker context ls' and select a valid context." >&2
+    echo "Details: ${docker_probe}" >&2
+    return 1
+  fi
+
+  if [[ "$docker_probe" == *"error during connect"* ]] || [[ "$docker_probe" == *"Cannot connect to the Docker daemon"* ]]; then
+    :
+  else
+    echo "Docker check failed before startup attempt." >&2
+    echo "Details: ${docker_probe}" >&2
+    return 1
+  fi
+
   if docker info >/dev/null 2>&1; then
     return 0
   fi
 
-  echo "Docker is not running; attempting to start it."
+  if docker_desktop_app_running; then
+    echo "Docker Desktop app is running; waiting for Docker API readiness."
+  else
+    echo "Docker is not running; attempting to start it."
+  fi
   case "$(uname -s)" in
     Darwin)
-      open -a Docker >/dev/null 2>&1 || true
+      if ! docker_desktop_app_running; then
+        open -a Docker >/dev/null 2>&1 || true
+      fi
       ;;
     *)
       echo "Docker daemon is unavailable. Start Docker and rerun bootstrap." >&2

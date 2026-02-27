@@ -1837,6 +1837,7 @@ button[data-submit-spinner-init="true"] .submit-button-spinner {
   display: none;
   width: 1rem;
   height: 1rem;
+  box-sizing: border-box;
   border: 0.125rem solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
