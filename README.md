@@ -122,7 +122,7 @@ npm audit
 - Docs index: [`docs/README.md`](./docs/README.md)
 - Developer notes: [`docs/DEV.md`](./docs/DEV.md)
 - Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
-- Runner automation: [`docs/RUNNERS.md`](./docs/RUNNERS.md)
+- Runner automation: [`docs/AGENT_RUNNER.md`](./docs/AGENT_RUNNER.md)
 - Terms: [`docs/TERMS.md`](./docs/TERMS.md)
 
 ## Latest Screenshots
