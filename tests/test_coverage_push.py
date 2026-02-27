@@ -439,7 +439,7 @@ def test_notifications_toggle_include_content_true_path(client) -> None:  # type
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Email message content enabled" in response.text
+    assert "👍 Email message content enabled." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

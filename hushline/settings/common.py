@@ -45,7 +45,7 @@ from hushline.utils import redirect_to_self
 
 
 def form_error() -> None:
-    flash("Your submitted form could not be processed.")
+    flash("⛔️ Your submitted form could not be processed.")
 
 
 def set_field_attribute(input_field: Field, attribute: str, value: str) -> None:
@@ -288,7 +288,7 @@ def handle_new_alias_form(user: User, new_alias_form: NewAliasForm) -> Optional[
         )
     )
     if count >= user.max_aliases:
-        flash("Your current subscription level does not allow the creation of more aliases.")
+        flash("⛔️ Your current subscription level does not allow the creation of more aliases.")
         return None
 
     if db.session.scalar(
@@ -441,7 +441,7 @@ def handle_field_post(username: Username) -> Response | None:
 
             db.session.add(field_definition)
             db.session.commit()
-            flash("New field added.")
+            flash("👍 New field added.")
             return redirect_to_self()
 
         # Update an existing field
@@ -457,7 +457,7 @@ def handle_field_post(username: Username) -> Response | None:
             field_definition.encrypted = field_form.encrypted.data
             field_definition.choices = [c["choice"] for c in field_form.choices.data]
             db.session.commit()
-            flash("Field updated.")
+            flash("👍 Field updated.")
             return redirect_to_self()
 
         # Delete a field
@@ -474,7 +474,7 @@ def handle_field_post(username: Username) -> Response | None:
 
             db.session.delete(field_definition)
             db.session.commit()
-            flash("Field deleted.")
+            flash("👍 Field deleted.")
             return redirect_to_self()
 
         # Move a field up
@@ -484,7 +484,7 @@ def handle_field_post(username: Username) -> Response | None:
                 db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
             ).one()
             field_definition.move_up()
-            flash("Field moved up.")
+            flash("👍 Field moved up.")
             return redirect_to_self()
 
         # Move a field down
@@ -494,7 +494,7 @@ def handle_field_post(username: Username) -> Response | None:
                 db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
             ).one()
             field_definition.move_down()
-            flash("Field moved down.")
+            flash("👍 Field moved down.")
             return redirect_to_self()
 
     return None

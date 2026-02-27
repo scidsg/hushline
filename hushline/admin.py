@@ -86,7 +86,7 @@ def create_blueprint() -> Blueprint:
                 # Re-check admin count within the transaction
                 admin_count = db.session.query(User).filter_by(is_admin=True).count()
                 if admin_count == 1:
-                    flash("⛔️ You cannot remove the only admin")
+                    flash("⛔️ You cannot remove the only admin.")
                     return abort(400)
 
             # Set admin status explicitly

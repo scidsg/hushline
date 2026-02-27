@@ -48,11 +48,11 @@ def get_directory_usernames() -> Sequence[Username]:
 
 def validate_captcha(captcha_answer: str) -> bool:
     if not captcha_answer.isdigit():
-        flash("Incorrect CAPTCHA. Please enter a valid number.", "error")
+        flash("⛔️ Incorrect CAPTCHA. Please enter a valid number.", "error")
         return False
 
     if captcha_answer != session.get("math_answer"):
-        flash("Incorrect CAPTCHA. Please try again.", "error")
+        flash("⛔️ Incorrect CAPTCHA. Please try again.", "error")
         return False
 
     return True

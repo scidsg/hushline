@@ -91,6 +91,6 @@ def test_delete_account_redirects_to_login_when_user_missing(
 
     with client.session_transaction() as sess:
         assert any(
-            tuple(entry) == ("message", "User not found. Please log in again.")
+            tuple(entry) == ("message", "🫥 User not found. Please log in again.")
             for entry in sess["_flashes"]
         )

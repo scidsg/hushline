@@ -505,7 +505,7 @@ def test_disable_autorenew_success(client: FlaskClient, user: User, mocker: Mock
     # Check flash message
     with client.session_transaction():
         flashed_messages = get_flashed_messages()
-    assert "Autorenew has been disabled." in flashed_messages
+    assert "👍 Autorenew has been disabled." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -573,7 +573,7 @@ def test_enable_autorenew_success(client: FlaskClient, user: User, mocker: MockF
     # Check flash message
     with client.session_transaction():
         flashed_messages = get_flashed_messages()
-    assert "Autorenew has been enabled." in flashed_messages
+    assert "👍 Autorenew has been enabled." in flashed_messages
 
 
 @pytest.mark.usefixtures("_authenticated_user")

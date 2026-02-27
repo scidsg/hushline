@@ -67,7 +67,7 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == username
@@ -96,7 +96,7 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == "newuser"
@@ -163,7 +163,7 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     # Attempt login
     login_response = client.post(
@@ -187,7 +187,7 @@ def test_user_login_case_insensitive(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     login_response = client.post(
         url_for("login"),
@@ -222,4 +222,4 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     )
     assert login_response.status_code == 200
     assert "Inbox" not in login_response.text
-    assert "Invalid username or password" in login_response.text
+    assert "⛔️ Invalid username or password." in login_response.text

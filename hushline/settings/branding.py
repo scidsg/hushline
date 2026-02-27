@@ -74,7 +74,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                         key=OrganizationSetting.DIRECTORY_INTRO_TEXT, value=md
                     )
                     db.session.commit()
-                    flash("👍 Directory intro text updated")
+                    flash("👍 Directory intro text updated.")
                 else:
                     row_count = db.session.execute(
                         db.delete(OrganizationSetting).where(
@@ -89,7 +89,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                         db.session.rollback()
                         abort(503)
                     db.session.commit()
-                    flash("👍 Directory intro text was reset to defaults")
+                    flash("👍 Directory intro text was reset to defaults.")
             elif (
                 update_brand_logo_form.submit.name in request.form
                 and update_brand_logo_form.validate()
@@ -150,11 +150,11 @@ def register_branding_routes(bp: Blueprint) -> None:
                 ).rowcount
                 match row_count:
                     case 0:
-                        flash("👍 Homepage reset to default")
+                        flash("👍 Homepage reset to default.")
                     case 1:
                         db.session.commit()
                         set_homepage_username_form.username.data = None
-                        flash("👍 Homepage reset to default")
+                        flash("👍 Homepage reset to default.")
                     case _:
                         current_app.logger.error(
                             f"Deleting OrganizationSetting {OrganizationSetting.HOMEPAGE_USER_NAME}"
@@ -162,7 +162,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                         )
                         status_code = 500
                         db.session.rollback()
-                        flash("There was an error and the setting could not reset")
+                        flash("⛔️ There was an error and the setting could not reset.")
             elif (
                 update_profile_header_form.submit.name in request.form
                 and update_profile_header_form.validate()
@@ -172,7 +172,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                         OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE, data
                     )
                     db.session.commit()
-                    flash("👍 Profile header template updated successfully")
+                    flash("👍 Profile header template updated successfully.")
                 else:
                     row_count = db.session.execute(
                         db.delete(OrganizationSetting).filter_by(
@@ -181,10 +181,10 @@ def register_branding_routes(bp: Blueprint) -> None:
                     ).rowcount
                     match row_count:
                         case 0:
-                            flash("👍 Profile header template reset to default")
+                            flash("👍 Profile header template reset to default.")
                         case 1:
                             db.session.commit()
-                            flash("👍 Profile header template reset to default")
+                            flash("👍 Profile header template reset to default.")
                         case _:
                             current_app.logger.error(
                                 "Deleting OrganizationSetting "
@@ -193,7 +193,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                             )
                             status_code = 500
                             db.session.rollback()
-                            flash("There was an error and the setting could not reset")
+                            flash("⛔️ There was an error and the setting could not reset.")
                 return redirect_to_self()
             elif (
                 set_homepage_username_form.submit.name in request.form
@@ -204,7 +204,7 @@ def register_branding_routes(bp: Blueprint) -> None:
                     value=set_homepage_username_form.username.data,
                 )
                 db.session.commit()
-                flash(f"👍 Homepage set to user {set_homepage_username_form.username.data!r}")
+                flash(f"👍 Homepage set to user {set_homepage_username_form.username.data!r}.")
             elif (
                 toggle_donate_button_form.submit.name in request.form
                 and toggle_donate_button_form.validate()
@@ -219,9 +219,9 @@ def register_branding_routes(bp: Blueprint) -> None:
                 )
                 db.session.commit()
                 if toggle_donate_button_form.hide_button.data:
-                    flash("👍 Donate button set to hidden")
+                    flash("👍 Donate button set to hidden.")
                 else:
-                    flash("👍 Donate button set to visible")
+                    flash("👍 Donate button set to visible.")
                 redirect_to_self()
             else:
                 form_error()

@@ -72,7 +72,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             )
         ).one_or_none()
         if not alias:
-            flash("Alias not found.")
+            flash("⛔️ Alias not found.")
             return abort(404)
 
         display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
@@ -115,7 +115,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             )
         ).one_or_none()
         if not alias:
-            flash("Alias not found.")
+            flash("⛔️ Alias not found.")
             return abort(404)
 
         with db.session.begin_nested():
@@ -145,7 +145,7 @@ def register_aliases_routes(bp: Blueprint) -> None:
             )
         ).one_or_none()
         if not alias:
-            flash("Alias not found.")
+            flash("⛔️ Alias not found.")
             return redirect(url_for(".aliases"))
 
         if not alias.user.fields_enabled:

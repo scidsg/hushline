@@ -160,7 +160,7 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
             assert "Cannot choose a repeat password." in response.text
             assert original_password_hash == user.password_hash
         else:
-            assert "Your submitted form could not be processed" in response.text
+            assert "⛔️ Your submitted form could not be processed." in response.text
             assert original_password_hash == user.password_hash
 
     assert original_password_hash != user.password_hash
@@ -177,7 +177,7 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Invalid username or password" in response.text
+    assert "⛔️ Invalid username or password." in response.text
     assert "/login" in response.request.url
 
     # TODO simulate a log out?
@@ -408,7 +408,7 @@ def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user:
         follow_redirects=True,
     )
     assert response.status_code == 400
-    assert "Email forwarding requires a configured PGP key" in response.text, response.text
+    assert "⛔️ Email forwarding requires a configured PGP key." in response.text, response.text
 
     updated_user = (
         db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
@@ -451,7 +451,7 @@ def test_update_smtp_settings_starttls(
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "SMTP settings updated successfully" in response.text
+    assert "👍 SMTP settings updated successfully." in response.text
 
     SMTP.assert_called_with(user.smtp_server, user.smtp_port, timeout=ANY)
     SMTP.return_value.__enter__.return_value.starttls.assert_called_once_with(context=ANY)
@@ -502,7 +502,7 @@ def test_update_smtp_settings_ssl(
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "SMTP settings updated successfully" in response.text
+    assert "👍 SMTP settings updated successfully." in response.text
 
     SMTP.assert_called_with(user.smtp_server, user.smtp_port, timeout=ANY)
     SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
@@ -547,7 +547,7 @@ def test_update_smtp_settings_default_forwarding(
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "SMTP settings updated successfully" in response.text
+    assert "👍 SMTP settings updated successfully." in response.text
 
     SMTP.assert_not_called()
     SMTP.return_value.__enter__.return_value.starttls.assert_not_called()
@@ -581,7 +581,7 @@ def test_toggle_notifications_setting(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Email notifications enabled" in response.text
+    assert "👍 Email notifications enabled." in response.text
     assert user.enable_email_notifications
 
 
@@ -598,7 +598,7 @@ def test_toggle_include_content_setting(client: FlaskClient, user: User) -> None
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Email message content disabled" in response.text
+    assert "👍 Email message content disabled." in response.text
     assert not user.email_include_message_content
 
 
@@ -616,7 +616,7 @@ def test_toggle_encrypt_entire_body_setting(client: FlaskClient, user: User) -> 
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "The entire body of email messages will be encrypted" in response.text
+    assert "👍 The entire body of email messages will be encrypted." in response.text
     assert user.email_encrypt_entire_body
 
 
@@ -628,7 +628,7 @@ def test_notifications_invalid_post_returns_400(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 400
-    assert "Your submitted form could not be processed" in response.text
+    assert "⛔️ Your submitted form could not be processed." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -725,7 +725,7 @@ def test_add_alias_not_exceed_max(
     )
     assert response.status_code == 400
     assert (
-        "Your current subscription level does not allow the creation of more aliases"
+        "⛔️ Your current subscription level does not allow the creation of more aliases."
         in response.text
     )
     assert not db.session.scalars(
@@ -1407,7 +1407,7 @@ def test_index_clears_invalid_session_user(client: FlaskClient) -> None:
 
     resp = client.get(url_for("index"), follow_redirects=True)
     assert resp.status_code == 200
-    assert "User not found. Please log in again." in resp.text
+    assert "🫥 User not found. Please log in again." in resp.text
 
 
 def test_index_warns_when_homepage_username_missing(client: FlaskClient, user: User) -> None:
@@ -1453,7 +1453,7 @@ def test_update_profile_header(client: FlaskClient, admin: User) -> None:
         follow_redirects=True,
     )
     assert resp.status_code == 400
-    assert "Your submitted form could not be processed" in resp.text
+    assert "⛔️ Your submitted form could not be processed." in resp.text
     assert (
         OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE)
         == template_str

@@ -34,7 +34,7 @@ def test_register_rejects_incorrect_captcha(client: FlaskClient, user: User) -> 
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Incorrect CAPTCHA. Please try again." in response.text
+    assert "⛔️ Incorrect CAPTCHA. Please try again." in response.text
 
 
 def test_register_rejects_invalid_invite_code(client: FlaskClient, user: User) -> None:
@@ -106,7 +106,7 @@ def test_register_valid_invite_code_deletes_code(client: FlaskClient, user: User
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
     assert db.session.get(InviteCode, invite_code.id) is None
 
 
