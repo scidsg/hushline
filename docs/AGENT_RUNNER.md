@@ -32,13 +32,17 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 12. Run required checks in a self-heal loop:
     - `make lint`
     - `make test`
+    - `make audit-python`
+    - `make audit-node-runtime`
+    - `make audit-node-full` when Node dependency manifests change (`package.json` / `package-lock.json` / `npm-shrinkwrap.json`)
     - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
+    - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
 13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
 14. Commit, push branch, and open PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
 15. Include runner log path in PR context and use the narrative + structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
-16. Append opened PR URL to the run log, commit/push that log update when changed.
+16. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 17. Return to `main` on exit (explicit checkout + cleanup trap fallback).
 
 ## ASCII Workflow (Current)
@@ -118,7 +122,7 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
       v
 +-----------------------------------------------+
 | Fix/self-heal loop                            |
-| Run: make lint, make test, test-gap gate      |
+| Run: lint, test, dependency audits, test-gap  |
 +-----------------------------------------------+
       |
       v

@@ -46,6 +46,9 @@ RUN_LOG_TMP_FILE="$(mktemp)"
 RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_GIT_PATH=""
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
+AUDIT_STATUS="ok"
+AUDIT_NOTE=""
+NODE_FULL_AUDIT_REQUIRED=0
 
 exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
 echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
@@ -84,6 +87,17 @@ run_check_capture() {
   rc=${PIPESTATUS[0]}
   set -e
   return "$rc"
+}
+
+node_runtime_dependency_files_changed() {
+  git diff --name-only "${BASE_BRANCH}...HEAD" \
+    | grep -Eq '(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json)$'
+}
+
+audit_failure_looks_environmental() {
+  local text="$1"
+  printf '%s\n' "$text" | grep -Eqi \
+    '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|tls|ssl|certificate|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
 }
 
 remote_branch_exists() {
@@ -316,8 +330,58 @@ configure_bot_git_identity() {
 
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
+  AUDIT_STATUS="ok"
+  AUDIT_NOTE=""
+  NODE_FULL_AUDIT_REQUIRED=0
   run_check_capture "Run lint" make lint || return 1
   run_check_capture "Run test" make test || return 1
+
+  local audit_failure_tail=""
+  local audit_blocked=0
+  local -a audit_blocked_reasons=()
+
+  if ! run_check_capture "Run dependency audit (python)" make audit-python; then
+    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
+    if audit_failure_looks_environmental "$audit_failure_tail"; then
+      audit_blocked=1
+      audit_blocked_reasons+=("make audit-python")
+    else
+      return 1
+    fi
+  fi
+
+  if ! run_check_capture "Run dependency audit (node runtime)" make audit-node-runtime; then
+    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
+    if audit_failure_looks_environmental "$audit_failure_tail"; then
+      audit_blocked=1
+      audit_blocked_reasons+=("make audit-node-runtime")
+    else
+      return 1
+    fi
+  fi
+
+  if node_runtime_dependency_files_changed; then
+    NODE_FULL_AUDIT_REQUIRED=1
+    if ! run_check_capture "Run dependency audit (node full)" make audit-node-full; then
+      audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
+      if audit_failure_looks_environmental "$audit_failure_tail"; then
+        audit_blocked=1
+        audit_blocked_reasons+=("make audit-node-full")
+      else
+        return 1
+      fi
+    fi
+  else
+    echo "==> Run dependency audit (node full)" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no Node dependency manifest changes detected." | tee -a "$CHECK_LOG_FILE"
+  fi
+
+  if (( audit_blocked != 0 )); then
+    AUDIT_STATUS="blocked"
+    AUDIT_NOTE="Blocked local dependency audits: ${audit_blocked_reasons[*]}"
+    echo "Dependency audits were blocked by environment/network constraints; continuing with CI gate requirement." \
+      | tee -a "$CHECK_LOG_FILE"
+  fi
 }
 
 issue_has_label() {
@@ -520,7 +584,23 @@ EOF2
 ## Validation
 - `make lint`
 - `make test`
+- `make audit-python`
+- `make audit-node-runtime`
 EOF2
+
+  if (( NODE_FULL_AUDIT_REQUIRED != 0 )); then
+    printf -- '- `make audit-node-full`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make audit-node-full` (not required: no Node dependency manifest changes)\n' >> "$PR_BODY_FILE"
+  fi
+
+  if [[ "$AUDIT_STATUS" == "blocked" ]]; then
+    cat >> "$PR_BODY_FILE" <<EOF2
+- Local dependency audits were blocked by environment/network constraints.
+- Merge gate: require a passing \`Dependency Security Audit\` workflow before merge.
+- Blocked commands: ${AUDIT_NOTE}
+EOF2
+  fi
 
   if issue_has_label "$issue_labels" "test-gap"; then
     if [[ -n "$test_gap_target" ]]; then
@@ -544,14 +624,6 @@ persist_run_log() {
     printf 'Repository: %s\n\n' "$REPO_SLUG"
     cat "$RUN_LOG_TMP_FILE"
   } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
-}
-
-append_pr_url_to_run_log() {
-  local pr_url="$1"
-  if [[ -z "$RUN_LOG_GIT_PATH" ]]; then
-    return 0
-  fi
-  printf '\nOpened PR: %s\n' "$pr_url" >> "$REPO_DIR/$RUN_LOG_GIT_PATH"
 }
 
 run_codex_from_prompt() {
@@ -681,12 +753,14 @@ run_step "Start Docker stack" docker compose up -d --build
 run_step "Seed development data" docker compose run --rm dev_data
 
 OPEN_BOT_PRS="$(count_open_bot_prs)"
+echo "Open bot PR count: ${OPEN_BOT_PRS}"
 if [[ "$OPEN_BOT_PRS" != "0" ]]; then
   echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
   exit 0
 fi
 
 OPEN_HUMAN_PRS="$(count_open_human_prs)"
+echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
 if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
   echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
   exit 0
@@ -699,8 +773,12 @@ if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
     exit 1
   fi
   ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
+  echo "Selected forced issue #${ISSUE_NUMBER}."
 else
   ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
+  if [[ -n "$ISSUE_NUMBER" ]]; then
+    echo "Selected issue #${ISSUE_NUMBER} from project queue."
+  fi
 fi
 
 if [[ -z "$ISSUE_NUMBER" ]]; then
@@ -776,9 +854,9 @@ PR_URL="$({
 } )"
 
 echo "Opened PR: $PR_URL"
-append_pr_url_to_run_log "$PR_URL"
+persist_run_log "$ISSUE_NUMBER"
 
-# Ensure committed runner log includes the final PR URL line.
+# Ensure committed runner log includes PR creation and post-check execution details.
 git add "$RUN_LOG_GIT_PATH"
 if ! git diff --cached --quiet; then
   git commit -m "chore: append opened PR URL to runner log"
