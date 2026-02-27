@@ -51,6 +51,9 @@ AUDIT_NOTE=""
 NODE_FULL_AUDIT_REQUIRED=0
 MIGRATION_SMOKE_REQUIRED=0
 LIGHTHOUSE_PERFORMANCE_REQUIRED=0
+CCPA_COMPLIANCE_REQUIRED=0
+GDPR_COMPLIANCE_REQUIRED=0
+E2EE_PRIVACY_REQUIRED=0
 
 exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
 echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
@@ -132,6 +135,18 @@ changed_files_match() {
 
 migration_smoke_files_changed() {
   changed_files_match '^(migrations/|hushline/|tests/test_migrations\.py$|\.github/workflows/migration-smoke\.yml$)'
+}
+
+ccpa_compliance_files_changed() {
+  changed_files_match '^(hushline/(settings/data_export\.py|settings/delete_account\.py|user_deletion\.py|routes/profile\.py|routes/auth\.py)|tests/test_ccpa_compliance\.py$|\.github/workflows/ccpa-compliance\.yml$)'
+}
+
+gdpr_compliance_files_changed() {
+  changed_files_match '^(hushline/(settings/data_export\.py|settings/delete_account\.py|user_deletion\.py|routes/profile\.py|routes/auth\.py)|tests/test_gdpr_compliance\.py$|\.github/workflows/gdpr-compliance\.yml$)'
+}
+
+e2ee_privacy_files_changed() {
+  changed_files_match '^(hushline/(crypto\.py|secure_session\.py|email\.py|routes/message\.py|routes/onboarding\.py|settings/(encryption|notifications|proton|replies)\.py)|tests/(test_behavior_contracts\.py|test_resend_message\.py|test_crypto\.py|test_secure_session\.py)$|\.github/workflows/e2ee-privacy-regressions\.yml$)'
 }
 
 lighthouse_performance_files_changed() {
@@ -411,6 +426,9 @@ run_local_workflow_checks() {
   NODE_FULL_AUDIT_REQUIRED=0
   MIGRATION_SMOKE_REQUIRED=0
   LIGHTHOUSE_PERFORMANCE_REQUIRED=0
+  CCPA_COMPLIANCE_REQUIRED=0
+  GDPR_COMPLIANCE_REQUIRED=0
+  E2EE_PRIVACY_REQUIRED=0
   local lint_failure_tail=""
   if ! run_check_with_self_heal_retry "Run lint" make lint; then
     lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
@@ -421,11 +439,31 @@ run_local_workflow_checks() {
   fi
   run_check_with_self_heal_retry "Run workflow security checks" make workflow-security-checks || return 1
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
-  run_runtime_check_with_self_heal "Run test (CI skip-local-only)" make test-ci-skip-local-only || return 1
   run_runtime_check_with_self_heal "Run test with alembic (CI)" make test-ci-alembic || return 1
-  run_runtime_check_with_self_heal "Run CCPA compliance tests (CI)" make test-ccpa-compliance || return 1
-  run_runtime_check_with_self_heal "Run GDPR compliance tests (CI)" make test-gdpr-compliance || return 1
-  run_runtime_check_with_self_heal "Run E2EE/privacy regression tests (CI)" make test-e2ee-privacy-regressions || return 1
+
+  if ccpa_compliance_files_changed; then
+    CCPA_COMPLIANCE_REQUIRED=1
+    run_runtime_check_with_self_heal "Run CCPA compliance tests (CI)" make test-ccpa-compliance || return 1
+  else
+    echo "==> Run CCPA compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no CCPA compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
+  fi
+
+  if gdpr_compliance_files_changed; then
+    GDPR_COMPLIANCE_REQUIRED=1
+    run_runtime_check_with_self_heal "Run GDPR compliance tests (CI)" make test-gdpr-compliance || return 1
+  else
+    echo "==> Run GDPR compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no GDPR compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
+  fi
+
+  if e2ee_privacy_files_changed; then
+    E2EE_PRIVACY_REQUIRED=1
+    run_runtime_check_with_self_heal "Run E2EE/privacy regression tests (CI)" make test-e2ee-privacy-regressions || return 1
+  else
+    echo "==> Run E2EE/privacy regression tests (CI)" | tee -a "$CHECK_LOG_FILE"
+    echo "Skipped: no E2EE/privacy workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
+  fi
 
   if migration_smoke_files_changed; then
     MIGRATION_SMOKE_REQUIRED=1
@@ -695,16 +733,30 @@ EOF2
 - `make lint`
 - `make workflow-security-checks`
 - `make test` (full suite)
-- `make test-ci-skip-local-only`
 - `make test-ci-alembic`
-- `make test-ccpa-compliance`
-- `make test-gdpr-compliance`
-- `make test-e2ee-privacy-regressions`
 - `make audit-python`
 - `make audit-node-runtime`
 - `make w3c-validators`
 - `make lighthouse-accessibility`
 EOF2
+
+  if (( CCPA_COMPLIANCE_REQUIRED != 0 )); then
+    printf -- '- `make test-ccpa-compliance`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make test-ccpa-compliance` (not required: no CCPA compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
+  fi
+
+  if (( GDPR_COMPLIANCE_REQUIRED != 0 )); then
+    printf -- '- `make test-gdpr-compliance`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make test-gdpr-compliance` (not required: no GDPR compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
+  fi
+
+  if (( E2EE_PRIVACY_REQUIRED != 0 )); then
+    printf -- '- `make test-e2ee-privacy-regressions`\n' >> "$PR_BODY_FILE"
+  else
+    printf -- '- `make test-e2ee-privacy-regressions` (not required: no E2EE/privacy workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
+  fi
 
   if (( MIGRATION_SMOKE_REQUIRED != 0 )); then
     printf -- '- `make test-migration-smoke`\n' >> "$PR_BODY_FILE"

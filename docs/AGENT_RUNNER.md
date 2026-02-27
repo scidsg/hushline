@@ -33,11 +33,10 @@ This runner runs directly in the local repo and now executes the full local CI-e
     - `make lint`
     - `make workflow-security-checks`
     - `make test` (full suite)
-    - `make test-ci-skip-local-only`
     - `make test-ci-alembic`
-    - `make test-ccpa-compliance`
-    - `make test-gdpr-compliance`
-    - `make test-e2ee-privacy-regressions`
+    - `make test-ccpa-compliance` when CCPA workflow trigger paths change
+    - `make test-gdpr-compliance` when GDPR workflow trigger paths change
+    - `make test-e2ee-privacy-regressions` when E2EE/privacy workflow trigger paths change
     - `make test-migration-smoke` when migration workflow trigger paths change
     - `make audit-python`
     - `make audit-node-runtime`
