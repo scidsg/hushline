@@ -159,8 +159,9 @@ w3c-validators: runner-wait-for-app ## Run W3C HTML and CSS validators (CI-equiv
 	curl -fsS "$(RUNNER_APP_URL)/directory" -o /tmp/w3c/directory.html
 	docker run --rm \
 		-v /tmp/w3c:/work \
+		--entrypoint java \
 		ghcr.io/validator/validator:latest \
-		java -jar /vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
+		-jar /vnu.jar --errors-only --no-langdetect /work/index.html /work/directory.html
 	@set +e; \
 	success=0; \
 	for i in 1 2 3 4 5; do \
@@ -178,7 +179,7 @@ w3c-validators: runner-wait-for-app ## Run W3C HTML and CSS validators (CI-equiv
 	  echo "W3C CSS validator unavailable (rate limited or error); skipping CSS validation."; \
 	  exit 0; \
 	fi; \
-	python -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
+	python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
 
 .PHONY: lighthouse-accessibility
 lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility check (CI-equivalent)
@@ -199,7 +200,7 @@ lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility ch
 	  fi; \
 	  sleep $$((i * 5)); \
 	done
-	@SCORE=$$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse.json').read_text()); print(round(data['categories']['accessibility']['score'] * 100))"); \
+	@SCORE=$$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse.json').read_text()); print(round(data['categories']['accessibility']['score'] * 100))"); \
 	if [ "$$SCORE" -lt 95 ]; then \
 	  echo "Accessibility score must be at least 95, got $$SCORE"; \
 	  exit 1; \
@@ -225,7 +226,7 @@ lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check 
 	  fi; \
 	  sleep $$((i * 5)); \
 	done
-	@SCORE=$$(python -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))"); \
+	@SCORE=$$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))"); \
 	if [ "$$SCORE" -lt 95 ]; then \
 	  echo "Performance score must be at least 95, got $$SCORE"; \
 	  exit 1; \
