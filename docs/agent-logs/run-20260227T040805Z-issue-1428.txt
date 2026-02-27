@@ -5190,3 +5190,5 @@ Coverage HTML written to dir htmlcov
 
 
 ================== 588 passed, 1 xfailed in 184.58s (0:03:04) ==================
+
+Opened PR: https://github.com/scidsg/hushline/pull/1429
