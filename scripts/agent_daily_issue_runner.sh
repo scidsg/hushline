@@ -100,6 +100,38 @@ audit_failure_looks_environmental() {
     '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|tls|ssl|certificate|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
 }
 
+auto_fix_prettier_markdown_from_failure() {
+  local failure_text="$1"
+
+  if ! printf '%s\n' "$failure_text" | grep -Fq "Code style issues found in the above file. Run Prettier with --write to fix."; then
+    return 1
+  fi
+
+  local -a files=()
+  local file
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files+=("$file")
+  done < <(
+    printf '%s\n' "$failure_text" \
+      | awk '/^\[warn\] / { print $2 }' \
+      | awk '/\.md$/ { print }' \
+      | sort -u
+  )
+
+  if (( ${#files[@]} == 0 )); then
+    return 1
+  fi
+
+  local prettier_cmd="prettier --write"
+  for file in "${files[@]}"; do
+    prettier_cmd+=" $(printf '%q' "$file")"
+  done
+
+  echo "Detected Prettier markdown lint failure; applying deterministic fix." | tee -a "$CHECK_LOG_FILE"
+  run_check_capture "Auto-fix markdown formatting (Prettier)" \
+    docker compose run --rm app sh -lc "$prettier_cmd"
+}
+
 remote_branch_exists() {
   local branch="$1"
   git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1
@@ -333,7 +365,14 @@ run_local_workflow_checks() {
   AUDIT_STATUS="ok"
   AUDIT_NOTE=""
   NODE_FULL_AUDIT_REQUIRED=0
-  run_check_capture "Run lint" make lint || return 1
+  local lint_failure_tail=""
+  if ! run_check_capture "Run lint" make lint; then
+    lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
+    if ! auto_fix_prettier_markdown_from_failure "$lint_failure_tail"; then
+      return 1
+    fi
+    run_check_capture "Re-run lint after Prettier auto-fix" make lint || return 1
+  fi
   run_check_capture "Run test" make test || return 1
 
   local audit_failure_tail=""
@@ -631,6 +670,7 @@ run_codex_from_prompt() {
   : > "$CODEX_OUTPUT_FILE"
   : > "$CODEX_TRANSCRIPT_FILE"
 
+  echo "Codex execution started; streaming transcript output."
   set +e
   codex exec \
     --model "$CODEX_MODEL" \
@@ -639,20 +679,12 @@ run_codex_from_prompt() {
     --sandbox workspace-write \
     -C "$REPO_DIR" \
     -o "$CODEX_OUTPUT_FILE" \
-    - < "$PROMPT_FILE" >"$CODEX_TRANSCRIPT_FILE" 2>&1
-  rc=$?
+    - < "$PROMPT_FILE" 2>&1 | tee "$CODEX_TRANSCRIPT_FILE"
+  rc=${PIPESTATUS[0]}
   set -e
-
-  if [[ "$VERBOSE_CODEX_OUTPUT" == "1" ]]; then
-    cat "$CODEX_TRANSCRIPT_FILE"
-  fi
 
   if (( rc != 0 )); then
     echo "Codex execution failed (exit ${rc})."
-    if [[ "$VERBOSE_CODEX_OUTPUT" != "1" ]]; then
-      echo "Codex transcript tail:"
-      tail -n 160 "$CODEX_TRANSCRIPT_FILE"
-    fi
     return "$rc"
   fi
 
@@ -660,6 +692,7 @@ run_codex_from_prompt() {
   if [[ -s "$CODEX_OUTPUT_FILE" ]]; then
     echo "Codex final message:"
     sed -n '1,60p' "$CODEX_OUTPUT_FILE"
+    printf '\n'
   fi
 }
 
@@ -688,10 +721,11 @@ $issue_body
 Requirements:
 1) Implement only what is needed for this issue with a minimal diff.
 2) Add or update tests for behavior changes.
-3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
+3) Focus on implementation and tests only; this runner mirrors CI/CD checks locally (`make lint`, `make test`, dependency audits) before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra and validation.
-6) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
+5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+6) Do not include meta-compliance statements like "per your constraints" in your final summary.
+7) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
 EOF2
 }
 
@@ -718,9 +752,10 @@ $failure_tail
 Requirements:
 1) Fix only what is required for checks to pass.
 2) Keep diffs minimal and focused.
-3) Do not run lint/test/audit/lighthouse/w3c checks yourself.
+3) Focus on code/test fixes only; this runner mirrors CI/CD checks locally before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra and validation.
+5) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+6) Do not include meta-compliance statements like "per your constraints" in your final summary.
 EOF2
 }
 
