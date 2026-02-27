@@ -5,9 +5,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const searchStatus = document.getElementById("directory-search-status");
   const initialMarkup = new Map();
   let userData = [];
-  let hasRenderedSearch = false;
+
+  const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   tabPanels.forEach((panel) => {
     initialMarkup.set(panel.id, panel.innerHTML);
@@ -60,6 +63,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function highlightMatch(text, query) {
     return userSearch.highlightQuery(text, query);
+  }
+
+  function getActiveScopeLabel() {
+    const activeTabElement = document.querySelector(".tab.active");
+    return activeTabElement?.getAttribute("data-tab") === "all"
+      ? "all users"
+      : "verified users";
+  }
+
+  function updateSearchStatus(visibleCount, query) {
+    if (!searchStatus) {
+      return;
+    }
+
+    const scopeLabel = getActiveScopeLabel();
+    if (!query) {
+      searchStatus.textContent = `Showing ${scopeLabel}.`;
+      return;
+    }
+
+    searchStatus.textContent =
+      visibleCount === 0
+        ? `No ${scopeLabel} found for "${query}".`
+        : `Found ${visibleCount} ${scopeLabel} for "${query}".`;
   }
 
   function buildUserCard(user, query) {
@@ -150,12 +177,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (activePanel && initialMarkup.has(activePanel.id)) {
         activePanel.innerHTML = initialMarkup.get(activePanel.id);
       }
-      hasRenderedSearch = false;
+      updateSearchStatus(filterUsers("").length, "");
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
-    hasRenderedSearch = true;
+    updateSearchStatus(filteredUsers.length, query);
   }
 
   searchInput.addEventListener("input", handleSearchInput);
@@ -165,6 +192,7 @@ document.addEventListener("DOMContentLoaded", function () {
     clearIcon.hidden = true;
     clearIcon.setAttribute("aria-hidden", "true");
     handleSearchInput();
+    searchInput.focus();
   });
 
   window.activateTab = function (selectedTab) {
@@ -242,7 +270,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (topLink) {
       topLink.addEventListener("click", (event) => {
         event.preventDefault();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({
+          top: 0,
+          behavior: prefersReducedMotion() ? "auto" : "smooth",
+        });
       });
     }
 

@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchRoot = document.querySelector(".settings-search");
   const usersList = document.getElementById("admin-users-list");
   const emptyMessage = document.getElementById("admin-users-empty-message");
+  const searchStatus = document.getElementById("admin-search-status");
   if (!searchRoot || !usersList) {
     return;
   }
@@ -62,6 +63,22 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   };
 
+  const updateSearchStatus = (visibleCount, query) => {
+    if (!searchStatus) {
+      return;
+    }
+
+    if (!query) {
+      searchStatus.textContent = "Showing all usernames.";
+      return;
+    }
+
+    searchStatus.textContent =
+      visibleCount === 0
+        ? `No usernames found for "${query}".`
+        : `Found ${visibleCount} username${visibleCount === 1 ? "" : "s"} for "${query}".`;
+  };
+
   const applyFilter = () => {
     const query = searchInput.value.trim().toLowerCase();
     let visibleCount = 0;
@@ -90,6 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
       emptyMessage.hidden = visibleCount > 0;
     }
     setClearButtonState(query.length > 0);
+    updateSearchStatus(visibleCount, query);
   };
 
   searchInput.addEventListener("input", applyFilter);

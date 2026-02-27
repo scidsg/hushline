@@ -45,3 +45,24 @@ def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     assert "transform: translate(-50%, -50%);" in scss
     assert "translate(-50%, -50%) rotate(360deg)" in scss
     assert "@keyframes submit-button-spinner-rotate" in scss
+
+
+def test_accessibility_motion_and_search_hooks_exist() -> None:
+    global_js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+    directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
+    directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(
+        encoding="utf-8",
+    )
+    settings_admin_js = (ROOT / "assets/js/settings_admin.js").read_text(
+        encoding="utf-8",
+    )
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert "(prefers-reduced-motion: reduce)" in global_js
+    assert 'event.key === "Escape"' in global_js
+    assert 'behavior: prefersReducedMotion() ? "auto" : "smooth"' in directory_verified_js
+    assert 'document.getElementById("directory-search-status")' in directory_js
+    assert 'document.getElementById("directory-search-status")' in directory_verified_js
+    assert 'document.getElementById("admin-search-status")' in settings_admin_js
+    assert ".sr-only" in scss
+    assert "@media (prefers-reduced-motion: reduce)" in scss

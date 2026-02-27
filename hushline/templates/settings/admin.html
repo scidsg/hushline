@@ -38,6 +38,8 @@
         id="clearIcon"
         type="button"
         aria-label="Clear search field"
+        aria-hidden="true"
+        hidden
         style="cursor: pointer; background: none; border: none; padding: 0"
       >
         <img
@@ -46,6 +48,15 @@
         />
       </button>
     </div>
+    <p
+      id="admin-search-status"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      Showing all usernames.
+    </p>
   </div>
   {% if all_usernames %}
     <div id="admin-users-list">

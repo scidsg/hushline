@@ -67,6 +67,8 @@
         id="clearIcon"
         type="button"
         aria-label="Clear search field"
+        aria-hidden="true"
+        hidden
         style="cursor: pointer; background: none; border: none; padding: 0"
       >
         <img
@@ -75,6 +77,19 @@
         />
       </button>
     </div>
+    <p
+      id="directory-search-status"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {% if directory_verified_tab_enabled %}
+        Showing verified users.
+      {% else %}
+        Showing all users.
+      {% endif %}
+    </p>
   </div>
 
   {% if directory_verified_tab_enabled %}

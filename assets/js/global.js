@@ -1,4 +1,7 @@
 function navController() {
+  const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   function setupDropdown() {
     const dropdownToggle = document.querySelector(".dropdown .dropbtn");
     if (!dropdownToggle) return;
@@ -7,29 +10,47 @@ function navController() {
     const dropdownIcon = document.querySelector(".dropdown-icon");
 
     if (dropdownContent && dropdownIcon) {
+      const closeDropdown = () => {
+        dropdownContent.classList.remove("show");
+        dropdownContent.style.animation = prefersReducedMotion()
+          ? "none"
+          : "fadeOutSlideUp 0.3s ease forwards";
+        dropdownIcon.classList.remove("rotate-icon");
+        dropdownToggle.setAttribute("aria-expanded", "false");
+        dropdownContent.hidden = true;
+      };
+
       dropdownToggle.addEventListener("click", function (event) {
         event.preventDefault();
-        dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains(
-          "show",
-        )
-          ? "fadeInSlideDown 0.3s ease forwards"
-          : "fadeOutSlideUp 0.3s ease forwards";
-        dropdownIcon.classList.toggle("rotate-icon");
         const expanded = this.getAttribute("aria-expanded") === "true" || false;
-        this.setAttribute("aria-expanded", !expanded);
-        dropdownContent.hidden = expanded;
+        if (expanded) {
+          closeDropdown();
+          return;
+        }
+
+        dropdownContent.classList.add("show");
+        dropdownContent.style.animation = prefersReducedMotion()
+          ? "none"
+          : "fadeInSlideDown 0.3s ease forwards";
+        dropdownIcon.classList.add("rotate-icon");
+        this.setAttribute("aria-expanded", "true");
+        dropdownContent.hidden = false;
       });
 
-      window.addEventListener("click", function (event) {
+      document.addEventListener("click", function (event) {
         if (
           !dropdownToggle.contains(event.target) &&
+          !dropdownContent.contains(event.target) &&
           dropdownContent.classList.contains("show")
         ) {
-          dropdownContent.classList.remove("show");
-          dropdownIcon.classList.remove("rotate-icon");
-          dropdownToggle.setAttribute("aria-expanded", "false");
-          dropdownContent.hidden = true;
+          closeDropdown();
+        }
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && dropdownContent.classList.contains("show")) {
+          closeDropdown();
+          dropdownToggle.focus();
         }
       });
     }
@@ -38,13 +59,43 @@ function navController() {
   function setupMobileNav() {
     const mobileNavToggle = document.querySelector(".mobileNav");
     const navList = document.querySelector("header nav ul");
+    const nav = document.querySelector("header nav");
 
-    if (mobileNavToggle && navList) {
+    if (mobileNavToggle && navList && nav) {
+      const closeMobileNav = () => {
+        navList.classList.remove("show");
+        mobileNavToggle.setAttribute("aria-expanded", "false");
+      };
+
       mobileNavToggle.addEventListener("click", function (event) {
         event.preventDefault();
-        navList.classList.toggle("show");
         const expanded = this.getAttribute("aria-expanded") === "true" || false;
-        this.setAttribute("aria-expanded", !expanded);
+        if (expanded) {
+          closeMobileNav();
+          return;
+        }
+
+        navList.classList.add("show");
+        this.setAttribute("aria-expanded", "true");
+      });
+
+      document.addEventListener("click", function (event) {
+        if (
+          mobileNavToggle.getAttribute("aria-expanded") === "true" &&
+          !nav.contains(event.target)
+        ) {
+          closeMobileNav();
+        }
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (
+          event.key === "Escape" &&
+          mobileNavToggle.getAttribute("aria-expanded") === "true"
+        ) {
+          closeMobileNav();
+          mobileNavToggle.focus();
+        }
       });
     }
   }
@@ -391,7 +442,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (modal && firstModalContent) {
-    firstModalContent.classList.add("animate");
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      firstModalContent.classList.add("animate");
+    }
 
     firstModalContent.addEventListener("animationend", () => {
       firstModalContent.classList.remove("animate");
