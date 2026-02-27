@@ -178,7 +178,7 @@ w3c-validators: runner-wait-for-app ## Run W3C HTML and CSS validators (CI-equiv
 	  echo "W3C CSS validator unavailable (rate limited or error); skipping CSS validation."; \
 	  exit 0; \
 	fi; \
-	python -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
+	python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path('/tmp/w3c/css.json').read_text()); errors=data.get('cssvalidation',{}).get('errors',[]); sys.exit(f'W3C CSS validation failed with {len(errors)} error(s).') if errors else print('W3C CSS validation passed.')"
 
 .PHONY: lighthouse-accessibility
 lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility check (CI-equivalent)
