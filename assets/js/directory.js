@@ -3,11 +3,18 @@ document.addEventListener("DOMContentLoaded", function () {
   const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
+  const searchStatus = document.getElementById("directory-search-status");
   const searchBox = document.querySelector(".directory-search");
   const resultsContainer = document.getElementById("all");
   const initialMarkup = resultsContainer ? resultsContainer.innerHTML : "";
   let userData = [];
   let hasRenderedSearch = false;
+
+  function setSearchStatus(message) {
+    if (searchStatus) {
+      searchStatus.textContent = message;
+    }
+  }
 
   function loadData() {
     fetch(`${pathPrefix}/directory/users.json`)
@@ -124,11 +131,19 @@ document.addEventListener("DOMContentLoaded", function () {
       if (resultsContainer) {
         resultsContainer.innerHTML = initialMarkup;
       }
+      if (hasRenderedSearch) {
+        setSearchStatus("Showing all users.");
+      }
       hasRenderedSearch = false;
       return;
     }
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
+    setSearchStatus(
+      filteredUsers.length === 1
+        ? `Found 1 user matching "${query}".`
+        : `Found ${filteredUsers.length} users matching "${query}".`,
+    );
     hasRenderedSearch = true;
   }
 
