@@ -537,7 +537,7 @@ def create_blueprint(app: Flask) -> Blueprint:
             f"Autorenew disabled for subscription {user.stripe_subscription_id} for user {user.id}"
         )
 
-        flash("Autorenew has been disabled.")
+        flash("👍 Autorenew has been disabled.")
         return redirect(url_for("premium.index"))
 
     @bp.route("/enable-autorenew", methods=["POST"])
@@ -565,7 +565,7 @@ def create_blueprint(app: Flask) -> Blueprint:
                 f"for user {user.id}"
             )
 
-            flash("Autorenew has been enabled.")
+            flash("👍 Autorenew has been enabled.")
             return redirect(url_for("premium.index"))
 
         flash("⚠️ No active subscription found.")

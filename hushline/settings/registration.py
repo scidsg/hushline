@@ -87,7 +87,7 @@ def register_registration_routes(bp: Blueprint) -> None:
                 new_invite_code = InviteCode()
                 db.session.add(new_invite_code)
                 db.session.commit()
-                flash(f"Invite code {new_invite_code.code} created.")
+                flash(f"👍 Invite code {new_invite_code.code} created.")
                 return redirect(url_for(".registration"))
             # Delete invite code
             elif (
@@ -98,14 +98,14 @@ def register_registration_routes(bp: Blueprint) -> None:
                     db.select(InviteCode).filter_by(id=delete_invite_code_form.invite_code_id.data)
                 ).one_or_none()
                 if invite_code is None:
-                    flash("Invite code not found.")
+                    flash("⛔️ Invite code not found.")
                     return redirect(url_for(".registration"))
                 db.session.delete(invite_code)
                 db.session.commit()
-                flash(f"Invite code {invite_code.code} deleted.")
+                flash(f"👍 Invite code {invite_code.code} deleted.")
                 return redirect(url_for(".registration"))
             else:
-                flash("Invalid form submission.")
+                flash("⛔️ Invalid form submission.")
                 return redirect(url_for(".registration"))
 
         registration_enabled = OrganizationSetting.fetch_one(

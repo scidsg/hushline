@@ -41,7 +41,7 @@ class ToggleEncryptEntireBodyForm(FlaskForm):
 
 def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optional[Response]:
     if form.email_address.data and not user.pgp_key:
-        flash("⛔️ Email forwarding requires a configured PGP key")
+        flash("⛔️ Email forwarding requires a configured PGP key.")
         return None
 
     default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
@@ -67,7 +67,7 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
                 pass
         except (OSError, ValueError, smtplib.SMTPException) as e:
             current_app.logger.debug(e)
-            flash("⛔️ Unable to validate SMTP connection settings")
+            flash("⛔️ Unable to validate SMTP connection settings.")
             return None
 
     user.email = form.email_address.data
@@ -93,7 +93,7 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
     )
 
     db.session.commit()
-    flash("👍 SMTP settings updated successfully")
+    flash("👍 SMTP settings updated successfully.")
     return redirect_to_self()
 
 
@@ -125,9 +125,9 @@ def register_notifications_routes(bp: Blueprint) -> None:
                 )
                 db.session.commit()
                 if toggle_notifications_form.enable_email_notifications.data:
-                    flash("Email notifications enabled")
+                    flash("👍 Email notifications enabled.")
                 else:
-                    flash("Email notifications disabled")
+                    flash("👍 Email notifications disabled.")
                 return redirect_to_self()
             elif (
                 toggle_include_content_form.submit.name in request.form
@@ -138,9 +138,9 @@ def register_notifications_routes(bp: Blueprint) -> None:
                 )
                 db.session.commit()
                 if toggle_include_content_form.include_content.data:
-                    flash("Email message content enabled")
+                    flash("👍 Email message content enabled.")
                 else:
-                    flash("Email message content disabled")
+                    flash("👍 Email message content disabled.")
                 return redirect_to_self()
             elif (
                 toggle_encrypt_entire_body_form.submit.name in request.form
@@ -151,9 +151,9 @@ def register_notifications_routes(bp: Blueprint) -> None:
                 )
                 db.session.commit()
                 if toggle_encrypt_entire_body_form.encrypt_entire_body.data:
-                    flash("The entire body of email messages will be encrypted")
+                    flash("👍 The entire body of email messages will be encrypted.")
                 else:
-                    flash("Only encrypted fields of email messages will be encrypted")
+                    flash("👍 Only encrypted fields of email messages will be encrypted.")
                 return redirect_to_self()
             elif (
                 email_forwarding_form.submit.name in request.form

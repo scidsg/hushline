@@ -23,7 +23,7 @@ def test_registration_toggle_enabled(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration enabled." in response.text
+    assert "👍 Registration enabled." in response.text
     assert OrganizationSetting.fetch_one(OrganizationSetting.REGISTRATION_ENABLED) is True
 
 
@@ -35,7 +35,7 @@ def test_registration_toggle_codes_required(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration codes required." in response.text
+    assert "👍 Registration codes required." in response.text
     assert OrganizationSetting.fetch_one(OrganizationSetting.REGISTRATION_CODES_REQUIRED) is True
 
 
@@ -48,7 +48,7 @@ def test_registration_create_invite_code(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Invite code " in response.text
+    assert "👍 Invite code " in response.text
     after_count = db.session.scalar(db.select(db.func.count()).select_from(InviteCode)) or 0
     assert after_count == before_count + 1
 
@@ -65,7 +65,7 @@ def test_registration_delete_invite_code(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert f"Invite code {invite.code} deleted." in response.text
+    assert f"👍 Invite code {invite.code} deleted." in response.text
     assert db.session.get(InviteCode, invite.id) is None
 
 
@@ -77,7 +77,7 @@ def test_registration_delete_invite_code_not_found(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Invite code not found." in response.text
+    assert "⛔️ Invite code not found." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
@@ -88,4 +88,4 @@ def test_registration_invalid_form_submission(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Invalid form submission." in response.text
+    assert "⛔️ Invalid form submission." in response.text

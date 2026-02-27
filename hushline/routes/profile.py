@@ -217,7 +217,9 @@ def register_profile_routes(app: Flask) -> None:
                     errors.append(f"{label}: {error}")
                     current_app.logger.debug(f"Error in field {field}: {error}")
 
-            error_message = "⛔️ There was an error submitting your message: " + "; ".join(errors)
+            error_message = (
+                "⛔️ There was an error submitting your message: " + "; ".join(errors) + "."
+            )
             flash(error_message, "error")
             return (
                 render_template(

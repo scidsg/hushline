@@ -147,7 +147,7 @@ def register_message_routes(app: Flask) -> None:
 
         form = UpdateMessageStatusForm()
         if not form.validate():
-            flash(f"Invalid status: {form.status.data}")
+            flash(f"⛔️ Invalid status: {form.status.data}.")
             return redirect(url_for("message", public_id=public_id))
 
         row_count = db.session.execute(
@@ -173,5 +173,5 @@ def register_message_routes(app: Flask) -> None:
                     "Multiple messages would have been updated. "
                     f"Message.public_id={public_id} User.id={user.id}"
                 )
-                flash("Internal server error. Message not updated.")
+                flash("⛔️ Internal server error. Message not updated.")
         return redirect(url_for("message", public_id=public_id))

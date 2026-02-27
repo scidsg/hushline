@@ -24,12 +24,12 @@ def register_delete_account_routes(bp: Blueprint) -> None:
                 if user.is_admin:
                     admin_count = db.session.query(User).filter_by(is_admin=True).count()
                     if admin_count == 1:
-                        flash("⛔️ You cannot delete the only admin account")
+                        flash("⛔️ You cannot delete the only admin account.")
                         return abort(400)
 
                 delete_user_and_related(user)
             else:
-                flash("User not found. Please log in again.")
+                flash("🫥 User not found. Please log in again.")
                 return redirect(url_for("login"))
 
         db.session.commit()

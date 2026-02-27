@@ -32,7 +32,10 @@ def register_email_headers_routes(app: Flask) -> None:
                     report = analyze_raw_email_headers(form.raw_headers.data)
                     export_form.raw_headers.data = form.raw_headers.data
                 except ValueError as e:
-                    flash(f"⛔️ {str(e)}")
+                    msg = str(e)
+                    if not msg.endswith((".", "!", "?")):
+                        msg += "."
+                    flash(f"⛔️ {msg}")
             else:
                 flash("⛔️ Please paste valid raw headers before submitting.")
 

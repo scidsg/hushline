@@ -64,7 +64,7 @@ def test_set_custom_replies(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert resp.status_code == 200
-    assert "Reply text set" in resp.text
+    assert "👍 Reply text set." in resp.text
 
     msg_status_text = db.session.scalars(
         db.select(MessageStatusText).filter_by(user_id=user.id, status=status)
@@ -112,7 +112,7 @@ def test_set_message_status_invalid_form(client: FlaskClient, message: Message) 
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Invalid status" in response.text
+    assert "⛔️ Invalid status:" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -141,7 +141,7 @@ def test_set_message_status_multiple_rows_guard(
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Internal server error. Message not updated." in response.text
+    assert "⛔️ Internal server error. Message not updated." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

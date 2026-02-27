@@ -77,7 +77,7 @@ def register_auth_routes(app: Flask) -> None:
             app.logger.debug(f"User entered captcha_answer: {captcha_answer}")
 
             if str(captcha_answer) != session.get("math_answer"):
-                flash("Incorrect CAPTCHA. Please try again.", "error")
+                flash("⛔️ Incorrect CAPTCHA. Please try again.", "error")
                 return render_template(
                     "register.html",
                     form=form,
@@ -143,7 +143,7 @@ def register_auth_routes(app: Flask) -> None:
                 db.session.delete(invite_code)
                 db.session.commit()
 
-            flash("Registration successful!", "success")
+            flash("👍 Registration successful!", "success")
             return redirect(url_for("login"))
 
         return render_template(
@@ -192,7 +192,7 @@ def register_auth_routes(app: Flask) -> None:
 
                 return redirect(url_for("inbox"))
 
-            flash("⛔️ Invalid username or password")
+            flash("⛔️ Invalid username or password.")
         return render_template("login.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])

@@ -31,10 +31,10 @@ def register_replies_routes(bp: Blueprint) -> None:
                     session["user_id"], MessageStatus[form.status.data.upper()], form.markdown.data
                 )
                 db.session.commit()
-                flash("Reply text set")
+                flash("👍 Reply text set.")
                 return redirect_to_self()
             else:
-                flash(form.errors)
+                flash(f"⛔️ {form.errors}.")
                 form_error()
                 status_code = 400
 

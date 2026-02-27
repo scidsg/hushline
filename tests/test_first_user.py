@@ -67,7 +67,7 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     # The user should be an admin
     user = db.session.scalars(db.select(User)).one()
@@ -106,7 +106,7 @@ def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> No
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Registration successful!" in response.text
+    assert "👍 Registration successful!" in response.text
 
     # The user should not be an admin
     uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()

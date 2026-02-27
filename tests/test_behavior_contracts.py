@@ -90,7 +90,7 @@ def test_contract_register_login_and_2fa_challenge(client: FlaskClient, app: Fla
         follow_redirects=True,
     )
     assert register_response.status_code == 200
-    assert "Registration successful!" in register_response.text
+    assert "👍 Registration successful!" in register_response.text
 
     created_username = db.session.scalars(
         db.select(Username).where(Username._username == username)
