@@ -2,7 +2,7 @@
 
 Script: `scripts/agent_daily_issue_runner.sh`
 
-This runner is intentionally bare-bones. It runs directly in the local repo and keeps only the core gates and checks.
+This runner runs directly in the local repo and now executes the full local CI-equivalent gate set before opening a PR.
 
 ## Execution Flow
 
@@ -31,10 +31,20 @@ This runner is intentionally bare-bones. It runs directly in the local repo and 
 11. Run Codex issue loop until repository changes exist.
 12. Run required checks in a self-heal loop:
     - `make lint`
-    - `make test`
+    - `make workflow-security-checks`
+    - `make test` (full suite)
+    - `make test-ci-skip-local-only`
+    - `make test-ci-alembic`
+    - `make test-ccpa-compliance`
+    - `make test-gdpr-compliance`
+    - `make test-e2ee-privacy-regressions`
+    - `make test-migration-smoke` when migration workflow trigger paths change
     - `make audit-python`
     - `make audit-node-runtime`
     - `make audit-node-full` when Node dependency manifests change (`package.json` / `package-lock.json` / `npm-shrinkwrap.json`)
+    - `make w3c-validators`
+    - `make lighthouse-accessibility`
+    - `make lighthouse-performance` when lighthouse-performance workflow trigger paths change
     - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
     - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
 13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
