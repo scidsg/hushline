@@ -183,15 +183,18 @@ w3c-validators: runner-wait-for-app ## Run W3C HTML and CSS validators (CI-equiv
 
 .PHONY: lighthouse-accessibility
 lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility check (CI-equivalent)
-	@for i in 1 2 3; do \
+	@report_file=$$(mktemp /tmp/lighthouse-accessibility.XXXXXX.json); \
+	trap 'rm -f "$$report_file"' EXIT; \
+	for i in 1 2 3; do \
 	  if docker run --rm --add-host=host.docker.internal:host-gateway --shm-size=1g \
+	    --platform=linux/amd64 \
 	    femtopixel/google-lighthouse \
 	    http://host.docker.internal:8080 \
 	    --only-categories=accessibility \
 	    --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
 	    --output=json \
 	    --output-path=stdout \
-	    --quiet > lighthouse.json; then \
+	    --quiet > "$$report_file"; then \
 	    break; \
 	  fi; \
 	  if [ "$$i" -eq 3 ]; then \
@@ -199,8 +202,8 @@ lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility ch
 	    exit 1; \
 	  fi; \
 	  sleep $$((i * 5)); \
-	done
-	@SCORE=$$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse.json').read_text()); print(round(data['categories']['accessibility']['score'] * 100))"); \
+	done; \
+	SCORE=$$(python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data['categories']['accessibility']['score'] * 100))" "$$report_file"); \
 	if [ "$$SCORE" -lt 95 ]; then \
 	  echo "Accessibility score must be at least 95, got $$SCORE"; \
 	  exit 1; \
@@ -208,8 +211,11 @@ lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility ch
 
 .PHONY: lighthouse-performance
 lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check (CI-equivalent)
-	@for i in 1 2 3; do \
+	@report_file=$$(mktemp /tmp/lighthouse-performance.XXXXXX.json); \
+	trap 'rm -f "$$report_file"' EXIT; \
+	for i in 1 2 3; do \
 	  if docker run --rm --add-host=host.docker.internal:host-gateway --shm-size=1g \
+	    --platform=linux/amd64 \
 	    femtopixel/google-lighthouse \
 	    http://host.docker.internal:8080/directory \
 	    --only-categories=performance \
@@ -217,7 +223,7 @@ lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check 
 	    --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu" \
 	    --output=json \
 	    --output-path=stdout \
-	    --quiet > lighthouse-performance.json; then \
+	    --quiet > "$$report_file"; then \
 	    break; \
 	  fi; \
 	  if [ "$$i" -eq 3 ]; then \
@@ -225,8 +231,8 @@ lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check 
 	    exit 1; \
 	  fi; \
 	  sleep $$((i * 5)); \
-	done
-	@SCORE=$$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse-performance.json').read_text()); print(round(data['categories']['performance']['score'] * 100))"); \
+	done; \
+	SCORE=$$(python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data['categories']['performance']['score'] * 100))" "$$report_file"); \
 	if [ "$$SCORE" -lt 95 ]; then \
 	  echo "Performance score must be at least 95, got $$SCORE"; \
 	  exit 1; \
