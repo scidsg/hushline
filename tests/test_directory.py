@@ -30,6 +30,38 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert "for corrections." in public_records_panel.get_text(" ", strip=True)
 
 
+def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="directory-tabs") is None
+    assert soup.find(id="public-records") is None
+
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+    assert "🏛️ Public Record Firms" not in all_panel.get_text(" ", strip=True)
+    assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
+
+
+def test_directory_users_json_excludes_public_records_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_users"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert all(not row["is_public_record"] for row in (response.json or []))
+
+
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
     user.primary_username.show_in_directory = True
     db.session.commit()
@@ -176,6 +208,19 @@ def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
 
     response = client.post(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 405
+
+
+def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    listing = get_public_record_listings()[0]
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("public_record_listing", slug=listing.slug))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 404
 
 
 def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> None:

@@ -62,7 +62,9 @@ def register_directory_routes(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
-        public_record_listings = list(get_public_record_listings())
+        public_record_listings = (
+            list(get_public_record_listings()) if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] else []
+        )
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
@@ -80,6 +82,9 @@ def register_directory_routes(app: Flask) -> None:
 
     @app.route("/directory/public-records/<slug>")
     def public_record_listing(slug: str) -> Response | str:
+        if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            abort(404)
+
         listing = get_public_record_listing(slug)
         if listing is None:
             abort(404)
@@ -93,7 +98,12 @@ def register_directory_routes(app: Flask) -> None:
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
+        public_record_rows = (
+            [_public_record_row(listing) for listing in get_public_record_listings()]
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
         return [
             *[_directory_user_row(username) for username in get_directory_usernames()],
-            *[_public_record_row(listing) for listing in get_public_record_listings()],
+            *public_record_rows,
         ]
