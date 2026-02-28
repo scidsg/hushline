@@ -2,9 +2,36 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabs = document.querySelectorAll(".tab");
   const tabList = document.querySelectorAll(".tab-list .tab");
   const mainElement = document.querySelector("main");
+  const settingsTabsNav = document.querySelector(".settings-tabs");
 
   if (tabList.length >= 5) {
     mainElement.classList.add("settings-main");
+  }
+
+  if (settingsTabsNav) {
+    const updateStickyOffset = () => {
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const desktopOffset = window.matchMedia("(min-width: 641px)").matches
+        ? Number.parseFloat(
+            window.getComputedStyle(document.documentElement).fontSize,
+          ) || 16
+        : 0;
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight + desktopOffset;
+
+      settingsTabsNav.style.setProperty(
+        "--settings-tabs-top",
+        `${stickyTop}px`,
+      );
+    };
+
+    updateStickyOffset();
+    window.addEventListener("resize", updateStickyOffset);
+    window.addEventListener("hashchange", () => {
+      requestAnimationFrame(updateStickyOffset);
+    });
   }
 });
 

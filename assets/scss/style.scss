@@ -3179,19 +3179,30 @@ p.bio+.extra-fields {
   overflow: visible;
 }
 
-.settings-main .settings-content .settings-tabs,
+.settings-tabs,
 .inbox-tabs {
   width: 200px;
 }
 
+.settings-tabs,
 .inbox-tabs-nav {
   position: sticky;
+  align-self: flex-start;
+  box-sizing: border-box;
+  z-index: 8;
+}
+
+.settings-tabs {
+  top: var(--settings-tabs-top, calc(1rem + 65px + env(safe-area-inset-top)));
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+.inbox-tabs-nav {
   top: var(--inbox-tabs-top, calc(1rem + 65px + env(safe-area-inset-top)));
   align-self: flex-start;
   flex: 0 0 200px;
   width: 200px;
-  box-sizing: border-box;
-  z-index: 8;
 }
 
 .inbox-tabs {
@@ -3436,6 +3447,20 @@ p.bio+.extra-fields {
   .inbox-main .inbox-content .tab-list {
     max-width: 100%;
     width: 100%;
+  }
+
+  .settings-main .settings-content .settings-tabs,
+  .inbox-main .inbox-content .inbox-tabs-nav {
+    top: var(--settings-tabs-top, calc(65px + env(safe-area-inset-top)));
+    align-self: stretch;
+    flex-basis: auto;
+    width: auto;
+    max-width: none;
+    margin-left: calc(-1 * var(--container-padding, 1.25rem));
+    margin-right: calc(-1 * var(--container-padding, 1.25rem));
+    padding-left: var(--container-padding, 1.25rem);
+    padding-right: var(--container-padding, 1.25rem);
+    box-sizing: border-box;
   }
 
   .inbox-main .inbox-content .inbox-tabs-nav {
