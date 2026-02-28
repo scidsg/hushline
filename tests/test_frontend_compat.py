@@ -76,6 +76,6 @@ def test_inbox_sticky_nav_hooks_exist() -> None:
 
     assert 'class="inbox-tabs-nav"' in inbox_template
     assert 'const inboxTabsNav = document.querySelector(".inbox-tabs-nav");' in inbox_js
-    assert '--inbox-tabs-top' in inbox_js
+    assert "--inbox-tabs-top" in inbox_js
     assert ".inbox-tabs-nav {" in scss
     assert "position: sticky;" in scss

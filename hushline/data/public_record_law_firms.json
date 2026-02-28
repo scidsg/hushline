@@ -139,7 +139,11 @@
     "description": "A Washington, DC plaintiffs' firm handling whistleblower, consumer, and public-interest litigation.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Public Interest", "Consumer Protection"],
+    "practice_tags": [
+      "Whistleblower",
+      "Public Interest",
+      "Consumer Protection"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.cohenmilstein.com/"
   },
@@ -307,7 +311,11 @@
     "description": "A Paris firm advising on whistleblowing, compliance, and internal investigations across the EU.",
     "city": "Paris",
     "state": "France",
-    "practice_tags": ["Whistleblowing", "Compliance", "Internal Investigations"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Compliance",
+      "Internal Investigations"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.gide.com/"
   },

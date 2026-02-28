@@ -202,8 +202,7 @@ def test_public_record_external_links_resolve() -> None:
                 checked[url] = response.status_code
                 if response.status_code >= 500 or response.status_code in {404, 410}:
                     failures.append(
-                        f"{listing.name} {label} failed with HTTP "
-                        f"{response.status_code}: {url}"
+                        f"{listing.name} {label} failed with HTTP " f"{response.status_code}: {url}"
                     )
             except requests.RequestException as exc:
                 failures.append(f"{listing.name} {label} request failed: {url} ({exc})")
