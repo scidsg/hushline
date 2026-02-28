@@ -3429,7 +3429,6 @@ p.bio+.extra-fields {
   .inbox-main .inbox-content .inbox-tabs-nav {
     top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
     flex-basis: auto;
-    padding-bottom: 0.5rem;
   }
 
   .settings-main .tab-list li,
