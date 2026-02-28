@@ -36,9 +36,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const updateStickyOffset = () => {
       const header = document.querySelector("header");
       const banner = document.querySelector(".banner");
+      const rootFontSize = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      ) || 16;
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
-      const stickyTop = headerHeight + bannerHeight;
+      const stickyTop = headerHeight + bannerHeight + rootFontSize;
 
       inboxTabsNav.style.setProperty(
         "--inbox-tabs-top",
