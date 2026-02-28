@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function activePanel() {
-    return document.querySelector(".tab-content.active");
+    return document.querySelector(".tab-content.active") || document.getElementById("all");
   }
 
   function updatePlaceholder() {
@@ -329,8 +329,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const defaultTab = document.querySelector(".tab.active") || tabs[0];
   if (defaultTab) {
     window.activateTab(defaultTab);
-  } else {
-    console.error("Directory tabs not found");
   }
 
   const directoryTabs = document.querySelector(".directory-tabs");

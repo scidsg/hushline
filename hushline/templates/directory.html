@@ -11,9 +11,9 @@
   {% endif %}
 
   <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
-  <div class="directory-tabs" id="directory-tabs">
-    <ul class="tab-list" role="tablist">
-      {% if directory_verified_tab_enabled %}
+  {% if directory_verified_tab_enabled %}
+    <div class="directory-tabs" id="directory-tabs">
+      <ul class="tab-list" role="tablist">
         <li role="presentation">
           <button
             type="button"
@@ -27,40 +27,40 @@
             Verified
           </button>
         </li>
-      {% endif %}
-      <li role="presentation">
-        <button
-          type="button"
-          class="tab"
-          data-tab="public-records"
-          role="tab"
-          aria-selected="false"
-          aria-controls="public-records"
-          id="public-records-tab"
-        >
-          Public Record Firms
-        </button>
-      </li>
-      <li role="presentation">
-        <button
-          type="button"
-          class="tab {% if not directory_verified_tab_enabled %}active{% endif %}"
-          data-tab="all"
-          role="tab"
-          aria-selected="{% if not directory_verified_tab_enabled %}true{% else %}false{% endif %}"
-          aria-controls="all"
-          id="all-tab"
-        >
-          All
-        </button>
-      </li>
-    </ul>
-    <div class="tab-top-item" role="presentation">
-      <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
-        Top
-      </a>
+        <li role="presentation">
+          <button
+            type="button"
+            class="tab"
+            data-tab="public-records"
+            role="tab"
+            aria-selected="false"
+            aria-controls="public-records"
+            id="public-records-tab"
+          >
+            Public Record Firms
+          </button>
+        </li>
+        <li role="presentation">
+          <button
+            type="button"
+            class="tab"
+            data-tab="all"
+            role="tab"
+            aria-selected="false"
+            aria-controls="all"
+            id="all-tab"
+          >
+            All
+          </button>
+        </li>
+      </ul>
+      <div class="tab-top-item" role="presentation">
+        <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
+          Top
+        </a>
+      </div>
     </div>
-  </div>
+  {% endif %}
 
   <div class="directory-search">
     <div class="search-box">
@@ -182,43 +182,45 @@
     </div>
   {% endif %}
 
-  <div
-    id="public-records"
-    class="tab-content"
-    role="tabpanel"
-    aria-labelledby="public-records-tab"
-  >
-    <p class="meta dirMeta">
-      🤖 These are automated, public-record listings.
-      <a href="/to/admin">Message Hush Line Admin</a> for corrections.
-    </p>
+  {% if directory_verified_tab_enabled %}
+    <div
+      id="public-records"
+      class="tab-content"
+      role="tabpanel"
+      aria-labelledby="public-records-tab"
+    >
+      <p class="meta dirMeta">
+        🤖 These are automated, public-record listings.
+        <a href="/to/admin">Message Hush Line Admin</a> for corrections.
+      </p>
 
-    <div class="user-list">
-      {% for listing in public_record_listings %}
-        <article class="user">
-          <h3>{{ listing.name }}</h3>
-          <div class="badgeContainer">
-            <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
-            <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-          </div>
-          <p class="bio">{{ listing.description }}</p>
-          <div class="user-actions">
-            <a
-              href="{{ url_for('public_record_listing', slug=listing.slug) }}"
-              aria-label="View read-only listing for {{ listing.name }}"
-              >View Listing</a
-            >
-          </div>
-        </article>
-      {% endfor %}
+      <div class="user-list">
+        {% for listing in public_record_listings %}
+          <article class="user">
+            <h3>{{ listing.name }}</h3>
+            <div class="badgeContainer">
+              <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+              <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+            </div>
+            <p class="bio">{{ listing.description }}</p>
+            <div class="user-actions">
+              <a
+                href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                aria-label="View read-only listing for {{ listing.name }}"
+                >View Listing</a
+              >
+            </div>
+          </article>
+        {% endfor %}
+      </div>
     </div>
-  </div>
+  {% endif %}
 
   <div
     id="all"
     class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
     role="tabpanel"
-    aria-labelledby="all-tab"
+    {% if directory_verified_tab_enabled %}aria-labelledby="all-tab"{% endif %}
   >
     <div class="user-list">
       {% for username in pgp_usernames %}
@@ -284,26 +286,28 @@
       </div>
     {% endif %}
 
-    <p class="label">🏛️ Public Record Firms</p>
-    <div class="user-list">
-      {% for listing in public_record_listings %}
-        <article class="user">
-          <h3>{{ listing.name }}</h3>
-          <div class="badgeContainer">
-            <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
-            <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-          </div>
-          <p class="bio">{{ listing.description }}</p>
-          <div class="user-actions">
-            <a
-              href="{{ url_for('public_record_listing', slug=listing.slug) }}"
-              aria-label="View read-only listing for {{ listing.name }}"
-              >View Listing</a
-            >
-          </div>
-        </article>
-      {% endfor %}
-    </div>
+    {% if directory_verified_tab_enabled %}
+      <p class="label">🏛️ Public Record Firms</p>
+      <div class="user-list">
+        {% for listing in public_record_listings %}
+          <article class="user">
+            <h3>{{ listing.name }}</h3>
+            <div class="badgeContainer">
+              <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+              <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+            </div>
+            <p class="bio">{{ listing.description }}</p>
+            <div class="user-actions">
+              <a
+                href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                aria-label="View read-only listing for {{ listing.name }}"
+                >View Listing</a
+              >
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
 
