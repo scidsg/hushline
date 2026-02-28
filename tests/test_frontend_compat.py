@@ -79,3 +79,17 @@ def test_inbox_sticky_nav_hooks_exist() -> None:
     assert "--inbox-tabs-top" in inbox_js
     assert ".inbox-tabs-nav {" in scss
     assert "position: sticky;" in scss
+
+
+def test_settings_sticky_nav_hooks_exist() -> None:
+    settings_template = (ROOT / "hushline/templates/settings/nav.html").read_text(
+        encoding="utf-8",
+    )
+    settings_js = (ROOT / "assets/js/settings.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'class="settings-tabs"' in settings_template
+    assert 'const settingsTabsNav = document.querySelector(".settings-tabs");' in settings_js
+    assert "--settings-tabs-top" in settings_js
+    assert ".settings-tabs {" in scss
+    assert "position: sticky;" in scss
