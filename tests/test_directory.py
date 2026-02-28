@@ -79,6 +79,14 @@ def test_directory_public_records_render_only_in_public_records_and_all(
     assert all_panel is not None
     assert listing.name in public_records_panel.text
     assert listing.name in all_panel.text
+    assert listing.description in public_records_panel.text
+    assert listing.description in all_panel.text
+    assert listing.website not in public_records_panel.text
+    assert listing.website not in all_panel.text
+    assert f"Source: {listing.source_label}" not in public_records_panel.text
+    assert f"Source: {listing.source_label}" not in all_panel.text
+    assert "🏛️ Public Record" in public_records_panel.text
+    assert "🤖 Automated" in public_records_panel.text
     assert verified_panel is not None
     assert listing.name not in verified_panel.text
 
@@ -105,8 +113,12 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
 
     response = client.get(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 200
-    assert "Public Record" in response.text
-    assert "Automated" in response.text
+    assert "🏛️ Public Record" in response.text
+    assert "🤖 Automated" in response.text
+    assert listing.description in response.text
+    assert listing.website in response.text
+    assert listing.source_label in response.text
+    assert "Practice Areas" not in response.text
     assert "cannot receive secure messages" in response.text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text

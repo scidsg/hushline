@@ -197,20 +197,11 @@
       {% for listing in public_record_listings %}
         <article class="user">
           <h3>{{ listing.name }}</h3>
-          <p class="meta">{{ listing.location }}</p>
           <div class="badgeContainer">
-            <span class="badge">Public Record</span>
-            <span class="badge">Automated</span>
+            <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+            <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
           </div>
-          <p class="meta">
-            <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
-              {{ listing.website }}
-            </a>
-          </p>
-          {% if listing.practice_tags %}
-            <p class="bio">{{ listing.practice_tags | join(" · ") }}</p>
-          {% endif %}
-          <p class="meta">Source: {{ listing.source_label }}</p>
+          <p class="bio">{{ listing.description }}</p>
           <div class="user-actions">
             <a
               href="{{ url_for('public_record_listing', slug=listing.slug) }}"
@@ -298,20 +289,11 @@
       {% for listing in public_record_listings %}
         <article class="user">
           <h3>{{ listing.name }}</h3>
-          <p class="meta">{{ listing.location }}</p>
           <div class="badgeContainer">
-            <span class="badge">Public Record</span>
-            <span class="badge">Automated</span>
+            <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+            <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
           </div>
-          <p class="meta">
-            <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
-              {{ listing.website }}
-            </a>
-          </p>
-          {% if listing.practice_tags %}
-            <p class="bio">{{ listing.practice_tags | join(" · ") }}</p>
-          {% endif %}
-          <p class="meta">Source: {{ listing.source_label }}</p>
+          <p class="bio">{{ listing.description }}</p>
           <div class="user-actions">
             <a
               href="{{ url_for('public_record_listing', slug=listing.slug) }}"

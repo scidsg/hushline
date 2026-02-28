@@ -16,6 +16,7 @@ class PublicRecordListing:
     slug: str
     name: str
     website: str
+    description: str
     city: str
     state: str
     practice_tags: tuple[str, ...]
@@ -65,6 +66,7 @@ def _build_listing(row: dict[str, Any]) -> PublicRecordListing:
         slug=row["slug"],
         name=row["name"],
         website=row["website"],
+        description=row["description"],
         city=row["city"],
         state=row["state"],
         practice_tags=tuple(row["practice_tags"]),
