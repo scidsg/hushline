@@ -1220,6 +1220,9 @@ h2 {
 
 h2.submit {
   margin-bottom: 0.25rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 h2+p {
