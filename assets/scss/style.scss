@@ -546,10 +546,15 @@
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
+    .inbox-main .inbox-content .inbox-tabs-nav {
+      background-color: white;
+      box-sizing: border-box;
+    }
+
     .inbox-tabs,
     .settings-tabs {
       border-right: none;
-      background-color: initial;
+      background-color: white;
       border: none;
       border-bottom: initial;
     }
@@ -879,12 +884,16 @@
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
+    .inbox-main .inbox-content .inbox-tabs-nav {
+      background-color: var(--color-dark-bg-alt);
+    }
+
     .inbox-tabs,
     .settings-tabs {
       border-right: none;
       border-top: none;
       border-left: none;
-      background-color: inherit;
+      background-color: var(--color-dark-bg-alt);
     }
 
     .settings-tabs {
@@ -3169,12 +3178,14 @@ p.bio+.extra-fields {
   align-self: flex-start;
   flex: 0 0 240px;
   width: 240px;
+  box-sizing: border-box;
   z-index: 8;
 }
 
 .inbox-tabs {
   max-width: none;
   width: 100%;
+  box-sizing: border-box;
   padding-right: 1rem;
 }
 
