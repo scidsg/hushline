@@ -63,7 +63,9 @@ def register_directory_routes(app: Flask) -> None:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
         public_record_listings = (
-            list(get_public_record_listings()) if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] else []
+            list(get_public_record_listings())
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
         )
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
