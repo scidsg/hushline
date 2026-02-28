@@ -3150,6 +3150,8 @@ p.bio+.extra-fields {
 
 .inbox-content {
   gap: 1rem;
+  align-items: flex-start;
+  overflow: visible;
 }
 
 .settings-main .settings-content .settings-tabs,
@@ -3157,8 +3159,17 @@ p.bio+.extra-fields {
   width: 240px;
 }
 
+.inbox-tabs-nav {
+  position: sticky;
+  top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+  align-self: flex-start;
+  flex: 0 0 240px;
+  width: 240px;
+  z-index: 8;
+}
+
 .inbox-tabs {
-  max-width: 150px;
+  max-width: none;
   width: 100%;
   padding-right: 1rem;
 }
@@ -3192,6 +3203,8 @@ p.bio+.extra-fields {
 .message-list {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .settings-main,
@@ -3367,7 +3380,7 @@ p.bio+.extra-fields {
     gap: 0;
     width: 100%;
     margin-top: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .settings-main .settings-content .tab-list li a,
@@ -3392,9 +3405,16 @@ p.bio+.extra-fields {
   }
 
   .settings-main .settings-content .settings-tabs,
+  .inbox-main .inbox-content .inbox-tabs-nav,
   .inbox-main .inbox-content .tab-list {
     max-width: 100%;
     width: 100%;
+  }
+
+  .inbox-main .inbox-content .inbox-tabs-nav {
+    top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+    flex-basis: auto;
+    padding-bottom: 0.5rem;
   }
 
   .settings-main .tab-list li,
