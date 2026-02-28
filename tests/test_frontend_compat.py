@@ -67,3 +67,15 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
     assert ".visually-hidden" in scss
+
+
+def test_inbox_sticky_nav_hooks_exist() -> None:
+    inbox_template = (ROOT / "hushline/templates/inbox.html").read_text(encoding="utf-8")
+    inbox_js = (ROOT / "assets/js/inbox.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'class="inbox-tabs-nav"' in inbox_template
+    assert 'const inboxTabsNav = document.querySelector(".inbox-tabs-nav");' in inbox_js
+    assert "--inbox-tabs-top" in inbox_js
+    assert ".inbox-tabs-nav {" in scss
+    assert "position: sticky;" in scss

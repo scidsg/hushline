@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Public Record: {{ listing.name }}{% endblock %}
+
+{% block content %}
+  <h2 class="submit">{{ listing.name }}</h2>
+
+  <div class="badgeContainer">
+    <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+    <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+  </div>
+
+  <p class="bio">{{ listing.description }}</p>
+
+  <div class="extra-fields">
+    <p class="extra-field">
+      <span class="extra-field-label">Website</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.website }}
+        </a>
+      </span>
+    </p>
+    <p class="extra-field">
+      <span class="extra-field-label">Location</span>
+      <span class="extra-field-value">{{ listing.location }}</span>
+    </p>
+  </div>
+{% endblock %}

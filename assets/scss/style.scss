@@ -546,10 +546,15 @@
       box-shadow: 0 -3px 0 inset var(--color-brand);
     }
 
+    .inbox-main .inbox-content .inbox-tabs-nav {
+      background-color: white;
+      box-sizing: border-box;
+    }
+
     .inbox-tabs,
     .settings-tabs {
       border-right: none;
-      background-color: initial;
+      background-color: white;
       border: none;
       border-bottom: initial;
     }
@@ -879,12 +884,16 @@
       box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
     }
 
+    .inbox-main .inbox-content .inbox-tabs-nav {
+      background-color: var(--color-dark-bg-alt);
+    }
+
     .inbox-tabs,
     .settings-tabs {
       border-right: none;
       border-top: none;
       border-left: none;
-      background-color: inherit;
+      background-color: var(--color-dark-bg-alt);
     }
 
     .settings-tabs {
@@ -1360,6 +1369,10 @@ p b {
   margin-bottom: 1rem;
 }
 
+.user h3 + .badgeContainer {
+  margin-top: 0.625rem !important;
+}
+
 .user .badgeContainer:not(:empty)+.user-actions {
   margin-top: 0.125rem;
 }
@@ -1712,6 +1725,10 @@ p.instr {
 }
 
 h2.submit+p.instr {
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+h2.submit + p.dirMeta {
   margin: 0.75rem 0 0.5rem 0;
 }
 
@@ -3151,6 +3168,8 @@ p.bio+.extra-fields {
 
 .inbox-content {
   gap: 1rem;
+  align-items: flex-start;
+  overflow: visible;
 }
 
 .settings-main .settings-content .settings-tabs,
@@ -3158,9 +3177,20 @@ p.bio+.extra-fields {
   width: 240px;
 }
 
+.inbox-tabs-nav {
+  position: sticky;
+  top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+  align-self: flex-start;
+  flex: 0 0 240px;
+  width: 240px;
+  box-sizing: border-box;
+  z-index: 8;
+}
+
 .inbox-tabs {
-  max-width: 150px;
+  max-width: none;
   width: 100%;
+  box-sizing: border-box;
   padding-right: 1rem;
 }
 
@@ -3193,6 +3223,8 @@ p.bio+.extra-fields {
 .message-list {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .settings-main,
@@ -3368,7 +3400,7 @@ p.bio+.extra-fields {
     gap: 0;
     width: 100%;
     margin-top: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .settings-main .settings-content .tab-list li a,
@@ -3393,9 +3425,15 @@ p.bio+.extra-fields {
   }
 
   .settings-main .settings-content .settings-tabs,
+  .inbox-main .inbox-content .inbox-tabs-nav,
   .inbox-main .inbox-content .tab-list {
     max-width: 100%;
     width: 100%;
+  }
+
+  .inbox-main .inbox-content .inbox-tabs-nav {
+    top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+    flex-basis: auto;
   }
 
   .settings-main .tab-list li,

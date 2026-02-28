@@ -20,19 +20,54 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function activeTabName() {
+    return document.querySelector(".tab.active")?.getAttribute("data-tab") || "all";
+  }
+
+  function activePanel() {
+    return document.querySelector(".tab-content.active");
+  }
+
   function updatePlaceholder() {
-    const activeTabElement = document.querySelector(".tab.active");
-    const activeTab = activeTabElement
-      ? activeTabElement.getAttribute("data-tab")
-      : "verified";
-    searchInput.placeholder = `Search ${
-      activeTab === "verified" ? "verified " : ""
-    }users...`;
+    const activeTab = activeTabName();
+    if (!searchInput) {
+      return;
+    }
+
+    if (activeTab === "verified") {
+      searchInput.placeholder = "Search verified users...";
+      return;
+    }
+
+    if (activeTab === "public-records") {
+      searchInput.placeholder = "Search public record firms...";
+      return;
+    }
+
+    searchInput.placeholder = "Search directory...";
+  }
+
+  function scopeLabel() {
+    const activeTab = activeTabName();
+    if (activeTab === "verified") {
+      return "verified users";
+    }
+
+    if (activeTab === "public-records") {
+      return "public record firms";
+    }
+
+    return "directory entries";
   }
 
   function loadData() {
     fetch(`${pathPrefix}/directory/users.json`)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
       .then((data) => {
         userData = data;
         handleSearchInput();
@@ -41,18 +76,19 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function filterUsers(query) {
-    const activeTabElement = document.querySelector(".tab.active");
-    const tab = activeTabElement
-      ? activeTabElement.getAttribute("data-tab")
-      : "verified";
-    const q = query.trim().toLowerCase();
+    const tab = activeTabName();
+    const normalizedQuery = query.trim().toLowerCase();
 
     return userData.filter((user) => {
-      if (tab === "verified" && !user.is_verified) {
+      if (tab === "verified" && (!user.is_verified || user.is_public_record)) {
         return false;
       }
 
-      if (q === "") {
+      if (tab === "public-records" && !user.is_public_record) {
+        return false;
+      }
+
+      if (normalizedQuery === "") {
         return true;
       }
 
@@ -61,12 +97,52 @@ document.addEventListener("DOMContentLoaded", function () {
         user.display_name,
         user.bio,
       ]);
-      return userSearch.matchesQuery(searchText, q);
+      return userSearch.matchesQuery(searchText, normalizedQuery);
     });
   }
 
   function highlightMatch(text, query) {
-    return userSearch.highlightQuery(text, query);
+    return userSearch.highlightQuery(text || "", query);
+  }
+
+  function buildBadges(user) {
+    let badgeContainer = "";
+
+    if (user.is_public_record) {
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>';
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
+    if (user.is_admin) {
+      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
+    }
+
+    if (user.is_verified) {
+      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+    }
+
+    return badgeContainer;
+  }
+
+  function buildPublicRecordCard(user, query) {
+    const displayNameHighlighted = highlightMatch(user.display_name, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+
+    return `
+      <article class="user" aria-label="Public record listing, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
+        <h3>${displayNameHighlighted}</h3>
+        <div class="badgeContainer">${buildBadges(user)}</div>
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        <div class="user-actions">
+          <a href="${user.profile_url}" aria-label="View read-only listing for ${user.display_name}">View Listing</a>
+        </div>
+      </article>
+    `;
   }
 
   function buildUserCard(user, query) {
@@ -77,120 +153,135 @@ document.addEventListener("DOMContentLoaded", function () {
     const usernameHighlighted = highlightMatch(user.primary_username, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    let badgeContainer = "";
-
-    if (user.is_admin) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
-    }
-
-    if (user.is_verified) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+    if (user.is_public_record) {
+      return buildPublicRecordCard(user, query);
     }
 
     const isVerified = user.is_verified ? "Verified" : "";
     const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+
     return `
       <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
-        <div class="badgeContainer">${badgeContainer}</div>
+        <div class="badgeContainer">${buildBadges(user)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${pathPrefix}/to/${user.primary_username}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
+          <a href="${user.profile_url}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
         </div>
       </article>
     `;
   }
 
-  function displayUsers(users, query) {
-    const activePanel = document.querySelector(".tab-content.active");
-    if (!activePanel) {
+  function appendSection(panel, label, users, query) {
+    if (!users.length) {
       return;
     }
 
-    activePanel.innerHTML = "";
+    if (label) {
+      const sectionLabel = document.createElement("p");
+      sectionLabel.className = "label searchLabel";
+      sectionLabel.textContent = label;
+      panel.appendChild(sectionLabel);
+    }
+
+    const userListContainer = document.createElement("div");
+    userListContainer.className = "user-list";
+    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query)).join("");
+    panel.appendChild(userListContainer);
+  }
+
+  function displayUsers(users, query) {
+    const panel = activePanel();
+    const tab = activeTabName();
+    if (!panel) {
+      return;
+    }
+
+    panel.innerHTML = "";
 
     if (users.length === 0) {
-      activePanel.innerHTML =
+      panel.innerHTML =
         '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
       return;
     }
 
-    const withPgp = users.filter((user) => user.has_pgp_key);
-    const infoOnly = users.filter((user) => !user.has_pgp_key);
+    const publicRecords = users.filter((user) => user.is_public_record);
+    const realUsers = users.filter((user) => !user.is_public_record);
+    const withPgp = realUsers.filter((user) => user.has_pgp_key);
+    const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
-    if (withPgp.length) {
-      const userListContainer = document.createElement("div");
-      userListContainer.className = "user-list";
-      userListContainer.innerHTML = withPgp
-        .map((user) => buildUserCard(user, query))
-        .join("");
-      activePanel.appendChild(userListContainer);
+    if (tab === "public-records") {
+      appendSection(panel, "", publicRecords, query);
+      return;
     }
 
-    if (infoOnly.length) {
-      const infoLabel = document.createElement("p");
-      infoLabel.className = "label searchLabel";
-      infoLabel.textContent = "📇 Info-Only Accounts";
-      activePanel.appendChild(infoLabel);
+    appendSection(panel, "", withPgp, query);
+    appendSection(panel, "📇 Info-Only Accounts", infoOnly, query);
 
-      const infoListContainer = document.createElement("div");
-      infoListContainer.className = "user-list";
-      infoListContainer.innerHTML = infoOnly
-        .map((user) => buildUserCard(user, query))
-        .join("");
-      activePanel.appendChild(infoListContainer);
+    if (tab === "all") {
+      appendSection(panel, "🏛️ Public Record Firms", publicRecords, query);
     }
-
   }
 
   function handleSearchInput() {
     const query = searchInput.value.trim();
-    const activePanel = document.querySelector(".tab-content.active");
-    const activeTabElement = document.querySelector(".tab.active");
-    const activeTab = activeTabElement
-      ? activeTabElement.getAttribute("data-tab")
-      : "verified";
-    const scopeLabel = activeTab === "verified" ? "verified users" : "users";
+    const panel = activePanel();
+    const currentScopeLabel = scopeLabel();
     const hasQuery = query.length > 0;
+
     if (clearIcon) {
       clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
       clearIcon.hidden = !hasQuery;
       clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
     }
+
     if (query.length === 0) {
-      if (activePanel && initialMarkup.has(activePanel.id)) {
-        activePanel.innerHTML = initialMarkup.get(activePanel.id);
+      if (panel && initialMarkup.has(panel.id)) {
+        panel.innerHTML = initialMarkup.get(panel.id);
       }
       if (hasRenderedSearch) {
-        setSearchStatus(`Showing all ${scopeLabel}.`);
+        setSearchStatus(`Showing all ${currentScopeLabel}.`);
       }
       hasRenderedSearch = false;
       return;
     }
+
     const filteredUsers = filterUsers(query);
     displayUsers(filteredUsers, query);
     setSearchStatus(
       filteredUsers.length === 1
-        ? `Found 1 ${scopeLabel.slice(0, -1)} matching "${query}".`
-        : `Found ${filteredUsers.length} ${scopeLabel} matching "${query}".`,
+        ? `Found 1 ${currentScopeLabel.slice(0, -1)} matching "${query}".`
+        : `Found ${filteredUsers.length} ${currentScopeLabel} matching "${query}".`,
     );
     hasRenderedSearch = true;
   }
 
-  searchInput.addEventListener("input", handleSearchInput);
-  clearIcon.addEventListener("click", function () {
-    searchInput.value = "";
-    clearIcon.style.visibility = "hidden";
-    clearIcon.hidden = true;
-    clearIcon.setAttribute("aria-hidden", "true");
-    handleSearchInput();
-  });
+  if (searchInput) {
+    searchInput.addEventListener("input", handleSearchInput);
+  }
+
+  if (clearIcon) {
+    clearIcon.addEventListener("click", function () {
+      if (!searchInput) {
+        return;
+      }
+
+      searchInput.value = "";
+      clearIcon.style.visibility = "hidden";
+      clearIcon.hidden = true;
+      clearIcon.setAttribute("aria-hidden", "true");
+      handleSearchInput();
+    });
+  }
 
   window.activateTab = function (selectedTab) {
     const targetPanel = document.getElementById(
       selectedTab.getAttribute("aria-controls"),
     );
+    if (!targetPanel) {
+      return;
+    }
 
     tabPanels.forEach((panel) => {
       panel.hidden = true;
@@ -235,11 +326,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  const verifiedTab = document.querySelector('.tab[data-tab="verified"]');
-  if (verifiedTab) {
-    window.activateTab(verifiedTab);
+  const defaultTab = document.querySelector(".tab.active") || tabs[0];
+  if (defaultTab) {
+    window.activateTab(defaultTab);
   } else {
-    console.error("Verified tab not found");
+    console.error("Directory tabs not found");
   }
 
   const directoryTabs = document.querySelector(".directory-tabs");
@@ -306,5 +397,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  updatePlaceholder();
   loadData();
 });
