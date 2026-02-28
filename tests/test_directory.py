@@ -15,6 +15,21 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert "Public Record Firms" in response.text
 
 
+def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    assert public_records_panel is not None
+
+    banner_link = public_records_panel.select_one(".dirMeta a")
+    assert banner_link is not None
+    assert banner_link.text.strip() == "Message Hush Line Admin"
+    assert banner_link.get("href") == "/to/admin"
+    assert "for corrections." in public_records_panel.get_text(" ", strip=True)
+
+
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
     user.primary_username.show_in_directory = True
     db.session.commit()
