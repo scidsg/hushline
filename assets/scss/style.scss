@@ -3179,7 +3179,7 @@ p.bio+.extra-fields {
 
 .inbox-tabs-nav {
   position: sticky;
-  top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+  top: var(--inbox-tabs-top, calc(1rem + 65px + env(safe-area-inset-top)));
   align-self: flex-start;
   flex: 0 0 240px;
   width: 240px;
@@ -3432,7 +3432,7 @@ p.bio+.extra-fields {
   }
 
   .inbox-main .inbox-content .inbox-tabs-nav {
-    top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+    top: var(--inbox-tabs-top, calc(1rem + 65px + env(safe-area-inset-top)));
     flex-basis: auto;
   }
 
