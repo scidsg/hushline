@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "public-records") {
-      searchInput.placeholder = "Search public records...";
+      searchInput.placeholder = "Search public record firms...";
       return;
     }
 
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "public-records") {
-      return "public record listings";
+      return "public record firms";
     }
 
     return "directory entries";
@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
     appendSection(panel, "📇 Info-Only Accounts", infoOnly, query);
 
     if (tab === "all") {
-      appendSection(panel, "🏛️ Public Records", publicRecords, query);
+      appendSection(panel, "🏛️ Public Record Firms", publicRecords, query);
     }
   }
 

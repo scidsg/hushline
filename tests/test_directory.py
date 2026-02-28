@@ -12,7 +12,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
     assert "User Directory" in response.text
-    assert "Public Records" in response.text
+    assert "Public Record Firms" in response.text
 
 
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
