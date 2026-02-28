@@ -1369,6 +1369,10 @@ p b {
   margin-bottom: 1rem;
 }
 
+.user h3 + .badgeContainer {
+  margin-top: 0.625rem !important;
+}
+
 .user .badgeContainer:not(:empty)+.user-actions {
   margin-top: 0.125rem;
 }
