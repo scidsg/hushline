@@ -3440,8 +3440,10 @@ p.bio+.extra-fields {
 
   .inbox-main .inbox-content .inbox-tabs-nav {
     top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
+    align-self: stretch;
     flex-basis: auto;
-    width: calc(100% + (2 * var(--container-padding, 1.25rem)));
+    width: auto;
+    max-width: none;
     margin-left: calc(-1 * var(--container-padding, 1.25rem));
     margin-right: calc(-1 * var(--container-padding, 1.25rem));
     padding-left: var(--container-padding, 1.25rem);
