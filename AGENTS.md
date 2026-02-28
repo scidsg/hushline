@@ -178,6 +178,7 @@ When behavior changes or features are added/removed, update documentation in `do
 - Include what changed.
 - Include why it changed.
 - Include validation commands run.
+- Include manual testing steps for every PR, even if the manual check is "not applicable" with a brief reason.
 - Include known risks or follow-ups.
 - If PR scope changes after opening, update the PR description so it reflects the final state before merge.
 - Keep title specific and behavior-oriented.
