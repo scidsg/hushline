@@ -132,6 +132,7 @@
     border-bottom: var(--border);
   }
 
+  .directory-search,
   .directory-search.is-sticky {
     background-color: white;
   }
@@ -649,6 +650,7 @@
     border-bottom: var(--border-dark-1);
   }
   
+  .directory-search,
   .directory-search.is-sticky {
     background-color: var(--color-dark-bg-alt);
   }
@@ -1724,6 +1726,10 @@ p.instr {
   padding: 0.9125rem 1rem;
 }
 
+.dirMeta {
+  margin-top: 0;
+}
+
 h2.submit+p.instr {
   margin: 0.75rem 0 0.5rem 0;
 }
@@ -2377,10 +2383,6 @@ a.dropbtn:hover {
   margin: 0;
 }
 
-.user:first-of-type {
-  margin-top: 1rem;
-}
-
 .user .meta {
   font-family: var(--font-mono);
   font-size: var(--font-size-smaller);
@@ -2464,6 +2466,9 @@ textarea#bio {
   z-index: 9;
   margin-top: 0;
   padding-top: 1rem;
+  position: sticky;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
 .directory-tabs.is-sticky {
@@ -3174,15 +3179,15 @@ p.bio+.extra-fields {
 
 .settings-main .settings-content .settings-tabs,
 .inbox-tabs {
-  width: 240px;
+  width: 200px;
 }
 
 .inbox-tabs-nav {
   position: sticky;
   top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
   align-self: flex-start;
-  flex: 0 0 240px;
-  width: 240px;
+  flex: 0 0 200px;
+  width: 200px;
   box-sizing: border-box;
   z-index: 8;
 }
