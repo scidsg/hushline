@@ -114,14 +114,16 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
 
     response = client.get(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 200
-    assert "🏛️ Public Record" in response.text
-    assert "🤖 Automated" in response.text
-    assert listing.description in response.text
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    assert "🏛️ Public Record" in page_text
+    assert "🤖 Automated" in page_text
+    assert listing.description in page_text
     assert listing.website in response.text
-    assert "Source" not in response.text
-    assert "Practice Areas" not in response.text
+    assert "Source" not in page_text
+    assert "Practice Areas" not in page_text
     assert 'id="messageForm"' not in response.text
-    assert "Send Message" not in response.text
+    assert "Send Message" not in page_text
 
 
 def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
