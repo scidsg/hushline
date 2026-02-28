@@ -50,6 +50,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
     - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
     - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
 13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+    - After each persist, prune older runner logs and keep only the newest `10` by default.
 14. Commit, push branch, and open PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
@@ -204,6 +205,7 @@ Optional forced issue:
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
+- `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
 - `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output during runs)

@@ -45,6 +45,7 @@ CODEX_TRANSCRIPT_FILE="$(mktemp)"
 RUN_LOG_TMP_FILE="$(mktemp)"
 RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_LOG_GIT_PATH=""
+RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
 AUDIT_NOTE=""
@@ -803,6 +804,22 @@ persist_run_log() {
     printf 'Repository: %s\n\n' "$REPO_SLUG"
     cat "$RUN_LOG_TMP_FILE"
   } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
+
+  if [[ "$RUN_LOG_RETENTION_COUNT" =~ ^[0-9]+$ ]] && (( RUN_LOG_RETENTION_COUNT > 0 )); then
+    local -a logs_to_delete=()
+    while IFS= read -r log_path; do
+      [[ -n "$log_path" ]] && logs_to_delete+=("$log_path")
+    done < <(
+      find "$log_dir" -maxdepth 1 -type f -name 'run-*-issue-*.txt' \
+        | sort -r \
+        | tail -n "+$((RUN_LOG_RETENTION_COUNT + 1))"
+    )
+
+    if (( ${#logs_to_delete[@]} > 0 )); then
+      echo "Pruning old runner logs, keeping newest ${RUN_LOG_RETENTION_COUNT}."
+      rm -f "${logs_to_delete[@]}"
+    fi
+  fi
 }
 
 run_codex_from_prompt() {
