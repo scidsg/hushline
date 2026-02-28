@@ -118,7 +118,7 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert "🤖 Automated" in response.text
     assert listing.description in response.text
     assert listing.website in response.text
-    assert listing.source_label in response.text
+    assert "Source" not in response.text
     assert "Practice Areas" not in response.text
     assert "cannot receive secure messages" in response.text
     assert 'id="messageForm"' not in response.text

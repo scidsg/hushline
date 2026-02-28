@@ -30,17 +30,5 @@
       <span class="extra-field-label">Location</span>
       <span class="extra-field-value">{{ listing.location }}</span>
     </p>
-    <p class="extra-field">
-      <span class="extra-field-label">Source</span>
-      <span class="extra-field-value">
-        {% if listing.source_url %}
-          <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
-            {{ listing.source_label }}
-          </a>
-        {% else %}
-          {{ listing.source_label }}
-        {% endif %}
-      </span>
-    </p>
   </div>
 {% endblock %}
