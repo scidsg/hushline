@@ -3179,15 +3179,15 @@ p.bio+.extra-fields {
 
 .settings-main .settings-content .settings-tabs,
 .inbox-tabs {
-  width: 240px;
+  width: 200px;
 }
 
 .inbox-tabs-nav {
   position: sticky;
   top: var(--inbox-tabs-top, calc(65px + env(safe-area-inset-top)));
   align-self: flex-start;
-  flex: 0 0 240px;
-  width: 240px;
+  flex: 0 0 200px;
+  width: 200px;
   box-sizing: border-box;
   z-index: 8;
 }
