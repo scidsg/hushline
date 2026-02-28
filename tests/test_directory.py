@@ -1,4 +1,5 @@
 import pytest
+import requests
 from bs4 import BeautifulSoup
 from flask import url_for
 from flask.testing import FlaskClient
@@ -109,6 +110,35 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["source_label"] == listing.source_label
 
 
+def test_public_record_seed_regions_are_balanced() -> None:
+    listings = get_public_record_listings()
+    us_states = {"DC", "NY", "PA", "CA", "MD", "WA", "MA"}
+    eu_states = {
+        "Austria",
+        "Belgium",
+        "Finland",
+        "France",
+        "Germany",
+        "Italy",
+        "Luxembourg",
+        "Netherlands",
+        "Portugal",
+        "Spain",
+        "Sweden",
+    }
+    apac_states = {"Australia", "India", "Japan", "Singapore"}
+
+    us = [listing for listing in listings if listing.state in us_states]
+    eu = [listing for listing in listings if listing.state in eu_states]
+    apac = [listing for listing in listings if listing.state in apac_states]
+
+    assert len(listings) == 60
+    assert len(us) == 20
+    assert len(eu) == 20
+    assert len(apac) == 20
+    assert any(listing.name == "Whistleblower Partners LLP" for listing in us)
+
+
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     listing = get_public_record_listings()[0]
 
@@ -141,3 +171,44 @@ def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> N
         follow_redirects=True,
     )
     assert response.status_code == 404
+
+
+@pytest.mark.local_only()
+def test_public_record_external_links_resolve() -> None:
+    session = requests.Session()
+    session.headers.update(
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; HushlineLinkCheck/1.0; "
+                "+https://github.com/scidsg/hushline)"
+            )
+        }
+    )
+
+    checked: dict[str, int] = {}
+    failures: list[str] = []
+
+    for listing in get_public_record_listings():
+        for label, url in {
+            "website": listing.website,
+            "source": listing.source_url,
+        }.items():
+            if not url or url in checked:
+                continue
+
+            response: requests.Response | None = None
+            try:
+                response = session.get(url, allow_redirects=True, timeout=15, stream=True)
+                checked[url] = response.status_code
+                if response.status_code >= 500 or response.status_code in {404, 410}:
+                    failures.append(
+                        f"{listing.name} {label} failed with HTTP "
+                        f"{response.status_code}: {url}"
+                    )
+            except requests.RequestException as exc:
+                failures.append(f"{listing.name} {label} request failed: {url} ({exc})")
+            finally:
+                if response is not None:
+                    response.close()
+
+    assert not failures, "Broken public record links:\n" + "\n".join(failures)
