@@ -42,7 +42,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "entry_type": "public_record",
         "primary_username": None,
         "display_name": listing.name,
-        "bio": None,
+        "bio": listing.description,
         "is_admin": False,
         "is_verified": False,
         "has_pgp_key": False,

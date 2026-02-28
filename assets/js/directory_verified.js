@@ -96,10 +96,6 @@ document.addEventListener("DOMContentLoaded", function () {
         user.primary_username,
         user.display_name,
         user.bio,
-        user.meta,
-        user.location,
-        ...(user.practice_tags || []),
-        user.source_label,
       ]);
       return userSearch.matchesQuery(searchText, normalizedQuery);
     });
@@ -113,9 +109,11 @@ document.addEventListener("DOMContentLoaded", function () {
     let badgeContainer = "";
 
     if (user.is_public_record) {
-      badgeContainer += '<span class="badge">Public Record</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>';
       if (user.is_automated) {
-        badgeContainer += '<span class="badge">Automated</span>';
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
       }
       return badgeContainer;
     }
@@ -133,22 +131,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function buildPublicRecordCard(user, query) {
     const displayNameHighlighted = highlightMatch(user.display_name, query);
-    const locationHighlighted = highlightMatch(user.location, query);
-    const websiteHighlighted = highlightMatch(user.meta, query);
-    const practiceTags = (user.practice_tags || []).join(" · ");
-    const practiceTagsHighlighted = highlightMatch(practiceTags, query);
-    const sourceHighlighted = highlightMatch(user.source_label, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
     return `
-      <article class="user" aria-label="Public record listing, Display name:${user.display_name}, Location: ${user.location || "Unknown location"}">
+      <article class="user" aria-label="Public record listing, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
         <h3>${displayNameHighlighted}</h3>
-        ${locationHighlighted ? `<p class="meta">${locationHighlighted}</p>` : ""}
         <div class="badgeContainer">${buildBadges(user)}</div>
-        <p class="meta">
-          <a href="${user.meta}" target="_blank" rel="noopener noreferrer">${websiteHighlighted}</a>
-        </p>
-        ${practiceTagsHighlighted ? `<p class="bio">${practiceTagsHighlighted}</p>` : ""}
-        ${sourceHighlighted ? `<p class="meta">Source: ${sourceHighlighted}</p>` : ""}
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${user.profile_url}" aria-label="View read-only listing for ${user.display_name}">View Listing</a>
         </div>

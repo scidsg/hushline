@@ -103,6 +103,7 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["is_public_record"] is True
     assert row["is_automated"] is True
     assert row["message_capable"] is False
+    assert row["bio"] == listing.description
     assert row["location"] == listing.location
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
