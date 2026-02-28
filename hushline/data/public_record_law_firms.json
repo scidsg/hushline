@@ -1,0 +1,35 @@
+[
+  {
+    "id": "seed-katz-banks-kumin",
+    "slug": "public-record~katz-banks-kumin",
+    "name": "Katz Banks Kumin LLP",
+    "website": "https://www.katzbanks.com/",
+    "city": "Washington",
+    "state": "DC",
+    "practice_tags": ["Whistleblower", "Employment", "Civil Rights"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://www.katzbanks.com/"
+  },
+  {
+    "id": "seed-kohn-kohn-colapinto",
+    "slug": "public-record~kohn-kohn-colapinto",
+    "name": "Kohn, Kohn & Colapinto LLP",
+    "website": "https://kkc.com/",
+    "city": "Washington",
+    "state": "DC",
+    "practice_tags": ["Whistleblower", "Retaliation", "Securities"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://kkc.com/"
+  },
+  {
+    "id": "seed-constantine-cannon",
+    "slug": "public-record~constantine-cannon",
+    "name": "Constantine Cannon LLP",
+    "website": "https://constantinecannon.com/",
+    "city": "New York",
+    "state": "NY",
+    "practice_tags": ["Whistleblower", "Antitrust", "Qui Tam"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://constantinecannon.com/"
+  }
+]

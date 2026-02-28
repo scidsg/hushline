@@ -10,10 +10,10 @@
     {{ intro_text | markdown }}
   {% endif %}
 
-  {% if directory_verified_tab_enabled %}
-    <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
-    <div class="directory-tabs" id="directory-tabs">
-      <ul class="tab-list" role="tablist">
+  <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
+  <div class="directory-tabs" id="directory-tabs">
+    <ul class="tab-list" role="tablist">
+      {% if directory_verified_tab_enabled %}
         <li role="presentation">
           <button
             type="button"
@@ -27,27 +27,40 @@
             Verified
           </button>
         </li>
-        <li role="presentation">
-          <button
-            type="button"
-            class="tab"
-            data-tab="all"
-            role="tab"
-            aria-selected="false"
-            aria-controls="all"
-            id="all-tab"
-          >
-            All
-          </button>
-        </li>
-      </ul>
-      <div class="tab-top-item" role="presentation">
-        <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
-          Top
-        </a>
-      </div>
+      {% endif %}
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab"
+          data-tab="public-records"
+          role="tab"
+          aria-selected="false"
+          aria-controls="public-records"
+          id="public-records-tab"
+        >
+          Public Records
+        </button>
+      </li>
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab {% if not directory_verified_tab_enabled %}active{% endif %}"
+          data-tab="all"
+          role="tab"
+          aria-selected="{% if not directory_verified_tab_enabled %}true{% else %}false{% endif %}"
+          aria-controls="all"
+          id="all-tab"
+        >
+          All
+        </button>
+      </li>
+    </ul>
+    <div class="tab-top-item" role="presentation">
+      <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
+        Top
+      </a>
     </div>
-  {% endif %}
+  </div>
 
   <div class="directory-search">
     <div class="search-box">
@@ -60,8 +73,8 @@
       <input
         type="text"
         id="searchInput"
-        placeholder="Search users..."
-        aria-label="Search users"
+        placeholder="Search directory..."
+        aria-label="Search directory"
       />
       <button
         id="clearIcon"
@@ -91,97 +104,20 @@
       role="tabpanel"
       aria-labelledby="verified-tab"
     >
+      {% if not logged_in %}
+        <p class="meta dirMeta">
+          ⭐️ Verified account owners have verified their identities with a member of our staff.
+          <a
+            href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Learn more about verification</a
+          >.
+        </p>
+      {% endif %}
 
-    {% if not logged_in %}
-      <p class="meta dirMeta">
-        ⭐️ Verified account owners have verified their identities with a member of our staff.
-        <a
-          href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Learn more about verification</a>.
-      </p>
-    {% endif %}
-
-    <div class="user-list">
-      {% for username in verified_pgp_usernames %}
-        <article class="user">
-          <h3>{{ username.display_name or username.username }}</h3>
-          {% if username.username %}
-            <p class="meta">@{{ username.username }}</p>
-          {% endif %}
-          {% if username.is_verified or username.user.is_admin %}
-            <div class="badgeContainer">
-              {% if username.user.is_admin %}
-                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-              {% endif %}
-              {% if username.is_verified %}
-                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
-              {% endif %}
-            </div>
-          {% endif %}
-          {% if username.bio %}
-            <p class="bio">{{ username.bio }}</p>
-          {% endif %}
-          <div class="user-actions">
-            <a
-              href="{{ url_for('profile', username=username.username) }}"
-              aria-label="{{ (username.display_name or username.username) }}'s profile"
-              >View Profile</a
-            >
-          </div>
-        </article>
-      {% endfor %}
-    </div>
-    {% if verified_info_usernames %}
-      <p class="label">📇 Info-Only Accounts</p>
       <div class="user-list">
-        {% for username in verified_info_usernames %}
-        <article class="user">
-          <h3>{{ username.display_name or username.username }}</h3>
-          {% if username.username %}
-            <p class="meta">@{{ username.username }}</p>
-          {% endif %}
-          {% if username.is_verified or username.user.is_admin %}
-            <div class="badgeContainer">
-              {% if username.user.is_admin %}
-                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-              {% endif %}
-              {% if username.is_verified %}
-                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
-              {% endif %}
-            </div>
-          {% endif %}
-          {% if username.bio %}
-            <p class="bio">{{ username.bio }}</p>
-          {% endif %}
-          <div class="user-actions">
-            <a
-              href="{{ url_for('profile', username=username.username) }}"
-              aria-label="{{ (username.display_name or username.username) }}'s profile"
-              >View Profile</a
-            >
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <div
-    id="all"
-    class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
-    {% if directory_verified_tab_enabled %}
-      role="tabpanel"
-      aria-labelledby="all-tab"
-    {% else %}
-      role="region"
-      aria-labelledby="directory-title"
-    {% endif %}
-  >
-    <div class="user-list">
-      {% for username in pgp_usernames %}
+        {% for username in verified_pgp_usernames %}
           <article class="user">
             <h3>{{ username.display_name or username.username }}</h3>
             {% if username.username %}
@@ -208,12 +144,93 @@
               >
             </div>
           </article>
+        {% endfor %}
+      </div>
+      {% if verified_info_usernames %}
+        <p class="label">📇 Info-Only Accounts</p>
+        <div class="user-list">
+          {% for username in verified_info_usernames %}
+            <article class="user">
+              <h3>{{ username.display_name or username.username }}</h3>
+              {% if username.username %}
+                <p class="meta">@{{ username.username }}</p>
+              {% endif %}
+              {% if username.is_verified or username.user.is_admin %}
+                <div class="badgeContainer">
+                  {% if username.user.is_admin %}
+                    <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                  {% endif %}
+                  {% if username.is_verified %}
+                    <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if username.bio %}
+                <p class="bio">{{ username.bio }}</p>
+              {% endif %}
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('profile', username=username.username) }}"
+                  aria-label="{{ (username.display_name or username.username) }}'s profile"
+                  >View Profile</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div
+    id="public-records"
+    class="tab-content"
+    role="tabpanel"
+    aria-labelledby="public-records-tab"
+  >
+    <p class="meta dirMeta">
+      These are automated, read-only public-record listings. They are not Hush Line recipients and
+      cannot receive secure messages here.
+    </p>
+
+    <div class="user-list">
+      {% for listing in public_record_listings %}
+        <article class="user">
+          <h3>{{ listing.name }}</h3>
+          <p class="meta">{{ listing.location }}</p>
+          <div class="badgeContainer">
+            <span class="badge">Public Record</span>
+            <span class="badge">Automated</span>
+          </div>
+          <p class="meta">
+            <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+              {{ listing.website }}
+            </a>
+          </p>
+          {% if listing.practice_tags %}
+            <p class="bio">{{ listing.practice_tags | join(" · ") }}</p>
+          {% endif %}
+          <p class="meta">Source: {{ listing.source_label }}</p>
+          <div class="user-actions">
+            <a
+              href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+              aria-label="View read-only listing for {{ listing.name }}"
+              >View Listing</a
+            >
+          </div>
+        </article>
       {% endfor %}
     </div>
-    {% if info_usernames %}
-      <p class="label">📇 Info-Only Accounts</p>
-      <div class="user-list">
-        {% for username in info_usernames %}
+  </div>
+
+  <div
+    id="all"
+    class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="all-tab"
+  >
+    <div class="user-list">
+      {% for username in pgp_usernames %}
         <article class="user">
           <h3>{{ username.display_name or username.username }}</h3>
           {% if username.username %}
@@ -240,17 +257,75 @@
             >
           </div>
         </article>
+      {% endfor %}
+    </div>
+    {% if info_usernames %}
+      <p class="label">📇 Info-Only Accounts</p>
+      <div class="user-list">
+        {% for username in info_usernames %}
+          <article class="user">
+            <h3>{{ username.display_name or username.username }}</h3>
+            {% if username.username %}
+              <p class="meta">@{{ username.username }}</p>
+            {% endif %}
+            {% if username.is_verified or username.user.is_admin %}
+              <div class="badgeContainer">
+                {% if username.user.is_admin %}
+                  <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                {% endif %}
+                {% if username.is_verified %}
+                  <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% if username.bio %}
+              <p class="bio">{{ username.bio }}</p>
+            {% endif %}
+            <div class="user-actions">
+              <a
+                href="{{ url_for('profile', username=username.username) }}"
+                aria-label="{{ (username.display_name or username.username) }}'s profile"
+                >View Profile</a
+              >
+            </div>
+          </article>
         {% endfor %}
       </div>
     {% endif %}
+
+    <p class="label">🏛️ Public Records</p>
+    <div class="user-list">
+      {% for listing in public_record_listings %}
+        <article class="user">
+          <h3>{{ listing.name }}</h3>
+          <p class="meta">{{ listing.location }}</p>
+          <div class="badgeContainer">
+            <span class="badge">Public Record</span>
+            <span class="badge">Automated</span>
+          </div>
+          <p class="meta">
+            <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+              {{ listing.website }}
+            </a>
+          </p>
+          {% if listing.practice_tags %}
+            <p class="bio">{{ listing.practice_tags | join(" · ") }}</p>
+          {% endif %}
+          <p class="meta">Source: {{ listing.source_label }}</p>
+          <div class="user-actions">
+            <a
+              href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+              aria-label="View read-only listing for {{ listing.name }}"
+              >View Listing</a
+            >
+          </div>
+        </article>
+      {% endfor %}
+    </div>
   </div>
 {% endblock %}
 
 {% block scripts %}
   <script defer src="{{ url_for('static', filename='js/user_search.js') }}"></script>
-  {% if directory_verified_tab_enabled %}
-    <script defer src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
-  {% else %}
-    <script defer src="{{ url_for('static', filename='js/directory.js') }}"></script>
-  {% endif %}
+  <script defer src="{{ url_for('static', filename='js/directory_verified.js') }}"></script>
 {% endblock %}

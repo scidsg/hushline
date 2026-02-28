@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Public Record: {{ listing.name }}{% endblock %}
+
+{% block content %}
+  <h2 class="submit">{{ listing.name }}</h2>
+
+  <div class="badgeContainer">
+    <span class="badge">Public Record</span>
+    <span class="badge">Automated</span>
+  </div>
+
+  <p class="instr">
+    This is a read-only directory listing. {{ listing.name }} has not created a Hush Line
+    recipient account and cannot receive secure messages through this profile.
+  </p>
+
+  <div class="extra-fields">
+    <p class="extra-field">
+      <span class="extra-field-label">Website</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.website }}
+        </a>
+      </span>
+    </p>
+    <p class="extra-field">
+      <span class="extra-field-label">Location</span>
+      <span class="extra-field-value">{{ listing.location }}</span>
+    </p>
+    {% if listing.practice_tags %}
+      <p class="extra-field">
+        <span class="extra-field-label">Practice Areas</span>
+        <span class="extra-field-value">{{ listing.practice_tags | join(", ") }}</span>
+      </p>
+    {% endif %}
+    <p class="extra-field">
+      <span class="extra-field-label">Source</span>
+      <span class="extra-field-value">
+        {% if listing.source_url %}
+          <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
+            {{ listing.source_label }}
+          </a>
+        {% else %}
+          {{ listing.source_label }}
+        {% endif %}
+      </span>
+    </p>
+  </div>
+{% endblock %}
