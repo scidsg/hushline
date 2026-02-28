@@ -2045,6 +2045,7 @@ img.alert {
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  box-sizing: border-box;
 }
 
 .inbox-tabs,
