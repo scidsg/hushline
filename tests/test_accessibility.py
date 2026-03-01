@@ -27,7 +27,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert verified_tab.get("aria-controls") == "verified"
     assert verified_tab.get("aria-selected") in {"true", "false"}
     assert public_records_tab is not None
-    assert public_records_tab.text.strip() == "Public Record Firms"
+    assert public_records_tab.text.strip() == "Public Record Law Firms"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
     assert all_tab is not None
