@@ -12,6 +12,9 @@
   "dependencies": {
     "openpgp": "^6.3.0"
   },
+  "overrides": {
+    "serialize-javascript": "^7.0.3"
+  },
   "devDependencies": {
     "css-loader": "^6.7.2",
     "mini-css-extract-plugin": "^2.7.2",
