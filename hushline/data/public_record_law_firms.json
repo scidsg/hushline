@@ -644,18 +644,6 @@
     "source_url": "https://www.stibbe.com/"
   },
   {
-    "id": "seed-tsmp-law",
-    "slug": "public-record~tsmp-law",
-    "name": "TSMP Law Corporation",
-    "website": "https://www.tsmp.com.sg/",
-    "description": "A Singapore firm advising on investigations, employment disputes, and whistleblowing-related governance issues.",
-    "city": "Singapore",
-    "state": "Singapore",
-    "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.tsmp.com.sg/"
-  },
-  {
     "id": "seed-tycko-zavareei",
     "slug": "public-record~tycko-zavareei",
     "name": "Tycko & Zavareei LLP",
