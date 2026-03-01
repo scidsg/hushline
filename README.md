@@ -15,6 +15,7 @@ Start here: <https://hushline.app/library/docs/getting-started/start-here/>
 [![Workflow Security Checks](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/workflow-security.yml)
 [![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml)
 [![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml)
+[![Public Record Link Check](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml)
 [![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest)
 
 ## Why Hush Line
