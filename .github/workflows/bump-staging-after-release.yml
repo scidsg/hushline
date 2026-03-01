@@ -60,6 +60,19 @@ jobs:
           token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           path: hushline-infra
 
+      - name: Check out or create release branch in hushline-infra
+        working-directory: hushline-infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --heads origin "$INFRA_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$INFRA_BRANCH":"refs/remotes/origin/$INFRA_BRANCH"
+            git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BRANCH"
+          else
+            git checkout -B "$INFRA_BRANCH"
+          fi
+
       - name: Update staging version branch reference
         id: update_infra
         working-directory: hushline-infra
@@ -109,10 +122,13 @@ jobs:
 
           git config user.name "hushline-dev"
           git config user.email "git-dev@scidsg.org"
-          git checkout -B "$INFRA_BRANCH"
           git add "$INFRA_FILE"
+          if git diff --cached --quiet; then
+            echo "Staging branch $INFRA_BRANCH is already up to date"
+            exit 0
+          fi
           git commit -m "Bump staging to $RELEASE_TAG"
-          git push --force-with-lease origin "$INFRA_BRANCH"
+          git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"
 
       - name: Verify only the staging tag file changed
         if: steps.update_infra.outputs.changed == 'true'
