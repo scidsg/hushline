@@ -1,5 +1,5 @@
 # vim: set syntax=dockerfile :
-FROM node:18.20.4-alpine3.20 AS webpack
+FROM node:20.19.5-alpine3.22 AS webpack
 
 WORKDIR /src
 

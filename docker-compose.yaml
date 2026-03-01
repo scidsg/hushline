@@ -86,7 +86,7 @@ services:
       retries: 10
 
   webpack:
-    image: node:18.20.4-alpine3.20
+    image: node:20.19.5-alpine3.22
     volumes:
       - ./:/app/
       - hushline-node-modules:/app/node_modules
