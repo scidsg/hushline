@@ -1,0 +1,27 @@
+name: Public Record Link Check
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 1"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "hushline/data/public_record_law_firms.json"
+      - "tests/test_directory.py"
+      - "Makefile"
+      - ".github/workflows/public-record-link-check.yml"
+
+jobs:
+  public-record-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate live public record links
+        run: make test-public-record-links

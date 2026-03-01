@@ -234,6 +234,7 @@ def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> N
 
 
 @pytest.mark.local_only()
+@pytest.mark.external_network()
 def test_public_record_external_links_resolve() -> None:
     session = requests.Session()
     session.headers.update(

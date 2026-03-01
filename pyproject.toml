@@ -60,6 +60,7 @@ filterwarnings = [
 ]
 markers = [
     "local_only",
+    "external_network",
 ]
 
 [tool.coverage.report]

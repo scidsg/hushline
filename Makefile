@@ -88,9 +88,14 @@ endif
 		'make migrate-prod && poetry run flask db revision -m "$(MESSAGE)" --autogenerate'
 
 TESTS ?= ./tests/
+PYTEST_DEFAULT_MARK_EXPR ?= not external_network
 .PHONY: test
 test: ## Run the test suite
-	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv $(PYTEST_ADDOPTS) $(TESTS)
+	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
+
+.PHONY: test-public-record-links
+test-public-record-links: ## Validate live public-record external links
+	$(CMD) poetry run pytest -vv tests/test_directory.py -k public_record_external_links_resolve
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
