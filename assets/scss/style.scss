@@ -133,6 +133,11 @@
     background-color: white;
   }
 
+  .directory-tabs.is-sticky,
+  .directory-search.is-sticky {
+    border-bottom: var(--border);
+  }
+
   .skip-link {
     background: var(--color-brand-max-contrast);
     color: #fff;
@@ -646,6 +651,11 @@
   .directory-search,
   .directory-search.is-sticky {
     background-color: var(--color-dark-bg-alt);
+  }
+
+  .directory-tabs.is-sticky,
+  .directory-search.is-sticky {
+    border-bottom: var(--border-dark-1);
   }
 
   .directory-tabs,
