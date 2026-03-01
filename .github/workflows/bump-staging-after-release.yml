@@ -198,6 +198,7 @@ jobs:
 
           gh pr merge \
             --repo "$INFRA_REPOSITORY" \
+            --auto \
             --squash \
             --delete-branch \
             "${{ steps.create_or_update_pr.outputs.pr_url }}"
