@@ -1,0 +1,154 @@
+name: Bump staging infra after release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-staging-after-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  bump-staging:
+    if: ${{ !github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      IMAGE_REF: ghcr.io/${{ github.repository }}/hushline:${{ github.event.release.tag_name }}
+      INFRA_REPOSITORY: scidsg/hushline-infra
+      INFRA_BASE_REF: main
+      INFRA_BRANCH: ${{ github.event.release.tag_name }}
+      INFRA_FILE: terraform-env/hushline.tf
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for release image to be available
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 40); do
+            if docker buildx imagetools inspect "$IMAGE_REF" >/dev/null 2>&1; then
+              echo "Release image is available: $IMAGE_REF"
+              exit 0
+            fi
+
+            echo "Release image not available yet (attempt ${attempt}/40): $IMAGE_REF"
+            sleep 30
+          done
+
+          echo "::error title=Release image not available::Timed out waiting for $IMAGE_REF"
+          exit 1
+
+      - name: Check out hushline-infra
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_BASE_REF }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          path: hushline-infra
+
+      - name: Update staging version branch reference
+        id: update_infra
+        working-directory: hushline-infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          infra_file = Path(os.environ["INFRA_FILE"])
+          release_tag = os.environ["RELEASE_TAG"]
+          original = infra_file.read_text(encoding="utf-8")
+
+          updated, count = re.subn(
+              r'(?m)^(\s*tag\s*=\s*")v\d+\.\d+\.\d+(")',
+              rf'\g<1>{release_tag}\g<2>',
+              original,
+              count=1,
+          )
+
+          if count != 1:
+              raise SystemExit(
+                  f"Expected to replace exactly one staging tag in {infra_file}, replaced {count}.",
+              )
+
+          if updated != original:
+              infra_file.write_text(updated, encoding="utf-8")
+          PY
+
+          if git diff --quiet -- "$INFRA_FILE"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Staging infra already points at $RELEASE_TAG"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push infra branch
+        if: steps.update_infra.outputs.changed == 'true'
+        working-directory: hushline-infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "hushline-dev"
+          git config user.email "git-dev@scidsg.org"
+          git checkout -B "$INFRA_BRANCH"
+          git add "$INFRA_FILE"
+          git commit -m "Bump staging to $RELEASE_TAG"
+          git push --force-with-lease origin "$INFRA_BRANCH"
+
+      - name: Create or update staging PR
+        if: steps.update_infra.outputs.changed == 'true'
+        working-directory: hushline-infra
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+        run: |
+          set -euo pipefail
+
+          existing_pr_url="$(gh pr list \
+            --repo "$INFRA_REPOSITORY" \
+            --head "$INFRA_BRANCH" \
+            --base "$INFRA_BASE_REF" \
+            --json url \
+            --jq '.[0].url')"
+
+          pr_title="Bump staging to $RELEASE_TAG"
+          pr_body="$(cat <<EOF
+          Automated from Hush Line release \`$RELEASE_TAG\`.
+
+          This updates \`$INFRA_FILE\` to the released version branch so merging to \`$INFRA_BASE_REF\` deploys staging.
+          EOF
+          )"
+
+          if [ -n "$existing_pr_url" ] && [ "$existing_pr_url" != "null" ]; then
+            gh pr edit "$existing_pr_url" \
+              --repo "$INFRA_REPOSITORY" \
+              --title "$pr_title" \
+              --body "$pr_body"
+            exit 0
+          fi
+
+          gh pr create \
+            --repo "$INFRA_REPOSITORY" \
+            --base "$INFRA_BASE_REF" \
+            --head "$INFRA_BRANCH" \
+            --title "$pr_title" \
+            --body "$pr_body"
