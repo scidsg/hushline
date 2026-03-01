@@ -22,7 +22,7 @@ jobs:
       INFRA_REPOSITORY: scidsg/hushline-infra
       INFRA_BASE_REF: main
       INFRA_BRANCH: ${{ github.event.release.tag_name }}
-      INFRA_FILE: terraform-env/hushline.tf
+      INFRA_FILE: hushline-env/hushline.tf
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
