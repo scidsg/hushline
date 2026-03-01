@@ -114,8 +114,23 @@ jobs:
           git commit -m "Bump staging to $RELEASE_TAG"
           git push --force-with-lease origin "$INFRA_BRANCH"
 
+      - name: Verify only the staging tag file changed
+        if: steps.update_infra.outputs.changed == 'true'
+        working-directory: hushline-infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          changed_files="$(git diff --name-only "origin/$INFRA_BASE_REF...HEAD")"
+
+          if [ "$changed_files" != "$INFRA_FILE" ]; then
+            echo "::error title=Unexpected infra diff::Expected only $INFRA_FILE to change, got: $changed_files"
+            exit 1
+          fi
+
       - name: Create or update staging PR
         if: steps.update_infra.outputs.changed == 'true'
+        id: create_or_update_pr
         working-directory: hushline-infra
         shell: bash
         env:
@@ -143,12 +158,30 @@ jobs:
               --repo "$INFRA_REPOSITORY" \
               --title "$pr_title" \
               --body "$pr_body"
+            echo "pr_url=$existing_pr_url" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          gh pr create \
+          pr_url="$(gh pr create \
             --repo "$INFRA_REPOSITORY" \
             --base "$INFRA_BASE_REF" \
             --head "$INFRA_BRANCH" \
             --title "$pr_title" \
-            --body "$pr_body"
+            --body "$pr_body")"
+
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Merge staging PR
+        if: steps.update_infra.outputs.changed == 'true'
+        working-directory: hushline-infra
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+        run: |
+          set -euo pipefail
+
+          gh pr merge \
+            --repo "$INFRA_REPOSITORY" \
+            --squash \
+            --delete-branch \
+            "${{ steps.create_or_update_pr.outputs.pr_url }}"
