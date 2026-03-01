@@ -10,7 +10,6 @@
     {{ intro_text | markdown }}
   {% endif %}
 
-  <div id="directory-top-anchor" class="directory-top-anchor" aria-hidden="true"></div>
   {% if directory_verified_tab_enabled %}
     <div class="directory-tabs" id="directory-tabs">
       <ul class="tab-list" role="tablist">
@@ -54,11 +53,6 @@
           </button>
         </li>
       </ul>
-      <div class="tab-top-item" role="presentation">
-        <a class="tab-top-link" href="#directory-top-anchor" aria-label="Back to top">
-          Top
-        </a>
-      </div>
     </div>
   {% endif %}
 
