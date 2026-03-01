@@ -12,7 +12,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
     assert "User Directory" in response.text
-    assert "Public Record Firms" in response.text
+    assert "Public Record Law Firms" in response.text
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
@@ -45,7 +45,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
-    assert "🏛️ Public Record Firms" not in all_panel.get_text(" ", strip=True)
+    assert "🏛️ Public Record Law Firms" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
 
 
