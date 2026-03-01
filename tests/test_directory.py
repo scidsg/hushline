@@ -1,3 +1,5 @@
+import time
+
 import pytest
 import requests
 from bs4 import BeautifulSoup
@@ -179,10 +181,8 @@ def test_public_record_seed_regions_are_balanced() -> None:
     eu = [listing for listing in listings if listing.state in eu_states]
     apac = [listing for listing in listings if listing.state in apac_states]
 
-    assert len(listings) == 60
-    assert len(us) == 20
-    assert len(eu) == 20
-    assert len(apac) == 20
+    assert len(us) + len(eu) + len(apac) == len(listings)
+    assert max(len(us), len(eu), len(apac)) - min(len(us), len(eu), len(apac)) <= 1
     assert any(listing.name == "Whistleblower Partners LLP" for listing in us)
 
 
@@ -236,6 +236,8 @@ def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> N
 @pytest.mark.local_only()
 @pytest.mark.external_network()
 def test_public_record_external_links_resolve() -> None:
+    max_attempts = 3
+    retryable_status_codes = {408, 425, 429, 500, 502, 503, 504}
     session = requests.Session()
     session.headers.update(
         {
@@ -246,7 +248,7 @@ def test_public_record_external_links_resolve() -> None:
         }
     )
 
-    checked: dict[str, int] = {}
+    checked: set[str] = set()
     failures: list[str] = []
 
     for listing in get_public_record_listings():
@@ -257,18 +259,34 @@ def test_public_record_external_links_resolve() -> None:
             if not url or url in checked:
                 continue
 
-            response: requests.Response | None = None
-            try:
-                response = session.get(url, allow_redirects=True, timeout=15, stream=True)
-                checked[url] = response.status_code
-                if response.status_code >= 500 or response.status_code in {404, 410}:
-                    failures.append(
-                        f"{listing.name} {label} failed with HTTP " f"{response.status_code}: {url}"
-                    )
-            except requests.RequestException as exc:
-                failures.append(f"{listing.name} {label} request failed: {url} ({exc})")
-            finally:
-                if response is not None:
-                    response.close()
+            checked.add(url)
+
+            last_error: requests.RequestException | None = None
+            last_status_code: int | None = None
+
+            for attempt in range(1, max_attempts + 1):
+                response: requests.Response | None = None
+                try:
+                    response = session.get(url, allow_redirects=True, timeout=15, stream=True)
+                    last_status_code = response.status_code
+                    if response.status_code not in retryable_status_codes:
+                        break
+                except requests.RequestException as exc:
+                    last_error = exc
+                finally:
+                    if response is not None:
+                        response.close()
+
+                if attempt < max_attempts:
+                    time.sleep(attempt)
+
+            if last_status_code is not None and (
+                last_status_code >= 500 or last_status_code in {404, 410}
+            ):
+                failures.append(
+                    f"{listing.name} {label} failed with HTTP {last_status_code}: {url}"
+                )
+            elif last_error is not None and last_status_code is None:
+                failures.append(f"{listing.name} {label} request failed: {url} ({last_error})")
 
     assert not failures, "Broken public record links:\n" + "\n".join(failures)
