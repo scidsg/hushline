@@ -27,9 +27,11 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
 
     banner_link = public_records_panel.select_one(".dirMeta a")
     assert banner_link is not None
-    assert banner_link.text.strip() == "Message Hush Line Admin"
+    assert banner_link.text.strip() == "Hush Line admin"
     assert banner_link.get("href") == "/to/admin"
-    assert "for corrections." in public_records_panel.get_text(" ", strip=True)
+    banner_text = public_records_panel.get_text(" ", strip=True)
+    assert "These are automated listings pulled from public records." in banner_text
+    assert "Message the Hush Line admin for any corrections." in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
