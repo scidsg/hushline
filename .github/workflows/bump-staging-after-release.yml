@@ -187,17 +187,37 @@ jobs:
 
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
 
-      - name: Merge staging PR
+      - name: Merge staging PR if immediately allowed
         if: steps.update_infra.outputs.changed == 'true'
         working-directory: hushline-infra
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          PR_URL: ${{ steps.create_or_update_pr.outputs.pr_url }}
         run: |
           set -euo pipefail
 
-          gh pr merge \
+          merge_output_file="$(mktemp)"
+
+          if gh pr merge \
             --repo "$INFRA_REPOSITORY" \
             --squash \
             --delete-branch \
-            "${{ steps.create_or_update_pr.outputs.pr_url }}"
+            "$PR_URL" >"$merge_output_file" 2>&1; then
+            cat "$merge_output_file"
+            exit 0
+          fi
+
+          cat "$merge_output_file"
+
+          if grep -Fq "base branch policy prohibits the merge" "$merge_output_file"; then
+            echo "::notice title=Staging PR awaiting branch policy::Created $PR_URL but it is not immediately mergeable. Complete the required checks or review in $INFRA_REPOSITORY before merging."
+            {
+              echo "## Staging infra PR awaiting merge"
+              echo
+              echo "$PR_URL"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          exit 1
