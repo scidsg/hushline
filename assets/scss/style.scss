@@ -2420,9 +2420,9 @@ textarea#bio {
 }
 
 .directory-sticky-shell {
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
+  width: calc(100% + (2 * var(--container-padding, 2rem)));
+  margin-left: calc(-1 * var(--container-padding, 2rem));
+  margin-right: calc(-1 * var(--container-padding, 2rem));
   box-sizing: border-box;
   position: sticky;
   top: var(--directory-sticky-top, calc(65px + env(safe-area-inset-top)));
@@ -2432,8 +2432,8 @@ textarea#bio {
 
 .directory-sticky-shell > .directory-tabs,
 .directory-sticky-shell > .directory-search {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: var(--container-padding, 2rem);
+  padding-right: var(--container-padding, 2rem);
   box-sizing: border-box;
 }
 
@@ -4543,19 +4543,6 @@ button .badge {
 }
 
 @media (max-width: 395px) {
-  /* Stop the sticky container from being wider than the viewport */
-  .directory-sticky-shell {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-  }
-
-  .directory-sticky-shell > .directory-tabs,
-  .directory-sticky-shell > .directory-search {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
   /* Keep your "fill leftover space" behavior */
   .directory-tabs .tab-list li {
     flex: 1 0 auto;      /* grow, no shrink */
