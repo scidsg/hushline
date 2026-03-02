@@ -4553,3 +4553,14 @@ header nav ul li.dropdown ul {
     text-decoration: underline !important;
   }
 }
+
+button:has(.badge) {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+button .badge {
+  font-size: calc(var(--font-size-smallest) * 0.9125);
+  padding: 0.25rem 0.5rem;
+}

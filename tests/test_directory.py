@@ -14,7 +14,9 @@ def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
     assert "User Directory" in response.text
-    assert "Public Record Law Firms" in response.text
+    # New: the tab label is now "Law Firms" plus the "🤖 Automated" badge
+    assert "Law Firms" in response.text
+    assert "🤖 Automated" in response.text
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
