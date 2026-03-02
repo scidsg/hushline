@@ -29,6 +29,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
 10. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
 11. Run Codex issue loop until repository changes exist.
+    - The issue/fix prompts tell Codex to avoid local container-backed make validation by default, and to defer validation entirely to the runner when schema-affecting files are touched (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`).
 12. Run required checks in a self-heal loop:
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
