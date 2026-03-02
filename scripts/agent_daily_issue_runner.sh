@@ -884,6 +884,24 @@ has_changes() {
   [[ -n "$(git status --porcelain)" ]]
 }
 
+current_change_summary() {
+  {
+    echo "Current git status:"
+    git status --short
+    echo
+    echo "Current diff stat:"
+    git diff --stat
+  } 2>/dev/null
+}
+
+failure_signature_from_text() {
+  local text="$1"
+
+  {
+    printf '%s\n' "$text" | grep -E 'FAILED tests/|AssertionError:|sqlalchemy\.exc\.|psycopg\.errors\.|Traceback|Error:'
+  } | head -n 20
+}
+
 build_issue_prompt() {
   local issue_number="$1"
   local issue_title="$2"
@@ -928,6 +946,10 @@ build_fix_prompt() {
   local issue_title="$2"
   local branch_name="$3"
   local failure_tail="$4"
+  local change_summary="$5"
+  local previous_codex_output="$6"
+  local failure_signature="$7"
+  local repeated_failure_count="$8"
 
   {
     cat <<EOF2
@@ -941,6 +963,33 @@ EOF2
 The previous implementation failed local workflow-equivalent checks.
 Apply the smallest safe changes needed so checks pass.
 
+Current branch state:
+---BEGIN CURRENT CHANGES---
+EOF2
+    printf '%s\n' "$change_summary"
+    cat <<'EOF2'
+---END CURRENT CHANGES---
+
+Most recent Codex implementation summary:
+---BEGIN PRIOR CODEX SUMMARY---
+EOF2
+    printf '%s\n' "$previous_codex_output"
+    cat <<'EOF2'
+---END PRIOR CODEX SUMMARY---
+
+Failure signature:
+---BEGIN FAILURE SIGNATURE---
+EOF2
+    printf '%s\n' "$failure_signature"
+    cat <<'EOF2'
+---END FAILURE SIGNATURE---
+
+EOF2
+    if [[ "$repeated_failure_count" =~ ^[0-9]+$ ]] && (( repeated_failure_count > 1 )); then
+      printf 'This same failure signature has repeated %s times. Reassess root cause from the current repo state before editing; do not repeat the prior partial fix.\n\n' "$repeated_failure_count"
+    fi
+    cat <<'EOF2'
+
 Most recent failed check output:
 ---BEGIN CHECK OUTPUT---
 EOF2
@@ -950,15 +999,17 @@ EOF2
 
 Requirements:
 1) Fix only what is required for checks to pass.
-2) Keep diffs minimal and focused.
-3) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
-4) Keep security, privacy, and E2EE protections intact.
-5) Avoid local validation unless it is necessary to make progress; the runner will rerun the full validation suite after your changes.
-6) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
-7) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
-8) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this fix loop; leave runtime refresh and validation to the runner.
-9) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
-10) Do not include meta-compliance statements like "per your constraints" in your final summary.
+2) Inspect the currently changed files before editing. Preserve valid issue work already on the branch and fix the failing checks against that implementation.
+3) Keep diffs minimal and focused.
+4) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
+5) Keep security, privacy, and E2EE protections intact.
+6) Avoid local validation unless it is necessary to make progress; the runner will rerun the full validation suite after your changes.
+7) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
+8) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
+9) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this fix loop; leave runtime refresh and validation to the runner.
+10) If failures mention migrations, revision heads, or upgrade/downgrade tests, inspect the migration file and its paired `tests/migrations/revision_*.py` fixture together before editing.
+11) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+12) Do not include meta-compliance statements like "per your constraints" in your final summary.
 EOF2
   } > "$PROMPT_FILE"
 }
@@ -1036,6 +1087,8 @@ run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRAN
 build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
 
 issue_attempt=1
+PREVIOUS_FAILURE_SIGNATURE=""
+REPEATED_FAILURE_COUNT=0
 while true; do
   echo "==> Codex issue attempt $issue_attempt"
   run_codex_from_prompt
@@ -1053,7 +1106,22 @@ while true; do
     fi
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
-    build_fix_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$BRANCH_NAME" "$FAILURE_LOG_TAIL"
+    FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
+    if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
+      REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
+    else
+      REPEATED_FAILURE_COUNT=1
+      PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
+    fi
+    build_fix_prompt \
+      "$ISSUE_NUMBER" \
+      "$ISSUE_TITLE" \
+      "$BRANCH_NAME" \
+      "$FAILURE_LOG_TAIL" \
+      "$(current_change_summary)" \
+      "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
+      "$FAILURE_SIGNATURE" \
+      "$REPEATED_FAILURE_COUNT"
     run_codex_from_prompt
     fix_attempt=$((fix_attempt + 1))
   done
