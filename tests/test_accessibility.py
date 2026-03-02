@@ -27,7 +27,21 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert verified_tab.get("aria-controls") == "verified"
     assert verified_tab.get("aria-selected") in {"true", "false"}
     assert public_records_tab is not None
-    assert public_records_tab.text.strip() == "Public Record Law Firms"
+
+    # New: assert the visible label and badge separately
+    badge = public_records_tab.select_one("span.badge")
+    assert badge is not None
+    assert badge.get("role") == "img"
+    assert badge.get("aria-label") == "Law Firms"
+    assert badge.get_text(strip=True) == "🤖 Automated"
+
+    # Button label text excluding the badge
+    label_text = (
+        public_records_tab.get_text(" ", strip=True)
+        .replace(badge.get_text(" ", strip=True), "")
+        .strip()
+    )
+    assert label_text == "Law Firms"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
     assert all_tab is not None
