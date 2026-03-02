@@ -53,6 +53,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
+    assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
@@ -66,6 +67,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     )
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
+    assert ".directory-sticky-shell" in scss
     assert ".visually-hidden" in scss
 
 
