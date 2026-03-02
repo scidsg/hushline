@@ -2420,26 +2420,26 @@ textarea#bio {
 }
 
 .directory-sticky-shell {
-  width: calc(100% + (2 * var(--container-padding, 2rem)));
-  margin-left: calc(-1 * var(--container-padding, 2rem));
-  margin-right: calc(-1 * var(--container-padding, 2rem));
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   box-sizing: border-box;
+  position: sticky;
+  top: var(--directory-sticky-top, calc(65px + env(safe-area-inset-top)));
+  z-index: 10;
+  margin-top: 0.25rem;
 }
 
 .directory-sticky-shell > .directory-tabs,
 .directory-sticky-shell > .directory-search {
-  padding-left: var(--container-padding, 2rem);
-  padding-right: var(--container-padding, 2rem);
+  padding-left: 0;
+  padding-right: 0;
   box-sizing: border-box;
 }
 
 .directory-tabs {
   display: flex;
   align-items: center;
-  position: sticky;
-  top: calc(65px + env(safe-area-inset-top));
-  z-index: 10;
-  margin-top: 0.25rem;
 }
 
 .directory-tabs .tab-list {
@@ -2448,12 +2448,7 @@ textarea#bio {
 }
 
 .directory-search {
-  position: sticky;
-  top: var(--directory-search-top, calc(65px + env(safe-area-inset-top)));
-  z-index: 9;
   margin-top: 0;
-  padding-top: 1rem;
-  position: sticky;
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
@@ -2467,12 +2462,8 @@ body.directory-page .directory-search #searchInput {
   margin-top: 0;
 }
 
-.banner+header+main .directory-tabs {
-  top: calc(105px + env(safe-area-inset-top));
-}
-
-.banner+header+main .directory-search {
-  top: var(--directory-search-top, calc(105px + env(safe-area-inset-top)));
+.banner+header+main .directory-sticky-shell {
+  top: var(--directory-sticky-top, calc(105px + env(safe-area-inset-top)));
 }
 
 
