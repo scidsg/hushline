@@ -355,7 +355,9 @@ document.addEventListener("DOMContentLoaded", function () {
       const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
       const stickyTop = headerHeight + bannerHeight;
       const tabsTop = directoryTabs.getBoundingClientRect().top;
-      const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
+      const tabsMarginTop = Number.parseFloat(window.getComputedStyle(directoryTabs).marginTop) || 0;
+      const isSticky =
+        window.scrollY > stickyTop + 1 && tabsTop <= stickyTop + tabsMarginTop + 1;
       directoryTabs.classList.toggle("is-sticky", isSticky);
 
       if (searchBox) {
