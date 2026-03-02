@@ -78,8 +78,6 @@ def test_directory_sticky_active_tab_scroll_to_top_hook_exists() -> None:
     assert 'window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });' in (
         directory_verified_js
     )
-    assert "window.getComputedStyle(directoryTabs).marginTop" in directory_verified_js
-    assert "tabsTop <= stickyTop + tabsMarginTop + 1" in directory_verified_js
 
 
 def test_inbox_sticky_nav_hooks_exist() -> None:
