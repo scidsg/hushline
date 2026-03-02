@@ -108,9 +108,7 @@ run_check_with_self_heal_retry() {
 
 reseed_runtime_for_self_heal() {
   echo "Self-heal: restarting local runtime stack and reseeding dev data." | tee -a "$CHECK_LOG_FILE"
-  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  docker compose up -d postgres blob-storage app >/dev/null
-  docker compose run --rm dev_data >/dev/null
+  reset_runtime_stack_and_seed_dev_data
 }
 
 run_runtime_check_with_self_heal() {
@@ -124,14 +122,42 @@ run_runtime_check_with_self_heal() {
   run_check_capture "${description} (self-heal retry after runtime reset)" "$@"
 }
 
-node_runtime_dependency_files_changed() {
-  git diff --name-only "${BASE_BRANCH}...HEAD" \
-    | grep -Eq '(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json)$'
+reset_runtime_stack_and_seed_dev_data() {
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  docker compose up -d postgres blob-storage app >/dev/null
+  docker compose run --rm dev_data >/dev/null
+}
+
+refresh_runtime_after_schema_changes() {
+  echo "==> Refresh local runtime after schema changes" | tee -a "$CHECK_LOG_FILE"
+  if ! runtime_schema_files_changed; then
+    echo "Skipped: no schema-affecting files changed." | tee -a "$CHECK_LOG_FILE"
+    return 0
+  fi
+
+  reset_runtime_stack_and_seed_dev_data
+}
+
+list_changed_files() {
+  {
+    git diff --name-only "${BASE_BRANCH}...HEAD"
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | awk 'NF && !seen[$0]++'
 }
 
 changed_files_match() {
   local pattern="$1"
-  git diff --name-only "${BASE_BRANCH}...HEAD" | grep -Eq "$pattern"
+  list_changed_files | grep -Eq "$pattern"
+}
+
+node_runtime_dependency_files_changed() {
+  changed_files_match '(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json)$'
+}
+
+runtime_schema_files_changed() {
+  changed_files_match '^(hushline/model/|migrations/|scripts/dev_data\.py$|scripts/dev_migrations\.py$)'
 }
 
 migration_smoke_files_changed() {
@@ -425,6 +451,7 @@ run_local_workflow_checks() {
   GDPR_COMPLIANCE_REQUIRED=0
   E2EE_PRIVACY_REQUIRED=0
   local lint_failure_tail=""
+  refresh_runtime_after_schema_changes || return 1
   if ! run_check_capture "Run lint" make lint; then
     lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
     if ! lint_failure_looks_auto_fixable "$lint_failure_tail"; then
