@@ -30,6 +30,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
 10. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
 11. Run Codex issue loop until repository changes exist.
 12. Run required checks in a self-heal loop:
+    - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
     - `make workflow-security-checks`
     - `make test` (full suite)
