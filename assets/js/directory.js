@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
   const searchBox = document.querySelector(".directory-search");
+  const stickyShell = document.querySelector(".directory-sticky-shell");
   const resultsContainer = document.getElementById("all");
   const initialMarkup = resultsContainer ? resultsContainer.innerHTML : "";
   let userData = [];
@@ -156,20 +157,22 @@ document.addEventListener("DOMContentLoaded", function () {
     handleSearchInput();
   });
 
-  if (searchBox) {
+  if (stickyShell || searchBox) {
     const updateStickyState = () => {
       const header = document.querySelector("header");
       const banner = document.querySelector(".banner");
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
       const stickyTop = headerHeight + bannerHeight;
-      searchBox.style.setProperty(
-        "--directory-search-top",
-        `${stickyTop}px`,
-      );
-      const searchTop = searchBox.getBoundingClientRect().top;
-      const isSticky = window.scrollY > stickyTop + 1 && searchTop <= stickyTop;
-      searchBox.classList.toggle("is-sticky", isSticky);
+      const stickyAnchor = stickyShell || searchBox;
+
+      if (stickyAnchor) {
+        stickyAnchor.style.setProperty("--directory-sticky-top", `${stickyTop}px`);
+        const stickyAnchorTop = stickyAnchor.getBoundingClientRect().top;
+        const isSticky = window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
+        stickyShell?.classList.toggle("is-sticky", isSticky);
+        searchBox?.classList.toggle("is-sticky", isSticky);
+      }
     };
 
     updateStickyState();

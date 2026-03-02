@@ -306,7 +306,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", function (e) {
-      window.activateTab(e.currentTarget);
+      const clickedTab = e.currentTarget;
+      const stickyShell = document.querySelector(".directory-sticky-shell");
+      const directoryTabs = document.querySelector(".directory-tabs");
+      const isStickyActiveTabClick =
+        clickedTab.classList.contains("active") &&
+        ((stickyShell && stickyShell.classList.contains("is-sticky")) ||
+          (directoryTabs && directoryTabs.classList.contains("is-sticky")));
+
+      if (isStickyActiveTabClick) {
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches;
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+        return;
+      }
+
+      window.activateTab(clickedTab);
     });
     tab.addEventListener("keydown", function (event) {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
@@ -331,30 +346,25 @@ document.addEventListener("DOMContentLoaded", function () {
     window.activateTab(defaultTab);
   }
 
+  const stickyShell = document.querySelector(".directory-sticky-shell");
   const directoryTabs = document.querySelector(".directory-tabs");
   const searchBox = document.querySelector(".directory-search");
-  if (directoryTabs) {
+  if (directoryTabs || stickyShell) {
     const updateStickyState = () => {
       const header = document.querySelector("header");
       const banner = document.querySelector(".banner");
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
       const stickyTop = headerHeight + bannerHeight;
-      const tabsTop = directoryTabs.getBoundingClientRect().top;
-      const isSticky = window.scrollY > stickyTop + 1 && tabsTop <= stickyTop;
-      directoryTabs.classList.toggle("is-sticky", isSticky);
+      const stickyAnchor = stickyShell || directoryTabs;
 
-      if (searchBox) {
-        const tabsHeight = directoryTabs.getBoundingClientRect().height;
-        const searchStickyTop = stickyTop + tabsHeight;
-        searchBox.style.setProperty(
-          "--directory-search-top",
-          `${searchStickyTop}px`,
-        );
-        const searchTop = searchBox.getBoundingClientRect().top;
-        const isSearchSticky =
-          window.scrollY > searchStickyTop + 1 && searchTop <= searchStickyTop;
-        searchBox.classList.toggle("is-sticky", isSearchSticky);
+      if (stickyAnchor) {
+        stickyAnchor.style.setProperty("--directory-sticky-top", `${stickyTop}px`);
+        const stickyAnchorTop = stickyAnchor.getBoundingClientRect().top;
+        const isSticky = window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
+        stickyShell?.classList.toggle("is-sticky", isSticky);
+        directoryTabs?.classList.toggle("is-sticky", isSticky);
+        searchBox?.classList.toggle("is-sticky", isSticky);
       }
     };
 

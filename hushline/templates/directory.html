@@ -10,85 +10,87 @@
     {{ intro_text | markdown }}
   {% endif %}
 
-  {% if directory_verified_tab_enabled %}
-    <div class="directory-tabs" id="directory-tabs">
-      <ul class="tab-list" role="tablist">
-        <li role="presentation">
-          <button
-            type="button"
-            class="tab active"
-            data-tab="verified"
-            role="tab"
-            aria-selected="true"
-            aria-controls="verified"
-            id="verified-tab"
-          >
-            Verified
-          </button>
-        </li>
-        <li role="presentation">
-          <button
-            type="button"
-            class="tab"
-            data-tab="public-records"
-            role="tab"
-            aria-selected="false"
-            aria-controls="public-records"
-            id="public-records-tab"
-          >
-            Law Firms <span class="badge" role="img" aria-label="Law Firms">🤖 Automated</span>
-          </button>
-        </li>
-        <li role="presentation">
-          <button
-            type="button"
-            class="tab"
-            data-tab="all"
-            role="tab"
-            aria-selected="false"
-            aria-controls="all"
-            id="all-tab"
-          >
-            All
-          </button>
-        </li>
-      </ul>
-    </div>
-  {% endif %}
+  <div class="directory-sticky-shell">
+    {% if directory_verified_tab_enabled %}
+      <div class="directory-tabs" id="directory-tabs">
+        <ul class="tab-list" role="tablist">
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab active"
+              data-tab="verified"
+              role="tab"
+              aria-selected="true"
+              aria-controls="verified"
+              id="verified-tab"
+            >
+              Verified
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
+              data-tab="public-records"
+              role="tab"
+              aria-selected="false"
+              aria-controls="public-records"
+              id="public-records-tab"
+            >
+              Law Firms <span class="badge" role="img" aria-label="Law Firms">🤖 Automated</span>
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
+              data-tab="all"
+              role="tab"
+              aria-selected="false"
+              aria-controls="all"
+              id="all-tab"
+            >
+              All
+            </button>
+          </li>
+        </ul>
+      </div>
+    {% endif %}
 
-  <div class="directory-search">
-    <div class="search-box">
-      <label id="searchIcon" for="searchInput">
-        <img
-          src="{{ url_for('static', filename='img/icon-search.png') }}"
-          alt=""
+    <div class="directory-search">
+      <div class="search-box">
+        <label id="searchIcon" for="searchInput">
+          <img
+            src="{{ url_for('static', filename='img/icon-search.png') }}"
+            alt=""
+          />
+        </label>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search directory..."
+          aria-label="Search directory"
         />
-      </label>
-      <input
-        type="text"
-        id="searchInput"
-        placeholder="Search directory..."
-        aria-label="Search directory"
-      />
-      <button
-        id="clearIcon"
-        type="button"
-        aria-label="Clear search field"
-        style="cursor: pointer; background: none; border: none; padding: 0"
-      >
-        <img
-          src="{{ url_for('static', filename='img/icon-clear.png') }}"
-          alt=""
-        />
-      </button>
+        <button
+          id="clearIcon"
+          type="button"
+          aria-label="Clear search field"
+          style="cursor: pointer; background: none; border: none; padding: 0"
+        >
+          <img
+            src="{{ url_for('static', filename='img/icon-clear.png') }}"
+            alt=""
+          />
+        </button>
+      </div>
+      <p
+        id="directory-search-status"
+        class="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
     </div>
-    <p
-      id="directory-search-status"
-      class="visually-hidden"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-    ></p>
   </div>
 
   {% if directory_verified_tab_enabled %}

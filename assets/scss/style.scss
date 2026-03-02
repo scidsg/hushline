@@ -128,6 +128,7 @@
     color: white;
   }
 
+  .directory-sticky-shell,
   .directory-search,
   .directory-search.is-sticky {
     background-color: white;
@@ -142,6 +143,7 @@
     color: #fff;
   }
 
+  .directory-sticky-shell,
   .directory-tabs,
   .settings-tabs,
   .inbox-tabs-nav {
@@ -647,6 +649,7 @@
     filter: brightness(1.5);
   }
 
+  .directory-sticky-shell,
   .directory-search,
   .directory-search.is-sticky {
     background-color: var(--color-dark-bg-alt);
@@ -656,6 +659,7 @@
     border-bottom: var(--border-dark-1);
   }
 
+  .directory-sticky-shell,
   .directory-tabs,
   .settings-tabs,
   .inbox-tabs-nav {
@@ -2415,13 +2419,27 @@ textarea#bio {
   align-items: center;
 }
 
+.directory-sticky-shell {
+  width: calc(100% + (2 * var(--container-padding, 2rem)));
+  margin-left: calc(-1 * var(--container-padding, 2rem));
+  margin-right: calc(-1 * var(--container-padding, 2rem));
+  box-sizing: border-box;
+  position: sticky;
+  top: var(--directory-sticky-top, calc(65px + env(safe-area-inset-top)));
+  z-index: 10;
+  margin-top: 0.25rem;
+}
+
+.directory-sticky-shell > .directory-tabs,
+.directory-sticky-shell > .directory-search {
+  padding-left: var(--container-padding, 2rem);
+  padding-right: var(--container-padding, 2rem);
+  box-sizing: border-box;
+}
+
 .directory-tabs {
   display: flex;
   align-items: center;
-  position: sticky;
-  top: calc(65px + env(safe-area-inset-top));
-  z-index: 10;
-  margin-top: 0.25rem;
 }
 
 .directory-tabs .tab-list {
@@ -2430,32 +2448,12 @@ textarea#bio {
 }
 
 .directory-search {
-  position: sticky;
-  top: var(--directory-search-top, calc(65px + env(safe-area-inset-top)));
-  z-index: 9;
   margin-top: 0;
-  padding-top: 1rem;
-  position: sticky;
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
 
-.directory-tabs.is-sticky {
-  width: calc(100% + (2 * var(--container-padding, 2rem)));
-  margin-left: calc(-1 * var(--container-padding, 2rem));
-  margin-right: calc(-1 * var(--container-padding, 2rem));
-  padding-left: var(--container-padding, 2rem);
-  padding-right: var(--container-padding, 2rem);
-  box-sizing: border-box;
-}
-
 .directory-search.is-sticky {
-  width: calc(100% + (2 * var(--container-padding, 2rem)));
-  margin-left: calc(-1 * var(--container-padding, 2rem));
-  margin-right: calc(-1 * var(--container-padding, 2rem));
-  padding-left: var(--container-padding, 2rem);
-  padding-right: var(--container-padding, 2rem);
-  box-sizing: border-box;
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
@@ -2464,12 +2462,8 @@ body.directory-page .directory-search #searchInput {
   margin-top: 0;
 }
 
-.banner+header+main .directory-tabs {
-  top: calc(105px + env(safe-area-inset-top));
-}
-
-.banner+header+main .directory-search {
-  top: var(--directory-search-top, calc(105px + env(safe-area-inset-top)));
+.banner+header+main .directory-sticky-shell {
+  top: var(--directory-sticky-top, calc(105px + env(safe-area-inset-top)));
 }
 
 
@@ -2695,23 +2689,6 @@ input#captcha_answer {
     --container-padding: 1.25rem;
     min-width: initial;
     padding: 2rem var(--container-padding);
-  }
-
-  .directory-tabs.is-sticky {
-    width: calc(100% + 2.5rem);
-    margin-left: -1.25rem;
-    margin-right: -1.25rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-  }
-
-  .directory-search.is-sticky {
-    width: calc(100% + 2.5rem);
-    margin-left: -1.25rem;
-    margin-right: -1.25rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-    padding: 1rem 1.25rem;
   }
 
   .emptyState {
@@ -4566,15 +4543,6 @@ button .badge {
 }
 
 @media (max-width: 395px) {
-  /* Stop the sticky container from being wider than the viewport */
-  .directory-tabs.is-sticky {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
   /* Keep your "fill leftover space" behavior */
   .directory-tabs .tab-list li {
     flex: 1 0 auto;      /* grow, no shrink */

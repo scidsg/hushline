@@ -53,6 +53,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
+    assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
@@ -66,7 +67,19 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     )
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
+    assert ".directory-sticky-shell" in scss
     assert ".visually-hidden" in scss
+
+
+def test_directory_sticky_active_tab_scroll_to_top_hook_exists() -> None:
+    directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+
+    assert 'clickedTab.classList.contains("active")' in directory_verified_js
+    assert 'directoryTabs.classList.contains("is-sticky")' in directory_verified_js
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in directory_verified_js
+    assert 'window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });' in (
+        directory_verified_js
+    )
 
 
 def test_inbox_sticky_nav_hooks_exist() -> None:
