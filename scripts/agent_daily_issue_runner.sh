@@ -912,11 +912,13 @@ Requirements:
 2) Add or update tests for behavior changes.
 3) Focus on implementation and tests only; this runner runs the full local CI-equivalent suite before opening a PR (lint, tests, dependency audits, workflow security, W3C, Lighthouse).
 4) Keep security, privacy, and E2EE protections intact.
-5) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
-6) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
-7) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
-8) Do not include meta-compliance statements like "per your constraints" in your final summary.
-9) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
+5) Avoid local validation unless it is necessary to make progress; the runner will execute the full validation suite after your implementation.
+6) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
+7) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
+8) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this implementation loop; leave runtime refresh and validation to the runner.
+9) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+10) Do not include meta-compliance statements like "per your constraints" in your final summary.
+11) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
 EOF2
   } > "$PROMPT_FILE"
 }
@@ -951,10 +953,12 @@ Requirements:
 2) Keep diffs minimal and focused.
 3) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
-6) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
-7) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
-8) Do not include meta-compliance statements like "per your constraints" in your final summary.
+5) Avoid local validation unless it is necessary to make progress; the runner will rerun the full validation suite after your changes.
+6) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
+7) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
+8) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this fix loop; leave runtime refresh and validation to the runner.
+9) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
+10) Do not include meta-compliance statements like "per your constraints" in your final summary.
 EOF2
   } > "$PROMPT_FILE"
 }
