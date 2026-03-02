@@ -60,6 +60,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
 15. Include runner log path in PR context and use the narrative + structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
 16. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 17. Return to `main` on exit (explicit checkout + cleanup trap fallback).
+    - Exit cleanup force-resets the repo to `origin/main` and removes untracked files so interrupted runs do not leave bot work on `main`.
 
 ## ASCII Workflow (Current)
 
