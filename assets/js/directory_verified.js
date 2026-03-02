@@ -306,7 +306,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", function (e) {
-      window.activateTab(e.currentTarget);
+      const clickedTab = e.currentTarget;
+      const directoryTabs = document.querySelector(".directory-tabs");
+      const isStickyActiveTabClick =
+        clickedTab.classList.contains("active") &&
+        directoryTabs &&
+        directoryTabs.classList.contains("is-sticky");
+
+      if (isStickyActiveTabClick) {
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches;
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+        return;
+      }
+
+      window.activateTab(clickedTab);
     });
     tab.addEventListener("keydown", function (event) {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {

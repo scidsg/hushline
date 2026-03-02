@@ -69,6 +69,17 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert ".visually-hidden" in scss
 
 
+def test_directory_sticky_active_tab_scroll_to_top_hook_exists() -> None:
+    directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+
+    assert 'clickedTab.classList.contains("active")' in directory_verified_js
+    assert 'directoryTabs.classList.contains("is-sticky")' in directory_verified_js
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in directory_verified_js
+    assert 'window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });' in (
+        directory_verified_js
+    )
+
+
 def test_inbox_sticky_nav_hooks_exist() -> None:
     inbox_template = (ROOT / "hushline/templates/inbox.html").read_text(encoding="utf-8")
     inbox_js = (ROOT / "assets/js/inbox.js").read_text(encoding="utf-8")
