@@ -64,6 +64,15 @@ cleanup() {
   if [[ -d "$REPO_DIR/.git" ]]; then
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
+      return
+    fi
+    if ! git -C "$REPO_DIR" reset --hard "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+      if ! git -C "$REPO_DIR" reset --hard "$BASE_BRANCH" >/dev/null 2>&1; then
+        echo "Warning: failed to reset $BASE_BRANCH during cleanup." >&2
+      fi
+    fi
+    if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
+      echo "Warning: failed to remove untracked files during cleanup." >&2
     fi
   fi
 }
