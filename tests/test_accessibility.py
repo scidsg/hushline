@@ -36,7 +36,11 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert badge.get_text(strip=True) == "🤖 Automated"
 
     # Button label text excluding the badge
-    label_text = public_records_tab.get_text(" ", strip=True).replace(badge.get_text(" ", strip=True), "").strip()
+    label_text = (
+        public_records_tab.get_text(" ", strip=True)
+        .replace(badge.get_text(" ", strip=True), "")
+        .strip()
+    )
     assert label_text == "Law Firms"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
