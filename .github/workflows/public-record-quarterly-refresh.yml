@@ -22,7 +22,7 @@ jobs:
 
       - name: Refresh public-record listings
         run: |
-          REFRESH_ARGS="--summary-output /tmp/pr-refresh.md --allow-link-failures"
+          REFRESH_ARGS="--summary-output /tmp/pr-refresh.md --drop-failing-records"
           make refresh-public-record-listings \
             REFRESH_PUBLIC_RECORD_ARGS="$REFRESH_ARGS"
 
