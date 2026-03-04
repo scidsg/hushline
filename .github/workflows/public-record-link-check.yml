@@ -12,9 +12,12 @@ on:
       - main
     paths:
       - "hushline/data/public_record_law_firms.json"
+      - "hushline/public_record_refresh.py"
+      - "scripts/refresh_public_record_law_firms.py"
       - "tests/test_directory.py"
       - "Makefile"
       - ".github/workflows/public-record-link-check.yml"
+      - ".github/workflows/public-record-quarterly-refresh.yml"
 
 jobs:
   public-record-links:

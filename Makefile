@@ -8,6 +8,7 @@ endif
 PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
+REFRESH_PUBLIC_RECORD_ARGS ?=
 
 .PHONY: help
 help: ## Print the help message
@@ -96,6 +97,10 @@ test: ## Run the test suite
 .PHONY: test-public-record-links
 test-public-record-links: ## Validate live public-record external links
 	$(CMD) poetry run pytest -vv tests/test_directory.py -k public_record_external_links_resolve
+
+.PHONY: refresh-public-record-listings
+refresh-public-record-listings: ## Refresh public-record listing artifact deterministically
+	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py $(REFRESH_PUBLIC_RECORD_ARGS)
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
