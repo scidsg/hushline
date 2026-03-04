@@ -9,6 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_TARGETS,
+    US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
     PublicRecordRefreshError,
     build_requests_link_checker,
@@ -173,6 +174,47 @@ def _serialized_rows(rows: Sequence[Mapping[str, object]]) -> str:
     return json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
 
 
+def _apply_us_state_source_strategy(
+    rows: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    normalized_rows: list[dict[str, object]] = []
+    for raw_row in rows:
+        row = dict(raw_row)
+        raw_state = row.get("state")
+        if not isinstance(raw_state, str):
+            normalized_rows.append(row)
+            continue
+
+        state_code = raw_state.strip().upper()
+        state_source = US_STATE_AUTHORITATIVE_SOURCES.get(state_code)
+        if state_source is None:
+            normalized_rows.append(row)
+            continue
+
+        row["source_label"] = state_source["source_label"]
+
+        if state_code == "CA":
+            source_url = row.get("source_url")
+            if not isinstance(source_url, str) or "calbar.ca.gov" not in source_url.casefold():
+                row["source_url"] = state_source["source_url"]
+        else:
+            row["source_url"] = state_source["source_url"]
+
+        description = row.get("description")
+        if (not isinstance(description, str) or "State Bar of California" in description) and (
+            state_code != "CA"
+        ):
+            row["description"] = f"Law firm listing sourced from {state_source['source_label']}."
+        elif not isinstance(description, str) and state_code == "CA":
+            row["description"] = (
+                "Law firm listing sourced from State Bar of California attorney records."
+            )
+
+        normalized_rows.append(row)
+
+    return normalized_rows
+
+
 def _append_us_state_coverage_summary(
     summary: str,
     *,
@@ -216,7 +258,7 @@ def main() -> int:
             max_attempts=args.max_attempts,
         )
 
-    source_rows = _load_rows(args.input)
+    source_rows = _apply_us_state_source_strategy(_load_rows(args.input))
     if args.discover_chambers_ranked_firms:
         raise PublicRecordRefreshError(
             "--discover-chambers-ranked-firms is disabled. "

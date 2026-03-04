@@ -7,6 +7,7 @@ import pytest
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_STATE_MAP,
+    US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
     LinkCheckResult,
     PublicRecordRefreshError,
@@ -26,6 +27,19 @@ def _row(  # noqa: PLR0913
     source_url: str | None = None,
 ) -> dict[str, object]:
     source_slug = re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")
+    state_code = state.strip().upper()
+    state_source = US_STATE_AUTHORITATIVE_SOURCES.get(state_code)
+    default_source_label = (
+        state_source["source_label"]
+        if state_source is not None
+        else "Authoritative public record source"
+    )
+    default_source_url = (
+        state_source["source_url"]
+        if state_source is not None
+        else f"https://records.example/{source_slug}"
+    )
+
     row: dict[str, object] = {
         "name": name,
         "website": website,
@@ -33,8 +47,8 @@ def _row(  # noqa: PLR0913
         "city": "New York",
         "state": state,
         "practice_tags": ["Whistleblowing", "Investigations"],
-        "source_label": "Authoritative public record source",
-        "source_url": source_url or f"https://records.example/{source_slug}",
+        "source_label": default_source_label,
+        "source_url": source_url or default_source_url,
     }
     if id_value is not None:
         row["id"] = id_value
@@ -101,6 +115,7 @@ def test_default_us_region_state_map_includes_all_50_states() -> None:
 
     assert expected == US_STATE_CODES
     assert DEFAULT_REGION_STATE_MAP["US"] == expected
+    assert set(US_STATE_AUTHORITATIVE_SOURCES) == set(expected)
 
 
 def test_refresh_public_record_rows_is_deterministic_and_schema_compatible() -> None:
@@ -340,7 +355,7 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     assert len(flagged.rows) == 2
     assert len(flagged.link_failures) == 1
     assert flagged.dropped_record_ids == []
-    assert flagged.checked_url_count == 4
+    assert flagged.checked_url_count == 3
 
     dropped = refresh_public_record_rows(
         rows,
@@ -352,7 +367,7 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     )
     assert [row["id"] for row in dropped.rows] == ["seed-healthy"]
     assert dropped.dropped_record_ids == ["seed-broken"]
-    assert dropped.checked_url_count == 4
+    assert dropped.checked_url_count == 3
     assert checked_urls
 
 
@@ -391,6 +406,50 @@ def test_refresh_public_record_rows_rejects_source_matching_website() -> None:
     ]
 
     with pytest.raises(PublicRecordRefreshError, match="source_url matching website"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_missing_us_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-missing-source-url",
+            slug="public-record~missing-source-url",
+            name="Missing Source URL Firm",
+            state="NY",
+            website="https://missing-source-url.example/",
+            source_url="https://iapps.courts.state.ny.us/attorneyservices/search?0",
+        )
+    ]
+    rows[0]["source_url"] = None
+
+    with pytest.raises(PublicRecordRefreshError, match="is missing source_url for U.S. state"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_cross_state_source_policy() -> None:
+    rows = [
+        _row(
+            id_value="seed-cross-state-source",
+            slug="public-record~cross-state-source",
+            name="Cross State Source Firm",
+            state="NY",
+            website="https://cross-state-source.example/",
+            source_url="https://apps.calbar.ca.gov/attorney/Licensee/Detail/350631",
+        )
+    ]
+    rows[0]["source_label"] = "State Bar of California attorney profile"
+
+    with pytest.raises(PublicRecordRefreshError, match="state 'NY' requires"):
         refresh_public_record_rows(
             rows,
             selected_regions=["US"],

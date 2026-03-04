@@ -1,4 +1,5 @@
 import time
+from urllib.parse import urlparse
 
 import pytest
 import requests
@@ -8,7 +9,11 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import PublicRecordListing, User, get_public_record_listings
-from hushline.public_record_refresh import DEFAULT_REGION_STATE_MAP, US_STATE_CODES
+from hushline.public_record_refresh import (
+    DEFAULT_REGION_STATE_MAP,
+    US_STATE_AUTHORITATIVE_SOURCES,
+    US_STATE_CODES,
+)
 
 
 def _first_public_record_listing_or_skip() -> PublicRecordListing:
@@ -183,6 +188,19 @@ def test_public_record_seed_regions_have_coverage() -> None:
 
     assert all(listing.source_url for listing in listings)
     assert all("chambers.com" not in (listing.source_url or "") for listing in listings)
+
+    us_listings = [listing for listing in listings if listing.state in US_STATE_CODES]
+    for listing in us_listings:
+        source_rule = US_STATE_AUTHORITATIVE_SOURCES[listing.state]
+        assert listing.source_label == source_rule["source_label"]
+        assert listing.source_url is not None
+        hostname = urlparse(listing.source_url).hostname
+        assert hostname is not None
+        normalized_host = hostname.casefold()
+        assert any(
+            normalized_host == domain or normalized_host.endswith(f".{domain}")
+            for domain in source_rule["allowed_domains"]
+        )
 
 
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:

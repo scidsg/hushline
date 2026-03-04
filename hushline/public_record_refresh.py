@@ -5,6 +5,7 @@ import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence, TypedDict
+from urllib.parse import urlparse
 
 import requests
 from unidecode import unidecode
@@ -108,6 +109,266 @@ US_STATE_CODES: frozenset[str] = frozenset(
         "WY",
     },
 )
+
+
+class USStateAuthoritativeSource(TypedDict):
+    source_label: str
+    source_url: str
+    allowed_domains: frozenset[str]
+
+
+US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
+    "AL": {
+        "source_label": "Alabama State Bar public directory",
+        "source_url": "https://www.alabar.org/",
+        "allowed_domains": frozenset({"alabar.org"}),
+    },
+    "AK": {
+        "source_label": "Alaska Bar Association public directory",
+        "source_url": "https://alaskabar.org/",
+        "allowed_domains": frozenset({"alaskabar.org"}),
+    },
+    "AZ": {
+        "source_label": "State Bar of Arizona public directory",
+        "source_url": "https://www.azbar.org/for-the-public/public-service-center/find-a-lawyer/",
+        "allowed_domains": frozenset({"azbar.org"}),
+    },
+    "AR": {
+        "source_label": "Arkansas Bar Association public directory",
+        "source_url": "https://www.arkbar.com/",
+        "allowed_domains": frozenset({"arkbar.com"}),
+    },
+    "CA": {
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/LicenseeSearch/QuickSearch",
+        "allowed_domains": frozenset({"calbar.ca.gov"}),
+    },
+    "CO": {
+        "source_label": "Colorado Bar Association public directory",
+        "source_url": "https://www.cobar.org/",
+        "allowed_domains": frozenset({"cobar.org"}),
+    },
+    "CT": {
+        "source_label": "Connecticut Judicial Branch attorney directory",
+        "source_url": "https://www.jud.ct.gov/attorneyfirminquiry/",
+        "allowed_domains": frozenset({"jud.ct.gov"}),
+    },
+    "DE": {
+        "source_label": "Delaware Courts attorney regulation records",
+        "source_url": "https://courts.delaware.gov/odc/",
+        "allowed_domains": frozenset({"courts.delaware.gov"}),
+    },
+    "FL": {
+        "source_label": "The Florida Bar public directory",
+        "source_url": "https://www.floridabar.org/directories/find-mbr/",
+        "allowed_domains": frozenset({"floridabar.org"}),
+    },
+    "GA": {
+        "source_label": "State Bar of Georgia public directory",
+        "source_url": "https://www.gabar.org/membersearch.cfm",
+        "allowed_domains": frozenset({"gabar.org"}),
+    },
+    "HI": {
+        "source_label": "Hawaii State Bar Association public directory",
+        "source_url": "https://hsba.org/HSBA_2020/Public/Lawyer_Search/HSBA_2020/Public/Lawyer_Search/Lawyer_Search.aspx",
+        "allowed_domains": frozenset({"hsba.org"}),
+    },
+    "ID": {
+        "source_label": "Idaho State Bar public directory",
+        "source_url": "https://isb.idaho.gov/lawyer-referral-service/",
+        "allowed_domains": frozenset({"isb.idaho.gov"}),
+    },
+    "IL": {
+        "source_label": "Illinois ARDC attorney registration records",
+        "source_url": "https://www.iardc.org/Lawyer/Search",
+        "allowed_domains": frozenset({"iardc.org"}),
+    },
+    "IN": {
+        "source_label": "Indiana State Bar public directory",
+        "source_url": "https://www.inbar.org/page/for-the-public",
+        "allowed_domains": frozenset({"inbar.org"}),
+    },
+    "IA": {
+        "source_label": "Iowa State Bar Association public directory",
+        "source_url": "https://www.iowabar.org/?pg=Find-A-LawyerHP",
+        "allowed_domains": frozenset({"iowabar.org"}),
+    },
+    "KS": {
+        "source_label": "Kansas Judicial Branch attorney records",
+        "source_url": "https://www.kscourts.gov/Attorneys/Attorney-Registration",
+        "allowed_domains": frozenset({"kscourts.gov"}),
+    },
+    "KY": {
+        "source_label": "Kentucky Bar Association public directory",
+        "source_url": "https://www.kybar.org/search/custom.asp?id=2947",
+        "allowed_domains": frozenset({"kybar.org"}),
+    },
+    "LA": {
+        "source_label": "Louisiana Attorney Disciplinary Board attorney records",
+        "source_url": "https://www.ladb.org/AttorneySearch",
+        "allowed_domains": frozenset({"ladb.org"}),
+    },
+    "ME": {
+        "source_label": "Maine Board of Overseers of the Bar public directory",
+        "source_url": "https://www.mainebar.org/member-directory/",
+        "allowed_domains": frozenset({"mainebar.org"}),
+    },
+    "MD": {
+        "source_label": "Maryland Courts attorney discipline records",
+        "source_url": "https://www.courts.state.md.us/attygrievance/sanctions",
+        "allowed_domains": frozenset({"courts.state.md.us"}),
+    },
+    "MA": {
+        "source_label": "Massachusetts BBO attorney records",
+        "source_url": "https://www.massbbo.org/s/attorney-search",
+        "allowed_domains": frozenset({"massbbo.org"}),
+    },
+    "MI": {
+        "source_label": "State Bar of Michigan public directory",
+        "source_url": "https://www.michbar.org/memberdirectory",
+        "allowed_domains": frozenset({"michbar.org"}),
+    },
+    "MN": {
+        "source_label": "Minnesota Courts attorney records",
+        "source_url": "https://lprb.mncourts.gov/LawyerSearch/Pages/default.aspx",
+        "allowed_domains": frozenset({"mncourts.gov"}),
+    },
+    "MS": {
+        "source_label": "The Mississippi Bar public directory",
+        "source_url": "https://www.msbar.org/for-the-public/find-an-attorney/",
+        "allowed_domains": frozenset({"msbar.org"}),
+    },
+    "MO": {
+        "source_label": "The Missouri Bar public directory",
+        "source_url": "https://mobar.org/site/content/Public/Find_a_Lawyer.aspx",
+        "allowed_domains": frozenset({"mobar.org"}),
+    },
+    "MT": {
+        "source_label": "State Bar of Montana public directory",
+        "source_url": "https://www.montanabar.org/members/member_directory.asp",
+        "allowed_domains": frozenset({"montanabar.org"}),
+    },
+    "NE": {
+        "source_label": "Nebraska Judicial Branch attorney directory",
+        "source_url": "https://supremecourt.nebraska.gov/attorneys/member-directory",
+        "allowed_domains": frozenset({"supremecourt.nebraska.gov"}),
+    },
+    "NV": {
+        "source_label": "State Bar of Nevada public directory",
+        "source_url": "https://nvbar.org/for-the-public/find-a-lawyer/",
+        "allowed_domains": frozenset({"nvbar.org"}),
+    },
+    "NH": {
+        "source_label": "New Hampshire Bar Association public directory",
+        "source_url": "https://www.nhbar.org/find-a-lawyer",
+        "allowed_domains": frozenset({"nhbar.org"}),
+    },
+    "NJ": {
+        "source_label": "New Jersey Courts attorney directory",
+        "source_url": "https://portal.njcourts.gov/webe4/AttorneySearch/",
+        "allowed_domains": frozenset({"njcourts.gov"}),
+    },
+    "NM": {
+        "source_label": "State Bar of New Mexico public directory",
+        "source_url": "https://www.sbnm.org/cvweb/cgi-bin/utilities.dll/openpage?wrp=membersearch.htm",
+        "allowed_domains": frozenset({"sbnm.org"}),
+    },
+    "NY": {
+        "source_label": "New York Courts attorney directory",
+        "source_url": "https://iapps.courts.state.ny.us/attorneyservices/search?0",
+        "allowed_domains": frozenset({"courts.state.ny.us"}),
+    },
+    "NC": {
+        "source_label": "North Carolina State Bar public directory",
+        "source_url": "https://portal.ncbar.gov/verification/search.aspx",
+        "allowed_domains": frozenset({"ncbar.gov"}),
+    },
+    "ND": {
+        "source_label": "State Bar Association of North Dakota public directory",
+        "source_url": "https://www.sband.org/page/LawyerSearch",
+        "allowed_domains": frozenset({"sband.org"}),
+    },
+    "OH": {
+        "source_label": "Supreme Court of Ohio attorney directory",
+        "source_url": "https://www.supremecourt.ohio.gov/AttorneySearch/#/home",
+        "allowed_domains": frozenset({"supremecourt.ohio.gov"}),
+    },
+    "OK": {
+        "source_label": "Oklahoma Bar Association public directory",
+        "source_url": "https://ams.okbar.org/eweb/startpage.aspx?site=FAL",
+        "allowed_domains": frozenset({"okbar.org"}),
+    },
+    "OR": {
+        "source_label": "Oregon State Bar public directory",
+        "source_url": "https://www.osbar.org/members/membersearch_display.asp",
+        "allowed_domains": frozenset({"osbar.org"}),
+    },
+    "PA": {
+        "source_label": "Pennsylvania Disciplinary Board attorney directory",
+        "source_url": "https://www.padisciplinaryboard.org/for-the-public/find-attorney",
+        "allowed_domains": frozenset({"padisciplinaryboard.org"}),
+    },
+    "RI": {
+        "source_label": "Rhode Island Judiciary attorney records",
+        "source_url": "https://www.courts.ri.gov/Attorneys/Pages/default.aspx",
+        "allowed_domains": frozenset({"courts.ri.gov"}),
+    },
+    "SC": {
+        "source_label": "South Carolina Bar public directory",
+        "source_url": "https://www.scbar.org/public/get-legal-help/find-lawyer-or-mediator/find-a-lawyer/",
+        "allowed_domains": frozenset({"scbar.org"}),
+    },
+    "SD": {
+        "source_label": "State Bar of South Dakota public directory",
+        "source_url": "https://www.statebarofsouthdakota.com/",
+        "allowed_domains": frozenset({"statebarofsouthdakota.com"}),
+    },
+    "TN": {
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/for-the-public/search-attorneys",
+        "allowed_domains": frozenset({"tbpr.org"}),
+    },
+    "TX": {
+        "source_label": "State Bar of Texas public directory",
+        "source_url": "https://www.texasbar.com/AM/Template.cfm?Section=Find_A_Lawyer",
+        "allowed_domains": frozenset({"texasbar.com"}),
+    },
+    "UT": {
+        "source_label": "Utah State Bar public directory",
+        "source_url": "https://www.utahbar.org/lawyer-referral/",
+        "allowed_domains": frozenset({"utahbar.org"}),
+    },
+    "VT": {
+        "source_label": "Vermont Bar Association public directory",
+        "source_url": "https://www.vtbar.org/find-a-lawyer/",
+        "allowed_domains": frozenset({"vtbar.org"}),
+    },
+    "VA": {
+        "source_label": "Virginia State Bar public directory",
+        "source_url": "https://www.vsb.org/Site/Site/legal-help/vlrs.aspx",
+        "allowed_domains": frozenset({"vsb.org"}),
+    },
+    "WA": {
+        "source_label": "Washington State Bar Association legal directory",
+        "source_url": "https://www.mywsba.org/PersonifyEbusiness/LegalDirectory.aspx",
+        "allowed_domains": frozenset({"mywsba.org", "wsba.org"}),
+    },
+    "WV": {
+        "source_label": "West Virginia State Bar public directory",
+        "source_url": "https://wvbar.org/public-resources/find-a-lawyer/",
+        "allowed_domains": frozenset({"wvbar.org"}),
+    },
+    "WI": {
+        "source_label": "State Bar of Wisconsin public directory",
+        "source_url": "https://www.wisbar.org/forPublic/INeedaLawyer/Pages/LawyerSearch.aspx",
+        "allowed_domains": frozenset({"wisbar.org"}),
+    },
+    "WY": {
+        "source_label": "Wyoming State Bar public directory",
+        "source_url": "https://www.wyomingbar.org/for-the-public/hire-an-attorney/",
+        "allowed_domains": frozenset({"wyomingbar.org"}),
+    },
+}
 
 DEFAULT_REGION_STATE_MAP: dict[str, frozenset[str]] = {
     "US": US_STATE_CODES,
@@ -826,6 +1087,7 @@ def _normalize_row(
     )
     _validate_authoritative_source(
         name=name,
+        state=state,
         website=website,
         source_label=source_label,
         source_url=source_url,
@@ -868,6 +1130,7 @@ def _canonicalize_source_url(
 def _validate_authoritative_source(
     *,
     name: str,
+    state: str,
     website: str,
     source_label: str,
     source_url: str | None,
@@ -885,6 +1148,10 @@ def _validate_authoritative_source(
         )
 
     if source_url is None:
+        if state.strip().upper() in US_STATE_CODES:
+            raise PublicRecordRefreshError(
+                f"Listing '{name}' is missing source_url for U.S. state '{state.strip().upper()}'.",
+            )
         return
 
     if _is_chambers_source_url(source_url):
@@ -904,9 +1171,66 @@ def _validate_authoritative_source(
             "source_url must reference the external source of record."
         )
 
+    _validate_us_state_source_policy(
+        name=name,
+        state=state,
+        source_label=source_label,
+        source_url=source_url,
+    )
+
+
+def _validate_us_state_source_policy(
+    *,
+    name: str,
+    state: str,
+    source_label: str,
+    source_url: str,
+) -> None:
+    state_code = state.strip().upper()
+    if state_code not in US_STATE_CODES:
+        return
+
+    source_rule = US_STATE_AUTHORITATIVE_SOURCES.get(state_code)
+    if source_rule is None:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' is missing an authoritative source rule for state '{state_code}'.",
+        )
+
+    expected_label = source_rule["source_label"]
+    if source_label != expected_label:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' has source_label '{source_label}' but "
+            f"state '{state_code}' requires '{expected_label}'.",
+        )
+
+    source_host = _url_host(source_url)
+    if source_host is None:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' has an invalid source_url hostname: {source_url}",
+        )
+
+    if not _host_matches_any_domain(source_host, source_rule["allowed_domains"]):
+        allowed_domains = ", ".join(sorted(source_rule["allowed_domains"]))
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' source_url host '{source_host}' is not allowed for "
+            f"state '{state_code}'. Allowed domains: {allowed_domains}",
+        )
+
 
 def _normalize_url_for_comparison(value: str) -> str:
     return _normalize_string(value).casefold().rstrip("/")
+
+
+def _url_host(url: str) -> str | None:
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if hostname is None:
+        return None
+    return hostname.casefold()
+
+
+def _host_matches_any_domain(host: str, allowed_domains: frozenset[str]) -> bool:
+    return any(host == domain or host.endswith(f".{domain}") for domain in allowed_domains)
 
 
 def _is_chambers_search_url(source_url: str) -> bool:
