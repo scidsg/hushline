@@ -272,22 +272,6 @@
     "source_url": "https://www.cyrilshroff.com/"
   },
   {
-    "id": "seed-de-brauw-blackstone-westbroek",
-    "slug": "public-record~de-brauw-blackstone-westbroek",
-    "name": "De Brauw Blackstone Westbroek",
-    "website": "https://www.debrauw.com/",
-    "description": "A Dutch firm advising on whistleblowing, employment, investigations, and corporate governance.",
-    "city": "Amsterdam",
-    "state": "Netherlands",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Governance"
-    ],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.debrauw.com/"
-  },
-  {
     "id": "seed-drew-napier",
     "slug": "public-record~drew-napier",
     "name": "Drew & Napier LLC",
