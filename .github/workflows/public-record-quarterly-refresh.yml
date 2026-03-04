@@ -1,16 +1,16 @@
-name: Quarterly Public Record Refresh
+name: Weekly Public Record Refresh
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 14 1 1,4,7,10 *"
+    - cron: "0 14 * * 1"
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: public-record-quarterly-refresh
+  group: public-record-weekly-refresh
   cancel-in-progress: false
 
 jobs:
@@ -51,12 +51,12 @@ jobs:
       - name: Create or update refresh PR
         uses: peter-evans/create-pull-request@v7
         with:
-          branch: bot/public-record-quarterly-refresh
+          branch: bot/public-record-weekly-refresh
           delete-branch: true
           commit-message: "Refresh public-record law firm listings"
           title: "Refresh public-record law firm listings"
           body: |
-            Automated quarterly refresh of `hushline/data/public_record_law_firms.json`.
+            Automated weekly refresh of `hushline/data/public_record_law_firms.json`.
 
             ${{ steps.summary.outputs.body }}
           add-paths: |
