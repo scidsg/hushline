@@ -9,7 +9,7 @@
     "state": "CA",
     "practice_tags": ["Litigation", "Investigations", "Compliance"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/7/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/a-o-shearman-usa-5:7"
   },
   {
     "id": "seed-a1-advokater",
@@ -21,7 +21,7 @@
     "state": "Sweden",
     "practice_tags": ["Disputes"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/225472/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/a1-advokater-europe-7:225472"
   },
   {
     "id": "seed-aarambh-legal",
@@ -33,7 +33,7 @@
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/23391861/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/aarambh-legal-asia-pacific-8:23391861"
   },
   {
     "id": "seed-abdon-pedrajas",
@@ -45,7 +45,7 @@
     "state": "Spain",
     "practice_tags": ["Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/221699/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/abdon-pedrajas-europe-7:221699"
   },
   {
     "id": "seed-abe-ikubo-katayama",
@@ -57,7 +57,7 @@
     "state": "Japan",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/108247/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/abe-ikubo-katayama-asia-pacific-8:108247"
   },
   {
     "id": "seed-abell-eskew-landau",
@@ -69,7 +69,7 @@
     "state": "NY",
     "practice_tags": ["Investigations", "Litigation"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/23254203/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/abell-eskew-landau-usa-5:23254203"
   },
   {
     "id": "seed-abg-intellectual-property",
@@ -81,7 +81,7 @@
     "state": "Spain",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/342965/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/abg-intellectual-property-europe-7:342965"
   },
   {
     "id": "seed-abreu-advogados",
@@ -93,7 +93,7 @@
     "state": "Portugal",
     "practice_tags": ["Disputes", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/4190/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/abreu-advogados-europe-7:4190"
   },
   {
     "id": "seed-abril-abogados",
@@ -105,7 +105,7 @@
     "state": "Spain",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/130140/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/abril-abogados-europe-7:130140"
   },
   {
     "id": "seed-ac-r",
@@ -117,7 +117,7 @@
     "state": "Netherlands",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/22605876/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/ac-r-europe-7:22605876"
   },
   {
     "id": "seed-acquis-eu-law-policy",
@@ -129,7 +129,7 @@
     "state": "Belgium",
     "practice_tags": ["Regulatory"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/23282798/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/acquis-eu-law-policy-europe-7:23282798"
   },
   {
     "id": "seed-across-legal",
@@ -141,7 +141,7 @@
     "state": "Spain",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/22618962/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/across-legal-europe-7:22618962"
   },
   {
     "id": "seed-act-legal",
@@ -153,7 +153,7 @@
     "state": "Germany",
     "practice_tags": ["Disputes"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/2051/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/act-legal-europe-7:2051"
   },
   {
     "id": "seed-adams-leclair-llp",
@@ -165,7 +165,7 @@
     "state": "NY",
     "practice_tags": ["Litigation"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/22806193/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/adams-leclair-llp-usa-5:22806193"
   },
   {
     "id": "seed-adams-reese",
@@ -177,7 +177,7 @@
     "state": "DC",
     "practice_tags": ["Disputes", "Regulatory", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/65472/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/adams-reese-usa-5:65472"
   },
   {
     "id": "seed-adastone",
@@ -189,7 +189,7 @@
     "state": "Belgium",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/23304898/profile-basics?groupId=7"
+    "source_url": "https://chambers.com/law-firm/adastone-europe-7:23304898"
   },
   {
     "id": "seed-addisons",
@@ -201,7 +201,7 @@
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/146679/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/addisons-asia-pacific-8:146679"
   },
   {
     "id": "seed-adler-stachenfeld-llp",
@@ -213,7 +213,7 @@
     "state": "NY",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/158849/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/adler-stachenfeld-llp-usa-5:158849"
   },
   {
     "id": "seed-agarwal-law-associates",
@@ -225,7 +225,7 @@
     "state": "India",
     "practice_tags": ["Disputes"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/146101/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/agarwal-law-associates-asia-pacific-8:146101"
   },
   {
     "id": "seed-akerman-llp",
@@ -237,7 +237,7 @@
     "state": "CA",
     "practice_tags": ["Disputes", "Employment", "Litigation"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/65304/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/akerman-llp-usa-5:65304"
   },
   {
     "id": "seed-akin",
@@ -249,7 +249,7 @@
     "state": "CA",
     "practice_tags": ["Employment", "Regulatory", "Litigation"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/3522/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/akin-usa-5:3522"
   },
   {
     "id": "seed-allen-gledhill",
@@ -273,7 +273,7 @@
     "state": "CA",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/65245/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/allen-matkins-usa-5:65245"
   },
   {
     "id": "seed-allens",
@@ -297,7 +297,7 @@
     "state": "CA",
     "practice_tags": ["Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/66593/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/allred-maroko-goldberg-usa-5:66593"
   },
   {
     "id": "seed-almt-legal-indian-advocates",
@@ -309,7 +309,7 @@
     "state": "India",
     "practice_tags": ["Disputes", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/2052/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/almt-legal-indian-advocates-asia-pacific-8:2052"
   },
   {
     "id": "seed-altacit-global",
@@ -321,7 +321,7 @@
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/161117/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/altacit-global-asia-pacific-8:161117"
   },
   {
     "id": "seed-altshuler-berzon-llp",
@@ -333,7 +333,7 @@
     "state": "CA",
     "practice_tags": ["Litigation"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/183412/profile-basics?groupId=5"
+    "source_url": "https://chambers.com/law-firm/altshuler-berzon-llp-usa-5:183412"
   },
   {
     "id": "seed-amica-law-llc",
@@ -345,7 +345,7 @@
     "state": "Singapore",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/146764/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/amica-law-llc-asia-pacific-8:146764"
   },
   {
     "id": "seed-ana-law-group",
@@ -357,7 +357,7 @@
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/22611043/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/ana-law-group-asia-pacific-8:22611043"
   },
   {
     "id": "seed-anand-and-anand-advocates",
@@ -369,7 +369,7 @@
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/3409/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/anand-and-anand-advocates-asia-pacific-8:3409"
   },
   {
     "id": "seed-anderson-mori-tomotsune",
@@ -393,7 +393,7 @@
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Chambers and Partners ranked law firm profile",
-    "source_url": "https://profiles-portal.chambers.com/api/organisations/22803613/profile-basics?groupId=8"
+    "source_url": "https://chambers.com/law-firm/anm-global-inc-asia-pacific-8:22803613"
   },
   {
     "id": "seed-arendt-medernach",

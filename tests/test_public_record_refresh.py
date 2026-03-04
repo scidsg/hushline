@@ -292,6 +292,31 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     assert checked_urls
 
 
+def test_refresh_public_record_rows_canonicalizes_chambers_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-cohen",
+            slug="public-record~cohen",
+            name="Cohen Milstein Sellers & Toll PLLC",
+            state="NY",
+            website="https://www.cohenmilstein.com/",
+            source_url=_profile_basics_url(67329, 5),
+        )
+    ]
+    rows[0]["source_label"] = "Chambers and Partners ranked law firm profile"
+
+    result = refresh_public_record_rows(
+        rows,
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"NY"})},
+        region_targets={"US": 1},
+    )
+
+    assert result.rows[0]["source_url"] == (
+        "https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329"
+    )
+
+
 def test_build_requests_link_checker_retries_then_succeeds() -> None:
     class _FakeResponse:
         def __init__(self, status_code: int) -> None:
@@ -441,7 +466,7 @@ def test_discover_chambers_public_record_rows_adds_new_us_law_firm() -> None:
     assert added["city"] == "Washington"
     assert added["state"] == "DC"
     assert added["source_url"] == (
-        "https://profiles-portal.chambers.com/api/organisations/67329/profile-basics?groupId=5"
+        "https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329"
     )
     assert "Investigations" in added["practice_tags"]
     assert all("/organisations/7/" not in url for url in session.requested_urls)

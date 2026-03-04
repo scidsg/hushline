@@ -18,9 +18,17 @@ CHAMBERS_PUBLICATION_GROUP_BY_REGION: dict[str, int] = {
 }
 
 CHAMBERS_SOURCE_LABEL = "Chambers and Partners ranked law firm profile"
+CHAMBERS_GROUP_SLUG_BY_ID: dict[int, str] = {
+    5: "usa",
+    7: "europe",
+    8: "asia-pacific",
+}
 
 _CHAMBERS_INDEX_URL_TEMPLATE = (
     "https://chamberssitemap.blob.core.windows.net/site-json/organisations/ranked/{group_id}"
+)
+_CHAMBERS_PUBLIC_PROFILE_URL_TEMPLATE = (
+    "https://chambers.com/law-firm/{slug_base}-{group_slug}-{group_id}:{organisation_id}"
 )
 _CHAMBERS_PROFILE_BASICS_URL_TEMPLATE = (
     "https://profiles-portal.chambers.com/api/organisations/{organisation_id}/profile-basics"
@@ -74,6 +82,10 @@ _DEFAULT_TIMEOUT_SECONDS = 15.0
 _DEFAULT_MAX_ATTEMPTS = 3
 _SLUG_SANITIZE_RE = re.compile(r"[^a-z0-9]+")
 _PUBLIC_RECORD_SLUG_PREFIX = "public-record~"
+_CHAMBERS_PROFILE_BASICS_SOURCE_URL_RE = re.compile(
+    r"^https?://profiles-portal\.chambers\.com/api/organisations/"
+    r"(?P<organisation_id>\d+)/profile-basics\?groupId=(?P<group_id>\d+)$",
+)
 
 _US_REGION_TO_STATE_CODE: dict[str, str] = {
     "california": "CA",
@@ -426,6 +438,14 @@ def discover_chambers_public_record_rows(  # noqa: PLR0913
                 group_id=entry.group_id,
                 timeout_seconds=timeout_seconds,
             )
+            source_url = (
+                _chambers_public_profile_url(
+                    name=entry.name,
+                    organisation_id=entry.organisation_id,
+                    group_id=entry.group_id,
+                )
+                or profile_url
+            )
 
             discovered_rows.append(
                 {
@@ -438,7 +458,7 @@ def discover_chambers_public_record_rows(  # noqa: PLR0913
                     "state": state,
                     "practice_tags": list(practice_tags),
                     "source_label": CHAMBERS_SOURCE_LABEL,
-                    "source_url": profile_url,
+                    "source_url": source_url,
                 }
             )
 
@@ -723,6 +743,7 @@ def _normalize_row(
 ) -> _NormalizedListing:
     name = _required_string(raw_row, "name")
     state = _required_string(raw_row, "state")
+    source_label = _required_string(raw_row, "source_label")
 
     listing_id = _optional_string(raw_row.get("id")) or f"seed-{_slug_base(name)}"
     slug = _optional_string(raw_row.get("slug")) or (
@@ -745,9 +766,67 @@ def _normalize_row(
         city=_required_string(raw_row, "city"),
         state=state,
         practice_tags=practice_tags,
-        source_label=_required_string(raw_row, "source_label"),
-        source_url=_optional_string(raw_row.get("source_url")),
+        source_label=source_label,
+        source_url=_canonicalize_source_url(
+            name=name,
+            source_label=source_label,
+            source_url=_optional_string(raw_row.get("source_url")),
+        ),
         region=region,
+    )
+
+
+def _canonicalize_source_url(
+    *,
+    name: str,
+    source_label: str,
+    source_url: str | None,
+) -> str | None:
+    if source_url is None:
+        return None
+    if source_label != CHAMBERS_SOURCE_LABEL:
+        return source_url
+    return (
+        _chambers_public_profile_url_from_source_url(
+            name=name,
+            source_url=source_url,
+        )
+        or source_url
+    )
+
+
+def _chambers_public_profile_url(
+    *,
+    name: str,
+    organisation_id: int,
+    group_id: int,
+) -> str | None:
+    group_slug = CHAMBERS_GROUP_SLUG_BY_ID.get(group_id)
+    if group_slug is None:
+        return None
+    slug_base = _slug_base(name)
+    return _CHAMBERS_PUBLIC_PROFILE_URL_TEMPLATE.format(
+        slug_base=slug_base,
+        group_slug=group_slug,
+        group_id=group_id,
+        organisation_id=organisation_id,
+    )
+
+
+def _chambers_public_profile_url_from_source_url(
+    *,
+    name: str,
+    source_url: str,
+) -> str | None:
+    match = _CHAMBERS_PROFILE_BASICS_SOURCE_URL_RE.match(source_url)
+    if match is None:
+        return None
+    organisation_id = int(match.group("organisation_id"))
+    group_id = int(match.group("group_id"))
+    return _chambers_public_profile_url(
+        name=name,
+        organisation_id=organisation_id,
+        group_id=group_id,
     )
 
 

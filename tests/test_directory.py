@@ -203,7 +203,10 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert "🤖 Automated" in page_text
     assert listing.description in page_text
     assert listing.website in response.text
-    assert "Source" not in page_text
+    assert "Source" in page_text
+    assert listing.source_url is not None
+    source_link = soup.find("a", href=listing.source_url)
+    assert source_link is not None
     assert "Practice Areas" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in page_text
