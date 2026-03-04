@@ -163,7 +163,7 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["source_label"] == listing.source_label
 
 
-def test_public_record_seed_regions_are_balanced() -> None:
+def test_public_record_seed_regions_have_coverage() -> None:
     listings = get_public_record_listings()
     us_states = {"DC", "NY", "PA", "CA", "MD", "WA", "MA"}
     eu_states = {
@@ -186,7 +186,9 @@ def test_public_record_seed_regions_are_balanced() -> None:
     apac = [listing for listing in listings if listing.state in apac_states]
 
     assert len(us) + len(eu) + len(apac) == len(listings)
-    assert max(len(us), len(eu), len(apac)) - min(len(us), len(eu), len(apac)) <= 1
+    assert us
+    assert eu
+    assert apac
     assert any(listing.name == "Whistleblower Partners LLP" for listing in us)
 
 

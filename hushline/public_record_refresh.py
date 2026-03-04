@@ -302,7 +302,7 @@ def _apply_region_targets(
             raise PublicRecordRefreshError(
                 f"Region {region} has {len(candidates)} listings, below target {target}",
             )
-        selected.extend(candidates[:target])
+        selected.extend(candidates)
 
     return sorted(selected, key=_listing_sort_key)
 

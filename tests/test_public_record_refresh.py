@@ -205,6 +205,42 @@ def test_refresh_public_record_rows_enforces_region_targets() -> None:
     assert result.region_counts == {"US": 1}
 
 
+def test_refresh_public_record_rows_keeps_rows_above_region_targets() -> None:
+    rows = [
+        _row(
+            id_value="seed-us-1",
+            slug="public-record~us-1",
+            name="US One",
+            state="NY",
+            website="https://us-one.example",
+        ),
+        _row(
+            id_value="seed-us-2",
+            slug="public-record~us-2",
+            name="US Two",
+            state="NY",
+            website="https://us-two.example",
+        ),
+        _row(
+            id_value="seed-us-3",
+            slug="public-record~us-3",
+            name="US Three",
+            state="NY",
+            website="https://us-three.example",
+        ),
+    ]
+
+    result = refresh_public_record_rows(
+        rows,
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"NY"})},
+        region_targets={"US": 1},
+    )
+
+    assert [row["id"] for row in result.rows] == ["seed-us-1", "seed-us-2", "seed-us-3"]
+    assert result.region_counts == {"US": 3}
+
+
 def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     rows = [
         _row(

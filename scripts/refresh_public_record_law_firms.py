@@ -53,8 +53,8 @@ def _parse_args() -> argparse.Namespace:
         action="append",
         default=[],
         help=(
-            "Region target in REGION=COUNT form. "
-            "Repeat flag for multiple regions. Defaults to built-in quarterly targets."
+            "Minimum region target in REGION=COUNT form. "
+            "Repeat flag for multiple regions. Defaults to built-in minimum targets."
         ),
     )
     parser.add_argument(
