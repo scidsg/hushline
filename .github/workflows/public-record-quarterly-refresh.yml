@@ -1,0 +1,63 @@
+name: Weekly Public Record Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: public-record-weekly-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh public-record listings
+        run: |
+          REFRESH_ARGS="--summary-output /tmp/pr-refresh.md --drop-failing-records"
+          make refresh-public-record-listings \
+            REFRESH_PUBLIC_RECORD_ARGS="$REFRESH_ARGS"
+
+      - name: Read refresh summary
+        id: summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/pr-refresh.md ]; then
+            {
+              echo "body<<'EOF'"
+              cat /tmp/pr-refresh.md
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "body<<'EOF'"
+            echo "## Public Record Refresh Summary"
+            echo
+            echo "- Refresh completed."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update refresh PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/public-record-weekly-refresh
+          delete-branch: true
+          commit-message: "Refresh public-record law firm listings"
+          title: "Refresh public-record law firm listings"
+          body: |
+            Automated weekly refresh of `hushline/data/public_record_law_firms.json`.
+
+            ${{ steps.summary.outputs.body }}
+          add-paths: |
+            hushline/data/public_record_law_firms.json

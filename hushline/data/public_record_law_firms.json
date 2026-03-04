@@ -1,17 +1,5 @@
 [
   {
-    "id": "seed-allens",
-    "slug": "public-record~allens",
-    "name": "Allens",
-    "website": "https://www.allens.com.au/",
-    "description": "An Australian firm advising on whistleblowing, investigations, employment, and risk matters.",
-    "city": "Sydney",
-    "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.allens.com.au/"
-  },
-  {
     "id": "seed-allen-gledhill",
     "slug": "public-record~allen-gledhill",
     "name": "Allen & Gledhill LLP",
@@ -22,6 +10,18 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.allenandgledhill.com/"
+  },
+  {
+    "id": "seed-allens",
+    "slug": "public-record~allens",
+    "name": "Allens",
+    "website": "https://www.allens.com.au/",
+    "description": "An Australian firm advising on whistleblowing, investigations, employment, and risk matters.",
+    "city": "Sydney",
+    "state": "Australia",
+    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://www.allens.com.au/"
   },
   {
     "id": "seed-anderson-mori-tomotsune",
@@ -132,6 +132,18 @@
     "source_url": "https://www.claytonutz.com/"
   },
   {
+    "id": "seed-cms",
+    "slug": "public-record~cms",
+    "name": "CMS",
+    "website": "https://cms.law/",
+    "description": "A Europe-focused firm with a dedicated whistleblower protection practice spanning employment and compliance matters.",
+    "city": "Berlin",
+    "state": "Germany",
+    "practice_tags": ["Whistleblowing", "Employment", "Compliance"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://cms.law/"
+  },
+  {
     "id": "seed-cohen-milstein",
     "slug": "public-record~cohen-milstein",
     "name": "Cohen Milstein Sellers & Toll PLLC",
@@ -172,18 +184,6 @@
     "source_url": "https://www.corrs.com.au/"
   },
   {
-    "id": "seed-cms",
-    "slug": "public-record~cms",
-    "name": "CMS",
-    "website": "https://cms.law/",
-    "description": "A Europe-focused firm with a dedicated whistleblower protection practice spanning employment and compliance matters.",
-    "city": "Berlin",
-    "state": "Germany",
-    "practice_tags": ["Whistleblowing", "Employment", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://cms.law/"
-  },
-  {
     "id": "seed-cuatrecasas",
     "slug": "public-record~cuatrecasas",
     "name": "Cuatrecasas",
@@ -208,18 +208,6 @@
     "source_url": "https://www.cyrilshroff.com/"
   },
   {
-    "id": "seed-de-brauw-blackstone-westbroek",
-    "slug": "public-record~de-brauw-blackstone-westbroek",
-    "name": "De Brauw Blackstone Westbroek",
-    "website": "https://www.debrauw.com/",
-    "description": "A Dutch firm advising on whistleblowing, employment, investigations, and corporate governance.",
-    "city": "Amsterdam",
-    "state": "Netherlands",
-    "practice_tags": ["Whistleblowing", "Employment", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.debrauw.com/"
-  },
-  {
     "id": "seed-drew-napier",
     "slug": "public-record~drew-napier",
     "name": "Drew & Napier LLC",
@@ -242,18 +230,6 @@
     "practice_tags": ["Whistleblower", "Discrimination", "Retaliation"],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.employmentlawgroup.com/"
-  },
-  {
-    "id": "seed-whistleblower-partners",
-    "slug": "public-record~whistleblower-partners",
-    "name": "Whistleblower Partners LLP",
-    "website": "https://whistleblower.law/",
-    "description": "A San Francisco firm dedicated to whistleblower rewards, False Claims Act, and anti-fraud matters.",
-    "city": "San Francisco",
-    "state": "CA",
-    "practice_tags": ["Whistleblower", "False Claims", "Fraud"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://whistleblower.law/"
   },
   {
     "id": "seed-fairmark-partners",
@@ -678,6 +654,18 @@
     "practice_tags": ["Whistleblower", "Qui Tam", "Retaliation"],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.whistleblowerllc.com/"
+  },
+  {
+    "id": "seed-whistleblower-partners",
+    "slug": "public-record~whistleblower-partners",
+    "name": "Whistleblower Partners LLP",
+    "website": "https://whistleblower.law/",
+    "description": "A San Francisco firm dedicated to whistleblower rewards, False Claims Act, and anti-fraud matters.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblower", "False Claims", "Fraud"],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://whistleblower.law/"
   },
   {
     "id": "seed-wolf-theiss",
