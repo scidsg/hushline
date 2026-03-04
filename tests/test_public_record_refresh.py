@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
@@ -22,6 +23,7 @@ def _row(  # noqa: PLR0913
     website: str,
     source_url: str | None = None,
 ) -> dict[str, object]:
+    source_slug = re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")
     row: dict[str, object] = {
         "name": name,
         "website": website,
@@ -29,8 +31,8 @@ def _row(  # noqa: PLR0913
         "city": "New York",
         "state": state,
         "practice_tags": ["Whistleblowing", "Investigations"],
-        "source_label": "Seed dataset from official firm website",
-        "source_url": source_url or website,
+        "source_label": "Authoritative public record source",
+        "source_url": source_url or f"https://records.example/{source_slug}",
     }
     if id_value is not None:
         row["id"] = id_value
@@ -274,9 +276,9 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
         drop_failed_links=False,
     )
     assert len(flagged.rows) == 2
-    assert len(flagged.link_failures) == 2
+    assert len(flagged.link_failures) == 1
     assert flagged.dropped_record_ids == []
-    assert flagged.checked_url_count == 2
+    assert flagged.checked_url_count == 4
 
     dropped = refresh_public_record_rows(
         rows,
@@ -288,8 +290,51 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     )
     assert [row["id"] for row in dropped.rows] == ["seed-healthy"]
     assert dropped.dropped_record_ids == ["seed-broken"]
-    assert dropped.checked_url_count == 2
+    assert dropped.checked_url_count == 4
     assert checked_urls
+
+
+def test_refresh_public_record_rows_rejects_legacy_self_reported_source_label() -> None:
+    rows = [
+        _row(
+            id_value="seed-legacy",
+            slug="public-record~legacy",
+            name="Legacy Firm",
+            state="NY",
+            website="https://legacy.example",
+        )
+    ]
+    rows[0]["source_label"] = "Seed dataset from official firm website"
+    rows[0]["source_url"] = "https://legacy.example"
+
+    with pytest.raises(PublicRecordRefreshError, match="deprecated self-reported source label"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_source_matching_website() -> None:
+    rows = [
+        _row(
+            id_value="seed-self-reference",
+            slug="public-record~self-reference",
+            name="Self Reference Firm",
+            state="NY",
+            website="https://self-reference.example/",
+            source_url="https://self-reference.example",
+        )
+    ]
+
+    with pytest.raises(PublicRecordRefreshError, match="source_url matching website"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
 
 
 def test_refresh_public_record_rows_canonicalizes_chambers_source_url() -> None:

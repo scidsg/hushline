@@ -18,6 +18,7 @@ CHAMBERS_PUBLICATION_GROUP_BY_REGION: dict[str, int] = {
 }
 
 CHAMBERS_SOURCE_LABEL = "Chambers and Partners ranked law firm profile"
+LEGACY_SELF_REPORTED_SOURCE_LABEL = "Seed dataset from official firm website"
 CHAMBERS_GROUP_SLUG_BY_ID: dict[int, str] = {
     5: "usa",
     7: "europe",
@@ -743,6 +744,7 @@ def _normalize_row(
 ) -> _NormalizedListing:
     name = _required_string(raw_row, "name")
     state = _required_string(raw_row, "state")
+    website = _required_string(raw_row, "website")
     source_label = _required_string(raw_row, "source_label")
 
     listing_id = _optional_string(raw_row.get("id")) or f"seed-{_slug_base(name)}"
@@ -757,21 +759,29 @@ def _normalize_row(
     region = _region_for_state(state, region_state_map)
     practice_tags = _normalize_practice_tags(raw_row.get("practice_tags"))
 
+    source_url = _canonicalize_source_url(
+        name=name,
+        source_label=source_label,
+        source_url=_optional_string(raw_row.get("source_url")),
+    )
+    _validate_authoritative_source(
+        name=name,
+        website=website,
+        source_label=source_label,
+        source_url=source_url,
+    )
+
     return _NormalizedListing(
         id=listing_id,
         slug=slug,
         name=name,
-        website=_required_string(raw_row, "website"),
+        website=website,
         description=_required_string(raw_row, "description"),
         city=_required_string(raw_row, "city"),
         state=state,
         practice_tags=practice_tags,
         source_label=source_label,
-        source_url=_canonicalize_source_url(
-            name=name,
-            source_label=source_label,
-            source_url=_optional_string(raw_row.get("source_url")),
-        ),
+        source_url=source_url,
         region=region,
     )
 
@@ -793,6 +803,33 @@ def _canonicalize_source_url(
         )
         or source_url
     )
+
+
+def _validate_authoritative_source(
+    *,
+    name: str,
+    website: str,
+    source_label: str,
+    source_url: str | None,
+) -> None:
+    if source_label == LEGACY_SELF_REPORTED_SOURCE_LABEL:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' uses a deprecated self-reported source label; "
+            "set source_label/source_url to an authoritative public record source."
+        )
+
+    if source_url is None:
+        return
+
+    if _normalize_url_for_comparison(source_url) == _normalize_url_for_comparison(website):
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' has source_url matching website; "
+            "source_url must reference the external source of record."
+        )
+
+
+def _normalize_url_for_comparison(value: str) -> str:
+    return _normalize_string(value).casefold().rstrip("/")
 
 
 def _chambers_public_profile_url(

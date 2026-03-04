@@ -260,8 +260,8 @@
     "city": "Singapore",
     "state": "Singapore",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.allenandgledhill.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/allen-gledhill-llp-asia-pacific-8:3537"
   },
   {
     "id": "seed-allen-matkins",
@@ -284,8 +284,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.allens.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/allens-asia-pacific-8:3589"
   },
   {
     "id": "seed-allred-maroko-goldberg",
@@ -380,8 +380,8 @@
     "city": "Tokyo",
     "state": "Japan",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.amt-law.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/anderson-mori-tomotsune-asia-pacific-8:3551"
   },
   {
     "id": "seed-anm-global-inc",
@@ -404,8 +404,8 @@
     "city": "Luxembourg",
     "state": "Luxembourg",
     "practice_tags": ["Whistleblowing", "Investigations", "Regulatory"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.arendt.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/arendt-medernach-europe-7:4185"
   },
   {
     "id": "seed-arnold-bloch-leibler",
@@ -416,8 +416,8 @@
     "city": "Melbourne",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.abl.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/arnold-bloch-leibler-asia-pacific-8:2777"
   },
   {
     "id": "seed-ashurst",
@@ -428,8 +428,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.ashurst.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/ashurst-asia-pacific-8:15"
   },
   {
     "id": "seed-azb-partners",
@@ -440,8 +440,8 @@
     "city": "Mumbai",
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.azbpartners.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/azb-partners-asia-pacific-8:2269"
   },
   {
     "id": "seed-berger-montague",
@@ -452,8 +452,8 @@
     "city": "Philadelphia",
     "state": "PA",
     "practice_tags": ["Whistleblower", "Antitrust", "Complex Litigation"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.bergermontague.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/berger-montague-pc-usa-5:77985"
   },
   {
     "id": "seed-bonelli-erede",
@@ -464,8 +464,8 @@
     "city": "Milan",
     "state": "Italy",
     "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.belex.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/bonellierede-europe-7:2762"
   },
   {
     "id": "seed-chiomenti",
@@ -476,8 +476,8 @@
     "city": "Milan",
     "state": "Italy",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.chiomenti.net/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/chiomenti-europe-7:4173"
   },
   {
     "id": "seed-clayton-utz",
@@ -488,8 +488,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.claytonutz.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/clayton-utz-asia-pacific-8:4413"
   },
   {
     "id": "seed-cms",
@@ -500,8 +500,8 @@
     "city": "Berlin",
     "state": "Germany",
     "practice_tags": ["Whistleblowing", "Employment", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://cms.law/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/cms-europe-7:7489"
   },
   {
     "id": "seed-cohen-milstein",
@@ -516,8 +516,8 @@
       "Public Interest",
       "Consumer Protection"
     ],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.cohenmilstein.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329"
   },
   {
     "id": "seed-constantine-cannon",
@@ -528,8 +528,8 @@
     "city": "New York",
     "state": "NY",
     "practice_tags": ["Whistleblower", "Antitrust", "Qui Tam"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://constantinecannon.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/constantine-cannon-llp-usa-5:86439"
   },
   {
     "id": "seed-corrs-chambers-westgarth",
@@ -540,8 +540,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.corrs.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/corrs-chambers-westgarth-asia-pacific-8:3597"
   },
   {
     "id": "seed-cuatrecasas",
@@ -552,8 +552,8 @@
     "city": "Barcelona",
     "state": "Spain",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.cuatrecasas.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/cuatrecasas-europe-7:7599"
   },
   {
     "id": "seed-cyril-amarchand-mangaldas",
@@ -564,8 +564,8 @@
     "city": "Mumbai",
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.cyrilshroff.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/cyril-amarchand-mangaldas-asia-pacific-8:22855543"
   },
   {
     "id": "seed-drew-napier",
@@ -576,8 +576,8 @@
     "city": "Singapore",
     "state": "Singapore",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.drewnapier.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/drew-napier-llc-asia-pacific-8:2783"
   },
   {
     "id": "seed-employment-law-group",
@@ -588,8 +588,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Discrimination", "Retaliation"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.employmentlawgroup.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/the-employment-law-group-p-c-usa-5:22747546"
   },
   {
     "id": "seed-fairmark-partners",
@@ -600,8 +600,8 @@
     "city": "Bethesda",
     "state": "MD",
     "practice_tags": ["Whistleblower", "IRS", "False Claims"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://fairmarklaw.com/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Fairmark+Partners%2C+LLP"
   },
   {
     "id": "seed-fieldfisher",
@@ -612,8 +612,8 @@
     "city": "Brussels",
     "state": "Belgium",
     "practice_tags": ["Whistleblowing", "Investigations", "Regulatory"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.fieldfisher.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/fieldfisher-europe-7:137"
   },
   {
     "id": "seed-garrigues",
@@ -624,8 +624,8 @@
     "city": "Madrid",
     "state": "Spain",
     "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.garrigues.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/garrigues-europe-7:3983"
   },
   {
     "id": "seed-getnick-law",
@@ -636,8 +636,8 @@
     "city": "New York",
     "state": "NY",
     "practice_tags": ["Whistleblower", "False Claims", "IRS"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://getnicklaw.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/getnick-law-usa-5:22666738"
   },
   {
     "id": "seed-gide-loyrette-nouel",
@@ -652,8 +652,8 @@
       "Compliance",
       "Internal Investigations"
     ],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.gide.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/gide-loyrette-nouel-europe-7:4416"
   },
   {
     "id": "seed-gilbert-tobin",
@@ -664,8 +664,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.gtlaw.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/gilbert-tobin-asia-pacific-8:3599"
   },
   {
     "id": "seed-gleiss-lutz",
@@ -676,8 +676,8 @@
     "city": "Stuttgart",
     "state": "Germany",
     "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.gleisslutz.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/gleiss-lutz-europe-7:4104"
   },
   {
     "id": "seed-hagens-berman",
@@ -688,8 +688,8 @@
     "city": "Seattle",
     "state": "WA",
     "practice_tags": ["Whistleblower", "Class Actions", "Consumer Protection"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.hbsslaw.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/hagens-berman-sobol-shapiro-llp-usa-5:138223"
   },
   {
     "id": "seed-hall-wilcox",
@@ -700,8 +700,8 @@
     "city": "Melbourne",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.hallandwilcox.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/hall-wilcox-asia-pacific-8:135459"
   },
   {
     "id": "seed-houthoff",
@@ -712,8 +712,8 @@
     "city": "Amsterdam",
     "state": "Netherlands",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.houthoff.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/houthoff-europe-7:3865"
   },
   {
     "id": "seed-johnson-winter-slattery",
@@ -724,8 +724,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.jws.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/johnson-winter-slattery-asia-pacific-8:92366"
   },
   {
     "id": "seed-joseph-greenwald-laake",
@@ -736,8 +736,8 @@
     "city": "Greenbelt",
     "state": "MD",
     "practice_tags": ["Whistleblower", "Qui Tam", "Fraud"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.jgllaw.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/joseph-greenwald-laake-p-a-usa-5:22956753"
   },
   {
     "id": "seed-katz-banks-kumin",
@@ -748,8 +748,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Employment", "Civil Rights"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.katzbanks.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/katz-banks-kumin-llp-usa-5:22624817"
   },
   {
     "id": "seed-keller-rohrback",
@@ -760,8 +760,8 @@
     "city": "Seattle",
     "state": "WA",
     "practice_tags": ["Whistleblower", "Securities", "Environmental"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.kellerrohrback.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/keller-rohrback-llp-usa-5:70793"
   },
   {
     "id": "seed-kohn-kohn-colapinto",
@@ -772,8 +772,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Retaliation", "Securities"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://kkc.com/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Kohn%2C+Kohn+%26+Colapinto+LLP"
   },
   {
     "id": "seed-levy-firestone-muse",
@@ -784,8 +784,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Investigations", "Sanctions"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.lfmlaw.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/levy-firestone-muse-llp-usa-5:23264921"
   },
   {
     "id": "seed-loyens-loeff",
@@ -796,8 +796,8 @@
     "city": "Amsterdam",
     "state": "Netherlands",
     "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.loyensloeff.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/loyens-loeff-europe-7:64329"
   },
   {
     "id": "seed-maddocks",
@@ -808,8 +808,8 @@
     "city": "Melbourne",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.maddocks.com.au/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/maddocks-asia-pacific-8:144628"
   },
   {
     "id": "seed-mannheimer-swartling",
@@ -820,8 +820,8 @@
     "city": "Stockholm",
     "state": "Sweden",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.mannheimerswartling.se/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/mannheimer-swartling-europe-7:4024"
   },
   {
     "id": "seed-mehri-skalet",
@@ -832,8 +832,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Civil Rights", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.findjustice.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/mehri-skalet-pllc-usa-5:66899"
   },
   {
     "id": "seed-minter-ellison",
@@ -844,8 +844,8 @@
     "city": "Sydney",
     "state": "Australia",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.minterellison.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/minterellison-asia-pacific-8:3601"
   },
   {
     "id": "seed-nautadutilh",
@@ -856,8 +856,8 @@
     "city": "Amsterdam",
     "state": "Netherlands",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.nautadutilh.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/nautadutilh-europe-7:3868"
   },
   {
     "id": "seed-nishimura-asahi",
@@ -868,8 +868,8 @@
     "city": "Tokyo",
     "state": "Japan",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.nishimura.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/nishimura-asahi-asia-pacific-8:3571"
   },
   {
     "id": "seed-noerr",
@@ -880,8 +880,8 @@
     "city": "Munich",
     "state": "Germany",
     "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.noerr.com/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Noerr"
   },
   {
     "id": "seed-phillips-cohen",
@@ -892,8 +892,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "False Claims", "SEC"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.phillipsandcohen.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/phillips-cohen-llp-usa-5:22882859"
   },
   {
     "id": "seed-pietragallo-raspanti",
@@ -904,8 +904,8 @@
     "city": "Philadelphia",
     "state": "PA",
     "practice_tags": ["Whistleblower", "Qui Tam", "False Claims"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.pietragallo.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/pietragallo-gordon-alfano-bosick-raspanti-llp-usa-5:144623"
   },
   {
     "id": "seed-rajah-tann",
@@ -916,8 +916,8 @@
     "city": "Singapore",
     "state": "Singapore",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.rajahtann.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/rajah-tann-singapore-llp-asia-pacific-8:23136260"
   },
   {
     "id": "seed-roschier",
@@ -928,8 +928,8 @@
     "city": "Helsinki",
     "state": "Finland",
     "practice_tags": ["Whistleblowing", "Compliance", "Investigations"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.roschier.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/roschier-europe-7:4289"
   },
   {
     "id": "seed-sanford-heisler",
@@ -940,8 +940,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Employment", "Discrimination"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://sanfordheisler.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/sanford-heisler-sharp-mcknight-llp-usa-5:22880680"
   },
   {
     "id": "seed-schoenherr",
@@ -952,8 +952,8 @@
     "city": "Vienna",
     "state": "Austria",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.schoenherr.eu/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/schoenherr-europe-7:4229"
   },
   {
     "id": "seed-shardul-amarchand-mangaldas",
@@ -964,8 +964,8 @@
     "city": "New Delhi",
     "state": "India",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.amsshardul.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/shardul-amarchand-mangaldas-co-asia-pacific-8:22854445"
   },
   {
     "id": "seed-stibbe",
@@ -976,8 +976,8 @@
     "city": "Brussels",
     "state": "Belgium",
     "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.stibbe.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/stibbe-europe-7:3874"
   },
   {
     "id": "seed-tycko-zavareei",
@@ -988,8 +988,8 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Class Actions", "Public Interest"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.tzlegal.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/tycko-zavareei-llp-usa-5:22801258"
   },
   {
     "id": "seed-vda",
@@ -1000,8 +1000,8 @@
     "city": "Lisbon",
     "state": "Portugal",
     "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.vda.pt/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/vda-europe-7:3970"
   },
   {
     "id": "seed-whistleblower-law-collaborative",
@@ -1012,8 +1012,8 @@
     "city": "Boston",
     "state": "MA",
     "practice_tags": ["Whistleblower", "Qui Tam", "Retaliation"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.whistleblowerllc.com/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Whistleblower+Law+Collaborative+LLC"
   },
   {
     "id": "seed-whistleblower-partners",
@@ -1024,8 +1024,8 @@
     "city": "San Francisco",
     "state": "CA",
     "practice_tags": ["Whistleblower", "False Claims", "Fraud"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://whistleblower.law/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Whistleblower+Partners+LLP"
   },
   {
     "id": "seed-wolf-theiss",
@@ -1036,8 +1036,8 @@
     "city": "Vienna",
     "state": "Austria",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.wolftheiss.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/wolf-theiss-europe-7:4231"
   },
   {
     "id": "seed-wongpartnership",
@@ -1048,8 +1048,8 @@
     "city": "Singapore",
     "state": "Singapore",
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.wongpartnership.com/"
+    "source_label": "Chambers and Partners ranked law firm profile",
+    "source_url": "https://chambers.com/law-firm/wongpartnership-llp-asia-pacific-8:3547"
   },
   {
     "id": "seed-zuckerman-law",
@@ -1060,7 +1060,7 @@
     "city": "Washington",
     "state": "DC",
     "practice_tags": ["Whistleblower", "Retaliation", "SEC"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.zuckermanlaw.com/"
+    "source_label": "Chambers and Partners law firm search",
+    "source_url": "https://chambers.com/search?query=Zuckerman+Law"
   }
 ]
