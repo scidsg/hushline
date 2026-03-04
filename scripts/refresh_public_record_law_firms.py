@@ -9,8 +9,10 @@ from typing import Any, Mapping, Sequence
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_TARGETS,
+    ChambersDiscoveryResult,
     PublicRecordRefreshError,
     build_requests_link_checker,
+    discover_chambers_public_record_rows,
     refresh_public_record_rows,
     render_refresh_summary,
 )
@@ -61,6 +63,17 @@ def _parse_args() -> argparse.Namespace:
         "--no-link-validation",
         action="store_true",
         help="Skip website/source URL validation.",
+    )
+    parser.add_argument(
+        "--discover-chambers-ranked-firms",
+        action="store_true",
+        help="Add new firms from Chambers and Partners ranked public data.",
+    )
+    parser.add_argument(
+        "--max-discovered-per-region",
+        type=int,
+        default=10,
+        help="Maximum newly discovered firms to add per region (default: 10).",
     )
     parser.add_argument(
         "--drop-failing-records",
@@ -161,6 +174,24 @@ def _serialized_rows(rows: Sequence[Mapping[str, object]]) -> str:
     return json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
 
 
+def _render_discovery_summary(
+    discovery_result: ChambersDiscoveryResult,
+    *,
+    regions: Sequence[str],
+) -> str:
+    lines = [
+        "### Chambers Discovery",
+        "",
+        f"- New rows discovered: {len(discovery_result.rows)}",
+        "- Region scan stats:",
+    ]
+    for region in regions:
+        scanned = discovery_result.scanned_count_by_region.get(region, 0)
+        added = discovery_result.added_count_by_region.get(region, 0)
+        lines.append(f"  - {region}: scanned {scanned}, added {added}")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     args = _parse_args()
     selected_regions = _parse_regions(args.regions)
@@ -174,6 +205,21 @@ def main() -> int:
         )
 
     source_rows = _load_rows(args.input)
+    discovery_summary = ""
+    if args.discover_chambers_ranked_firms:
+        discovery_result = discover_chambers_public_record_rows(
+            source_rows,
+            selected_regions=selected_regions,
+            max_new_per_region=args.max_discovered_per_region,
+            timeout_seconds=args.timeout_seconds,
+        )
+        discovered_rows: list[dict[str, Any]] = [dict(row) for row in discovery_result.rows]
+        source_rows = [*source_rows, *discovered_rows]
+        discovery_summary = _render_discovery_summary(
+            discovery_result,
+            regions=selected_regions,
+        )
+
     refresh_result = refresh_public_record_rows(
         source_rows,
         selected_regions=selected_regions,
@@ -182,6 +228,8 @@ def main() -> int:
         drop_failed_links=args.drop_failing_records,
     )
     summary = render_refresh_summary(refresh_result, regions=selected_regions)
+    if discovery_summary:
+        summary = summary + "\n" + discovery_summary
     print(summary, end="")
 
     if args.summary_output is not None:

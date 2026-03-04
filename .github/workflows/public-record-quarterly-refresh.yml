@@ -22,7 +22,7 @@ jobs:
 
       - name: Refresh public-record listings
         run: |
-          REFRESH_ARGS="--summary-output /tmp/pr-refresh.md --drop-failing-records"
+          REFRESH_ARGS="--summary-output /tmp/pr-refresh.md --drop-failing-records --discover-chambers-ranked-firms --max-discovered-per-region 10"
           make refresh-public-record-listings \
             REFRESH_PUBLIC_RECORD_ARGS="$REFRESH_ARGS"
 
