@@ -1,17 +1,5 @@
 [
   {
-    "id": "seed-allens",
-    "slug": "public-record~allens",
-    "name": "Allens",
-    "website": "https://www.allens.com.au/",
-    "description": "An Australian firm advising on whistleblowing, investigations, employment, and risk matters.",
-    "city": "Sydney",
-    "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://www.allens.com.au/"
-  },
-  {
     "id": "seed-allen-gledhill",
     "slug": "public-record~allen-gledhill",
     "name": "Allen & Gledhill LLP",
@@ -19,9 +7,29 @@
     "description": "A Singapore firm advising on whistleblowing systems, investigations, and employment issues.",
     "city": "Singapore",
     "state": "Singapore",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.allenandgledhill.com/"
+  },
+  {
+    "id": "seed-allens",
+    "slug": "public-record~allens",
+    "name": "Allens",
+    "website": "https://www.allens.com.au/",
+    "description": "An Australian firm advising on whistleblowing, investigations, employment, and risk matters.",
+    "city": "Sydney",
+    "state": "Australia",
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://www.allens.com.au/"
   },
   {
     "id": "seed-anderson-mori-tomotsune",
@@ -31,7 +39,11 @@
     "description": "A Tokyo firm advising on whistleblowing frameworks, corporate investigations, and employment matters.",
     "city": "Tokyo",
     "state": "Japan",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.amt-law.com/"
   },
@@ -43,7 +55,11 @@
     "description": "A Luxembourg firm advising on whistleblowing channels, investigations, and regulatory compliance.",
     "city": "Luxembourg",
     "state": "Luxembourg",
-    "practice_tags": ["Whistleblowing", "Investigations", "Regulatory"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Regulatory"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.arendt.com/"
   },
@@ -55,7 +71,11 @@
     "description": "A Melbourne firm handling employment, investigations, and sensitive whistleblowing matters.",
     "city": "Melbourne",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Employment",
+      "Investigations"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.abl.com.au/"
   },
@@ -67,7 +87,11 @@
     "description": "A major APAC firm with employment and investigations teams handling whistleblowing complaints and workplace misconduct matters.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.ashurst.com/"
   },
@@ -79,7 +103,11 @@
     "description": "An India-based firm advising on whistleblowing policies, investigations, and employment compliance.",
     "city": "Mumbai",
     "state": "India",
-    "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Compliance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.azbpartners.com/"
   },
@@ -91,7 +119,11 @@
     "description": "A Philadelphia plaintiffs' firm handling whistleblower, antitrust, and complex litigation matters.",
     "city": "Philadelphia",
     "state": "PA",
-    "practice_tags": ["Whistleblower", "Antitrust", "Complex Litigation"],
+    "practice_tags": [
+      "Whistleblower",
+      "Antitrust",
+      "Complex Litigation"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.bergermontague.com/"
   },
@@ -103,7 +135,11 @@
     "description": "An Italian firm advising on whistleblowing channels, investigations, and compliance disputes.",
     "city": "Milan",
     "state": "Italy",
-    "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Compliance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.belex.com/"
   },
@@ -115,7 +151,11 @@
     "description": "An Italian firm advising on whistleblowing systems, internal investigations, and employment compliance.",
     "city": "Milan",
     "state": "Italy",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.chiomenti.net/"
   },
@@ -127,9 +167,29 @@
     "description": "An Australian firm advising on whistleblower protections, investigations, and employment disputes.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.claytonutz.com/"
+  },
+  {
+    "id": "seed-cms",
+    "slug": "public-record~cms",
+    "name": "CMS",
+    "website": "https://cms.law/",
+    "description": "A Europe-focused firm with a dedicated whistleblower protection practice spanning employment and compliance matters.",
+    "city": "Berlin",
+    "state": "Germany",
+    "practice_tags": [
+      "Whistleblowing",
+      "Employment",
+      "Compliance"
+    ],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://cms.law/"
   },
   {
     "id": "seed-cohen-milstein",
@@ -155,7 +215,11 @@
     "description": "A New York law firm focused on whistleblower, antitrust, and qui tam matters.",
     "city": "New York",
     "state": "NY",
-    "practice_tags": ["Whistleblower", "Antitrust", "Qui Tam"],
+    "practice_tags": [
+      "Whistleblower",
+      "Antitrust",
+      "Qui Tam"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://constantinecannon.com/"
   },
@@ -167,21 +231,13 @@
     "description": "An Australian firm advising on investigations, employment, and whistleblower-related governance issues.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Governance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.corrs.com.au/"
-  },
-  {
-    "id": "seed-cms",
-    "slug": "public-record~cms",
-    "name": "CMS",
-    "website": "https://cms.law/",
-    "description": "A Europe-focused firm with a dedicated whistleblower protection practice spanning employment and compliance matters.",
-    "city": "Berlin",
-    "state": "Germany",
-    "practice_tags": ["Whistleblowing", "Employment", "Compliance"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://cms.law/"
   },
   {
     "id": "seed-cuatrecasas",
@@ -191,7 +247,11 @@
     "description": "A Barcelona-founded firm advising on whistleblowing systems, investigations, and employment matters across Europe.",
     "city": "Barcelona",
     "state": "Spain",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.cuatrecasas.com/"
   },
@@ -203,7 +263,11 @@
     "description": "An India-based firm advising on investigations, employment issues, and whistleblower policies.",
     "city": "Mumbai",
     "state": "India",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.cyrilshroff.com/"
   },
@@ -215,7 +279,11 @@
     "description": "A Dutch firm advising on whistleblowing, employment, investigations, and corporate governance.",
     "city": "Amsterdam",
     "state": "Netherlands",
-    "practice_tags": ["Whistleblowing", "Employment", "Governance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Employment",
+      "Governance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.debrauw.com/"
   },
@@ -227,7 +295,11 @@
     "description": "A Singapore firm handling investigations, employment disputes, and whistleblowing-related matters.",
     "city": "Singapore",
     "state": "Singapore",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.drewnapier.com/"
   },
@@ -239,21 +311,13 @@
     "description": "A Washington, DC plaintiffs' firm focused on whistleblower, discrimination, and retaliation matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Discrimination", "Retaliation"],
+    "practice_tags": [
+      "Whistleblower",
+      "Discrimination",
+      "Retaliation"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.employmentlawgroup.com/"
-  },
-  {
-    "id": "seed-whistleblower-partners",
-    "slug": "public-record~whistleblower-partners",
-    "name": "Whistleblower Partners LLP",
-    "website": "https://whistleblower.law/",
-    "description": "A San Francisco firm dedicated to whistleblower rewards, False Claims Act, and anti-fraud matters.",
-    "city": "San Francisco",
-    "state": "CA",
-    "practice_tags": ["Whistleblower", "False Claims", "Fraud"],
-    "source_label": "Seed dataset from official firm website",
-    "source_url": "https://whistleblower.law/"
   },
   {
     "id": "seed-fairmark-partners",
@@ -263,7 +327,11 @@
     "description": "A Bethesda firm focused on IRS, SEC, and False Claims Act whistleblower matters.",
     "city": "Bethesda",
     "state": "MD",
-    "practice_tags": ["Whistleblower", "IRS", "False Claims"],
+    "practice_tags": [
+      "Whistleblower",
+      "IRS",
+      "False Claims"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://fairmarklaw.com/"
   },
@@ -275,7 +343,11 @@
     "description": "A European firm with a dedicated whistleblowing practice covering investigations, employment, and regulatory issues.",
     "city": "Brussels",
     "state": "Belgium",
-    "practice_tags": ["Whistleblowing", "Investigations", "Regulatory"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Regulatory"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.fieldfisher.com/"
   },
@@ -287,7 +359,11 @@
     "description": "A Madrid-based firm advising on whistleblowing channels, compliance, and employment issues in Spain and the EU.",
     "city": "Madrid",
     "state": "Spain",
-    "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Compliance",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.garrigues.com/"
   },
@@ -299,7 +375,11 @@
     "description": "A New York boutique focused on False Claims Act, IRS, SEC/CFTC, and anti-fraud whistleblower matters.",
     "city": "New York",
     "state": "NY",
-    "practice_tags": ["Whistleblower", "False Claims", "IRS"],
+    "practice_tags": [
+      "Whistleblower",
+      "False Claims",
+      "IRS"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://getnicklaw.com/"
   },
@@ -327,7 +407,11 @@
     "description": "An Australian firm advising on investigations, employment, and whistleblowing governance issues.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Governance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.gtlaw.com.au/"
   },
@@ -339,7 +423,11 @@
     "description": "A German firm advising on whistleblowing systems, compliance, and employment investigations.",
     "city": "Stuttgart",
     "state": "Germany",
-    "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Compliance",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.gleisslutz.com/"
   },
@@ -351,7 +439,11 @@
     "description": "A Seattle plaintiffs' firm with notable whistleblower, consumer, and class action practices.",
     "city": "Seattle",
     "state": "WA",
-    "practice_tags": ["Whistleblower", "Class Actions", "Consumer Protection"],
+    "practice_tags": [
+      "Whistleblower",
+      "Class Actions",
+      "Consumer Protection"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.hbsslaw.com/"
   },
@@ -363,7 +455,11 @@
     "description": "An Australian firm advising on investigations, employment, and whistleblower risk issues.",
     "city": "Melbourne",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.hallandwilcox.com.au/"
   },
@@ -375,7 +471,11 @@
     "description": "A Dutch firm advising on whistleblowing reports, investigations, and employment matters.",
     "city": "Amsterdam",
     "state": "Netherlands",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.houthoff.com/"
   },
@@ -387,7 +487,11 @@
     "description": "An Australian firm handling investigations, employment, and whistleblower-related governance matters.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Governance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.jws.com.au/"
   },
@@ -399,7 +503,11 @@
     "description": "A Maryland firm handling qui tam, whistleblower, and complex plaintiff-side fraud cases.",
     "city": "Greenbelt",
     "state": "MD",
-    "practice_tags": ["Whistleblower", "Qui Tam", "Fraud"],
+    "practice_tags": [
+      "Whistleblower",
+      "Qui Tam",
+      "Fraud"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.jgllaw.com/"
   },
@@ -411,7 +519,11 @@
     "description": "A Washington, DC law firm focused on whistleblower, employment, and civil rights matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Employment", "Civil Rights"],
+    "practice_tags": [
+      "Whistleblower",
+      "Employment",
+      "Civil Rights"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.katzbanks.com/"
   },
@@ -423,7 +535,11 @@
     "description": "A Seattle plaintiffs' firm handling whistleblower, securities, and environmental cases.",
     "city": "Seattle",
     "state": "WA",
-    "practice_tags": ["Whistleblower", "Securities", "Environmental"],
+    "practice_tags": [
+      "Whistleblower",
+      "Securities",
+      "Environmental"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.kellerrohrback.com/"
   },
@@ -435,7 +551,11 @@
     "description": "A Washington, DC law firm focused on whistleblower, retaliation, and securities matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Retaliation", "Securities"],
+    "practice_tags": [
+      "Whistleblower",
+      "Retaliation",
+      "Securities"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://kkc.com/"
   },
@@ -447,7 +567,11 @@
     "description": "A Washington, DC boutique focused on whistleblower representation, investigations, and sanctions-related matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Investigations", "Sanctions"],
+    "practice_tags": [
+      "Whistleblower",
+      "Investigations",
+      "Sanctions"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.lfmlaw.com/"
   },
@@ -459,7 +583,11 @@
     "description": "A Benelux firm advising on whistleblowing frameworks, investigations, and governance issues.",
     "city": "Amsterdam",
     "state": "Netherlands",
-    "practice_tags": ["Whistleblowing", "Investigations", "Governance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Governance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.loyensloeff.com/"
   },
@@ -471,7 +599,11 @@
     "description": "An Australian firm advising on whistleblowing regimes, investigations, and employment matters.",
     "city": "Melbourne",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.maddocks.com.au/"
   },
@@ -483,7 +615,11 @@
     "description": "A Swedish firm advising on whistleblowing channels, investigations, and employment issues.",
     "city": "Stockholm",
     "state": "Sweden",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.mannheimerswartling.se/"
   },
@@ -495,7 +631,11 @@
     "description": "A Washington, DC plaintiffs' firm focused on whistleblower, civil rights, and employment litigation.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Civil Rights", "Employment"],
+    "practice_tags": [
+      "Whistleblower",
+      "Civil Rights",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.findjustice.com/"
   },
@@ -507,7 +647,11 @@
     "description": "An Australian firm advising on whistleblowing, investigations, and employment risk issues.",
     "city": "Sydney",
     "state": "Australia",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.minterellison.com/"
   },
@@ -519,7 +663,11 @@
     "description": "A Dutch firm advising on whistleblowing frameworks, investigations, and employment law issues.",
     "city": "Amsterdam",
     "state": "Netherlands",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.nautadutilh.com/"
   },
@@ -531,7 +679,11 @@
     "description": "A Tokyo firm advising on whistleblowing systems, internal investigations, and employment matters.",
     "city": "Tokyo",
     "state": "Japan",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.nishimura.com/"
   },
@@ -543,7 +695,11 @@
     "description": "A German firm advising on whistleblowing channels, investigations, and employment compliance.",
     "city": "Munich",
     "state": "Germany",
-    "practice_tags": ["Whistleblowing", "Investigations", "Compliance"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Compliance"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.noerr.com/"
   },
@@ -555,7 +711,11 @@
     "description": "A Washington, DC whistleblower-focused firm handling False Claims Act, SEC, CFTC, and IRS matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "False Claims", "SEC"],
+    "practice_tags": [
+      "Whistleblower",
+      "False Claims",
+      "SEC"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.phillipsandcohen.com/"
   },
@@ -567,7 +727,11 @@
     "description": "A Philadelphia-based firm with a nationally known qui tam and whistleblower practice.",
     "city": "Philadelphia",
     "state": "PA",
-    "practice_tags": ["Whistleblower", "Qui Tam", "False Claims"],
+    "practice_tags": [
+      "Whistleblower",
+      "Qui Tam",
+      "False Claims"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.pietragallo.com/"
   },
@@ -579,7 +743,11 @@
     "description": "A Singapore firm advising on investigations, employment issues, and whistleblowing frameworks.",
     "city": "Singapore",
     "state": "Singapore",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.rajahtann.com/"
   },
@@ -591,7 +759,11 @@
     "description": "A Nordic firm advising on whistleblowing systems, compliance, and workplace investigations.",
     "city": "Helsinki",
     "state": "Finland",
-    "practice_tags": ["Whistleblowing", "Compliance", "Investigations"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Compliance",
+      "Investigations"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.roschier.com/"
   },
@@ -603,7 +775,11 @@
     "description": "A Washington, DC plaintiffs' firm focused on whistleblower, employment, and discrimination matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Employment", "Discrimination"],
+    "practice_tags": [
+      "Whistleblower",
+      "Employment",
+      "Discrimination"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://sanfordheisler.com/"
   },
@@ -615,7 +791,11 @@
     "description": "An Austrian firm advising on whistleblowing systems, investigations, and employment compliance across CEE.",
     "city": "Vienna",
     "state": "Austria",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.schoenherr.eu/"
   },
@@ -627,7 +807,11 @@
     "description": "An India-based firm advising on whistleblowing policies, investigations, and employment issues.",
     "city": "New Delhi",
     "state": "India",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.amsshardul.com/"
   },
@@ -639,7 +823,11 @@
     "description": "A Benelux firm advising on whistleblowing frameworks, employment law, and internal investigations.",
     "city": "Brussels",
     "state": "Belgium",
-    "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Employment",
+      "Investigations"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.stibbe.com/"
   },
@@ -651,7 +839,11 @@
     "description": "A Washington, DC plaintiffs' firm handling whistleblower, class action, and public-interest cases.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Class Actions", "Public Interest"],
+    "practice_tags": [
+      "Whistleblower",
+      "Class Actions",
+      "Public Interest"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.tzlegal.com/"
   },
@@ -663,7 +855,11 @@
     "description": "A Portuguese firm advising on whistleblowing systems, compliance, and employment matters.",
     "city": "Lisbon",
     "state": "Portugal",
-    "practice_tags": ["Whistleblowing", "Compliance", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Compliance",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.vda.pt/"
   },
@@ -675,9 +871,29 @@
     "description": "A Boston boutique representing whistleblowers in qui tam, SEC, and retaliation matters.",
     "city": "Boston",
     "state": "MA",
-    "practice_tags": ["Whistleblower", "Qui Tam", "Retaliation"],
+    "practice_tags": [
+      "Whistleblower",
+      "Qui Tam",
+      "Retaliation"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.whistleblowerllc.com/"
+  },
+  {
+    "id": "seed-whistleblower-partners",
+    "slug": "public-record~whistleblower-partners",
+    "name": "Whistleblower Partners LLP",
+    "website": "https://whistleblower.law/",
+    "description": "A San Francisco firm dedicated to whistleblower rewards, False Claims Act, and anti-fraud matters.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": [
+      "Whistleblower",
+      "False Claims",
+      "Fraud"
+    ],
+    "source_label": "Seed dataset from official firm website",
+    "source_url": "https://whistleblower.law/"
   },
   {
     "id": "seed-wolf-theiss",
@@ -687,7 +903,11 @@
     "description": "A Vienna-based firm advising on whistleblowing rulebooks, investigations, and employment matters across Central and Eastern Europe.",
     "city": "Vienna",
     "state": "Austria",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.wolftheiss.com/"
   },
@@ -699,7 +919,11 @@
     "description": "A Singapore firm advising on investigations, employment issues, and whistleblowing frameworks.",
     "city": "Singapore",
     "state": "Singapore",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "practice_tags": [
+      "Whistleblowing",
+      "Investigations",
+      "Employment"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.wongpartnership.com/"
   },
@@ -711,7 +935,11 @@
     "description": "A Washington, DC firm focused on whistleblower rewards, retaliation, and executive advocacy matters.",
     "city": "Washington",
     "state": "DC",
-    "practice_tags": ["Whistleblower", "Retaliation", "SEC"],
+    "practice_tags": [
+      "Whistleblower",
+      "Retaliation",
+      "SEC"
+    ],
     "source_label": "Seed dataset from official firm website",
     "source_url": "https://www.zuckermanlaw.com/"
   }
