@@ -517,3 +517,20 @@ def test_discover_chambers_public_record_rows_filters_non_law_firm_and_location(
     assert added["city"] == "Singapore"
     assert added["state"] == "Singapore"
     assert added["practice_tags"] == ["Whistleblowing", "Investigations", "Employment"]
+
+
+def test_discover_chambers_public_record_rows_zero_limit_skips_discovery() -> None:
+    session = _DiscoveryFakeSession({})
+
+    result = discover_chambers_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"NY"})},
+        max_new_per_region=0,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    assert result.rows == []
+    assert result.scanned_count_by_region == {"US": 0}
+    assert result.added_count_by_region == {"US": 0}
+    assert session.requested_urls == []

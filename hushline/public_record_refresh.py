@@ -343,6 +343,9 @@ def discover_chambers_public_record_rows(  # noqa: PLR0913
     added_count_by_region: dict[str, int] = {region: 0 for region in regions}
 
     for region in regions:
+        if max_new_per_region == 0:
+            continue
+
         group_id = publication_group_by_region.get(region)
         if group_id is None:
             raise PublicRecordRefreshError(
@@ -358,9 +361,9 @@ def discover_chambers_public_record_rows(  # noqa: PLR0913
         entries = _parse_chambers_index_entries(index_payload, default_group_id=group_id)
 
         for entry in entries:
-            scanned_count_by_region[region] += 1
-            if max_new_per_region and added_count_by_region[region] >= max_new_per_region:
+            if added_count_by_region[region] >= max_new_per_region:
                 break
+            scanned_count_by_region[region] += 1
 
             name_key = _sort_key(entry.name)
             try:
