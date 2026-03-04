@@ -6,6 +6,8 @@ from typing import Any
 import pytest
 
 from hushline.public_record_refresh import (
+    DEFAULT_REGION_STATE_MAP,
+    US_STATE_CODES,
     LinkCheckResult,
     PublicRecordRefreshError,
     build_requests_link_checker,
@@ -39,6 +41,66 @@ def _row(  # noqa: PLR0913
     if slug is not None:
         row["slug"] = slug
     return row
+
+
+def test_default_us_region_state_map_includes_all_50_states() -> None:
+    expected = frozenset(
+        {
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "FL",
+            "GA",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY",
+        },
+    )
+
+    assert expected == US_STATE_CODES
+    assert DEFAULT_REGION_STATE_MAP["US"] == expected
 
 
 def test_refresh_public_record_rows_is_deterministic_and_schema_compatible() -> None:
@@ -337,7 +399,29 @@ def test_refresh_public_record_rows_rejects_source_matching_website() -> None:
         )
 
 
-def test_refresh_public_record_rows_canonicalizes_chambers_source_url() -> None:
+def test_refresh_public_record_rows_rejects_chambers_search_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-search",
+            slug="public-record~search",
+            name="Search Source Firm",
+            state="NY",
+            website="https://search-source.example",
+            source_url="https://chambers.com/search?query=Search+Source+Firm",
+        )
+    ]
+    rows[0]["source_label"] = "Chambers and Partners law firm search"
+
+    with pytest.raises(PublicRecordRefreshError, match="uses a Chambers URL"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_chambers_source_url() -> None:
     rows = [
         _row(
             id_value="seed-cohen",
@@ -345,21 +429,18 @@ def test_refresh_public_record_rows_canonicalizes_chambers_source_url() -> None:
             name="Cohen Milstein Sellers & Toll PLLC",
             state="NY",
             website="https://www.cohenmilstein.com/",
-            source_url=_profile_basics_url(67329, 5),
+            source_url="https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329",
         )
     ]
     rows[0]["source_label"] = "Chambers and Partners ranked law firm profile"
 
-    result = refresh_public_record_rows(
-        rows,
-        selected_regions=["US"],
-        region_state_map={"US": frozenset({"NY"})},
-        region_targets={"US": 1},
-    )
-
-    assert result.rows[0]["source_url"] == (
-        "https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329"
-    )
+    with pytest.raises(PublicRecordRefreshError, match="uses Chambers as a source"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
 
 
 def test_build_requests_link_checker_retries_then_succeeds() -> None:
@@ -395,212 +476,10 @@ def test_build_requests_link_checker_retries_then_succeeds() -> None:
     assert sleep_calls == [1.0]
 
 
-class _DiscoveryFakeResponse:
-    def __init__(self, *, status_code: int, payload: object) -> None:
-        self.status_code = status_code
-        self._payload = payload
-
-    def json(self) -> object:
-        return self._payload
-
-    def close(self) -> None:
-        return None
-
-
-class _DiscoveryFakeSession:
-    def __init__(self, responses: dict[str, _DiscoveryFakeResponse]) -> None:
-        self._responses = responses
-        self.headers: dict[str, str] = {}
-        self.requested_urls: list[str] = []
-
-    def get(self, url: str, *_args: Any, **_kwargs: Any) -> _DiscoveryFakeResponse:
-        self.requested_urls.append(url)
-        return self._responses.get(
-            url,
-            _DiscoveryFakeResponse(status_code=404, payload={"error": "not found"}),
+def test_discover_chambers_public_record_rows_is_disabled() -> None:
+    with pytest.raises(PublicRecordRefreshError, match="Chambers discovery is disabled"):
+        discover_chambers_public_record_rows(
+            [],
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
         )
-
-
-def _ranked_index_url(group_id: int) -> str:
-    return (
-        f"https://chamberssitemap.blob.core.windows.net/site-json/organisations/ranked/{group_id}"
-    )
-
-
-def _profile_basics_url(organisation_id: int, group_id: int) -> str:
-    return (
-        "https://profiles-portal.chambers.com/api/organisations/"
-        f"{organisation_id}/profile-basics?groupId={group_id}"
-    )
-
-
-def _ranked_offices_url(organisation_id: int, group_id: int) -> str:
-    return (
-        "https://profiles-portal.chambers.com/api/organisations/"
-        f"{organisation_id}/ranked-offices?groupId={group_id}"
-    )
-
-
-def _ranked_departments_url(organisation_id: int, group_id: int) -> str:
-    return (
-        "https://ranking-tables.chambers.com/api/organisations/"
-        f"{organisation_id}/ranked-departments?groupId={group_id}"
-    )
-
-
-def test_discover_chambers_public_record_rows_adds_new_us_law_firm() -> None:
-    existing_rows = [
-        _row(
-            id_value="seed-ao-shearman",
-            slug="public-record~ao-shearman",
-            name="A&O Shearman",
-            state="NY",
-            website="https://www.aoshearman.com/",
-        )
-    ]
-    responses = {
-        _ranked_index_url(5): _DiscoveryFakeResponse(
-            status_code=200,
-            payload=[
-                {"oid": 7, "on": "A&O Shearman", "ptgid": 5},
-                {"oid": 67329, "on": "Cohen Milstein Sellers & Toll PLLC", "ptgid": 5},
-            ],
-        ),
-        _profile_basics_url(67329, 5): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={
-                "organisationTypeId": 1,
-                "webLink": "https://www.cohenmilstein.com/",
-            },
-        ),
-        _ranked_offices_url(67329, 5): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={
-                "headOffice": {
-                    "country": "USA",
-                    "region": "District of Columbia",
-                    "town": "Washington",
-                    "webLink": "https://www.cohenmilstein.com/",
-                },
-                "locations": [],
-            },
-        ),
-        _ranked_departments_url(67329, 5): _DiscoveryFakeResponse(
-            status_code=200,
-            payload=[
-                {"practiceAreaName": ("Litigation: White Collar Crime & Government Investigations")}
-            ],
-        ),
-    }
-    session = _DiscoveryFakeSession(responses)
-
-    result = discover_chambers_public_record_rows(
-        existing_rows,
-        selected_regions=["US"],
-        region_state_map={"US": frozenset({"DC", "NY"})},
-        max_new_per_region=5,
-        session=session,  # type: ignore[arg-type]
-    )
-
-    assert result.scanned_count_by_region == {"US": 2}
-    assert result.added_count_by_region == {"US": 1}
-    assert len(result.rows) == 1
-    added = result.rows[0]
-    assert added["name"] == "Cohen Milstein Sellers & Toll PLLC"
-    assert added["website"] == "https://www.cohenmilstein.com/"
-    assert added["city"] == "Washington"
-    assert added["state"] == "DC"
-    assert added["source_url"] == (
-        "https://chambers.com/law-firm/cohen-milstein-sellers-toll-pllc-usa-5:67329"
-    )
-    assert "Investigations" in added["practice_tags"]
-    assert all("/organisations/7/" not in url for url in session.requested_urls)
-
-
-def test_discover_chambers_public_record_rows_filters_non_law_firm_and_location() -> None:
-    responses = {
-        _ranked_index_url(8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload=[
-                {"oid": 100, "on": "Example Chambers", "ptgid": 8},
-                {"oid": 200, "on": "Bangladesh Legal LLP", "ptgid": 8},
-                {"oid": 300, "on": "Singapore Legal LLP", "ptgid": 8},
-            ],
-        ),
-        _profile_basics_url(100, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={"organisationTypeId": 2, "webLink": "https://example.invalid"},
-        ),
-        _profile_basics_url(200, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={"organisationTypeId": 1, "webLink": "https://bangladesh.example"},
-        ),
-        _ranked_offices_url(200, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={
-                "headOffice": {
-                    "country": "Bangladesh",
-                    "region": "Dhaka",
-                    "town": "Dhaka",
-                    "webLink": "https://bangladesh.example",
-                },
-                "locations": [],
-            },
-        ),
-        _profile_basics_url(300, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={"organisationTypeId": 1, "webLink": None},
-        ),
-        _ranked_offices_url(300, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload={
-                "headOffice": {
-                    "country": "Singapore",
-                    "region": "Singapore Island",
-                    "town": "Singapore",
-                    "webLink": "https://singapore.example",
-                },
-                "locations": [],
-            },
-        ),
-        _ranked_departments_url(300, 8): _DiscoveryFakeResponse(
-            status_code=200,
-            payload=[],
-        ),
-    }
-    session = _DiscoveryFakeSession(responses)
-
-    result = discover_chambers_public_record_rows(
-        [],
-        selected_regions=["APAC"],
-        region_state_map={"APAC": frozenset({"Singapore"})},
-        max_new_per_region=3,
-        session=session,  # type: ignore[arg-type]
-    )
-
-    assert result.scanned_count_by_region == {"APAC": 3}
-    assert result.added_count_by_region == {"APAC": 1}
-    assert len(result.rows) == 1
-    added = result.rows[0]
-    assert added["name"] == "Singapore Legal LLP"
-    assert added["website"] == "https://singapore.example"
-    assert added["city"] == "Singapore"
-    assert added["state"] == "Singapore"
-    assert added["practice_tags"] == ["Whistleblowing", "Investigations", "Employment"]
-
-
-def test_discover_chambers_public_record_rows_zero_limit_skips_discovery() -> None:
-    session = _DiscoveryFakeSession({})
-
-    result = discover_chambers_public_record_rows(
-        [],
-        selected_regions=["US"],
-        region_state_map={"US": frozenset({"NY"})},
-        max_new_per_region=0,
-        session=session,  # type: ignore[arg-type]
-    )
-
-    assert result.rows == []
-    assert result.scanned_count_by_region == {"US": 0}
-    assert result.added_count_by_region == {"US": 0}
-    assert session.requested_urls == []

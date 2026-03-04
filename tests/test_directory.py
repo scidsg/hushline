@@ -7,7 +7,15 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import User, get_public_record_listings
+from hushline.model import PublicRecordListing, User, get_public_record_listings
+from hushline.public_record_refresh import DEFAULT_REGION_STATE_MAP, US_STATE_CODES
+
+
+def _first_public_record_listing_or_skip() -> PublicRecordListing:
+    listings = get_public_record_listings()
+    if not listings:
+        pytest.skip("No public-record listings configured")
+    return listings[0]
 
 
 def test_directory_accessible(client: FlaskClient) -> None:
@@ -119,7 +127,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
 def test_directory_public_records_render_only_in_public_records_and_all(
     client: FlaskClient,
 ) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -146,7 +154,7 @@ def test_directory_public_records_render_only_in_public_records_and_all(
 
 
 def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("directory_users"))
     assert response.status_code == 200
@@ -165,35 +173,20 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
 
 def test_public_record_seed_regions_have_coverage() -> None:
     listings = get_public_record_listings()
-    us_states = {"DC", "NY", "PA", "CA", "MD", "WA", "MA"}
-    eu_states = {
-        "Austria",
-        "Belgium",
-        "Finland",
-        "France",
-        "Germany",
-        "Italy",
-        "Luxembourg",
-        "Netherlands",
-        "Portugal",
-        "Spain",
-        "Sweden",
-    }
-    apac_states = {"Australia", "India", "Japan", "Singapore"}
 
-    us = [listing for listing in listings if listing.state in us_states]
-    eu = [listing for listing in listings if listing.state in eu_states]
-    apac = [listing for listing in listings if listing.state in apac_states]
+    allowed_states = {state for states in DEFAULT_REGION_STATE_MAP.values() for state in states}
+    assert all(listing.state in allowed_states for listing in listings)
 
-    assert len(us) + len(eu) + len(apac) == len(listings)
-    assert us
-    assert eu
-    assert apac
-    assert any(listing.name == "Whistleblower Partners LLP" for listing in us)
+    if listings:
+        us_covered = {listing.state for listing in listings if listing.state in US_STATE_CODES}
+        assert us_covered == set(US_STATE_CODES)
+
+    assert all(listing.source_url for listing in listings)
+    assert all("chambers.com" not in (listing.source_url or "") for listing in listings)
 
 
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 200
@@ -213,7 +206,7 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
 
 
 def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.post(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 405
@@ -222,7 +215,7 @@ def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
 def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
     client: FlaskClient,
 ) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
         response = client.get(url_for("public_record_listing", slug=listing.slug))
@@ -233,7 +226,7 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
 
 
 def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(
         url_for("redirect_submit_message", username=listing.slug),

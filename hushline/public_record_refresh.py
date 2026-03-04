@@ -54,8 +54,63 @@ _DEFAULT_DISCOVERED_PRACTICE_TAGS: tuple[str, ...] = (
 
 _DEFAULT_CHAMBERS_MAX_NEW_PER_REGION = 10
 
+US_STATE_CODES: frozenset[str] = frozenset(
+    {
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+    },
+)
+
 DEFAULT_REGION_STATE_MAP: dict[str, frozenset[str]] = {
-    "US": frozenset({"DC", "NY", "PA", "CA", "MD", "WA", "MA"}),
+    "US": US_STATE_CODES,
     "EU": frozenset(
         {
             "Austria",
@@ -74,7 +129,7 @@ DEFAULT_REGION_STATE_MAP: dict[str, frozenset[str]] = {
     "APAC": frozenset({"Australia", "India", "Japan", "Singapore"}),
 }
 
-DEFAULT_REGION_TARGETS: dict[str, int] = {"US": 20, "EU": 20, "APAC": 19}
+DEFAULT_REGION_TARGETS: dict[str, int] = {"US": 0, "EU": 0, "APAC": 0}
 
 _RETRYABLE_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 _BROKEN_STATUS_CODES = frozenset({404, 410})
@@ -318,6 +373,11 @@ def discover_chambers_public_record_rows(  # noqa: PLR0913
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
     session: requests.Session | None = None,
 ) -> ChambersDiscoveryResult:
+    raise PublicRecordRefreshError(
+        "Chambers discovery is disabled. Only official public sources (for example "
+        "government and state bar records) are allowed.",
+    )
+
     if timeout_seconds <= 0:
         raise PublicRecordRefreshError("Discovery timeout_seconds must be > 0")
     if max_new_per_region < 0:
@@ -812,6 +872,12 @@ def _validate_authoritative_source(
     source_label: str,
     source_url: str | None,
 ) -> None:
+    if source_label == CHAMBERS_SOURCE_LABEL:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' uses Chambers as a source; "
+            "only official public sources are allowed."
+        )
+
     if source_label == LEGACY_SELF_REPORTED_SOURCE_LABEL:
         raise PublicRecordRefreshError(
             f"Listing '{name}' uses a deprecated self-reported source label; "
@@ -820,6 +886,17 @@ def _validate_authoritative_source(
 
     if source_url is None:
         return
+
+    if _is_chambers_source_url(source_url):
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' uses a Chambers URL; " "only official public sources are allowed."
+        )
+
+    if _is_chambers_search_url(source_url):
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' uses a Chambers search URL; "
+            "source_url must point to a specific source record."
+        )
 
     if _normalize_url_for_comparison(source_url) == _normalize_url_for_comparison(website):
         raise PublicRecordRefreshError(
@@ -830,6 +907,21 @@ def _validate_authoritative_source(
 
 def _normalize_url_for_comparison(value: str) -> str:
     return _normalize_string(value).casefold().rstrip("/")
+
+
+def _is_chambers_search_url(source_url: str) -> bool:
+    normalized = _normalize_url_for_comparison(source_url)
+    return normalized.startswith("https://chambers.com/search")
+
+
+def _is_chambers_source_url(source_url: str) -> bool:
+    normalized = _normalize_url_for_comparison(source_url)
+    return (
+        normalized.startswith("https://chambers.com/")
+        or "profiles-portal.chambers.com" in normalized
+        or "chamberssitemap.blob.core.windows.net" in normalized
+        or "ranking-tables.chambers.com" in normalized
+    )
 
 
 def _chambers_public_profile_url(
