@@ -64,7 +64,7 @@ def _run_onboarding_flow_through_step_four(client: FlaskClient) -> None:
     response = client.get(url_for("onboarding", step="directory"))
     assert response.status_code == 200
     assert "Step 4 of 4" in response.text
-    assert "Finally, join the User Directory!" in response.text
+    assert "Finally, join the Whistleblower Support Directory!" in response.text
 
     response = client.post(
         url_for("onboarding"),

@@ -112,7 +112,7 @@ class OnboardingNotificationsForm(FlaskForm):
 
 
 class OnboardingDirectoryForm(FlaskForm):
-    show_in_directory = BooleanField("Show my profile in the User Directory", default=True)
+    show_in_directory = BooleanField("Show my profile in the Whistleblower Support Directory", default=True)
 
 
 class OnboardingSkipForm(FlaskForm):
