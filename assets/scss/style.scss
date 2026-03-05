@@ -4541,25 +4541,3 @@ button .badge {
   font-size: var(--font-size-smallest);
   padding: 0.25rem 0.4125rem;
 }
-
-@media (max-width: 395px) {
-  /* Keep your "fill leftover space" behavior */
-  .directory-tabs .tab-list li {
-    flex: 1 0 auto;      /* grow, no shrink */
-    min-width: 0;
-  }
-
-  .directory-tabs .tab-list button {
-    width: 100%;
-    justify-content: center;
-    white-space: nowrap;
-    padding: 0.75rem 0;
-  }
-
-  /* Scroll only when actually needed (no phantom overflow) */
-  .directory-tabs .tab-list {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-}
