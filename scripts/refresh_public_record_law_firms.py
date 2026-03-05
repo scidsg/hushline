@@ -30,7 +30,7 @@ def _default_input_path() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Refresh and validate the public-record law firm directory artifact "
+            "Refresh and validate the public-record attorney directory artifact "
             "with deterministic ordering and optional link validation."
         ),
     )
@@ -68,12 +68,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--discover-chambers-ranked-firms",
         action="store_true",
-        help="Add new firms from Chambers and Partners ranked public data.",
+        help="Add new attorneys from Chambers and Partners ranked public data.",
     )
     parser.add_argument(
         "--discover-official-us-state-firms",
+        "--discover-official-us-state-attorneys",
+        dest="discover_official_us_state_firms",
         action="store_true",
-        help="Add firms only from explicitly implemented official U.S. state adapters.",
+        help="Add attorneys only from explicitly implemented official U.S. state adapters.",
     )
     parser.add_argument(
         "--strict-discovery-state-coverage",
@@ -84,7 +86,7 @@ def _parse_args() -> argparse.Namespace:
         "--max-discovered-per-region",
         type=int,
         default=10,
-        help="Maximum newly discovered firms to add per region (default: 10).",
+        help="Maximum newly discovered attorney listings to add per region (default: 10).",
     )
     parser.add_argument(
         "--drop-failing-records",

@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Build an authoritative, ever-growing U.S. public-record law firm dataset.
+- Build an authoritative, ever-growing U.S. public-record attorney dataset.
 - Keep only listings with strict, per-record official source URLs.
 - Remove listings when the official record can no longer be verified.
 

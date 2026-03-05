@@ -22,7 +22,7 @@ class PublicRecordListing:
     practice_tags: tuple[str, ...]
     source_label: str
     source_url: str | None = None
-    listing_type: str = "law_firm"
+    listing_type: str = "attorney"
     directory_section: str = "public_record"
     message_capable: bool = False
     is_automated: bool = True

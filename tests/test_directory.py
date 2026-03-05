@@ -27,8 +27,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
-    # New: the tab label is now "Law Firms" plus the "🤖 Automated" badge
-    assert "Law Firms" in response.text
+    assert "Attorneys" in response.text
     assert "🤖 Automated" in response.text
 
 
@@ -64,7 +63,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
-    assert "🏛️ Public Record Law Firms" not in all_panel.get_text(" ", strip=True)
+    assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
 
 
