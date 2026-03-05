@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 import pytest
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_STATE_MAP,
+    OFFICIAL_US_STATE_DISCOVERY_ADAPTERS,
     US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
     LinkCheckResult,
@@ -16,6 +17,16 @@ from hushline.public_record_refresh import (
     discover_chambers_public_record_rows,
     discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
+)
+from tests.public_record_adapter_harness import (
+    assert_official_source_adapter_rows,
+    build_existing_row_for_collision,
+)
+
+_IMPLEMENTED_OFFICIAL_SOURCE_STATES: tuple[str, ...] = tuple(
+    state_code
+    for state_code, adapter in sorted(OFFICIAL_US_STATE_DISCOVERY_ADAPTERS.items())
+    if adapter.__name__ != "_discover_noop_official_public_record_rows"
 )
 
 
@@ -63,6 +74,18 @@ def _row(  # noqa: PLR0913
     if slug is not None:
         row["slug"] = slug
     return row
+
+
+def _discover_rows_for_state(
+    *,
+    state_code: str,
+    existing_rows: Sequence[Mapping[str, object]],
+) -> OfficialStateDiscoveryResult:
+    return discover_official_us_state_public_record_rows(
+        existing_rows,
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
 
 
 def test_default_us_region_state_map_includes_all_50_states() -> None:
@@ -689,6 +712,43 @@ def test_discover_official_us_state_public_record_rows_strict_accepts_full_cover
     assert result.unsupported_states == ()
     assert result.added_count_by_state["NY"] == 0
     assert result.added_count_by_state["CA"] > 0
+
+
+def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
+    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+
+
+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
+    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
+
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: len(result.rows)}
+    assert_official_source_adapter_rows(state_code, result.rows)
+
+
+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+def test_official_source_adapter_harness_skips_existing_rows(
+    state_code: str,
+    collision: str,
+) -> None:
+    baseline = _discover_rows_for_state(state_code=state_code, existing_rows=[])
+    assert baseline.unsupported_states == ()
+    assert baseline.rows
+
+    existing_row = build_existing_row_for_collision(
+        baseline.rows[0],
+        collision=collision,
+    )
+    result = _discover_rows_for_state(state_code=state_code, existing_rows=[existing_row])
+
+    expected_count = len(baseline.rows) - 1
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: expected_count}
+    assert len(result.rows) == expected_count
+    if result.rows:
+        assert_official_source_adapter_rows(state_code, result.rows)
 
 
 def test_discover_official_us_state_public_record_rows_adds_california_seeds() -> None:
