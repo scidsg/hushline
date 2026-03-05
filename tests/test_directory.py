@@ -1,4 +1,6 @@
+import re
 import time
+from urllib.parse import parse_qsl, urlparse
 
 import pytest
 import requests
@@ -7,15 +9,42 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import User, get_public_record_listings
+from hushline.model import PublicRecordListing, User, get_public_record_listings
+from hushline.public_record_refresh import (
+    DEFAULT_REGION_STATE_MAP,
+    US_STATE_AUTHORITATIVE_SOURCES,
+    US_STATE_CODES,
+)
+
+
+def _first_public_record_listing_or_skip() -> PublicRecordListing:
+    listings = _strict_public_record_listings()
+    if not listings:
+        pytest.skip("No public-record listings configured")
+    return listings[0]
+
+
+def _strict_public_record_listings() -> list[PublicRecordListing]:
+    return [
+        listing
+        for listing in get_public_record_listings()
+        if listing.directory_section != "legacy_public_record"
+    ]
+
+
+def _legacy_public_record_listings() -> list[PublicRecordListing]:
+    return [
+        listing
+        for listing in get_public_record_listings()
+        if listing.directory_section == "legacy_public_record"
+    ]
 
 
 def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
-    # New: the tab label is now "Law Firms" plus the "🤖 Automated" badge
-    assert "Law Firms" in response.text
+    assert "Attorneys" in response.text
     assert "🤖 Automated" in response.text
 
 
@@ -32,7 +61,7 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert banner_link.text.strip() == "Hush Line admin"
     assert banner_link.get("href") == "/to/admin"
     banner_text = public_records_panel.get_text(" ", strip=True)
-    assert "These are automated listings pulled from public records." in banner_text
+    assert "Beta: These listings are automated and pulled from public records." in banner_text
     assert "Message the Hush Line admin for any corrections." in banner_text
 
 
@@ -51,7 +80,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
-    assert "🏛️ Public Record Law Firms" not in all_panel.get_text(" ", strip=True)
+    assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
 
 
@@ -114,12 +143,13 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
+    assert admin_row["directory_section"] is None
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(
     client: FlaskClient,
 ) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -141,12 +171,13 @@ def test_directory_public_records_render_only_in_public_records_and_all(
     assert f"Source: {listing.source_label}" not in all_panel.text
     assert "🏛️ Public Record" in public_records_panel.text
     assert "🤖 Automated" in public_records_panel.text
+    assert "Public Record Attorneys (Legacy)" not in public_records_panel.text
     assert verified_panel is not None
     assert listing.name not in verified_panel.text
 
 
 def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("directory_users"))
     assert response.status_code == 200
@@ -161,37 +192,87 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["location"] == listing.location
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
+    assert row["directory_section"] == "public_record"
 
 
-def test_public_record_seed_regions_are_balanced() -> None:
-    listings = get_public_record_listings()
-    us_states = {"DC", "NY", "PA", "CA", "MD", "WA", "MA"}
-    eu_states = {
-        "Austria",
-        "Belgium",
-        "Finland",
-        "France",
-        "Germany",
-        "Italy",
-        "Luxembourg",
-        "Netherlands",
-        "Portugal",
-        "Spain",
-        "Sweden",
-    }
-    apac_states = {"Australia", "India", "Japan", "Singapore"}
+def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
+    legacy_listings = _legacy_public_record_listings()
+    if not legacy_listings:
+        pytest.skip("No legacy public-record listings configured")
 
-    us = [listing for listing in listings if listing.state in us_states]
-    eu = [listing for listing in listings if listing.state in eu_states]
-    apac = [listing for listing in listings if listing.state in apac_states]
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
 
-    assert len(us) + len(eu) + len(apac) == len(listings)
-    assert max(len(us), len(eu), len(apac)) - min(len(us), len(eu), len(apac)) <= 1
-    assert any(listing.name == "Whistleblower Partners LLP" for listing in us)
+    legacy_listing = legacy_listings[0]
+    legacy_row = next(
+        row for row in (response.json or []) if row["display_name"] == legacy_listing.name
+    )
+    assert legacy_row["entry_type"] == "public_record"
+    assert legacy_row["directory_section"] == "legacy_public_record"
+    assert legacy_row["is_automated"] is True
+
+
+def test_public_record_seed_regions_have_coverage() -> None:
+    listings = _strict_public_record_listings()
+
+    allowed_states = {state for states in DEFAULT_REGION_STATE_MAP.values() for state in states}
+    assert all(listing.state in allowed_states for listing in listings)
+
+    if listings:
+        us_covered = {listing.state for listing in listings if listing.state in US_STATE_CODES}
+        assert us_covered
+
+    assert all(listing.source_url for listing in listings)
+    assert all("chambers.com" not in (listing.source_url or "") for listing in listings)
+
+    us_listings = [listing for listing in listings if listing.state in US_STATE_CODES]
+    for listing in us_listings:
+        source_rule = US_STATE_AUTHORITATIVE_SOURCES[listing.state]
+        assert listing.source_label == source_rule["source_label"]
+        assert listing.source_url is not None
+        hostname = urlparse(listing.source_url).hostname
+        assert hostname is not None
+        normalized_host = hostname.casefold()
+        assert any(
+            normalized_host == domain or normalized_host.endswith(f".{domain}")
+            for domain in source_rule["allowed_domains"]
+        )
+        parsed_source_url = urlparse(listing.source_url)
+        source_query_pairs = parse_qsl(parsed_source_url.query, keep_blank_values=True)
+        assert all(key.casefold() != "listing" for key, _value in source_query_pairs)
+        source_fragment_fields = [
+            field.strip() for field in parsed_source_url.fragment.split("&") if field.strip()
+        ]
+        assert all(
+            field.split("=", 1)[0].strip().casefold() != "listing"
+            for field in source_fragment_fields
+        )
+
+        normalized_source_no_fragment = (
+            parsed_source_url._replace(fragment="").geturl().casefold().rstrip("/")
+        )
+        normalized_state_source_no_fragment = (
+            urlparse(source_rule["source_url"])
+            ._replace(fragment="")
+            .geturl()
+            .casefold()
+            .rstrip("/")
+        )
+        if normalized_source_no_fragment == normalized_state_source_no_fragment:
+            if listing.state == "OH":
+                assert re.fullmatch(
+                    r"/?\d+/attyinfo/?",
+                    parsed_source_url.fragment.strip(),
+                    flags=re.IGNORECASE,
+                )
+                continue
+            raise AssertionError(
+                "listing source_url points to a generic state source page",
+            )
 
 
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 200
@@ -201,14 +282,17 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert "🤖 Automated" in page_text
     assert listing.description in page_text
     assert listing.website in response.text
-    assert "Source" not in page_text
+    assert "Source" in page_text
+    assert listing.source_url is not None
+    source_link = soup.find("a", href=listing.source_url)
+    assert source_link is not None
     assert "Practice Areas" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in page_text
 
 
 def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.post(url_for("public_record_listing", slug=listing.slug))
     assert response.status_code == 405
@@ -217,7 +301,7 @@ def test_public_record_listing_route_rejects_post(client: FlaskClient) -> None:
 def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
     client: FlaskClient,
 ) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
         response = client.get(url_for("public_record_listing", slug=listing.slug))
@@ -228,7 +312,7 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
 
 
 def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> None:
-    listing = get_public_record_listings()[0]
+    listing = _first_public_record_listing_or_skip()
 
     response = client.get(
         url_for("redirect_submit_message", username=listing.slug),
@@ -255,7 +339,7 @@ def test_public_record_external_links_resolve() -> None:
     checked: set[str] = set()
     failures: list[str] = []
 
-    for listing in get_public_record_listings():
+    for listing in _strict_public_record_listings():
         for label, url in {
             "website": listing.website,
             "source": listing.source_url,

@@ -9,8 +9,11 @@ from typing import Any, Mapping, Sequence
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_TARGETS,
+    US_STATE_AUTHORITATIVE_SOURCES,
+    US_STATE_CODES,
     PublicRecordRefreshError,
     build_requests_link_checker,
+    discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
     render_refresh_summary,
 )
@@ -27,7 +30,7 @@ def _default_input_path() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Refresh and validate the public-record law firm directory artifact "
+            "Refresh and validate the public-record attorney directory artifact "
             "with deterministic ordering and optional link validation."
         ),
     )
@@ -53,14 +56,37 @@ def _parse_args() -> argparse.Namespace:
         action="append",
         default=[],
         help=(
-            "Region target in REGION=COUNT form. "
-            "Repeat flag for multiple regions. Defaults to built-in quarterly targets."
+            "Minimum region target in REGION=COUNT form. "
+            "Repeat flag for multiple regions. Defaults to built-in minimum targets."
         ),
     )
     parser.add_argument(
         "--no-link-validation",
         action="store_true",
         help="Skip website/source URL validation.",
+    )
+    parser.add_argument(
+        "--discover-chambers-ranked-firms",
+        action="store_true",
+        help="Add new attorneys from Chambers and Partners ranked public data.",
+    )
+    parser.add_argument(
+        "--discover-official-us-state-firms",
+        "--discover-official-us-state-attorneys",
+        dest="discover_official_us_state_firms",
+        action="store_true",
+        help="Add attorneys only from explicitly implemented official U.S. state adapters.",
+    )
+    parser.add_argument(
+        "--strict-discovery-state-coverage",
+        action="store_true",
+        help="Fail discovery when any selected U.S. state lacks an implemented adapter.",
+    )
+    parser.add_argument(
+        "--max-discovered-per-region",
+        type=int,
+        default=10,
+        help="Maximum newly discovered attorney listings to add per region (default: 10).",
     )
     parser.add_argument(
         "--drop-failing-records",
@@ -161,6 +187,61 @@ def _serialized_rows(rows: Sequence[Mapping[str, object]]) -> str:
     return json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
 
 
+def _apply_us_state_source_strategy(
+    rows: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    normalized_rows: list[dict[str, object]] = []
+    for raw_row in rows:
+        row = dict(raw_row)
+        raw_state = row.get("state")
+        if not isinstance(raw_state, str):
+            normalized_rows.append(row)
+            continue
+
+        state_code = raw_state.strip().upper()
+        state_source = US_STATE_AUTHORITATIVE_SOURCES.get(state_code)
+        if state_source is None:
+            normalized_rows.append(row)
+            continue
+
+        row["source_label"] = state_source["source_label"]
+
+        normalized_rows.append(row)
+
+    return normalized_rows
+
+
+def _append_us_state_coverage_summary(
+    summary: str,
+    *,
+    rows: Sequence[Mapping[str, object]],
+    selected_regions: Sequence[str],
+) -> str:
+    if "US" not in selected_regions:
+        return summary
+
+    covered_states = sorted(
+        {
+            state
+            for row in rows
+            for raw_state in [row.get("state")]
+            if isinstance(raw_state, str)
+            for state in [raw_state.strip().upper()]
+            if state in US_STATE_CODES
+        },
+    )
+    missing_states = sorted(set(US_STATE_CODES) - set(covered_states))
+
+    lines = [summary.rstrip(), "", "### U.S. State Coverage", ""]
+    lines.append(f"- States covered: {len(covered_states)} / {len(US_STATE_CODES)}")
+    if missing_states:
+        lines.append(f"- Missing states: {', '.join(missing_states)}")
+    else:
+        lines.append("- Missing states: none")
+
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     args = _parse_args()
     selected_regions = _parse_regions(args.regions)
@@ -173,7 +254,26 @@ def main() -> int:
             max_attempts=args.max_attempts,
         )
 
-    source_rows = _load_rows(args.input)
+    source_rows = _apply_us_state_source_strategy(_load_rows(args.input))
+    if args.discover_chambers_ranked_firms:
+        raise PublicRecordRefreshError(
+            "--discover-chambers-ranked-firms is disabled. "
+            "Only official public sources are allowed."
+        )
+    official_discovery_unsupported_states: tuple[str, ...] = ()
+    official_discovery_added_count = 0
+    if args.discover_official_us_state_firms:
+        official_discovery_result = discover_official_us_state_public_record_rows(
+            source_rows,
+            selected_regions=selected_regions,
+            max_new_per_state=args.max_discovered_per_region,
+            timeout_seconds=args.timeout_seconds,
+            strict_state_adapter_coverage=args.strict_discovery_state_coverage,
+        )
+        source_rows = [*source_rows, *[dict(row) for row in official_discovery_result.rows]]
+        official_discovery_added_count = len(official_discovery_result.rows)
+        official_discovery_unsupported_states = official_discovery_result.unsupported_states
+
     refresh_result = refresh_public_record_rows(
         source_rows,
         selected_regions=selected_regions,
@@ -182,6 +282,24 @@ def main() -> int:
         drop_failed_links=args.drop_failing_records,
     )
     summary = render_refresh_summary(refresh_result, regions=selected_regions)
+    summary = _append_us_state_coverage_summary(
+        summary,
+        rows=refresh_result.rows,
+        selected_regions=selected_regions,
+    )
+    if args.discover_official_us_state_firms:
+        summary_lines = [summary.rstrip(), "", "### Official Discovery", ""]
+        summary_lines.append(
+            f"- Rows added by implemented adapters: {official_discovery_added_count}"
+        )
+        if official_discovery_unsupported_states:
+            summary_lines.append(
+                "- U.S. states without adapters: "
+                + ", ".join(official_discovery_unsupported_states),
+            )
+        else:
+            summary_lines.append("- U.S. states without adapters: none")
+        summary = "\n".join(summary_lines) + "\n"
     print(summary, end="")
 
     if args.summary_output is not None:

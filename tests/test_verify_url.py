@@ -50,12 +50,12 @@ def start_verification_app(port: int) -> None:
 
 
 def await_verification_app(port: int) -> None:
-    for _ in range(10):
+    for _ in range(20):
         try:
-            resp = requests.get(f"http://{HOSTNAME}:{port}/", timeout=0.05)
+            resp = requests.get(f"http://{HOSTNAME}:{port}/", timeout=0.2)
             resp.raise_for_status()
             return
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             print(f"Could not reach port {port}: {e}")
             time.sleep(0.5)
     raise Exception("App could not be reached")

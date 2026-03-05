@@ -102,6 +102,10 @@ test-public-record-links: ## Validate live public-record external links
 refresh-public-record-listings: ## Refresh public-record listing artifact deterministically
 	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py $(REFRESH_PUBLIC_RECORD_ARGS)
 
+.PHONY: public-record-provenance-report
+public-record-provenance-report: ## Audit strict provenance coverage for public-record listings
+	$(CMD) poetry run ./scripts/public_record_provenance_report.py
+
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
 	$(CMD) bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'

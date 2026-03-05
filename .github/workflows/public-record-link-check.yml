@@ -15,7 +15,7 @@ on:
       - "tests/test_directory.py"
       - "Makefile"
       - ".github/workflows/public-record-link-check.yml"
-      - ".github/workflows/public-record-quarterly-refresh.yml"
+      - ".github/workflows/public-record-weekly-refresh.yml"
 
 jobs:
   public-record-links:
