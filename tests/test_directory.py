@@ -63,8 +63,6 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     banner_text = public_records_panel.get_text(" ", strip=True)
     assert "Beta: These listings are automated and pulled from public records." in banner_text
     assert "Message the Hush Line admin for any corrections." in banner_text
-    if _legacy_public_record_listings():
-        assert "Public Record Attorneys (Legacy)" in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
@@ -173,6 +171,7 @@ def test_directory_public_records_render_only_in_public_records_and_all(
     assert f"Source: {listing.source_label}" not in all_panel.text
     assert "🏛️ Public Record" in public_records_panel.text
     assert "🤖 Automated" in public_records_panel.text
+    assert "Public Record Attorneys (Legacy)" not in public_records_panel.text
     assert verified_panel is not None
     assert listing.name not in verified_panel.text
 

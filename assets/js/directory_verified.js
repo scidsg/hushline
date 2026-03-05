@@ -218,8 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "public-records") {
-      appendSection(panel, "🏛️ Public Record Attorneys", strictPublicRecords, query);
-      appendSection(panel, "🏛️ Public Record Attorneys (Legacy)", legacyPublicRecords, query);
+      appendSection(panel, "", publicRecords, query);
       return;
     }
 

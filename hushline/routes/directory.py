@@ -90,6 +90,7 @@ def register_directory_routes(app: Flask) -> None:
             info_usernames=info_usernames,
             verified_pgp_usernames=verified_pgp_usernames,
             verified_info_usernames=verified_info_usernames,
+            public_record_all_listings=all_public_record_listings,
             public_record_listings=public_record_listings,
             legacy_public_record_listings=legacy_public_record_listings,
             public_record_total_count=len(all_public_record_listings),
