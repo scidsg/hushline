@@ -48,6 +48,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/189817"
   },
   {
+    "id": "seed-daniel-noel",
+    "slug": "public-record~daniel-noel",
+    "name": "Daniel Noel",
+    "website": "https://constantinecannon.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/339078"
+  },
+  {
     "id": "seed-douglas-michael-werman",
     "slug": "public-record~douglas-michael-werman",
     "name": "Douglas Michael Werman",
@@ -58,6 +70,42 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Illinois ARDC attorney registration records",
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+  },
+  {
+    "id": "seed-eric-andrew-grover",
+    "slug": "public-record~eric-andrew-grover",
+    "name": "Eric Andrew Grover",
+    "website": "https://www.kellergrover.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/136080"
+  },
+  {
+    "id": "seed-jeffrey-farley-keller",
+    "slug": "public-record~jeffrey-farley-keller",
+    "name": "Jeffrey Farley Keller",
+    "website": "https://www.kellergrover.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
+  },
+  {
+    "id": "seed-kathleen-ruth-scanlan",
+    "slug": "public-record~kathleen-ruth-scanlan",
+    "name": "Kathleen Ruth Scanlan",
+    "website": "https://www.kellergrover.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529"
   },
   {
     "id": "seed-marlene-koury",
@@ -106,6 +154,18 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/171107"
+  },
+  {
+    "id": "seed-sarah-renee-holloway",
+    "slug": "public-record~sarah-renee-holloway",
+    "name": "Sarah Renee Holloway",
+    "website": "https://www.kellergrover.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134"
   },
   {
     "id": "seed-stephen-shinobu-hasegawa",

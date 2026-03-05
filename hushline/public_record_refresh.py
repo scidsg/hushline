@@ -632,16 +632,83 @@ def render_refresh_summary(result: PublicRecordRefreshResult, *, regions: Sequen
     return "\n".join(lines) + "\n"
 
 
-def _discover_california_official_public_record_rows(
-    *,
-    existing_rows: Sequence[Mapping[str, object]],
-    max_new_per_state: int,
-    timeout_seconds: float,
-    session: requests.Session | None,
-) -> list[PublicRecordRow]:
-    del existing_rows, max_new_per_state, timeout_seconds, session
-    # Explicit adapter placeholder: no automated CA discovery until maintainer approval.
-    return []
+_CALIFORNIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-jeffrey-farley-keller",
+        "slug": "public-record~jeffrey-farley-keller",
+        "name": "Jeffrey Farley Keller",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005",
+    },
+    {
+        "id": "seed-eric-andrew-grover",
+        "slug": "public-record~eric-andrew-grover",
+        "name": "Eric Andrew Grover",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/136080",
+    },
+    {
+        "id": "seed-kathleen-ruth-scanlan",
+        "slug": "public-record~kathleen-ruth-scanlan",
+        "name": "Kathleen Ruth Scanlan",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529",
+    },
+    {
+        "id": "seed-sarah-renee-holloway",
+        "slug": "public-record~sarah-renee-holloway",
+        "name": "Sarah Renee Holloway",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134",
+    },
+    {
+        "id": "seed-daniel-noel",
+        "slug": "public-record~daniel-noel",
+        "name": "Daniel Noel",
+        "website": "https://constantinecannon.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/339078",
+    },
+)
 
 
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
@@ -745,6 +812,32 @@ def _discover_seed_rows(
     return discovered_rows
 
 
+def _discover_noop_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del existing_rows, max_new_per_state, timeout_seconds, session
+    return []
+
+
+def _discover_california_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_CALIFORNIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -775,10 +868,17 @@ def _discover_illinois_official_public_record_rows(
     )
 
 
-OFFICIAL_US_STATE_DISCOVERY_ADAPTERS: dict[str, OfficialStateDiscoveryAdapter] = {
+_OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscoveryAdapter] = {
     "CA": _discover_california_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
+}
+
+OFFICIAL_US_STATE_DISCOVERY_ADAPTERS: dict[str, OfficialStateDiscoveryAdapter] = {
+    state_code: _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES.get(
+        state_code, _discover_noop_official_public_record_rows
+    )
+    for state_code in sorted(US_STATE_CODES)
 }
 
 

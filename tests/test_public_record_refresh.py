@@ -622,30 +622,59 @@ def test_discover_chambers_public_record_rows_is_disabled() -> None:
         )
 
 
-def test_discover_official_us_state_public_record_rows_reports_unsupported_states() -> None:
+def test_discover_official_us_state_public_record_rows_includes_noop_states() -> None:
     result = discover_official_us_state_public_record_rows(
         [],
         selected_regions=["US"],
-        region_state_map={"US": frozenset({"CA", "NY"})},
+        region_state_map={"US": frozenset({"NY"})},
     )
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.rows == []
-    assert result.added_count_by_state == {"CA": 0}
-    assert result.unsupported_states == ("NY",)
+    assert result.added_count_by_state == {"NY": 0}
+    assert result.unsupported_states == ()
 
 
-def test_discover_official_us_state_public_record_rows_strict_requires_full_coverage() -> None:
-    with pytest.raises(
-        PublicRecordRefreshError,
-        match="Official-source discovery adapters are missing for states: NY",
-    ):
-        discover_official_us_state_public_record_rows(
-            [],
-            selected_regions=["US"],
-            region_state_map={"US": frozenset({"CA", "NY"})},
-            strict_state_adapter_coverage=True,
-        )
+def test_discover_official_us_state_public_record_rows_strict_accepts_full_coverage() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"CA", "NY"})},
+        strict_state_adapter_coverage=True,
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state["NY"] == 0
+    assert result.added_count_by_state["CA"] > 0
+
+
+def test_discover_official_us_state_public_record_rows_adds_california_seeds() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"CA"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {"CA": 5}
+    assert len(result.rows) == 5
+
+    by_name = {row["name"]: row for row in result.rows}
+    assert by_name["Jeffrey Farley Keller"]["state"] == "CA"
+    assert by_name["Jeffrey Farley Keller"]["source_label"] == (
+        "State Bar of California attorney profile"
+    )
+    assert by_name["Jeffrey Farley Keller"]["source_url"] == (
+        "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
+    )
+
+    assert by_name["Daniel Noel"]["state"] == "CA"
+    assert by_name["Daniel Noel"]["source_label"] == "State Bar of California attorney profile"
+    assert by_name["Daniel Noel"]["source_url"] == (
+        "https://apps.calbar.ca.gov/attorney/Licensee/Detail/339078"
+    )
 
 
 def test_discover_official_us_state_public_record_rows_adds_washington_seed() -> None:

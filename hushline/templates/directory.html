@@ -37,7 +37,10 @@
               aria-controls="public-records"
               id="public-records-tab"
             >
-              Attorneys <span class="badge" role="img" aria-label="Attorneys">🤖 Automated</span>
+              Attorneys
+              <span class="badge" role="img" aria-label="Public record count"
+                >{{ public_record_listings | length }}</span
+              >
             </button>
           </li>
           <li role="presentation">
