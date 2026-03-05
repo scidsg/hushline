@@ -44,6 +44,11 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (activeTab === "securedrop") {
+      searchInput.placeholder = "Search SecureDrop instances...";
+      return;
+    }
+
     searchInput.placeholder = "Search directory...";
   }
 
@@ -55,6 +60,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (activeTab === "public-records") {
       return "public record attorneys";
+    }
+
+    if (activeTab === "securedrop") {
+      return "SecureDrop instances";
     }
 
     return "directory entries";
@@ -80,11 +89,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const normalizedQuery = query.trim().toLowerCase();
 
     return userData.filter((user) => {
-      if (tab === "verified" && (!user.is_verified || user.is_public_record)) {
+      if (tab === "verified" && (!user.is_verified || user.is_public_record || user.is_securedrop)) {
         return false;
       }
 
       if (tab === "public-records" && !user.is_public_record) {
+        return false;
+      }
+
+      if (tab === "securedrop" && !user.is_securedrop) {
         return false;
       }
 
@@ -118,6 +131,15 @@ document.addEventListener("DOMContentLoaded", function () {
       return badgeContainer;
     }
 
+    if (user.is_securedrop) {
+      badgeContainer += '<span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>';
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
     if (user.is_admin) {
       badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
@@ -129,12 +151,13 @@ document.addEventListener("DOMContentLoaded", function () {
     return badgeContainer;
   }
 
-  function buildPublicRecordCard(user, query) {
+  function buildAutomatedListingCard(user, query) {
     const displayNameHighlighted = highlightMatch(user.display_name, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+    const listingType = user.is_public_record ? "Public record listing" : "SecureDrop listing";
 
     return `
-      <article class="user" aria-label="Public record listing, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
+      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
         <h3>${displayNameHighlighted}</h3>
         <div class="badgeContainer">${buildBadges(user)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
@@ -153,8 +176,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const usernameHighlighted = highlightMatch(user.primary_username, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (user.is_public_record) {
-      return buildPublicRecordCard(user, query);
+    if (user.is_public_record || user.is_securedrop) {
+      return buildAutomatedListingCard(user, query);
     }
 
     const isVerified = user.is_verified ? "Verified" : "";
@@ -213,12 +236,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const legacyPublicRecords = publicRecords.filter(
       (user) => user.directory_section === "legacy_public_record",
     );
-    const realUsers = users.filter((user) => !user.is_public_record);
+    const secureDrops = users.filter((user) => user.is_securedrop);
+    const realUsers = users.filter((user) => !user.is_public_record && !user.is_securedrop);
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "public-records") {
       appendSection(panel, "", publicRecords, query);
+      return;
+    }
+
+    if (tab === "securedrop") {
+      appendSection(panel, "", secureDrops, query);
       return;
     }
 
@@ -228,6 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tab === "all") {
       appendSection(panel, "🏛️ Public Record Attorneys", strictPublicRecords, query);
       appendSection(panel, "🏛️ Public Record Attorneys (Legacy)", legacyPublicRecords, query);
+      appendSection(panel, "🛡️ SecureDrop Instances", secureDrops, query);
     }
   }
 

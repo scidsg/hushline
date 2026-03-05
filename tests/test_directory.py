@@ -9,7 +9,13 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import PublicRecordListing, User, get_public_record_listings
+from hushline.model import (
+    PublicRecordListing,
+    SecureDropDirectoryListing,
+    User,
+    get_public_record_listings,
+    get_securedrop_directory_listings,
+)
 from hushline.public_record_refresh import (
     DEFAULT_REGION_STATE_MAP,
     US_STATE_AUTHORITATIVE_SOURCES,
@@ -21,6 +27,13 @@ def _first_public_record_listing_or_skip() -> PublicRecordListing:
     listings = _strict_public_record_listings()
     if not listings:
         pytest.skip("No public-record listings configured")
+    return listings[0]
+
+
+def _first_securedrop_listing_or_skip() -> SecureDropDirectoryListing:
+    listings = get_securedrop_directory_listings()
+    if not listings:
+        pytest.skip("No SecureDrop listings configured")
     return listings[0]
 
 
@@ -45,6 +58,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
     assert "Attorneys" in response.text
+    assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
 
 
@@ -77,10 +91,12 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
     soup = BeautifulSoup(response.text, "html.parser")
     assert soup.find(id="directory-tabs") is None
     assert soup.find(id="public-records") is None
+    assert soup.find(id="securedrop") is None
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "🛡️ SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
 
 
@@ -95,6 +111,7 @@ def test_directory_users_json_excludes_public_records_when_verified_tabs_disable
 
     assert response.status_code == 200
     assert all(not row["is_public_record"] for row in (response.json or []))
+    assert all(not row["is_securedrop"] for row in (response.json or []))
 
 
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
@@ -143,6 +160,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
+    assert admin_row["is_securedrop"] is False
     assert admin_row["directory_section"] is None
 
 
@@ -210,6 +228,54 @@ def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskCl
     assert legacy_row["entry_type"] == "public_record"
     assert legacy_row["directory_section"] == "legacy_public_record"
     assert legacy_row["is_automated"] is True
+
+
+def test_directory_securedrop_render_only_in_securedrop_and_all(
+    client: FlaskClient,
+) -> None:
+    listing = _first_securedrop_listing_or_skip()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+    public_records_panel = soup.find(id="public-records")
+    securedrop_panel = soup.find(id="securedrop")
+    all_panel = soup.find(id="all")
+
+    assert securedrop_panel is not None
+    assert all_panel is not None
+    assert listing.name in securedrop_panel.text
+    assert listing.name in all_panel.text
+    assert listing.description in securedrop_panel.text
+    assert listing.description in all_panel.text
+    assert "🛡️ SecureDrop" in securedrop_panel.text
+    assert "🤖 Automated" in securedrop_panel.text
+    assert public_records_panel is not None
+    assert listing.name not in public_records_panel.text
+    assert verified_panel is not None
+    assert listing.name not in verified_panel.text
+
+
+def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
+    listing = _first_securedrop_listing_or_skip()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(row for row in (response.json or []) if row["display_name"] == listing.name)
+    assert row["entry_type"] == "securedrop"
+    assert row["primary_username"] is None
+    assert row["is_public_record"] is False
+    assert row["is_securedrop"] is True
+    assert row["is_automated"] is True
+    assert row["message_capable"] is False
+    assert row["bio"] == listing.description
+    assert row["location"] == listing.location
+    assert row["practice_tags"] == list(listing.topics)
+    assert row["source_label"] == listing.source_label
+    assert row["directory_section"] == "securedrop_directory"
 
 
 def test_public_record_seed_regions_have_coverage() -> None:
@@ -305,6 +371,35 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
         response = client.get(url_for("public_record_listing", slug=listing.slug))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 404
+
+
+def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
+    listing = _first_securedrop_listing_or_skip()
+
+    response = client.get(url_for("securedrop_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    assert "🛡️ SecureDrop" in page_text
+    assert "🤖 Automated" in page_text
+    assert listing.description in page_text
+    assert listing.onion_address in page_text
+    assert listing.source_url in response.text
+    assert 'id="messageForm"' not in response.text
+    assert "Send Message" not in response.text
+
+
+def test_securedrop_listing_route_hidden_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    listing = _first_securedrop_listing_or_skip()
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("securedrop_listing", slug=listing.slug))
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
 

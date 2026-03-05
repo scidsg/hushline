@@ -20,6 +20,11 @@ from hushline.model.public_record_listing import (
     get_public_record_listing,
     get_public_record_listings,
 )
+from hushline.model.securedrop_directory_listing import (
+    SecureDropDirectoryListing,
+    get_securedrop_directory_listing,
+    get_securedrop_directory_listings,
+)
 from hushline.model.stripe_event import StripeEvent
 from hushline.model.stripe_invoice import StripeInvoice
 from hushline.model.tier import Tier

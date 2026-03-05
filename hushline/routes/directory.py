@@ -10,9 +10,12 @@ from werkzeug.wrappers.response import Response
 from hushline.model import (
     OrganizationSetting,
     PublicRecordListing,
+    SecureDropDirectoryListing,
     Username,
     get_public_record_listing,
     get_public_record_listings,
+    get_securedrop_directory_listing,
+    get_securedrop_directory_listings,
 )
 from hushline.routes.common import get_directory_usernames
 
@@ -27,6 +30,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "is_verified": username.is_verified,
         "has_pgp_key": bool(username.user.pgp_key),
         "is_public_record": False,
+        "is_securedrop": False,
         "is_automated": False,
         "message_capable": bool(username.user.pgp_key),
         "meta": f"@{username.username}",
@@ -48,6 +52,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "is_verified": False,
         "has_pgp_key": False,
         "is_public_record": True,
+        "is_securedrop": False,
         "is_automated": listing.is_automated,
         "message_capable": listing.message_capable,
         "meta": listing.website,
@@ -56,6 +61,28 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "source_label": listing.source_label,
         "directory_section": listing.directory_section,
         "profile_url": url_for("public_record_listing", slug=listing.slug),
+    }
+
+
+def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | None]:
+    return {
+        "entry_type": "securedrop",
+        "primary_username": None,
+        "display_name": listing.name,
+        "bio": listing.description,
+        "is_admin": False,
+        "is_verified": False,
+        "has_pgp_key": False,
+        "is_public_record": False,
+        "is_securedrop": True,
+        "is_automated": listing.is_automated,
+        "message_capable": listing.message_capable,
+        "meta": listing.website,
+        "location": listing.location,
+        "practice_tags": list(listing.topics),
+        "source_label": listing.source_label,
+        "directory_section": listing.directory_section,
+        "profile_url": url_for("securedrop_listing", slug=listing.slug),
     }
 
 
@@ -79,6 +106,11 @@ def register_directory_routes(app: Flask) -> None:
             for listing in all_public_record_listings
             if listing.directory_section == "legacy_public_record"
         ]
+        securedrop_listings = (
+            list(get_securedrop_directory_listings())
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
@@ -94,6 +126,8 @@ def register_directory_routes(app: Flask) -> None:
             public_record_listings=public_record_listings,
             legacy_public_record_listings=legacy_public_record_listings,
             public_record_total_count=len(all_public_record_listings),
+            securedrop_listings=securedrop_listings,
+            securedrop_total_count=len(securedrop_listings),
             logged_in=logged_in,
         )
 
@@ -108,6 +142,17 @@ def register_directory_routes(app: Flask) -> None:
 
         return render_template("directory_public_record.html", listing=listing)
 
+    @app.route("/directory/securedrop/<slug>")
+    def securedrop_listing(slug: str) -> Response | str:
+        if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            abort(404)
+
+        listing = get_securedrop_directory_listing(slug)
+        if listing is None:
+            abort(404)
+
+        return render_template("directory_securedrop.html", listing=listing)
+
     @app.route("/directory/get-session-user.json")
     def session_user() -> dict[str, bool]:
         logged_in = "user_id" in session
@@ -120,7 +165,13 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        securedrop_rows = (
+            [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
         return [
             *[_directory_user_row(username) for username in get_directory_usernames()],
             *public_record_rows,
+            *securedrop_rows,
         ]

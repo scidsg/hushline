@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}SecureDrop: {{ listing.name }}{% endblock %}
+
+{% block content %}
+  <h2 class="submit">{{ listing.name }}</h2>
+
+  <div class="badgeContainer">
+    <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
+    <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+  </div>
+
+  <p class="bio">{{ listing.description }}</p>
+
+  <div class="extra-fields">
+    <p class="extra-field">
+      <span class="extra-field-label">Website</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.website }}
+        </a>
+      </span>
+    </p>
+
+    <p class="extra-field">
+      <span class="extra-field-label">SecureDrop Directory Listing</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.directory_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.directory_url }}
+        </a>
+      </span>
+    </p>
+
+    <p class="extra-field">
+      <span class="extra-field-label">SecureDrop Landing Page</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.landing_page_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.landing_page_url }}
+        </a>
+      </span>
+    </p>
+
+    <p class="extra-field">
+      <span class="extra-field-label">Onion Address</span>
+      <span class="extra-field-value">{{ listing.onion_address }}</span>
+    </p>
+
+    {% if listing.onion_name %}
+      <p class="extra-field">
+        <span class="extra-field-label">Onion Name</span>
+        <span class="extra-field-value">{{ listing.onion_name }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.countries %}
+      <p class="extra-field">
+        <span class="extra-field-label">Countries</span>
+        <span class="extra-field-value">{{ listing.countries | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.languages %}
+      <p class="extra-field">
+        <span class="extra-field-label">Languages</span>
+        <span class="extra-field-value">{{ listing.languages | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.topics %}
+      <p class="extra-field">
+        <span class="extra-field-label">Topics</span>
+        <span class="extra-field-value">{{ listing.topics | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    <p class="extra-field">
+      <span class="extra-field-label">Source</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.source_url }}
+        </a>
+      </span>
+    </p>
+  </div>
+{% endblock %}

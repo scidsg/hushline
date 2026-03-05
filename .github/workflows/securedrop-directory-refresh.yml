@@ -1,0 +1,62 @@
+name: SecureDrop Directory Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 16 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: securedrop-directory-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh SecureDrop directory listings
+        run: |
+          REFRESH_ARGS="--summary-output /tmp/securedrop-refresh.md"
+          make refresh-securedrop-listings REFRESH_SECUREDROP_ARGS="$REFRESH_ARGS"
+
+      - name: Read refresh summary
+        id: summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/securedrop-refresh.md ]; then
+            {
+              echo "body<<'EOF'"
+              cat /tmp/securedrop-refresh.md
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "body<<'EOF'"
+            echo "## SecureDrop Directory Refresh Summary"
+            echo
+            echo "- Refresh completed."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update refresh PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/securedrop-directory-refresh
+          delete-branch: true
+          commit-message: "Refresh SecureDrop directory listings"
+          title: "Refresh SecureDrop directory listings"
+          body: |
+            Automated refresh of `hushline/data/securedrop_directory_instances.json`.
+
+            ${{ steps.summary.outputs.body }}
+          add-paths: |
+            hushline/data/securedrop_directory_instances.json
