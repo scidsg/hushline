@@ -139,6 +139,54 @@ def test_refresh_securedrop_directory_rows_requires_onion_address() -> None:
         )
 
 
+def test_refresh_securedrop_directory_rows_rejects_invalid_required_directory_url() -> None:
+    with pytest.raises(
+        SecureDropDirectoryRefreshError,
+        match="Invalid URL for field directory_url",
+    ):
+        refresh_securedrop_directory_rows(
+            [
+                _raw_row(
+                    title="Bad Directory URL",
+                    slug="bad-directory-url",
+                    directory_url="javascript:alert(1)",
+                    organization_url="https://valid.example",
+                    landing_page_url="https://valid.example/tips",
+                    onion_address="bad1234567890bad1234567890bad1234567890bad1234567.onion",
+                ),
+            ]
+        )
+
+
+def test_refresh_securedrop_directory_rows_sanitizes_optional_and_website_urls() -> None:
+    rows = refresh_securedrop_directory_rows(
+        [
+            _raw_row(
+                title="Sanitized URLs",
+                slug="sanitized-urls",
+                directory_url="https://securedrop.org/directory/sanitized-urls/",
+                organization_url="javascript:alert(1)",
+                landing_page_url="mailto:tips@example.org",
+                onion_address="safe1234567890safe1234567890safe1234567890safe12345.onion",
+            ),
+            _raw_row(
+                title="Fallback Website",
+                slug="fallback-website",
+                directory_url="https://securedrop.org/directory/fallback-website/",
+                organization_url="example.org/no-scheme",
+                landing_page_url="https://valid.example/tips",
+                onion_address="good1234567890good1234567890good1234567890good12345.onion",
+            ),
+        ]
+    )
+
+    sanitized = next(row for row in rows if row["slug"] == "securedrop~sanitized-urls")
+    fallback = next(row for row in rows if row["slug"] == "securedrop~fallback-website")
+    assert sanitized["landing_page_url"] == ""
+    assert sanitized["website"] == "https://securedrop.org/directory/sanitized-urls/"
+    assert fallback["website"] == "https://valid.example/tips"
+
+
 class _FakeResponse:
     def __init__(self, *, payload: Any, status_code: int = 200) -> None:
         self._payload = payload

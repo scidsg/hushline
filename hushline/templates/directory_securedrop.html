@@ -31,14 +31,16 @@
       </span>
     </p>
 
-    <p class="extra-field">
-      <span class="extra-field-label">SecureDrop Landing Page</span>
-      <span class="extra-field-value">
-        <a href="{{ listing.landing_page_url }}" target="_blank" rel="noopener noreferrer">
-          {{ listing.landing_page_url }}
-        </a>
-      </span>
-    </p>
+    {% if listing.landing_page_url %}
+      <p class="extra-field">
+        <span class="extra-field-label">SecureDrop Landing Page</span>
+        <span class="extra-field-value">
+          <a href="{{ listing.landing_page_url }}" target="_blank" rel="noopener noreferrer">
+            {{ listing.landing_page_url }}
+          </a>
+        </span>
+      </p>
+    {% endif %}
 
     <p class="extra-field">
       <span class="extra-field-label">Onion Address</span>

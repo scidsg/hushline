@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import Mapping, Sequence
+from urllib.parse import urlparse
 
 import requests
 from unidecode import unidecode
@@ -57,11 +58,39 @@ def _get_required_str(row: Mapping[str, object], field: str) -> str:
     return value.strip()
 
 
+def _normalize_http_url(
+    value: object,
+    *,
+    field: str,
+    required: bool,
+) -> str:
+    if not isinstance(value, str):
+        if required:
+            raise SecureDropDirectoryRefreshError(f"Missing required URL field: {field}")
+        return ""
+
+    cleaned = value.strip()
+    if not cleaned:
+        if required:
+            raise SecureDropDirectoryRefreshError(f"Missing required URL field: {field}")
+        return ""
+
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        if required:
+            raise SecureDropDirectoryRefreshError(
+                f"Invalid URL for field {field}: expected absolute http/https URL"
+            )
+        return ""
+
+    return cleaned
+
+
 def _choose_website(row: Mapping[str, object]) -> str:
     for field in ("organization_url", "landing_page_url", "directory_url"):
-        value = row.get(field)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+        normalized = _normalize_http_url(row.get(field), field=field, required=False)
+        if normalized:
+            return normalized
     raise SecureDropDirectoryRefreshError(
         "SecureDrop row is missing organization/landing/directory URL"
     )
@@ -70,7 +99,11 @@ def _choose_website(row: Mapping[str, object]) -> str:
 def _normalize_securedrop_row(row: Mapping[str, object]) -> dict[str, object]:
     name = _get_required_str(row, "title")
     remote_slug = _get_required_str(row, "slug")
-    directory_url = _get_required_str(row, "directory_url")
+    directory_url = _normalize_http_url(
+        row.get("directory_url"),
+        field="directory_url",
+        required=True,
+    )
     onion_address = _get_required_str(row, "onion_address")
     normalized_slug = _slugify(remote_slug)
     if not normalized_slug:
@@ -88,10 +121,11 @@ def _normalize_securedrop_row(row: Mapping[str, object]) -> dict[str, object]:
     if isinstance(raw_onion_name, str):
         onion_name = raw_onion_name.strip()
 
-    landing_page_url = ""
-    raw_landing_page_url = row.get("landing_page_url")
-    if isinstance(raw_landing_page_url, str):
-        landing_page_url = raw_landing_page_url.strip()
+    landing_page_url = _normalize_http_url(
+        row.get("landing_page_url"),
+        field="landing_page_url",
+        required=False,
+    )
 
     return {
         "id": f"securedrop-{normalized_slug}",

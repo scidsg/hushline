@@ -393,6 +393,37 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert "Send Message" not in response.text
 
 
+def test_securedrop_listing_page_omits_landing_page_link_when_missing(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = SecureDropDirectoryListing(
+        id="securedrop-sample-without-landing-page",
+        slug="securedrop~sample-without-landing-page",
+        name="Sample SecureDrop Listing",
+        website="https://example.org/securedrop",
+        description="Test listing without landing page URL.",
+        directory_url="https://securedrop.org/directory/sample-without-landing-page/",
+        landing_page_url="",
+        onion_address="sample1234567890sample1234567890sample1234567890sample12.onion",
+        onion_name="",
+        countries=("United States",),
+        languages=("English",),
+        topics=("investigations",),
+        source_label="SecureDrop directory",
+        source_url="https://securedrop.org/api/v1/directory/",
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(url_for("securedrop_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert "SecureDrop Landing Page" not in soup.get_text(" ", strip=True)
+    assert soup.find("a", href="") is None
+
+
 def test_securedrop_listing_route_hidden_when_verified_tabs_disabled(
     client: FlaskClient,
 ) -> None:
