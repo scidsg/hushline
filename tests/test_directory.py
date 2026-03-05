@@ -18,10 +18,26 @@ from hushline.public_record_refresh import (
 
 
 def _first_public_record_listing_or_skip() -> PublicRecordListing:
-    listings = get_public_record_listings()
+    listings = _strict_public_record_listings()
     if not listings:
         pytest.skip("No public-record listings configured")
     return listings[0]
+
+
+def _strict_public_record_listings() -> list[PublicRecordListing]:
+    return [
+        listing
+        for listing in get_public_record_listings()
+        if listing.directory_section != "legacy_public_record"
+    ]
+
+
+def _legacy_public_record_listings() -> list[PublicRecordListing]:
+    return [
+        listing
+        for listing in get_public_record_listings()
+        if listing.directory_section == "legacy_public_record"
+    ]
 
 
 def test_directory_accessible(client: FlaskClient) -> None:
@@ -47,6 +63,8 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     banner_text = public_records_panel.get_text(" ", strip=True)
     assert "Beta: These listings are automated and pulled from public records." in banner_text
     assert "Message the Hush Line admin for any corrections." in banner_text
+    if _legacy_public_record_listings():
+        assert "Public Record Attorneys (Legacy)" in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
@@ -127,6 +145,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
+    assert admin_row["directory_section"] is None
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(
@@ -174,10 +193,28 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["location"] == listing.location
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
+    assert row["directory_section"] == "public_record"
+
+
+def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
+    legacy_listings = _legacy_public_record_listings()
+    if not legacy_listings:
+        pytest.skip("No legacy public-record listings configured")
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    legacy_listing = legacy_listings[0]
+    legacy_row = next(
+        row for row in (response.json or []) if row["display_name"] == legacy_listing.name
+    )
+    assert legacy_row["entry_type"] == "public_record"
+    assert legacy_row["directory_section"] == "legacy_public_record"
+    assert legacy_row["is_automated"] is True
 
 
 def test_public_record_seed_regions_have_coverage() -> None:
-    listings = get_public_record_listings()
+    listings = _strict_public_record_listings()
 
     allowed_states = {state for states in DEFAULT_REGION_STATE_MAP.values() for state in states}
     assert all(listing.state in allowed_states for listing in listings)
@@ -303,7 +340,7 @@ def test_public_record_external_links_resolve() -> None:
     checked: set[str] = set()
     failures: list[str] = []
 
-    for listing in get_public_record_listings():
+    for listing in _strict_public_record_listings():
         for label, url in {
             "website": listing.website,
             "source": listing.source_url,

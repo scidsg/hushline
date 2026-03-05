@@ -33,6 +33,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "location": None,
         "practice_tags": [],
         "source_label": None,
+        "directory_section": None,
         "profile_url": url_for("profile", username=username.username),
     }
 
@@ -53,6 +54,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "location": listing.location,
         "practice_tags": list(listing.practice_tags),
         "source_label": listing.source_label,
+        "directory_section": listing.directory_section,
         "profile_url": url_for("public_record_listing", slug=listing.slug),
     }
 
@@ -62,11 +64,21 @@ def register_directory_routes(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
-        public_record_listings = (
+        all_public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        public_record_listings = [
+            listing
+            for listing in all_public_record_listings
+            if listing.directory_section != "legacy_public_record"
+        ]
+        legacy_public_record_listings = [
+            listing
+            for listing in all_public_record_listings
+            if listing.directory_section == "legacy_public_record"
+        ]
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
@@ -79,6 +91,8 @@ def register_directory_routes(app: Flask) -> None:
             verified_pgp_usernames=verified_pgp_usernames,
             verified_info_usernames=verified_info_usernames,
             public_record_listings=public_record_listings,
+            legacy_public_record_listings=legacy_public_record_listings,
+            public_record_total_count=len(all_public_record_listings),
             logged_in=logged_in,
         )
 

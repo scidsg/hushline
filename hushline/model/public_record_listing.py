@@ -41,11 +41,42 @@ def _seed_path() -> Path:
     return Path(__file__).resolve().parent.parent / "data" / "public_record_law_firms.json"
 
 
+def _legacy_seed_path() -> Path:
+    return Path(__file__).resolve().parent.parent / "data" / "public_record_law_firms_legacy.json"
+
+
+def _load_seed_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 @lru_cache(maxsize=1)
 def get_public_record_listings() -> tuple[PublicRecordListing, ...]:
-    rows = json.loads(_seed_path().read_text(encoding="utf-8"))
-    listings = tuple(_build_listing(row) for row in rows)
-    return tuple(sorted(listings, key=lambda listing: (_sort_key(listing.name), listing.id)))
+    strict_rows = _load_seed_rows(_seed_path())
+    legacy_rows = _load_seed_rows(_legacy_seed_path())
+
+    merged_listings = [
+        *(_build_listing(row, directory_section="public_record") for row in strict_rows),
+        *(_build_listing(row, directory_section="legacy_public_record") for row in legacy_rows),
+    ]
+
+    seen_ids: set[str] = set()
+    seen_slugs: set[str] = set()
+    deduplicated_listings: list[PublicRecordListing] = []
+    for listing in merged_listings:
+        if listing.id in seen_ids or listing.slug in seen_slugs:
+            continue
+        seen_ids.add(listing.id)
+        seen_slugs.add(listing.slug)
+        deduplicated_listings.append(listing)
+
+    return tuple(
+        sorted(
+            deduplicated_listings,
+            key=lambda listing: (_sort_key(listing.name), listing.id),
+        )
+    )
 
 
 def get_public_record_listing(slug: str) -> PublicRecordListing | None:
@@ -60,7 +91,9 @@ def get_public_record_listing(slug: str) -> PublicRecordListing | None:
     )
 
 
-def _build_listing(row: dict[str, Any]) -> PublicRecordListing:
+def _build_listing(
+    row: dict[str, Any], *, directory_section: str = "public_record"
+) -> PublicRecordListing:
     return PublicRecordListing(
         id=row["id"],
         slug=row["slug"],
@@ -72,4 +105,5 @@ def _build_listing(row: dict[str, Any]) -> PublicRecordListing:
         practice_tags=tuple(row["practice_tags"]),
         source_label=row["source_label"],
         source_url=row.get("source_url"),
+        directory_section=directory_section,
     )

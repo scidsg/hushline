@@ -39,7 +39,7 @@
             >
               Attorneys
               <span class="badge" role="img" aria-label="Public record count"
-                >{{ public_record_listings | length }}</span
+                >{{ public_record_total_count }}</span
               >
             </button>
           </li>
@@ -193,25 +193,51 @@
         Message the <a href="/to/admin">Hush Line admin</a> for any corrections.
       </p>
 
-      <div class="user-list">
-        {% for listing in public_record_listings %}
-          <article class="user">
-            <h3>{{ listing.name }}</h3>
-            <div class="badgeContainer">
-              <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
-              <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-            </div>
-            <p class="bio">{{ listing.description }}</p>
-            <div class="user-actions">
-              <a
-                href="{{ url_for('public_record_listing', slug=listing.slug) }}"
-                aria-label="View read-only listing for {{ listing.name }}"
-                >View Listing</a
-              >
-            </div>
-          </article>
-        {% endfor %}
-      </div>
+      {% if public_record_listings %}
+        <p class="label">🏛️ Public Record Attorneys</p>
+        <div class="user-list">
+          {% for listing in public_record_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if legacy_public_record_listings %}
+        <p class="label">🏛️ Public Record Attorneys (Legacy)</p>
+        <div class="user-list">
+          {% for listing in legacy_public_record_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -306,6 +332,29 @@
           </article>
         {% endfor %}
       </div>
+
+      {% if legacy_public_record_listings %}
+        <p class="label">🏛️ Public Record Attorneys (Legacy)</p>
+        <div class="user-list">
+          {% for listing in legacy_public_record_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endif %}
   </div>
 {% endblock %}

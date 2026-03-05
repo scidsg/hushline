@@ -207,12 +207,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const publicRecords = users.filter((user) => user.is_public_record);
+    const strictPublicRecords = publicRecords.filter(
+      (user) => user.directory_section !== "legacy_public_record",
+    );
+    const legacyPublicRecords = publicRecords.filter(
+      (user) => user.directory_section === "legacy_public_record",
+    );
     const realUsers = users.filter((user) => !user.is_public_record);
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "public-records") {
-      appendSection(panel, "", publicRecords, query);
+      appendSection(panel, "🏛️ Public Record Attorneys", strictPublicRecords, query);
+      appendSection(panel, "🏛️ Public Record Attorneys (Legacy)", legacyPublicRecords, query);
       return;
     }
 
@@ -220,7 +227,8 @@ document.addEventListener("DOMContentLoaded", function () {
     appendSection(panel, "📇 Info-Only Accounts", infoOnly, query);
 
     if (tab === "all") {
-      appendSection(panel, "🏛️ Public Record Attorneys", publicRecords, query);
+      appendSection(panel, "🏛️ Public Record Attorneys", strictPublicRecords, query);
+      appendSection(panel, "🏛️ Public Record Attorneys (Legacy)", legacyPublicRecords, query);
     }
   }
 
