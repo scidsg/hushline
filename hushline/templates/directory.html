@@ -47,6 +47,22 @@
             <button
               type="button"
               class="tab"
+              data-tab="securedrop"
+              role="tab"
+              aria-selected="false"
+              aria-controls="securedrop"
+              id="securedrop-tab"
+            >
+              SecureDrop
+              <span class="badge" role="img" aria-label="SecureDrop instance count"
+                >{{ securedrop_total_count }}</span
+              >
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
               data-tab="all"
               role="tab"
               aria-selected="false"
@@ -217,6 +233,39 @@
     </div>
   {% endif %}
 
+  {% if directory_verified_tab_enabled %}
+    <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
+      <p class="meta dirMeta">
+        🛡️ Synced automatically from the
+        <a href="https://securedrop.org/directory/" target="_blank" rel="noopener noreferrer"
+          >SecureDrop directory</a
+        >.
+      </p>
+
+      {% if securedrop_listings %}
+        <div class="user-list">
+          {% for listing in securedrop_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('securedrop_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div
     id="all"
     class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
@@ -323,6 +372,29 @@
               <div class="user-actions">
                 <a
                   href="{{ url_for('public_record_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if securedrop_listings %}
+        <p class="label">🛡️ SecureDrop Instances</p>
+        <div class="user-list">
+          {% for listing in securedrop_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('securedrop_listing', slug=listing.slug) }}"
                   aria-label="View read-only listing for {{ listing.name }}"
                   >View Listing</a
                 >

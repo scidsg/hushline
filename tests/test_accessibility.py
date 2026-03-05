@@ -15,9 +15,11 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     primary_nav = soup.find("nav", {"aria-label": "Primary navigation"})
     verified_tab = soup.find("button", {"id": "verified-tab"})
     public_records_tab = soup.find("button", {"id": "public-records-tab"})
+    securedrop_tab = soup.find("button", {"id": "securedrop-tab"})
     all_tab = soup.find("button", {"id": "all-tab"})
     verified_panel = soup.find(id="verified")
     public_records_panel = soup.find(id="public-records")
+    securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
     clear_button = soup.find("button", {"id": "clearIcon"})
     search_status = soup.find(id="directory-search-status")
@@ -43,6 +45,20 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert label_text == "Attorneys"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
+    assert securedrop_tab is not None
+    securedrop_badge = securedrop_tab.select_one("span.badge")
+    assert securedrop_badge is not None
+    assert securedrop_badge.get("role") == "img"
+    assert securedrop_badge.get("aria-label") == "SecureDrop instance count"
+    assert securedrop_badge.get_text(strip=True).isdigit()
+    securedrop_label_text = (
+        securedrop_tab.get_text(" ", strip=True)
+        .replace(securedrop_badge.get_text(" ", strip=True), "")
+        .strip()
+    )
+    assert securedrop_label_text == "SecureDrop"
+    assert securedrop_tab.get("aria-controls") == "securedrop"
+    assert securedrop_tab.get("aria-selected") in {"true", "false"}
     assert all_tab is not None
     assert all_tab.get("aria-controls") == "all"
     assert all_tab.get("aria-selected") in {"true", "false"}
@@ -52,6 +68,9 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert public_records_panel is not None
     assert public_records_panel.get("role") == "tabpanel"
     assert public_records_panel.get("aria-labelledby") == "public-records-tab"
+    assert securedrop_panel is not None
+    assert securedrop_panel.get("role") == "tabpanel"
+    assert securedrop_panel.get("aria-labelledby") == "securedrop-tab"
     assert all_panel is not None
     assert all_panel.get("role") == "tabpanel"
     assert all_panel.get("aria-labelledby") == "all-tab"
