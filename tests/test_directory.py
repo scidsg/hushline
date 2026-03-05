@@ -45,7 +45,7 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert banner_link.text.strip() == "Hush Line admin"
     assert banner_link.get("href") == "/to/admin"
     banner_text = public_records_panel.get_text(" ", strip=True)
-    assert "These are automated listings pulled from public records." in banner_text
+    assert "Beta: These listings are automated and pulled from public records." in banner_text
     assert "Message the Hush Line admin for any corrections." in banner_text
 
 
