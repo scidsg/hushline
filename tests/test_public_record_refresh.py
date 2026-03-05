@@ -658,8 +658,8 @@ def test_discover_official_us_state_public_record_rows_adds_california_seeds() -
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.unsupported_states == ()
-    assert result.added_count_by_state == {"CA": 5}
-    assert len(result.rows) == 5
+    assert result.added_count_by_state == {"CA": 9}
+    assert len(result.rows) == 9
 
     by_name = {row["name"]: row for row in result.rows}
     assert by_name["Jeffrey Farley Keller"]["state"] == "CA"
@@ -674,6 +674,16 @@ def test_discover_official_us_state_public_record_rows_adds_california_seeds() -
     assert by_name["Daniel Noel"]["source_label"] == "State Bar of California attorney profile"
     assert by_name["Daniel Noel"]["source_url"] == (
         "https://apps.calbar.ca.gov/attorney/Licensee/Detail/339078"
+    )
+
+    assert by_name["Elizabeth Aida Acevedo"]["state"] == "CA"
+    assert by_name["Elizabeth Aida Acevedo"]["source_url"] == (
+        "https://apps.calbar.ca.gov/attorney/Licensee/Detail/227347"
+    )
+
+    assert by_name["Cara Whittaker Van Dorn"]["state"] == "CA"
+    assert by_name["Cara Whittaker Van Dorn"]["source_url"] == (
+        "https://apps.calbar.ca.gov/attorney/Licensee/Detail/321669"
     )
 
 
@@ -725,8 +735,8 @@ def test_discover_official_us_state_public_record_rows_adds_illinois_seeds() -> 
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.unsupported_states == ()
-    assert result.added_count_by_state == {"IL": 2}
-    assert len(result.rows) == 2
+    assert result.added_count_by_state == {"IL": 4}
+    assert len(result.rows) == 4
 
     by_name = {row["name"]: row for row in result.rows}
     assert by_name["Douglas Michael Werman"]["state"] == "IL"
@@ -747,10 +757,32 @@ def test_discover_official_us_state_public_record_rows_adds_illinois_seeds() -> 
         "f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
     )
 
+    assert by_name["Adam J. Levitt"]["state"] == "IL"
+    assert by_name["Adam J. Levitt"]["source_url"] == (
+        "https://www.iardc.org/Lawyer/PrintableDetails/"
+        "a1420f47-ab64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+    )
+
+    assert by_name["Daniel Richard Ferri"]["state"] == "IL"
+    assert by_name["Daniel Richard Ferri"]["source_url"] == (
+        "https://www.iardc.org/Lawyer/PrintableDetails/"
+        "4b9c1c91-a964-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+    )
+
 
 def test_discover_official_us_state_public_record_rows_skips_existing_illinois_seeds() -> None:
     result = discover_official_us_state_public_record_rows(
         [
+            {
+                "id": "seed-adam-j-levitt",
+                "name": "Adam J. Levitt",
+                "slug": "public-record~adam-j-levitt",
+            },
+            {
+                "id": "seed-daniel-richard-ferri",
+                "name": "Daniel Richard Ferri",
+                "slug": "public-record~daniel-richard-ferri",
+            },
             {
                 "id": "seed-douglas-michael-werman",
                 "name": "Douglas Michael Werman",

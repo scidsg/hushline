@@ -694,6 +694,66 @@ _CALIFORNIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
         "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134",
     },
     {
+        "id": "seed-elizabeth-aida-acevedo",
+        "slug": "public-record~elizabeth-aida-acevedo",
+        "name": "Elizabeth Aida Acevedo",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/227347",
+    },
+    {
+        "id": "seed-robert-william-spencer",
+        "slug": "public-record~robert-william-spencer",
+        "name": "Robert William Spencer",
+        "website": "https://www.kellergrover.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "San Francisco",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/238491",
+    },
+    {
+        "id": "seed-cara-whittaker-van-dorn",
+        "slug": "public-record~cara-whittaker-van-dorn",
+        "name": "Cara Whittaker Van Dorn",
+        "website": "https://sanfordheisler.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "La Jolla",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/321669",
+    },
+    {
+        "id": "seed-christine-m-salazar",
+        "slug": "public-record~christine-m-salazar",
+        "name": "Christine M Salazar",
+        "website": "https://sanfordheisler.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of California "
+            "attorney records."
+        ),
+        "city": "Palo Alto",
+        "state": "CA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of California attorney profile",
+        "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/330468",
+    },
+    {
         "id": "seed-daniel-noel",
         "slug": "public-record~daniel-noel",
         "name": "Daniel Noel",
@@ -731,6 +791,42 @@ _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 
 
 _ILLINOIS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-adam-j-levitt",
+        "slug": "public-record~adam-j-levitt",
+        "name": "Adam J. Levitt",
+        "website": "https://dicellolevitt.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Illinois ARDC attorney "
+            "registration records."
+        ),
+        "city": "Chicago",
+        "state": "IL",
+        "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
+        "source_label": "Illinois ARDC attorney registration records",
+        "source_url": (
+            "https://www.iardc.org/Lawyer/PrintableDetails/"
+            "a1420f47-ab64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+        ),
+    },
+    {
+        "id": "seed-daniel-richard-ferri",
+        "slug": "public-record~daniel-richard-ferri",
+        "name": "Daniel Richard Ferri",
+        "website": "https://dicellolevitt.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Illinois ARDC attorney "
+            "registration records."
+        ),
+        "city": "Chicago",
+        "state": "IL",
+        "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
+        "source_label": "Illinois ARDC attorney registration records",
+        "source_url": (
+            "https://www.iardc.org/Lawyer/PrintableDetails/"
+            "4b9c1c91-a964-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+        ),
+    },
     {
         "id": "seed-douglas-michael-werman",
         "slug": "public-record~douglas-michael-werman",
