@@ -13,6 +13,7 @@ from hushline.public_record_refresh import (
     US_STATE_CODES,
     PublicRecordRefreshError,
     build_requests_link_checker,
+    discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
     render_refresh_summary,
 )
@@ -68,6 +69,16 @@ def _parse_args() -> argparse.Namespace:
         "--discover-chambers-ranked-firms",
         action="store_true",
         help="Add new firms from Chambers and Partners ranked public data.",
+    )
+    parser.add_argument(
+        "--discover-official-us-state-firms",
+        action="store_true",
+        help="Add firms only from explicitly implemented official U.S. state adapters.",
+    )
+    parser.add_argument(
+        "--strict-discovery-state-coverage",
+        action="store_true",
+        help="Fail discovery when any selected U.S. state lacks an implemented adapter.",
     )
     parser.add_argument(
         "--max-discovered-per-region",
@@ -193,23 +204,6 @@ def _apply_us_state_source_strategy(
 
         row["source_label"] = state_source["source_label"]
 
-        if state_code == "CA":
-            source_url = row.get("source_url")
-            if not isinstance(source_url, str) or "calbar.ca.gov" not in source_url.casefold():
-                row["source_url"] = state_source["source_url"]
-        else:
-            row["source_url"] = state_source["source_url"]
-
-        description = row.get("description")
-        if (not isinstance(description, str) or "State Bar of California" in description) and (
-            state_code != "CA"
-        ):
-            row["description"] = f"Law firm listing sourced from {state_source['source_label']}."
-        elif not isinstance(description, str) and state_code == "CA":
-            row["description"] = (
-                "Law firm listing sourced from State Bar of California attorney records."
-            )
-
         normalized_rows.append(row)
 
     return normalized_rows
@@ -264,6 +258,19 @@ def main() -> int:
             "--discover-chambers-ranked-firms is disabled. "
             "Only official public sources are allowed."
         )
+    official_discovery_unsupported_states: tuple[str, ...] = ()
+    official_discovery_added_count = 0
+    if args.discover_official_us_state_firms:
+        official_discovery_result = discover_official_us_state_public_record_rows(
+            source_rows,
+            selected_regions=selected_regions,
+            max_new_per_state=args.max_discovered_per_region,
+            timeout_seconds=args.timeout_seconds,
+            strict_state_adapter_coverage=args.strict_discovery_state_coverage,
+        )
+        source_rows = [*source_rows, *[dict(row) for row in official_discovery_result.rows]]
+        official_discovery_added_count = len(official_discovery_result.rows)
+        official_discovery_unsupported_states = official_discovery_result.unsupported_states
 
     refresh_result = refresh_public_record_rows(
         source_rows,
@@ -278,6 +285,19 @@ def main() -> int:
         rows=refresh_result.rows,
         selected_regions=selected_regions,
     )
+    if args.discover_official_us_state_firms:
+        summary_lines = [summary.rstrip(), "", "### Official Discovery", ""]
+        summary_lines.append(
+            f"- Rows added by implemented adapters: {official_discovery_added_count}"
+        )
+        if official_discovery_unsupported_states:
+            summary_lines.append(
+                "- U.S. states without adapters: "
+                + ", ".join(official_discovery_unsupported_states),
+            )
+        else:
+            summary_lines.append("- U.S. states without adapters: none")
+        summary = "\n".join(summary_lines) + "\n"
     print(summary, end="")
 
     if args.summary_output is not None:

@@ -10,9 +10,11 @@ from hushline.public_record_refresh import (
     US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
     LinkCheckResult,
+    OfficialStateDiscoveryResult,
     PublicRecordRefreshError,
     build_requests_link_checker,
     discover_chambers_public_record_rows,
+    discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
 )
 
@@ -617,4 +619,30 @@ def test_discover_chambers_public_record_rows_is_disabled() -> None:
             [],
             selected_regions=["US"],
             region_state_map={"US": frozenset({"NY"})},
+        )
+
+
+def test_discover_official_us_state_public_record_rows_reports_unsupported_states() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"CA", "NY"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {"CA": 0}
+    assert result.unsupported_states == ("NY",)
+
+
+def test_discover_official_us_state_public_record_rows_strict_requires_full_coverage() -> None:
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="Official-source discovery adapters are missing for states: NY",
+    ):
+        discover_official_us_state_public_record_rows(
+            [],
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"CA", "NY"})},
+            strict_state_adapter_coverage=True,
         )

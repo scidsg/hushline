@@ -485,6 +485,13 @@ class ChambersDiscoveryResult:
     added_count_by_region: dict[str, int]
 
 
+@dataclass(frozen=True)
+class OfficialStateDiscoveryResult:
+    rows: list[PublicRecordRow]
+    added_count_by_state: dict[str, int]
+    unsupported_states: tuple[str, ...]
+
+
 class PublicRecordRefreshError(RuntimeError):
     pass
 
@@ -505,6 +512,7 @@ class _NormalizedListing:
 
 
 LinkChecker = Callable[[str], LinkCheckResult]
+OfficialStateDiscoveryAdapter = Callable[..., list[PublicRecordRow]]
 
 
 def refresh_public_record_rows(  # noqa: PLR0913
@@ -622,6 +630,82 @@ def render_refresh_summary(result: PublicRecordRefreshResult, *, regions: Sequen
         )
 
     return "\n".join(lines) + "\n"
+
+
+def _discover_california_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del existing_rows, max_new_per_state, timeout_seconds, session
+    # Explicit adapter placeholder: no automated CA discovery until maintainer approval.
+    return []
+
+
+OFFICIAL_US_STATE_DISCOVERY_ADAPTERS: dict[str, OfficialStateDiscoveryAdapter] = {
+    "CA": _discover_california_official_public_record_rows,
+}
+
+
+def discover_official_us_state_public_record_rows(  # noqa: PLR0913
+    existing_rows: Sequence[Mapping[str, object]],
+    *,
+    selected_regions: Sequence[str] | None = None,
+    region_state_map: Mapping[str, frozenset[str]] = DEFAULT_REGION_STATE_MAP,
+    max_new_per_state: int = _DEFAULT_CHAMBERS_MAX_NEW_PER_REGION,
+    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    session: requests.Session | None = None,
+    strict_state_adapter_coverage: bool = False,
+) -> OfficialStateDiscoveryResult:
+    if timeout_seconds <= 0:
+        raise PublicRecordRefreshError("Discovery timeout_seconds must be > 0")
+    if max_new_per_state < 0:
+        raise PublicRecordRefreshError("max_new_per_state must be >= 0")
+
+    regions = tuple(selected_regions or DEFAULT_REGION_TARGETS.keys())
+    _validate_regions(regions, region_state_map)
+
+    if "US" not in regions:
+        return OfficialStateDiscoveryResult(
+            rows=[],
+            added_count_by_state={},
+            unsupported_states=(),
+        )
+
+    requested_us_states = tuple(
+        sorted(state for state in region_state_map["US"] if state in US_STATE_CODES),
+    )
+    unsupported_states = tuple(
+        state for state in requested_us_states if state not in OFFICIAL_US_STATE_DISCOVERY_ADAPTERS
+    )
+    if strict_state_adapter_coverage and unsupported_states:
+        raise PublicRecordRefreshError(
+            "Official-source discovery adapters are missing for states: "
+            + ", ".join(unsupported_states),
+        )
+
+    rows: list[PublicRecordRow] = []
+    added_count_by_state: dict[str, int] = {}
+    for state_code in requested_us_states:
+        adapter = OFFICIAL_US_STATE_DISCOVERY_ADAPTERS.get(state_code)
+        if adapter is None:
+            continue
+        discovered_rows = adapter(
+            existing_rows=existing_rows,
+            max_new_per_state=max_new_per_state,
+            timeout_seconds=timeout_seconds,
+            session=session,
+        )
+        added_count_by_state[state_code] = len(discovered_rows)
+        rows.extend(discovered_rows)
+
+    return OfficialStateDiscoveryResult(
+        rows=rows,
+        added_count_by_state=added_count_by_state,
+        unsupported_states=unsupported_states,
+    )
 
 
 def discover_chambers_public_record_rows(  # noqa: PLR0913
