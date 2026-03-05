@@ -1,3 +1,4 @@
+import re
 import time
 from urllib.parse import parse_qsl, urlparse
 
@@ -221,7 +222,17 @@ def test_public_record_seed_regions_have_coverage() -> None:
             .casefold()
             .rstrip("/")
         )
-        assert normalized_source_no_fragment != normalized_state_source_no_fragment
+        if normalized_source_no_fragment == normalized_state_source_no_fragment:
+            if listing.state == "OH":
+                assert re.fullmatch(
+                    r"/?\d+/attyinfo/?",
+                    parsed_source_url.fragment.strip(),
+                    flags=re.IGNORECASE,
+                )
+                continue
+            raise AssertionError(
+                "listing source_url points to a generic state source page",
+            )
 
 
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:

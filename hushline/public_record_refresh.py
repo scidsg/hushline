@@ -403,6 +403,7 @@ _CHAMBERS_PROFILE_BASICS_SOURCE_URL_RE = re.compile(
     r"^https?://profiles-portal\.chambers\.com/api/organisations/"
     r"(?P<organisation_id>\d+)/profile-basics\?groupId=(?P<group_id>\d+)$",
 )
+_OHIO_ATTORNEY_PROFILE_FRAGMENT_RE = re.compile(r"^/?\d+/attyinfo/?$", re.IGNORECASE)
 
 _US_REGION_TO_STATE_CODE: dict[str, str] = {
     "california": "CA",
@@ -866,6 +867,104 @@ _ILLINOIS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_OHIO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-alissa-jacqueline-sammarco",
+        "slug": "public-record~alissa-jacqueline-sammarco",
+        "name": "Alissa Jacqueline Sammarco",
+        "website": "https://www.sammarcolegal.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Supreme Court of Ohio "
+            "attorney directory."
+        ),
+        "city": "Cincinnati",
+        "state": "OH",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Supreme Court of Ohio attorney directory",
+        "source_url": "https://www.supremecourt.ohio.gov/AttorneySearch/#/77563/attyinfo",
+    },
+)
+
+
+_TENNESSEE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-kevin-hunter-sharp",
+        "slug": "public-record~kevin-hunter-sharp",
+        "name": "Kevin Hunter Sharp",
+        "website": "https://sanfordheisler.com/team/judge-kevin-sharp/",
+        "description": (
+            "Whistleblower attorney listing sourced from Tennessee Board of "
+            "Professional Responsibility attorney records."
+        ),
+        "city": "Nashville",
+        "state": "TN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/attorneys/016287",
+    },
+    {
+        "id": "seed-jonathan-patrick-tepe",
+        "slug": "public-record~jonathan-patrick-tepe",
+        "name": "Jonathan Patrick Tepe",
+        "website": "https://sanfordheisler.com/team/jonathan-tepe/",
+        "description": (
+            "Whistleblower attorney listing sourced from Tennessee Board of "
+            "Professional Responsibility attorney records."
+        ),
+        "city": "Nashville",
+        "state": "TN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/attorneys/037266",
+    },
+    {
+        "id": "seed-michael-joseph-lockman",
+        "slug": "public-record~michael-joseph-lockman",
+        "name": "Michael Joseph Lockman",
+        "website": "https://sanfordheisler.com/team/michael-lockman/",
+        "description": (
+            "Whistleblower attorney listing sourced from Tennessee Board of "
+            "Professional Responsibility attorney records."
+        ),
+        "city": "Nashville",
+        "state": "TN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/attorneys/039797",
+    },
+    {
+        "id": "seed-kasi-lynn-wautlet",
+        "slug": "public-record~kasi-lynn-wautlet",
+        "name": "Kasi Lynn Wautlet",
+        "website": "https://sanfordheisler.com/team/kasi-wautlet/",
+        "description": (
+            "Whistleblower attorney listing sourced from Tennessee Board of "
+            "Professional Responsibility attorney records."
+        ),
+        "city": "Nashville",
+        "state": "TN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/attorneys/038688",
+    },
+    {
+        "id": "seed-david-bragg-mcnamee",
+        "slug": "public-record~david-bragg-mcnamee",
+        "name": "David Bragg McNamee",
+        "website": "https://sanfordheisler.com/team/david-mcnamee/",
+        "description": (
+            "Whistleblower attorney listing sourced from Tennessee Board of "
+            "Professional Responsibility attorney records."
+        ),
+        "city": "Nashville",
+        "state": "TN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Tennessee Board of Professional Responsibility attorney records",
+        "source_url": "https://www.tbpr.org/attorneys/038124",
+    },
+)
+
+
 def _discover_seed_rows(
     *,
     seed_rows: Sequence[PublicRecordRow],
@@ -964,9 +1063,41 @@ def _discover_illinois_official_public_record_rows(
     )
 
 
+def _discover_ohio_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_OHIO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_tennessee_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_TENNESSEE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscoveryAdapter] = {
     "CA": _discover_california_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
+    "OH": _discover_ohio_official_public_record_rows,
+    "TN": _discover_tennessee_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
 }
 
@@ -1562,6 +1693,15 @@ def _strip_url_fragment(source_url: str) -> str:
     return urlparse(source_url)._replace(fragment="").geturl()
 
 
+def _is_ohio_attorney_profile_source_url(source_url: str) -> bool:
+    parsed = urlparse(source_url)
+    normalized_path = _normalize_url_for_comparison(parsed.path or "")
+    if normalized_path != "/attorneysearch":
+        return False
+    fragment = (parsed.fragment or "").strip()
+    return bool(_OHIO_ATTORNEY_PROFILE_FRAGMENT_RE.fullmatch(fragment))
+
+
 def _validate_authoritative_source(
     *,
     name: str,
@@ -1656,6 +1796,9 @@ def _validate_us_state_source_policy(
             f"Listing '{name}' source_url includes a synthetic listing marker; "
             "source_url must be the exact public record URL."
         )
+
+    if state_code == "OH" and _is_ohio_attorney_profile_source_url(source_url):
+        return
 
     normalized_source_url = _normalize_url_for_comparison(_strip_url_fragment(source_url))
     normalized_state_source = _normalize_url_for_comparison(

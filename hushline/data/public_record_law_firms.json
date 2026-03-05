@@ -12,6 +12,18 @@
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/a1420f47-ab64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
+    "id": "seed-alissa-jacqueline-sammarco",
+    "slug": "public-record~alissa-jacqueline-sammarco",
+    "name": "Alissa Jacqueline Sammarco",
+    "website": "https://www.sammarcolegal.com/",
+    "description": "Whistleblower attorney listing sourced from Supreme Court of Ohio attorney directory.",
+    "city": "Cincinnati",
+    "state": "OH",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Supreme Court of Ohio attorney directory",
+    "source_url": "https://www.supremecourt.ohio.gov/AttorneySearch/#/77563/attyinfo"
+  },
+  {
     "id": "seed-amy-elisabeth-keller",
     "slug": "public-record~amy-elisabeth-keller",
     "name": "Amy Elisabeth Keller",
@@ -108,6 +120,18 @@
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/4b9c1c91-a964-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
+    "id": "seed-david-bragg-mcnamee",
+    "slug": "public-record~david-bragg-mcnamee",
+    "name": "David Bragg McNamee",
+    "website": "https://sanfordheisler.com/team/david-mcnamee/",
+    "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
+    "city": "Nashville",
+    "state": "TN",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Tennessee Board of Professional Responsibility attorney records",
+    "source_url": "https://www.tbpr.org/attorneys/038124"
+  },
+  {
     "id": "seed-douglas-michael-werman",
     "slug": "public-record~douglas-michael-werman",
     "name": "Douglas Michael Werman",
@@ -156,6 +180,30 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
   {
+    "id": "seed-jonathan-patrick-tepe",
+    "slug": "public-record~jonathan-patrick-tepe",
+    "name": "Jonathan Patrick Tepe",
+    "website": "https://sanfordheisler.com/team/jonathan-tepe/",
+    "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
+    "city": "Nashville",
+    "state": "TN",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Tennessee Board of Professional Responsibility attorney records",
+    "source_url": "https://www.tbpr.org/attorneys/037266"
+  },
+  {
+    "id": "seed-kasi-lynn-wautlet",
+    "slug": "public-record~kasi-lynn-wautlet",
+    "name": "Kasi Lynn Wautlet",
+    "website": "https://sanfordheisler.com/team/kasi-wautlet/",
+    "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
+    "city": "Nashville",
+    "state": "TN",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Tennessee Board of Professional Responsibility attorney records",
+    "source_url": "https://www.tbpr.org/attorneys/038688"
+  },
+  {
     "id": "seed-kathleen-ruth-scanlan",
     "slug": "public-record~kathleen-ruth-scanlan",
     "name": "Kathleen Ruth Scanlan",
@@ -166,6 +214,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529"
+  },
+  {
+    "id": "seed-kevin-hunter-sharp",
+    "slug": "public-record~kevin-hunter-sharp",
+    "name": "Kevin Hunter Sharp",
+    "website": "https://sanfordheisler.com/team/judge-kevin-sharp/",
+    "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
+    "city": "Nashville",
+    "state": "TN",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Tennessee Board of Professional Responsibility attorney records",
+    "source_url": "https://www.tbpr.org/attorneys/016287"
   },
   {
     "id": "seed-marlene-koury",
@@ -190,6 +250,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/271380"
+  },
+  {
+    "id": "seed-michael-joseph-lockman",
+    "slug": "public-record~michael-joseph-lockman",
+    "name": "Michael Joseph Lockman",
+    "website": "https://sanfordheisler.com/team/michael-lockman/",
+    "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
+    "city": "Nashville",
+    "state": "TN",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Tennessee Board of Professional Responsibility attorney records",
+    "source_url": "https://www.tbpr.org/attorneys/039797"
   },
   {
     "id": "seed-rachael-ga-yue-jung",

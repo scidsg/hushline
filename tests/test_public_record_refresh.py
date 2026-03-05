@@ -487,6 +487,48 @@ def test_refresh_public_record_rows_rejects_generic_us_source_url() -> None:
         )
 
 
+def test_refresh_public_record_rows_allows_ohio_record_fragment_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-ohio-record-source",
+            slug="public-record~ohio-record-source",
+            name="Ohio Record Source Firm",
+            state="OH",
+            website="https://ohio-record-source.example/",
+            source_url="https://www.supremecourt.ohio.gov/AttorneySearch/#/77563/attyinfo",
+        )
+    ]
+
+    result = refresh_public_record_rows(
+        rows,
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"OH"})},
+        region_targets={"US": 1},
+    )
+    assert len(result.rows) == 1
+
+
+def test_refresh_public_record_rows_rejects_ohio_generic_home_fragment_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-ohio-generic-home-source",
+            slug="public-record~ohio-generic-home-source",
+            name="Ohio Generic Home Source Firm",
+            state="OH",
+            website="https://ohio-generic-home-source.example/",
+            source_url="https://www.supremecourt.ohio.gov/AttorneySearch/#/home",
+        )
+    ]
+
+    with pytest.raises(PublicRecordRefreshError, match="generic state source page"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"OH"})},
+            region_targets={"US": 1},
+        )
+
+
 def test_refresh_public_record_rows_rejects_synthetic_listing_marker() -> None:
     rows = [
         _row(
@@ -723,6 +765,120 @@ def test_discover_official_us_state_public_record_rows_skips_existing_washington
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.rows == []
     assert result.added_count_by_state == {"WA": 0}
+    assert result.unsupported_states == ()
+
+
+def test_discover_official_us_state_public_record_rows_adds_ohio_seed() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"OH"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {"OH": 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["name"] == "Alissa Jacqueline Sammarco"
+    assert row["state"] == "OH"
+    assert row["source_label"] == "Supreme Court of Ohio attorney directory"
+    assert row["source_url"] == (
+        "https://www.supremecourt.ohio.gov/AttorneySearch/#/77563/attyinfo"
+    )
+
+
+def test_discover_official_us_state_public_record_rows_skips_existing_ohio_seed() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [
+            {
+                "id": "seed-alissa-jacqueline-sammarco",
+                "name": "Alissa Jacqueline Sammarco",
+                "slug": "public-record~alissa-jacqueline-sammarco",
+            }
+        ],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"OH"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {"OH": 0}
+    assert result.unsupported_states == ()
+
+
+def test_discover_official_us_state_public_record_rows_adds_tennessee_seeds() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"TN"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {"TN": 5}
+    assert len(result.rows) == 5
+
+    by_name = {row["name"]: row for row in result.rows}
+    assert by_name["Kevin Hunter Sharp"]["state"] == "TN"
+    assert by_name["Kevin Hunter Sharp"]["source_label"] == (
+        "Tennessee Board of Professional Responsibility attorney records"
+    )
+    assert by_name["Kevin Hunter Sharp"]["source_url"] == "https://www.tbpr.org/attorneys/016287"
+
+    assert by_name["Jonathan Patrick Tepe"]["state"] == "TN"
+    assert by_name["Jonathan Patrick Tepe"]["source_url"] == (
+        "https://www.tbpr.org/attorneys/037266"
+    )
+
+    assert by_name["Michael Joseph Lockman"]["state"] == "TN"
+    assert by_name["Michael Joseph Lockman"]["source_url"] == (
+        "https://www.tbpr.org/attorneys/039797"
+    )
+
+    assert by_name["Kasi Lynn Wautlet"]["state"] == "TN"
+    assert by_name["Kasi Lynn Wautlet"]["source_url"] == "https://www.tbpr.org/attorneys/038688"
+
+    assert by_name["David Bragg McNamee"]["state"] == "TN"
+    assert by_name["David Bragg McNamee"]["source_url"] == ("https://www.tbpr.org/attorneys/038124")
+
+
+def test_discover_official_us_state_public_record_rows_skips_existing_tennessee_seeds() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [
+            {
+                "id": "seed-kevin-hunter-sharp",
+                "name": "Kevin Hunter Sharp",
+                "slug": "public-record~kevin-hunter-sharp",
+            },
+            {
+                "id": "seed-jonathan-patrick-tepe",
+                "name": "Jonathan Patrick Tepe",
+                "slug": "public-record~jonathan-patrick-tepe",
+            },
+            {
+                "id": "seed-michael-joseph-lockman",
+                "name": "Michael Joseph Lockman",
+                "slug": "public-record~michael-joseph-lockman",
+            },
+            {
+                "id": "seed-kasi-lynn-wautlet",
+                "name": "Kasi Lynn Wautlet",
+                "slug": "public-record~kasi-lynn-wautlet",
+            },
+            {
+                "id": "seed-david-bragg-mcnamee",
+                "name": "David Bragg McNamee",
+                "slug": "public-record~david-bragg-mcnamee",
+            },
+        ],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"TN"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {"TN": 0}
     assert result.unsupported_states == ()
 
 
