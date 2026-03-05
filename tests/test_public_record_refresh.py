@@ -646,3 +646,98 @@ def test_discover_official_us_state_public_record_rows_strict_requires_full_cove
             region_state_map={"US": frozenset({"CA", "NY"})},
             strict_state_adapter_coverage=True,
         )
+
+
+def test_discover_official_us_state_public_record_rows_adds_washington_seed() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"WA"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {"WA": 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["name"] == "Barbara Mahoney"
+    assert row["state"] == "WA"
+    assert row["source_label"] == "Washington State Bar Association legal directory"
+    assert row["source_url"] == (
+        "https://www.mywsba.org/PersonifyEbusiness/Default.aspx?TabID=1538&Usr_ID=31845"
+    )
+
+
+def test_discover_official_us_state_public_record_rows_skips_existing_washington_seed() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [
+            {
+                "id": "seed-barbara-mahoney",
+                "name": "Barbara Mahoney",
+                "slug": "public-record~barbara-mahoney",
+            }
+        ],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"WA"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {"WA": 0}
+    assert result.unsupported_states == ()
+
+
+def test_discover_official_us_state_public_record_rows_adds_illinois_seeds() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"IL"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {"IL": 2}
+    assert len(result.rows) == 2
+
+    by_name = {row["name"]: row for row in result.rows}
+    assert by_name["Douglas Michael Werman"]["state"] == "IL"
+    assert by_name["Douglas Michael Werman"]["source_label"] == (
+        "Illinois ARDC attorney registration records"
+    )
+    assert by_name["Douglas Michael Werman"]["source_url"] == (
+        "https://www.iardc.org/Lawyer/PrintableDetails/"
+        "00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+    )
+
+    assert by_name["Amy Elisabeth Keller"]["state"] == "IL"
+    assert by_name["Amy Elisabeth Keller"]["source_label"] == (
+        "Illinois ARDC attorney registration records"
+    )
+    assert by_name["Amy Elisabeth Keller"]["source_url"] == (
+        "https://www.iardc.org/Lawyer/PrintableDetails/"
+        "f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+    )
+
+
+def test_discover_official_us_state_public_record_rows_skips_existing_illinois_seeds() -> None:
+    result = discover_official_us_state_public_record_rows(
+        [
+            {
+                "id": "seed-douglas-michael-werman",
+                "name": "Douglas Michael Werman",
+                "slug": "public-record~douglas-michael-werman",
+            },
+            {
+                "id": "seed-amy-elisabeth-keller",
+                "name": "Amy Elisabeth Keller",
+                "slug": "public-record~amy-elisabeth-keller",
+            },
+        ],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"IL"})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {"IL": 0}
+    assert result.unsupported_states == ()

@@ -644,8 +644,141 @@ def _discover_california_official_public_record_rows(
     return []
 
 
+_WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-barbara-mahoney",
+        "slug": "public-record~barbara-mahoney",
+        "name": "Barbara Mahoney",
+        "website": "https://www.hbsslaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Washington State Bar "
+            "Association legal directory."
+        ),
+        "city": "Seattle",
+        "state": "WA",
+        "practice_tags": ["Whistleblowing", "Employment", "Consumer"],
+        "source_label": "Washington State Bar Association legal directory",
+        "source_url": "https://www.mywsba.org/PersonifyEbusiness/Default.aspx?TabID=1538&Usr_ID=31845",
+    },
+)
+
+
+_ILLINOIS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-douglas-michael-werman",
+        "slug": "public-record~douglas-michael-werman",
+        "name": "Douglas Michael Werman",
+        "website": "https://flsalaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Illinois ARDC attorney "
+            "registration records."
+        ),
+        "city": "Chicago",
+        "state": "IL",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Illinois ARDC attorney registration records",
+        "source_url": (
+            "https://www.iardc.org/Lawyer/PrintableDetails/"
+            "00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+        ),
+    },
+    {
+        "id": "seed-amy-elisabeth-keller",
+        "slug": "public-record~amy-elisabeth-keller",
+        "name": "Amy Elisabeth Keller",
+        "website": "https://dicellolevitt.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Illinois ARDC attorney "
+            "registration records."
+        ),
+        "city": "Chicago",
+        "state": "IL",
+        "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
+        "source_label": "Illinois ARDC attorney registration records",
+        "source_url": (
+            "https://www.iardc.org/Lawyer/PrintableDetails/"
+            "f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+        ),
+    },
+)
+
+
+def _discover_seed_rows(
+    *,
+    seed_rows: Sequence[PublicRecordRow],
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+) -> list[PublicRecordRow]:
+    if max_new_per_state == 0:
+        return []
+
+    existing_ids: set[str] = set()
+    existing_slugs: set[str] = set()
+    existing_name_keys: set[str] = set()
+    for row in existing_rows:
+        row_id = _optional_string(row.get("id"))
+        row_slug = _optional_string(row.get("slug"))
+        row_name = _optional_string(row.get("name"))
+        if row_id is not None:
+            existing_ids.add(row_id)
+        if row_slug is not None:
+            existing_slugs.add(row_slug)
+        if row_name is not None:
+            normalized = _normalize_string(row_name)
+            if normalized:
+                existing_name_keys.add(_sort_key(normalized))
+
+    discovered_rows: list[PublicRecordRow] = []
+    for seed_row in seed_rows:
+        if len(discovered_rows) >= max_new_per_state:
+            break
+
+        if seed_row["id"] in existing_ids:
+            continue
+        if seed_row["slug"] in existing_slugs:
+            continue
+        if _sort_key(seed_row["name"]) in existing_name_keys:
+            continue
+
+        discovered_rows.append(seed_row)
+
+    return discovered_rows
+
+
+def _discover_washington_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_illinois_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_ILLINOIS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 OFFICIAL_US_STATE_DISCOVERY_ADAPTERS: dict[str, OfficialStateDiscoveryAdapter] = {
     "CA": _discover_california_official_public_record_rows,
+    "IL": _discover_illinois_official_public_record_rows,
+    "WA": _discover_washington_official_public_record_rows,
 }
 
 

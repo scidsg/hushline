@@ -1,39 +1,27 @@
 [
   {
-    "id": "seed-marlene-koury",
-    "slug": "public-record~marlene-koury",
-    "name": "Marlene Koury",
-    "website": "https://constantinecannon.com/",
-    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
-    "city": "San Francisco",
-    "state": "CA",
-    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
-    "source_label": "State Bar of California attorney profile",
-    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/348990"
+    "id": "seed-amy-elisabeth-keller",
+    "slug": "public-record~amy-elisabeth-keller",
+    "name": "Amy Elisabeth Keller",
+    "website": "https://dicellolevitt.com/",
+    "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
+    "city": "Chicago",
+    "state": "IL",
+    "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
+    "source_label": "Illinois ARDC attorney registration records",
+    "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
-    "id": "seed-robert-aram-jigarjian",
-    "slug": "public-record~robert-aram-jigarjian",
-    "name": "Robert Aram Jigarjian",
+    "id": "seed-barbara-mahoney",
+    "slug": "public-record~barbara-mahoney",
+    "name": "Barbara Mahoney",
     "website": "https://www.hbsslaw.com/",
-    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
-    "city": "Berkeley",
-    "state": "CA",
-    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
-    "source_label": "State Bar of California attorney profile",
-    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/171107"
-  },
-  {
-    "id": "seed-rachael-ga-yue-jung",
-    "slug": "public-record~rachael-ga-yue-jung",
-    "name": "Rachael Ga-Yue Jung",
-    "website": "https://www.kellergrover.com/",
-    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
-    "city": "San Francisco",
-    "state": "CA",
-    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
-    "source_label": "State Bar of California attorney profile",
-    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/239323"
+    "description": "Whistleblower attorney listing sourced from Washington State Bar Association legal directory.",
+    "city": "Seattle",
+    "state": "WA",
+    "practice_tags": ["Whistleblowing", "Employment", "Consumer"],
+    "source_label": "Washington State Bar Association legal directory",
+    "source_url": "https://www.mywsba.org/PersonifyEbusiness/Default.aspx?TabID=1538&Usr_ID=31845"
   },
   {
     "id": "seed-bruce-w-leppla",
@@ -48,6 +36,42 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/71642"
   },
   {
+    "id": "seed-charles-henry-field-jr",
+    "slug": "public-record~charles-henry-field-jr",
+    "name": "Charles Henry Field Jr.",
+    "website": "https://sanfordheisler.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "La Jolla",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/189817"
+  },
+  {
+    "id": "seed-douglas-michael-werman",
+    "slug": "public-record~douglas-michael-werman",
+    "name": "Douglas Michael Werman",
+    "website": "https://flsalaw.com/",
+    "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
+    "city": "Chicago",
+    "state": "IL",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Illinois ARDC attorney registration records",
+    "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
+  },
+  {
+    "id": "seed-marlene-koury",
+    "slug": "public-record~marlene-koury",
+    "name": "Marlene Koury",
+    "website": "https://constantinecannon.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/348990"
+  },
+  {
     "id": "seed-menaka-nirmalie-fernando",
     "slug": "public-record~menaka-nirmalie-fernando",
     "name": "Menaka Nirmalie Fernando",
@@ -60,6 +84,30 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/271380"
   },
   {
+    "id": "seed-rachael-ga-yue-jung",
+    "slug": "public-record~rachael-ga-yue-jung",
+    "name": "Rachael Ga-Yue Jung",
+    "website": "https://www.kellergrover.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "San Francisco",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/239323"
+  },
+  {
+    "id": "seed-robert-aram-jigarjian",
+    "slug": "public-record~robert-aram-jigarjian",
+    "name": "Robert Aram Jigarjian",
+    "website": "https://www.hbsslaw.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
+    "city": "Berkeley",
+    "state": "CA",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of California attorney profile",
+    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/171107"
+  },
+  {
     "id": "seed-stephen-shinobu-hasegawa",
     "slug": "public-record~stephen-shinobu-hasegawa",
     "name": "Stephen Shinobu Hasegawa",
@@ -70,17 +118,5 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/198472"
-  },
-  {
-    "id": "seed-charles-henry-field-jr",
-    "slug": "public-record~charles-henry-field-jr",
-    "name": "Charles Henry Field Jr.",
-    "website": "https://sanfordheisler.com/",
-    "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
-    "city": "La Jolla",
-    "state": "CA",
-    "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
-    "source_label": "State Bar of California attorney profile",
-    "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/189817"
   }
 ]

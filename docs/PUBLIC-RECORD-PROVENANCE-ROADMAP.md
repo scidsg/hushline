@@ -8,8 +8,8 @@
 
 ## Current Baseline (March 5, 2026)
 
-- Active strict listings: `7`
-- States with strict listings: `CA` only
+- Active strict listings: `10`
+- States with strict listings: `CA`, `IL`, `WA`
 - Other U.S. rows were removed because they only pointed to generic directory pages (not the exact record URL).
 
 ## Strict Provenance Rules
@@ -46,7 +46,7 @@
 | HI    | Hawaii State Bar Association public directory (`hsba.org`)                     | Official search flow -> resolve exact result URL | Adapter required        |
 | IA    | Iowa State Bar Association public directory (`iowabar.org`)                    | Official search flow -> resolve exact result URL | Adapter required        |
 | ID    | Idaho State Bar public directory (`isb.idaho.gov`)                             | Official search flow -> resolve exact result URL | Adapter required        |
-| IL    | Illinois ARDC attorney registration records (`iardc.org`)                      | Official search flow -> resolve exact result URL | Adapter required        |
+| IL    | Illinois ARDC attorney registration records (`iardc.org`)                      | Printable profile URL seed + strict validation   | Adapter implemented     |
 | IN    | Indiana State Bar public directory (`inbar.org`)                               | Official search flow -> resolve exact result URL | Adapter required        |
 | KS    | Kansas Judicial Branch attorney records (`kscourts.gov`)                       | Official search flow -> resolve exact result URL | Adapter required        |
 | KY    | Kentucky Bar Association public directory (`kybar.org`)                        | Official search flow -> resolve exact result URL | Adapter required        |
@@ -79,7 +79,7 @@
 | UT    | Utah Courts public legal directory (`utcourts.gov`)                            | Official search flow -> resolve exact result URL | Adapter required        |
 | VA    | Virginia State Bar public directory (`vsb.org`)                                | Official search flow -> resolve exact result URL | Adapter required        |
 | VT    | Vermont Bar Association public directory (`vtbar.org`)                         | Official search flow -> resolve exact result URL | Adapter required        |
-| WA    | Washington State Bar Association legal directory (`mywsba.org`)                | Official search flow -> resolve exact result URL | Adapter required        |
+| WA    | Washington State Bar Association legal directory (`mywsba.org`)                | Direct profile URL seed + strict validation      | Adapter implemented     |
 | WI    | State Bar of Wisconsin public directory (`wisbar.org`)                         | Official search flow -> resolve exact result URL | Adapter required        |
 | WV    | West Virginia State Bar public directory (`wvbar.org`)                         | Official search flow -> resolve exact result URL | Adapter required        |
 | WY    | Wyoming State Bar public directory (`wyomingbar.org`)                          | Official search flow -> resolve exact result URL | Adapter required        |
