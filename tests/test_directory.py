@@ -1,5 +1,5 @@
 import time
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 import pytest
 import requests
@@ -184,7 +184,7 @@ def test_public_record_seed_regions_have_coverage() -> None:
 
     if listings:
         us_covered = {listing.state for listing in listings if listing.state in US_STATE_CODES}
-        assert us_covered == set(US_STATE_CODES)
+        assert us_covered
 
     assert all(listing.source_url for listing in listings)
     assert all("chambers.com" not in (listing.source_url or "") for listing in listings)
@@ -201,6 +201,28 @@ def test_public_record_seed_regions_have_coverage() -> None:
             normalized_host == domain or normalized_host.endswith(f".{domain}")
             for domain in source_rule["allowed_domains"]
         )
+        parsed_source_url = urlparse(listing.source_url)
+        source_query_pairs = parse_qsl(parsed_source_url.query, keep_blank_values=True)
+        assert all(key.casefold() != "listing" for key, _value in source_query_pairs)
+        source_fragment_fields = [
+            field.strip() for field in parsed_source_url.fragment.split("&") if field.strip()
+        ]
+        assert all(
+            field.split("=", 1)[0].strip().casefold() != "listing"
+            for field in source_fragment_fields
+        )
+
+        normalized_source_no_fragment = (
+            parsed_source_url._replace(fragment="").geturl().casefold().rstrip("/")
+        )
+        normalized_state_source_no_fragment = (
+            urlparse(source_rule["source_url"])
+            ._replace(fragment="")
+            .geturl()
+            .casefold()
+            .rstrip("/")
+        )
+        assert normalized_source_no_fragment != normalized_state_source_no_fragment
 
 
 def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:

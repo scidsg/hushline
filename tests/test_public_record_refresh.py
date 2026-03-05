@@ -39,6 +39,12 @@ def _row(  # noqa: PLR0913
         if state_source is not None
         else f"https://records.example/{source_slug}"
     )
+    if state_source is not None and state_code in US_STATE_CODES:
+        if state_code == "CA":
+            default_source_url = "https://apps.calbar.ca.gov/attorney/Licensee/Detail/350631"
+        else:
+            query_sep = "&" if "?" in default_source_url else "?"
+            default_source_url = f"{default_source_url}{query_sep}record={source_slug}"
 
     row: dict[str, object] = {
         "name": name,
@@ -355,7 +361,7 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     assert len(flagged.rows) == 2
     assert len(flagged.link_failures) == 1
     assert flagged.dropped_record_ids == []
-    assert flagged.checked_url_count == 3
+    assert flagged.checked_url_count == 4
 
     dropped = refresh_public_record_rows(
         rows,
@@ -367,7 +373,7 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     )
     assert [row["id"] for row in dropped.rows] == ["seed-healthy"]
     assert dropped.dropped_record_ids == ["seed-broken"]
-    assert dropped.checked_url_count == 3
+    assert dropped.checked_url_count == 4
     assert checked_urls
 
 
@@ -450,6 +456,51 @@ def test_refresh_public_record_rows_rejects_cross_state_source_policy() -> None:
     rows[0]["source_label"] = "State Bar of California attorney profile"
 
     with pytest.raises(PublicRecordRefreshError, match="state 'NY' requires"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_generic_us_source_url() -> None:
+    rows = [
+        _row(
+            id_value="seed-ny-generic-source",
+            slug="public-record~ny-generic-source",
+            name="NY Generic Source Firm",
+            state="NY",
+            website="https://ny-generic-source.example/",
+            source_url="https://iapps.courts.state.ny.us/attorneyservices/search?0",
+        )
+    ]
+
+    with pytest.raises(PublicRecordRefreshError, match="generic state source page"):
+        refresh_public_record_rows(
+            rows,
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"NY"})},
+            region_targets={"US": 1},
+        )
+
+
+def test_refresh_public_record_rows_rejects_synthetic_listing_marker() -> None:
+    rows = [
+        _row(
+            id_value="seed-ny-synthetic-marker",
+            slug="public-record~ny-synthetic-marker",
+            name="NY Synthetic Marker Firm",
+            state="NY",
+            website="https://ny-synthetic-marker.example/",
+            source_url=(
+                "https://iapps.courts.state.ny.us/attorneyservices/search?0="
+                "#listing=ny-synthetic-marker-firm"
+            ),
+        )
+    ]
+
+    with pytest.raises(PublicRecordRefreshError, match="synthetic listing marker"):
         refresh_public_record_rows(
             rows,
             selected_regions=["US"],

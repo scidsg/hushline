@@ -5,7 +5,7 @@ import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence, TypedDict
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 import requests
 from unidecode import unidecode
@@ -1127,6 +1127,28 @@ def _canonicalize_source_url(
     )
 
 
+def _has_listing_query_parameter(source_url: str) -> bool:
+    parsed = urlparse(source_url)
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    return any(key.casefold() == "listing" for key, _value in query_pairs)
+
+
+def _has_listing_fragment_parameter(source_url: str) -> bool:
+    fragment = (urlparse(source_url).fragment or "").strip()
+    if not fragment:
+        return False
+    fragment_fields = [field.strip() for field in fragment.split("&") if field.strip()]
+    for field in fragment_fields:
+        key = field.split("=", 1)[0].strip().casefold()
+        if key == "listing":
+            return True
+    return False
+
+
+def _strip_url_fragment(source_url: str) -> str:
+    return urlparse(source_url)._replace(fragment="").geturl()
+
+
 def _validate_authoritative_source(
     *,
     name: str,
@@ -1214,6 +1236,22 @@ def _validate_us_state_source_policy(
         raise PublicRecordRefreshError(
             f"Listing '{name}' source_url host '{source_host}' is not allowed for "
             f"state '{state_code}'. Allowed domains: {allowed_domains}",
+        )
+
+    if _has_listing_query_parameter(source_url) or _has_listing_fragment_parameter(source_url):
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' source_url includes a synthetic listing marker; "
+            "source_url must be the exact public record URL."
+        )
+
+    normalized_source_url = _normalize_url_for_comparison(_strip_url_fragment(source_url))
+    normalized_state_source = _normalize_url_for_comparison(
+        _strip_url_fragment(source_rule["source_url"])
+    )
+    if normalized_source_url == normalized_state_source:
+        raise PublicRecordRefreshError(
+            f"Listing '{name}' source_url points to a generic state source page; "
+            "source_url must link directly to the specific public record."
         )
 
 
