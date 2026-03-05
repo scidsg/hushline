@@ -502,6 +502,31 @@ def test_refresh_public_record_rows_rejects_chambers_source_url() -> None:
         )
 
 
+def test_refresh_public_record_rows_allows_non_chambers_hosts_with_chambers_substrings() -> None:
+    rows = [
+        _row(
+            id_value="seed-substring-safe",
+            slug="public-record~substring-safe",
+            name="Substring Safe Firm",
+            state="Germany",
+            website="https://substring-safe.example",
+            source_url=(
+                "https://records.example/entry"
+                "?mirror=profiles-portal.chambers.com"
+                "&index=chamberssitemap.blob.core.windows.net"
+            ),
+        )
+    ]
+
+    result = refresh_public_record_rows(
+        rows,
+        selected_regions=["EU"],
+        region_state_map={"EU": frozenset({"Germany"})},
+        region_targets={"EU": 1},
+    )
+    assert len(result.rows) == 1
+
+
 def test_build_requests_link_checker_retries_then_succeeds() -> None:
     class _FakeResponse:
         def __init__(self, status_code: int) -> None:
