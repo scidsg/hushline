@@ -250,8 +250,10 @@ def test_directory_securedrop_render_only_in_securedrop_and_all(
     assert listing.name in all_panel.text
     assert listing.description in securedrop_panel.text
     assert listing.description in all_panel.text
-    assert "🛡️ SecureDrop" in securedrop_panel.text
-    assert "🤖 Automated" in securedrop_panel.text
+    assert securedrop_panel.select_one('span.badge[aria-label="SecureDrop listing"]') is None
+    assert securedrop_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert all_panel.select_one('span.badge[aria-label="SecureDrop listing"]') is not None
+    assert all_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
     assert public_records_panel is not None
     assert listing.name not in public_records_panel.text
     assert verified_panel is not None
