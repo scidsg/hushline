@@ -93,16 +93,17 @@ jobs:
             --release "${{ steps.vars.outputs.release_key }}" \
             --manifest docs/screenshots/scenes.json
 
-      - name: Publish screenshots to external repo
+      - name: Publish screenshots to hushline-website
         if: steps.manifest.outputs.enabled == 'true'
         env:
-          SCREENSHOTS_REPO: ${{ vars.SCREENSHOTS_REPO }}
-          SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
+          WEBSITE_REPOSITORY: scidsg/hushline-website
+          WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
+          WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
           RELEASE_KEY: ${{ steps.vars.outputs.release_key }}
         run: |
           set -euo pipefail
-          if [ -z "${SCREENSHOTS_REPO:-}" ] || [ -z "${SCREENSHOTS_PUSH_TOKEN:-}" ]; then
-            echo "Skipping publish: SCREENSHOTS_REPO variable or SCREENSHOTS_PUSH_TOKEN secret is missing."
+          if [ -z "${WEBSITE_PUSH_TOKEN:-}" ]; then
+            echo "Skipping publish: HUSHLINE_WEBSITE_SCREENSHOTS_PAT secret is missing."
             exit 0
           fi
 
@@ -112,27 +113,17 @@ jobs:
             exit 1
           fi
 
-          git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPO}.git" /tmp/hushline-screenshots
-          cd /tmp/hushline-screenshots
+          git clone "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" /tmp/hushline-website
+          cd /tmp/hushline-website
 
-          mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
-          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "releases/${RELEASE_KEY}/"
-          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "releases/latest/"
-
-          cat > README.md <<'EOF'
-          # Hush Line Screenshots
-
-          Automated screenshots published by the Hush Line app repo workflow.
-
-          - Latest: `releases/latest/`
-          - Versioned sets: `releases/<version>/`
-          EOF
+          mkdir -p "${WEBSITE_SCREENSHOT_ROOT}"
+          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/"
 
           cat > badge-docs-screenshots.json <<EOF
           {"schemaVersion":1,"label":"docs screenshots","message":"${RELEASE_KEY}","color":"blue"}
           EOF
 
-          git add README.md releases badge-docs-screenshots.json
+          git add "${WEBSITE_SCREENSHOT_ROOT}" badge-docs-screenshots.json
           if git diff --cached --quiet; then
             echo "No screenshot changes to publish."
             exit 0
@@ -140,7 +131,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update screenshots for ${RELEASE_KEY}"
+          git commit -m "Update website screenshots for ${RELEASE_KEY}"
           git push origin HEAD
 
       - name: Upload screenshot artifacts
