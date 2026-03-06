@@ -36,6 +36,18 @@
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
+    "id": "seed-anthony-cali",
+    "slug": "public-record~anthony-cali",
+    "name": "Anthony Cali",
+    "website": "https://www.stinson.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Arizona public directory.",
+    "city": "Phoenix",
+    "state": "AZ",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of Arizona public directory",
+    "source_url": "https://www.azbar.org/for-the-public/find-a-lawyer-results/?m=Anthony-Cali-177781"
+  },
+  {
     "id": "seed-barbara-mahoney",
     "slug": "public-record~barbara-mahoney",
     "name": "Barbara Mahoney",
@@ -180,6 +192,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
   {
+    "id": "seed-jon-marc-petersen",
+    "slug": "public-record~jon-marc-petersen",
+    "name": "Jon-Marc Petersen",
+    "website": "https://www.denalilaw.com/",
+    "description": "Whistleblower attorney listing sourced from Alaska Bar Association public directory.",
+    "city": "Wasilla",
+    "state": "AK",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Alaska Bar Association public directory",
+    "source_url": "https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info?CUSTOMERCD=8744&WRP=Customer_Profile.htm"
+  },
+  {
     "id": "seed-jonathan-patrick-tepe",
     "slug": "public-record~jonathan-patrick-tepe",
     "name": "Jonathan Patrick Tepe",
@@ -228,6 +252,30 @@
     "source_url": "https://www.tbpr.org/attorneys/016287"
   },
   {
+    "id": "seed-kristin-l-pawlik",
+    "slug": "public-record~kristin-l-pawlik",
+    "name": "Kristin L. Pawlik",
+    "website": "https://www.arkattorneys.com/",
+    "description": "Whistleblower attorney listing sourced from Arkansas Bar Association public directory.",
+    "city": "Fayetteville",
+    "state": "AR",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Arkansas Bar Association public directory",
+    "source_url": "https://www.arkbar.com/network/members/profile?UserKey=10e2c501-bea8-4749-913c-0d6e319cdff6"
+  },
+  {
+    "id": "seed-marc-james-ayers",
+    "slug": "public-record~marc-james-ayers",
+    "name": "Marc James Ayers",
+    "website": "https://www.bradley.com/",
+    "description": "Whistleblower attorney listing sourced from Alabama State Bar public directory.",
+    "city": "Birmingham",
+    "state": "AL",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Alabama State Bar public directory",
+    "source_url": "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx"
+  },
+  {
     "id": "seed-marlene-koury",
     "slug": "public-record~marlene-koury",
     "name": "Marlene Koury",
@@ -274,6 +322,18 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/239323"
+  },
+  {
+    "id": "seed-rachel-brock",
+    "slug": "public-record~rachel-brock",
+    "name": "Rachel Brock",
+    "website": "https://www.durangofamilylaw.com/",
+    "description": "Whistleblower attorney listing sourced from Colorado Bar Association public directory.",
+    "city": "Durango",
+    "state": "CO",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Colorado Bar Association public directory",
+    "source_url": "https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
   },
   {
     "id": "seed-robert-aram-jigarjian",
