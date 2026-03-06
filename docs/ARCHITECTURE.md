@@ -35,3 +35,8 @@ Human-owned only (non-agentic): release and infrastructure control plane.
       | - Spaces bucket + CORS            |         | - Spaces bucket + CORS            |          | - Spaces bucket + CORS            |
       +-----------------------------------+         +-----------------------------------+          +-----------------------------------+
 ```
+
+Automated follow-on release actions:
+
+- `.github/workflows/bump-staging-after-release.yml` opens or updates a PR in `scidsg/hushline-infra` so staging tracks the released image tag.
+- `.github/workflows/bump-personal-server-after-release.yml` opens or updates a PR in `scidsg/hushline-personal-server` so the package version and bundled app image track the released image tag.

@@ -1,0 +1,257 @@
+name: Bump personal server after release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-personal-server-after-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  bump-personal-server:
+    if: ${{ !github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      IMAGE_REF: ghcr.io/${{ github.repository }}/hushline:${{ github.event.release.tag_name }}
+      IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}/hushline
+      PERSONAL_SERVER_REPOSITORY: scidsg/hushline-personal-server
+      PERSONAL_SERVER_BASE_REF: main
+      PERSONAL_SERVER_BRANCH: ${{ github.event.release.tag_name }}
+      PERSONAL_SERVER_PACKAGE_FILE: hushline-personal-server/DEBIAN/control
+      PERSONAL_SERVER_COMPOSE_FILE: hushline-personal-server/var/lib/hushline/docker-compose.yaml
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for release image to be available
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 40); do
+            if docker buildx imagetools inspect "$IMAGE_REF" >/dev/null 2>&1; then
+              echo "Release image is available: $IMAGE_REF"
+              exit 0
+            fi
+
+            echo "Release image not available yet (attempt ${attempt}/40): $IMAGE_REF"
+            sleep 30
+          done
+
+          echo "::error title=Release image not available::Timed out waiting for $IMAGE_REF"
+          exit 1
+
+      - name: Check out hushline-personal-server
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PERSONAL_SERVER_REPOSITORY }}
+          ref: ${{ env.PERSONAL_SERVER_BASE_REF }}
+          token: ${{ secrets.PERSONAL_SERVER_VERSION_BUMP }}
+          path: hushline-personal-server
+
+      - name: Check out or create release branch in hushline-personal-server
+        working-directory: hushline-personal-server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --heads origin "$PERSONAL_SERVER_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$PERSONAL_SERVER_BRANCH":"refs/remotes/origin/$PERSONAL_SERVER_BRANCH"
+            git checkout -B "$PERSONAL_SERVER_BRANCH" "origin/$PERSONAL_SERVER_BRANCH"
+          else
+            git checkout -B "$PERSONAL_SERVER_BRANCH"
+          fi
+
+      - name: Update personal server package and image references
+        id: update_personal_server
+        working-directory: hushline-personal-server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          release_tag = os.environ["RELEASE_TAG"]
+          release_version = release_tag.removeprefix("v")
+          image_repository = os.environ["IMAGE_REPOSITORY"]
+          package_file = Path(os.environ["PERSONAL_SERVER_PACKAGE_FILE"])
+          compose_file = Path(os.environ["PERSONAL_SERVER_COMPOSE_FILE"])
+
+          package_original = package_file.read_text(encoding="utf-8")
+          package_updated, package_count = re.subn(
+              r"(?m)^(Version:\s*)\d+\.\d+\.\d+-1$",
+              rf"\g<1>{release_version}-1",
+              package_original,
+              count=1,
+          )
+
+          if package_count != 1:
+              raise SystemExit(
+                  f"Expected to replace exactly one package version in {package_file}, "
+                  f"replaced {package_count}.",
+              )
+
+          compose_original = compose_file.read_text(encoding="utf-8")
+          compose_updated, compose_count = re.subn(
+              rf"(?m)^(\s*image:\s*{re.escape(image_repository)}:)v\d+\.\d+\.\d+$",
+              rf"\g<1>{release_tag}",
+              compose_original,
+              count=1,
+          )
+
+          if compose_count != 1:
+              raise SystemExit(
+                  f"Expected to replace exactly one app image tag in {compose_file}, "
+                  f"replaced {compose_count}.",
+              )
+
+          if package_updated != package_original:
+              package_file.write_text(package_updated, encoding="utf-8")
+
+          if compose_updated != compose_original:
+              compose_file.write_text(compose_updated, encoding="utf-8")
+          PY
+
+          if git diff --quiet -- "$PERSONAL_SERVER_PACKAGE_FILE" "$PERSONAL_SERVER_COMPOSE_FILE"; then
+            if git diff --quiet "origin/$PERSONAL_SERVER_BASE_REF...HEAD" -- \
+              "$PERSONAL_SERVER_PACKAGE_FILE" \
+              "$PERSONAL_SERVER_COMPOSE_FILE"; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "Personal server already points at $RELEASE_TAG"
+              exit 0
+            fi
+
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Personal server branch already contains the $RELEASE_TAG bump; continuing with PR and merge checks"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push personal server branch
+        if: steps.update_personal_server.outputs.changed == 'true'
+        working-directory: hushline-personal-server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "hushline-dev"
+          git config user.email "git-dev@scidsg.org"
+          git add "$PERSONAL_SERVER_PACKAGE_FILE" "$PERSONAL_SERVER_COMPOSE_FILE"
+          if git diff --cached --quiet; then
+            echo "Personal server branch $PERSONAL_SERVER_BRANCH is already up to date"
+            exit 0
+          fi
+          git commit -m "Bump personal server to $RELEASE_TAG"
+          git push --force-with-lease=refs/heads/"$PERSONAL_SERVER_BRANCH" origin "$PERSONAL_SERVER_BRANCH"
+
+      - name: Verify only the personal server version files changed
+        if: steps.update_personal_server.outputs.changed == 'true'
+        working-directory: hushline-personal-server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_files="$(printf '%s\n%s\n' \
+            "$PERSONAL_SERVER_COMPOSE_FILE" \
+            "$PERSONAL_SERVER_PACKAGE_FILE" | sort)"
+          changed_files="$(git diff --name-only "origin/$PERSONAL_SERVER_BASE_REF...HEAD" | sort)"
+
+          if [ "$changed_files" != "$expected_files" ]; then
+            echo "::error title=Unexpected personal server diff::Expected only $PERSONAL_SERVER_PACKAGE_FILE and $PERSONAL_SERVER_COMPOSE_FILE to change, got: $changed_files"
+            exit 1
+          fi
+
+      - name: Create or update personal server PR
+        if: steps.update_personal_server.outputs.changed == 'true'
+        id: create_or_update_pr
+        working-directory: hushline-personal-server
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_SERVER_VERSION_BUMP }}
+        run: |
+          set -euo pipefail
+
+          existing_pr_url="$(gh pr list \
+            --repo "$PERSONAL_SERVER_REPOSITORY" \
+            --head "$PERSONAL_SERVER_BRANCH" \
+            --base "$PERSONAL_SERVER_BASE_REF" \
+            --json url \
+            --jq '.[0].url')"
+
+          pr_title="Bump personal server to $RELEASE_TAG"
+          pr_body="$(cat <<EOF
+          Automated from Hush Line release \`$RELEASE_TAG\`.
+
+          This updates \`$PERSONAL_SERVER_PACKAGE_FILE\` and \`$PERSONAL_SERVER_COMPOSE_FILE\` so the personal server package and bundled app image match the released version.
+          EOF
+          )"
+
+          if [ -n "$existing_pr_url" ] && [ "$existing_pr_url" != "null" ]; then
+            gh pr edit "$existing_pr_url" \
+              --repo "$PERSONAL_SERVER_REPOSITORY" \
+              --title "$pr_title" \
+              --body "$pr_body"
+            echo "pr_url=$existing_pr_url" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          pr_url="$(gh pr create \
+            --repo "$PERSONAL_SERVER_REPOSITORY" \
+            --base "$PERSONAL_SERVER_BASE_REF" \
+            --head "$PERSONAL_SERVER_BRANCH" \
+            --title "$pr_title" \
+            --body "$pr_body")"
+
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Merge personal server PR if immediately allowed
+        if: steps.update_personal_server.outputs.changed == 'true'
+        working-directory: hushline-personal-server
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_SERVER_VERSION_BUMP }}
+          PR_URL: ${{ steps.create_or_update_pr.outputs.pr_url }}
+        run: |
+          set -euo pipefail
+
+          merge_output_file="$(mktemp)"
+
+          if gh pr merge \
+            --repo "$PERSONAL_SERVER_REPOSITORY" \
+            --squash \
+            --delete-branch \
+            "$PR_URL" >"$merge_output_file" 2>&1; then
+            cat "$merge_output_file"
+            exit 0
+          fi
+
+          cat "$merge_output_file"
+
+          if grep -Fq "base branch policy prohibits the merge" "$merge_output_file"; then
+            echo "::notice title=Personal server PR awaiting branch policy::Created $PR_URL but it is not immediately mergeable. Complete the required checks or review in $PERSONAL_SERVER_REPOSITORY before merging."
+            {
+              echo "## Personal server PR awaiting merge"
+              echo
+              echo "$PR_URL"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          exit 1
