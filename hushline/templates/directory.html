@@ -272,137 +272,61 @@
     {% if directory_verified_tab_enabled %}aria-labelledby="all-tab"{% endif %}
   >
     <div class="user-list">
-      {% for username in pgp_usernames %}
+      {% for entry in all_directory_entries %}
         <article class="user">
-          <h3>{{ username.display_name or username.username }}</h3>
-          {% if username.username %}
-            <p class="meta">@{{ username.username }}</p>
+          <h3>{{ entry.display_name }}</h3>
+          {% if entry.primary_username %}
+            <p class="meta">@{{ entry.primary_username }}</p>
           {% endif %}
-          {% if username.is_verified or username.user.is_admin %}
+
+          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key %}
             <div class="badgeContainer">
-              {% if username.user.is_admin %}
-                <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-              {% endif %}
-              {% if username.is_verified %}
-                <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+              {% if entry.entry_type == "public_record" %}
+                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+                {% if entry.is_automated %}
+                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+                {% endif %}
+              {% elif entry.entry_type == "securedrop" %}
+                <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
+                {% if entry.is_automated %}
+                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+                {% endif %}
+              {% else %}
+                {% if entry.is_admin %}
+                  <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                {% endif %}
+                {% if entry.is_verified %}
+                  <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                {% endif %}
+                {% if not entry.has_pgp_key %}
+                  <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>
+                {% endif %}
               {% endif %}
             </div>
           {% endif %}
-          {% if username.bio %}
-            <p class="bio">{{ username.bio }}</p>
+
+          {% if entry.bio %}
+            <p class="bio">{{ entry.bio }}</p>
           {% endif %}
+
           <div class="user-actions">
-            <a
-              href="{{ url_for('profile', username=username.username) }}"
-              aria-label="{{ (username.display_name or username.username) }}'s profile"
-              >View Profile</a
-            >
+            {% if entry.entry_type == "user" %}
+              <a
+                href="{{ entry.profile_url }}"
+                aria-label="{{ entry.display_name }}'s profile"
+                >View Profile</a
+              >
+            {% else %}
+              <a
+                href="{{ entry.profile_url }}"
+                aria-label="View read-only listing for {{ entry.display_name }}"
+                >View Listing</a
+              >
+            {% endif %}
           </div>
         </article>
       {% endfor %}
     </div>
-    {% if info_usernames %}
-      <p class="label">📇 Info-Only Accounts</p>
-      <div class="user-list">
-        {% for username in info_usernames %}
-          <article class="user">
-            <h3>{{ username.display_name or username.username }}</h3>
-            {% if username.username %}
-              <p class="meta">@{{ username.username }}</p>
-            {% endif %}
-            {% if username.is_verified or username.user.is_admin %}
-              <div class="badgeContainer">
-                {% if username.user.is_admin %}
-                  <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-                {% endif %}
-                {% if username.is_verified %}
-                  <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
-                {% endif %}
-              </div>
-            {% endif %}
-            {% if username.bio %}
-              <p class="bio">{{ username.bio }}</p>
-            {% endif %}
-            <div class="user-actions">
-              <a
-                href="{{ url_for('profile', username=username.username) }}"
-                aria-label="{{ (username.display_name or username.username) }}'s profile"
-                >View Profile</a
-              >
-            </div>
-          </article>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    {% if directory_verified_tab_enabled %}
-      <p class="label">🏛️ Public Record Attorneys</p>
-      <div class="user-list">
-        {% for listing in public_record_listings %}
-          <article class="user">
-            <h3>{{ listing.name }}</h3>
-            <div class="badgeContainer">
-              <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
-              <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-            </div>
-            <p class="bio">{{ listing.description }}</p>
-            <div class="user-actions">
-              <a
-                href="{{ url_for('public_record_listing', slug=listing.slug) }}"
-                aria-label="View read-only listing for {{ listing.name }}"
-                >View Listing</a
-              >
-            </div>
-          </article>
-        {% endfor %}
-      </div>
-
-      {% if legacy_public_record_listings %}
-        <p class="label">🏛️ Public Record Attorneys (Legacy)</p>
-        <div class="user-list">
-          {% for listing in legacy_public_record_listings %}
-            <article class="user">
-              <h3>{{ listing.name }}</h3>
-              <div class="badgeContainer">
-                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
-                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-              </div>
-              <p class="bio">{{ listing.description }}</p>
-              <div class="user-actions">
-                <a
-                  href="{{ url_for('public_record_listing', slug=listing.slug) }}"
-                  aria-label="View read-only listing for {{ listing.name }}"
-                  >View Listing</a
-                >
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if securedrop_listings %}
-        <p class="label">🛡️ SecureDrop Instances</p>
-        <div class="user-list">
-          {% for listing in securedrop_listings %}
-            <article class="user">
-              <h3>{{ listing.name }}</h3>
-              <div class="badgeContainer">
-                <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
-                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-              </div>
-              <p class="bio">{{ listing.description }}</p>
-              <div class="user-actions">
-                <a
-                  href="{{ url_for('securedrop_listing', slug=listing.slug) }}"
-                  aria-label="View read-only listing for {{ listing.name }}"
-                  >View Listing</a
-                >
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endif %}
   </div>
 {% endblock %}
 
