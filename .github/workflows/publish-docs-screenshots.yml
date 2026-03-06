@@ -1,9 +1,21 @@
 name: Publish docs screenshots
 
 on:
-  workflow_run:
-    workflows: ["Docs Screenshots"]
-    types: [completed]
+  workflow_call:
+    inputs:
+      source_run_id:
+        description: "GitHub Actions run ID that owns the docs screenshot artifact."
+        required: true
+        type: string
+    secrets:
+      HUSHLINE_WEBSITE_SCREENSHOTS_PAT:
+        required: false
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "GitHub Actions run ID that owns the docs screenshot artifact."
+        required: true
+        default: ""
 
 permissions:
   actions: read
@@ -11,21 +23,13 @@ permissions:
 
 jobs:
   publish:
-    if: >-
-      ${{
-        github.event.workflow_run.conclusion == 'success' &&
-        (
-          github.event.workflow_run.event == 'workflow_run' ||
-          github.event.workflow_run.event == 'workflow_dispatch'
-        )
-      }}
     runs-on: ubuntu-latest
     steps:
       - name: Download screenshot artifact
         id: artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ inputs.source_run_id }}
         run: |
           set -euo pipefail
           ARTIFACT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts")"

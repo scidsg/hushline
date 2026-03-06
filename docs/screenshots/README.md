@@ -26,7 +26,6 @@ make docs-screenshots RELEASE=v0.5.53
 
 Release automation note:
 
-- `.github/workflows/docs-screenshots.yml` captures screenshots after `Build release container image` succeeds for a release tag and uploads an artifact.
-- `.github/workflows/publish-docs-screenshots.yml` is the only workflow that uses
-  `HUSHLINE_WEBSITE_SCREENSHOTS_PAT`; it downloads that artifact and syncs the latest screenshots
-  into `scidsg/hushline-website`.
+- `build-release.yml` now calls `.github/workflows/docs-screenshots.yml` after the release image push succeeds for a tag.
+- `.github/workflows/docs-screenshots.yml` captures screenshots and uploads an artifact without using the website PAT.
+- `build-release.yml` then calls `.github/workflows/publish-docs-screenshots.yml`, which is the only workflow that uses `HUSHLINE_WEBSITE_SCREENSHOTS_PAT` and syncs the latest screenshots into `scidsg/hushline-website`.
