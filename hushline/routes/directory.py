@@ -1,3 +1,5 @@
+import unicodedata
+
 from flask import (
     Flask,
     abort,
@@ -5,6 +7,7 @@ from flask import (
     session,
     url_for,
 )
+from unidecode import unidecode
 from werkzeug.wrappers.response import Response
 
 from hushline.model import (
@@ -86,6 +89,13 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
     }
 
 
+def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[str, str]:
+    display_name = str(entry.get("display_name") or "")
+    normalized_name = unicodedata.normalize("NFKC", display_name).strip()
+    transliterated_name = unidecode(normalized_name).casefold()
+    return transliterated_name, normalized_name.casefold()
+
+
 def register_directory_routes(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
@@ -115,6 +125,12 @@ def register_directory_routes(app: Flask) -> None:
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
+        all_directory_entries = [
+            *[_directory_user_row(username) for username in usernames],
+            *[_public_record_row(listing) for listing in all_public_record_listings],
+            *[_securedrop_row(listing) for listing in securedrop_listings],
+        ]
+        all_directory_entries.sort(key=_all_directory_entry_sort_key)
         return render_template(
             "directory.html",
             intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
@@ -128,6 +144,7 @@ def register_directory_routes(app: Flask) -> None:
             public_record_total_count=len(all_public_record_listings),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
+            all_directory_entries=all_directory_entries,
             logged_in=logged_in,
         )
 

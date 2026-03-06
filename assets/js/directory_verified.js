@@ -118,7 +118,15 @@ document.addEventListener("DOMContentLoaded", function () {
     return userSearch.highlightQuery(text || "", query);
   }
 
-  function buildBadges(user) {
+  function sortedByDisplayName(entries) {
+    return [...entries].sort((a, b) =>
+      (a.display_name || "").localeCompare(b.display_name || "", undefined, {
+        sensitivity: "base",
+      }),
+    );
+  }
+
+  function buildBadges(user, tab) {
     let badgeContainer = "";
 
     if (user.is_public_record) {
@@ -132,7 +140,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (user.is_securedrop) {
-      badgeContainer += '<span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>';
+      if (tab !== "securedrop") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>';
+      }
       if (user.is_automated) {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
@@ -148,10 +159,14 @@ document.addEventListener("DOMContentLoaded", function () {
       badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
+    if (tab === "all" && !user.has_pgp_key) {
+      badgeContainer += '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
+    }
+
     return badgeContainer;
   }
 
-  function buildAutomatedListingCard(user, query) {
+  function buildAutomatedListingCard(user, query, tab) {
     const displayNameHighlighted = highlightMatch(user.display_name, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
     const listingType = user.is_public_record ? "Public record listing" : "SecureDrop listing";
@@ -159,7 +174,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return `
       <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
         <h3>${displayNameHighlighted}</h3>
-        <div class="badgeContainer">${buildBadges(user)}</div>
+        <div class="badgeContainer">${buildBadges(user, tab)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${user.profile_url}" aria-label="View read-only listing for ${user.display_name}">View Listing</a>
@@ -168,7 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
     `;
   }
 
-  function buildUserCard(user, query) {
+  function buildUserCard(user, query, tab) {
     const displayNameHighlighted = highlightMatch(
       user.display_name || user.primary_username,
       query,
@@ -177,17 +192,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
     if (user.is_public_record || user.is_securedrop) {
-      return buildAutomatedListingCard(user, query);
+      return buildAutomatedListingCard(user, query, tab);
     }
 
     const isVerified = user.is_verified ? "Verified" : "";
     const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+    const badges = buildBadges(user, tab);
 
     return `
       <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
-        <div class="badgeContainer">${buildBadges(user)}</div>
+        ${badges ? `<div class="badgeContainer">${badges}</div>` : ""}
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
           <a href="${user.profile_url}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
@@ -196,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
     `;
   }
 
-  function appendSection(panel, label, users, query) {
+  function appendSection(panel, label, users, query, tab) {
     if (!users.length) {
       return;
     }
@@ -210,7 +226,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const userListContainer = document.createElement("div");
     userListContainer.className = "user-list";
-    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query)).join("");
+    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query, tab)).join("");
     panel.appendChild(userListContainer);
   }
 
@@ -230,35 +246,28 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const publicRecords = users.filter((user) => user.is_public_record);
-    const strictPublicRecords = publicRecords.filter(
-      (user) => user.directory_section !== "legacy_public_record",
-    );
-    const legacyPublicRecords = publicRecords.filter(
-      (user) => user.directory_section === "legacy_public_record",
-    );
     const secureDrops = users.filter((user) => user.is_securedrop);
     const realUsers = users.filter((user) => !user.is_public_record && !user.is_securedrop);
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "public-records") {
-      appendSection(panel, "", publicRecords, query);
+      appendSection(panel, "", publicRecords, query, tab);
       return;
     }
 
     if (tab === "securedrop") {
-      appendSection(panel, "", secureDrops, query);
+      appendSection(panel, "", secureDrops, query, tab);
       return;
     }
 
-    appendSection(panel, "", withPgp, query);
-    appendSection(panel, "📇 Info-Only Accounts", infoOnly, query);
-
     if (tab === "all") {
-      appendSection(panel, "🏛️ Public Record Attorneys", strictPublicRecords, query);
-      appendSection(panel, "🏛️ Public Record Attorneys (Legacy)", legacyPublicRecords, query);
-      appendSection(panel, "🛡️ SecureDrop Instances", secureDrops, query);
+      appendSection(panel, "", sortedByDisplayName(users), query, tab);
+      return;
     }
+
+    appendSection(panel, "", withPgp, query, tab);
+    appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
   }
 
   function handleSearchInput() {

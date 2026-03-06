@@ -1,5 +1,6 @@
 import re
 import time
+from types import SimpleNamespace
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
@@ -278,6 +279,103 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["practice_tags"] == list(listing.topics)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "securedrop_directory"
+
+
+def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="zulu",
+            display_name="Zulu User",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="bravo",
+            display_name="Bravo Info",
+            bio="bravo bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=False, pgp_key=""),
+        ),
+    )
+    mocked_public_records = (
+        SimpleNamespace(
+            id="public-alpha",
+            slug="public-alpha",
+            name="Alpha Public Listing",
+            website="https://alpha.example",
+            description="alpha description",
+            location="Global",
+            practice_tags=("Law",),
+            source_label="Public records",
+            source_url="https://records.example/alpha",
+            directory_section="public_record",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+    mocked_securedrop_listings = (
+        SimpleNamespace(
+            id="securedrop-charlie",
+            slug="securedrop-charlie",
+            name="Charlie SecureDrop",
+            website="https://charlie.example",
+            description="charlie description",
+            location="Global",
+            topics=("Investigations",),
+            source_label="SecureDrop directory",
+            source_url="https://securedrop.org/api/v1/directory/",
+            directory_section="securedrop_directory",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: mocked_public_records,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: mocked_securedrop_listings,
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    verified_panel = soup.find(id="verified")
+    assert all_panel is not None
+    assert verified_panel is not None
+
+    assert all_panel.select("p.label") == []
+    assert "Info-Only Accounts" not in all_panel.get_text(" ", strip=True)
+    assert "Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Alpha Public Listing",
+        "Bravo Info",
+        "Charlie SecureDrop",
+        "Zulu User",
+    ]
+
+    info_only_card = next(
+        card
+        for card in all_panel.select("article.user")
+        if card.select_one("h3") and card.select_one("h3").get_text(" ", strip=True) == "Bravo Info"
+    )
+    assert info_only_card.select_one('span.badge[aria-label="Info-only account"]') is not None
+    assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
 
 
 def test_public_record_seed_regions_have_coverage() -> None:
