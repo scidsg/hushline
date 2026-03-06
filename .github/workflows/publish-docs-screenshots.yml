@@ -1,0 +1,90 @@
+name: Publish docs screenshots
+
+on:
+  workflow_run:
+    workflows: ["Docs Screenshots"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  publish:
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        (
+          github.event.workflow_run.event == 'workflow_run' ||
+          github.event.workflow_run.event == 'workflow_dispatch'
+        )
+      }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download screenshot artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          ARTIFACT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts")"
+          ARTIFACT_ID="$(
+            ARTIFACT_JSON="$ARTIFACT_JSON" python -c 'import json, os; payload = json.loads(os.environ["ARTIFACT_JSON"]); matches = [str(artifact["id"]) for artifact in payload.get("artifacts", []) if not artifact.get("expired") and (artifact.get("name") or "").startswith("docs-screenshots-")]; print(matches[0] if matches else "")'
+          )"
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No docs screenshot artifact found for run ${RUN_ID}."
+            exit 0
+          fi
+
+          mkdir -p /tmp/docs-screenshots-artifact
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            --output /tmp/docs-screenshots-artifact/artifact.zip
+          unzip -q /tmp/docs-screenshots-artifact/artifact.zip -d /tmp/docs-screenshots-artifact/unpacked
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "artifact_dir=/tmp/docs-screenshots-artifact/unpacked" >> "$GITHUB_OUTPUT"
+
+      - name: Publish screenshots to hushline-website
+        if: steps.artifact.outputs.found == 'true'
+        env:
+          WEBSITE_REPOSITORY: scidsg/hushline-website
+          WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
+          WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
+          ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBSITE_PUSH_TOKEN:-}" ]; then
+            echo "Skipping publish: HUSHLINE_WEBSITE_SCREENSHOTS_PAT secret is missing."
+            exit 0
+          fi
+
+          RELEASE_KEY="$(tr -d '\r\n' < "${ARTIFACT_DIR}/release_key.txt")"
+          RELEASE_KEY="$RELEASE_KEY" python -c 'import os, re, sys; release_key = os.environ["RELEASE_KEY"].strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) or sys.exit(f"Unexpected docs screenshot release key: {release_key!r}")'
+
+          SRC_ROOT="${ARTIFACT_DIR}/screenshots/${RELEASE_KEY}"
+          if [ ! -d "$SRC_ROOT" ]; then
+            echo "Expected screenshot source directory not found: $SRC_ROOT"
+            exit 1
+          fi
+
+          git clone "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" /tmp/hushline-website
+          cd /tmp/hushline-website
+
+          mkdir -p "${WEBSITE_SCREENSHOT_ROOT}"
+          rsync -a --delete "${SRC_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/"
+
+          cat > badge-docs-screenshots.json <<EOF
+          {"schemaVersion":1,"label":"docs screenshots","message":"${RELEASE_KEY}","color":"blue"}
+          EOF
+
+          git add "${WEBSITE_SCREENSHOT_ROOT}" badge-docs-screenshots.json
+          if git diff --cached --quiet; then
+            echo "No screenshot changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update website screenshots for ${RELEASE_KEY}"
+          git push origin HEAD

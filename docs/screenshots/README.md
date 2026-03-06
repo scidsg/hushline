@@ -23,3 +23,10 @@ Each release stores images by session under `releases/<version>/<session>/`.
 ```sh
 make docs-screenshots RELEASE=v0.5.53
 ```
+
+Release automation note:
+
+- `.github/workflows/docs-screenshots.yml` captures screenshots after `Build release container image` succeeds for a release tag and uploads an artifact.
+- `.github/workflows/publish-docs-screenshots.yml` is the only workflow that uses
+  `HUSHLINE_WEBSITE_SCREENSHOTS_PAT`; it downloads that artifact and syncs the latest screenshots
+  into `scidsg/hushline-website`.
