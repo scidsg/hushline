@@ -16,12 +16,20 @@ permissions:
 
 jobs:
   capture:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push'
+        )
+      }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event.repository.default_branch || 'main' }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Check screenshot manifest
@@ -74,18 +82,20 @@ jobs:
         id: vars
         if: steps.manifest.outputs.enabled == 'true'
         run: |
+          set -euo pipefail
           RELEASE_KEY="${{ github.event.inputs.release_key }}"
-          if [ -z "$RELEASE_KEY" ] && [ "${{ github.event_name }}" = "workflow_run" ]; then
-            RELEASE_KEY="$(python3 -c 'import json, os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8"))["workflow_run"]["head_branch"])')"
+          if [ -z "$RELEASE_KEY" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_run" ]; then
+            RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
+            if [ -z "$RELEASE_KEY" ]; then
+              echo "::error title=Missing release tag::No release tag matching vX.Y.Z points at ${GITHUB_SHA}."
+              exit 1
+            fi
           fi
           if [ -z "$RELEASE_KEY" ]; then
             VERSION=$(cut -d'"' -f2 hushline/version.py)
             RELEASE_KEY="v$VERSION"
           fi
-          if [[ ! "$RELEASE_KEY" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error title=Invalid release key::Expected release key to match vX.Y.Z, got $RELEASE_KEY"
-            exit 1
-          fi
+          RELEASE_KEY="$RELEASE_KEY" python -c 'import os, re, sys; release_key = os.environ["RELEASE_KEY"].strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) or sys.exit(f"Unexpected docs screenshot release key: {release_key!r}")'
           echo "release_key=$RELEASE_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Capture screenshots
@@ -100,50 +110,28 @@ jobs:
             --release "${{ steps.vars.outputs.release_key }}" \
             --manifest docs/screenshots/scenes.json
 
-      - name: Publish screenshots to hushline-website
+      - name: Prepare publish artifact
+        id: artifact
         if: steps.manifest.outputs.enabled == 'true'
         env:
-          WEBSITE_REPOSITORY: scidsg/hushline-website
-          WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
-          WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
           RELEASE_KEY: ${{ steps.vars.outputs.release_key }}
         run: |
           set -euo pipefail
-          if [ -z "${WEBSITE_PUSH_TOKEN:-}" ]; then
-            echo "Skipping publish: HUSHLINE_WEBSITE_SCREENSHOTS_PAT secret is missing."
-            exit 0
-          fi
-
           SRC_ROOT="docs/screenshots/releases/${RELEASE_KEY}"
           if [ ! -d "$SRC_ROOT" ]; then
             echo "Expected screenshot source directory not found: $SRC_ROOT"
             exit 1
           fi
 
-          git clone "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" /tmp/hushline-website
-          cd /tmp/hushline-website
-
-          mkdir -p "${WEBSITE_SCREENSHOT_ROOT}"
-          rsync -a --delete "${GITHUB_WORKSPACE}/${SRC_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/"
-
-          cat > badge-docs-screenshots.json <<EOF
-          {"schemaVersion":1,"label":"docs screenshots","message":"${RELEASE_KEY}","color":"blue"}
-          EOF
-
-          git add "${WEBSITE_SCREENSHOT_ROOT}" badge-docs-screenshots.json
-          if git diff --cached --quiet; then
-            echo "No screenshot changes to publish."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update website screenshots for ${RELEASE_KEY}"
-          git push origin HEAD
+          ARTIFACT_ROOT="$(mktemp -d)"
+          mkdir -p "${ARTIFACT_ROOT}/screenshots"
+          cp -R "$SRC_ROOT" "${ARTIFACT_ROOT}/screenshots/${RELEASE_KEY}"
+          printf '%s\n' "$RELEASE_KEY" > "${ARTIFACT_ROOT}/release_key.txt"
+          echo "artifact_root=$ARTIFACT_ROOT" >> "$GITHUB_OUTPUT"
 
       - name: Upload screenshot artifacts
         if: steps.manifest.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: docs-screenshots-${{ steps.vars.outputs.release_key }}
-          path: docs/screenshots/releases/${{ steps.vars.outputs.release_key }}
+          path: ${{ steps.artifact.outputs.artifact_root }}
