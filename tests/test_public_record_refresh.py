@@ -29,6 +29,64 @@ _IMPLEMENTED_OFFICIAL_SOURCE_STATES: tuple[str, ...] = tuple(
     if adapter.__name__ != "_discover_noop_official_public_record_rows"
 )
 
+_BATCH_ONE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "AK",
+        "seed-jon-marc-petersen",
+        "public-record~jon-marc-petersen",
+        "Jon-Marc Petersen",
+        "Alaska Bar Association public directory",
+        (
+            "https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info"
+            "?CUSTOMERCD=8744&WRP=Customer_Profile.htm"
+        ),
+    ),
+    (
+        "AL",
+        "seed-marc-james-ayers",
+        "public-record~marc-james-ayers",
+        "Marc James Ayers",
+        "Alabama State Bar public directory",
+        "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx",
+    ),
+    (
+        "AR",
+        "seed-kristin-l-pawlik",
+        "public-record~kristin-l-pawlik",
+        "Kristin L. Pawlik",
+        "Arkansas Bar Association public directory",
+        "https://www.arkbar.com/?pg=board-of-trustees",
+    ),
+    (
+        "AZ",
+        "seed-anthony-cali",
+        "public-record~anthony-cali",
+        "Anthony Cali",
+        "State Bar of Arizona public directory",
+        (
+            "https://www.azbar.org/for-legal-professionals/practice-tools-management/"
+            "member-directory/?m=Anthony-Cali-177781"
+        ),
+    ),
+    (
+        "CO",
+        "seed-rachel-brock",
+        "public-record~rachel-brock",
+        "Rachel Brock",
+        "Colorado Bar Association public directory",
+        (
+            "https://community.cobar.org/profile/contributions/"
+            "contributions-achievements"
+            "?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
+        ),
+    ),
+)
+
+_BATCH_ONE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_ONE_STATE_SEEDS
+)
+
 
 def _row(  # noqa: PLR0913
     *,
@@ -715,7 +773,9 @@ def test_discover_official_us_state_public_record_rows_strict_accepts_full_cover
 
 
 def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
-    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+    assert {"AK", "AL", "AR", "AZ", "CA", "CO", "IL", "OH", "TN", "WA"}.issubset(
+        _IMPLEMENTED_OFFICIAL_SOURCE_STATES
+    )
 
 
 @pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
@@ -787,6 +847,66 @@ def test_discover_official_us_state_public_record_rows_adds_california_seeds() -
     assert by_name["Cara Whittaker Van Dorn"]["source_url"] == (
         "https://apps.calbar.ca.gov/attorney/Licensee/Detail/321669"
     )
+
+
+@pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_ONE_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_ONE_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
 
 
 def test_discover_official_us_state_public_record_rows_adds_washington_seed() -> None:

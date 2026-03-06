@@ -772,6 +772,109 @@ _CALIFORNIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-jon-marc-petersen",
+        "slug": "public-record~jon-marc-petersen",
+        "name": "Jon-Marc Petersen",
+        "website": "https://www.denalilaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Alaska Bar Association "
+            "public directory."
+        ),
+        "city": "Wasilla",
+        "state": "AK",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Alaska Bar Association public directory",
+        "source_url": (
+            "https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info"
+            "?CUSTOMERCD=8744&WRP=Customer_Profile.htm"
+        ),
+    },
+)
+
+
+_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-marc-james-ayers",
+        "slug": "public-record~marc-james-ayers",
+        "name": "Marc James Ayers",
+        "website": "https://www.bradley.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Alabama State Bar public " "directory."
+        ),
+        "city": "Birmingham",
+        "state": "AL",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Alabama State Bar public directory",
+        "source_url": "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx",
+    },
+)
+
+
+_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-kristin-l-pawlik",
+        "slug": "public-record~kristin-l-pawlik",
+        "name": "Kristin L. Pawlik",
+        "website": "https://www.arkattorneys.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Arkansas Bar Association "
+            "public directory."
+        ),
+        "city": "Fayetteville",
+        "state": "AR",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Arkansas Bar Association public directory",
+        "source_url": ("https://www.arkbar.com/?pg=board-of-trustees"),
+    },
+)
+
+
+_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-anthony-cali",
+        "slug": "public-record~anthony-cali",
+        "name": "Anthony Cali",
+        "website": "https://www.stinson.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of Arizona public " "directory."
+        ),
+        "city": "Phoenix",
+        "state": "AZ",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "State Bar of Arizona public directory",
+        "source_url": (
+            "https://www.azbar.org/for-legal-professionals/practice-tools-management/"
+            "member-directory/?m=Anthony-Cali-177781"
+        ),
+    },
+)
+
+
+_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-rachel-brock",
+        "slug": "public-record~rachel-brock",
+        "name": "Rachel Brock",
+        "website": "https://www.durangofamilylaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Colorado Bar Association "
+            "public directory."
+        ),
+        "city": "Durango",
+        "state": "CO",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Colorado Bar Association public directory",
+        "source_url": (
+            "https://community.cobar.org/profile/contributions/"
+            "contributions-achievements"
+            "?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
+        ),
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -1033,6 +1136,81 @@ def _discover_california_official_public_record_rows(
     )
 
 
+def _discover_alaska_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_alabama_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_arkansas_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_arizona_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_colorado_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -1094,7 +1272,12 @@ def _discover_tennessee_official_public_record_rows(
 
 
 _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscoveryAdapter] = {
+    "AK": _discover_alaska_official_public_record_rows,
+    "AL": _discover_alabama_official_public_record_rows,
+    "AR": _discover_arkansas_official_public_record_rows,
+    "AZ": _discover_arizona_official_public_record_rows,
     "CA": _discover_california_official_public_record_rows,
+    "CO": _discover_colorado_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
     "OH": _discover_ohio_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
