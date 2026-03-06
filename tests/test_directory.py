@@ -387,6 +387,7 @@ def test_public_record_seed_regions_have_coverage() -> None:
     if listings:
         us_covered = {listing.state for listing in listings if listing.state in US_STATE_CODES}
         assert us_covered
+        assert {"AK", "AL", "AR", "AZ", "CA", "CO", "IL", "OH", "TN", "WA"}.issubset(us_covered)
 
     assert all(listing.source_url for listing in listings)
     assert all("chambers.com" not in (listing.source_url or "") for listing in listings)
