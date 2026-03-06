@@ -826,9 +826,7 @@ _ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
         "state": "AR",
         "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
         "source_label": "Arkansas Bar Association public directory",
-        "source_url": (
-            "https://www.arkbar.com/?pg=board-of-trustees"
-        ),
+        "source_url": ("https://www.arkbar.com/?pg=board-of-trustees"),
     },
 )
 
