@@ -251,6 +251,7 @@ jobs:
 
           if gh pr merge \
             --repo "$PERSONAL_SERVER_REPOSITORY" \
+            --admin \
             --squash \
             --delete-branch \
             "$PR_URL" >"$merge_output_file" 2>&1; then
