@@ -16,7 +16,7 @@ Start here: <https://hushline.app/library/docs/getting-started/start-here/>
 [![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml)
 [![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml)
 [![Public Record Link Check](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml)
-[![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest)
+[![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-website/main/badge-docs-screenshots.json)](https://github.com/scidsg/hushline-website/tree/main/src/assets/img/screenshots)
 
 ## Why Hush Line
 
@@ -134,14 +134,14 @@ If local audit commands are blocked by network/tooling availability, document th
   <tr>
     <td valign="bottom" width="73%">
       <img
-        src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png?raw=true"
+        src="https://raw.githubusercontent.com/scidsg/hushline-website/main/src/assets/img/screenshots/guest/guest-directory-verified-desktop-light-fold.png"
         width="100%"
         alt="Guest directory screenshot"
       />
     </td>
     <td valign="bottom" width="27%">
       <img
-        src="https://github.com/scidsg/hushline-screenshots/blob/main/releases/latest/newman/auth-newman-onboarding-profile-mobile-light-fold.png?raw=true"
+        src="https://raw.githubusercontent.com/scidsg/hushline-website/main/src/assets/img/screenshots/newman/auth-newman-onboarding-profile-mobile-light-fold.png"
         width="100%"
         alt="Onboarding screenshot"
       />
@@ -149,7 +149,7 @@ If local audit commands are blocked by network/tooling availability, document th
   </tr>
 </table>
 
-More screenshots: <https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest>
+More screenshots: <https://github.com/scidsg/hushline-website/tree/main/src/assets/img/screenshots>
 
 ## In the Media
 
