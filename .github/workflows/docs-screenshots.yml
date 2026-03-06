@@ -1,13 +1,26 @@
 name: Docs Screenshots
 
 on:
-  workflow_run:
-    workflows: ["Build release container image"]
-    types: [completed]
+  workflow_call:
+    inputs:
+      release_key:
+        description: "Release key (optional, e.g. v0.5.53). Leave blank to auto-detect from tags or version.py."
+        required: false
+        default: ""
+        type: string
+      release_ref:
+        description: "Git ref or SHA to capture (optional). Leave blank to use the current workflow ref."
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       release_key:
-        description: "Release key (optional, e.g. v0.5.53). Leave blank to auto-use version."
+        description: "Release key (optional, e.g. v0.5.53). Leave blank to auto-detect from tags or version.py."
+        required: false
+        default: ""
+      release_ref:
+        description: "Git ref or SHA to capture (optional). Leave blank to use the current workflow ref."
         required: false
         default: ""
 
@@ -16,19 +29,11 @@ permissions:
 
 jobs:
   capture:
-    if: >-
-      ${{
-        github.event_name != 'workflow_run' ||
-        (
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.event == 'push'
-        )
-      }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ inputs.release_ref != '' && inputs.release_ref || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -83,13 +88,9 @@ jobs:
         if: steps.manifest.outputs.enabled == 'true'
         run: |
           set -euo pipefail
-          RELEASE_KEY="${{ github.event.inputs.release_key }}"
-          if [ -z "$RELEASE_KEY" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_run" ]; then
+          RELEASE_KEY="${{ inputs.release_key }}"
+          if [ -z "$RELEASE_KEY" ]; then
             RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
-            if [ -z "$RELEASE_KEY" ]; then
-              echo "::error title=Missing release tag::No release tag matching vX.Y.Z points at ${GITHUB_SHA}."
-              exit 1
-            fi
           fi
           if [ -z "$RELEASE_KEY" ]; then
             VERSION=$(cut -d'"' -f2 hushline/version.py)
