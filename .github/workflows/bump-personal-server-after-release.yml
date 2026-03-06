@@ -129,8 +129,16 @@ jobs:
           PY
 
           if git diff --quiet -- "$PERSONAL_SERVER_PACKAGE_FILE" "$PERSONAL_SERVER_COMPOSE_FILE"; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Personal server already points at $RELEASE_TAG"
+            if git diff --quiet "origin/$PERSONAL_SERVER_BASE_REF...HEAD" -- \
+              "$PERSONAL_SERVER_PACKAGE_FILE" \
+              "$PERSONAL_SERVER_COMPOSE_FILE"; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "Personal server already points at $RELEASE_TAG"
+              exit 0
+            fi
+
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Personal server branch already contains the $RELEASE_TAG bump; continuing with PR and merge checks"
             exit 0
           fi
 
