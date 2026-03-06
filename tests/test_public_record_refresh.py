@@ -55,10 +55,7 @@ _BATCH_ONE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
         "public-record~kristin-l-pawlik",
         "Kristin L. Pawlik",
         "Arkansas Bar Association public directory",
-        (
-            "https://www.arkbar.com/network/members/profile"
-            "?UserKey=10e2c501-bea8-4749-913c-0d6e319cdff6"
-        ),
+        "https://www.arkbar.com/?pg=board-of-trustees",
     ),
     (
         "AZ",
@@ -66,7 +63,10 @@ _BATCH_ONE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
         "public-record~anthony-cali",
         "Anthony Cali",
         "State Bar of Arizona public directory",
-        "https://www.azbar.org/for-the-public/find-a-lawyer-results/?m=Anthony-Cali-177781",
+        (
+            "https://www.azbar.org/for-legal-professionals/practice-tools-management/"
+            "member-directory/?m=Anthony-Cali-177781"
+        ),
     ),
     (
         "CO",
