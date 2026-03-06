@@ -21,8 +21,7 @@ jobs:
         github.event_name != 'workflow_run' ||
         (
           github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.event == 'push' &&
-          startsWith(github.event.workflow_run.head_branch || '', 'v')
+          github.event.workflow_run.event == 'push'
         )
       }}
     runs-on: ubuntu-latest
@@ -30,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Check screenshot manifest
@@ -85,9 +85,11 @@ jobs:
           set -euo pipefail
           RELEASE_KEY="${{ github.event.inputs.release_key }}"
           if [ -z "$RELEASE_KEY" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_run" ]; then
-            RELEASE_KEY="$(
-              python -c 'import json, os, re, sys; event = json.load(open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8")); branch = ((event.get("workflow_run") or {}).get("head_branch") or "").strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", branch) or sys.exit(f"Unexpected workflow_run head_branch for docs screenshots: {branch!r}"); print(branch)'
-            )"
+            RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
+            if [ -z "$RELEASE_KEY" ]; then
+              echo "::error title=Missing release tag::No release tag matching vX.Y.Z points at ${GITHUB_SHA}."
+              exit 1
+            fi
           fi
           if [ -z "$RELEASE_KEY" ]; then
             VERSION=$(cut -d'"' -f2 hushline/version.py)
