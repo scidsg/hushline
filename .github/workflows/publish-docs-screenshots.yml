@@ -53,6 +53,8 @@ jobs:
         if: steps.artifact.outputs.found == 'true'
         env:
           WEBSITE_REPOSITORY: scidsg/hushline-website
+          WEBSITE_DEFAULT_BRANCH: main
+          WEBSITE_BRANCH: automation/docs-screenshots
           WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
           WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
           ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
@@ -82,8 +84,11 @@ jobs:
             exit 1
           fi
 
+          export GH_TOKEN="${WEBSITE_PUSH_TOKEN}"
+
           git clone "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" /tmp/hushline-website
           cd /tmp/hushline-website
+          git checkout -B "${WEBSITE_BRANCH}" "origin/${WEBSITE_DEFAULT_BRANCH}"
 
           mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/releases/${RELEASE_KEY}" "${WEBSITE_SCREENSHOT_ROOT}/releases/latest"
           rsync -a --delete --exclude 'releases/' "${LATEST_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/"
@@ -104,4 +109,45 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "Update website screenshots for ${RELEASE_KEY}"
-          git push origin HEAD
+          git push --force-with-lease origin "HEAD:${WEBSITE_BRANCH}"
+
+          pr_title="Update website screenshots for ${RELEASE_KEY}"
+          pr_body="$(cat <<EOF
+          Automated docs screenshots sync from \`${GITHUB_REPOSITORY}\`.
+
+          - Release: \`${RELEASE_KEY}\`
+          - Source workflow run: \`${GITHUB_RUN_ID}\`
+          EOF
+          )"
+
+          pr_url="$(gh pr list \
+            --repo "${WEBSITE_REPOSITORY}" \
+            --head "${WEBSITE_BRANCH}" \
+            --base "${WEBSITE_DEFAULT_BRANCH}" \
+            --state open \
+            --json url \
+            --jq '.[0].url // ""')"
+
+          if [ -n "$pr_url" ]; then
+            gh pr edit "$pr_url" \
+              --repo "${WEBSITE_REPOSITORY}" \
+              --title "$pr_title" \
+              --body "$pr_body"
+          else
+            pr_url="$(gh pr create \
+              --repo "${WEBSITE_REPOSITORY}" \
+              --base "${WEBSITE_DEFAULT_BRANCH}" \
+              --head "${WEBSITE_BRANCH}" \
+              --title "$pr_title" \
+              --body "$pr_body")"
+          fi
+
+          if gh pr merge "$pr_url" \
+            --repo "${WEBSITE_REPOSITORY}" \
+            --squash \
+            --delete-branch
+          then
+            echo "Merged $pr_url"
+          else
+            echo "Created or updated $pr_url but it is not immediately mergeable."
+          fi
