@@ -45,21 +45,22 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/public-directory-report
           REPORT_DATE="$(date -u +%F)"
+          REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+
           ARGS=(
             --current /tmp/public-directory-current.json
             --snapshot-output /tmp/public-directory-report/latest.json
             --report-output /tmp/public-directory-report/base-report.md
             --json-output /tmp/public-directory-report/summary.json
+            --snapshot-history-dir hushline-stats/public-directory/snapshots
           )
-          if [ -f hushline-stats/public-directory/latest.json ]; then
-            ARGS+=(--previous hushline-stats/public-directory/latest.json)
-          fi
           python3 scripts/public_directory_snapshot_report.py "${ARGS[@]}"
 
           {
-            echo "## Weekly Public Directory Report"
+            echo "## Public Directory Snapshot Report"
             echo
             echo "- Report date (UTC): ${REPORT_DATE}"
+            echo "- Snapshot timestamp (UTC): ${REPORT_TIMESTAMP}"
             echo "- Source URL: ${DIRECTORY_URL}"
             tail -n +3 /tmp/public-directory-report/base-report.md
           } > /tmp/public-directory-report/report.md
@@ -71,9 +72,9 @@ jobs:
           cp /tmp/public-directory-report/latest.json hushline-stats/public-directory/latest.json
           cp /tmp/public-directory-report/summary.json hushline-stats/public-directory/latest-summary.json
           cp /tmp/public-directory-report/report.md hushline-stats/public-directory/latest.md
-          cp /tmp/public-directory-report/latest.json "hushline-stats/public-directory/snapshots/${REPORT_DATE}.json"
-          cp /tmp/public-directory-report/summary.json "hushline-stats/public-directory/summaries/${REPORT_DATE}.json"
-          cp /tmp/public-directory-report/report.md "hushline-stats/public-directory/reports/${REPORT_DATE}.md"
+          cp /tmp/public-directory-report/latest.json "hushline-stats/public-directory/snapshots/${REPORT_TIMESTAMP}.json"
+          cp /tmp/public-directory-report/summary.json "hushline-stats/public-directory/summaries/${REPORT_TIMESTAMP}.json"
+          cp /tmp/public-directory-report/report.md "hushline-stats/public-directory/reports/${REPORT_TIMESTAMP}.md"
 
       - name: Publish workflow summary
         run: |
@@ -83,7 +84,7 @@ jobs:
       - name: Commit and push stats update
         run: |
           set -euo pipefail
-          REPORT_DATE="$(date -u +%F)"
+          REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
           cd hushline-stats
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -92,5 +93,5 @@ jobs:
             echo "No public directory changes to publish."
             exit 0
           fi
-          git commit -m "Update public directory weekly report for ${REPORT_DATE}"
+          git commit -m "Update public directory snapshot report for ${REPORT_TIMESTAMP}"
           git push origin HEAD

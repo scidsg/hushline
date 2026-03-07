@@ -4,12 +4,22 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict, cast
 
 
 class PublicDirectorySnapshotError(Exception):
     """Raised when the directory snapshot input is invalid."""
+
+
+class DiffSummary(TypedDict):
+    baseline_count: int
+    new_count: int
+    removed_count: int
+    new_usernames: list[str]
+    removed_usernames: list[str]
+    has_baseline: bool
 
 
 def _parse_args() -> argparse.Namespace:
@@ -23,10 +33,25 @@ def _parse_args() -> argparse.Namespace:
         "--current", type=Path, required=True, help="Current directory JSON snapshot."
     )
     parser.add_argument(
-        "--previous",
+        "--previous-sync",
         type=Path,
         default=None,
-        help="Optional previous normalized snapshot JSON.",
+        help="Optional previous normalized snapshot JSON for the last-sync comparison.",
+    )
+    parser.add_argument(
+        "--previous-week",
+        type=Path,
+        default=None,
+        help="Optional normalized snapshot JSON for the last-week comparison.",
+    )
+    parser.add_argument(
+        "--snapshot-history-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory of timestamped snapshot JSON files used to resolve "
+            "last-sync and last-week comparisons automatically."
+        ),
     )
     parser.add_argument(
         "--snapshot-output",
@@ -105,61 +130,140 @@ def _snapshot_map(rows: list[dict[str, object]]) -> dict[str, dict[str, object]]
     return {str(row["primary_username"]): row for row in rows}
 
 
-def build_markdown_report(
+def _build_diff_summary(
     current_snapshot: list[dict[str, object]],
-    previous_snapshot: list[dict[str, object]],
-) -> tuple[str, dict[str, object]]:
+    baseline_snapshot: list[dict[str, object]],
+) -> DiffSummary:
     current_map = _snapshot_map(current_snapshot)
-    previous_map = _snapshot_map(previous_snapshot)
+    baseline_map = _snapshot_map(baseline_snapshot)
 
     current_usernames = set(current_map)
-    previous_usernames = set(previous_map)
+    baseline_usernames = set(baseline_map)
 
-    added_usernames = sorted(current_usernames - previous_usernames)
-    removed_usernames = sorted(previous_usernames - current_usernames)
+    added_usernames = sorted(current_usernames - baseline_usernames)
+    removed_usernames = sorted(baseline_usernames - current_usernames)
 
-    lines: list[str] = [
-        "## Weekly Public Directory Report",
-        "",
-        f"- Current public listings: {len(current_snapshot)}",
-        f"- Previous snapshot listings: {len(previous_snapshot)}",
-        f"- New public listings: {len(added_usernames)}",
-        f"- Removed public listings: {len(removed_usernames)}",
-        "",
-        "### New Public Listings",
-        "",
-    ]
-
-    if added_usernames:
-        for username in added_usernames:
-            row = current_map[username]
-            lines.append(
-                f"- `{username}`"
-                f" ({row['display_name']})"
-                f" - {row['profile_url'] or 'profile URL unavailable'}"
-            )
-    else:
-        lines.append("- none")
-
-    lines.extend(["", "### Removed Public Listings", ""])
-    if removed_usernames:
-        for username in removed_usernames:
-            row = previous_map[username]
-            lines.append(
-                f"- `{username}`"
-                f" ({row['display_name']})"
-                f" - {row['profile_url'] or 'profile URL unavailable'}"
-            )
-    else:
-        lines.append("- none")
-
-    summary: dict[str, object] = {
-        "current_count": len(current_snapshot),
-        "previous_count": len(previous_snapshot),
+    return {
+        "baseline_count": len(baseline_snapshot),
         "new_count": len(added_usernames),
         "removed_count": len(removed_usernames),
         "new_usernames": added_usernames,
         "removed_usernames": removed_usernames,
+        "has_baseline": True,
+    }
+
+
+def _resolve_history_baselines(
+    snapshot_history_dir: Path,
+    *,
+    now: datetime | None = None,
+) -> tuple[Path | None, Path | None]:
+    paths: list[tuple[datetime, Path]] = []
+    for path in sorted(snapshot_history_dir.glob("*.json")):
+        try:
+            timestamp = datetime.strptime(path.stem, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=UTC)
+        except ValueError:
+            continue
+        paths.append((timestamp, path))
+
+    if not paths:
+        return None, None
+
+    current_time = now or datetime.now(UTC)
+    cutoff = current_time - timedelta(days=7)
+    last_sync = paths[-1][1]
+    last_week_candidates = [path for timestamp, path in paths if timestamp <= cutoff]
+    last_week = last_week_candidates[-1] if last_week_candidates else None
+    return last_sync, last_week
+
+
+def _append_diff_section(
+    lines: list[str],
+    title: str,
+    current_snapshot: list[dict[str, object]],
+    baseline_snapshot: list[dict[str, object]] | None,
+) -> DiffSummary:
+    lines.extend(["", f"### {title}", ""])
+
+    if baseline_snapshot is None:
+        lines.append("- No comparison snapshot available yet.")
+        return {
+            "baseline_count": 0,
+            "new_count": 0,
+            "removed_count": 0,
+            "new_usernames": [],
+            "removed_usernames": [],
+            "has_baseline": False,
+        }
+
+    current_map = _snapshot_map(current_snapshot)
+    baseline_map = _snapshot_map(baseline_snapshot)
+    diff = _build_diff_summary(current_snapshot, baseline_snapshot)
+
+    lines.extend(
+        [
+            f"- Baseline listings: {diff['baseline_count']}",
+            f"- New public listings: {diff['new_count']}",
+            f"- Removed public listings: {diff['removed_count']}",
+            "",
+            "#### New Public Listings",
+            "",
+        ]
+    )
+
+    if diff["new_usernames"]:
+        for username in cast(list[str], diff["new_usernames"]):
+            row = current_map[str(username)]
+            lines.append(
+                f"- `{username}`"
+                f" ({row['display_name']})"
+                f" - {row['profile_url'] or 'profile URL unavailable'}"
+            )
+    else:
+        lines.append("- none")
+
+    lines.extend(["", "#### Removed Public Listings", ""])
+    if diff["removed_usernames"]:
+        for username in cast(list[str], diff["removed_usernames"]):
+            row = baseline_map[str(username)]
+            lines.append(
+                f"- `{username}`"
+                f" ({row['display_name']})"
+                f" - {row['profile_url'] or 'profile URL unavailable'}"
+            )
+    else:
+        lines.append("- none")
+    return diff
+
+
+def build_markdown_report(
+    current_snapshot: list[dict[str, object]],
+    previous_sync_snapshot: list[dict[str, object]] | None,
+    previous_week_snapshot: list[dict[str, object]] | None,
+) -> tuple[str, dict[str, object]]:
+    lines: list[str] = [
+        "## Public Directory Snapshot Report",
+        "",
+        f"- Current public listings: {len(current_snapshot)}",
+    ]
+
+    last_sync_summary = _append_diff_section(
+        lines,
+        "Changes Since Last Sync",
+        current_snapshot,
+        previous_sync_snapshot,
+    )
+    last_week_summary = _append_diff_section(
+        lines,
+        "Changes Since Last Week",
+        current_snapshot,
+        previous_week_snapshot,
+    )
+
+    summary: dict[str, object] = {
+        "current_count": len(current_snapshot),
+        "last_sync": last_sync_summary,
+        "last_week": last_week_summary,
     }
     return ("\n".join(lines) + "\n", summary)
 
@@ -177,13 +281,37 @@ def _write_text(path: Path, payload: str) -> None:
 def main() -> int:
     args = _parse_args()
     current_rows = _load_rows(args.current)
-    previous_rows = (
-        _load_rows(args.previous) if args.previous is not None and args.previous.exists() else []
+    previous_sync_path = args.previous_sync
+    previous_week_path = args.previous_week
+    if args.snapshot_history_dir is not None:
+        history_sync_path, history_week_path = _resolve_history_baselines(args.snapshot_history_dir)
+        if previous_sync_path is None:
+            previous_sync_path = history_sync_path
+        if previous_week_path is None:
+            previous_week_path = history_week_path
+    previous_sync_rows = (
+        _load_rows(previous_sync_path)
+        if previous_sync_path is not None and previous_sync_path.exists()
+        else None
+    )
+    previous_week_rows = (
+        _load_rows(previous_week_path)
+        if previous_week_path is not None and previous_week_path.exists()
+        else None
     )
 
     current_snapshot = build_snapshot(current_rows)
-    previous_snapshot = build_snapshot(previous_rows)
-    report, summary = build_markdown_report(current_snapshot, previous_snapshot)
+    previous_sync_snapshot = (
+        build_snapshot(previous_sync_rows) if previous_sync_rows is not None else None
+    )
+    previous_week_snapshot = (
+        build_snapshot(previous_week_rows) if previous_week_rows is not None else None
+    )
+    report, summary = build_markdown_report(
+        current_snapshot,
+        previous_sync_snapshot,
+        previous_week_snapshot,
+    )
 
     print(report, end="")
 
