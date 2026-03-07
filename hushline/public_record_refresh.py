@@ -154,8 +154,8 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"ctbar.org"}),
     },
     "DE": {
-        "source_label": "Delaware Courts attorney regulation records",
-        "source_url": "https://courts.delaware.gov/odc/",
+        "source_label": "Delaware Courts published opinion",
+        "source_url": "https://courts.delaware.gov/Opinions/",
         "allowed_domains": frozenset({"courts.delaware.gov"}),
     },
     "FL": {
@@ -164,13 +164,13 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"floridabar.org"}),
     },
     "GA": {
-        "source_label": "State Bar of Georgia public directory",
-        "source_url": "https://www.gabar.org/",
+        "source_label": "State Bar of Georgia speaker profile",
+        "source_url": "https://icle.gabar.org/",
         "allowed_domains": frozenset({"gabar.org"}),
     },
     "HI": {
-        "source_label": "Hawaii State Bar Association public directory",
-        "source_url": "https://hsba.org/",
+        "source_label": "Hawaii State Bar Association attorney recognition record",
+        "source_url": "https://hsba.org/living-legends",
         "allowed_domains": frozenset({"hsba.org"}),
     },
     "ID": {
@@ -875,6 +875,98 @@ _COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_CONNECTICUT_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-eric-r-brown",
+        "slug": "public-record~eric-r-brown",
+        "name": "Eric R. Brown",
+        "website": "https://www.thelaborlawyer.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Connecticut Bar "
+            "Association public directory."
+        ),
+        "city": "Fairfield",
+        "state": "CT",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Connecticut Bar Association public directory",
+        "source_url": "https://members.ctbar.org/member/thelaborlawyer",
+    },
+)
+
+
+_DELAWARE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-richard-l-abbott",
+        "slug": "public-record~richard-l-abbott",
+        "name": "Richard L. Abbott",
+        "website": "https://richabbottlawfirm.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a Delaware Courts " "published opinion."
+        ),
+        "city": "Hockessin",
+        "state": "DE",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Delaware Courts published opinion",
+        "source_url": ("https://courts.delaware.gov/Opinions/Download.aspx?id=342050"),
+    },
+)
+
+
+_FLORIDA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-jerry-ray-poole-jr",
+        "slug": "public-record~jerry-ray-poole-jr",
+        "name": "Jerry Ray Poole, Jr.",
+        "website": "https://www.constangy.com/people-jerry-poole",
+        "description": (
+            "Whistleblower attorney listing sourced from The Florida Bar public " "directory."
+        ),
+        "city": "Tampa",
+        "state": "FL",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "The Florida Bar public directory",
+        "source_url": ("https://www.floridabar.org/directories/find-mbr/profile/?num=123000"),
+    },
+)
+
+
+_GEORGIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-todd-h-stanton",
+        "slug": "public-record~todd-h-stanton",
+        "name": "Todd H. Stanton",
+        "website": "https://stantonlawllc.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a State Bar of Georgia " "speaker profile."
+        ),
+        "city": "Atlanta",
+        "state": "GA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of Georgia speaker profile",
+        "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014",
+    },
+)
+
+
+_HAWAII_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-eric-seitz",
+        "slug": "public-record~eric-seitz",
+        "name": "Eric Seitz",
+        "website": "https://www.ericseitz.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a Hawaii State Bar "
+            "Association attorney recognition record."
+        ),
+        "city": "Honolulu",
+        "state": "HI",
+        "practice_tags": ["Whistleblowing", "Civil Rights", "Litigation"],
+        "source_label": ("Hawaii State Bar Association attorney recognition record"),
+        "source_url": ("https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"),
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -1211,6 +1303,81 @@ def _discover_colorado_official_public_record_rows(
     )
 
 
+def _discover_connecticut_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_CONNECTICUT_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_delaware_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_DELAWARE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_florida_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_FLORIDA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_georgia_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_GEORGIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_hawaii_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_HAWAII_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -1278,6 +1445,11 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "AZ": _discover_arizona_official_public_record_rows,
     "CA": _discover_california_official_public_record_rows,
     "CO": _discover_colorado_official_public_record_rows,
+    "CT": _discover_connecticut_official_public_record_rows,
+    "DE": _discover_delaware_official_public_record_rows,
+    "FL": _discover_florida_official_public_record_rows,
+    "GA": _discover_georgia_official_public_record_rows,
+    "HI": _discover_hawaii_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
     "OH": _discover_ohio_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
