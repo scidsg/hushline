@@ -80,6 +80,7 @@ jobs:
     with:
       release_key: ${{ needs.prepare-release.outputs.release_tag }}
       release_ref: ${{ needs.prepare-release.outputs.release_tag }}
+    secrets: inherit
 
   publish-docs-screenshots:
     needs:
