@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 15
     env:
       DIRECTORY_URL: ${{ inputs.directory_url != '' && inputs.directory_url || 'https://tips.hushline.app/directory/users.json' }}
+      STATS_REPOSITORY: scidsg/hushline-stats
+      STATS_DEFAULT_BRANCH: main
+      STATS_BRANCH: automation/public-directory-report
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -36,7 +39,7 @@ jobs:
       - name: Check out hushline-stats
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          repository: scidsg/hushline-stats
+          repository: ${{ env.STATS_REPOSITORY }}
           token: ${{ secrets.HUSHLINE_WEEKLY_REPORT }}
           path: hushline-stats
 
@@ -86,11 +89,13 @@ jobs:
           set -euo pipefail
           cat /tmp/public-directory-report/report.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit and push stats update
+      - name: Commit and open stats PR
         run: |
           set -euo pipefail
           REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          export GH_TOKEN="${{ secrets.HUSHLINE_WEEKLY_REPORT }}"
           cd hushline-stats
+          git checkout -B "${STATS_BRANCH}" "origin/${STATS_DEFAULT_BRANCH}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md public-directory
@@ -99,4 +104,46 @@ jobs:
             exit 0
           fi
           git commit -m "Update public directory snapshot report for ${REPORT_TIMESTAMP}"
-          git push origin HEAD
+          git push --force-with-lease origin "HEAD:${STATS_BRANCH}"
+
+          pr_title="Update public directory snapshot report for ${REPORT_TIMESTAMP}"
+          pr_body="$(cat <<EOF
+          Automated public directory snapshot sync from \`${GITHUB_REPOSITORY}\`.
+
+          - Snapshot timestamp (UTC): \`${REPORT_TIMESTAMP}\`
+          - Source workflow run: \`${GITHUB_RUN_ID}\`
+          - Source URL: \`${DIRECTORY_URL}\`
+          EOF
+          )"
+
+          pr_url="$(gh pr list \
+            --repo "${STATS_REPOSITORY}" \
+            --head "${STATS_BRANCH}" \
+            --base "${STATS_DEFAULT_BRANCH}" \
+            --state open \
+            --json url \
+            --jq '.[0].url // ""')"
+
+          if [ -n "$pr_url" ]; then
+            gh pr edit "$pr_url" \
+              --repo "${STATS_REPOSITORY}" \
+              --title "$pr_title" \
+              --body "$pr_body"
+          else
+            pr_url="$(gh pr create \
+              --repo "${STATS_REPOSITORY}" \
+              --base "${STATS_DEFAULT_BRANCH}" \
+              --head "${STATS_BRANCH}" \
+              --title "$pr_title" \
+              --body "$pr_body")"
+          fi
+
+          if gh pr merge "$pr_url" \
+            --repo "${STATS_REPOSITORY}" \
+            --squash \
+            --delete-branch
+          then
+            echo "Merged $pr_url"
+          else
+            echo "Created or updated $pr_url but it is not immediately mergeable."
+          fi
