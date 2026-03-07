@@ -61,6 +61,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert "Attorneys" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
+    assert "⚖️ Attorney" in response.text
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
@@ -188,8 +189,9 @@ def test_directory_public_records_render_only_in_public_records_and_all(
     assert listing.website not in all_panel.text
     assert f"Source: {listing.source_label}" not in public_records_panel.text
     assert f"Source: {listing.source_label}" not in all_panel.text
-    assert "🏛️ Public Record" in public_records_panel.text
+    assert public_records_panel.select_one('span.badge[aria-label="Attorney listing"]') is None
     assert "🤖 Automated" in public_records_panel.text
+    assert all_panel.select_one('span.badge[aria-label="Attorney listing"]') is not None
     assert "Public Record Attorneys (Legacy)" not in public_records_panel.text
     assert verified_panel is not None
     assert listing.name not in verified_panel.text

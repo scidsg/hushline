@@ -215,7 +215,6 @@
             <article class="user">
               <h3>{{ listing.name }}</h3>
               <div class="badgeContainer">
-                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
               <p class="bio">{{ listing.description }}</p>
@@ -282,7 +281,7 @@
           {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key %}
             <div class="badgeContainer">
               {% if entry.entry_type == "public_record" %}
-                <span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>
+                <span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>
                 {% if entry.is_automated %}
                   <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
                 {% endif %}

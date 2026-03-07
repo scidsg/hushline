@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "public-records") {
-      searchInput.placeholder = "Search public record attorneys...";
+      searchInput.placeholder = "Search attorneys...";
       return;
     }
 
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "public-records") {
-      return "public record attorneys";
+      return "attorneys";
     }
 
     if (activeTab === "securedrop") {
@@ -130,8 +130,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let badgeContainer = "";
 
     if (user.is_public_record) {
-      badgeContainer +=
-        '<span class="badge" role="img" aria-label="Public record listing">🏛️ Public Record</span>';
+      if (tab === "all") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>';
+      }
       if (user.is_automated) {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
