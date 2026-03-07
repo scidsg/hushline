@@ -6,7 +6,7 @@ on:
       directory_url:
         description: "Public directory JSON URL to diff."
         required: false
-        default: "https://hushline.app/directory/users.json"
+        default: "https://tips.hushline.app/directory/users.json"
   schedule:
     - cron: "0 13 * * 1"
 
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DIRECTORY_URL: ${{ inputs.directory_url != '' && inputs.directory_url || 'https://hushline.app/directory/users.json' }}
+      DIRECTORY_URL: ${{ inputs.directory_url != '' && inputs.directory_url || 'https://tips.hushline.app/directory/users.json' }}
     steps:
       - uses: actions/checkout@v4
         with:
