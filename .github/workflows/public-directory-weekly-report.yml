@@ -1,0 +1,97 @@
+name: Weekly Public Directory Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      directory_url:
+        description: "Public directory JSON URL to diff."
+        required: false
+        default: "https://hushline.app/directory/users.json"
+  schedule:
+    - cron: "0 13 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-directory-weekly-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DIRECTORY_URL: ${{ inputs.directory_url != '' && inputs.directory_url || 'https://hushline.app/directory/users.json' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch current public directory feed
+        run: |
+          set -euo pipefail
+          curl -fsSL "$DIRECTORY_URL" --output /tmp/public-directory-current.json
+
+      - name: Check out hushline-stats
+        uses: actions/checkout@v4
+        with:
+          repository: scidsg/hushline-stats
+          token: ${{ secrets.HUSHLINE_WEEKLY_REPORT }}
+          path: hushline-stats
+
+      - name: Build weekly directory report
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/public-directory-report
+          REPORT_DATE="$(date -u +%F)"
+          REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+
+          ARGS=(
+            --current /tmp/public-directory-current.json
+            --snapshot-output /tmp/public-directory-report/latest.json
+            --report-output /tmp/public-directory-report/base-report.md
+            --json-output /tmp/public-directory-report/summary.json
+            --snapshot-history-dir hushline-stats/public-directory/snapshots
+          )
+          python3 scripts/public_directory_snapshot_report.py "${ARGS[@]}"
+
+          {
+            echo "## Public Directory Snapshot Report"
+            echo
+            echo "- Report date (UTC): ${REPORT_DATE}"
+            echo "- Snapshot timestamp (UTC): ${REPORT_TIMESTAMP}"
+            echo "- Source URL: ${DIRECTORY_URL}"
+            tail -n +3 /tmp/public-directory-report/base-report.md
+          } > /tmp/public-directory-report/report.md
+
+          mkdir -p \
+            hushline-stats/public-directory/reports \
+            hushline-stats/public-directory/snapshots \
+            hushline-stats/public-directory/summaries
+          cp /tmp/public-directory-report/latest.json hushline-stats/public-directory/latest.json
+          cp /tmp/public-directory-report/summary.json hushline-stats/public-directory/latest-summary.json
+          cp /tmp/public-directory-report/report.md hushline-stats/public-directory/latest.md
+          cp /tmp/public-directory-report/latest.json "hushline-stats/public-directory/snapshots/${REPORT_TIMESTAMP}.json"
+          cp /tmp/public-directory-report/summary.json "hushline-stats/public-directory/summaries/${REPORT_TIMESTAMP}.json"
+          cp /tmp/public-directory-report/report.md "hushline-stats/public-directory/reports/${REPORT_TIMESTAMP}.md"
+
+      - name: Publish workflow summary
+        run: |
+          set -euo pipefail
+          cat /tmp/public-directory-report/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push stats update
+        run: |
+          set -euo pipefail
+          REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          cd hushline-stats
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public-directory
+          if git diff --cached --quiet; then
+            echo "No public directory changes to publish."
+            exit 0
+          fi
+          git commit -m "Update public directory snapshot report for ${REPORT_TIMESTAMP}"
+          git push origin HEAD
