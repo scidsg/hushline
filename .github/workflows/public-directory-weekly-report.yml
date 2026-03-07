@@ -53,6 +53,10 @@ jobs:
             --report-output /tmp/public-directory-report/base-report.md
             --json-output /tmp/public-directory-report/summary.json
             --snapshot-history-dir hushline-stats/public-directory/snapshots
+            --summary-history-dir hushline-stats/public-directory/summaries
+            --readme-output /tmp/public-directory-report/README.md
+            --report-timestamp "${REPORT_TIMESTAMP}"
+            --source-url "${DIRECTORY_URL}"
           )
           python3 scripts/public_directory_snapshot_report.py "${ARGS[@]}"
 
@@ -69,6 +73,7 @@ jobs:
             hushline-stats/public-directory/reports \
             hushline-stats/public-directory/snapshots \
             hushline-stats/public-directory/summaries
+          cp /tmp/public-directory-report/README.md hushline-stats/README.md
           cp /tmp/public-directory-report/latest.json hushline-stats/public-directory/latest.json
           cp /tmp/public-directory-report/summary.json hushline-stats/public-directory/latest-summary.json
           cp /tmp/public-directory-report/report.md hushline-stats/public-directory/latest.md
@@ -88,7 +93,7 @@ jobs:
           cd hushline-stats
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public-directory
+          git add README.md public-directory
           if git diff --cached --quiet; then
             echo "No public directory changes to publish."
             exit 0
