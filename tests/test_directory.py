@@ -464,8 +464,9 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, "html.parser")
     page_text = soup.get_text(" ", strip=True)
-    assert "🏛️ Public Record" in page_text
-    assert "🤖 Automated" in page_text
+    assert soup.select_one('span.badge[aria-label="Attorney listing"]') is not None
+    assert soup.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert "🏛️ Public Record" not in page_text
     assert listing.description in page_text
     assert listing.website in response.text
     assert "Source" in page_text
