@@ -81,6 +81,23 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert "Message the Hush Line admin for any corrections." in banner_text
 
 
+def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    securedrop_panel = soup.find(id="securedrop")
+    assert securedrop_panel is not None
+
+    banner_link = securedrop_panel.select_one(".dirMeta a")
+    assert banner_link is not None
+    assert banner_link.text.strip() == "SecureDrop directory API"
+    assert banner_link.get("href") == "https://securedrop.org/api/v1/directory/?format=json"
+    banner_text = securedrop_panel.get_text(" ", strip=True)
+    assert "Synced automatically from the" in banner_text
+    assert "SecureDrop directory API" in banner_text
+
+
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
