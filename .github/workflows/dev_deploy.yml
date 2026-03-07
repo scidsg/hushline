@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout terraform
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
           ref: ${{ env.HUSHLINE_INFRA_REF }}
@@ -82,7 +82,7 @@ jobs:
           fi
 
       - name: Plan test infrastrucutre
-        uses: dflook/terraform-plan@v1.43.0
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         with:
           path: ${{ env.DEV_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -92,7 +92,7 @@ jobs:
             name = "${{ env.DO_APP_NAME }}"
 
       - name: Apply test infrastrucutre
-        uses: dflook/terraform-apply@v1.43.0
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         with:
           path: ${{ env.DEV_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -101,14 +101,14 @@ jobs:
             name = "${{ env.DO_APP_NAME }}"
 
       - name: terraform output
-        uses: dflook/terraform-output@v1.43.0
+        uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
         id: tf-outputs
         with:
           path: ${{ env.DEV_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
 
       - name: comment app url
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             github.rest.issues.createComment({
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout terraform
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           repository: ${{ env.HUSHLINE_INFRA_REPO }}
@@ -131,7 +131,7 @@ jobs:
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
 
       - name: destroy worspace
-        uses: dflook/terraform-destroy-workspace@v1.43.0
+        uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
         id: first_try
         continue-on-error: true
@@ -143,7 +143,7 @@ jobs:
             name = "${{ env.DO_APP_NAME }}"
 
       - name: retry destroy worspace
-        uses: dflook/terraform-destroy-workspace@v1.43.0
+        uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
         if: ${{ steps.first_try.outputs.failure-reason == 'destroy-failed' }}
         with:
           path: ${{ env.DEV_TF_PATH }}
@@ -153,7 +153,7 @@ jobs:
             name = "${{ env.DO_APP_NAME }}"
 
       - name: remove deploy label
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        uses: actions-ecosystem/action-remove-labels@2ce5d41b4b6aa8503e285553f75ed56e0a40bae0
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
         with:
           github_token: ${{ github.token }}
@@ -161,7 +161,7 @@ jobs:
             deploy
 
       - name: remove destroy label
-        uses: actions-ecosystem/action-remove-labels@v1.3.0
+        uses: actions-ecosystem/action-remove-labels@2ce5d41b4b6aa8503e285553f75ed56e0a40bae0
         if: contains(github.event.pull_request.labels.*.name, 'destroy')
         with:
           github_token: ${{ github.token }}
