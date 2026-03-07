@@ -180,6 +180,30 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/136080"
   },
   {
+    "id": "seed-eric-r-brown",
+    "slug": "public-record~eric-r-brown",
+    "name": "Eric R. Brown",
+    "website": "https://www.thelaborlawyer.com/",
+    "description": "Whistleblower attorney listing sourced from Connecticut Bar Association public directory.",
+    "city": "Fairfield",
+    "state": "CT",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Connecticut Bar Association public directory",
+    "source_url": "https://members.ctbar.org/member/thelaborlawyer"
+  },
+  {
+    "id": "seed-eric-seitz",
+    "slug": "public-record~eric-seitz",
+    "name": "Eric Seitz",
+    "website": "https://www.ericseitz.com/",
+    "description": "Whistleblower attorney listing sourced from a Hawaii State Bar Association attorney recognition record.",
+    "city": "Honolulu",
+    "state": "HI",
+    "practice_tags": ["Whistleblowing", "Civil Rights", "Litigation"],
+    "source_label": "Hawaii State Bar Association attorney recognition record",
+    "source_url": "https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"
+  },
+  {
     "id": "seed-jeffrey-farley-keller",
     "slug": "public-record~jeffrey-farley-keller",
     "name": "Jeffrey Farley Keller",
@@ -190,6 +214,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
+  },
+  {
+    "id": "seed-jerry-ray-poole-jr",
+    "slug": "public-record~jerry-ray-poole-jr",
+    "name": "Jerry Ray Poole, Jr.",
+    "website": "https://www.constangy.com/people-jerry-poole",
+    "description": "Whistleblower attorney listing sourced from The Florida Bar public directory.",
+    "city": "Tampa",
+    "state": "FL",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "The Florida Bar public directory",
+    "source_url": "https://www.floridabar.org/directories/find-mbr/profile/?num=123000"
   },
   {
     "id": "seed-jon-marc-petersen",
@@ -336,6 +372,18 @@
     "source_url": "https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
   },
   {
+    "id": "seed-richard-l-abbott",
+    "slug": "public-record~richard-l-abbott",
+    "name": "Richard L. Abbott",
+    "website": "https://richabbottlawfirm.com/",
+    "description": "Whistleblower attorney listing sourced from a Delaware Courts published opinion.",
+    "city": "Hockessin",
+    "state": "DE",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Delaware Courts published opinion",
+    "source_url": "https://courts.delaware.gov/Opinions/Download.aspx?id=342050"
+  },
+  {
     "id": "seed-robert-aram-jigarjian",
     "slug": "public-record~robert-aram-jigarjian",
     "name": "Robert Aram Jigarjian",
@@ -382,5 +430,17 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/198472"
+  },
+  {
+    "id": "seed-todd-h-stanton",
+    "slug": "public-record~todd-h-stanton",
+    "name": "Todd H. Stanton",
+    "website": "https://stantonlawllc.com/",
+    "description": "Whistleblower attorney listing sourced from a State Bar of Georgia speaker profile.",
+    "city": "Atlanta",
+    "state": "GA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of Georgia speaker profile",
+    "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014"
   }
 ]

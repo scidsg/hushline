@@ -87,6 +87,54 @@ _BATCH_ONE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tup
     for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_ONE_STATE_SEEDS
 )
 
+_BATCH_TWO_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "CT",
+        "seed-eric-r-brown",
+        "public-record~eric-r-brown",
+        "Eric R. Brown",
+        "Connecticut Bar Association public directory",
+        ("https://members.ctbar.org/member/thelaborlawyer"),
+    ),
+    (
+        "DE",
+        "seed-richard-l-abbott",
+        "public-record~richard-l-abbott",
+        "Richard L. Abbott",
+        "Delaware Courts published opinion",
+        ("https://courts.delaware.gov/Opinions/Download.aspx?id=342050"),
+    ),
+    (
+        "FL",
+        "seed-jerry-ray-poole-jr",
+        "public-record~jerry-ray-poole-jr",
+        "Jerry Ray Poole, Jr.",
+        "The Florida Bar public directory",
+        ("https://www.floridabar.org/directories/find-mbr/profile/?num=123000"),
+    ),
+    (
+        "GA",
+        "seed-todd-h-stanton",
+        "public-record~todd-h-stanton",
+        "Todd H. Stanton",
+        "State Bar of Georgia speaker profile",
+        ("https://icle.gabar.org/speaker/todd-stanton-1261014"),
+    ),
+    (
+        "HI",
+        "seed-eric-seitz",
+        "public-record~eric-seitz",
+        "Eric Seitz",
+        "Hawaii State Bar Association attorney recognition record",
+        ("https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"),
+    ),
+)
+
+_BATCH_TWO_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_TWO_STATE_SEEDS
+)
+
 
 def _row(  # noqa: PLR0913
     *,
@@ -773,9 +821,23 @@ def test_discover_official_us_state_public_record_rows_strict_accepts_full_cover
 
 
 def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
-    assert {"AK", "AL", "AR", "AZ", "CA", "CO", "IL", "OH", "TN", "WA"}.issubset(
-        _IMPLEMENTED_OFFICIAL_SOURCE_STATES
-    )
+    assert {
+        "AK",
+        "AL",
+        "AR",
+        "AZ",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "IL",
+        "OH",
+        "TN",
+        "WA",
+    }.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 
 
 @pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
@@ -860,7 +922,45 @@ def test_discover_official_us_state_public_record_rows_adds_california_seeds() -
     ),
     _BATCH_ONE_STATE_SEEDS,
 )
-def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(  # noqa: PLR0913
+def test_discover_official_us_state_public_record_rows_adds_batch_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_TWO_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_two_seed(  # noqa: PLR0913
     state_code: str,
     expected_id: str,
     expected_slug: str,
@@ -891,7 +991,29 @@ def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(  # n
     ("state_code", "existing_id", "existing_slug", "existing_name"),
     _BATCH_ONE_EXISTING_COLLISION_CASES,
 )
-def test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_TWO_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed(
     state_code: str,
     existing_id: str,
     existing_slug: str,
