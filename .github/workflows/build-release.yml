@@ -1,6 +1,5 @@
 name: Build release container image
 permissions:
-  actions: read
   contents: read
   packages: write
 
@@ -55,17 +54,3 @@ jobs:
           cache-to: |
             type=gha,mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}/hushline:buildcache,mode=max
-
-  capture-docs-screenshots:
-    needs: build-and-push
-    uses: ./.github/workflows/docs-screenshots.yml
-    with:
-      release_key: ${{ github.ref_name }}
-      release_ref: ${{ github.sha }}
-
-  publish-docs-screenshots:
-    needs: capture-docs-screenshots
-    uses: ./.github/workflows/publish-docs-screenshots.yml
-    with:
-      source_run_id: ${{ github.run_id }}
-    secrets: inherit
