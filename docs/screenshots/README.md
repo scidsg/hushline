@@ -27,6 +27,6 @@ make docs-screenshots RELEASE=v0.5.53
 Release automation note:
 
 - `.github/workflows/docs-screenshots-after-release.yml` is the release-triggered orchestrator. It waits for the released GHCR image to exist, then calls the capture and publish workflows below.
-- `.github/workflows/docs-screenshots.yml` captures screenshots from the requested release ref and uploads both `releases/<version>/` and `releases/latest/` in an artifact without using the website PAT.
+- `.github/workflows/docs-screenshots.yml` captures screenshots from the requested release ref and uploads both `releases/<version>/` and `releases/latest/` in an artifact. Manual `workflow_dispatch` runs now also call the publish workflow automatically so a single manual run both captures and saves the results.
 - Manual `Docs Screenshots` runs now treat `release_key` as the checkout ref when `release_ref` is omitted, so backfills follow the requested release tag instead of `main`.
 - `.github/workflows/publish-docs-screenshots.yml` is the only workflow that uses `HUSHLINE_WEBSITE_SCREENSHOTS_PAT` and syncs the latest screenshots plus the `releases/latest/` and `releases/<version>/` archives into `scidsg/hushline-website`.
