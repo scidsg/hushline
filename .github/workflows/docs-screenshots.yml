@@ -148,3 +148,11 @@ jobs:
         with:
           name: docs-screenshots-${{ steps.vars.outputs.release_key }}
           path: ${{ steps.artifact.outputs.artifact_root }}
+
+  publish-manual:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: capture
+    uses: ./.github/workflows/publish-docs-screenshots.yml
+    with:
+      source_run_id: ${{ github.run_id }}
+    secrets: inherit
