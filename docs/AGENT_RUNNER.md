@@ -210,7 +210,7 @@ Optional forced issue:
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
-- `HUSHLINE_CODEX_MODEL` (default `gpt-5.3-codex`)
+- `HUSHLINE_CODEX_MODEL` (default `gpt-5.4`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
 - `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output during runs)
 
