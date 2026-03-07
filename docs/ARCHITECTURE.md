@@ -40,4 +40,4 @@ Automated follow-on release actions:
 
 - `.github/workflows/bump-staging-after-release.yml` opens or updates a PR in `scidsg/hushline-infra` so staging tracks the released image tag.
 - `.github/workflows/bump-personal-server-after-release.yml` opens or updates a PR in `scidsg/hushline-personal-server` so the package version and bundled app image track the released image tag.
-- `build-release.yml` now calls `.github/workflows/docs-screenshots.yml` after the release image push succeeds, then calls `.github/workflows/publish-docs-screenshots.yml` to sync the artifact into `scidsg/hushline-website` with the website PAT.
+- `build-release.yml` now calls `.github/workflows/docs-screenshots.yml` after the release image push succeeds, then calls `.github/workflows/publish-docs-screenshots.yml` to sync the artifact into `scidsg/hushline-website` with the website PAT. The website repo keeps the latest screenshots at `src/assets/img/screenshots/` and archives `src/assets/img/screenshots/releases/latest/` plus `src/assets/img/screenshots/releases/vX.Y.Z/`.

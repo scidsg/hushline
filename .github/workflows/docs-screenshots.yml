@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_ref != '' && inputs.release_ref || github.sha }}
+          ref: ${{ inputs.release_ref != '' && inputs.release_ref || inputs.release_key != '' && inputs.release_key || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -118,15 +118,27 @@ jobs:
           RELEASE_KEY: ${{ steps.vars.outputs.release_key }}
         run: |
           set -euo pipefail
-          SRC_ROOT="docs/screenshots/releases/${RELEASE_KEY}"
-          if [ ! -d "$SRC_ROOT" ]; then
-            echo "Expected screenshot source directory not found: $SRC_ROOT"
+          RELEASE_ROOT="docs/screenshots/releases/${RELEASE_KEY}"
+          LATEST_ROOT="docs/screenshots/releases/latest"
+          ROOT_README="docs/screenshots/README.md"
+          if [ ! -d "$RELEASE_ROOT" ]; then
+            echo "Expected screenshot source directory not found: $RELEASE_ROOT"
+            exit 1
+          fi
+          if [ ! -d "$LATEST_ROOT" ]; then
+            echo "Expected latest screenshot directory not found: $LATEST_ROOT"
+            exit 1
+          fi
+          if [ ! -f "$ROOT_README" ]; then
+            echo "Expected root screenshot README not found: $ROOT_README"
             exit 1
           fi
 
           ARTIFACT_ROOT="$(mktemp -d)"
-          mkdir -p "${ARTIFACT_ROOT}/screenshots"
-          cp -R "$SRC_ROOT" "${ARTIFACT_ROOT}/screenshots/${RELEASE_KEY}"
+          mkdir -p "${ARTIFACT_ROOT}/screenshots/releases"
+          cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/releases/${RELEASE_KEY}"
+          cp -R "$LATEST_ROOT" "${ARTIFACT_ROOT}/screenshots/releases/latest"
+          cp "$ROOT_README" "${ARTIFACT_ROOT}/screenshots/README.md"
           printf '%s\n' "$RELEASE_KEY" > "${ARTIFACT_ROOT}/release_key.txt"
           echo "artifact_root=$ARTIFACT_ROOT" >> "$GITHUB_OUTPUT"
 
