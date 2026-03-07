@@ -151,6 +151,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 - Approved models:
   - `gpt-5.4 high`
 - Unapproved models must not be used to author or modify production code without explicit changes to this document.
+- Unapproved autonomous agent frameworks or services, including OpenClaw or similar issue/PR-driving agents, must not comment on Issues, open PRs, trigger repository workflows, or otherwise act on behalf of maintainers without explicit approval documented in this file or a linked maintainer-approved PR/Issue.
+- Public issue comments, triage, or repository automation from external autonomous agents are disallowed by default. If such tooling is proposed, it must first be reviewed for moderation, security, and operational risk before any repository interaction is enabled.
 - If an approved model is unavailable, stop and do not substitute another model unless this document is updated first.
 - If an agent believes another model should be approved, an Issue must be opened with clear rationale. Data must support the request.
   - Do not open any Issues without meeting the requirements above.
