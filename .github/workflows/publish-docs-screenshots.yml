@@ -43,8 +43,11 @@ jobs:
           fi
 
           mkdir -p /tmp/docs-screenshots-artifact
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
-            --output /tmp/docs-screenshots-artifact/artifact.zip
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o /tmp/docs-screenshots-artifact/artifact.zip
           unzip -q /tmp/docs-screenshots-artifact/artifact.zip -d /tmp/docs-screenshots-artifact/unpacked
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=/tmp/docs-screenshots-artifact/unpacked" >> "$GITHUB_OUTPUT"
