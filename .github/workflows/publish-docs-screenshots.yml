@@ -10,7 +10,7 @@ on:
     secrets:
       HUSHLINE_WEBSITE_SCREENSHOTS_PAT:
         required: false
-      HUSHLINE_SCREENSHOTS_PAT:
+      SCREENSHOTS_PUSH_TOKEN:
         required: false
   workflow_dispatch:
     inputs:
@@ -163,12 +163,12 @@ jobs:
           SCREENSHOTS_REPOSITORY: scidsg/hushline-screenshots
           SCREENSHOTS_DEFAULT_BRANCH: main
           SCREENSHOTS_BRANCH: automation/docs-screenshots
-          SCREENSHOTS_PUSH_TOKEN: ${{ secrets.HUSHLINE_SCREENSHOTS_PAT != '' && secrets.HUSHLINE_SCREENSHOTS_PAT || secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
+          SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
           ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
         run: |
           set -euo pipefail
           if [ -z "${SCREENSHOTS_PUSH_TOKEN:-}" ]; then
-            echo "Skipping publish: no screenshots repo token is configured."
+            echo "Skipping publish: SCREENSHOTS_PUSH_TOKEN secret is missing."
             exit 0
           fi
 
