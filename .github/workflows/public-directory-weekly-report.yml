@@ -8,7 +8,7 @@ on:
         required: false
         default: "https://hushline.app/directory/users.json"
   schedule:
-    - cron: "0 16 * * 1"
+    - cron: "0 13 * * 1"
 
 permissions:
   contents: read
