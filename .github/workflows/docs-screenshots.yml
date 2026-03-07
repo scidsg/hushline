@@ -1,6 +1,9 @@
 name: Docs Screenshots
 
 on:
+  release:
+    types:
+      - published
   workflow_call:
     inputs:
       release_key:
@@ -27,6 +30,7 @@ on:
 permissions:
   actions: read
   contents: read
+  packages: read
 
 jobs:
   capture:
@@ -34,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ inputs.release_ref != '' && inputs.release_ref || inputs.release_key != '' && inputs.release_key || github.sha }}
+          ref: ${{ inputs.release_ref != '' && inputs.release_ref || github.event_name == 'release' && github.event.release.tag_name || inputs.release_key != '' && inputs.release_key || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -47,6 +51,38 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "Skipping docs screenshots: docs/screenshots/scenes.json not found."
           fi
+
+      - name: Set up Docker Buildx
+        if: ${{ github.event_name == 'release' && steps.manifest.outputs.enabled == 'true' }}
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Log in to GitHub Container Registry
+        if: ${{ github.event_name == 'release' && steps.manifest.outputs.enabled == 'true' }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for release image to be available
+        if: ${{ github.event_name == 'release' && steps.manifest.outputs.enabled == 'true' }}
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository }}/hushline:${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 40); do
+            if docker buildx imagetools inspect "$IMAGE_REF" >/dev/null 2>&1; then
+              echo "Release image is available: $IMAGE_REF"
+              exit 0
+            fi
+
+            echo "Release image not available yet (attempt ${attempt}/40): $IMAGE_REF"
+            sleep 30
+          done
+
+          echo "::error title=Release image not available::Timed out waiting for $IMAGE_REF"
+          exit 1
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         if: steps.manifest.outputs.enabled == 'true'
@@ -90,6 +126,9 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_KEY="${{ inputs.release_key }}"
+          if [ -z "$RELEASE_KEY" ]; then
+            RELEASE_KEY="${{ github.event.release.tag_name }}"
+          fi
           if [ -z "$RELEASE_KEY" ]; then
             RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
           fi
@@ -151,7 +190,7 @@ jobs:
           path: ${{ steps.artifact.outputs.artifact_root }}
 
   publish-manual:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name != 'workflow_call' }}
     needs: capture
     uses: ./.github/workflows/publish-docs-screenshots.yml
     with:
