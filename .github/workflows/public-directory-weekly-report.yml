@@ -24,7 +24,7 @@ jobs:
     env:
       DIRECTORY_URL: ${{ inputs.directory_url != '' && inputs.directory_url || 'https://tips.hushline.app/directory/users.json' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
 
@@ -34,7 +34,7 @@ jobs:
           curl -fsSL "$DIRECTORY_URL" --output /tmp/public-directory-current.json
 
       - name: Check out hushline-stats
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: scidsg/hushline-stats
           token: ${{ secrets.HUSHLINE_WEEKLY_REPORT }}

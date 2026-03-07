@@ -31,7 +31,7 @@ jobs:
   capture:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: ${{ inputs.release_ref != '' && inputs.release_ref || inputs.release_key != '' && inputs.release_key || github.sha }}
           fetch-depth: 0
@@ -47,7 +47,7 @@ jobs:
             echo "Skipping docs screenshots: docs/screenshots/scenes.json not found."
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         if: steps.manifest.outputs.enabled == 'true'
         with:
           node-version: 20
@@ -144,7 +144,7 @@ jobs:
 
       - name: Upload screenshot artifacts
         if: steps.manifest.outputs.enabled == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: docs-screenshots-${{ steps.vars.outputs.release_key }}
           path: ${{ steps.artifact.outputs.artifact_root }}
