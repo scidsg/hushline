@@ -22,6 +22,12 @@ class DiffSummary(TypedDict):
     has_baseline: bool
 
 
+class ReportSummary(TypedDict):
+    current_count: int
+    last_sync: DiffSummary
+    last_week: DiffSummary
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -70,6 +76,33 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional JSON summary output path.",
+    )
+    parser.add_argument(
+        "--summary-history-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory of timestamped summary JSON files used to build "
+            "a historical README table."
+        ),
+    )
+    parser.add_argument(
+        "--readme-output",
+        type=Path,
+        default=None,
+        help="Optional README Markdown output path.",
+    )
+    parser.add_argument(
+        "--report-timestamp",
+        type=str,
+        default=None,
+        help="Optional UTC timestamp in YYYY-MM-DDTHH-MM-SSZ form for README output.",
+    )
+    parser.add_argument(
+        "--source-url",
+        type=str,
+        default=None,
+        help="Optional source URL to include in the generated README.",
     )
     return parser.parse_args()
 
@@ -236,11 +269,28 @@ def _append_diff_section(
     return diff
 
 
+def _format_diff_sentence(label: str, diff: DiffSummary) -> str:
+    if not diff["has_baseline"]:
+        return f"{label} comparison is not available yet."
+
+    added_phrase = (
+        f"{diff['new_count']} listing was added"
+        if diff["new_count"] == 1
+        else f"{diff['new_count']} listings were added"
+    )
+    removed_phrase = (
+        f"{diff['removed_count']} listing was removed"
+        if diff["removed_count"] == 1
+        else f"{diff['removed_count']} listings were removed"
+    )
+    return f"{label}, {added_phrase} and {removed_phrase}."
+
+
 def build_markdown_report(
     current_snapshot: list[dict[str, object]],
     previous_sync_snapshot: list[dict[str, object]] | None,
     previous_week_snapshot: list[dict[str, object]] | None,
-) -> tuple[str, dict[str, object]]:
+) -> tuple[str, ReportSummary]:
     lines: list[str] = [
         "## Public Directory Snapshot Report",
         "",
@@ -260,12 +310,114 @@ def build_markdown_report(
         previous_week_snapshot,
     )
 
-    summary: dict[str, object] = {
+    summary: ReportSummary = {
         "current_count": len(current_snapshot),
         "last_sync": last_sync_summary,
         "last_week": last_week_summary,
     }
     return ("\n".join(lines) + "\n", summary)
+
+
+def _parse_history_timestamp(value: str) -> datetime | None:
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return None
+
+
+def _load_summary_history(
+    summary_history_dir: Path | None,
+    *,
+    current_timestamp: str | None = None,
+    current_summary: ReportSummary | None = None,
+) -> list[tuple[str, ReportSummary]]:
+    rows: dict[str, ReportSummary] = {}
+    if summary_history_dir is not None and summary_history_dir.exists():
+        for path in summary_history_dir.glob("*.json"):
+            timestamp = _parse_history_timestamp(path.stem)
+            if timestamp is None:
+                continue
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            rows[path.stem] = cast(ReportSummary, payload)
+
+    if current_timestamp is not None and current_summary is not None:
+        rows[current_timestamp] = current_summary
+
+    return sorted(
+        rows.items(),
+        key=lambda item: _parse_history_timestamp(item[0]) or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+
+
+def build_readme_report(
+    summary: ReportSummary,
+    *,
+    report_timestamp: str,
+    source_url: str,
+    summary_history: list[tuple[str, ReportSummary]],
+) -> str:
+    timestamp = _parse_history_timestamp(report_timestamp)
+    rendered_timestamp = (
+        timestamp.strftime("%Y-%m-%d %H:%M UTC") if timestamp is not None else report_timestamp
+    )
+    sync_sentence = _format_diff_sentence("Since the last sync", summary["last_sync"])
+    weekly_sentence = _format_diff_sentence(
+        "Compared with the most recent snapshot at least seven days old",
+        summary["last_week"],
+    )
+    lines = [
+        "# Hush Line Stats",
+        "",
+        "Private operational reporting for the public Hush Line directory.",
+        "",
+        (
+            f"As of {rendered_timestamp}, the directory contains "
+            f"{summary['current_count']} opted-in public listing"
+            f"{'' if summary['current_count'] == 1 else 's'}."
+        ),
+        sync_sentence,
+        weekly_sentence,
+        "",
+        f"Source feed: `{source_url}`",
+        "",
+        "## Historical Summary",
+        "",
+        (
+            "| Snapshot (UTC) | Listings | New vs last sync | "
+            "Removed vs last sync | New vs last week | Removed vs last week |"
+        ),
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+
+    for history_timestamp, history_summary in summary_history:
+        last_sync = history_summary["last_sync"]
+        last_week = history_summary["last_week"]
+        last_sync_new = str(last_sync["new_count"]) if last_sync["has_baseline"] else "n/a"
+        last_sync_removed = str(last_sync["removed_count"]) if last_sync["has_baseline"] else "n/a"
+        last_week_new = str(last_week["new_count"]) if last_week["has_baseline"] else "n/a"
+        last_week_removed = str(last_week["removed_count"]) if last_week["has_baseline"] else "n/a"
+        lines.append(
+            "| "
+            f"{history_timestamp.replace('T', ' ').replace('Z', '')} | "
+            f"{history_summary['current_count']} | "
+            f"{last_sync_new} | "
+            f"{last_sync_removed} | "
+            f"{last_week_new} | "
+            f"{last_week_removed} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Latest Artifacts",
+            "",
+            "- `public-directory/latest.json`: normalized current public listings",
+            "- `public-directory/latest-summary.json`: machine-readable latest diff summary",
+            "- `public-directory/latest.md`: detailed latest report",
+        ]
+    )
+    return "\n".join(lines) + "\n"
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -312,6 +464,23 @@ def main() -> int:
         previous_sync_snapshot,
         previous_week_snapshot,
     )
+    readme = None
+    if (
+        args.readme_output is not None
+        and args.report_timestamp is not None
+        and args.source_url is not None
+    ):
+        summary_history = _load_summary_history(
+            args.summary_history_dir,
+            current_timestamp=args.report_timestamp,
+            current_summary=summary,
+        )
+        readme = build_readme_report(
+            summary,
+            report_timestamp=args.report_timestamp,
+            source_url=args.source_url,
+            summary_history=summary_history,
+        )
 
     print(report, end="")
 
@@ -321,6 +490,8 @@ def main() -> int:
         _write_text(args.report_output, report)
     if args.json_output is not None:
         _write_json(args.json_output, summary)
+    if args.readme_output is not None and readme is not None:
+        _write_text(args.readme_output, readme)
 
     return 0
 

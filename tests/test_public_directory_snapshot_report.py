@@ -164,6 +164,79 @@ def test_build_markdown_report_reports_added_and_removed_usernames() -> None:
     }
 
 
+def test_build_readme_report_renders_natural_language_and_history_table() -> None:
+    module = _load_module()
+
+    summary = {
+        "current_count": 2,
+        "last_sync": {
+            "baseline_count": 2,
+            "new_count": 1,
+            "removed_count": 0,
+            "new_usernames": ["newuser"],
+            "removed_usernames": [],
+            "has_baseline": True,
+        },
+        "last_week": {
+            "baseline_count": 1,
+            "new_count": 1,
+            "removed_count": 0,
+            "new_usernames": ["newuser"],
+            "removed_usernames": [],
+            "has_baseline": True,
+        },
+    }
+
+    readme = module.build_readme_report(
+        summary,
+        report_timestamp="2026-03-07T13-00-00Z",
+        source_url="https://tips.hushline.app/directory/users.json",
+        summary_history=[
+            ("2026-03-07T13-00-00Z", summary),
+            (
+                "2026-02-28T13-00-00Z",
+                {
+                    "current_count": 1,
+                    "last_sync": {
+                        "baseline_count": 0,
+                        "new_count": 0,
+                        "removed_count": 0,
+                        "new_usernames": [],
+                        "removed_usernames": [],
+                        "has_baseline": False,
+                    },
+                    "last_week": {
+                        "baseline_count": 0,
+                        "new_count": 0,
+                        "removed_count": 0,
+                        "new_usernames": [],
+                        "removed_usernames": [],
+                        "has_baseline": False,
+                    },
+                },
+            ),
+        ],
+    )
+
+    assert "# Hush Line Stats" in readme
+    assert (
+        "As of 2026-03-07 13:00 UTC, the directory contains "
+        "2 opted-in public listings." in readme
+    )
+    assert "Since the last sync, 1 listing was added and 0 listings were removed." in readme
+    assert (
+        "Compared with the most recent snapshot at least seven days old, "
+        "1 listing was added and 0 listings were removed." in readme
+    )
+    assert (
+        "| Snapshot (UTC) | Listings | New vs last sync | Removed vs last sync | "
+        "New vs last week | Removed vs last week |" in readme
+    )
+    assert "| 2026-03-07 13-00-00 | 2 | 1 | 0 | 1 | 0 |" in readme
+    assert "| 2026-02-28 13-00-00 | 1 | n/a | n/a | n/a | n/a |" in readme
+    assert "Source feed: `https://tips.hushline.app/directory/users.json`" in readme
+
+
 def test_resolve_history_baselines_uses_latest_sync_and_week_old_snapshot(tmp_path: Path) -> None:
     module = _load_module()
 
@@ -183,3 +256,63 @@ def test_resolve_history_baselines_uses_latest_sync_and_week_old_snapshot(tmp_pa
 
     assert last_sync == latest
     assert last_week == week_old
+
+
+def test_load_summary_history_includes_current_summary_and_sorts_descending(tmp_path: Path) -> None:
+    module = _load_module()
+
+    history_dir = tmp_path / "summaries"
+    history_dir.mkdir()
+    (history_dir / "2026-02-28T13-00-00Z.json").write_text(
+        """
+        {
+          "current_count": 1,
+          "last_sync": {
+            "baseline_count": 0,
+            "new_count": 0,
+            "removed_count": 0,
+            "new_usernames": [],
+            "removed_usernames": [],
+            "has_baseline": false
+          },
+          "last_week": {
+            "baseline_count": 0,
+            "new_count": 0,
+            "removed_count": 0,
+            "new_usernames": [],
+            "removed_usernames": [],
+            "has_baseline": false
+          }
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    rows = module._load_summary_history(
+        history_dir,
+        current_timestamp="2026-03-07T13-00-00Z",
+        current_summary={
+            "current_count": 2,
+            "last_sync": {
+                "baseline_count": 1,
+                "new_count": 1,
+                "removed_count": 0,
+                "new_usernames": ["newuser"],
+                "removed_usernames": [],
+                "has_baseline": True,
+            },
+            "last_week": {
+                "baseline_count": 1,
+                "new_count": 1,
+                "removed_count": 0,
+                "new_usernames": ["newuser"],
+                "removed_usernames": [],
+                "has_baseline": True,
+            },
+        },
+    )
+
+    assert [timestamp for timestamp, _summary in rows] == [
+        "2026-03-07T13-00-00Z",
+        "2026-02-28T13-00-00Z",
+    ]
