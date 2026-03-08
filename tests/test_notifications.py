@@ -228,8 +228,7 @@ def test_notifications_full_body_encryption_embedded_markers_use_server_fallback
             "encrypted_email_body": encrypted_email_body,
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
