@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 
 from flask import (
@@ -23,6 +24,16 @@ from hushline.model import (
     Username,
 )
 from hushline.routes.common import do_send_email
+
+_ARMORED_PGP_MESSAGE_PATTERN = re.compile(
+    r"^\s*-----BEGIN PGP MESSAGE-----\r?\n"
+    r"(?:[!-~]+: .*\r?\n)*\r?\n?[\s\S]*\r?\n"
+    r"-----END PGP MESSAGE-----\s*$"
+)
+
+
+def _is_armored_pgp_message(value: str) -> bool:
+    return bool(_ARMORED_PGP_MESSAGE_PATTERN.fullmatch(value))
 
 
 def register_message_routes(app: Flask) -> None:
@@ -117,7 +128,7 @@ def register_message_routes(app: Flask) -> None:
                 if not value:
                     continue
                 if user.email_encrypt_entire_body:
-                    if "-----BEGIN PGP MESSAGE-----" in value:
+                    if _is_armored_pgp_message(value):
                         email_body = value
                     else:
                         try:
