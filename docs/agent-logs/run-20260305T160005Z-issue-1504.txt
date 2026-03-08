@@ -3,7 +3,7 @@ Timestamp (UTC): 20260305T160005Z
 Issue: #1504
 Repository: scidsg/hushline
 
-Runner Codex config: model=gpt-5.3-codex reasoning_effort=high verbose_codex_output=0
+Runner Codex config: [redacted]
 ==> Fetch latest from origin
 From github.com:scidsg/hushline
    a26cfd08..6812c0af  main       -> origin/main
@@ -1273,23 +1273,128 @@ Total reclaimed space: 5.029GB
 #7 9.140 Get:460 http://deb.debian.org/debian bookworm/main arm64 pkg-config arm64 1.8.1-1 [13.7 kB]
 #7 9.272 debconf: delaying package configuration, since apt-utils is not installed
 #7 9.287 Fetched 162 MB in 4s (44.1 MB/s)
-#7 9.298 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6689 files and directories currently installed.)
+#7 9.298 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6689 files and directories currently installed.)
 #7 9.301 Preparing to unpack .../perl-base_5.36.0-7+deb12u3_arm64.deb ...
 #7 9.308 Unpacking perl-base (5.36.0-7+deb12u3) over (5.36.0-7+deb12u1) ...
 #7 9.878 Setting up perl-base (5.36.0-7+deb12u3) ...
-#7 9.891 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.891 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.895 Preparing to unpack .../gcc-12-base_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.899 Unpacking gcc-12-base:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 9.914 Setting up gcc-12-base:arm64 (12.2.0-14+deb12u1) ...
-#7 9.927 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.927 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.930 Preparing to unpack .../libgcc-s1_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.934 Unpacking libgcc-s1:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 9.947 Setting up libgcc-s1:arm64 (12.2.0-14+deb12u1) ...
-#7 9.963 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.963 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.966 Preparing to unpack .../libstdc++6_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.974 Unpacking libstdc++6:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 10.03 Setting up libstdc++6:arm64 (12.2.0-14+deb12u1) ...
-#7 10.05 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 10.05 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 10.05 Preparing to unpack .../libc6_2.36-9+deb12u13_arm64.deb ...
 #7 10.09 debconf: unable to initialize frontend: Dialog
 #7 10.09 debconf: (TERM is not set, so the dialog frontend is not usable.)
@@ -1305,12 +1410,54 @@ Total reclaimed space: 5.029GB
 #7 10.51 debconf: unable to initialize frontend: Readline
 #7 10.51 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.36.0 /usr/local/share/perl/5.36.0 /usr/lib/aarch64-linux-gnu/perl5/5.36 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.36 /usr/share/perl/5.36 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7.)
 #7 10.51 debconf: falling back to frontend: Teletype
-#7 11.57 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 11.57 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 11.57 Preparing to unpack .../libc-bin_2.36-9+deb12u13_arm64.deb ...
 #7 11.58 Unpacking libc-bin (2.36-9+deb12u13) over (2.36-9+deb12u8) ...
 #7 11.65 Setting up libc-bin (2.36-9+deb12u13) ...
 #7 11.67 Selecting previously unselected package perl-modules-5.36.
-#7 11.67 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 11.67 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 11.68 Preparing to unpack .../0-perl-modules-5.36_5.36.0-7+deb12u3_all.deb ...
 #7 11.68 Unpacking perl-modules-5.36 (5.36.0-7+deb12u3) ...
 #7 11.87 Selecting previously unselected package libgdbm-compat4:arm64.
@@ -1334,7 +1481,28 @@ Total reclaimed space: 5.029GB
 #7 12.44 Setting up libpython3.11-minimal:arm64 (3.11.2-6+deb12u6) ...
 #7 12.44 Setting up python3.11-minimal (3.11.2-6+deb12u6) ...
 #7 12.79 Selecting previously unselected package python3-minimal.
-#7 12.79 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9002 files and directories currently installed.)
+#7 12.79 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9002 files and directories currently installed.)
 #7 12.80 Preparing to unpack .../python3-minimal_3.11.2-1+b1_arm64.deb ...
 #7 12.80 Unpacking python3-minimal (3.11.2-1+b1) ...
 #7 12.81 Selecting previously unselected package media-types.
@@ -1344,7 +1512,28 @@ Total reclaimed space: 5.029GB
 #7 12.83 Unpacking liblzma5:arm64 (5.4.1-1) over (5.4.1-0.2) ...
 #7 12.85 Setting up liblzma5:arm64 (5.4.1-1) ...
 #7 12.86 Selecting previously unselected package libpython3.11-stdlib:arm64.
-#7 12.86 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9030 files and directories currently installed.)
+#7 12.86 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9030 files and directories currently installed.)
 #7 12.86 Preparing to unpack .../libpython3.11-stdlib_3.11.2-6+deb12u6_arm64.deb ...
 #7 12.86 Unpacking libpython3.11-stdlib:arm64 (3.11.2-6+deb12u6) ...
 #7 12.97 Selecting previously unselected package python3.11.
@@ -1355,7 +1544,28 @@ Total reclaimed space: 5.029GB
 #7 12.99 Unpacking libpython3-stdlib:arm64 (3.11.2-1+b1) ...
 #7 13.00 Setting up python3-minimal (3.11.2-1+b1) ...
 #7 13.08 Selecting previously unselected package python3.
-#7 13.08 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9412 files and directories currently installed.)
+#7 13.08 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9412 files and directories currently installed.)
 #7 13.08 Preparing to unpack .../000-python3_3.11.2-1+b1_arm64.deb ...
 #7 13.08 Unpacking python3 (3.11.2-1+b1) ...
 #7 13.09 Selecting previously unselected package bzip2.
@@ -3581,14 +3791,14 @@ Switched to a new branch 'codex/daily-issue-1504'
 Codex execution started; streaming transcript output.
 OpenAI Codex v0.107.0 (research preview)
 --------
-workdir: /Users/scidsg/hushline
-model: gpt-5.3-codex
-provider: openai
-approval: never
-sandbox: workspace-write [workdir, /tmp, $TMPDIR]
-reasoning effort: high
-reasoning summaries: none
-session id: 019cbebc-ce0f-7e00-a994-702e5c22947d
+workdir: [redacted]
+model: [redacted]
+provider: [redacted]
+approval: [redacted]
+sandbox: [redacted]
+reasoning effort: [redacted]
+reasoning summaries: [redacted]
+session id: [redacted]
 --------
 user
 You are implementing GitHub issue #1504 in scidsg/hushline.
@@ -3657,8 +3867,8 @@ mcp startup: no servers
 codex
 I’m going to locate the existing state adapter implementation and current tests, then identify where to add a shared conformance harness with the smallest possible diff.
 exec
-/bin/zsh -lc 'find .. -name AGENTS.md -print' in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'pwd && rg --files | head -n 200' in /Users/scidsg/hushline succeeded in 90ms:
+/bin/zsh -lc 'find .. -name AGENTS.md -print' in [redacted-path]
+/bin/zsh -lc 'pwd && rg --files | head -n 200' in [redacted-path] succeeded in 90ms:
 SECURITY.md
 docker-compose.staging.yaml
 assets/fonts/mono/IBMPlexMono-Medium.woff
@@ -3682,11 +3892,11 @@ assets/img/empty.png
 codex
 I found repo files and now I’m resolving any deeper `AGENTS.md` scope so edits stay compliant; the directory-wide `find` is still running and I’ll stop it to avoid unnecessary scan time.
 exec
-/bin/zsh -lc 'find . -name AGENTS.md -print' in /Users/scidsg/hushline succeeded in 178ms:
+/bin/zsh -lc 'find . -name AGENTS.md -print' in [redacted-path] succeeded in 178ms:
 ./AGENTS.md
 exec
-/bin/zsh -lc 'rg --files tests | head -n 300' in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'rg -n "US_STATE_AUTHORITATIVE_SOURCES|authoritative|state adapter|public record|source_label|source_url" hushline tests -S' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'rg --files tests | head -n 300' in [redacted-path]
+/bin/zsh -lc 'rg -n "US_STATE_AUTHORITATIVE_SOURCES|authoritative|state adapter|public record|source_label|source_url" hushline tests -S' in [redacted-path] succeeded in 53ms:
 tests/test_make_admin.py
 tests/test_accessibility.py
 tests/test_settings.py
@@ -3731,8 +3941,8 @@ hushline/public_record_refresh.py:153:        "source_url": "https://www.ctbar.o
 codex
 I found existing provenance checks already split across `tests/test_directory.py` and `tests/test_public_record_refresh.py`; next I’ll inspect those to extract a reusable harness and wire it into current state fixtures.
 exec
-/bin/zsh -lc "sed -n '1,260p' tests/test_directory.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,360p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' tests/test_directory.py" in [redacted-path]
+/bin/zsh -lc "sed -n '1,360p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 53ms:
 from __future__ import annotations
 
 import re
@@ -3777,7 +3987,7 @@ def _first_public_record_listing_or_skip() -> PublicRecordListing:
 codex
 I’m now reading the remainder of `tests/test_public_record_refresh.py` to see whether state-specific adapter tests already exist that we can wrap with a shared helper rather than duplicating assertions.
 exec
-/bin/zsh -lc "sed -n '360,860p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "sed -n '360,860p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 52ms:
         link_checker=checker,
         drop_failed_links=False,
     )
@@ -3799,7 +4009,7 @@ exec
     assert dropped.checked_url_count == 4
     assert checked_urls
 exec
-/bin/zsh -lc "sed -n '860,1320p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '860,1320p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 53ms:
                 "id": "seed-michael-joseph-lockman",
                 "name": "Michael Joseph Lockman",
                 "slug": "public-record~michael-joseph-lockman",
@@ -3821,8 +4031,8 @@ exec
 
     assert isinstance(result, OfficialStateDiscoveryResult)
 exec
-/bin/zsh -lc "sed -n '1,260p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '260,560p' hushline/public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '260,560p' hushline/public_record_refresh.py" in [redacted-path] succeeded in 53ms:
 from __future__ import annotations
 
 import re
@@ -3865,8 +4075,8 @@ CHAMBERS_PUBLICATION_GROUP_BY_REGION: dict[str, int] = {
         "source_url": "https://iapps.courts.state.ny.us/attorneyservices/search?0",
         "allowed_domains": frozenset({"courts.state.ny.us"}),
 exec
-/bin/zsh -lc "sed -n '560,980p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '980,1400p' hushline/public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '560,980p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '980,1400p' hushline/public_record_refresh.py" in [redacted-path] succeeded in 53ms:
         {
             "User-Agent": (
                 "Mozilla/5.0 (compatible; HushlinePublicRecordRefresh/1.0; "
@@ -3909,8 +4119,8 @@ exec
         if seed_row["id"] in existing_ids:
             continue
 exec
-/bin/zsh -lc "sed -n '1900,2280p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1400,1900p' hushline/public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1900,2280p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '1400,1900p' hushline/public_record_refresh.py" in [redacted-path] succeeded in 53ms:
             raise PublicRecordRefreshError(f"Duplicate listing slug detected: {row.slug}")
         seen_ids.add(row.id)
         seen_slugs.add(row.slug)
@@ -3953,7 +4163,7 @@ def _normalize_discovered_website(value: object) -> str | None:
 
 
 exec
-/bin/zsh -lc "sed -n '1,260p' tests/helpers.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' tests/helpers.py" in [redacted-path] succeeded in 53ms:
 import random
 import string
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
@@ -4146,12 +4356,12 @@ def _host_matches_any_domain(host: str, domains: frozenset[str]) -> bool:
 def _normalized_name_key(name: str) -> str:
     normalized = unicodedata.normalize("NFKC", name).strip()
     return unidecode(normalized).casefold()
-EOF' in /Users/scidsg/hushline succeeded in 53ms:
+EOF' in [redacted-path] succeeded in 53ms:
 
 codex
 I’m about to edit `tests/test_public_record_refresh.py` to wire in the shared harness with parameterized tests for every non-noop state adapter, including collision-based skip checks for `id`, `slug`, and normalized `name`.
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -3,3 +3,3 @@
  import re
 -from typing import Any
@@ -4196,7 +4406,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4205,8 +4415,8 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4298,7 +4508,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4307,8 +4517,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4400,7 +4610,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4409,8 +4619,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4438,7 +4648,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
          [],
 
 exec
-/bin/zsh -lc "sed -n '1,120p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '1,120p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 51ms:
 from __future__ import annotations
 
 import re
@@ -4524,7 +4734,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4533,8 +4743,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4562,7 +4772,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
          [],
 
 exec
-/bin/zsh -lc "rg -n \"official_source_adapter_harness\" tests/test_public_record_refresh.py && sed -n '620,780p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "rg -n \"official_source_adapter_harness\" tests/test_public_record_refresh.py && sed -n '620,780p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 53ms:
 718:def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
 723:def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 733:def test_official_source_adapter_harness_skips_existing_rows(
@@ -4648,7 +4858,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4657,8 +4867,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4686,7 +4896,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
          [],
 
 exec
-/bin/zsh -lc "sed -n '1,260p' tests/public_record_adapter_harness.py" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "sed -n '1,260p' tests/public_record_adapter_harness.py" in [redacted-path] succeeded in 52ms:
 from __future__ import annotations
 
 import re
@@ -4772,7 +4982,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4781,8 +4991,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -4812,7 +5022,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 codex
 I spotted a bug in the new harness regex for Ohio record fragments (`\\d` was double-escaped), which would incorrectly fail valid OH adapter rows. I’m fixing that now.
 file update
-M /Users/scidsg/hushline/tests/public_record_adapter_harness.py
+M [redacted-path]
 @@ -24,3 +24,3 @@
  )
 -_OHIO_ATTORNEY_PROFILE_FRAGMENT_RE = re.compile(r"^/?\\d+/attyinfo/?$", re.IGNORECASE)
@@ -4917,7 +5127,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -4926,8 +5136,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5043,7 +5253,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5052,8 +5262,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5081,7 +5291,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
          [],
 
 exec
-/bin/zsh -lc "sed -n '1,120p' tests/public_record_adapter_harness.py" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '1,120p' tests/public_record_adapter_harness.py" in [redacted-path] succeeded in 51ms:
 from __future__ import annotations
 
 import re
@@ -5191,7 +5401,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5200,8 +5410,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5229,7 +5439,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
          [],
 
 exec
-/bin/zsh -lc 'git status --short && git diff -- tests/public_record_adapter_harness.py tests/test_public_record_refresh.py' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'git status --short && git diff -- tests/public_record_adapter_harness.py tests/test_public_record_refresh.py' in [redacted-path] succeeded in 53ms:
  M tests/test_public_record_refresh.py
 ?? tests/public_record_adapter_harness.py
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
@@ -5339,7 +5549,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5348,8 +5558,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5470,7 +5680,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5479,8 +5689,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5510,8 +5720,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 codex
 I’ve finished the implementation and reviewed the diff; next I’ll send a concise summary of the exact files changed and what checks were added.
 exec
-/bin/zsh -lc "nl -ba tests/public_record_adapter_harness.py | sed -n '1,220p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba tests/test_public_record_refresh.py | sed -n '1,130p' && nl -ba tests/test_public_record_refresh.py | sed -n '680,780p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "nl -ba tests/public_record_adapter_harness.py | sed -n '1,220p'" in [redacted-path]
+/bin/zsh -lc "nl -ba tests/test_public_record_refresh.py | sed -n '1,130p' && nl -ba tests/test_public_record_refresh.py | sed -n '680,780p'" in [redacted-path] succeeded in 53ms:
      1	from __future__ import annotations
      2	
      3	import re
@@ -5642,7 +5852,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5651,8 +5861,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5684,7 +5894,7 @@ Implemented issue #1504 with a test-only, minimal diff.
 
 ### What changed
 1. Added a reusable official-source adapter conformance harness:
-- [public_record_adapter_harness.py](/Users/scidsg/hushline/tests/public_record_adapter_harness.py#L1)
+- [public_record_adapter_harness.py]([redacted-path]
 
 It now asserts per discovered row:
 - `source_label` matches `US_STATE_AUTHORITATIVE_SOURCES[state]`
@@ -5696,8 +5906,8 @@ It now asserts per discovered row:
 - duplicate protection on `id`, `slug`, and normalized-name collisions within adapter output
 
 2. Wired the harness into state adapter tests:
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L27)
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L718)
+- [test_public_record_refresh.py]([redacted-path]
+- [test_public_record_refresh.py]([redacted-path]
 
 New tests:
 - Ensure harness covers current implemented states (`CA`, `IL`, `OH`, `TN`, `WA`)
@@ -5795,7 +6005,7 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert {"CA", "IL", "OH", "TN", "WA"}.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 +def test_official_source_adapter_harness_validates_state_outputs(state_code: str) -> None:
 +    result = _discover_rows_for_state(state_code=state_code, existing_rows=[])
 +
@@ -5804,8 +6014,8 @@ index 731b68010b89770e1ab70d6e755650972720df94..3ed5eafb662cf7e9739f53259d34bfc5
 +    assert_official_source_adapter_rows(state_code, result.rows)
 +
 +
-+@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-+@pytest.mark.parametrize("collision", ["id", "slug", "name"])
+[redacted-email]("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-email]("collision", ["id", "slug", "name"])
 +def test_official_source_adapter_harness_skips_existing_rows(
 +    state_code: str,
 +    collision: str,
@@ -5838,7 +6048,7 @@ Implemented issue #1504 with a test-only, minimal diff.
 
 ### What changed
 1. Added a reusable official-source adapter conformance harness:
-- [public_record_adapter_harness.py](/Users/scidsg/hushline/tests/public_record_adapter_harness.py#L1)
+- [public_record_adapter_harness.py]([redacted-path]
 
 It now asserts per discovered row:
 - `source_label` matches `US_STATE_AUTHORITATIVE_SOURCES[state]`
@@ -5850,8 +6060,8 @@ It now asserts per discovered row:
 - duplicate protection on `id`, `slug`, and normalized-name collisions within adapter output
 
 2. Wired the harness into state adapter tests:
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L27)
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L718)
+- [test_public_record_refresh.py]([redacted-path]
+- [test_public_record_refresh.py]([redacted-path]
 
 New tests:
 - Ensure harness covers current implemented states (`CA`, `IL`, `OH`, `TN`, `WA`)
@@ -5866,7 +6076,7 @@ Implemented issue #1504 with a test-only, minimal diff.
 
 ### What changed
 1. Added a reusable official-source adapter conformance harness:
-- [public_record_adapter_harness.py](/Users/scidsg/hushline/tests/public_record_adapter_harness.py#L1)
+- [public_record_adapter_harness.py]([redacted-path]
 
 It now asserts per discovered row:
 - `source_label` matches `US_STATE_AUTHORITATIVE_SOURCES[state]`
@@ -5878,8 +6088,8 @@ It now asserts per discovered row:
 - duplicate protection on `id`, `slug`, and normalized-name collisions within adapter output
 
 2. Wired the harness into state adapter tests:
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L27)
-- [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py#L718)
+- [test_public_record_refresh.py]([redacted-path]
+- [test_public_record_refresh.py]([redacted-path]
 
 New tests:
 - Ensure harness covers current implemented states (`CA`, `IL`, `OH`, `TN`, `WA`)
@@ -6091,7 +6301,7 @@ Success: no issues found in 154 source files
 Checking formatting...
 All matched files use Prettier code style!
 ==> Run workflow security checks
-docker run --rm -v "/Users/scidsg/hushline:/work" -w /work rhysd/actionlint:1.7.7 -color
+docker run --rm -v "[redacted-path]" -w /work rhysd/actionlint:1.7.7 -color
 Unable to find image 'rhysd/actionlint:1.7.7' locally
 1.7.7: Pulling from rhysd/actionlint
 25d2e00cf929: Pulling fs layer

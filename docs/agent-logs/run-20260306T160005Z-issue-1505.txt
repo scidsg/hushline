@@ -3,7 +3,7 @@ Timestamp (UTC): 20260306T160005Z
 Issue: #1505
 Repository: scidsg/hushline
 
-Runner Codex config: model=gpt-5.3-codex reasoning_effort=high verbose_codex_output=0
+Runner Codex config: [redacted]
 ==> Fetch latest from origin
 ==> Checkout main
 Already on 'main'
@@ -1384,23 +1384,128 @@ Total reclaimed space: 5.029GB
 #7 8.879 Get:460 http://deb.debian.org/debian bookworm/main arm64 pkg-config arm64 1.8.1-1 [13.7 kB]
 #7 9.013 debconf: delaying package configuration, since apt-utils is not installed
 #7 9.027 Fetched 162 MB in 4s (43.0 MB/s)
-#7 9.040 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6689 files and directories currently installed.)
+#7 9.040 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6689 files and directories currently installed.)
 #7 9.043 Preparing to unpack .../perl-base_5.36.0-7+deb12u3_arm64.deb ...
 #7 9.050 Unpacking perl-base (5.36.0-7+deb12u3) over (5.36.0-7+deb12u1) ...
 #7 9.660 Setting up perl-base (5.36.0-7+deb12u3) ...
-#7 9.673 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.673 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.676 Preparing to unpack .../gcc-12-base_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.682 Unpacking gcc-12-base:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 9.698 Setting up gcc-12-base:arm64 (12.2.0-14+deb12u1) ...
-#7 9.711 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.711 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.713 Preparing to unpack .../libgcc-s1_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.718 Unpacking libgcc-s1:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 9.733 Setting up libgcc-s1:arm64 (12.2.0-14+deb12u1) ...
-#7 9.753 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.753 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.756 Preparing to unpack .../libstdc++6_12.2.0-14+deb12u1_arm64.deb ...
 #7 9.765 Unpacking libstdc++6:arm64 (12.2.0-14+deb12u1) over (12.2.0-14) ...
 #7 9.826 Setting up libstdc++6:arm64 (12.2.0-14+deb12u1) ...
-#7 9.847 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 9.847 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 9.849 Preparing to unpack .../libc6_2.36-9+deb12u13_arm64.deb ...
 #7 9.888 debconf: unable to initialize frontend: Dialog
 #7 9.888 debconf: (TERM is not set, so the dialog frontend is not usable.)
@@ -1416,12 +1521,54 @@ Total reclaimed space: 5.029GB
 #7 10.33 debconf: unable to initialize frontend: Readline
 #7 10.33 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.36.0 /usr/local/share/perl/5.36.0 /usr/lib/aarch64-linux-gnu/perl5/5.36 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.36 /usr/share/perl/5.36 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7.)
 #7 10.33 debconf: falling back to frontend: Teletype
-#7 11.38 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 11.38 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 11.38 Preparing to unpack .../libc-bin_2.36-9+deb12u13_arm64.deb ...
 #7 11.39 Unpacking libc-bin (2.36-9+deb12u13) over (2.36-9+deb12u8) ...
 #7 11.46 Setting up libc-bin (2.36-9+deb12u13) ...
 #7 11.48 Selecting previously unselected package perl-modules-5.36.
-#7 11.48 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6690 files and directories currently installed.)
+#7 11.48 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6690 files and directories currently installed.)
 #7 11.49 Preparing to unpack .../0-perl-modules-5.36_5.36.0-7+deb12u3_all.deb ...
 #7 11.49 Unpacking perl-modules-5.36 (5.36.0-7+deb12u3) ...
 #7 11.68 Selecting previously unselected package libgdbm-compat4:arm64.
@@ -1445,7 +1592,28 @@ Total reclaimed space: 5.029GB
 #7 12.25 Setting up libpython3.11-minimal:arm64 (3.11.2-6+deb12u6) ...
 #7 12.26 Setting up python3.11-minimal (3.11.2-6+deb12u6) ...
 #7 12.62 Selecting previously unselected package python3-minimal.
-#7 12.62 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9002 files and directories currently installed.)
+#7 12.62 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9002 files and directories currently installed.)
 #7 12.63 Preparing to unpack .../python3-minimal_3.11.2-1+b1_arm64.deb ...
 #7 12.63 Unpacking python3-minimal (3.11.2-1+b1) ...
 #7 12.64 Selecting previously unselected package media-types.
@@ -1455,7 +1623,28 @@ Total reclaimed space: 5.029GB
 #7 12.66 Unpacking liblzma5:arm64 (5.4.1-1) over (5.4.1-0.2) ...
 #7 12.68 Setting up liblzma5:arm64 (5.4.1-1) ...
 #7 12.70 Selecting previously unselected package libpython3.11-stdlib:arm64.
-#7 12.70 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9030 files and directories currently installed.)
+#7 12.70 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9030 files and directories currently installed.)
 #7 12.70 Preparing to unpack .../libpython3.11-stdlib_3.11.2-6+deb12u6_arm64.deb ...
 #7 12.70 Unpacking libpython3.11-stdlib:arm64 (3.11.2-6+deb12u6) ...
 #7 12.81 Selecting previously unselected package python3.11.
@@ -1466,7 +1655,28 @@ Total reclaimed space: 5.029GB
 #7 12.83 Unpacking libpython3-stdlib:arm64 (3.11.2-1+b1) ...
 #7 12.84 Setting up python3-minimal (3.11.2-1+b1) ...
 #7 12.92 Selecting previously unselected package python3.
-#7 12.92 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9412 files and directories currently installed.)
+#7 12.92 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 9412 files and directories currently installed.)
 #7 12.92 Preparing to unpack .../000-python3_3.11.2-1+b1_arm64.deb ...
 #7 12.92 Unpacking python3 (3.11.2-1+b1) ...
 #7 12.93 Selecting previously unselected package bzip2.
@@ -3688,14 +3898,14 @@ Switched to a new branch 'codex/daily-issue-1505'
 Codex execution started; streaming transcript output.
 OpenAI Codex v0.107.0 (research preview)
 --------
-workdir: /Users/scidsg/hushline
-model: gpt-5.3-codex
-provider: openai
-approval: never
-sandbox: workspace-write [workdir, /tmp, $TMPDIR]
-reasoning effort: high
-reasoning summaries: none
-session id: 019cc3e3-891e-7741-9f10-013580b3a09d
+workdir: [redacted]
+model: [redacted]
+provider: [redacted]
+approval: [redacted]
+sandbox: [redacted]
+reasoning effort: [redacted]
+reasoning summaries: [redacted]
+session id: [redacted]
 --------
 user
 You are implementing GitHub issue #1505 in scidsg/hushline.
@@ -3761,11 +3971,11 @@ mcp startup: no servers
 codex
 I’m going to inspect the existing public-record refresh adapters and tests first, then implement only the five state adapters (`AK`, `AL`, `AR`, `AZ`, `CO`) with matching strict-policy tests and minimal file changes.
 exec
-/bin/zsh -lc 'git status --short' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "pwd && rg --files | rg 'AGENTS\\.md|public_record_refresh\\.py|test_public_record_refresh\\.py|strict|public-record|record'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'git status --short' in [redacted-path]
+/bin/zsh -lc "pwd && rg --files | rg 'AGENTS\\.md|public_record_refresh\\.py|test_public_record_refresh\\.py|strict|public-record|record'" in [redacted-path] succeeded in 52ms:
 
  succeeded in 52ms:
-/Users/scidsg/hushline
+[redacted-path]
 AGENTS.md
 scripts/refresh_public_record_law_firms.py
 scripts/public_record_provenance_report.py
@@ -3777,15 +3987,15 @@ hushline/model/public_record_listing.py
 tests/test_public_record_refresh.py
 tests/public_record_adapter_harness.py
 exec
-/bin/zsh -lc "rg --files | rg 'AGENTS\\.md"'$'"'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "rg --files | rg 'AGENTS\\.md"'$'"'" in [redacted-path] succeeded in 53ms:
 AGENTS.md
 codex
 I confirmed there’s only the root `AGENTS.md`; next I’m reading the current adapter implementations and test harness so I can mirror existing strict-source patterns for these five states.
 exec
-/bin/zsh -lc "sed -n '1,260p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '261,620p' tests/test_public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '261,620p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,260p' tests/public_record_adapter_harness.py" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '1,260p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '261,620p' tests/test_public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '261,620p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '1,260p' tests/public_record_adapter_harness.py" in [redacted-path] succeeded in 51ms:
 from __future__ import annotations
 
 import re
@@ -3807,7 +4017,7 @@ CHAMBERS_PUBLICATION_GROUP_BY_REGION: dict[str, int] = {
 }
 
 exec
-/bin/zsh -lc "sed -n '1,260p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "sed -n '1,260p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 52ms:
 from __future__ import annotations
 
 import re
@@ -3892,7 +4102,7 @@ from hushline.public_record_refresh import (
             region_targets={"US": 2},
         )
 exec
-/bin/zsh -lc 'rg -n "OFFICIAL_US_STATE_DISCOVERY_ADAPTERS|def _discover_.*official|discover_official_us_state_public_record_rows|strict|generic state source page|allowed_domains|source_url" hushline/public_record_refresh.py' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'rg -n "OFFICIAL_US_STATE_DISCOVERY_ADAPTERS|def _discover_.*official|discover_official_us_state_public_record_rows|strict|generic state source page|allowed_domains|source_url" hushline/public_record_refresh.py' in [redacted-path] succeeded in 52ms:
 13:LISTING_URL_FIELDS: tuple[str, str] = ("website", "source_url")
 116:    source_url: str
 117:    allowed_domains: frozenset[str]
@@ -3914,9 +4124,9 @@ exec
 159:        "allowed_domains": frozenset({"courts.delaware.gov"}),
 163:        "source_url": "https://www.floridabar.org/directories/find-mbr/",
 exec
-/bin/zsh -lc "sed -n '560,1165p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1166,1888p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '620,1320p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '560,1165p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '1166,1888p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '620,1320p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 51ms:
         {
             "User-Agent": (
                 "Mozilla/5.0 (compatible; HushlinePublicRecordRefresh/1.0; "
@@ -3980,12 +4190,12 @@ def test_refresh_public_record_rows_allows_non_chambers_hosts_with_chambers_subs
 
     result = refresh_public_record_rows(
 exec
-/bin/zsh -lc "sed -n '1321,2200p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1321,2200p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 53ms:
 
 codex
 I’ve identified where adapters and adapter-harness tests live; I’m now checking for additional strict-policy test files that need updates so the new states are covered consistently.
 exec
-/bin/zsh -lc 'rg -n "official source|strict|public_record|adapter|discover_official_us_state|drop-failing-records|allowed_domains|generic state source" tests' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'rg -n "official source|strict|public_record|adapter|discover_official_us_state|drop-failing-records|allowed_domains|generic state source" tests' in [redacted-path] succeeded in 53ms:
 tests/test_accessibility.py:17:    public_records_tab = soup.find("button", {"id": "public-records-tab"})
 tests/test_accessibility.py:21:    public_records_panel = soup.find(id="public-records")
 tests/test_accessibility.py:31:    assert public_records_tab is not None
@@ -4007,7 +4217,7 @@ tests/test_public_record_refresh.py:29:    if adapter.__name__ != "_discover_noo
 tests/test_public_record_refresh.py:84:    return discover_official_us_state_public_record_rows(
 tests/test_public_record_refresh.py:152:def test_refresh_public_record_rows_is_deterministic_and_schema_compatible() -> None:
 exec
-/bin/zsh -lc "sed -n '340,620p' tests/test_directory.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '340,620p' tests/test_directory.py" in [redacted-path] succeeded in 53ms:
         "hushline.routes.directory.get_public_record_listings",
         lambda: mocked_public_records,
     )
@@ -4029,22 +4239,22 @@ exec
     assert "Info-Only Accounts" not in all_panel.get_text(" ", strip=True)
     assert "Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
 exec
-/bin/zsh -lc "rg -n '\"state\": \"(AK|AL|AR|AZ|CO)\"' hushline/data/public_record_law_firms.json" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n '\"state\": \"(AK|AL|AR|AZ|CO)\"' hushline/data/public_record_law_firms_legacy.json" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n 'seed-.*(alaska|alabama|arkansas|arizona|colorado|\\bak\\b|\\bal\\b|\\bar\\b|\\baz\\b|\\bco\\b)' hushline/public_record_refresh.py tests/test_public_record_refresh.py" in /Users/scidsg/hushline exited 1 in 52ms:
+/bin/zsh -lc "rg -n '\"state\": \"(AK|AL|AR|AZ|CO)\"' hushline/data/public_record_law_firms.json" in [redacted-path]
+/bin/zsh -lc "rg -n '\"state\": \"(AK|AL|AR|AZ|CO)\"' hushline/data/public_record_law_firms_legacy.json" in [redacted-path]
+/bin/zsh -lc "rg -n 'seed-.*(alaska|alabama|arkansas|arizona|colorado|\\bak\\b|\\bal\\b|\\bar\\b|\\baz\\b|\\bco\\b)' hushline/public_record_refresh.py tests/test_public_record_refresh.py" in [redacted-path] exited 1 in 52ms:
 
  exited 1 in 52ms:
 
  exited 1 in 51ms:
 
 exec
-/bin/zsh -lc "sed -n '1,220p' hushline/data/public_record_law_firms.json" in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'wc -l hushline/data/public_record_law_firms.json hushline/data/public_record_law_firms_legacy.json' in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '1,220p' hushline/data/public_record_law_firms.json" in [redacted-path]
+/bin/zsh -lc 'wc -l hushline/data/public_record_law_firms.json hushline/data/public_record_law_firms_legacy.json' in [redacted-path] succeeded in 51ms:
      326 hushline/data/public_record_law_firms.json
      706 hushline/data/public_record_law_firms_legacy.json
     1032 total
 exec
-/bin/zsh -lc "sed -n '1,220p' hushline/data/public_record_law_firms_legacy.json" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "sed -n '1,220p' hushline/data/public_record_law_firms_legacy.json" in [redacted-path] succeeded in 51ms:
 [
   {
     "id": "seed-adam-j-levitt",
@@ -4087,9 +4297,9 @@ exec
     "description": "An Australian firm advising on whistleblowing, investigations, employment, and risk matters.",
     "city": "Sydney",
 exec
-/bin/zsh -lc "sed -n '1,260p' scripts/refresh_public_record_law_firms.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'rg -n "refresh-public-record-listings|public_record|drop-failing-records|discover-official-us-state-firms" Makefile scripts/refresh_public_record_law_firms.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '260,620p' scripts/refresh_public_record_law_firms.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' scripts/refresh_public_record_law_firms.py" in [redacted-path]
+/bin/zsh -lc 'rg -n "refresh-public-record-listings|public_record|drop-failing-records|discover-official-us-state-firms" Makefile scripts/refresh_public_record_law_firms.py' in [redacted-path]
+/bin/zsh -lc "sed -n '260,620p' scripts/refresh_public_record_law_firms.py" in [redacted-path] succeeded in 53ms:
 #!/usr/bin/env python3
 from __future__ import annotations
 
@@ -4148,14 +4358,14 @@ scripts/refresh_public_record_law_firms.py:333:        print(f"refresh_public_re
         source_rows,
         selected_regions=selected_regions,
 exec
-/bin/zsh -lc "rg -o '\"state\": \"["'^"]+"'"' hushline/data/public_record_law_firms.json | sed 's/\"state\": \"//; s/\""'$//'"' | sort | uniq -c | sort -nr" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "rg -o '\"state\": \"["'^"]+"'"' hushline/data/public_record_law_firms.json | sed 's/\"state\": \"//; s/\""'$//'"' | sort | uniq -c | sort -nr" in [redacted-path] succeeded in 53ms:
   16 CA
    5 TN
    4 IL
    1 WA
    1 OH
 exec
-/bin/zsh -lc "sed -n '1,180p' Makefile" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,180p' Makefile" in [redacted-path] succeeded in 53ms:
 .DEFAULT_GOAL := help
 
 ifndef IS_DOCKER
@@ -4177,18 +4387,18 @@ help: ## Print the help message
 
 .PHONY: install
 exec
-/bin/zsh -lc 'rg -n "addopts|local_only|markers|external_network" pyproject.toml pytest.ini setup.cfg' in /Users/scidsg/hushline exited 2 in 52ms:
+/bin/zsh -lc 'rg -n "addopts|local_only|markers|external_network" pyproject.toml pytest.ini setup.cfg' in [redacted-path] exited 2 in 52ms:
 rg: pytest.ini: No such file or directory (os error 2)
 pyproject.toml:61:markers = [
 pyproject.toml:62:    "local_only",
 pyproject.toml:63:    "external_network",
 exec
-/bin/zsh -lc "sed -n '1,140p' pyproject.toml" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,140p' pyproject.toml" in [redacted-path] succeeded in 53ms:
 [tool.poetry]
 name = "hushline"
 version = "0.0.1"
 description = "A lightweight, secure, and anonymous tip line for organizations and individuals."
-authors = ["Science & Design, Inc. <hello@scidsg.org>"]
+authors = ["Science & Design, Inc. <[redacted-email]>"]
 license = "AGPL 3.0"
 readme = "README.md"
 
@@ -4205,7 +4415,7 @@ flask = { extras = ["async"], version = "^3.1.3" }
 flask-migrate = "^4.0.7"
 flask-sqlalchemy = "^3.1.1"
 exec
-/bin/zsh -lc 'rg -n "Batch 1|AK|AL|AR|AZ|CO|official-source|public record|adapter" docs | head -n 200' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'rg -n "Batch 1|AK|AL|AR|AZ|CO|official-source|public record|adapter" docs | head -n 200' in [redacted-path] succeeded in 53ms:
 docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md:17:- `source_url` must point to the exact public record URL for that listing.
 docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md:25:- Discovery/additions must come from explicit state adapters only.
 docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md:26:- All 50 states now have explicit adapter entries in discovery code.
@@ -4237,7 +4447,7 @@ for st in ['AK','AL','AR','AZ','CO']:
     print(st,len(s))
     for r in s[:10]:
         print(' -',r.get('name'),'|',r.get('website'))
-PY" in /Users/scidsg/hushline exited 127 in 53ms:
+PY" in [redacted-path] exited 127 in 53ms:
 zsh:1: command not found: python
 exec
 /bin/zsh -lc "python3 - <<'PY'
@@ -4249,7 +4459,7 @@ for st in ['AK','AL','AR','AZ','CO']:
     print(st,len(s))
     for r in s:
         print(' -',r.get('name'),'|',r.get('website'))
-PY" in /Users/scidsg/hushline succeeded in 145ms:
+PY" in [redacted-path] succeeded in 145ms:
 AK 0
 AL 0
 AR 0
@@ -4263,7 +4473,7 @@ CO 0
 🌐 Searching the web...
 🌐 Searched: site:alaskabar.org attorney profile
 exec
-/bin/zsh -lc "sed -n '1,260p' docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md" in [redacted-path] succeeded in 53ms:
 # Public Record Provenance Roadmap (U.S.)
 
 ## Scope
@@ -4325,10 +4535,11 @@ exec
 codex
 I found reliable per-record URLs for Arizona and promising official records for Alaska/Arkansas; I’m now verifying whether I can fetch raw HTML in the shell to extract stable Alabama/Colorado profile URL patterns before I finalize adapter seed rows.
 exec
-/bin/zsh -lc "curl -I -L --max-time 20 'https://members.alabar.org/Member_Portal/Member_Portal/Member-Search.aspx' | sed -n '1,40p'" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc "curl -I -L --max-time 20 'https://members.alabar.org/Member_Portal/Member_Portal/Member-Search.aspx' | sed -n '1,40p'" in [redacted-path] succeeded in 51ms:
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: members.alabar.org
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: members.alabar.org
 🌐 Searching the web...
 🌐 Searched: site:cobar.org "Licensed Lawyer" "ID="
 🌐 Searching the web...
@@ -4381,7 +4592,7 @@ exec
 /bin/zsh -lc "python3 - <<'PY'
 import unidecode,requests
 print('ok')
-PY" in /Users/scidsg/hushline exited 1 in 53ms:
+PY" in [redacted-path] exited 1 in 53ms:
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 ModuleNotFoundError: No module named 'unidecode'
@@ -4390,7 +4601,7 @@ I’ve confirmed the adapter architecture is seed-based and harness-driven, and 
 codex
 I’m about to edit `hushline/public_record_refresh.py` to add seed rows and non-noop adapter functions for `AK`, `AL`, `AR`, `AZ`, and `CO`, then register those adapters in the override map.
 file update
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 @@ -774,2 +774,110 @@
  
 +_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
@@ -4591,7 +4802,7 @@ M /Users/scidsg/hushline/hushline/public_record_refresh.py
      "IL": _discover_illinois_official_public_record_rows,
 apply_patch(auto_approved=true) exited 0 in 59ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -5027,8 +5238,8 @@ index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e
 codex
 I’ve added the five new adapters and seed rows. Next I’m updating `tests/test_public_record_refresh.py` so the harness expects these states and so each new state has explicit discovery assertions.
 exec
-/bin/zsh -lc 'rg -n "test_official_source_adapter_harness_covers_current_implemented_states|adds_washington_seed|adds_ohio_seed|adds_illinois_seeds|skips_existing_washington_seed" tests/test_public_record_refresh.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '700,1060p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc 'rg -n "test_official_source_adapter_harness_covers_current_implemented_states|adds_washington_seed|adds_ohio_seed|adds_illinois_seeds|skips_existing_washington_seed" tests/test_public_record_refresh.py' in [redacted-path]
+/bin/zsh -lc "sed -n '700,1060p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 51ms:
 717:def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
 792:def test_discover_official_us_state_public_record_rows_adds_washington_seed() -> None:
 812:def test_discover_official_us_state_public_record_rows_skips_existing_washington_seed() -> None:
@@ -5272,7 +5483,7 @@ index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e
      "TN": _discover_tennessee_official_public_record_rows,
 
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -31,2 +31,55 @@
  
 +_BATCH_ONE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
@@ -5338,7 +5549,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
  
 @@ -791,2 +846,57 @@
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -5369,7 +5580,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -5396,7 +5607,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
  def test_discover_official_us_state_public_record_rows_adds_washington_seed() -> None:
 apply_patch(auto_approved=true) exited 0 in 58ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -5691,7 +5902,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -5722,7 +5933,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6044,7 +6255,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6075,7 +6286,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6182,7 +6393,7 @@ for row in new_rows:
 
 ordered = [by_id[key] for key in sorted(by_id)]
 path.write_text(json.dumps(ordered, indent=2, ensure_ascii=False) + '\\n', encoding='utf-8')
-PY" in /Users/scidsg/hushline succeeded in 53ms:
+PY" in [redacted-path] succeeded in 53ms:
 
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
@@ -6478,7 +6689,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6509,7 +6720,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6538,7 +6749,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
          [],
 
 exec
-/bin/zsh -lc "sed -n '1,120p' tests/test_directory.py" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,120p' tests/test_directory.py" in [redacted-path] succeeded in 53ms:
 import re
 import time
 from types import SimpleNamespace
@@ -6853,7 +7064,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6884,7 +7095,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -6915,14 +7126,14 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 codex
 I’m adding one strict dataset-policy assertion in `tests/test_directory.py` to lock in coverage for this new adapter batch so regressions are caught at the artifact level.
 file update
-M /Users/scidsg/hushline/tests/test_directory.py
+M [redacted-path]
 @@ -389,2 +389,3 @@
          assert us_covered
 +        assert {"AK", "AL", "AR", "AZ", "CA", "CO", "IL", "OH", "TN", "WA"}.issubset(us_covered)
  
 apply_patch(auto_approved=true) exited 0 in 64ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_directory.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -7229,7 +7440,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -7260,7 +7471,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -7594,7 +7805,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -7625,7 +7836,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -7666,7 +7877,7 @@ for p in paths:
         print(p)
         for i,n in bad[:20]:
             print(i,n)
-PY" in /Users/scidsg/hushline succeeded in 53ms:
+PY" in [redacted-path] succeeded in 53ms:
 hushline/public_record_refresh.py
 273 103
 318 107
@@ -7979,7 +8190,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -8010,7 +8221,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -8039,9 +8250,9 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
          [],
 
 exec
-/bin/zsh -lc "nl -ba hushline/public_record_refresh.py | sed -n '880,915p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba hushline/public_record_refresh.py | sed -n '250,330p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba tests/test_public_record_refresh.py | sed -n '860,895p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "nl -ba hushline/public_record_refresh.py | sed -n '880,915p'" in [redacted-path]
+/bin/zsh -lc "nl -ba hushline/public_record_refresh.py | sed -n '250,330p'" in [redacted-path]
+/bin/zsh -lc "nl -ba tests/test_public_record_refresh.py | sed -n '860,895p'" in [redacted-path] succeeded in 53ms:
    880	)
    881	
    882	
@@ -8410,7 +8621,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -8441,7 +8652,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -8470,7 +8681,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..e61581a16e557df44502ef7830524de5
          [],
 
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -878,3 +878,6 @@
  @pytest.mark.parametrize(
 -    "state_code,existing_id,existing_slug,existing_name,_expected_source_label,_expected_source_url",
@@ -8481,7 +8692,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
      _BATCH_ONE_STATE_SEEDS,
 apply_patch(auto_approved=true) exited 0 in 83ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 02546829a377488cabdd279ed84c4c0d23540191..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -8788,7 +8999,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -8819,7 +9030,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -9156,7 +9367,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -9187,7 +9398,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -9221,9 +9432,9 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 codex
 Core edits are in place. I’m doing a quick diff/consistency pass (file-level inspection and JSON validity) before I finalize so we don’t leave formatting or data-shape issues behind.
 exec
-/bin/zsh -lc 'git status --short' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "git diff -- hushline/public_record_refresh.py tests/test_public_record_refresh.py tests/test_directory.py hushline/data/public_record_law_firms.json | sed -n '1,280p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'python3 -m json.tool hushline/data/public_record_law_firms.json > /tmp/public_record_law_firms.pretty.json && echo ok' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'git status --short' in [redacted-path]
+/bin/zsh -lc "git diff -- hushline/public_record_refresh.py tests/test_public_record_refresh.py tests/test_directory.py hushline/data/public_record_law_firms.json | sed -n '1,280p'" in [redacted-path]
+/bin/zsh -lc 'python3 -m json.tool hushline/data/public_record_law_firms.json > /tmp/public_record_law_firms.pretty.json && echo ok' in [redacted-path] succeeded in 52ms:
  M hushline/data/public_record_law_firms.json
  M hushline/public_record_refresh.py
  M tests/test_directory.py
@@ -9557,7 +9768,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -9588,7 +9799,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -9620,7 +9831,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc 'git show HEAD:hushline/data/public_record_law_firms.json > hushline/data/public_record_law_firms.json' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'git show HEAD:hushline/data/public_record_law_firms.json > hushline/data/public_record_law_firms.json' in [redacted-path] succeeded in 53ms:
 
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
@@ -9928,7 +10139,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -9959,7 +10170,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -9991,9 +10202,9 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '1,140p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '140,280p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '280,360p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '1,140p'" in [redacted-path]
+/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '140,280p'" in [redacted-path]
+/bin/zsh -lc "nl -ba hushline/data/public_record_law_firms.json | sed -n '280,360p'" in [redacted-path] succeeded in 52ms:
    140	    "city": "Chicago",
    141	    "state": "IL",
    142	    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
@@ -10362,7 +10573,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -10393,7 +10604,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -10427,7 +10638,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 codex
 I reverted the broad JSON reformat and I’m now inserting only the five new rows into `public_record_law_firms.json` in-place to keep the dataset diff minimal.
 file update
-M /Users/scidsg/hushline/hushline/data/public_record_law_firms.json
+M [redacted-path]
 @@ -38,2 +38,14 @@
    {
 +    "id": "seed-anthony-cali",
@@ -10502,7 +10713,7 @@ M /Users/scidsg/hushline/hushline/data/public_record_law_firms.json
      "id": "seed-robert-aram-jigarjian",
 apply_patch(auto_approved=true) exited 0 in 72ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/hushline/data/public_record_law_firms.json
+M [redacted-path]
 file update:
 diff --git a/hushline/data/public_record_law_firms.json b/hushline/data/public_record_law_firms.json
 index 0b713f72c68ddcc7b142684e852c30ce10ae28be..cf55be7484c21ac3d915492524445391d8dadf67
@@ -10901,7 +11112,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -10932,7 +11143,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -11361,7 +11572,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -11392,7 +11603,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -11424,8 +11635,8 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc "git diff -- hushline/data/public_record_law_firms.json | sed -n '1,240p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'git diff --stat' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "git diff -- hushline/data/public_record_law_firms.json | sed -n '1,240p'" in [redacted-path]
+/bin/zsh -lc 'git diff --stat' in [redacted-path] succeeded in 52ms:
 diff --git a/hushline/data/public_record_law_firms.json b/hushline/data/public_record_law_firms.json
 index 0b713f72..cf55be74 100644
 --- a/hushline/data/public_record_law_firms.json
@@ -11453,7 +11664,7 @@ index 0b713f72..cf55be74 100644
  tests/test_public_record_refresh.py        | 115 +++++++++++++++++-
  4 files changed, 363 insertions(+), 1 deletion(-)
 exec
-/bin/zsh -lc 'python3 -m json.tool hushline/data/public_record_law_firms.json > /tmp/public_record_law_firms.pretty.json && echo ok' in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc 'python3 -m json.tool hushline/data/public_record_law_firms.json > /tmp/public_record_law_firms.pretty.json && echo ok' in [redacted-path] succeeded in 53ms:
 ok
 file update:
 diff --git a/hushline/data/public_record_law_firms.json b/hushline/data/public_record_law_firms.json
@@ -11853,7 +12064,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -11884,7 +12095,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -11918,10 +12129,10 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 codex
 I’m doing one last read-through of the modified adapter/test blocks to catch any naming or ordering mistakes before handing this back.
 exec
-/bin/zsh -lc 'rg -n "_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_discover_alaska_official_public_record_rows|_discover_alabama_official_public_record_rows|_discover_arkansas_official_public_record_rows|_discover_arizona_official_public_record_rows|_discover_colorado_official_public_record_rows|_OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES" hushline/public_record_refresh.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,180p' tests/test_public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '760,1160p' hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '700,980p' tests/test_public_record_refresh.py" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'rg -n "_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_discover_alaska_official_public_record_rows|_discover_alabama_official_public_record_rows|_discover_arkansas_official_public_record_rows|_discover_arizona_official_public_record_rows|_discover_colorado_official_public_record_rows|_OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES" hushline/public_record_refresh.py' in [redacted-path]
+/bin/zsh -lc "sed -n '1,180p' tests/test_public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '760,1160p' hushline/public_record_refresh.py" in [redacted-path]
+/bin/zsh -lc "sed -n '700,980p' tests/test_public_record_refresh.py" in [redacted-path] succeeded in 52ms:
 775:_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 797:_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 816:_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
@@ -12403,7 +12614,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -12434,7 +12645,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -12863,7 +13074,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -12894,7 +13105,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -12926,7 +13137,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc 'PYTHONPYCACHEPREFIX=/tmp/pycache python3 -m py_compile hushline/public_record_refresh.py tests/test_public_record_refresh.py tests/test_directory.py' in /Users/scidsg/hushline succeeded in 93ms:
+/bin/zsh -lc 'PYTHONPYCACHEPREFIX=/tmp/pycache python3 -m py_compile hushline/public_record_refresh.py tests/test_public_record_refresh.py tests/test_directory.py' in [redacted-path] succeeded in 93ms:
 
 file update:
 diff --git a/hushline/data/public_record_law_firms.json b/hushline/data/public_record_law_firms.json
@@ -13326,7 +13537,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -13357,7 +13568,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -13389,10 +13600,10 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc 'rg -n "_BATCH_ONE_STATE_SEEDS|adds_batch_one_seed|skips_existing_batch_one_seed|covers_current_implemented_states" tests/test_public_record_refresh.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'rg -n "_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_discover_alaska_official_public_record_rows|_discover_alabama_official_public_record_rows|_discover_arkansas_official_public_record_rows|_discover_arizona_official_public_record_rows|_discover_colorado_official_public_record_rows|OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES" hushline/public_record_refresh.py' in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'rg -n "seed-anthony-cali|seed-jon-marc-petersen|seed-kristin-l-pawlik|seed-marc-james-ayers|seed-rachel-brock" hushline/data/public_record_law_firms.json' in /Users/scidsg/hushlineexec
-/bin/zsh -lc "rg -n \"AK|AL|AR|AZ|CO\" tests/test_directory.py | sed -n '1,20p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc 'rg -n "_BATCH_ONE_STATE_SEEDS|adds_batch_one_seed|skips_existing_batch_one_seed|covers_current_implemented_states" tests/test_public_record_refresh.py' in [redacted-path]
+/bin/zsh -lc 'rg -n "_ALASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARKANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_COLORADO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_discover_alaska_official_public_record_rows|_discover_alabama_official_public_record_rows|_discover_arkansas_official_public_record_rows|_discover_arizona_official_public_record_rows|_discover_colorado_official_public_record_rows|OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES" hushline/public_record_refresh.py' in [redacted-path]
+/bin/zsh -lc 'rg -n "seed-anthony-cali|seed-jon-marc-petersen|seed-kristin-l-pawlik|seed-marc-james-ayers|seed-rachel-brock" hushline/data/public_record_law_firms.json' in [redacted-path]
+/bin/zsh -lc "rg -n \"AK|AL|AR|AZ|CO\" tests/test_directory.py | sed -n '1,20p'" in [redacted-path] succeeded in 52ms:
 32:_BATCH_ONE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
 770:def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
 849:    _BATCH_ONE_STATE_SEEDS,
@@ -13829,7 +14040,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -13860,7 +14071,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -13892,7 +14103,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc "rg -o '\"state\": \"["'^"]+"'"' hushline/data/public_record_law_firms.json | sed 's/\"state\": \"//; s/\""'$//'"' | sort | uniq -c | sort -k2" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "rg -o '\"state\": \"["'^"]+"'"' hushline/data/public_record_law_firms.json | sed 's/\"state\": \"//; s/\""'$//'"' | sort | uniq -c | sort -k2" in [redacted-path] succeeded in 52ms:
    1 AK
    1 AL
    1 AR
@@ -14301,7 +14512,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -14332,7 +14543,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -14364,7 +14575,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
          [],
 
 exec
-/bin/zsh -lc 'git status --short' in /Users/scidsg/hushline succeeded in 51ms:
+/bin/zsh -lc 'git status --short' in [redacted-path] succeeded in 51ms:
  M hushline/data/public_record_law_firms.json
  M hushline/public_record_refresh.py
  M tests/test_directory.py
@@ -14767,7 +14978,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -14798,7 +15009,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -14832,10 +15043,10 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 codex
 Implemented issue #1505 with minimal scoped changes for `AK`, `AL`, `AR`, `AZ`, and `CO`.
 
-- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:775), [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1144), and [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1279).
-- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:32), [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:849), and [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:885).
-- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py](/Users/scidsg/hushline/tests/test_directory.py:390).
-- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:39), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:195), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:255), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:267), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:327).
+- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py]([redacted-path] [public_record_refresh.py]([redacted-path] and [public_record_refresh.py]([redacted-path]
+- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py]([redacted-path] [test_public_record_refresh.py]([redacted-path] and [test_public_record_refresh.py]([redacted-path]
+- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py]([redacted-path]
+- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path]
 
 Quick checks run:
 - `python3 -m json.tool hushline/data/public_record_law_firms.json`
@@ -15240,7 +15451,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
      )
  
  
-+@pytest.mark.parametrize(
+[redacted-email](
 +    "state_code,expected_id,expected_slug,expected_name,expected_source_label,expected_source_url",
 +    _BATCH_ONE_STATE_SEEDS,
 +)
@@ -15271,7 +15482,7 @@ index e4cb43ab0241787bd081d50beb8d42289a09760f..ff8f121504c5e08051cc6cb5b896aca4
 +    assert row["source_url"] == expected_source_url
 +
 +
-+@pytest.mark.parametrize(
+[redacted-email](
 +    (
 +        "state_code,existing_id,existing_slug,existing_name,"
 +        "_expected_source_label,_expected_source_url"
@@ -15306,10 +15517,10 @@ tokens used
 282,991
 Implemented issue #1505 with minimal scoped changes for `AK`, `AL`, `AR`, `AZ`, and `CO`.
 
-- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:775), [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1144), and [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1279).
-- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:32), [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:849), and [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:885).
-- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py](/Users/scidsg/hushline/tests/test_directory.py:390).
-- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:39), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:195), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:255), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:267), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:327).
+- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py]([redacted-path] [public_record_refresh.py]([redacted-path] and [public_record_refresh.py]([redacted-path]
+- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py]([redacted-path] [test_public_record_refresh.py]([redacted-path] and [test_public_record_refresh.py]([redacted-path]
+- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py]([redacted-path]
+- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path]
 
 Quick checks run:
 - `python3 -m json.tool hushline/data/public_record_law_firms.json`
@@ -15320,10 +15531,10 @@ Codex execution completed.
 Codex final message:
 Implemented issue #1505 with minimal scoped changes for `AK`, `AL`, `AR`, `AZ`, and `CO`.
 
-- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:775), [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1144), and [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1279).
-- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:32), [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:849), and [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:885).
-- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py](/Users/scidsg/hushline/tests/test_directory.py:390).
-- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:39), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:195), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:255), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:267), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:327).
+- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py]([redacted-path] [public_record_refresh.py]([redacted-path] and [public_record_refresh.py]([redacted-path]
+- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py]([redacted-path] [test_public_record_refresh.py]([redacted-path] and [test_public_record_refresh.py]([redacted-path]
+- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py]([redacted-path]
+- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path]
 
 Quick checks run:
 - `python3 -m json.tool hushline/data/public_record_law_firms.json`
@@ -15402,14 +15613,14 @@ Workflow checks failed; Codex self-heal attempt 1.
 Codex execution started; streaming transcript output.
 OpenAI Codex v0.107.0 (research preview)
 --------
-workdir: /Users/scidsg/hushline
-model: gpt-5.3-codex
-provider: openai
-approval: never
-sandbox: workspace-write [workdir, /tmp, $TMPDIR]
-reasoning effort: high
-reasoning summaries: none
-session id: 019cc3ee-f7f3-77c1-8766-fe33cafe5cd6
+workdir: [redacted]
+model: [redacted]
+provider: [redacted]
+approval: [redacted]
+sandbox: [redacted]
+reasoning effort: [redacted]
+reasoning summaries: [redacted]
+session id: [redacted]
 --------
 user
 You are continuing GitHub issue #1505 in scidsg/hushline on branch codex/daily-issue-1505.
@@ -15441,10 +15652,10 @@ Most recent Codex implementation summary:
 ---BEGIN PRIOR CODEX SUMMARY---
 Implemented issue #1505 with minimal scoped changes for `AK`, `AL`, `AR`, `AZ`, and `CO`.
 
-- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:775), [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1144), and [public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:1279).
-- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:32), [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:849), and [test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:885).
-- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py](/Users/scidsg/hushline/tests/test_directory.py:390).
-- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:39), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:195), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:255), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:267), [public_record_law_firms.json](/Users/scidsg/hushline/hushline/data/public_record_law_firms.json:327).
+- Added new official-source seed adapters and wired them into overrides in [public_record_refresh.py]([redacted-path] [public_record_refresh.py]([redacted-path] and [public_record_refresh.py]([redacted-path]
+- Extended adapter tests with batch-1 state fixtures and parameterized add/skip assertions in [test_public_record_refresh.py]([redacted-path] [test_public_record_refresh.py]([redacted-path] and [test_public_record_refresh.py]([redacted-path]
+- Updated strict dataset-policy coverage expectation to include the new states in [test_directory.py]([redacted-path]
+- Refreshed strict public-record data by adding five new records in [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path] [public_record_law_firms.json]([redacted-path]
 
 Quick checks run:
 - `python3 -m json.tool hushline/data/public_record_law_firms.json`
@@ -15550,10 +15761,10 @@ mcp startup: no servers
 codex
 I’m going to inspect the four modified files first, then make the smallest test-only adjustments to clear the reported lint failures while preserving the existing issue implementation.
 exec
-/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,220p' /Users/scidsg/hushline/hushline/public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,220p' /Users/scidsg/hushline/tests/test_public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "sed -n '1,240p' /Users/scidsg/hushline/tests/test_directory.py && echo '---' && sed -n '1,260p' /Users/scidsg/hushline/hushline/data/public_record_law_firms.json" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in [redacted-path]
+/bin/zsh -lc "sed -n '1,220p' [redacted-path]" in [redacted-path]
+/bin/zsh -lc "sed -n '1,220p' [redacted-path]" in [redacted-path]
+/bin/zsh -lc "sed -n '1,240p' [redacted-path] && echo '---' && sed -n '1,260p' [redacted-path]" in [redacted-path] succeeded in 53ms:
  M hushline/data/public_record_law_firms.json
  M hushline/public_record_refresh.py
  M tests/test_directory.py
@@ -15630,8 +15841,8 @@ from hushline.public_record_refresh import (
 codex
 I’ve confirmed the current diff and now I’m focusing on the exact failing section in `tests/test_public_record_refresh.py` around the reported Ruff line numbers to do a minimal lint-safe rewrite.
 exec
-/bin/zsh -lc "nl -ba /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '780,940p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '1,260p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "nl -ba [redacted-path] | sed -n '780,940p'" in [redacted-path]
+/bin/zsh -lc "git diff -- [redacted-path] | sed -n '1,260p'" in [redacted-path] succeeded in 53ms:
    780	    assert result.unsupported_states == ()
    781	    assert result.added_count_by_state == {state_code: len(result.rows)}
    782	    assert_official_source_adapter_rows(state_code, result.rows)
@@ -15676,7 +15887,7 @@ index e4cb43ab..ff8f1215 100644
 codex
 I found the lint root cause: the two new `parametrize` blocks use string-style arg lists (disallowed by project Ruff config), and one test currently has too many parameters. I’m now applying a minimal rewrite so each test takes a single seeded tuple and unpacks it internally.
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -84,2 +84,11 @@
  
 +_BATCH_ONE_SEED_PARAM_NAMES: tuple[str, str, str, str, str, str] = (
@@ -15738,7 +15949,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
      result = discover_official_us_state_public_record_rows(
 apply_patch(auto_approved=true) exited 0 in 49ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
 index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..3e8193e21d84b7a2d3d3bf5bf099403c2071984c
@@ -15896,7 +16107,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..3e8193e21d84b7a2d3d3bf5bf099403c
 codex
 I spotted a mismatch in that first edit: one decorator still declared six parameter names while the test now expects one tuple. I’m fixing that immediately with a small follow-up patch.
 exec
-/bin/zsh -lc "nl -ba /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '20,120p;840,930p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "nl -ba [redacted-path] | sed -n '20,120p;840,930p'" in [redacted-path] succeeded in 53ms:
     20	)
     21	from tests.public_record_adapter_harness import (
     22	    assert_official_source_adapter_rows,
@@ -15995,7 +16206,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..3e8193e21d84b7a2d3d3bf5bf099403c
          selected_regions=["US"],
 
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -84,12 +84,2 @@
  
 -_BATCH_ONE_SEED_PARAM_NAMES: tuple[str, str, str, str, str, str] = (
@@ -16018,7 +16229,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
  )
 apply_patch(auto_approved=true) exited 0 in 58ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
 index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9eba5edc16d7e4e56029df5f245d7d379318c6d3
@@ -16162,8 +16373,8 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9eba5edc16d7e4e56029df5f245d7d37
 codex
 I’m now checking the `public_record_refresh.py` diff for any remaining formatting-only drift, since the prior run also flagged that file for reformatting.
 exec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/hushline/public_record_refresh.py | sed -n '1,280p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '1,260p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "git diff -- [redacted-path] | sed -n '1,280p'" in [redacted-path]
+/bin/zsh -lc "git diff -- [redacted-path] | sed -n '1,260p'" in [redacted-path] succeeded in 53ms:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 02546829..35651950 100644
 --- a/hushline/public_record_refresh.py
@@ -16278,7 +16489,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9eba5edc16d7e4e56029df5f245d7d37
 codex
 I also found why `public_record_refresh.py` triggered `ruff format --check`: a few adjacent string literals are packed onto one line in the new seed rows. I’m making a tiny formatting-only patch there to eliminate that lint failure upfront.
 file update
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 @@ -803,3 +803,4 @@
          "description": (
 -            "Whistleblower attorney listing sourced from Alabama State Bar public " "directory."
@@ -16299,7 +16510,7 @@ M /Users/scidsg/hushline/hushline/public_record_refresh.py
          ),
 apply_patch(auto_approved=true) exited 0 in 56ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -16509,7 +16720,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9eba5edc16d7e4e56029df5f245d7d37
 codex
 I’m doing one final small consistency tweak in the test decorators so both parameterized tests use the same concrete list form, reducing lint ambiguity.
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -882,3 +882,3 @@
      ("batch_one_seed",),
 -    ((seed,) for seed in _BATCH_ONE_STATE_SEEDS),
@@ -16517,7 +16728,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
  )
 apply_patch(auto_approved=true) exited 0 in 64ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -16725,8 +16936,8 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc "nl -ba /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '836,920p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/hushline/public_record_refresh.py /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '1,320p'" in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "nl -ba [redacted-path] | sed -n '836,920p'" in [redacted-path]
+/bin/zsh -lc "git diff -- [redacted-path] [redacted-path] | sed -n '1,320p'" in [redacted-path] succeeded in 52ms:
    836	    assert by_name["Elizabeth Aida Acevedo"]["source_url"] == (
    837	        "https://apps.calbar.ca.gov/attorney/Licensee/Detail/227347"
    838	    )
@@ -16872,7 +17083,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in [redacted-path] succeeded in 53ms:
  M hushline/data/public_record_law_firms.json
  M hushline/public_record_refresh.py
  M tests/test_directory.py
@@ -16989,19 +17200,19 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 codex
 I’ve finished the minimal code edits. I’m doing a quick line-reference pass now so you can see exactly what changed and where.
 exec
-/bin/zsh -lc "rg -n \"_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|@pytest.mark.parametrize\\(|test_discover_official_us_state_public_record_rows_adds_batch_one_seed|test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed\" /Users/scidsg/hushline/hushline/public_record_refresh.py /Users/scidsg/hushline/tests/test_public_record_refresh.py" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "nl -ba /Users/scidsg/hushline/hushline/public_record_refresh.py | sed -n '790,870p' && echo '---' && nl -ba /Users/scidsg/hushline/hushline/public_record_refresh.py | sed -n '890,940p' && echo '---' && nl -ba /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '840,910p'" in /Users/scidsg/hushline succeeded in 52ms:
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:775:@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:784:@pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:785:@pytest.mark.parametrize("collision", ["id", "slug", "name"])
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:846:@pytest.mark.parametrize(
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:850:def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:881:@pytest.mark.parametrize(
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:885:def test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
-/Users/scidsg/hushline/hushline/public_record_refresh.py:797:_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
-/Users/scidsg/hushline/hushline/public_record_refresh.py:838:_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
-/Users/scidsg/hushline/hushline/public_record_refresh.py:1168:        seed_rows=_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
-/Users/scidsg/hushline/hushline/public_record_refresh.py:1198:        seed_rows=_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+/bin/zsh -lc "rg -n \"_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|@pytest.mark.parametrize\\(|test_discover_official_us_state_public_record_rows_adds_batch_one_seed|test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed\" [redacted-path] [redacted-path]" in [redacted-path]
+/bin/zsh -lc "nl -ba [redacted-path] | sed -n '790,870p' && echo '---' && nl -ba [redacted-path] | sed -n '890,940p' && echo '---' && nl -ba [redacted-path] | sed -n '840,910p'" in [redacted-path] succeeded in 52ms:
+[redacted-path]"state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-path]"state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+[redacted-path]"collision", ["id", "slug", "name"])
+[redacted-path]
+[redacted-path] test_discover_official_us_state_public_record_rows_adds_batch_one_seed(
+[redacted-path]
+[redacted-path] test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
+[redacted-path] tuple[PublicRecordRow, ...] = (
+[redacted-path] tuple[PublicRecordRow, ...] = (
+[redacted-path]        seed_rows=_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+[redacted-path]        seed_rows=_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
  succeeded in 53ms:
    790	            "https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info"
    791	            "?CUSTOMERCD=8744&WRP=Customer_Profile.htm"
@@ -17129,7 +17340,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 codex
 I’ve completed the minimal patches; I’m running `make lint` once to confirm the specific lint failures are resolved before handing this back.
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
 --- a/hushline/public_record_refresh.py
@@ -17465,7 +17676,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 codex
 `make fix` could not run in this sandbox due Docker daemon permission denial, so I’ll finish by manually matching Ruff’s formatting expectations in the two flagged files and avoid further container calls.
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
 --- a/hushline/public_record_refresh.py
@@ -17799,13 +18010,13 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 exec
 /bin/zsh -lc "python3 - <<'PY'
 from pathlib import Path
-for p in [Path('/Users/scidsg/hushline/hushline/public_record_refresh.py'), Path('/Users/scidsg/hushline/tests/test_public_record_refresh.py')]:
+for p in [Path('[redacted-path]'), Path('[redacted-path]')]:
     print('---', p)
     for i,l in enumerate(p.read_text().splitlines(),1):
         if len(l) > 88:
             print(i, len(l), l[:140])
-PY" in /Users/scidsg/hushline succeeded in 53ms:
---- /Users/scidsg/hushline/hushline/public_record_refresh.py
+PY" in [redacted-path] succeeded in 53ms:
+--- [redacted-path]
 30 93     "https://chamberssitemap.blob.core.windows.net/site-json/organisations/ranked/{group_id}"
 33 89     "https://chambers.com/law-firm/{slug_base}-{group_slug}-{group_id}:{organisation_id}"
 36 93     "https://profiles-portal.chambers.com/api/organisations/{organisation_id}/profile-basics"
@@ -17929,7 +18140,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc "sed -n '1,260p' /Users/scidsg/hushline/Makefile" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "sed -n '1,260p' [redacted-path]" in [redacted-path] succeeded in 53ms:
 .DEFAULT_GOAL := help
 
 ifndef IS_DOCKER
@@ -18159,7 +18370,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc 'python3 -m black --version' in /Users/scidsg/hushline exited 1 in 53ms:
+/bin/zsh -lc 'python3 -m black --version' in [redacted-path] exited 1 in 53ms:
 /Library/Developer/CommandLineTools/usr/bin/python3: No module named black
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
@@ -18267,7 +18478,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 codex
 I still can run single `make`-driven container commands reliably, so I’m executing a one-off `make` eval target that runs only `ruff format` on the two flagged files.
 exec
-/bin/zsh -lc "make --eval 'fmt-two-files: ; "'$(CMD) poetry run ruff format hushline/public_record_refresh.py tests/test_public_record_refresh.py'"' fmt-two-files" in /Users/scidsg/hushline exited 2 in 51ms:
+/bin/zsh -lc "make --eval 'fmt-two-files: ; "'$(CMD) poetry run ruff format hushline/public_record_refresh.py tests/test_public_record_refresh.py'"' fmt-two-files" in [redacted-path] exited 2 in 51ms:
 /Library/Developer/CommandLineTools/usr/bin/make: unrecognized option `--eval'
 Usage: make [options] [target] ...
 Options:
@@ -18497,7 +18708,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
 --- a/hushline/public_record_refresh.py
@@ -18829,7 +19040,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
          selected_regions=["US"],
 
 exec
-/bin/zsh -lc "nl -ba /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '20,110p;836,910p'" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "nl -ba [redacted-path] | sed -n '20,110p;836,910p'" in [redacted-path] succeeded in 53ms:
     20	)
     21	from tests.public_record_adapter_harness import (
     22	    assert_official_source_adapter_rows,
@@ -18956,7 +19167,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a533c84e253acd4c913dcee723ff4563
 codex
 I’ve got the current exact block; I’m applying the same lint-driven rewrite again with corrected patch anchors.
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -84,2 +84,7 @@
  
 +_BATCH_ONE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
@@ -19018,7 +19229,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
      result = discover_official_us_state_public_record_rows(
 apply_patch(auto_approved=true) exited 0 in 48ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
@@ -19216,7 +19427,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..d417a638f0973e1d78b69ececa7759f0
 codex
 I’ve applied the test rewrite; I’m re-running `make lint` to see whether formatting drift is now limited to one file or fully resolved.
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 diff --git a/hushline/public_record_refresh.py b/hushline/public_record_refresh.py
 index 35651950feb76a8850023f843d36d3e10cc8d938..7a21dd103dd946f50af1e395f2011d8e0f7f9017
 --- a/hushline/public_record_refresh.py
@@ -19532,7 +19743,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..d417a638f0973e1d78b69ececa7759f0
 codex
 Custom one-off make targets are intermittently blocked by Docker permissions, so I’m using a temporary local tweak to the existing `lint` target (`--check --diff`) to extract Ruff’s exact formatting diff, then I’ll restore `Makefile` immediately.
 file update
-M /Users/scidsg/hushline/Makefile
+M [redacted-path]
 @@ -68,3 +68,3 @@
  lint: ## Lint the code
 -	$(CMD) poetry run ruff format --check && \
@@ -19540,7 +19751,7 @@ M /Users/scidsg/hushline/Makefile
  	$(CMD) poetry run ruff check --output-format full && \
 apply_patch(auto_approved=true) exited 0 in 66ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/Makefile
+M [redacted-path]
 file update:
 diff --git a/Makefile b/Makefile
 index 1de6d0ccd7332f752f51e05738c926ebdfdc67c7..04c1157cdbc0e50b7a45bf648a62952592f9aa92
@@ -19762,7 +19973,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..d417a638f0973e1d78b69ececa7759f0
          [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
 
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 diff --git a/Makefile b/Makefile
 index 1de6d0ccd7332f752f51e05738c926ebdfdc67c7..04c1157cdbc0e50b7a45bf648a62952592f9aa92
 --- a/Makefile
@@ -20118,7 +20329,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..d417a638f0973e1d78b69ececa7759f0
 codex
 Ruff diff is clear now: it wants those adjacent literal joins collapsed back to single-line adjacency in `public_record_refresh.py`, and one extra blank line before `_row` in the test file. I’m applying exactly that, then restoring `Makefile` to its original lint command.
 file update
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 @@ -803,4 +803,3 @@
          "description": (
 -            "Whistleblower attorney listing sourced from Alabama State Bar public "
@@ -20139,7 +20350,7 @@ M /Users/scidsg/hushline/hushline/public_record_refresh.py
          ),
 apply_patch(auto_approved=true) exited 0 in 84ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/hushline/public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/Makefile b/Makefile
 index 1de6d0ccd7332f752f51e05738c926ebdfdc67c7..04c1157cdbc0e50b7a45bf648a62952592f9aa92
@@ -20295,14 +20506,14 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..d417a638f0973e1d78b69ececa7759f0
          [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
 
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -89,2 +89,3 @@
  
 +
  def _row(  # noqa: PLR0913
 apply_patch(auto_approved=true) exited 0 in 84ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 diff --git a/Makefile b/Makefile
 index 1de6d0ccd7332f752f51e05738c926ebdfdc67c7..04c1157cdbc0e50b7a45bf648a62952592f9aa92
@@ -20462,7 +20673,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9728ee619b83f3749f0d9db2767ca0d3
 codex
 I’m restoring `Makefile` to its original `ruff format --check` lint command now, so no tooling config changes remain in the branch.
 file update
-M /Users/scidsg/hushline/Makefile
+M [redacted-path]
 @@ -68,3 +68,3 @@
  lint: ## Lint the code
 -	$(CMD) poetry run ruff format --check --diff && \
@@ -20470,7 +20681,7 @@ M /Users/scidsg/hushline/Makefile
  	$(CMD) poetry run ruff check --output-format full && \
 apply_patch(auto_approved=true) exited 0 in 81ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/Makefile
+M [redacted-path]
 file update:
 
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
@@ -20604,7 +20815,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9728ee619b83f3749f0d9db2767ca0d3
          [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
 
 exec
-/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in /Users/scidsg/hushline succeeded in 53ms:
+/bin/zsh -lc "git status --short && echo '---' && git diff --stat" in [redacted-path] succeeded in 53ms:
  M hushline/data/public_record_law_firms.json
  M hushline/public_record_refresh.py
  M tests/test_directory.py
@@ -20684,7 +20895,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9728ee619b83f3749f0d9db2767ca0d3
 codex
 The temporary lint-target tweak is fully reverted. I’m running `make lint` again to verify formatting and confirm there are no remaining Ruff/mypy/prettier blockers.
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
 index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9728ee619b83f3749f0d9db2767ca0d3374d4093
@@ -20908,7 +21119,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..9728ee619b83f3749f0d9db2767ca0d3
 codex
 Formatter now passes; remaining lint is one `PLR0913` hit because the `noqa` is on the return annotation line instead of the `def` line. I’m moving that suppression to the correct line and removing the stale directive.
 file update
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 @@ -862,3 +862,3 @@
  )
 -def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(
@@ -20921,7 +21132,7 @@ M /Users/scidsg/hushline/tests/test_public_record_refresh.py
      result = discover_official_us_state_public_record_rows(
 apply_patch(auto_approved=true) exited 0 in 57ms:
 Success. Updated the following files:
-M /Users/scidsg/hushline/tests/test_public_record_refresh.py
+M [redacted-path]
 file update:
 
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
@@ -21045,7 +21256,7 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a99c9564f3d4f6977b6a511ccc0ce54b
          [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
 
 exec
-/bin/zsh -lc 'make lint' in /Users/scidsg/hushlinefile update:
+/bin/zsh -lc 'make lint' in [redacted-path] update:
 
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
 index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a99c9564f3d4f6977b6a511ccc0ce54b1f5b5cf1
@@ -21498,9 +21709,9 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a99c9564f3d4f6977b6a511ccc0ce54b
 codex
 `make lint` now completes successfully end-to-end. I’m doing a final diff sanity check and then I’ll summarize exactly what changed.
 exec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/hushline/public_record_refresh.py | sed -n '1,260p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc "git diff -- /Users/scidsg/hushline/tests/test_public_record_refresh.py | sed -n '1,260p'" in /Users/scidsg/hushlineexec
-/bin/zsh -lc 'git status --short' in /Users/scidsg/hushline succeeded in 52ms:
+/bin/zsh -lc "git diff -- [redacted-path] | sed -n '1,260p'" in [redacted-path]
+/bin/zsh -lc "git diff -- [redacted-path] | sed -n '1,260p'" in [redacted-path]
+/bin/zsh -lc 'git status --short' in [redacted-path] succeeded in 52ms:
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
 index e4cb43ab..a99c9564 100644
 --- a/tests/test_public_record_refresh.py
@@ -21609,15 +21820,15 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a99c9564f3d4f6977b6a511ccc0ce54b
          [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
 
 exec
-/bin/zsh -lc 'rg -n "_BATCH_ONE_EXISTING_COLLISION_CASES|adds_batch_one_seed|skips_existing_batch_one_seed|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS" /Users/scidsg/hushline/tests/test_public_record_refresh.py /Users/scidsg/hushline/hushline/public_record_refresh.py' in /Users/scidsg/hushline succeeded in 53ms:
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:85:_BATCH_ONE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:863:def test_discover_official_us_state_public_record_rows_adds_batch_one_seed(  # noqa: PLR0913
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:892:    _BATCH_ONE_EXISTING_COLLISION_CASES,
-/Users/scidsg/hushline/tests/test_public_record_refresh.py:894:def test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
-/Users/scidsg/hushline/hushline/public_record_refresh.py:797:_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
-/Users/scidsg/hushline/hushline/public_record_refresh.py:837:_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
-/Users/scidsg/hushline/hushline/public_record_refresh.py:1165:        seed_rows=_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
-/Users/scidsg/hushline/hushline/public_record_refresh.py:1195:        seed_rows=_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+/bin/zsh -lc 'rg -n "_BATCH_ONE_EXISTING_COLLISION_CASES|adds_batch_one_seed|skips_existing_batch_one_seed|_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS|_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS" [redacted-path] [redacted-path]' in [redacted-path] succeeded in 53ms:
+[redacted-path] tuple[tuple[str, str, str, str], ...] = tuple(
+[redacted-path] test_discover_official_us_state_public_record_rows_adds_batch_one_seed(  # noqa: PLR0913
+[redacted-path]    _BATCH_ONE_EXISTING_COLLISION_CASES,
+[redacted-path] test_discover_official_us_state_public_record_rows_skips_existing_batch_one_seed(
+[redacted-path] tuple[PublicRecordRow, ...] = (
+[redacted-path] tuple[PublicRecordRow, ...] = (
+[redacted-path]        seed_rows=_ALABAMA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+[redacted-path]        seed_rows=_ARIZONA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
 file update:
 
 diff --git a/tests/test_public_record_refresh.py b/tests/test_public_record_refresh.py
@@ -21682,12 +21893,12 @@ index ff8f121504c5e08051cc6cb5b896aca42d7e8f18..a99c9564f3d4f6977b6a511ccc0ce54b
 codex
 Applied minimal fixes to clear the failing local workflow-equivalent lint checks while preserving the issue implementation.
 
-- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:85):
+- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py]([redacted-path]
   - Added `_BATCH_ONE_EXISTING_COLLISION_CASES` for 4-field skip cases.
   - Switched `@pytest.mark.parametrize` argnames to tuple form (fixes `PT006`).
   - Removed `_expected_*` injected params by using explicit 4-arg skip parametrization (fixes `PT019`).
   - Kept the 6-arg add test and applied a scoped suppression on the `def` line (fixes `PLR0913` cleanly).
-- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:797) (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
+- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py]([redacted-path] (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
 
 Validation run:
 - `make lint` passed fully (ruff format/check, mypy, prettier).
@@ -21758,12 +21969,12 @@ tokens used
 77,294
 Applied minimal fixes to clear the failing local workflow-equivalent lint checks while preserving the issue implementation.
 
-- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:85):
+- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py]([redacted-path]
   - Added `_BATCH_ONE_EXISTING_COLLISION_CASES` for 4-field skip cases.
   - Switched `@pytest.mark.parametrize` argnames to tuple form (fixes `PT006`).
   - Removed `_expected_*` injected params by using explicit 4-arg skip parametrization (fixes `PT019`).
   - Kept the 6-arg add test and applied a scoped suppression on the `def` line (fixes `PLR0913` cleanly).
-- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:797) (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
+- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py]([redacted-path] (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
 
 Validation run:
 - `make lint` passed fully (ruff format/check, mypy, prettier).
@@ -21773,12 +21984,12 @@ Codex execution completed.
 Codex final message:
 Applied minimal fixes to clear the failing local workflow-equivalent lint checks while preserving the issue implementation.
 
-- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py](/Users/scidsg/hushline/tests/test_public_record_refresh.py:85):
+- Updated the new batch-1 adapter tests in [tests/test_public_record_refresh.py]([redacted-path]
   - Added `_BATCH_ONE_EXISTING_COLLISION_CASES` for 4-field skip cases.
   - Switched `@pytest.mark.parametrize` argnames to tuple form (fixes `PT006`).
   - Removed `_expected_*` injected params by using explicit 4-arg skip parametrization (fixes `PT019`).
   - Kept the 6-arg add test and applied a scoped suppression on the `def` line (fixes `PLR0913` cleanly).
-- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py](/Users/scidsg/hushline/hushline/public_record_refresh.py:797) (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
+- Restored Ruff’s expected literal formatting in [hushline/public_record_refresh.py]([redacted-path] (the Alabama/Arizona seed string-join style Ruff enforces), so formatter checks now pass.
 
 Validation run:
 - `make lint` passed fully (ruff format/check, mypy, prettier).
@@ -21853,7 +22064,7 @@ Success: no issues found in 158 source files
 Checking formatting...
 All matched files use Prettier code style!
 ==> Run workflow security checks
-docker run --rm -v "/Users/scidsg/hushline:/work" -w /work rhysd/actionlint:1.7.7 -color
+docker run --rm -v "[redacted-path]" -w /work rhysd/actionlint:1.7.7 -color
 Unable to find image 'rhysd/actionlint:1.7.7' locally
 1.7.7: Pulling from rhysd/actionlint
 25d2e00cf929: Pulling fs layer
