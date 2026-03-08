@@ -7,7 +7,10 @@ import pyotp
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-from helpers import get_captcha_from_session, get_captcha_from_session_register
+from helpers import (
+    get_captcha_from_session_register,
+    get_profile_submission_data,
+)
 
 from hushline.db import db
 from hushline.model import (
@@ -46,8 +49,7 @@ def _submit_message(client: FlaskClient, user: User, encrypted_email_body: str =
     data = {
         "field_0": "Signal",
         "field_1": "Contract test message",
-        "username_user_id": user.id,
-        "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        **get_profile_submission_data(client, user.primary_username.username),
     }
     if encrypted_email_body:
         data["encrypted_email_body"] = encrypted_email_body

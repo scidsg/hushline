@@ -5,7 +5,7 @@ import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-from helpers import get_captcha_from_session
+from helpers import get_profile_submission_data
 from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.exceptions import NotFound
 
@@ -80,6 +80,21 @@ def test_profile_404s_when_case_insensitive_lookup_is_ambiguous(app: Flask) -> N
         app.view_functions["profile"]("CaseUser")
 
 
+def test_profile_does_not_expose_owner_user_id(client: FlaskClient, user: User) -> None:
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert soup.find("input", attrs={"name": "username_user_id"}) is None
+
+    nonce_input = soup.find("input", attrs={"name": "owner_guard_nonce"})
+    signature_input = soup.find("input", attrs={"name": "owner_guard_signature"})
+    assert nonce_input is not None
+    assert signature_input is not None
+    assert nonce_input.get("value")
+    assert signature_input.get("value")
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_submit_message(client: FlaskClient, user: User) -> None:
@@ -88,8 +103,7 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -118,8 +132,7 @@ def test_profile_submit_message_to_alias(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user_alias.username),
         },
         follow_redirects=True,
     )
@@ -140,16 +153,15 @@ def test_profile_submit_message_to_alias(
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_failed_submit_preserves_input(client: FlaskClient, user: User) -> None:
     username = user.primary_username.username
-    response = client.get(url_for("profile", username=username))
-    assert response.status_code == 200
+    submission_data = get_profile_submission_data(client, username)
+    submission_data["captcha_answer"] = "0"
 
     response = client.post(
         url_for("profile", username=username),
         data={
             "field_0": "Contact info preserved",
             "field_1": "Message preserved",
-            "username_user_id": user.id,
-            "captcha_answer": "0",
+            **submission_data,
         },
         follow_redirects=True,
     )
@@ -161,15 +173,17 @@ def test_profile_failed_submit_preserves_input(client: FlaskClient, user: User) 
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
-def test_profile_rejects_user_id_mismatch(client: FlaskClient, user: User, user2: User) -> None:
+def test_profile_rejects_owner_guard_mismatch(client: FlaskClient, user: User) -> None:
     username = user.primary_username.username
+    submission_data = get_profile_submission_data(client, username)
+    submission_data["owner_guard_signature"] = "tampered-signature"
+
     response = client.post(
         url_for("profile", username=username),
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user2.id,
-            "captcha_answer": get_captcha_from_session(client, username),
+            **submission_data,
         },
         follow_redirects=True,
     )
@@ -204,8 +218,7 @@ def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, us
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -221,8 +234,7 @@ def test_profile_post_form_validation_errors_are_rendered(client: FlaskClient, u
         data={
             "field_0": "",
             "field_1": "",
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -254,9 +266,8 @@ def test_profile_full_body_encryption_fallback_to_generic_when_no_fields(
     response = client.post(
         url_for("profile", username=user.primary_username.username),
         data={
-            "username_user_id": user.id,
             "encrypted_email_body": "",
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -292,9 +303,8 @@ def test_profile_full_body_encryption_exception_falls_back_to_generic(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
             "encrypted_email_body": "",
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
