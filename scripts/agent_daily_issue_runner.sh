@@ -3,23 +3,6 @@ set -euo pipefail
 
 FORCE_ISSUE_NUMBER=""
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --issue)
-      FORCE_ISSUE_NUMBER="${2:-}"
-      if [[ -z "$FORCE_ISSUE_NUMBER" ]]; then
-        echo "Missing value for --issue" >&2
-        exit 1
-      fi
-      shift 2
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      exit 1
-      ;;
-  esac
-done
-
 REPO_DIR="${HUSHLINE_REPO_DIR:-$HOME/hushline}"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
@@ -37,13 +20,13 @@ PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
 
-CHECK_LOG_FILE="$(mktemp)"
-PROMPT_FILE="$(mktemp)"
-PR_BODY_FILE="$(mktemp)"
-CODEX_OUTPUT_FILE="$(mktemp)"
-CODEX_TRANSCRIPT_FILE="$(mktemp)"
-RUN_LOG_TMP_FILE="$(mktemp)"
-RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+CHECK_LOG_FILE=""
+PROMPT_FILE=""
+PR_BODY_FILE=""
+CODEX_OUTPUT_FILE=""
+CODEX_TRANSCRIPT_FILE=""
+RUN_LOG_TMP_FILE=""
+RUN_LOG_TIMESTAMP=""
 RUN_LOG_GIT_PATH=""
 RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
@@ -56,11 +39,42 @@ CCPA_COMPLIANCE_REQUIRED=0
 GDPR_COMPLIANCE_REQUIRED=0
 E2EE_PRIVACY_REQUIRED=0
 
-exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
-echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --issue)
+        FORCE_ISSUE_NUMBER="${2:-}"
+        if [[ -z "$FORCE_ISSUE_NUMBER" ]]; then
+          echo "Missing value for --issue" >&2
+          exit 1
+        fi
+        shift 2
+        ;;
+      *)
+        echo "Unknown argument: $1" >&2
+        exit 1
+        ;;
+    esac
+  done
+}
+
+initialize_run_state() {
+  CHECK_LOG_FILE="$(mktemp)"
+  PROMPT_FILE="$(mktemp)"
+  PR_BODY_FILE="$(mktemp)"
+  CODEX_OUTPUT_FILE="$(mktemp)"
+  CODEX_TRANSCRIPT_FILE="$(mktemp)"
+  RUN_LOG_TMP_FILE="$(mktemp)"
+  RUN_LOG_TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+
+  # Preserve the original stdout for optional console-only transcript streaming.
+  exec 3>&1
+  exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
+  echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
+}
 
 cleanup() {
-  rm -f "$CHECK_LOG_FILE" "$PROMPT_FILE" "$PR_BODY_FILE" "$CODEX_OUTPUT_FILE" "$CODEX_TRANSCRIPT_FILE" "$RUN_LOG_TMP_FILE"
+  rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   if [[ -d "$REPO_DIR/.git" ]]; then
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
@@ -76,7 +90,6 @@ cleanup() {
     fi
   fi
 }
-trap cleanup EXIT
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -863,7 +876,11 @@ run_codex_from_prompt() {
   : > "$CODEX_OUTPUT_FILE"
   : > "$CODEX_TRANSCRIPT_FILE"
 
-  echo "Codex execution started; streaming transcript output."
+  if [[ "$VERBOSE_CODEX_OUTPUT" == "1" ]]; then
+    echo "Codex execution started; streaming transcript to console only."
+  else
+    echo "Codex execution started; transcript output is excluded from persisted run logs."
+  fi
   set +e
   codex exec \
     --model "$CODEX_MODEL" \
@@ -872,7 +889,13 @@ run_codex_from_prompt() {
     --sandbox workspace-write \
     -C "$REPO_DIR" \
     -o "$CODEX_OUTPUT_FILE" \
-    - < "$PROMPT_FILE" 2>&1 | tee "$CODEX_TRANSCRIPT_FILE"
+    - < "$PROMPT_FILE" 2>&1 | {
+      if [[ "$VERBOSE_CODEX_OUTPUT" == "1" ]] && : >&3 2>/dev/null; then
+        tee "$CODEX_TRANSCRIPT_FILE" >&3
+      else
+        cat > "$CODEX_TRANSCRIPT_FILE"
+      fi
+    }
   rc=${PIPESTATUS[0]}
   set -e
 
@@ -1023,161 +1046,171 @@ EOF2
   } > "$PROMPT_FILE"
 }
 
-require_cmd git
-require_cmd gh
-require_cmd codex
-require_cmd docker
-require_cmd make
-require_cmd node
+main() {
+  parse_args "$@"
+  initialize_run_state
+  trap cleanup EXIT
 
-if [[ ! -d "$REPO_DIR/.git" ]]; then
-  echo "Repository not found: $REPO_DIR" >&2
-  exit 1
-fi
+  require_cmd git
+  require_cmd gh
+  require_cmd codex
+  require_cmd docker
+  require_cmd make
+  require_cmd node
 
-cd "$REPO_DIR"
-
-run_step "Fetch latest from origin" git fetch origin
-run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
-run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
-run_step "Remove untracked files" git clean -fd
-
-run_step "Configure bot git identity" configure_bot_git_identity
-
-run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
-run_step "Kill all Docker containers" kill_all_docker_containers
-run_step "Prune Docker system" docker system prune -af --volumes
-run_step "Kill processes on runner ports" kill_processes_on_ports
-run_step "Start Docker stack" docker compose up -d --build
-run_step "Seed development data" docker compose run --rm dev_data
-
-OPEN_BOT_PRS="$(count_open_bot_prs)"
-echo "Open bot PR count: ${OPEN_BOT_PRS}"
-if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-  echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
-  exit 0
-fi
-
-OPEN_HUMAN_PRS="$(count_open_human_prs)"
-echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
-if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-  echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
-  exit 0
-fi
-
-ISSUE_NUMBER=""
-if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
-  if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
-    echo "Blocked: forced issue #$FORCE_ISSUE_NUMBER is not open." >&2
+  if [[ ! -d "$REPO_DIR/.git" ]]; then
+    echo "Repository not found: $REPO_DIR" >&2
     exit 1
   fi
-  ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
-  echo "Selected forced issue #${ISSUE_NUMBER}."
-else
-  ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
-  if [[ -n "$ISSUE_NUMBER" ]]; then
-    echo "Selected issue #${ISSUE_NUMBER} from project queue."
-  fi
-fi
 
-if [[ -z "$ISSUE_NUMBER" ]]; then
-  echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
-  exit 0
-fi
+  cd "$REPO_DIR"
 
-ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
-ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
-ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
-ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty')"
-BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
+  run_step "Fetch latest from origin" git fetch origin
+  run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
+  run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
+  run_step "Remove untracked files" git clean -fd
 
-run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
+  run_step "Configure bot git identity" configure_bot_git_identity
 
-build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
+  run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
+  run_step "Kill all Docker containers" kill_all_docker_containers
+  run_step "Prune Docker system" docker system prune -af --volumes
+  run_step "Kill processes on runner ports" kill_processes_on_ports
+  run_step "Start Docker stack" docker compose up -d --build
+  run_step "Seed development data" docker compose run --rm dev_data
 
-issue_attempt=1
-PREVIOUS_FAILURE_SIGNATURE=""
-FAILURE_SIGNATURE=""
-REPEATED_FAILURE_COUNT=0
-while true; do
-  echo "==> Codex issue attempt $issue_attempt"
-  run_codex_from_prompt
-
-  if ! has_changes; then
-    echo "Codex produced no changes for issue #$ISSUE_NUMBER; retrying."
-    issue_attempt=$((issue_attempt + 1))
-    continue
+  OPEN_BOT_PRS="$(count_open_bot_prs)"
+  echo "Open bot PR count: ${OPEN_BOT_PRS}"
+  if [[ "$OPEN_BOT_PRS" != "0" ]]; then
+    echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
+    exit 0
   fi
 
-  fix_attempt=1
-  while true; do
-    if run_local_workflow_checks && run_test_gap_gate "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS"; then
-      break
+  OPEN_HUMAN_PRS="$(count_open_human_prs)"
+  echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+  if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+    echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+    exit 0
+  fi
+
+  ISSUE_NUMBER=""
+  if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
+    if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
+      echo "Blocked: forced issue #$FORCE_ISSUE_NUMBER is not open." >&2
+      exit 1
     fi
-    echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
-    FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
-    FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
-    if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
-      REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
-    else
-      REPEATED_FAILURE_COUNT=1
-      PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
+    ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
+    echo "Selected forced issue #${ISSUE_NUMBER}."
+  else
+    ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
+    if [[ -n "$ISSUE_NUMBER" ]]; then
+      echo "Selected issue #${ISSUE_NUMBER} from project queue."
     fi
-    build_fix_prompt \
-      "$ISSUE_NUMBER" \
-      "$ISSUE_TITLE" \
-      "$BRANCH_NAME" \
-      "$FAILURE_LOG_TAIL" \
-      "$(current_change_summary)" \
-      "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
-      "$FAILURE_SIGNATURE" \
-      "$REPEATED_FAILURE_COUNT"
-    run_codex_from_prompt
-    fix_attempt=$((fix_attempt + 1))
-  done
-
-  if has_changes; then
-    break
   fi
+
+  if [[ -z "$ISSUE_NUMBER" ]]; then
+    echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
+    exit 0
+  fi
+
+  ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
+  ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
+  ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
+  ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty')"
+  BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
+
+  run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
-  issue_attempt=$((issue_attempt + 1))
-done
 
-persist_run_log "$ISSUE_NUMBER"
+  issue_attempt=1
+  PREVIOUS_FAILURE_SIGNATURE=""
+  FAILURE_SIGNATURE=""
+  REPEATED_FAILURE_COUNT=0
+  while true; do
+    echo "==> Codex issue attempt $issue_attempt"
+    run_codex_from_prompt
 
-git add -A
-if git diff --cached --quiet; then
-  echo "Blocked: no changes staged for issue #$ISSUE_NUMBER." >&2
-  exit 1
+    if ! has_changes; then
+      echo "Codex produced no changes for issue #$ISSUE_NUMBER; retrying."
+      issue_attempt=$((issue_attempt + 1))
+      continue
+    fi
+
+    fix_attempt=1
+    while true; do
+      if run_local_workflow_checks && run_test_gap_gate "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS"; then
+        break
+      fi
+      echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
+      FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
+      FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
+      if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
+        REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
+      else
+        REPEATED_FAILURE_COUNT=1
+        PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
+      fi
+      build_fix_prompt \
+        "$ISSUE_NUMBER" \
+        "$ISSUE_TITLE" \
+        "$BRANCH_NAME" \
+        "$FAILURE_LOG_TAIL" \
+        "$(current_change_summary)" \
+        "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
+        "$FAILURE_SIGNATURE" \
+        "$REPEATED_FAILURE_COUNT"
+      run_codex_from_prompt
+      fix_attempt=$((fix_attempt + 1))
+    done
+
+    if has_changes; then
+      break
+    fi
+
+    build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
+    issue_attempt=$((issue_attempt + 1))
+  done
+
+  persist_run_log "$ISSUE_NUMBER"
+
+  git add -A
+  if git diff --cached --quiet; then
+    echo "Blocked: no changes staged for issue #$ISSUE_NUMBER." >&2
+    exit 1
+  fi
+
+  COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
+  git commit -m "$COMMIT_MESSAGE"
+
+  # Keep branch update simple while preventing blind overwrite.
+  push_branch_for_pr "$BRANCH_NAME"
+
+  write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
+
+  PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
+  PR_URL="$({
+    gh pr create \
+      --repo "$REPO_SLUG" \
+      --base "$BASE_BRANCH" \
+      --head "$BRANCH_NAME" \
+      --title "$PR_TITLE" \
+      --body-file "$PR_BODY_FILE"
+  } )"
+
+  echo "Opened PR: $PR_URL"
+  persist_run_log "$ISSUE_NUMBER"
+
+  # Ensure committed runner log includes PR creation and post-check execution details.
+  git add "$RUN_LOG_GIT_PATH"
+  if ! git diff --cached --quiet; then
+    git commit -m "chore: append opened PR URL to runner log"
+    git push origin "$BRANCH_NAME"
+  fi
+
+  run_step "Return to $BASE_BRANCH" git checkout "$BASE_BRANCH"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
 fi
-
-COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
-git commit -m "$COMMIT_MESSAGE"
-
-# Keep branch update simple while preventing blind overwrite.
-push_branch_for_pr "$BRANCH_NAME"
-
-write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
-
-PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
-PR_URL="$({
-  gh pr create \
-    --repo "$REPO_SLUG" \
-    --base "$BASE_BRANCH" \
-    --head "$BRANCH_NAME" \
-    --title "$PR_TITLE" \
-    --body-file "$PR_BODY_FILE"
-} )"
-
-echo "Opened PR: $PR_URL"
-persist_run_log "$ISSUE_NUMBER"
-
-# Ensure committed runner log includes PR creation and post-check execution details.
-git add "$RUN_LOG_GIT_PATH"
-if ! git diff --cached --quiet; then
-  git commit -m "chore: append opened PR URL to runner log"
-  git push origin "$BRANCH_NAME"
-fi
-
-run_step "Return to $BASE_BRANCH" git checkout "$BASE_BRANCH"
