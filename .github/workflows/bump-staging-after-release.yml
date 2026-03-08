@@ -154,9 +154,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          infra_owner="${INFRA_REPOSITORY%%/*}"
           existing_pr_url="$(gh pr list \
             --repo "$INFRA_REPOSITORY" \
-            --head "$INFRA_BRANCH" \
+            --head "${infra_owner}:${INFRA_BRANCH}" \
             --base "$INFRA_BASE_REF" \
             --json url \
             --jq '.[0].url')"
@@ -181,7 +182,7 @@ jobs:
           pr_url="$(gh pr create \
             --repo "$INFRA_REPOSITORY" \
             --base "$INFRA_BASE_REF" \
-            --head "$INFRA_BRANCH" \
+            --head "${infra_owner}:${INFRA_BRANCH}" \
             --title "$pr_title" \
             --body "$pr_body")"
 
