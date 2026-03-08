@@ -1,220 +1,104 @@
 # Hush Line Threat Model
 
-Last updated: 2026-02-15
-
-This document models threats for Hush Line using publicly documented product behavior, deployment guidance, and published audit information.
-
-## Security Objectives
-
-- Protect submitter anonymity and plausible deniability.
-- Preserve confidentiality and integrity of disclosures.
-- Ensure recipients can verify destination authenticity.
-- Maintain availability under realistic abuse and operational failure.
-- Minimize retained sensitive data and blast radius on compromise.
-
-## System Overview
-
-Hush Line is a whistleblower/tip-line platform with two primary deployment models:
-
-- Managed service (`tips.hushline.app`) with optional paid features.
-- Personal Server / self-hosted variants, including Tor-only deployments.
-
-Publicly documented properties include:
-
-- End-to-end encryption path when recipients configure a public PGP key (browser-side encryption via OpenPGP.js).
-- Server-side fallback encryption path when JavaScript is disabled.
-- TLS in transit and encrypted data at rest.
-- Tor onion access for site and app.
-- Text-centric workflow (no general file intake in standard message flow).
-- Optional message forwarding via SMTP and optional billing via Stripe.
-- Human-verified recipient accounts in directory/verification flows.
-
-## In-Scope Assets
-
-- Message content and metadata (status, reply identifiers, timestamps).
-- Recipient account credentials and authentication artifacts (password hash, optional 2FA secrets).
-- Recipient encryption material (public PGP key and related settings).
-- SMTP credentials and notification settings.
-- Directory/profile data (display names, bios, custom fields, verification markers).
-- Infrastructure/runtime secrets (encryption/session keys, DB credentials, API keys, tokens).
-- Audit logs, CI/CD workflows, and software supply chain artifacts.
-
-## Trust Boundaries
-
-- Submitter browser/device -> public network/Tor -> Hush Line app edge.
-- App layer -> database and object/blob storage.
-- App layer -> SMTP provider (if forwarding enabled).
-- App layer -> Stripe APIs/webhooks (if billing enabled).
-- CI/CD and repository automation -> deployment/runtime environments.
-- Directory and verification UX -> identity trust decisions by submitters.
-
-## User Roles
-
-- Submitter (usually unauthenticated).
-- Recipient (authenticated account owner; free or paid tier).
-- Platform administrators (service-side operational control).
-- Verification staff (identity verification operations).
-- Infrastructure operators (hosting, deployment, incident response).
-
-## Adversaries
-
-- Passive network observers (ISP, enterprise/school network, hostile hotspot).
-- Active network attackers (MITM attempts, traffic manipulation, censorship).
-- External web attackers (XSS, CSRF, SSRF, injection, auth bypass, abuse automation).
-- Credential attackers (phishing, stuffing, brute force, session theft).
-- Malicious or negligent insiders (recipient/admin/operator misuse).
-- Supply-chain attackers (dependency compromise, CI workflow compromise).
-- Legal/coercive adversaries (subpoenas, compelled disclosure, infrastructure seizure).
-- Targeted deanonymization adversaries with substantial resources.
-
-## Threat Scenarios and Mitigations
-
-### 1) Deanonymization of submitters
-
-Threats:
-
-- Network-level identification on clearnet.
-- Operational mistakes by submitters.
-- Correlation via external services, endpoint telemetry, or timing.
-
-Mitigations:
-
-- Tor onion access for advanced anonymity needs.
-- No submitter account requirement for message submission.
-- Public guidance discouraging use of work-issued devices/networks.
-- Minimize collection/retention of unnecessary identifying data.
-
-Residual risk:
-
-- User operational security errors remain a primary failure mode.
-- Clearnet observers can still see that a user connected to Hush Line.
-
-### 2) Message confidentiality compromise
-
-Threats:
-
-- Server/database compromise.
-- Key or credential leakage.
-- SMTP forwarding exposure in downstream systems.
-
-Mitigations:
-
-- Recipient-controlled PGP workflow for E2EE path.
-- Encryption at rest and TLS in transit.
-- Optional local decrypt workflow (Mailvelope integration) and Proton-focused key flow.
-- Strong secret handling and key rotation procedures.
-
-Residual risk:
-
-- If recipients do not configure PGP/E2EE, operator or attacker exposure risk is higher.
-- SMTP relay/storage can expand disclosure surface outside core app boundaries.
-
-### 3) Recipient impersonation and destination trust failures
-
-Threats:
-
-- Users send disclosures to spoofed or fraudulent recipients.
-
-Mitigations:
-
-- Human-verified account badges and verification workflow.
-- Directory UX that surfaces verification state.
-
-Residual risk:
-
-- Verification process quality is operationally sensitive.
-
-### 4) Application-layer compromise
-
-Threats:
-
-- Injection vulnerabilities, SSRF, broken access control, CSRF/XSS regressions.
-
-Mitigations:
-
-- Framework-level protections, security headers/CSP, authz checks, tests, static checks, workflow security controls.
-- Publicly documented independent audits (2024 and 2025) and remediation tracking.
-
-Residual risk:
-
-- Public 2025 audit summary reports unresolved findings (one medium, two low) that must be tracked to closure.
-
-### 5) Availability and abuse
-
-Threats:
-
-- Spam/flooding, abusive submissions, resource exhaustion, infra outages.
-
-Mitigations:
-
-- Abuse controls in submission UX/flows (CAPTCHA, operational controls).
-- CI checks for migration reliability and core regression prevention.
-- Capacity planning and incident response runbooks.
-
-Residual risk:
-
-- Tor and anonymous access can limit traditional anti-abuse controls.
-
-### 6) CI/CD and supply-chain compromise
-
-Threats:
-
-- Malicious workflow changes, unsafe interpolation in Actions, dependency CVEs.
-
-Mitigations:
-
-- Workflow security checks (actionlint and interpolation guardrails).
-- Dependency security audit workflow for Python and Node.
-- Pinned actions and repository protection with review requirements.
-
-Residual risk:
-
-- Zero-day dependency issues and compromised upstream packages remain possible.
-
-## Known Public Audit Signals
-
-- 2024 Subgraph report: two-phase review across personal-server/self-hosted and managed service architecture.
-- 2025 Subgraph report (Dec 30, 2025): summary table lists:
-  - V-001 Blind SSRF private-network enumeration (Medium, unresolved in report).
-  - V-002 Client-side encryption timeout failure (Low, unresolved in report).
-  - V-003 Sequential message IDs (Low, unresolved in report).
-
-These findings should be treated as explicit risk register inputs until verified remediated.
-
-## Non-Goals
-
-- Guaranteeing perfect anonymity under nation-state-level endpoint compromise.
-- Replacing high-opsec secure file drop systems designed for malicious-file handling workflows.
-
-## Operational Requirements
-
-- Mandatory review for security-sensitive code paths (auth, crypto, workflows, migrations).
-- Routine dependency auditing and patch management.
-- Secrets management with rotation and least privilege.
-- Incident handling for vulnerability reports and coordinated disclosure.
-- Continuous red-team-style validation of anonymity and metadata leakage assumptions.
-
-## Data Minimization and Retention Principles
-
-- Collect only data required for operation of messaging, account security, and optional billing.
-- Keep optional features (SMTP forwarding, billing, directory profile detail) explicitly opt-in where possible.
-- Provide account/message deletion paths and clear retention behavior.
-
-## Open Risks to Track
-
-- Close and verify remediation state for publicly reported unresolved audit findings.
-- Continue hardening around SSRF and outbound request controls.
-- Maintain robust encryption-failure handling and user-visible safety cues.
-- Preserve anti-abuse controls without weakening anonymity guarantees.
-
-## Sources (Public)
-
-- https://hushline.app/
-- https://tips.hushline.app/directory
-- https://hushline.app/library/
-- https://hushline.app/library/docs/getting-started/start-here/
-- https://hushline.app/assets/files/2024-security-audit.pdf
-- https://hushline.app/assets/files/2025-security-audit.pdf
-- https://github.com/scidsg/hushline
-- https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md
-- https://github.com/scidsg/hushline/blob/main/SECURITY.md
+## Overview
+Hush Line is an open‑source whistleblower/tip‑line platform for secure, anonymous, one‑way disclosures. A Flask backend serves public submission pages and authenticated inboxes, backed by Postgres, optional S3/FS blob storage, and optional Stripe billing. Submissions are encrypted using recipient PGP keys (client‑side OpenPGP.js in `assets/js/client-side-encryption.js` with server‑side fallback in `hushline/model/field_value.py`), and sensitive account data is encrypted at rest via `hushline/crypto.py` and `hushline/model/user.py`. Tor onion support and privacy‑preserving defaults make anonymity a core objective.
+
+Primary assets include:
+- Disclosure content and metadata (message status, reply slugs, timestamps).
+- Recipient accounts, password hashes, 2FA secrets, session identifiers.
+- Recipient PGP keys, SMTP credentials, and notification settings.
+- Public directory/profile data and verification markers.
+- Encryption/session secrets (`ENCRYPTION_KEY`, `SESSION_FERNET_KEY`) and service API keys (SMTP, Stripe).
+- Billing records, audit logs, and automation artifacts.
+
+## Threat model, Trust boundaries and assumptions
+### Trust boundaries
+- **Submitter browser → Hush Line app:** anonymous POSTs to `/to/<username>` and other public endpoints (`hushline/routes/profile.py`).
+- **Recipient session → Hush Line app:** authenticated inbox/settings routes (`hushline/routes/*`, `hushline/settings/*`).
+- **Admin session → Hush Line app:** privileged settings/admin actions (`hushline/admin.py`, `hushline/settings/branding.py`).
+- **App → Postgres:** ORM‑mediated data access (`hushline/db.py`, `hushline/model/*`).
+- **App → Blob storage:** S3 or filesystem driver (`hushline/storage.py`).
+- **App → External services:** SMTP (`hushline/email.py`), Stripe (`hushline/premium.py`), Proton key lookup (`hushline/routes/onboarding.py`, `hushline/settings/proton.py`), DNS lookups for email header tooling (`hushline/email_headers.py`), and scheduled directory refreshes (`hushline/public_record_refresh.py`, `hushline/securedrop_directory_refresh.py`).
+- **CI/CD → Runtime:** dependency and workflow supply chain.
+
+### Assumptions
+- HTTPS/Tor is correctly configured; onion services should not set HSTS (handled in `hushline/__init__.py`).
+- Operators protect secrets and infrastructure; compromise of `ENCRYPTION_KEY` or DB access is catastrophic for confidentiality.
+- Client‑side encryption is only as trustworthy as the JS served to the submitter; a compromised server or build pipeline can bypass E2EE.
+- Submitter endpoint compromise and traffic correlation by powerful adversaries remain out of scope; operational security guidance is required.
+
+### Input control
+- **Attacker‑controlled:** HTTP requests (forms, headers, query params), message content, profile/bio fields, PGP keys submitted by users, raw email headers tool input, and unauthenticated webhook traffic.
+- **Operator‑controlled:** environment variables and deploy‑time config (keys, SMTP/Stripe credentials, storage endpoints), admin settings (branding, guidance text), and scheduled refresh jobs.
+- **Developer‑controlled:** migrations, CLI tooling (`cli_reg.py`, `cli_stripe.py`), tests, build scripts.
+
+## Attack surface, mitigations and attacker stories
+### Key attack surfaces & mitigations
+1. **Anonymous submission & reply flows** (`routes/profile.py`, `model/field_value.py`):
+   - Math CAPTCHA (`validate_captcha`) and WTForms validation limit abuse; field lengths are capped for encrypted payloads.
+   - PGP key required for accepting submissions; client‑side OpenPGP encryption plus server‑side fallback; padded ciphertext reduces length inference.
+   - Reply slug is randomly generated (~51 bits, `crypto.gen_reply_slug`). Treat reply links as secrets.
+
+2. **Authentication & session management** (`routes/auth.py`, `auth.py`, `secure_session.py`, `config.py`):
+   - Passwords hashed with scrypt (`model/user.py`); 2FA via TOTP with basic rate‑limit in `routes/auth.py`.
+   - Encrypted session cookie (`SESSION_FERNET_KEY`) with `__Host-` naming, `Secure`, `HttpOnly`, and `SameSite=Strict` settings.
+   - Server‑side `session_id` stored per user to invalidate sessions on logout/password change.
+
+3. **Settings and admin surfaces** (`settings/*`, `admin.py`):
+   - CSRF protection via Flask‑WTF and explicit CSRF validation in admin endpoints.
+   - Input validation (length limits, canonical HTML, `safe_template`, profanity filters) and file upload constraints for branding.
+   - High‑privilege functions (tier updates, delete user) guarded by `admin_authentication_required`.
+
+4. **Directory and profile rendering** (`routes/directory.py`, `md.py`, `safe_template.py`):
+   - Markdown and HTML are sanitized with Bleach; templates rely on Jinja auto‑escaping plus CSP (`hushline/__init__.py`).
+   - Public directory JSON is read‑only; opt‑in visibility via `show_in_directory`.
+
+5. **Outbound connectivity / SSRF** (`settings/common.py`, `email.py`, `settings/notifications.py`):
+   - URL verification rejects non‑HTTPS and private/loopback IPs, including DNS resolution checks.
+   - SMTP host validation prevents connections to non‑public IP ranges and localhost.
+
+6. **Stripe billing** (`premium.py`):
+   - Webhooks are verified with Stripe signatures; events are deduplicated in `StripeEvent`.
+   - Authenticated endpoints manage subscription state.
+
+7. **Storage access** (`storage.py`):
+   - `send_from_directory` protects against path traversal; S3 uses pre‑signed URLs for private objects.
+   - Public assets are stored under fixed keys (e.g., branding logo) to reduce path control risk.
+
+8. **Security headers and CSP** (`hushline/__init__.py`):
+   - CSP, HSTS (non‑onion), X‑Frame‑Options, Referrer‑Policy, and Permissions‑Policy are set on all responses.
+
+9. **Email header tooling** (`routes/email_headers.py`, `email_headers.py`):
+   - Untrusted header input is size‑limited and DNS queries are time‑boxed.
+
+### Attacker stories (examples)
+- **Stored XSS via profile/directory fields:** An attacker attempts to inject script into bios or guidance text to steal recipient sessions or deanonymize usage. Mitigations include Bleach sanitization, `safe_template`, and CSP; any bypass would be high impact.
+- **Account takeover through brute force:** An attacker scripts logins against recipient accounts. Strong passwords and 2FA help, but login endpoints lack global rate limiting; exposure depends on password reuse and 2FA adoption.
+- **Unauthorized message access:** An attacker guesses message identifiers or reply slugs to read messages. Access controls join messages to authenticated usernames (`routes/message.py`); reply slugs are random but should be treated as secrets.
+- **SSRF via URL verification or SMTP settings:** A malicious user tries to reach internal services by registering verification URLs or SMTP servers. Host/IP checks mitigate, but DNS rebinding or IPv6 edge cases should be reviewed.
+- **Billing fraud:** Forged Stripe webhooks could alter tiers if signature verification or webhook secret is misconfigured. `premium.py` mitigates with Stripe signature checks.
+- **Supply‑chain compromise of client‑side encryption:** If JS dependencies or build artifacts are compromised, attacker could exfiltrate plaintext before encryption. CI security audits and pinned dependencies reduce risk but cannot eliminate it.
+- **Operator compromise:** A hostile operator or cloud breach can access DB and keys, defeating server‑side encryption. Client‑side encryption mitigates but relies on JS integrity and user opsec.
+
+## Criticality calibration (critical, high, medium, low)
+**Critical** — breaks confidentiality/anonymity across many users or yields full system control.
+- RCE, SQL injection, or auth bypass leading to mass disclosure access.
+- Theft of `ENCRYPTION_KEY` or DB credentials, enabling decryption of stored PII and message content.
+- Widespread client‑side encryption bypass (malicious JS or compromised build pipeline).
+
+**High** — compromise of a single recipient account or privileged settings; significant privacy impact.
+- Stored XSS in inbox/profile/admin templates leading to session theft or CSRF.
+- Privilege escalation to admin via broken access control.
+- SSRF to internal services (metadata endpoints, internal admin panels).
+- Forged Stripe webhooks altering billing/tier state or enabling paid features without auth.
+
+**Medium** — scoped impact or requires additional user interaction.
+- CSRF that toggles notification settings or profile visibility.
+- Information leakage through predictable reply slugs or directory enumeration.
+- Denial‑of‑service on submission or email‑header tooling.
+
+**Low** — minor leaks or misconfigurations with limited impact.
+- UI‑only issues, verbose error messages, or non‑sensitive data exposure.
+- Vulnerability classes requiring attacker control that is not present (e.g., filesystem path traversal in `storage.py` where paths are not user‑controlled in normal flows, or CLI‑only issues requiring shell access).
+
+Severity is calibrated toward confidentiality/anonymity: even a small XSS or access‑control bug can become high‑impact in a whistleblower context. Conversely, issues that require operator misconfiguration or developer‑only access are generally reduced in severity but should still be documented for hardening.
