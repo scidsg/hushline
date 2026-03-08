@@ -56,7 +56,15 @@ def register_email_headers_routes(app: Flask) -> None:
             flash("⛔️ Could not generate report. Re-run validation first.")
             return redirect(url_for("email_headers"))
 
-        archive = create_evidence_zip(form.raw_headers.data)
+        try:
+            archive = create_evidence_zip(form.raw_headers.data)
+        except ValueError as e:
+            msg = str(e)
+            if not msg.endswith((".", "!", "?")):
+                msg += "."
+            flash(f"⛔️ {msg}")
+            return redirect(url_for("email_headers"))
+
         stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%SZ")
         return send_file(
             io.BytesIO(archive),
