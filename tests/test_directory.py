@@ -89,13 +89,18 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
     securedrop_panel = soup.find(id="securedrop")
     assert securedrop_panel is not None
 
-    banner_link = securedrop_panel.select_one(".dirMeta a")
-    assert banner_link is not None
-    assert banner_link.text.strip() == "SecureDrop directory API"
-    assert banner_link.get("href") == "https://securedrop.org/api/v1/directory/?format=json"
+    banner_links = securedrop_panel.select(".dirMeta a")
+    assert len(banner_links) == 2
+    assert banner_links[0].text.strip() == "SecureDrop directory API"
+    assert banner_links[0].get("href") == "https://securedrop.org/api/v1/directory/?format=json"
+    assert banner_links[1].text.strip() == "Tor Browser"
+    assert banner_links[1].get("href") == "https://www.torproject.org/download/"
     banner_text = securedrop_panel.get_text(" ", strip=True)
     assert "Synced automatically from the" in banner_text
     assert "SecureDrop directory API" in banner_text
+    assert "Onion addresses require" in banner_text
+    assert "Tor Browser" in banner_text
+    assert "to access." in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
@@ -512,6 +517,20 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.source_url in response.text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
+
+    dir_meta = soup.select_one(".dirMeta")
+    assert dir_meta is not None
+    dir_meta_text = dir_meta.get_text(" ", strip=True)
+    assert dir_meta_text.startswith("🧅")
+    assert "Onion addresses require" in dir_meta_text
+    assert "Tor Browser" in dir_meta_text
+    assert "risk in your jurisdiction" in dir_meta_text
+    assert "Do your research before downloading." in dir_meta_text
+
+    dir_meta_link = dir_meta.find("a")
+    assert dir_meta_link is not None
+    assert dir_meta_link.text.strip() == "Tor Browser"
+    assert dir_meta_link.get("href") == "https://www.torproject.org/download/"
 
 
 def test_securedrop_listing_page_omits_landing_page_link_when_missing(
