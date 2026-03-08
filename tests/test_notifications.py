@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
-from helpers import get_captcha_from_session
+from helpers import get_profile_submission_data
 
 from hushline.db import db
 from hushline.model import Message, User
@@ -31,8 +31,7 @@ def test_notifications_disabled(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -70,8 +69,7 @@ def test_notifications_enabled_no_content(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -114,8 +112,7 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -173,8 +170,7 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
             "encrypted_email_body": encrypted_email_body,
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )
@@ -275,8 +271,7 @@ def test_notifications_full_body_encryption_server_fallback(
             "encrypted_email_body": encrypted_email_body,
             "field_0": msg_contact_method,
             "field_1": msg_content,
-            "username_user_id": user.id,
-            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+            **get_profile_submission_data(client, user.primary_username.username),
         },
         follow_redirects=True,
     )

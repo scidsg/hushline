@@ -1,5 +1,7 @@
 import re
+import hmac
 import secrets
+from hashlib import sha256
 
 from flask import (
     Flask,
@@ -36,6 +38,13 @@ from hushline.safe_template import safe_render_template
 
 
 def register_profile_routes(app: Flask) -> None:
+    def _owner_guard_signature(username: str, user_id: int, nonce: str) -> str:
+        return hmac.new(
+            key=(app.secret_key or "").encode("utf-8"),
+            msg=f"{username}:{user_id}:{nonce}".encode(),
+            digestmod=sha256,
+        ).hexdigest()
+
     def _is_armored_pgp_message(value: str) -> bool:
         stripped_value = value.strip()
         return bool(
@@ -88,26 +97,47 @@ def register_profile_routes(app: Flask) -> None:
             },
         )
 
+        def _render_profile(status_code: int | None = None) -> Response | str | tuple[str, int]:
+            owner_guard_nonce = secrets.token_urlsafe(16)
+            owner_guard_signature = _owner_guard_signature(
+                uname.username,
+                uname.user_id,
+                owner_guard_nonce,
+            )
+            rendered = render_template(
+                "profile.html",
+                profile_header=profile_header,
+                form=form,
+                user=uname.user,
+                username=uname,
+                field_data=dynamic_form.field_data(),
+                display_name_or_username=uname.display_name or uname.username,
+                current_user_id=session.get("user_id"),
+                public_key=uname.user.pgp_key,
+                math_problem=math_problem,
+                owner_guard_nonce=owner_guard_nonce,
+                owner_guard_signature=owner_guard_signature,
+            )
+            if status_code is None:
+                return rendered
+            return rendered, status_code
+
         if request.method == "POST":
-            current_app.logger.debug(f"Form submitted: {form.data}")
-            submitted_user_id = request.form.get("username_user_id")
-            if not submitted_user_id or submitted_user_id != str(uname.user_id):
+            current_app.logger.debug("Profile form submitted.")
+            owner_guard_nonce = (request.form.get("owner_guard_nonce") or "").strip()
+            owner_guard_signature = (request.form.get("owner_guard_signature") or "").strip()
+            expected_signature = _owner_guard_signature(
+                uname.username,
+                uname.user_id,
+                owner_guard_nonce,
+            )
+            if (
+                not owner_guard_nonce
+                or not owner_guard_signature
+                or not hmac.compare_digest(owner_guard_signature, expected_signature)
+            ):
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
-                return (
-                    render_template(
-                        "profile.html",
-                        profile_header=profile_header,
-                        form=form,
-                        user=uname.user,
-                        username=uname,
-                        field_data=dynamic_form.field_data(),
-                        display_name_or_username=uname.display_name or uname.username,
-                        current_user_id=session.get("user_id"),
-                        public_key=uname.user.pgp_key,
-                        math_problem=math_problem,
-                    ),
-                    400,
-                )
+                return _render_profile(400)
 
             if form.validate_on_submit():
                 if not uname.user.pgp_key:
@@ -115,40 +145,12 @@ def register_profile_routes(app: Flask) -> None:
                         "⛔️ You cannot submit messages to users who have not set a PGP key.",
                         "error",
                     )
-                    return (
-                        render_template(
-                            "profile.html",
-                            profile_header=profile_header,
-                            form=form,
-                            user=uname.user,
-                            username=uname,
-                            field_data=dynamic_form.field_data(),
-                            display_name_or_username=uname.display_name or uname.username,
-                            current_user_id=session.get("user_id"),
-                            public_key=uname.user.pgp_key,
-                            math_problem=math_problem,
-                        ),
-                        400,
-                    )
+                    return _render_profile(400)
 
                 captcha_answer = request.form.get("captcha_answer", "")
                 if not validate_captcha(captcha_answer):
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
-                    return (
-                        render_template(
-                            "profile.html",
-                            profile_header=profile_header,
-                            form=form,
-                            user=uname.user,
-                            username=uname,
-                            field_data=dynamic_form.field_data(),
-                            display_name_or_username=uname.display_name or uname.username,
-                            current_user_id=session.get("user_id"),
-                            public_key=uname.user.pgp_key,
-                            math_problem=math_problem,
-                        ),
-                        400,
-                    )
+                    return _render_profile(400)
 
                 # Create a message
                 message = Message(username_id=uname.id)
@@ -238,34 +240,9 @@ def register_profile_routes(app: Flask) -> None:
                 "⛔️ There was an error submitting your message: " + "; ".join(errors) + "."
             )
             flash(error_message, "error")
-            return (
-                render_template(
-                    "profile.html",
-                    profile_header=profile_header,
-                    form=form,
-                    user=uname.user,
-                    username=uname,
-                    field_data=dynamic_form.field_data(),
-                    display_name_or_username=uname.display_name or uname.username,
-                    current_user_id=session.get("user_id"),
-                    public_key=uname.user.pgp_key,
-                    math_problem=math_problem,
-                ),
-                400,
-            )
+            return _render_profile(400)
 
-        return render_template(
-            "profile.html",
-            profile_header=profile_header,
-            form=form,
-            user=uname.user,
-            username=uname,
-            field_data=dynamic_form.field_data(),
-            display_name_or_username=uname.display_name or uname.username,
-            current_user_id=session.get("user_id"),
-            public_key=uname.user.pgp_key,
-            math_problem=math_problem,
-        )
+        return _render_profile()
 
     @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:

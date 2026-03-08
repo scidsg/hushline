@@ -2,6 +2,7 @@ import random
 import string
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
 
+from bs4 import BeautifulSoup
 from flask import url_for
 from flask.testing import FlaskClient
 from flask_wtf import FlaskForm
@@ -82,3 +83,29 @@ def get_captcha_from_session(client: FlaskClient, username: str) -> str:
         captcha_answer = session.get("math_answer")
         assert captcha_answer
         return captcha_answer
+
+
+def get_profile_submission_data(client: FlaskClient, username: str) -> dict[str, str]:
+    response = client.get(url_for("profile", username=username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    nonce_input = soup.find("input", attrs={"name": "owner_guard_nonce"})
+    signature_input = soup.find("input", attrs={"name": "owner_guard_signature"})
+    assert nonce_input is not None
+    assert signature_input is not None
+
+    nonce = nonce_input.get("value")
+    signature = signature_input.get("value")
+    assert nonce
+    assert signature
+
+    with client.session_transaction() as session:
+        captcha_answer = session.get("math_answer")
+        assert captcha_answer
+
+    return {
+        "owner_guard_nonce": str(nonce),
+        "owner_guard_signature": str(signature),
+        "captcha_answer": str(captcha_answer),
+    }
