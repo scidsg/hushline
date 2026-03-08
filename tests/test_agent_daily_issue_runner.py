@@ -143,3 +143,74 @@ fi
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "non-environmental\n"
+
+
+def test_require_positive_integer_rejects_zero() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "0"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS must be a positive integer" in result.stderr
+
+
+def test_issue_attempt_loop_stops_after_max_attempts() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_ISSUE_ATTEMPTS=3
+build_issue_prompt() {{ :; }}
+run_codex_from_prompt() {{ :; }}
+has_changes() {{ return 1; }}
+run_fix_attempt_loop() {{ return 0; }}
+set +e
+run_issue_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "Codex produced no usable changes for issue #1558 after 3 attempt(s)." in result.stderr
+
+
+def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:
+    check_log_file = tmp_path / "check.log"
+    codex_output_file = tmp_path / "codex-output.txt"
+    check_log_file.write_text("persistent failure\n", encoding="utf-8")
+    codex_output_file.write_text("prior summary\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_FIX_ATTEMPTS=2
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(codex_output_file))}
+PREVIOUS_FAILURE_SIGNATURE=""
+FAILURE_SIGNATURE=""
+REPEATED_FAILURE_COUNT=0
+run_local_workflow_checks() {{ return 1; }}
+run_test_gap_gate() {{ return 0; }}
+failure_signature_from_text() {{ printf 'same-failure\\n'; }}
+current_change_summary() {{ printf 'summary\\n'; }}
+build_fix_prompt() {{ :; }}
+run_codex_from_prompt() {{ :; }}
+set +e
+run_fix_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert (
+        "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
+        in result.stderr
+    )

@@ -19,6 +19,8 @@ PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
+MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -95,6 +97,16 @@ require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2
     exit 1
+  fi
+}
+
+require_positive_integer() {
+  local name="$1"
+  local value="$2"
+
+  if ! [[ "$value" =~ ^[0-9]+$ ]] || (( value < 1 )); then
+    echo "${name} must be a positive integer (got '${value}')." >&2
+    return 1
   fi
 }
 
@@ -1046,6 +1058,88 @@ EOF2
   } > "$PROMPT_FILE"
 }
 
+run_fix_attempt_loop() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local issue_body="$3"
+  local issue_labels="$4"
+  local branch_name="$5"
+  local fix_attempt=1
+
+  while (( fix_attempt <= MAX_FIX_ATTEMPTS )); do
+    if run_local_workflow_checks && run_test_gap_gate "$issue_title" "$issue_body" "$issue_labels"; then
+      return 0
+    fi
+
+    if (( fix_attempt == MAX_FIX_ATTEMPTS )); then
+      echo "Blocked: workflow checks failed after $MAX_FIX_ATTEMPTS self-heal attempt(s) for issue #$issue_number." >&2
+      return 1
+    fi
+
+    echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
+    FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
+    FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
+    if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
+      REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
+    else
+      REPEATED_FAILURE_COUNT=1
+      PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
+    fi
+    build_fix_prompt \
+      "$issue_number" \
+      "$issue_title" \
+      "$branch_name" \
+      "$FAILURE_LOG_TAIL" \
+      "$(current_change_summary)" \
+      "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
+      "$FAILURE_SIGNATURE" \
+      "$REPEATED_FAILURE_COUNT"
+    run_codex_from_prompt
+    fix_attempt=$((fix_attempt + 1))
+  done
+
+  echo "Blocked: workflow checks did not pass for issue #$issue_number." >&2
+  return 1
+}
+
+run_issue_attempt_loop() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local issue_body="$3"
+  local issue_labels="$4"
+  local issue_branch="$5"
+  local issue_attempt=1
+
+  PREVIOUS_FAILURE_SIGNATURE=""
+  FAILURE_SIGNATURE=""
+  REPEATED_FAILURE_COUNT=0
+
+  while (( issue_attempt <= MAX_ISSUE_ATTEMPTS )); do
+    echo "==> Codex issue attempt $issue_attempt"
+    run_codex_from_prompt
+
+    if ! has_changes; then
+      echo "Codex produced no changes for issue #$issue_number; retrying."
+      issue_attempt=$((issue_attempt + 1))
+      continue
+    fi
+
+    if ! run_fix_attempt_loop "$issue_number" "$issue_title" "$issue_body" "$issue_labels" "$issue_branch"; then
+      return 1
+    fi
+
+    if has_changes; then
+      return 0
+    fi
+
+    build_issue_prompt "$issue_number" "$issue_title" "$issue_body"
+    issue_attempt=$((issue_attempt + 1))
+  done
+
+  echo "Blocked: Codex produced no usable changes for issue #$issue_number after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+  return 1
+}
+
 main() {
   parse_args "$@"
   initialize_run_state
@@ -1057,6 +1151,9 @@ main() {
   require_cmd docker
   require_cmd make
   require_cmd node
+
+  require_positive_integer "HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS" "$MAX_ISSUE_ATTEMPTS"
+  require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "$MAX_FIX_ATTEMPTS"
 
   if [[ ! -d "$REPO_DIR/.git" ]]; then
     echo "Repository not found: $REPO_DIR" >&2
@@ -1122,55 +1219,7 @@ main() {
   run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
-
-  issue_attempt=1
-  PREVIOUS_FAILURE_SIGNATURE=""
-  FAILURE_SIGNATURE=""
-  REPEATED_FAILURE_COUNT=0
-  while true; do
-    echo "==> Codex issue attempt $issue_attempt"
-    run_codex_from_prompt
-
-    if ! has_changes; then
-      echo "Codex produced no changes for issue #$ISSUE_NUMBER; retrying."
-      issue_attempt=$((issue_attempt + 1))
-      continue
-    fi
-
-    fix_attempt=1
-    while true; do
-      if run_local_workflow_checks && run_test_gap_gate "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS"; then
-        break
-      fi
-      echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
-      FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
-      FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
-      if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
-        REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
-      else
-        REPEATED_FAILURE_COUNT=1
-        PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
-      fi
-      build_fix_prompt \
-        "$ISSUE_NUMBER" \
-        "$ISSUE_TITLE" \
-        "$BRANCH_NAME" \
-        "$FAILURE_LOG_TAIL" \
-        "$(current_change_summary)" \
-        "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
-        "$FAILURE_SIGNATURE" \
-        "$REPEATED_FAILURE_COUNT"
-      run_codex_from_prompt
-      fix_attempt=$((fix_attempt + 1))
-    done
-
-    if has_changes; then
-      break
-    fi
-
-    build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
-    issue_attempt=$((issue_attempt + 1))
-  done
+  run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
 
   persist_run_log "$ISSUE_NUMBER"
 
