@@ -135,6 +135,61 @@ _BATCH_TWO_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tup
     for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_TWO_STATE_SEEDS
 )
 
+_BATCH_THREE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "IA",
+        "seed-roxanne-barton-conlin",
+        "public-record~roxanne-barton-conlin",
+        "Roxanne Barton Conlin",
+        "Iowa State Bar Association jury verdict record",
+        (
+            "https://services.iowabar.org/IB/JuryVerdicts.nsf/"
+            "b96238336212630c85258ca1000240fd/"
+            "e71fe5f6f6d3242d872589900011edc5!OpenDocument"
+        ),
+    ),
+    (
+        "ID",
+        "seed-trudy-hanson-fouser",
+        "public-record~trudy-hanson-fouser",
+        "Trudy Hanson Fouser",
+        "Idaho State Bar attorney profile",
+        "https://isb.idaho.gov/blog/trudy-hanson-fouser/",
+    ),
+    (
+        "IN",
+        "seed-georgianna-quinn-tutwiler",
+        "public-record~georgianna-quinn-tutwiler",
+        "Georgianna Quinn Tutwiler",
+        "Indiana State Bar public directory",
+        "https://www.inbar.org/members/?id=30400364",
+    ),
+    (
+        "KS",
+        "seed-michael-f-brady",
+        "public-record~michael-f-brady",
+        "Michael F. Brady",
+        "Kansas Judicial Branch published opinion",
+        (
+            "https://kscourts.gov/Cases-Decisions/Decisions/Published/"
+            "Brown-v-Ford-Storage-and-Moving-Co-Inc"
+        ),
+    ),
+    (
+        "KY",
+        "seed-andrew-clarke-weeks",
+        "public-record~andrew-clarke-weeks",
+        "Andrew Clarke Weeks",
+        "Kentucky Bar Association public directory",
+        "https://www.kybar.org/members/?id=42347567",
+    ),
+)
+
+_BATCH_THREE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_THREE_STATE_SEEDS
+)
+
 
 def _row(  # noqa: PLR0913
     *,
@@ -833,6 +888,11 @@ def test_official_source_adapter_harness_covers_current_implemented_states() -> 
         "FL",
         "GA",
         "HI",
+        "IA",
+        "ID",
+        "IN",
+        "KS",
+        "KY",
         "IL",
         "OH",
         "TN",
@@ -988,6 +1048,44 @@ def test_discover_official_us_state_public_record_rows_adds_batch_two_seed(  # n
 
 
 @pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_THREE_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_three_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
     ("state_code", "existing_id", "existing_slug", "existing_name"),
     _BATCH_ONE_EXISTING_COLLISION_CASES,
 )
@@ -1014,6 +1112,28 @@ def test_discover_official_us_state_public_record_rows_skips_existing_batch_seed
     _BATCH_TWO_EXISTING_COLLISION_CASES,
 )
 def test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_THREE_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed(
     state_code: str,
     existing_id: str,
     existing_slug: str,
