@@ -96,6 +96,32 @@ def test_onboarding_flow(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_directory_opt_out_persists_false(client: FlaskClient, user: User) -> None:
+    user.onboarding_complete = False
+    user.primary_username.display_name = "Test User"
+    user.primary_username.bio = "Short bio"
+    user.primary_username.show_in_directory = False
+    user.pgp_key = _load_test_pgp_key()
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.email = "test@example.com"
+    db.session.commit()
+
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "directory"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+
+    db.session.refresh(user)
+    assert user.onboarding_complete is True
+    assert user.primary_username.show_in_directory is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_onboarding_skip(client: FlaskClient, user: User) -> None:
     user.onboarding_complete = False
     db.session.commit()
