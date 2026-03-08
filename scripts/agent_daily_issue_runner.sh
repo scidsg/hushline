@@ -945,10 +945,33 @@ current_change_summary() {
 
 failure_signature_from_text() {
   local text="$1"
+  local -a markers=()
 
-  {
-    printf '%s\n' "$text" | grep -E 'FAILED tests/|AssertionError:|sqlalchemy\.exc\.|psycopg\.errors\.|Traceback|Error:' || true
-  } | head -n 20
+  if printf '%s\n' "$text" | grep -Eq 'FAILED tests/'; then
+    markers+=("pytest-test-failures")
+  fi
+  if printf '%s\n' "$text" | grep -Eq 'AssertionError:'; then
+    markers+=("assertion-error")
+  fi
+  if printf '%s\n' "$text" | grep -Eq 'sqlalchemy\.exc\.'; then
+    markers+=("sqlalchemy-error")
+  fi
+  if printf '%s\n' "$text" | grep -Eq 'psycopg\.errors\.'; then
+    markers+=("psycopg-error")
+  fi
+  if printf '%s\n' "$text" | grep -Eq 'Traceback'; then
+    markers+=("python-traceback")
+  fi
+  if printf '%s\n' "$text" | grep -Eq '(^|[^[:alpha:]])Error:'; then
+    markers+=("generic-error")
+  fi
+
+  if (( ${#markers[@]} == 0 )); then
+    echo "no-structured-signature"
+    return 0
+  fi
+
+  printf '%s\n' "${markers[@]}"
 }
 
 build_issue_prompt() {
@@ -994,11 +1017,10 @@ build_fix_prompt() {
   local issue_number="$1"
   local issue_title="$2"
   local branch_name="$3"
-  local failure_tail="$4"
-  local change_summary="$5"
-  local previous_codex_output="$6"
-  local failure_signature="$7"
-  local repeated_failure_count="$8"
+  local change_summary="$4"
+  local previous_codex_output="$5"
+  local failure_signature="$6"
+  local repeated_failure_count="$7"
 
   {
     cat <<EOF2
@@ -1039,12 +1061,8 @@ EOF2
     fi
     cat <<'EOF2'
 
-Most recent failed check output:
----BEGIN CHECK OUTPUT---
-EOF2
-    printf '%s\n' "$failure_tail"
-    cat <<'EOF2'
----END CHECK OUTPUT---
+Raw failed check output is intentionally withheld because local logs may contain sensitive data.
+Use the failure signature above together with the current repository state to identify and resolve the failing checks.
 
 Requirements:
 1) Fix only what is required for checks to pass.
@@ -1094,7 +1112,6 @@ run_fix_attempt_loop() {
       "$issue_number" \
       "$issue_title" \
       "$branch_name" \
-      "$FAILURE_LOG_TAIL" \
       "$(current_change_summary)" \
       "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
       "$FAILURE_SIGNATURE" \
