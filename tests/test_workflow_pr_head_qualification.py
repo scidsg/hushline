@@ -22,12 +22,6 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
             2,
         ),
         (
-            ".github/workflows/publish-docs-screenshots.yml",
-            'screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"',
-            '--head "${screenshots_owner}:${SCREENSHOTS_BRANCH}"',
-            2,
-        ),
-        (
             ".github/workflows/bump-staging-after-release.yml",
             'infra_owner="${INFRA_REPOSITORY%%/*}"',
             '--head "${infra_owner}:${INFRA_BRANCH}"',
@@ -46,3 +40,16 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
 
         assert owner_assignment in workflow_text
         assert workflow_text.count(head_filter) == expected_count
+
+
+def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> None:
+    workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
+    archive_section = workflow_text.split('      - name: Publish screenshots to hushline-screenshots', 1)[1]
+
+    assert 'SCREENSHOTS_DEFAULT_BRANCH: main' in archive_section
+    assert 'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
+    assert 'git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
+    assert "Published screenshot archive directly to ${SCREENSHOTS_REPOSITORY}@${SCREENSHOTS_DEFAULT_BRANCH}." in archive_section
+    assert 'screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"' not in archive_section
+    assert 'gh pr create \\' not in archive_section
+    assert 'gh pr merge "$pr_url" \\' not in archive_section
