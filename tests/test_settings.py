@@ -791,6 +791,25 @@ def test_delete_alias(client: FlaskClient, user: User, user_alias: Username) -> 
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_delete_alias_requires_csrf_token(
+    app: Flask, client: FlaskClient, user_alias: Username
+) -> None:
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+
+    response = client.post(
+        url_for("settings.delete_alias", username_id=user_alias.id),
+        data={DeleteAliasForm.submit.name: ""},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert db.session.get(Username, user_alias.id) is not None
+
+    app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_delete_account(
     client: FlaskClient, user: User, message: Message, authentication_log: AuthenticationLog
 ) -> None:
@@ -1583,7 +1602,9 @@ def test_alias_route_missing_alias_returns_404(client: FlaskClient) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_delete_alias_missing_alias_returns_404(client: FlaskClient) -> None:
     response = client.post(
-        url_for("settings.delete_alias", username_id=999999), follow_redirects=False
+        url_for("settings.delete_alias", username_id=999999),
+        data=form_to_data(DeleteAliasForm()),
+        follow_redirects=False,
     )
     assert response.status_code == 404
 

@@ -109,6 +109,13 @@ def register_aliases_routes(bp: Blueprint) -> None:
     @bp.route("/alias/<int:username_id>/delete", methods=["POST"])
     @authentication_required
     def delete_alias(username_id: int) -> Response:
+        delete_alias_form = DeleteAliasForm()
+        if (
+            delete_alias_form.submit.name not in request.form
+            or not delete_alias_form.validate_on_submit()
+        ):
+            return abort(400)
+
         alias = db.session.scalars(
             db.select(Username).filter_by(
                 id=username_id, user_id=session["user_id"], is_primary=False
