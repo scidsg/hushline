@@ -224,6 +224,60 @@ require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "0"
     assert "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS must be a positive integer" in result.stderr
 
 
+def test_failure_signature_from_text_returns_structured_markers() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\nError: boom'
+failure_signature_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "pytest-test-failures",
+        "assertion-error",
+        "python-traceback",
+        "generic-error",
+    ]
+
+
+def test_failure_signature_from_text_falls_back_when_no_marker_matches() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_signature_from_text "totally unmatched output"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "no-structured-signature\n"
+
+
+def test_build_fix_prompt_withholds_raw_check_output(tmp_path: Path) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+build_fix_prompt \
+  1558 \
+  "Issue title" \
+  "branch-name" \
+  "status summary" \
+  "prior codex output" \
+  "generic-error" \
+  "2"
+cat "$PROMPT_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Raw failed check output is intentionally withheld" in result.stdout
+    assert "---BEGIN CHECK OUTPUT---" not in result.stdout
+    assert "generic-error" in result.stdout
+
+
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
