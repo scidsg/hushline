@@ -206,6 +206,51 @@ def test_notifications_enabled_yes_content_yes_encrypted_body(
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
+def test_notifications_full_body_encryption_embedded_markers_use_server_fallback(
+    mock_do_send_email: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    db.session.commit()
+
+    encrypted_email_body = (
+        "prefix text\n-----BEGIN PGP MESSAGE-----\nnot actually armored\n"
+        "-----END PGP MESSAGE-----\nsuffix text"
+    )
+    server_encrypted_email_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    mock_encrypt_message.return_value = server_encrypted_email_body
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "encrypted_email_body": encrypted_email_body,
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "username_user_id": user.id,
+            "captcha_answer": get_captcha_from_session(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+
+    expected_fallback_body = format_full_message_email_body(
+        [("Contact Method", msg_contact_method), ("Message", msg_content)]
+    )
+    mock_encrypt_message.assert_called_once_with(expected_fallback_body, user.pgp_key)
+    mock_do_send_email.assert_called_once_with(user, server_encrypted_email_body)
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
+@patch("hushline.routes.profile.do_send_email")
 def test_notifications_full_body_encryption_server_fallback(
     mock_do_send_email: MagicMock,
     mock_encrypt_message: MagicMock,
