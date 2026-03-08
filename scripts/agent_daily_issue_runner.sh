@@ -2,6 +2,7 @@
 set -euo pipefail
 
 FORCE_ISSUE_NUMBER=""
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_DIR="${HUSHLINE_REPO_DIR:-$HOME/hushline}"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
@@ -855,7 +856,9 @@ EOF2
 persist_run_log() {
   local issue_number="$1"
   local log_dir="$REPO_DIR/docs/agent-logs"
+  local raw_log_file
   RUN_LOG_GIT_PATH="docs/agent-logs/run-${RUN_LOG_TIMESTAMP}-issue-${issue_number}.txt"
+  raw_log_file="$(mktemp)"
 
   mkdir -p "$log_dir"
   {
@@ -864,7 +867,9 @@ persist_run_log() {
     printf 'Issue: #%s\n' "$issue_number"
     printf 'Repository: %s\n\n' "$REPO_SLUG"
     cat "$RUN_LOG_TMP_FILE"
-  } > "$REPO_DIR/$RUN_LOG_GIT_PATH"
+  } > "$raw_log_file"
+  python3 "$SCRIPT_DIR/sanitize_agent_run_log.py" "$raw_log_file" "$REPO_DIR/$RUN_LOG_GIT_PATH"
+  rm -f "$raw_log_file"
 
   if [[ "$RUN_LOG_RETENTION_COUNT" =~ ^[0-9]+$ ]] && (( RUN_LOG_RETENTION_COUNT > 0 )); then
     local -a logs_to_delete=()

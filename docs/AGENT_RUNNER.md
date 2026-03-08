@@ -55,6 +55,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
     - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
 13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
+    - Persisted logs are sanitized before commit to remove developer filesystem paths, emails, and Codex session metadata.
 14. Commit, push branch, and open PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.

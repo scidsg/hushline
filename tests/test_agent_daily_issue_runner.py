@@ -69,6 +69,73 @@ printf '%s\\n' "$RUN_LOG_GIT_PATH"
     assert console_file.read_text(encoding="utf-8") == ""
 
 
+def test_persisted_runner_log_redacts_developer_metadata(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    run_log_file = tmp_path / "run-log.txt"
+
+    repo_dir.mkdir()
+    run_log_file.write_text(
+        "\n".join(
+            [
+                "Runner Codex config: model=gpt-5.4 reasoning_effort=high verbose_codex_output=0",
+                "Configured git identity: hushline-dev <git-dev@scidsg.org>",
+                "Run log file: /Users/scidsg/hushline/docs/agent-logs/run.log",
+                "Global log file: /Users/scidsg/.codex/logs/hushline-agent-runner.log",
+                "workdir: /Users/scidsg/hushline",
+                "model: gpt-5.4",
+                "provider: openai",
+                "approval: never",
+                "sandbox: workspace-write [workdir, /tmp, $TMPDIR, /Users/scidsg/.codex/memories]",
+                "reasoning effort: high",
+                "reasoning summaries: none",
+                "session id: 019ccba0-3d52-7271-93de-106986a70c42",
+                "Home path: /Users/scidsg/hushline",
+                "Email: hello@example.com",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+RUN_LOG_TMP_FILE={shlex.quote(str(run_log_file))}
+RUN_LOG_TIMESTAMP=20260308T000000Z
+RUN_LOG_RETENTION_COUNT=10
+RUN_LOG_GIT_PATH=""
+REPO_SLUG=scidsg/hushline
+persist_run_log 1556
+printf '%s\\n' "$RUN_LOG_GIT_PATH"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+    persisted_log = repo_dir / result.stdout.strip()
+    persisted_text = persisted_log.read_text(encoding="utf-8")
+
+    assert persisted_log.exists()
+    assert "git-dev@scidsg.org" not in persisted_text
+    assert "hello@example.com" not in persisted_text
+    assert "/Users/scidsg" not in persisted_text
+    assert "Runner Codex config: [redacted]" in persisted_text
+    assert "Configured git identity: [redacted]" in persisted_text
+    assert "Run log file: [redacted]" in persisted_text
+    assert "Global log file: [redacted]" in persisted_text
+    assert "workdir: [redacted]" in persisted_text
+    assert "model: [redacted]" in persisted_text
+    assert "provider: [redacted]" in persisted_text
+    assert "approval: [redacted]" in persisted_text
+    assert "sandbox: [redacted]" in persisted_text
+    assert "reasoning effort: [redacted]" in persisted_text
+    assert "reasoning summaries: [redacted]" in persisted_text
+    assert "session id: [redacted]" in persisted_text
+    assert "Home path: [redacted-path]" in persisted_text
+    assert "Email: [redacted-email]" in persisted_text
+
+
 def test_verbose_codex_output_streams_to_console_only(tmp_path: Path) -> None:
     prompt_file = tmp_path / "prompt.txt"
     output_file = tmp_path / "codex-output.txt"
