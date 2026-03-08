@@ -110,3 +110,36 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "VERBOSE_TRANSCRIPT_LINE" in console_text
     assert "VERBOSE_TRANSCRIPT_LINE" not in run_log_text
     assert "Safe final summary" in run_log_text
+
+
+def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+if audit_failure_looks_environmental "pip failed: temporary failure in name resolution"; then
+  printf 'environmental\\n'
+else
+  printf 'non-environmental\\n'
+fi
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "environmental\n"
+
+
+def test_audit_failure_environmental_classifier_rejects_tls_vulnerability_text() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+audit_output="CVE-2023-1234: TLS certificate validation bypass in dependency"
+if audit_failure_looks_environmental "$audit_output"; then
+  printf 'environmental\\n'
+else
+  printf 'non-environmental\\n'
+fi
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "non-environmental\n"
