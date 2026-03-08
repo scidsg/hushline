@@ -195,7 +195,11 @@ jobs:
 
           git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
-          git checkout -B "${SCREENSHOTS_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
+          if git ls-remote --exit-code --heads origin "${SCREENSHOTS_BRANCH}" >/dev/null 2>&1; then
+            git checkout -B "${SCREENSHOTS_BRANCH}" "origin/${SCREENSHOTS_BRANCH}"
+          else
+            git checkout -B "${SCREENSHOTS_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
+          fi
 
           mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
           rsync -a --delete "${RELEASE_ROOT}/" "releases/${RELEASE_KEY}/"
@@ -215,7 +219,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "Update screenshot archive for ${RELEASE_KEY}"
-          git push --force-with-lease origin "HEAD:${SCREENSHOTS_BRANCH}"
+          git push origin "HEAD:${SCREENSHOTS_BRANCH}"
 
           pr_title="Update screenshot archive for ${RELEASE_KEY}"
           pr_body="$(cat <<EOF
