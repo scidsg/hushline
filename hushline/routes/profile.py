@@ -1,3 +1,4 @@
+import re
 import secrets
 
 from flask import (
@@ -36,7 +37,15 @@ from hushline.safe_template import safe_render_template
 
 def register_profile_routes(app: Flask) -> None:
     def _is_armored_pgp_message(value: str) -> bool:
-        return "-----BEGIN PGP MESSAGE-----" in value and "-----END PGP MESSAGE-----" in value
+        stripped_value = value.strip()
+        return bool(
+            re.fullmatch(
+                r"-----BEGIN PGP MESSAGE-----\r?\n"
+                r"(?:[!-~]+: .*\r?\n)*\r?\n?[\s\S]*\r?\n"
+                r"-----END PGP MESSAGE-----",
+                stripped_value,
+            )
+        )
 
     def _get_math_problem(force_new: bool = False) -> str:
         if not force_new and session.get("math_problem") and session.get("math_answer"):
