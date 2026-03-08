@@ -107,6 +107,7 @@ jobs:
           git push --force-with-lease origin "HEAD:${STATS_BRANCH}"
 
           pr_title="Update public directory snapshot report for ${REPORT_TIMESTAMP}"
+          stats_owner="${STATS_REPOSITORY%%/*}"
           pr_body="$(cat <<EOF
           Automated public directory snapshot sync from \`${GITHUB_REPOSITORY}\`.
 
@@ -118,7 +119,7 @@ jobs:
 
           pr_url="$(gh pr list \
             --repo "${STATS_REPOSITORY}" \
-            --head "${STATS_BRANCH}" \
+            --head "${stats_owner}:${STATS_BRANCH}" \
             --base "${STATS_DEFAULT_BRANCH}" \
             --state open \
             --json url \
@@ -133,7 +134,7 @@ jobs:
             pr_url="$(gh pr create \
               --repo "${STATS_REPOSITORY}" \
               --base "${STATS_DEFAULT_BRANCH}" \
-              --head "${STATS_BRANCH}" \
+              --head "${stats_owner}:${STATS_BRANCH}" \
               --title "$pr_title" \
               --body "$pr_body")"
           fi

@@ -117,6 +117,7 @@ jobs:
           git push --force-with-lease origin "HEAD:${WEBSITE_BRANCH}"
 
           pr_title="Update website screenshots for ${RELEASE_KEY}"
+          website_owner="${WEBSITE_REPOSITORY%%/*}"
           pr_body="$(cat <<EOF
           Automated docs screenshots sync from \`${GITHUB_REPOSITORY}\`.
 
@@ -127,7 +128,7 @@ jobs:
 
           pr_url="$(gh pr list \
             --repo "${WEBSITE_REPOSITORY}" \
-            --head "${WEBSITE_BRANCH}" \
+            --head "${website_owner}:${WEBSITE_BRANCH}" \
             --base "${WEBSITE_DEFAULT_BRANCH}" \
             --state open \
             --json url \
@@ -142,7 +143,7 @@ jobs:
             pr_url="$(gh pr create \
               --repo "${WEBSITE_REPOSITORY}" \
               --base "${WEBSITE_DEFAULT_BRANCH}" \
-              --head "${WEBSITE_BRANCH}" \
+              --head "${website_owner}:${WEBSITE_BRANCH}" \
               --title "$pr_title" \
               --body "$pr_body")"
           fi
@@ -222,6 +223,7 @@ jobs:
           git push origin "HEAD:${SCREENSHOTS_BRANCH}"
 
           pr_title="Update screenshot archive for ${RELEASE_KEY}"
+          screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"
           pr_body="$(cat <<EOF
           Automated docs screenshots sync from \`${GITHUB_REPOSITORY}\`.
 
@@ -232,7 +234,7 @@ jobs:
 
           pr_url="$(gh pr list \
             --repo "${SCREENSHOTS_REPOSITORY}" \
-            --head "${SCREENSHOTS_BRANCH}" \
+            --head "${screenshots_owner}:${SCREENSHOTS_BRANCH}" \
             --base "${SCREENSHOTS_DEFAULT_BRANCH}" \
             --state open \
             --json url \
@@ -247,7 +249,7 @@ jobs:
             pr_url="$(gh pr create \
               --repo "${SCREENSHOTS_REPOSITORY}" \
               --base "${SCREENSHOTS_DEFAULT_BRANCH}" \
-              --head "${SCREENSHOTS_BRANCH}" \
+              --head "${screenshots_owner}:${SCREENSHOTS_BRANCH}" \
               --title "$pr_title" \
               --body "$pr_body")"
           fi
