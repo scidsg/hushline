@@ -174,8 +174,8 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"hsba.org"}),
     },
     "ID": {
-        "source_label": "Idaho State Bar public directory",
-        "source_url": "https://isb.idaho.gov/lawyer-referral-service/",
+        "source_label": "Idaho State Bar attorney profile",
+        "source_url": "https://isb.idaho.gov/blog/",
         "allowed_domains": frozenset({"isb.idaho.gov"}),
     },
     "IL": {
@@ -189,13 +189,13 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"inbar.org"}),
     },
     "IA": {
-        "source_label": "Iowa State Bar Association public directory",
-        "source_url": "https://www.iowabar.org/?pg=Find-A-LawyerHP",
+        "source_label": "Iowa State Bar Association jury verdict record",
+        "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/webCJV",
         "allowed_domains": frozenset({"iowabar.org"}),
     },
     "KS": {
-        "source_label": "Kansas Judicial Branch attorney records",
-        "source_url": "https://www.kscourts.gov/Attorneys/Attorney-Registration",
+        "source_label": "Kansas Judicial Branch published opinion",
+        "source_url": "https://kscourts.gov/Cases-Decisions/Decisions/Published",
         "allowed_domains": frozenset({"kscourts.gov"}),
     },
     "KY": {
@@ -967,6 +967,106 @@ _HAWAII_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_IDAHO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-trudy-hanson-fouser",
+        "slug": "public-record~trudy-hanson-fouser",
+        "name": "Trudy Hanson Fouser",
+        "website": "https://gfidaholaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from an Idaho State Bar " "attorney profile."
+        ),
+        "city": "Boise",
+        "state": "ID",
+        "practice_tags": ["Employment", "Litigation", "Investigations"],
+        "source_label": "Idaho State Bar attorney profile",
+        "source_url": "https://isb.idaho.gov/blog/trudy-hanson-fouser/",
+    },
+)
+
+
+_INDIANA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-georgianna-quinn-tutwiler",
+        "slug": "public-record~georgianna-quinn-tutwiler",
+        "name": "Georgianna Quinn Tutwiler",
+        "website": "https://www.humesmith.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Indiana State Bar " "public directory."
+        ),
+        "city": "Indianapolis",
+        "state": "IN",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Indiana State Bar public directory",
+        "source_url": "https://www.inbar.org/members/?id=30400364",
+    },
+)
+
+
+_IOWA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-roxanne-barton-conlin",
+        "slug": "public-record~roxanne-barton-conlin",
+        "name": "Roxanne Barton Conlin",
+        "website": "https://www.roxanneconlinlaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from an Iowa State Bar "
+            "Association jury verdict record."
+        ),
+        "city": "Des Moines",
+        "state": "IA",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Iowa State Bar Association jury verdict record",
+        "source_url": (
+            "https://services.iowabar.org/IB/JuryVerdicts.nsf/"
+            "b96238336212630c85258ca1000240fd/"
+            "e71fe5f6f6d3242d872589900011edc5!OpenDocument"
+        ),
+    },
+)
+
+
+_KANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-michael-f-brady",
+        "slug": "public-record~michael-f-brady",
+        "name": "Michael F. Brady",
+        "website": "https://www.mbradylaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a Kansas Judicial "
+            "Branch published opinion."
+        ),
+        "city": "Overland Park",
+        "state": "KS",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Kansas Judicial Branch published opinion",
+        "source_url": (
+            "https://kscourts.gov/Cases-Decisions/Decisions/Published/"
+            "Brown-v-Ford-Storage-and-Moving-Co-Inc"
+        ),
+    },
+)
+
+
+_KENTUCKY_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-andrew-clarke-weeks",
+        "slug": "public-record~andrew-clarke-weeks",
+        "name": "Andrew Clarke Weeks",
+        "website": "https://legaljusticeatwork.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Kentucky Bar "
+            "Association public directory."
+        ),
+        "city": "Louisville",
+        "state": "KY",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "Kentucky Bar Association public directory",
+        "source_url": "https://www.kybar.org/members/?id=42347567",
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -1378,6 +1478,81 @@ def _discover_hawaii_official_public_record_rows(
     )
 
 
+def _discover_idaho_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_IDAHO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_indiana_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_INDIANA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_iowa_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_IOWA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_kansas_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_KANSAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_kentucky_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_KENTUCKY_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -1450,6 +1625,11 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "FL": _discover_florida_official_public_record_rows,
     "GA": _discover_georgia_official_public_record_rows,
     "HI": _discover_hawaii_official_public_record_rows,
+    "IA": _discover_iowa_official_public_record_rows,
+    "ID": _discover_idaho_official_public_record_rows,
+    "IN": _discover_indiana_official_public_record_rows,
+    "KS": _discover_kansas_official_public_record_rows,
+    "KY": _discover_kentucky_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
     "OH": _discover_ohio_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
