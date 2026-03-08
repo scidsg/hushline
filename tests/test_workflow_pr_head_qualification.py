@@ -55,8 +55,8 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     )
     assert 'git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
     assert (
-        "Published screenshot archive directly to ${SCREENSHOTS_REPOSITORY}@${SCREENSHOTS_DEFAULT_BRANCH}."
-        in archive_section
+        "Published screenshot archive directly to "
+        "${SCREENSHOTS_REPOSITORY}@${SCREENSHOTS_DEFAULT_BRANCH}." in archive_section
     )
     assert 'screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"' not in archive_section
     assert "gh pr create \\" not in archive_section
