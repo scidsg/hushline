@@ -555,3 +555,9 @@ def test_onboarding_skip_redirects_to_select_tier_when_enabled(
     response = client.post(url_for("onboarding_skip"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("premium.select_tier"))
+
+
+def test_webpack_build_includes_onboarding_bundle() -> None:
+    webpack_config = Path("webpack.config.js").read_text(encoding="utf-8")
+
+    assert '"onboarding"' in webpack_config
