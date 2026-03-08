@@ -163,7 +163,6 @@ jobs:
         env:
           SCREENSHOTS_REPOSITORY: scidsg/hushline-screenshots
           SCREENSHOTS_DEFAULT_BRANCH: main
-          SCREENSHOTS_BRANCH: automation/docs-screenshots
           SCREENSHOTS_PUSH_TOKEN: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
           ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
         run: |
@@ -192,15 +191,9 @@ jobs:
             exit 1
           fi
 
-          export GH_TOKEN="${SCREENSHOTS_PUSH_TOKEN}"
-
           git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
-          if git ls-remote --exit-code --heads origin "${SCREENSHOTS_BRANCH}" >/dev/null 2>&1; then
-            git checkout -B "${SCREENSHOTS_BRANCH}" "origin/${SCREENSHOTS_BRANCH}"
-          else
-            git checkout -B "${SCREENSHOTS_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
-          fi
+          git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
 
           mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
           rsync -a --delete "${RELEASE_ROOT}/" "releases/${RELEASE_KEY}/"
@@ -220,46 +213,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "Update screenshot archive for ${RELEASE_KEY}"
-          git push origin "HEAD:${SCREENSHOTS_BRANCH}"
-
-          pr_title="Update screenshot archive for ${RELEASE_KEY}"
-          screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"
-          pr_body="$(cat <<EOF
-          Automated docs screenshots sync from \`${GITHUB_REPOSITORY}\`.
-
-          - Release: \`${RELEASE_KEY}\`
-          - Source workflow run: \`${GITHUB_RUN_ID}\`
-          EOF
-          )"
-
-          pr_url="$(gh pr list \
-            --repo "${SCREENSHOTS_REPOSITORY}" \
-            --head "${screenshots_owner}:${SCREENSHOTS_BRANCH}" \
-            --base "${SCREENSHOTS_DEFAULT_BRANCH}" \
-            --state open \
-            --json url \
-            --jq '.[0].url // ""')"
-
-          if [ -n "$pr_url" ]; then
-            gh pr edit "$pr_url" \
-              --repo "${SCREENSHOTS_REPOSITORY}" \
-              --title "$pr_title" \
-              --body "$pr_body"
-          else
-            pr_url="$(gh pr create \
-              --repo "${SCREENSHOTS_REPOSITORY}" \
-              --base "${SCREENSHOTS_DEFAULT_BRANCH}" \
-              --head "${screenshots_owner}:${SCREENSHOTS_BRANCH}" \
-              --title "$pr_title" \
-              --body "$pr_body")"
-          fi
-
-          if gh pr merge "$pr_url" \
-            --repo "${SCREENSHOTS_REPOSITORY}" \
-            --squash \
-            --delete-branch
-          then
-            echo "Merged $pr_url"
-          else
-            echo "Created or updated $pr_url but it is not immediately mergeable."
-          fi
+          git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"
+          echo "Published screenshot archive directly to ${SCREENSHOTS_REPOSITORY}@${SCREENSHOTS_DEFAULT_BRANCH}."
