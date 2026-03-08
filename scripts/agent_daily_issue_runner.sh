@@ -205,7 +205,7 @@ lighthouse_performance_files_changed() {
 audit_failure_looks_environmental() {
   local text="$1"
   printf '%s\n' "$text" | grep -Eqi \
-    '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|tls|ssl|certificate|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
+    '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
 }
 
 auto_fix_lint_with_containerized_tooling() {
