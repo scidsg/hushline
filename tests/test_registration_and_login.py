@@ -1,8 +1,10 @@
 import os
+from unittest.mock import MagicMock, patch
 
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User, Username
@@ -132,6 +134,61 @@ def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClien
     assert "Username already taken." in response.text
 
 
+def test_username_db_constraint_rejects_case_insensitive_duplicate(client: FlaskClient) -> None:
+    user1 = User(password="SecurePassword123!")  # noqa: S106
+    user2 = User(password="SecurePassword123!")  # noqa: S106
+    db.session.add_all([user1, user2])
+    db.session.flush()
+
+    db.session.add(Username(user_id=user1.id, _username="CaseUser", is_primary=True))
+    db.session.commit()
+
+    db.session.add(Username(user_id=user2.id, _username="caseuser", is_primary=True))
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return
+
+    raise AssertionError("Expected case-insensitive duplicate to violate database uniqueness")
+
+
+def test_user_registration_handles_case_insensitive_race_integrity_error(
+    client: FlaskClient,
+) -> None:
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=True,
+    )
+    db.session.commit()
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    with (
+        patch(
+            "hushline.routes.auth.db.session.scalar",
+            side_effect=[False, True],
+        ),
+        patch(
+            "hushline.routes.auth.db.session.commit",
+            side_effect=IntegrityError("stmt", "params", Exception("duplicate username")),
+        ),
+    ):
+        response = client.post(
+            url_for("register"),
+            data={
+                "username": "caseuser",
+                "password": "SecurePassword123!",
+                "captcha_answer": captcha_answer,
+            },
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "Username already taken." in response.text
+
+
 def test_register_page_loads(client: FlaskClient) -> None:
     """Test if the registration page loads successfully."""
     response = client.get(url_for("register"))
@@ -223,3 +280,26 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     assert login_response.status_code == 200
     assert "Inbox" not in login_response.text
     assert "⛔️ Invalid username or password." in login_response.text
+
+
+def test_user_login_handles_case_insensitive_duplicate_rows(
+    app: Flask, client: FlaskClient
+) -> None:
+    with (
+        patch(
+            "hushline.routes.auth.db.session.scalars",
+            return_value=MagicMock(
+                one_or_none=MagicMock(side_effect=MultipleResultsFound),
+            ),
+        ),
+        patch("hushline.routes.auth.flash") as flash_mock,
+        patch("hushline.routes.auth.render_template", return_value="login page"),
+    ):
+        response = client.post(
+            url_for("login"),
+            data={"username": "CaseUser", "password": "SecurePassword123!"},
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    flash_mock.assert_called_with("⛔️ Invalid username or password.")

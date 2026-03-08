@@ -266,14 +266,29 @@ def handle_change_username_form(username: Username, form: ChangeUsernameForm) ->
         flash("💔 This username is already taken.")
     else:
         username.username = new_username
-        db.session.commit()
-
-        session["username"] = new_username
-        flash("👍 Username changed successfully.")
-        current_app.logger.debug(
-            f"Username updated to {username.username}, "
-            f"Verification status: {username.is_verified}"
-        )
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            if db.session.scalar(
+                db.exists(Username)
+                .where(
+                    func.lower(Username._username) == new_username.lower(),
+                    Username.id != username.id,
+                )
+                .select()
+            ):
+                flash("💔 This username is already taken.")
+            else:
+                current_app.logger.error("Error updating username", exc_info=True)
+                flash("⛔️ Internal server error. Username not changed.")
+        else:
+            session["username"] = new_username
+            flash("👍 Username changed successfully.")
+            current_app.logger.debug(
+                f"Username updated to {username.username}, "
+                f"Verification status: {username.is_verified}"
+            )
     return redirect_to_self()
 
 

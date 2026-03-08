@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session
+from sqlalchemy.exc import MultipleResultsFound
+from werkzeug.exceptions import NotFound
 
 from hushline.db import db
 from hushline.model import Message, OrganizationSetting, User, Username
@@ -62,6 +64,20 @@ def test_profile_404_for_unknown_username(client: FlaskClient) -> None:
     response = client.get(url_for("profile", username="does-not-exist"), follow_redirects=True)
     assert response.status_code == 404
     assert "404: Not Found" in response.text
+
+
+def test_profile_404s_when_case_insensitive_lookup_is_ambiguous(app: Flask) -> None:
+    with (
+        patch(
+            "hushline.routes.profile.db.session.scalars",
+            return_value=MagicMock(
+                one_or_none=MagicMock(side_effect=MultipleResultsFound),
+            ),
+        ),
+        app.test_request_context("/to/CaseUser"),
+        pytest.raises(NotFound),
+    ):
+        app.view_functions["profile"]("CaseUser")
 
 
 @pytest.mark.usefixtures("_authenticated_user")
