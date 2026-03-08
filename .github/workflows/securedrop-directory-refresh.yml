@@ -30,21 +30,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          delimiter="SECUREDROP_SUMMARY_$(date +%s)"
+
           if [ -f /tmp/securedrop-refresh.md ]; then
             {
-              echo "body<<'EOF'"
+              echo "body<<${delimiter}"
               cat /tmp/securedrop-refresh.md
-              echo "EOF"
+              echo "${delimiter}"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           {
-            echo "body<<'EOF'"
+            echo "body<<${delimiter}"
             echo "## SecureDrop Directory Refresh Summary"
             echo
             echo "- Refresh completed."
-            echo "EOF"
+            echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create or update refresh PR
