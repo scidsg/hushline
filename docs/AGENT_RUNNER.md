@@ -31,6 +31,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
 11. Run Codex issue loop until repository changes exist.
     - The issue/fix prompts tell Codex to avoid local container-backed make validation by default, and to defer validation entirely to the runner when schema-affecting files are touched (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`).
     - The fix prompt also includes the current branch diff summary, the prior Codex summary, and an extracted failure signature so Codex can repair the current implementation instead of repeating a narrow patch against the same failing symptom.
+    - Codex transcript output is captured in a temporary file for the duration of the run and is excluded from the persisted runner log; only the final Codex summary is written into the run log.
 12. Run required checks in a self-heal loop:
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
@@ -212,7 +213,7 @@ Optional forced issue:
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.4`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
-- `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output during runs)
+- `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output to the live console only, without writing it into persisted runner logs)
 
 ## Issue Bootstrap Script
 
