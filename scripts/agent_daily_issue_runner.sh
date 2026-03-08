@@ -907,7 +907,7 @@ failure_signature_from_text() {
   local text="$1"
 
   {
-    printf '%s\n' "$text" | grep -E 'FAILED tests/|AssertionError:|sqlalchemy\.exc\.|psycopg\.errors\.|Traceback|Error:'
+    printf '%s\n' "$text" | grep -E 'FAILED tests/|AssertionError:|sqlalchemy\.exc\.|psycopg\.errors\.|Traceback|Error:' || true
   } | head -n 20
 }
 
@@ -1097,6 +1097,7 @@ build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
 
 issue_attempt=1
 PREVIOUS_FAILURE_SIGNATURE=""
+FAILURE_SIGNATURE=""
 REPEATED_FAILURE_COUNT=0
 while true; do
   echo "==> Codex issue attempt $issue_attempt"
