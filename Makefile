@@ -150,6 +150,7 @@ test-migration-smoke: ## Run migration compatibility tests (CI-equivalent)
 .PHONY: workflow-security-checks
 workflow-security-checks: ## Run workflow security checks (CI-equivalent)
 	docker run --rm -v "$(PWD):/work" -w /work rhysd/actionlint:1.7.7 -color
+	python3 scripts/check_workflow_pr_head_qualification.py
 	@set -euo pipefail; \
 	PATTERN='github\.event\.(issue|pull_request|comment|review|review_comment)(\.[A-Za-z_]+)*\.(title|body)'; \
 	if rg -n --glob ".github/workflows/*.yml" --glob ".github/workflows/*.yaml" "$$PATTERN" .github/workflows; then \
