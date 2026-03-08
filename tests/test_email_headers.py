@@ -322,6 +322,23 @@ def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskCli
     assert "Could not generate report. Re-run validation first." in response.text
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_export_value_error_redirects_with_flash(
+    client: FlaskClient, mocker: MockFixture
+) -> None:
+    mocker.patch(
+        "hushline.routes.email_headers.create_evidence_zip",
+        side_effect=ValueError("No email headers detected. Paste the raw headers and try again."),
+    )
+    response = client.post(
+        url_for("email_headers_evidence_zip"),
+        data={"raw_headers": "foo"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "No email headers detected. Paste the raw headers and try again." in response.text
+
+
 def test_parse_tag_value_pairs_ignores_invalid_parts_and_empty_keys() -> None:
     tags = email_headers._parse_tag_value_pairs("no-equals; =blank; s=selector1; d=example.org")
     assert tags == {"s": "selector1", "d": "example.org"}
