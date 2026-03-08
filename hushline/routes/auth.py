@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pyotp
 from flask import (
     Flask,
+    current_app,
     flash,
     make_response,
     redirect,
@@ -13,6 +14,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import (
@@ -86,7 +88,7 @@ def register_auth_routes(app: Flask) -> None:
                 )
 
             # Proceed with registration logic
-            username = form.username.data
+            submitted_username = form.username.data
             password = form.password.data
 
             invite_code_input = form.invite_code.data if registration_codes_enabled else None
@@ -107,7 +109,7 @@ def register_auth_routes(app: Flask) -> None:
 
             if db.session.scalar(
                 db.exists(Username)
-                .where(func.lower(Username._username) == username.lower())
+                .where(func.lower(Username._username) == submitted_username.lower())
                 .select()
             ):
                 flash("💔 Username already taken.", "error")
@@ -127,14 +129,32 @@ def register_auth_routes(app: Flask) -> None:
             db.session.add(user)
             db.session.flush()
 
-            username = Username(_username=username, user_id=user.id, is_primary=True)
+            username = Username(_username=submitted_username, user_id=user.id, is_primary=True)
 
             # If this is the first user, show them in the directory
             if first_user:
                 username.show_in_directory = True
 
             db.session.add(username)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                if db.session.scalar(
+                    db.exists(Username)
+                    .where(func.lower(Username._username) == submitted_username.lower())
+                    .select()
+                ):
+                    flash("💔 Username already taken.", "error")
+                else:
+                    current_app.logger.error("Unexpected registration error", exc_info=True)
+                    flash("⛔️ Internal server error. Registration failed.", "error")
+                return render_template(
+                    "register.html",
+                    form=form,
+                    math_problem=math_problem,
+                    first_user=first_user,
+                )
 
             username.create_default_field_defs()
 
@@ -161,12 +181,20 @@ def register_auth_routes(app: Flask) -> None:
 
         form = LoginForm()
         if form.validate_on_submit():
-            username = db.session.scalars(
-                db.select(Username).where(
-                    func.lower(Username._username) == form.username.data.strip().lower(),
-                    Username.is_primary.is_(True),
+            try:
+                username = db.session.scalars(
+                    db.select(Username).where(
+                        func.lower(Username._username) == form.username.data.strip().lower(),
+                        Username.is_primary.is_(True),
+                    )
+                ).one_or_none()
+            except MultipleResultsFound:
+                current_app.logger.error(
+                    "Multiple primary usernames matched case-insensitive login lookup",
+                    extra={"username": form.username.data.strip().lower()},
                 )
-            ).one_or_none()
+                flash("⛔️ Invalid username or password.")
+                return render_template("login.html", form=form)
             if username and username.user.check_password(form.password.data):
                 user = username.user
                 rotate_user_session_id(user)

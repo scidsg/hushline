@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
-from flask import Flask
+from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
 from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
@@ -18,6 +18,7 @@ from hushline.settings.common import (
     _is_safe_verification_url,
     build_field_forms,
     handle_change_password_form,
+    handle_change_username_form,
     handle_field_post,
     handle_new_alias_form,
     handle_pgp_key_form,
@@ -364,6 +365,37 @@ def test_handle_new_alias_form_integrity_error_returns_none(app: Flask, user: Us
         result = handle_new_alias_form(user, form)
 
     assert result is None
+
+
+def test_handle_change_username_form_unique_violation_flashes_taken(app: Flask, user: User) -> None:
+    other_user = User(password="SecurePassword123!")  # noqa: S106
+    db.session.add(other_user)
+    db.session.flush()
+    db.session.add(Username(user_id=other_user.id, _username="taken-name", is_primary=True))
+    db.session.commit()
+
+    form = cast(
+        ChangeUsernameForm,
+        SimpleNamespace(new_username=SimpleNamespace(data="taken-name", errors=[])),
+    )
+
+    with (
+        app.test_request_context("/settings/auth", method="POST"),
+        patch("hushline.settings.common.db.session.scalar", side_effect=[False, True]),
+        patch(
+            "hushline.settings.common.db.session.commit",
+            side_effect=IntegrityError("stmt", "params", Exception("duplicate username")),
+        ),
+    ):
+        session["username"] = user.primary_username.username
+        result = handle_change_username_form(user.primary_username, form)
+
+        messages = session.get("_flashes", [])
+        session_username = session["username"]
+
+    assert result.status_code == 302
+    assert ("message", "💔 This username is already taken.") in messages
+    assert session_username == user.primary_username.username
 
 
 def test_handle_change_password_form_rejects_wrong_old_password(

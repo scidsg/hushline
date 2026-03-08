@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 
+from sqlalchemy import Index, func, literal_column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.db import db
@@ -36,6 +37,10 @@ class Username(Model):
     BIO_MAX_LENGTH = 250
     EXTRA_FIELD_LABEL_MAX_LENGTH = 50
     EXTRA_FIELD_VALUE_MAX_LENGTH = 4096
+
+    __table_args__ = (
+        Index("uq_usernames_username_lower", func.lower(literal_column("username")), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))

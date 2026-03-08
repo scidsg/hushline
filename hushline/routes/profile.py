@@ -13,6 +13,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
 from hushline.crypto import encrypt_message
@@ -58,9 +59,16 @@ def register_profile_routes(app: Flask) -> None:
 
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
-        uname = db.session.scalars(
-            db.select(Username).where(func.lower(Username._username) == username.lower())
-        ).one_or_none()
+        try:
+            uname = db.session.scalars(
+                db.select(Username).where(func.lower(Username._username) == username.lower())
+            ).one_or_none()
+        except MultipleResultsFound:
+            current_app.logger.error(
+                "Multiple usernames matched case-insensitive profile lookup",
+                extra={"username": username.lower()},
+            )
+            abort(404)
         if not uname:
             abort(404)
 
