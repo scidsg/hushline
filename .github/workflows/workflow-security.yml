@@ -21,8 +21,10 @@ jobs:
       - name: install actionlint
         run: |
           set -euo pipefail
-          curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash
-          echo "$PWD" >> "$GITHUB_PATH"
+          export GOBIN="$RUNNER_TEMP/actionlint-bin"
+          mkdir -p "$GOBIN"
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          echo "$GOBIN" >> "$GITHUB_PATH"
 
       - name: run actionlint
         run: actionlint -color
