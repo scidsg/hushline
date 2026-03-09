@@ -3,7 +3,7 @@ name: GlobaLeaks Directory Refresh
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 16 * * *"
+    - cron: "0 16 1 1,4,7,10 *"
 
 permissions:
   contents: write

@@ -24,7 +24,7 @@ make refresh-securedrop-listings REFRESH_SECUREDROP_ARGS="--check"
 ## Scheduled refresh
 
 - Workflow: `.github/workflows/securedrop-directory-refresh.yml`
-- Trigger: daily cron + manual dispatch.
+- Trigger: quarterly cron (`Jan/Apr/Jul/Oct`) + manual dispatch.
 - Behavior: refreshes the local artifact and opens/updates a PR when data changes.
 
 ## UI note

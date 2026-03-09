@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 15 * * 1"
+    - cron: "0 15 1 1,4,7,10 *"
 
 jobs:
   public-record-links:

@@ -534,7 +534,11 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
 
     def checker(url: str) -> LinkCheckResult:
         checked_urls.append(url)
-        return LinkCheckResult(ok=url != "https://broken.example", reason="HTTP 404")
+        return LinkCheckResult(
+            ok=url != "https://broken.example",
+            reason="HTTP 404",
+            definitive_failure=url == "https://broken.example",
+        )
 
     flagged = refresh_public_record_rows(
         rows,
@@ -561,6 +565,44 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     assert dropped.dropped_record_ids == ["seed-broken"]
     assert dropped.checked_url_count == 4
     assert checked_urls
+
+
+def test_refresh_public_record_rows_keeps_rows_on_transient_link_failures() -> None:
+    rows = [
+        _row(
+            id_value="seed-healthy",
+            slug="public-record~healthy",
+            name="Healthy Firm",
+            state="NY",
+            website="https://healthy.example",
+        ),
+        _row(
+            id_value="seed-transient",
+            slug="public-record~transient",
+            name="Transient Firm",
+            state="NY",
+            website="https://transient.example",
+        ),
+    ]
+
+    def checker(url: str) -> LinkCheckResult:
+        if url == "https://transient.example":
+            return LinkCheckResult(ok=False, reason="HTTP 503")
+        return LinkCheckResult(ok=True)
+
+    result = refresh_public_record_rows(
+        rows,
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"NY"})},
+        region_targets={"US": 2},
+        link_checker=checker,
+        drop_failed_links=True,
+    )
+
+    assert [row["id"] for row in result.rows] == ["seed-healthy", "seed-transient"]
+    assert len(result.link_failures) == 1
+    assert result.link_failures[0].listing_id == "seed-transient"
+    assert result.dropped_record_ids == []
 
 
 def test_refresh_public_record_rows_rejects_legacy_self_reported_source_label() -> None:
@@ -837,6 +879,34 @@ def test_build_requests_link_checker_retries_then_succeeds() -> None:
     assert result.ok is True
     assert fake_session._index == 2
     assert sleep_calls == [1.0]
+
+
+def test_build_requests_link_checker_marks_404_as_definitive_failure() -> None:
+    class _FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+
+        def close(self) -> None:
+            return None
+
+    class _FakeSession:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+
+        def get(self, *_args: Any, **_kwargs: Any) -> _FakeResponse:
+            return _FakeResponse(404)
+
+    checker = build_requests_link_checker(
+        session=_FakeSession(),  # type: ignore[arg-type]
+        max_attempts=1,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    result = checker("https://missing.example")
+
+    assert result.ok is False
+    assert result.reason == "HTTP 404"
+    assert result.definitive_failure is True
 
 
 def test_discover_chambers_public_record_rows_is_disabled() -> None:
