@@ -125,7 +125,9 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert "Message the Hush Line admin for any corrections." in banner_text
 
 
-def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
+def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
+    client: FlaskClient,
+) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -135,15 +137,10 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
 
     banner_links = securedrop_panel.select(".dirMeta a")
     links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
-    assert (
-        links_by_text["SecureDrop directory API"]
-        == "https://securedrop.org/api/v1/directory/?format=json"
-    )
     assert links_by_text["Hush Line admin"] == "/to/admin"
     banner_text = securedrop_panel.get_text(" ", strip=True)
     assert banner_text.startswith("🧪 Beta:")
-    assert "These listings are automated and synced from the" in banner_text
-    assert "SecureDrop directory API" in banner_text
+    assert "These listings are automated." in banner_text
     assert "Contact the Hush Line admin for any corrections." in banner_text
     assert "Onion addresses require" not in banner_text
     assert "Tor Browser" not in banner_text
