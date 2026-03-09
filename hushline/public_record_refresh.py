@@ -1071,6 +1071,103 @@ _KENTUCKY_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_LOUISIANA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-gregory-james-sauzer",
+        "slug": "public-record~gregory-james-sauzer",
+        "name": "Gregory James Sauzer",
+        "website": "https://www.spsr-law.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Louisiana Attorney "
+            "Disciplinary Board attorney records."
+        ),
+        "city": "New Orleans",
+        "state": "LA",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Louisiana Attorney Disciplinary Board attorney records",
+        "source_url": "https://www.ladb.org/DR/Document.cfm?docket=24-DB-014",
+    },
+)
+
+
+_MASSACHUSETTS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-hillary-j-massey",
+        "slug": "public-record~hillary-j-massey",
+        "name": "Hillary J. Massey",
+        "website": "https://www.seyfarth.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Massachusetts BBO " "attorney records."
+        ),
+        "city": "Boston",
+        "state": "MA",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Massachusetts BBO attorney records",
+        "source_url": "https://bbopublic.massbbo.org/web/f/SJC_WellBeing_Cmte_Report.pdf",
+    },
+)
+
+
+_MARYLAND_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-sean-w-baker",
+        "slug": "public-record~sean-w-baker",
+        "name": "Sean W. Baker",
+        "website": "https://www.sbakerlaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Maryland Courts "
+            "attorney discipline records."
+        ),
+        "city": "Timonium",
+        "state": "MD",
+        "practice_tags": ["Investigations", "Litigation", "Appeals"],
+        "source_label": "Maryland Courts attorney discipline records",
+        "source_url": "https://www.courts.state.md.us/attygrievance/sanctions07",
+    },
+)
+
+
+_MAINE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-daniel-b-eccher",
+        "slug": "public-record~daniel-b-eccher",
+        "name": "Daniel B. Eccher",
+        "website": "https://www.ehclaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from Maine Board of "
+            "Overseers of the Bar public directory."
+        ),
+        "city": "Portland",
+        "state": "ME",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Maine Board of Overseers of the Bar public directory",
+        "source_url": "https://mebarconnect.mainebar.org/people/daniel-eccher",
+    },
+)
+
+
+_MICHIGAN_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-gerard-v-mantese",
+        "slug": "public-record~gerard-v-mantese",
+        "name": "Gerard V. Mantese",
+        "website": "https://manteselaw.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of Michigan " "public directory."
+        ),
+        "city": "Southfield",
+        "state": "MI",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of Michigan public directory",
+        "source_url": (
+            "https://connect.michbar.org/laborlaw/home/council/section-members/"
+            "-in-directory/directorysearchresults/?UserKey="
+            "7af6ed96-c3cf-4f2d-b5f6-8effee281468"
+        ),
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -1557,6 +1654,81 @@ def _discover_kentucky_official_public_record_rows(
     )
 
 
+def _discover_louisiana_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_LOUISIANA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_massachusetts_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_MASSACHUSETTS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_maryland_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_MARYLAND_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_maine_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_MAINE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_michigan_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_MICHIGAN_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -1635,6 +1807,11 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "KS": _discover_kansas_official_public_record_rows,
     "KY": _discover_kentucky_official_public_record_rows,
     "IL": _discover_illinois_official_public_record_rows,
+    "LA": _discover_louisiana_official_public_record_rows,
+    "MA": _discover_massachusetts_official_public_record_rows,
+    "MD": _discover_maryland_official_public_record_rows,
+    "ME": _discover_maine_official_public_record_rows,
+    "MI": _discover_michigan_official_public_record_rows,
     "OH": _discover_ohio_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
