@@ -178,10 +178,6 @@ document.addEventListener("DOMContentLoaded", function () {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
       }
-      if (user.is_shodan) {
-        badgeContainer +=
-          '<span class="badge" role="img" aria-label="Shodan-sourced listing">📡 Shodan</span>';
-      }
       return badgeContainer;
     }
 

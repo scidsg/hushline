@@ -8,9 +8,6 @@
   <div class="badgeContainer">
     <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
     <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-    {% if listing.is_shodan %}
-      <span class="badge" role="img" aria-label="Shodan-sourced listing">📡 Shodan</span>
-    {% endif %}
   </div>
 
   <p class="bio">{{ listing.description }}</p>

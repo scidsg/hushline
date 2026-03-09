@@ -113,7 +113,7 @@ refresh-securedrop-listings: ## Refresh SecureDrop directory instance artifact
 	$(CMD) poetry run ./scripts/refresh_securedrop_directory_instances.py $(REFRESH_SECUREDROP_ARGS)
 
 .PHONY: refresh-globaleaks-listings
-refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from an input export
+refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public source pages
 	$(CMD) poetry run ./scripts/refresh_globaleaks_directory_instances.py $(REFRESH_GLOBALEAKS_ARGS)
 
 .PHONY: audit-python

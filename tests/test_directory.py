@@ -56,22 +56,6 @@ def _sample_globaleaks_listing() -> GlobaLeaksDirectoryListing:
     )
 
 
-def _sample_shodan_globaleaks_listing() -> GlobaLeaksDirectoryListing:
-    return GlobaLeaksDirectoryListing(
-        id="globaleaks-shodan-sample",
-        slug="globaleaks~shodan-sample",
-        name="Sample Shodan GlobaLeaks",
-        website="https://shodan-sample.example.org",
-        description="A Shodan-discovered GlobaLeaks instance.",
-        submission_url="https://shodan-sample.example.org",
-        host="shodan-sample.example.org",
-        countries=(),
-        languages=(),
-        source_label="Shodan host scan",
-        source_url="https://www.shodan.io/host/203.0.113.10",
-    )
-
-
 def test_globaleaks_seed_has_rows() -> None:
     listings = get_globaleaks_directory_listings()
 
@@ -404,7 +388,6 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["primary_username"] is None
     assert row["is_public_record"] is False
     assert row["is_globaleaks"] is True
-    assert row["is_shodan"] is False
     assert row["is_securedrop"] is False
     assert row["is_automated"] is True
     assert row["message_capable"] is False
@@ -498,7 +481,6 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             source_url="https://example.org/globaleaks",
             directory_section="globaleaks_directory",
             is_automated=True,
-            is_shodan=False,
             message_capable=False,
         ),
     )
@@ -712,45 +694,6 @@ def test_globaleaks_listing_page_is_read_only(
     assert dir_meta_text.startswith("🌐")
     assert "clearnet or onion submissions" in dir_meta_text
     assert "Verify the destination" in dir_meta_text
-
-
-def test_directory_globaleaks_shodan_badge_renders_in_tab_and_all(
-    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    listing = _sample_shodan_globaleaks_listing()
-    monkeypatch.setattr(
-        "hushline.routes.directory.get_globaleaks_directory_listings",
-        lambda: (listing,),
-    )
-
-    response = client.get(url_for("directory"))
-    assert response.status_code == 200
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    globaleaks_panel = soup.find(id="globaleaks")
-    all_panel = soup.find(id="all")
-
-    assert globaleaks_panel is not None
-    assert all_panel is not None
-    assert (
-        globaleaks_panel.select_one('span.badge[aria-label="Shodan-sourced listing"]') is not None
-    )
-    assert all_panel.select_one('span.badge[aria-label="Shodan-sourced listing"]') is not None
-
-
-def test_globaleaks_listing_page_shows_shodan_badge(
-    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    listing = _sample_shodan_globaleaks_listing()
-    monkeypatch.setattr(
-        "hushline.routes.directory.get_globaleaks_directory_listing",
-        lambda _slug: listing,
-    )
-
-    response = client.get(url_for("globaleaks_listing", slug=listing.slug))
-    assert response.status_code == 200
-    soup = BeautifulSoup(response.text, "html.parser")
-    assert soup.select_one('span.badge[aria-label="Shodan-sourced listing"]') is not None
 
 
 def test_globaleaks_listing_route_hidden_when_verified_tabs_disabled(

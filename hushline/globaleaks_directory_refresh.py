@@ -1,17 +1,68 @@
 from __future__ import annotations
 
-import csv
-import json
 import re
 import unicodedata
-from pathlib import Path
 from typing import Mapping, Sequence
 from urllib.parse import urlparse
 
+import requests
+from bs4 import BeautifulSoup
 from unidecode import unidecode
 
-GLOBALEAKS_SOURCE_LABEL = "Automated GlobaLeaks discovery dataset"
-GLOBALEAKS_SOURCE_URL = "https://www.shodan.io/"
+GLOBALEAKS_SOURCE_LABEL = "GlobaLeaks use case page"
+GLOBALEAKS_SOURCE_URL = "https://www.globaleaks.org/usecases/"
+GLOBALEAKS_USECASE_PAGES: tuple[dict[str, str], ...] = (
+    {
+        "source_label": "GlobaLeaks anti-corruption use case page",
+        "source_url": "https://www.globaleaks.org/usecases/anti-corruption/",
+    },
+    {
+        "source_label": "GlobaLeaks investigative journalism use case page",
+        "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/",
+    },
+)
+
+_GLOBALEAKS_USER_AGENT = (
+    "Mozilla/5.0 (compatible; HushlineGlobaLeaksSync/1.0; " "+https://github.com/scidsg/hushline)"
+)
+_DISCOVERY_EXCLUDED_HOSTS = {
+    "globaleaks.org",
+    "www.globaleaks.org",
+    "docs.globaleaks.org",
+    "forum.globaleaks.org",
+    "community.globaleaks.org",
+    "github.com",
+    "www.github.com",
+    "transifex.com",
+    "www.transifex.com",
+    "torproject.org",
+    "www.torproject.org",
+    "x.com",
+    "www.x.com",
+    "twitter.com",
+    "www.twitter.com",
+    "linkedin.com",
+    "www.linkedin.com",
+    "facebook.com",
+    "www.facebook.com",
+    "youtube.com",
+    "www.youtube.com",
+}
+_DISCOVERY_KEYWORDS = (
+    "leak",
+    "whistle",
+    "source",
+    "secure",
+    "submit",
+    "tip",
+    "report",
+    "denunc",
+    "segnal",
+    "signal",
+    "anticorru",
+    "transparen",
+    "bianco",
+)
 
 
 class GlobaLeaksDirectoryRefreshError(Exception):
@@ -209,7 +260,7 @@ def _choose_description(row: Mapping[str, object]) -> str:
     description = _first_non_empty_string(row.get("description"), _get_nested_value(row, "summary"))
     if description:
         return description
-    return "GlobaLeaks instance discovered from an automated dataset."
+    return "GlobaLeaks instance listed on the GlobaLeaks use case pages."
 
 
 def _choose_countries(row: Mapping[str, object]) -> list[str]:
@@ -254,6 +305,11 @@ def _normalize_globaleaks_row(
     website = (
         _normalize_http_url(row.get("website"), field="website", required=False) or submission_url
     )
+    normalized_source_label = _first_non_empty_string(row.get("source_label")) or source_label
+    normalized_source_url = (
+        _normalize_http_url(row.get("source_url"), field="source_url", required=False) or source_url
+    )
+
     return {
         "id": f"globaleaks-{slug_base}",
         "slug": f"globaleaks~{slug_base}",
@@ -264,8 +320,8 @@ def _normalize_globaleaks_row(
         "host": host,
         "countries": _choose_countries(row),
         "languages": _choose_languages(row),
-        "source_label": source_label,
-        "source_url": source_url,
+        "source_label": normalized_source_label,
+        "source_url": normalized_source_url,
     }
 
 
@@ -304,64 +360,136 @@ def refresh_globaleaks_directory_rows(
     return sorted(rows, key=lambda row: (_sort_key(str(row["name"])), str(row["id"])))
 
 
-def load_globaleaks_source_rows(path: Path) -> list[dict[str, object]]:
-    raw_text = path.read_text(encoding="utf-8").strip()
-    if not raw_text:
-        raise GlobaLeaksDirectoryRefreshError(f"Input file is empty: {path}")
+def _known_row_hosts(row: Mapping[str, object]) -> set[str]:
+    hosts = set(_candidate_hosts(row))
+    for key in ("website", "submission_url"):
+        value = row.get(key)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        hostname = urlparse(value).hostname
+        if hostname:
+            hosts.add(hostname.strip().lower().strip("."))
+    return hosts
 
-    if path.suffix.lower() == ".csv":
-        return _load_csv_rows(raw_text)
+
+def _index_known_rows_by_host(
+    known_rows: Sequence[Mapping[str, object]],
+) -> dict[str, dict[str, object]]:
+    indexed: dict[str, dict[str, object]] = {}
+    for row in known_rows:
+        materialized_row = dict(row)
+        for host in _known_row_hosts(materialized_row):
+            indexed.setdefault(host, materialized_row)
+    return indexed
+
+
+def _looks_like_globaleaks_candidate(host: str, url: str) -> bool:
+    candidate_text = f"{host} {urlparse(url).path}".casefold()
+    return any(keyword in candidate_text for keyword in _DISCOVERY_KEYWORDS)
+
+
+def _extract_discovery_links(
+    html: str,
+    *,
+    source_url: str,
+    known_hosts: set[str],
+) -> list[dict[str, str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    source_host = (urlparse(source_url).hostname or "").casefold()
+    discovered: list[dict[str, str]] = []
+    seen_hosts: set[str] = set()
+
+    for anchor in soup.find_all("a", href=True):
+        href = _normalize_http_url(anchor.get("href"), field="href", required=False)
+        if not href:
+            continue
+
+        host = (urlparse(href).hostname or "").casefold().strip(".")
+        if not host or host == source_host or host in _DISCOVERY_EXCLUDED_HOSTS:
+            continue
+        if host in seen_hosts:
+            continue
+        if host not in known_hosts and not _looks_like_globaleaks_candidate(host, href):
+            continue
+
+        seen_hosts.add(host)
+        discovered.append(
+            {
+                "name": anchor.get_text(" ", strip=True) or host,
+                "url": href,
+                "host": host,
+            }
+        )
+
+    return discovered
+
+
+def fetch_globaleaks_directory_rows(
+    *,
+    known_rows: Sequence[Mapping[str, object]] = (),
+    source_pages: Sequence[Mapping[str, str]] = GLOBALEAKS_USECASE_PAGES,
+    timeout_seconds: float = 30.0,
+    session: requests.Session | None = None,
+) -> list[dict[str, object]]:
+    client = session or requests.Session()
+    known_by_host = _index_known_rows_by_host(known_rows)
+    discovered_rows: list[dict[str, object]] = []
+    seen_hosts: set[str] = set()
 
     try:
-        parsed = json.loads(raw_text)
-    except json.JSONDecodeError:
-        return _load_json_lines_rows(raw_text, path)
-
-    if isinstance(parsed, list):
-        if not all(isinstance(row, dict) for row in parsed):
-            raise GlobaLeaksDirectoryRefreshError(
-                "GlobaLeaks input array must contain only JSON objects"
+        for source_page in source_pages:
+            source_label = _first_non_empty_string(source_page.get("source_label"))
+            source_url = _normalize_http_url(
+                source_page.get("source_url"),
+                field="source_url",
+                required=True,
             )
-        return [dict(row) for row in parsed]
-
-    if isinstance(parsed, dict):
-        matches = parsed.get("matches")
-        if isinstance(matches, list) and all(isinstance(row, dict) for row in matches):
-            return [dict(row) for row in matches]
-
-    raise GlobaLeaksDirectoryRefreshError(
-        "GlobaLeaks input must be a JSON array, JSON object with 'matches', CSV, or JSONL"
-    )
-
-
-def _load_csv_rows(raw_text: str) -> list[dict[str, object]]:
-    reader = csv.DictReader(raw_text.splitlines())
-    rows = [{key: value for key, value in row.items() if key is not None} for row in reader]
-    if not rows:
-        raise GlobaLeaksDirectoryRefreshError("GlobaLeaks CSV input is empty")
-    return rows
-
-
-def _load_json_lines_rows(raw_text: str, path: Path) -> list[dict[str, object]]:
-    rows: list[dict[str, object]] = []
-    for index, line in enumerate(raw_text.splitlines(), start=1):
-        cleaned = line.strip()
-        if not cleaned:
-            continue
-        try:
-            parsed = json.loads(cleaned)
-        except json.JSONDecodeError as exc:
-            raise GlobaLeaksDirectoryRefreshError(
-                f"Invalid JSONL object at line {index}: {path}"
-            ) from exc
-        if not isinstance(parsed, dict):
-            raise GlobaLeaksDirectoryRefreshError(
-                f"JSONL input must contain only JSON objects: line {index}"
+            response = client.get(
+                source_url,
+                timeout=timeout_seconds,
+                headers={"User-Agent": _GLOBALEAKS_USER_AGENT},
             )
-        rows.append(dict(parsed))
-    if not rows:
-        raise GlobaLeaksDirectoryRefreshError(f"No JSON objects found in JSONL input: {path}")
-    return rows
+            response.raise_for_status()
+            links = _extract_discovery_links(
+                response.text,
+                source_url=source_url,
+                known_hosts=set(known_by_host),
+            )
+            for link in links:
+                host = link["host"]
+                if host in seen_hosts:
+                    continue
+                seen_hosts.add(host)
+
+                existing_row = known_by_host.get(host)
+                if existing_row is not None:
+                    row = dict(existing_row)
+                    row["source_label"] = source_label
+                    row["source_url"] = source_url
+                    discovered_rows.append(row)
+                    continue
+
+                discovered_rows.append(
+                    {
+                        "name": link["name"],
+                        "website": link["url"],
+                        "submission_url": link["url"],
+                        "host": host,
+                        "source_label": source_label,
+                        "source_url": source_url,
+                    }
+                )
+    except requests.RequestException as exc:
+        raise GlobaLeaksDirectoryRefreshError(
+            f"Failed to fetch GlobaLeaks discovery pages: {exc}"
+        ) from exc
+
+    if not discovered_rows:
+        raise GlobaLeaksDirectoryRefreshError(
+            "No GlobaLeaks listings were discovered from the configured source pages"
+        )
+
+    return discovered_rows
 
 
 def render_globaleaks_refresh_summary(

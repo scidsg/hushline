@@ -262,9 +262,6 @@
               <h3>{{ listing.name }}</h3>
               <div class="badgeContainer">
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% if listing.is_shodan %}
-                  <span class="badge" role="img" aria-label="Shodan-sourced listing">📡 Shodan</span>
-                {% endif %}
               </div>
               <p class="bio">{{ listing.description }}</p>
               <div class="user-actions">
@@ -339,9 +336,6 @@
                 <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
                 {% if entry.is_automated %}
                   <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% endif %}
-                {% if entry.is_shodan %}
-                  <span class="badge" role="img" aria-label="Shodan-sourced listing">📡 Shodan</span>
                 {% endif %}
               {% elif entry.entry_type == "securedrop" %}
                 <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>

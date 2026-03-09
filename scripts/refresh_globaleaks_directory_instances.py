@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from hushline.globaleaks_directory_refresh import (
-    GLOBALEAKS_SOURCE_LABEL,
     GLOBALEAKS_SOURCE_URL,
     GlobaLeaksDirectoryRefreshError,
-    load_globaleaks_source_rows,
+    fetch_globaleaks_directory_rows,
     refresh_globaleaks_directory_rows,
     render_globaleaks_refresh_summary,
 )
@@ -28,31 +27,21 @@ def _default_output_path() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Refresh the local GlobaLeaks instance artifact from a Shodan-derived export "
-            "or another normalized source file."
+            "Refresh the local GlobaLeaks instance artifact from the public "
+            "GlobaLeaks use case pages."
         ),
-    )
-    parser.add_argument(
-        "--input",
-        type=Path,
-        required=True,
-        help="Input export path (JSON, JSONL, or CSV).",
-    )
-    parser.add_argument(
-        "--source-label",
-        default=GLOBALEAKS_SOURCE_LABEL,
-        help=f"Source label stored in normalized rows (default: {GLOBALEAKS_SOURCE_LABEL}).",
-    )
-    parser.add_argument(
-        "--source-url",
-        default=GLOBALEAKS_SOURCE_URL,
-        help=f"Source URL stored in normalized rows (default: {GLOBALEAKS_SOURCE_URL}).",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=_default_output_path(),
         help="Output JSON file path.",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=30.0,
+        help="HTTP timeout for source-page requests.",
     )
     parser.add_argument(
         "--summary-output",
@@ -108,12 +97,11 @@ def main() -> int:
     args = _parse_args()
     existing_rows = _load_existing_rows(args.output)
 
-    raw_rows = load_globaleaks_source_rows(args.input)
-    refreshed_rows = refresh_globaleaks_directory_rows(
-        raw_rows,
-        source_label=args.source_label,
-        source_url=args.source_url,
+    fetched_rows = fetch_globaleaks_directory_rows(
+        known_rows=existing_rows,
+        timeout_seconds=args.timeout_seconds,
     )
+    refreshed_rows = refresh_globaleaks_directory_rows(fetched_rows)
 
     old_ids = {
         str(row["id"]) for row in existing_rows if isinstance(row.get("id"), str) and row.get("id")
@@ -126,7 +114,7 @@ def main() -> int:
     updated_count = _count_updated_rows(existing_rows, refreshed_rows)
 
     summary = render_globaleaks_refresh_summary(
-        source_url=args.source_url,
+        source_url=GLOBALEAKS_SOURCE_URL,
         total_count=len(refreshed_rows),
         added_count=added_count,
         removed_count=removed_count,
