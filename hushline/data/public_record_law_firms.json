@@ -48,18 +48,6 @@
     "source_url": "https://www.azbar.org/for-legal-professionals/practice-tools-management/member-directory/?m=Anthony-Cali-177781"
   },
   {
-    "id": "seed-andrew-clarke-weeks",
-    "slug": "public-record~andrew-clarke-weeks",
-    "name": "Andrew Clarke Weeks",
-    "website": "https://legaljusticeatwork.com/",
-    "description": "Whistleblower attorney listing sourced from Kentucky Bar Association public directory.",
-    "city": "Louisville",
-    "state": "KY",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "Kentucky Bar Association public directory",
-    "source_url": "https://www.kybar.org/members/?id=42347567"
-  },
-  {
     "id": "seed-barbara-mahoney",
     "slug": "public-record~barbara-mahoney",
     "name": "Barbara Mahoney",
@@ -204,18 +192,6 @@
     "source_url": "https://members.ctbar.org/member/thelaborlawyer"
   },
   {
-    "id": "seed-eric-seitz",
-    "slug": "public-record~eric-seitz",
-    "name": "Eric Seitz",
-    "website": "https://www.ericseitz.com/",
-    "description": "Whistleblower attorney listing sourced from a Hawaii State Bar Association attorney recognition record.",
-    "city": "Honolulu",
-    "state": "HI",
-    "practice_tags": ["Whistleblowing", "Civil Rights", "Litigation"],
-    "source_label": "Hawaii State Bar Association attorney recognition record",
-    "source_url": "https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"
-  },
-  {
     "id": "seed-georgianna-quinn-tutwiler",
     "slug": "public-record~georgianna-quinn-tutwiler",
     "name": "Georgianna Quinn Tutwiler",
@@ -238,18 +214,6 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
-  },
-  {
-    "id": "seed-jerry-ray-poole-jr",
-    "slug": "public-record~jerry-ray-poole-jr",
-    "name": "Jerry Ray Poole, Jr.",
-    "website": "https://www.constangy.com/people-jerry-poole",
-    "description": "Whistleblower attorney listing sourced from The Florida Bar public directory.",
-    "city": "Tampa",
-    "state": "FL",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "The Florida Bar public directory",
-    "source_url": "https://www.floridabar.org/directories/find-mbr/profile/?num=123000"
   },
   {
     "id": "seed-jon-marc-petersen",
@@ -408,30 +372,6 @@
     "source_url": "https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
   },
   {
-    "id": "seed-richard-l-abbott",
-    "slug": "public-record~richard-l-abbott",
-    "name": "Richard L. Abbott",
-    "website": "https://richabbottlawfirm.com/",
-    "description": "Whistleblower attorney listing sourced from a Delaware Courts published opinion.",
-    "city": "Hockessin",
-    "state": "DE",
-    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
-    "source_label": "Delaware Courts published opinion",
-    "source_url": "https://courts.delaware.gov/Opinions/Download.aspx?id=342050"
-  },
-  {
-    "id": "seed-roxanne-barton-conlin",
-    "slug": "public-record~roxanne-barton-conlin",
-    "name": "Roxanne Barton Conlin",
-    "website": "https://www.roxanneconlinlaw.com/",
-    "description": "Whistleblower attorney listing sourced from an Iowa State Bar Association jury verdict record.",
-    "city": "Des Moines",
-    "state": "IA",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "Iowa State Bar Association jury verdict record",
-    "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
-  },
-  {
     "id": "seed-robert-aram-jigarjian",
     "slug": "public-record~robert-aram-jigarjian",
     "name": "Robert Aram Jigarjian",
@@ -454,6 +394,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/238491"
+  },
+  {
+    "id": "seed-roxanne-barton-conlin",
+    "slug": "public-record~roxanne-barton-conlin",
+    "name": "Roxanne Barton Conlin",
+    "website": "https://www.roxanneconlinlaw.com/",
+    "description": "Whistleblower attorney listing sourced from an Iowa State Bar Association jury verdict record.",
+    "city": "Des Moines",
+    "state": "IA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Iowa State Bar Association jury verdict record",
+    "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
   },
   {
     "id": "seed-sarah-renee-holloway",
@@ -490,17 +442,5 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of Georgia speaker profile",
     "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014"
-  },
-  {
-    "id": "seed-trudy-hanson-fouser",
-    "slug": "public-record~trudy-hanson-fouser",
-    "name": "Trudy Hanson Fouser",
-    "website": "https://gfidaholaw.com/",
-    "description": "Whistleblower attorney listing sourced from an Idaho State Bar attorney profile.",
-    "city": "Boise",
-    "state": "ID",
-    "practice_tags": ["Employment", "Litigation", "Investigations"],
-    "source_label": "Idaho State Bar attorney profile",
-    "source_url": "https://isb.idaho.gov/blog/trudy-hanson-fouser/"
   }
 ]
