@@ -152,7 +152,33 @@
     "host": "bustiadenuncies.antifraucv.es",
     "countries": ["Spain"],
     "languages": ["Spanish", "Catalan"],
-    "source_label": "GlobaLeaks anti-corruption use case page",
-    "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
+    "source_label": "Shodan host scan",
+    "source_url": "https://www.shodan.io/host/46.24.176.188"
+  },
+  {
+    "id": "globaleaks-wb-icomservice-it",
+    "slug": "globaleaks~wb-icomservice-it",
+    "name": "ICOM Service Whistleblowing Portal",
+    "website": "https://wb.icomservice.it/",
+    "description": "A live GlobaLeaks deployment observed by Shodan on wb.icomservice.it.",
+    "submission_url": "https://wb.icomservice.it/",
+    "host": "wb.icomservice.it",
+    "countries": [],
+    "languages": [],
+    "source_label": "Shodan host scan",
+    "source_url": "https://www.shodan.io/host/65.21.181.205"
+  },
+  {
+    "id": "globaleaks-cblg-segnalasicuro-org",
+    "slug": "globaleaks~cblg-segnalasicuro-org",
+    "name": "Segnala Sicuro CBLG",
+    "website": "https://cblg.segnalasicuro.org/",
+    "description": "A live GlobaLeaks deployment observed by Shodan on cblg.segnalasicuro.org, with an advertised Onion-Location header.",
+    "submission_url": "https://cblg.segnalasicuro.org/",
+    "host": "cblg.segnalasicuro.org",
+    "countries": [],
+    "languages": [],
+    "source_label": "Shodan host scan",
+    "source_url": "https://www.shodan.io/host/49.12.68.14"
   }
 ]

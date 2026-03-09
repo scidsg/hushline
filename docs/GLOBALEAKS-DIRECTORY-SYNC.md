@@ -53,7 +53,8 @@ Optional fields:
 - The checked-in artifact is the source of truth and is loaded at runtime, similar to other
   directory-backed listing types.
 - The current checked-in seed includes a starter set of public GlobaLeaks destinations gathered
-  from GlobaLeaks' own use-case pages and the linked live instance domains.
+  from GlobaLeaks' own use-case pages, linked live instance domains, and publicly accessible
+  Shodan host pages.
 - The refresh script normalizes operator-supplied export data into the checked-in schema before
   merge.
 - Listing pages are read-only and must not imply that the destination is operated by Hush Line.
