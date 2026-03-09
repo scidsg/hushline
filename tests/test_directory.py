@@ -124,7 +124,8 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
     assert banner_links[1].text.strip() == "Tor Browser"
     assert banner_links[1].get("href") == "https://www.torproject.org/download/"
     banner_text = securedrop_panel.get_text(" ", strip=True)
-    assert "Synced automatically from the" in banner_text
+    assert banner_text.startswith("🧪 Beta:")
+    assert "These listings are automated and synced from the" in banner_text
     assert "SecureDrop directory API" in banner_text
     assert "Onion addresses require" in banner_text
     assert "Tor Browser" in banner_text
@@ -146,8 +147,8 @@ def test_directory_globaleaks_banner_matches_securedrop_style(client: FlaskClien
     assert banner_links[0].text.strip() == "Tor Browser"
     assert banner_links[0].get("href") == "https://www.torproject.org/download/"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
-    assert banner_text.startswith("🌐")
-    assert "Synced automatically from public GlobaLeaks listings." in banner_text
+    assert banner_text.startswith("🧪 Beta:")
+    assert "These listings are automated." in banner_text
     assert "Onion addresses require" in banner_text
     assert "Tor Browser" in banner_text
     assert "to access." in banner_text
@@ -696,7 +697,8 @@ def test_globaleaks_listing_page_is_read_only(
     dir_meta = soup.select_one(".dirMeta")
     assert dir_meta is not None
     dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧅")
+    assert dir_meta_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in dir_meta_text
     assert "Onion addresses require" in dir_meta_text
     assert "Tor Browser" in dir_meta_text
     dir_meta_link = dir_meta.find("a")
