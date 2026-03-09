@@ -225,7 +225,7 @@ audit_failure_looks_environmental() {
 runtime_bootstrap_failure_looks_retryable() {
   local text="$1"
   printf '%s\n' "$text" | grep -Eqi \
-    '(unexpected status from HEAD request|500 internal server error|503 service unavailable|504 gateway timeout|too many requests|tls handshake timeout|i/o timeout|context deadline exceeded|request canceled while waiting for connection|connection reset by peer|temporary failure in name resolution|net/http: request canceled|eof|failed to copy: httpReadSeeker|error pulling image configuration)'
+    '(unexpected status from HEAD request|500 internal server error|503 service unavailable|504 gateway timeout|too many requests|tls handshake timeout|i/o timeout|context deadline exceeded|request canceled while waiting for connection|connection reset by peer|temporary failure in name resolution|net/http: request canceled|failed to copy: httpReadSeeker|error pulling image configuration)'
 }
 
 start_runtime_stack_and_seed_dev_data() {
