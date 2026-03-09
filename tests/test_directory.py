@@ -676,7 +676,8 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     dir_meta = soup.select_one(".dirMeta")
     assert dir_meta is not None
     dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧅")
+    assert dir_meta_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in dir_meta_text
     assert "Onion addresses require" in dir_meta_text
     assert "Tor Browser" in dir_meta_text
     assert "risk in your jurisdiction" in dir_meta_text
