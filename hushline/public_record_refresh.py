@@ -459,6 +459,7 @@ class PublicRecordRow(TypedDict):
 class LinkCheckResult:
     ok: bool
     reason: str | None = None
+    definitive_failure: bool = False
 
 
 @dataclass(frozen=True)
@@ -590,10 +591,13 @@ def build_requests_link_checker(
             if attempt < max_attempts:
                 sleep_fn(float(attempt))
 
-        if last_status_code is not None and (
-            last_status_code >= _HTTP_SERVER_ERROR_MIN_STATUS
-            or last_status_code in _BROKEN_STATUS_CODES
-        ):
+        if last_status_code is not None and last_status_code in _BROKEN_STATUS_CODES:
+            return LinkCheckResult(
+                ok=False,
+                reason=f"HTTP {last_status_code}",
+                definitive_failure=True,
+            )
+        if last_status_code is not None and last_status_code >= _HTTP_SERVER_ERROR_MIN_STATUS:
             return LinkCheckResult(ok=False, reason=f"HTTP {last_status_code}")
         if last_error is not None and last_status_code is None:
             return LinkCheckResult(ok=False, reason=str(last_error))
@@ -2519,7 +2523,8 @@ def _validate_links(
                         reason=check_result.reason or "unknown link validation failure",
                     )
                 )
-                failed_record_ids.add(row.id)
+                if check_result.definitive_failure:
+                    failed_record_ids.add(row.id)
 
     if not drop_failed_links:
         return _LinkValidationResult(
