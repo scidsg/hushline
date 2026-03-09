@@ -253,11 +253,6 @@
       <p class="meta dirMeta">
         🧪 Beta: These listings are automated.
         Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
-        {% if globaleaks_has_onion_submission %}
-          Onion addresses require
-          <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
-          to access.
-        {% endif %}
       </p>
 
       {% if globaleaks_listings %}
@@ -286,12 +281,8 @@
   {% if directory_verified_tab_enabled %}
     <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated and synced from the
-        <a href="https://securedrop.org/api/v1/directory/?format=json" target="_blank" rel="noopener noreferrer">SecureDrop directory API</a>.
+        🧪 Beta: These listings are automated.
         Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
-        Onion addresses require
-        <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
-        to access.
       </p>
 
       {% if securedrop_listings %}
