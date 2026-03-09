@@ -68,7 +68,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
     assert 'searchInput.placeholder = "Search attorneys...";' in directory_verified_js
+    assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
+    assert 'return "GlobaLeaks instances";' in directory_verified_js
     assert ".directory-sticky-shell" in scss
     assert ".visually-hidden" in scss
 

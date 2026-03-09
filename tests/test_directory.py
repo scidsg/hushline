@@ -11,6 +11,7 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import (
+    GlobaLeaksDirectoryListing,
     PublicRecordListing,
     SecureDropDirectoryListing,
     User,
@@ -38,6 +39,22 @@ def _first_securedrop_listing_or_skip() -> SecureDropDirectoryListing:
     return listings[0]
 
 
+def _sample_globaleaks_listing() -> GlobaLeaksDirectoryListing:
+    return GlobaLeaksDirectoryListing(
+        id="globaleaks-sample-newsroom",
+        slug="globaleaks~sample-newsroom",
+        name="Sample GlobaLeaks Newsroom",
+        website="https://example.org",
+        description="An example GlobaLeaks instance for investigative submissions.",
+        submission_url="https://submit.example.org",
+        host="submit.example.org",
+        countries=("Italy",),
+        languages=("English", "Italian"),
+        source_label="Automated GlobaLeaks discovery dataset",
+        source_url="https://example.org/source/globaleaks-export",
+    )
+
+
 def _strict_public_record_listings() -> list[PublicRecordListing]:
     return [
         listing
@@ -59,6 +76,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
     assert "Attorneys" in response.text
+    assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
     assert "⚖️ Attorney" in response.text
@@ -103,6 +121,23 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
     assert "to access." in banner_text
 
 
+def test_directory_globaleaks_banner_mentions_clearnet_and_onion(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    globaleaks_panel = soup.find(id="globaleaks")
+    assert globaleaks_panel is not None
+
+    banner = globaleaks_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
+    assert banner_text.startswith("🌐")
+    assert "automated GlobaLeaks discovery dataset" in banner_text
+    assert "clearnet or onion submission endpoints" in banner_text
+    assert "verify the destination" in banner_text
+
+
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
@@ -115,11 +150,13 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
     soup = BeautifulSoup(response.text, "html.parser")
     assert soup.find(id="directory-tabs") is None
     assert soup.find(id="public-records") is None
+    assert soup.find(id="globaleaks") is None
     assert soup.find(id="securedrop") is None
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "🌐 GlobaLeaks" not in all_panel.get_text(" ", strip=True)
     assert "🛡️ SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
 
@@ -135,6 +172,7 @@ def test_directory_users_json_excludes_public_records_when_verified_tabs_disable
 
     assert response.status_code == 200
     assert all(not row["is_public_record"] for row in (response.json or []))
+    assert all(not row["is_globaleaks"] for row in (response.json or []))
     assert all(not row["is_securedrop"] for row in (response.json or []))
 
 
@@ -184,6 +222,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
+    assert admin_row["is_globaleaks"] is False
     assert admin_row["is_securedrop"] is False
     assert admin_row["directory_section"] is None
 
@@ -285,6 +324,70 @@ def test_directory_securedrop_render_only_in_securedrop_and_all(
     assert listing.name not in verified_panel.text
 
 
+def test_directory_globaleaks_render_only_in_globaleaks_and_all(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+    public_records_panel = soup.find(id="public-records")
+    globaleaks_panel = soup.find(id="globaleaks")
+    securedrop_panel = soup.find(id="securedrop")
+    all_panel = soup.find(id="all")
+
+    assert globaleaks_panel is not None
+    assert all_panel is not None
+    assert listing.name in globaleaks_panel.text
+    assert listing.name in all_panel.text
+    assert listing.description in globaleaks_panel.text
+    assert listing.description in all_panel.text
+    assert globaleaks_panel.select_one('span.badge[aria-label="GlobaLeaks listing"]') is None
+    assert globaleaks_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert all_panel.select_one('span.badge[aria-label="GlobaLeaks listing"]') is not None
+    assert all_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert public_records_panel is not None
+    assert listing.name not in public_records_panel.text
+    assert securedrop_panel is not None
+    assert listing.name not in securedrop_panel.text
+    assert verified_panel is not None
+    assert listing.name not in verified_panel.text
+
+
+def test_directory_users_json_includes_globaleaks_rows(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(row for row in (response.json or []) if row["display_name"] == listing.name)
+    assert row["entry_type"] == "globaleaks"
+    assert row["primary_username"] is None
+    assert row["is_public_record"] is False
+    assert row["is_globaleaks"] is True
+    assert row["is_securedrop"] is False
+    assert row["is_automated"] is True
+    assert row["message_capable"] is False
+    assert row["bio"] == listing.description
+    assert row["location"] == listing.location
+    assert row["practice_tags"] == []
+    assert row["source_label"] == listing.source_label
+    assert row["directory_section"] == "globaleaks_directory"
+
+
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
@@ -356,6 +459,21 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             message_capable=False,
         ),
     )
+    mocked_globaleaks_listings = (
+        SimpleNamespace(
+            id="globaleaks-delta",
+            slug="globaleaks-delta",
+            name="Delta GlobaLeaks",
+            website="https://delta.example",
+            description="delta description",
+            location="Global",
+            source_label="Automated GlobaLeaks discovery dataset",
+            source_url="https://example.org/globaleaks",
+            directory_section="globaleaks_directory",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
 
     monkeypatch.setattr(
         "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
@@ -367,6 +485,10 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
     monkeypatch.setattr(
         "hushline.routes.directory.get_securedrop_directory_listings",
         lambda: mocked_securedrop_listings,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: mocked_globaleaks_listings,
     )
 
     response = client.get(url_for("directory"))
@@ -381,6 +503,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
     assert all_panel.select("p.label") == []
     assert "Info-Only Accounts" not in all_panel.get_text(" ", strip=True)
     assert "Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "GlobaLeaks Instances" not in all_panel.get_text(" ", strip=True)
     assert "SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
 
     all_titles = [
@@ -390,6 +513,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
         "Alpha Public Listing",
         "Bravo Info",
         "Charlie SecureDrop",
+        "Delta GlobaLeaks",
         "Zulu User",
     ]
 
@@ -533,6 +657,52 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert dir_meta_link.get("href") == "https://www.torproject.org/download/"
 
 
+def test_globaleaks_listing_page_is_read_only(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(url_for("globaleaks_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    assert "🌐 GlobaLeaks" in page_text
+    assert "🤖 Automated" in page_text
+    assert listing.description in page_text
+    assert listing.submission_url in response.text
+    assert listing.source_url in response.text
+    assert 'id="messageForm"' not in response.text
+    assert "Send Message" not in response.text
+
+    dir_meta = soup.select_one(".dirMeta")
+    assert dir_meta is not None
+    dir_meta_text = dir_meta.get_text(" ", strip=True)
+    assert dir_meta_text.startswith("🌐")
+    assert "clearnet or onion submissions" in dir_meta_text
+    assert "Verify the destination" in dir_meta_text
+
+
+def test_globaleaks_listing_route_hidden_when_verified_tabs_disabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listing",
+        lambda _slug: listing,
+    )
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("globaleaks_listing", slug=listing.slug))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 404
+
+
 def test_securedrop_listing_page_omits_landing_page_link_when_missing(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -579,6 +749,22 @@ def test_securedrop_listing_route_hidden_when_verified_tabs_disabled(
 
 def test_public_record_listing_slug_cannot_be_messaged(client: FlaskClient) -> None:
     listing = _first_public_record_listing_or_skip()
+
+    response = client.get(
+        url_for("redirect_submit_message", username=listing.slug),
+        follow_redirects=True,
+    )
+    assert response.status_code == 404
+
+
+def test_globaleaks_listing_slug_cannot_be_messaged(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listing",
+        lambda _slug: listing,
+    )
 
     response = client.get(
         url_for("redirect_submit_message", username=listing.slug),

@@ -11,6 +11,11 @@ from hushline.model.enums import (
 )
 from hushline.model.field_definition import FieldDefinition
 from hushline.model.field_value import FieldValue
+from hushline.model.globaleaks_directory_listing import (
+    GlobaLeaksDirectoryListing,
+    get_globaleaks_directory_listing,
+    get_globaleaks_directory_listings,
+)
 from hushline.model.invite_code import InviteCode
 from hushline.model.message import Message
 from hushline.model.message_status_text import MessageStatusText

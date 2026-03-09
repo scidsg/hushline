@@ -63,6 +63,22 @@
             <button
               type="button"
               class="tab"
+              data-tab="globaleaks"
+              role="tab"
+              aria-selected="false"
+              aria-controls="globaleaks"
+              id="globaleaks-tab"
+            >
+              GlobaLeaks
+              <span class="badge" role="img" aria-label="GlobaLeaks instance count"
+                >{{ globaleaks_total_count }}</span
+              >
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
               data-tab="all"
               role="tab"
               aria-selected="false"
@@ -233,6 +249,36 @@
   {% endif %}
 
   {% if directory_verified_tab_enabled %}
+    <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
+      <p class="meta dirMeta">
+        🌐 Loaded from an automated GlobaLeaks discovery dataset. Listings may point to clearnet or onion
+        submission endpoints, so verify the destination before sharing sensitive material.
+      </p>
+
+      {% if globaleaks_listings %}
+        <div class="user-list">
+          {% for listing in globaleaks_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('globaleaks_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if directory_verified_tab_enabled %}
     <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
       <p class="meta dirMeta">
         🛡️ Synced automatically from the
@@ -283,6 +329,11 @@
             <div class="badgeContainer">
               {% if entry.entry_type == "public_record" %}
                 <span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>
+                {% if entry.is_automated %}
+                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+                {% endif %}
+              {% elif entry.entry_type == "globaleaks" %}
+                <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
                 {% if entry.is_automated %}
                   <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
                 {% endif %}

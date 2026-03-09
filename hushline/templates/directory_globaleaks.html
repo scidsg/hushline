@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}GlobaLeaks: {{ listing.name }}{% endblock %}
+
+{% block content %}
+  <h2 class="submit">{{ listing.name }}</h2>
+
+  <div class="badgeContainer">
+    <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
+    <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+  </div>
+
+  <p class="bio">{{ listing.description }}</p>
+
+  <p class="meta dirMeta">
+    🌐 GlobaLeaks listings may point to clearnet or onion submissions. Verify the destination
+    and your threat model before sharing sensitive material.
+  </p>
+
+  <div class="extra-fields">
+    <p class="extra-field">
+      <span class="extra-field-label">Website</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.website }}
+        </a>
+      </span>
+    </p>
+
+    <p class="extra-field">
+      <span class="extra-field-label">Submission URL</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.submission_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.submission_url }}
+        </a>
+      </span>
+    </p>
+
+    {% if listing.host %}
+      <p class="extra-field">
+        <span class="extra-field-label">Host</span>
+        <span class="extra-field-value">{{ listing.host }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.countries %}
+      <p class="extra-field">
+        <span class="extra-field-label">Countries</span>
+        <span class="extra-field-value">{{ listing.countries | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.languages %}
+      <p class="extra-field">
+        <span class="extra-field-label">Languages</span>
+        <span class="extra-field-value">{{ listing.languages | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    <p class="extra-field">
+      <span class="extra-field-label">Source</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.source_url }}
+        </a>
+      </span>
+    </p>
+  </div>
+{% endblock %}

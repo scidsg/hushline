@@ -15,10 +15,12 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     primary_nav = soup.find("nav", {"aria-label": "Primary navigation"})
     verified_tab = soup.find("button", {"id": "verified-tab"})
     public_records_tab = soup.find("button", {"id": "public-records-tab"})
+    globaleaks_tab = soup.find("button", {"id": "globaleaks-tab"})
     securedrop_tab = soup.find("button", {"id": "securedrop-tab"})
     all_tab = soup.find("button", {"id": "all-tab"})
     verified_panel = soup.find(id="verified")
     public_records_panel = soup.find(id="public-records")
+    globaleaks_panel = soup.find(id="globaleaks")
     securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
     clear_button = soup.find("button", {"id": "clearIcon"})
@@ -45,6 +47,20 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert label_text == "Attorneys"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
+    assert globaleaks_tab is not None
+    globaleaks_badge = globaleaks_tab.select_one("span.badge")
+    assert globaleaks_badge is not None
+    assert globaleaks_badge.get("role") == "img"
+    assert globaleaks_badge.get("aria-label") == "GlobaLeaks instance count"
+    assert globaleaks_badge.get_text(strip=True).isdigit()
+    globaleaks_label_text = (
+        globaleaks_tab.get_text(" ", strip=True)
+        .replace(globaleaks_badge.get_text(" ", strip=True), "")
+        .strip()
+    )
+    assert globaleaks_label_text == "GlobaLeaks"
+    assert globaleaks_tab.get("aria-controls") == "globaleaks"
+    assert globaleaks_tab.get("aria-selected") in {"true", "false"}
     assert securedrop_tab is not None
     securedrop_badge = securedrop_tab.select_one("span.badge")
     assert securedrop_badge is not None
@@ -68,6 +84,9 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert public_records_panel is not None
     assert public_records_panel.get("role") == "tabpanel"
     assert public_records_panel.get("aria-labelledby") == "public-records-tab"
+    assert globaleaks_panel is not None
+    assert globaleaks_panel.get("role") == "tabpanel"
+    assert globaleaks_panel.get("aria-labelledby") == "globaleaks-tab"
     assert securedrop_panel is not None
     assert securedrop_panel.get("role") == "tabpanel"
     assert securedrop_panel.get("aria-labelledby") == "securedrop-tab"

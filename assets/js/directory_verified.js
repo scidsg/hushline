@@ -44,6 +44,11 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (activeTab === "globaleaks") {
+      searchInput.placeholder = "Search GlobaLeaks instances...";
+      return;
+    }
+
     if (activeTab === "securedrop") {
       searchInput.placeholder = "Search SecureDrop instances...";
       return;
@@ -60,6 +65,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (activeTab === "public-records") {
       return "attorneys";
+    }
+
+    if (activeTab === "globaleaks") {
+      return "GlobaLeaks instances";
     }
 
     if (activeTab === "securedrop") {
@@ -89,11 +98,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const normalizedQuery = query.trim().toLowerCase();
 
     return userData.filter((user) => {
-      if (tab === "verified" && (!user.is_verified || user.is_public_record || user.is_securedrop)) {
+      if (
+        tab === "verified" &&
+        (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
+      ) {
         return false;
       }
 
       if (tab === "public-records" && !user.is_public_record) {
+        return false;
+      }
+
+      if (tab === "globaleaks" && !user.is_globaleaks) {
         return false;
       }
 
@@ -153,6 +169,18 @@ document.addEventListener("DOMContentLoaded", function () {
       return badgeContainer;
     }
 
+    if (user.is_globaleaks) {
+      if (tab !== "globaleaks") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>';
+      }
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
     if (user.is_admin) {
       badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
@@ -171,7 +199,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function buildAutomatedListingCard(user, query, tab) {
     const displayNameHighlighted = highlightMatch(user.display_name, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
-    const listingType = user.is_public_record ? "Public record listing" : "SecureDrop listing";
+    let listingType = "SecureDrop listing";
+    if (user.is_public_record) {
+      listingType = "Public record listing";
+    } else if (user.is_globaleaks) {
+      listingType = "GlobaLeaks listing";
+    }
 
     return `
       <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
@@ -193,7 +226,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const usernameHighlighted = highlightMatch(user.primary_username, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (user.is_public_record || user.is_securedrop) {
+    if (user.is_public_record || user.is_globaleaks || user.is_securedrop) {
       return buildAutomatedListingCard(user, query, tab);
     }
 
@@ -248,13 +281,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const publicRecords = users.filter((user) => user.is_public_record);
+    const globalLeaks = users.filter((user) => user.is_globaleaks);
     const secureDrops = users.filter((user) => user.is_securedrop);
-    const realUsers = users.filter((user) => !user.is_public_record && !user.is_securedrop);
+    const realUsers = users.filter(
+      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
+    );
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "public-records") {
       appendSection(panel, "", publicRecords, query, tab);
+      return;
+    }
+
+    if (tab === "globaleaks") {
+      appendSection(panel, "", globalLeaks, query, tab);
       return;
     }
 
