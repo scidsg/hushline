@@ -7,11 +7,7 @@
     "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
     "city": "Chicago",
     "state": "IL",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Consumer"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
     "source_label": "Illinois ARDC attorney registration records",
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/a1420f47-ab64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
@@ -23,11 +19,7 @@
     "description": "Whistleblower attorney listing sourced from Supreme Court of Ohio attorney directory.",
     "city": "Cincinnati",
     "state": "OH",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Supreme Court of Ohio attorney directory",
     "source_url": "https://www.supremecourt.ohio.gov/AttorneySearch/#/77563/attyinfo"
   },
@@ -39,11 +31,7 @@
     "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
     "city": "Chicago",
     "state": "IL",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Consumer"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
     "source_label": "Illinois ARDC attorney registration records",
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/f22e492e-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
@@ -55,11 +43,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of Arizona public directory.",
     "city": "Phoenix",
     "state": "AZ",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of Arizona public directory",
     "source_url": "https://www.azbar.org/for-legal-professionals/practice-tools-management/member-directory/?m=Anthony-Cali-177781"
   },
@@ -71,11 +55,7 @@
     "description": "Whistleblower attorney listing sourced from Washington State Bar Association legal directory.",
     "city": "Seattle",
     "state": "WA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Consumer"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Consumer"],
     "source_label": "Washington State Bar Association legal directory",
     "source_url": "https://www.mywsba.org/PersonifyEbusiness/Default.aspx?TabID=1538&Usr_ID=31845"
   },
@@ -87,11 +67,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/71642"
   },
@@ -103,11 +79,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "La Jolla",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/321669"
   },
@@ -119,11 +91,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "La Jolla",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Investigations"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Investigations"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/189817"
   },
@@ -135,11 +103,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "Palo Alto",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/330468"
   },
@@ -151,11 +115,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/339078"
   },
@@ -167,11 +127,7 @@
     "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
     "city": "Chicago",
     "state": "IL",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Consumer"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Consumer"],
     "source_label": "Illinois ARDC attorney registration records",
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/4b9c1c91-a964-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
@@ -183,11 +139,7 @@
     "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
     "city": "Nashville",
     "state": "TN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/038124"
   },
@@ -199,11 +151,7 @@
     "description": "Whistleblower attorney listing sourced from Illinois ARDC attorney registration records.",
     "city": "Chicago",
     "state": "IL",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Illinois ARDC attorney registration records",
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
@@ -215,11 +163,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/227347"
   },
@@ -231,11 +175,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/136080"
   },
@@ -247,11 +187,7 @@
     "description": "Whistleblower attorney listing sourced from Connecticut Bar Association public directory.",
     "city": "Fairfield",
     "state": "CT",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Connecticut Bar Association public directory",
     "source_url": "https://members.ctbar.org/member/thelaborlawyer"
   },
@@ -263,11 +199,7 @@
     "description": "Whistleblower attorney listing sourced from Indiana State Bar public directory.",
     "city": "Indianapolis",
     "state": "IN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Indiana State Bar public directory",
     "source_url": "https://www.inbar.org/members/?id=30400364"
   },
@@ -279,11 +211,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
@@ -295,11 +223,7 @@
     "description": "Whistleblower attorney listing sourced from Alaska Bar Association public directory.",
     "city": "Wasilla",
     "state": "AK",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Alaska Bar Association public directory",
     "source_url": "https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info?CUSTOMERCD=8744&WRP=Customer_Profile.htm"
   },
@@ -311,11 +235,7 @@
     "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
     "city": "Nashville",
     "state": "TN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/037266"
   },
@@ -327,11 +247,7 @@
     "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
     "city": "Nashville",
     "state": "TN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/038688"
   },
@@ -343,11 +259,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529"
   },
@@ -359,11 +271,7 @@
     "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
     "city": "Nashville",
     "state": "TN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/016287"
   },
@@ -375,11 +283,7 @@
     "description": "Whistleblower attorney listing sourced from Arkansas Bar Association public directory.",
     "city": "Fayetteville",
     "state": "AR",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Arkansas Bar Association public directory",
     "source_url": "https://www.arkbar.com/?pg=board-of-trustees"
   },
@@ -391,11 +295,7 @@
     "description": "Whistleblower attorney listing sourced from Alabama State Bar public directory.",
     "city": "Birmingham",
     "state": "AL",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Alabama State Bar public directory",
     "source_url": "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx"
   },
@@ -407,11 +307,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/348990"
   },
@@ -423,11 +319,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/271380"
   },
@@ -439,11 +331,7 @@
     "description": "Whistleblower attorney listing sourced from a Kansas Judicial Branch published opinion.",
     "city": "Overland Park",
     "state": "KS",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Kansas Judicial Branch published opinion",
     "source_url": "https://kscourts.gov/Cases-Decisions/Decisions/Published/Brown-v-Ford-Storage-and-Moving-Co-Inc"
   },
@@ -455,11 +343,7 @@
     "description": "Whistleblower attorney listing sourced from Tennessee Board of Professional Responsibility attorney records.",
     "city": "Nashville",
     "state": "TN",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/039797"
   },
@@ -471,11 +355,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Employment"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/239323"
   },
@@ -487,11 +367,7 @@
     "description": "Whistleblower attorney listing sourced from Colorado Bar Association public directory.",
     "city": "Durango",
     "state": "CO",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Colorado Bar Association public directory",
     "source_url": "https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
   },
@@ -503,11 +379,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "Berkeley",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/171107"
   },
@@ -519,11 +391,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/238491"
   },
@@ -535,11 +403,7 @@
     "description": "Whistleblower attorney listing sourced from an Iowa State Bar Association jury verdict record.",
     "city": "Des Moines",
     "state": "IA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Iowa State Bar Association jury verdict record",
     "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
   },
@@ -551,11 +415,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134"
   },
@@ -567,11 +427,7 @@
     "description": "Whistleblower attorney listing sourced from State Bar of California attorney records.",
     "city": "San Francisco",
     "state": "CA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Investigations",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/198472"
   },
@@ -583,11 +439,7 @@
     "description": "Whistleblower attorney listing sourced from a State Bar of Georgia speaker profile.",
     "city": "Atlanta",
     "state": "GA",
-    "practice_tags": [
-      "Whistleblowing",
-      "Employment",
-      "Litigation"
-    ],
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of Georgia speaker profile",
     "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014"
   }
