@@ -120,6 +120,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/330468"
   },
   {
+    "id": "seed-daniel-b-eccher",
+    "slug": "public-record~daniel-b-eccher",
+    "name": "Daniel B. Eccher",
+    "website": "https://www.ehclaw.com/",
+    "description": "Whistleblower attorney listing sourced from Maine Board of Overseers of the Bar public directory.",
+    "city": "Portland",
+    "state": "ME",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Maine Board of Overseers of the Bar public directory",
+    "source_url": "https://mebarconnect.mainebar.org/people/daniel-eccher"
+  },
+  {
     "id": "seed-daniel-noel",
     "slug": "public-record~daniel-noel",
     "name": "Daniel Noel",
@@ -216,6 +228,18 @@
     "source_url": "https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"
   },
   {
+    "id": "seed-gerard-v-mantese",
+    "slug": "public-record~gerard-v-mantese",
+    "name": "Gerard V. Mantese",
+    "website": "https://manteselaw.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Michigan public directory.",
+    "city": "Southfield",
+    "state": "MI",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of Michigan public directory",
+    "source_url": "https://connect.michbar.org/laborlaw/home/council/section-members/-in-directory/directorysearchresults/?UserKey=7af6ed96-c3cf-4f2d-b5f6-8effee281468"
+  },
+  {
     "id": "seed-georgianna-quinn-tutwiler",
     "slug": "public-record~georgianna-quinn-tutwiler",
     "name": "Georgianna Quinn Tutwiler",
@@ -226,6 +250,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Indiana State Bar public directory",
     "source_url": "https://www.inbar.org/members/?id=30400364"
+  },
+  {
+    "id": "seed-gregory-james-sauzer",
+    "slug": "public-record~gregory-james-sauzer",
+    "name": "Gregory James Sauzer",
+    "website": "https://www.spsr-law.com/",
+    "description": "Whistleblower attorney listing sourced from Louisiana Attorney Disciplinary Board attorney records.",
+    "city": "New Orleans",
+    "state": "LA",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Louisiana Attorney Disciplinary Board attorney records",
+    "source_url": "https://www.ladb.org/DR/Document.cfm?docket=24-DB-014"
+  },
+  {
+    "id": "seed-hillary-j-massey",
+    "slug": "public-record~hillary-j-massey",
+    "name": "Hillary J. Massey",
+    "website": "https://www.seyfarth.com/",
+    "description": "Whistleblower attorney listing sourced from Massachusetts BBO attorney records.",
+    "city": "Boston",
+    "state": "MA",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Massachusetts BBO attorney records",
+    "source_url": "https://bbopublic.massbbo.org/web/f/SJC_WellBeing_Cmte_Report.pdf"
   },
   {
     "id": "seed-jeffrey-farley-keller",
@@ -466,6 +514,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134"
+  },
+  {
+    "id": "seed-sean-w-baker",
+    "slug": "public-record~sean-w-baker",
+    "name": "Sean W. Baker",
+    "website": "https://www.sbakerlaw.com/",
+    "description": "Whistleblower attorney listing sourced from Maryland Courts attorney discipline records.",
+    "city": "Timonium",
+    "state": "MD",
+    "practice_tags": ["Investigations", "Litigation", "Appeals"],
+    "source_label": "Maryland Courts attorney discipline records",
+    "source_url": "https://www.courts.state.md.us/attygrievance/sanctions07"
   },
   {
     "id": "seed-stephen-shinobu-hasegawa",
