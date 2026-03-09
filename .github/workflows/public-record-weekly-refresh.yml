@@ -31,26 +31,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          delimiter="PUBLIC_RECORD_SUMMARY_$(date +%s)"
+
           if [ -f /tmp/pr-refresh.md ]; then
             {
-              echo "body<<'EOF'"
+              echo "body<<${delimiter}"
               cat /tmp/pr-refresh.md
-              echo "EOF"
+              echo "${delimiter}"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           {
-            echo "body<<'EOF'"
+            echo "body<<${delimiter}"
             echo "## Public Record Refresh Summary"
             echo
             echo "- Refresh completed."
-            echo "EOF"
+            echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create or update refresh PR
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
+          token: ${{ secrets.ADMIN_PAT }}
           branch: bot/public-record-weekly-refresh
           delete-branch: true
           commit-message: "Refresh public-record law firm listings"
