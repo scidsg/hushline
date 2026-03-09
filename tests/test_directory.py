@@ -134,21 +134,26 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
     assert securedrop_panel is not None
 
     banner_links = securedrop_panel.select(".dirMeta a")
-    assert len(banner_links) == 2
-    assert banner_links[0].text.strip() == "SecureDrop directory API"
-    assert banner_links[0].get("href") == "https://securedrop.org/api/v1/directory/?format=json"
-    assert banner_links[1].text.strip() == "Tor Browser"
-    assert banner_links[1].get("href") == "https://www.torproject.org/download/"
+    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    assert (
+        links_by_text["SecureDrop directory API"]
+        == "https://securedrop.org/api/v1/directory/?format=json"
+    )
+    assert links_by_text["Hush Line admin"] == "/to/admin"
+    assert links_by_text["Tor Browser"] == "https://www.torproject.org/download/"
     banner_text = securedrop_panel.get_text(" ", strip=True)
     assert banner_text.startswith("🧪 Beta:")
     assert "These listings are automated and synced from the" in banner_text
     assert "SecureDrop directory API" in banner_text
+    assert "Contact the Hush Line admin for any corrections." in banner_text
     assert "Onion addresses require" in banner_text
     assert "Tor Browser" in banner_text
     assert "to access." in banner_text
 
 
-def test_directory_globaleaks_banner_matches_securedrop_style(client: FlaskClient) -> None:
+def test_directory_globaleaks_banner_omits_tor_when_no_listing_uses_onion(
+    client: FlaskClient,
+) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -159,10 +164,13 @@ def test_directory_globaleaks_banner_matches_securedrop_style(client: FlaskClien
     banner = globaleaks_panel.select_one(".dirMeta")
     assert banner is not None
     banner_links = globaleaks_panel.select(".dirMeta a")
-    assert banner_links == []
+    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    assert links_by_text["Hush Line admin"] == "/to/admin"
+    assert "Tor Browser" not in links_by_text
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "These listings are automated." in banner_text
+    assert "Contact the Hush Line admin for any corrections." in banner_text
     assert "Onion addresses require" not in banner_text
 
 
@@ -184,12 +192,13 @@ def test_directory_globaleaks_banner_mentions_tor_when_any_listing_uses_onion(
     banner = globaleaks_panel.select_one(".dirMeta")
     assert banner is not None
     banner_links = globaleaks_panel.select(".dirMeta a")
-    assert len(banner_links) == 1
-    assert banner_links[0].text.strip() == "Tor Browser"
-    assert banner_links[0].get("href") == "https://www.torproject.org/download/"
+    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    assert links_by_text["Hush Line admin"] == "/to/admin"
+    assert links_by_text["Tor Browser"] == "https://www.torproject.org/download/"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "These listings are automated." in banner_text
+    assert "Contact the Hush Line admin for any corrections." in banner_text
     assert "Onion addresses require" in banner_text
     assert "Tor Browser" in banner_text
     assert "to access." in banner_text
