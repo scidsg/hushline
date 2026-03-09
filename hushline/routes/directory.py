@@ -150,6 +150,9 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        globaleaks_has_onion_submission = any(
+            bool(getattr(listing, "has_onion_submission", False)) for listing in globaleaks_listings
+        )
         securedrop_listings = (
             list(get_securedrop_directory_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
@@ -178,6 +181,7 @@ def register_directory_routes(app: Flask) -> None:
             legacy_public_record_listings=legacy_public_record_listings,
             public_record_total_count=len(all_public_record_listings),
             globaleaks_listings=globaleaks_listings,
+            globaleaks_has_onion_submission=globaleaks_has_onion_submission,
             globaleaks_total_count=len(globaleaks_listings),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),

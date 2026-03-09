@@ -56,6 +56,22 @@ def _sample_globaleaks_listing() -> GlobaLeaksDirectoryListing:
     )
 
 
+def _sample_onion_globaleaks_listing() -> GlobaLeaksDirectoryListing:
+    return GlobaLeaksDirectoryListing(
+        id="globaleaks-sample-onion-newsroom",
+        slug="globaleaks~sample-onion-newsroom",
+        name="Sample Onion GlobaLeaks Newsroom",
+        website="https://example.org",
+        description="An example GlobaLeaks instance with an onion submission endpoint.",
+        submission_url="http://sampleonionaddress1234567890abcdef1234567890abcdef1234567890.onion",
+        host="sampleonionaddress1234567890abcdef1234567890abcdef1234567890.onion",
+        countries=("Italy",),
+        languages=("English",),
+        source_label="Automated GlobaLeaks discovery dataset",
+        source_url="https://example.org/source/globaleaks-export",
+    )
+
+
 def test_globaleaks_seed_has_rows() -> None:
     listings = get_globaleaks_directory_listings()
 
@@ -124,14 +140,15 @@ def test_directory_securedrop_banner_links_to_api(client: FlaskClient) -> None:
     assert banner_links[1].text.strip() == "Tor Browser"
     assert banner_links[1].get("href") == "https://www.torproject.org/download/"
     banner_text = securedrop_panel.get_text(" ", strip=True)
-    assert "Synced automatically from the" in banner_text
+    assert banner_text.startswith("🧪 Beta:")
+    assert "These listings are automated and synced from the" in banner_text
     assert "SecureDrop directory API" in banner_text
     assert "Onion addresses require" in banner_text
     assert "Tor Browser" in banner_text
     assert "to access." in banner_text
 
 
-def test_directory_globaleaks_banner_mentions_clearnet_and_onion(client: FlaskClient) -> None:
+def test_directory_globaleaks_banner_matches_securedrop_style(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -141,11 +158,41 @@ def test_directory_globaleaks_banner_mentions_clearnet_and_onion(client: FlaskCl
 
     banner = globaleaks_panel.select_one(".dirMeta")
     assert banner is not None
+    banner_links = globaleaks_panel.select(".dirMeta a")
+    assert banner_links == []
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
-    assert banner_text.startswith("🌐")
-    assert "automated GlobaLeaks discovery dataset" in banner_text
-    assert "clearnet or onion submission endpoints" in banner_text
-    assert "verify the destination" in banner_text
+    assert banner_text.startswith("🧪 Beta:")
+    assert "These listings are automated." in banner_text
+    assert "Onion addresses require" not in banner_text
+
+
+def test_directory_globaleaks_banner_mentions_tor_when_any_listing_uses_onion(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (_sample_onion_globaleaks_listing(),),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    globaleaks_panel = soup.find(id="globaleaks")
+    assert globaleaks_panel is not None
+
+    banner = globaleaks_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_links = globaleaks_panel.select(".dirMeta a")
+    assert len(banner_links) == 1
+    assert banner_links[0].text.strip() == "Tor Browser"
+    assert banner_links[0].get("href") == "https://www.torproject.org/download/"
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
+    assert banner_text.startswith("🧪 Beta:")
+    assert "These listings are automated." in banner_text
+    assert "Onion addresses require" in banner_text
+    assert "Tor Browser" in banner_text
+    assert "to access." in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
@@ -691,9 +738,37 @@ def test_globaleaks_listing_page_is_read_only(
     dir_meta = soup.select_one(".dirMeta")
     assert dir_meta is not None
     dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🌐")
-    assert "clearnet or onion submissions" in dir_meta_text
-    assert "Verify the destination" in dir_meta_text
+    assert dir_meta_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in dir_meta_text
+    assert "Onion addresses require" not in dir_meta_text
+    assert "Tor Browser" not in dir_meta_text
+    assert dir_meta.find("a") is None
+
+
+def test_globaleaks_listing_page_mentions_tor_for_onion_submission(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_onion_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(url_for("globaleaks_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    dir_meta = soup.select_one(".dirMeta")
+    assert dir_meta is not None
+    dir_meta_text = dir_meta.get_text(" ", strip=True)
+    assert dir_meta_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in dir_meta_text
+    assert "Onion addresses require" in dir_meta_text
+    assert "Tor Browser" in dir_meta_text
+    dir_meta_link = dir_meta.find("a")
+    assert dir_meta_link is not None
+    assert dir_meta_link.text.strip() == "Tor Browser"
+    assert dir_meta_link.get("href") == "https://www.torproject.org/download/"
 
 
 def test_globaleaks_listing_route_hidden_when_verified_tabs_disabled(

@@ -35,6 +35,11 @@ class GlobaLeaksDirectoryListing:
             return "Unknown"
         return ", ".join(self.countries)
 
+    @property
+    def has_onion_submission(self) -> bool:
+        values = (self.submission_url, self.website, self.host)
+        return any(".onion" in value.casefold() for value in values if value)
+
 
 def _sort_key(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value.strip())
