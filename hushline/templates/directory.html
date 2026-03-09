@@ -251,8 +251,9 @@
   {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
-        🌐 Loaded from an automated GlobaLeaks discovery dataset. Listings may point to clearnet or onion
-        submission endpoints, so verify the destination before sharing sensitive material.
+        🌐 Synced automatically from public GlobaLeaks listings. Onion addresses require
+        <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
+        to access.
       </p>
 
       {% if globaleaks_listings %}
