@@ -22,6 +22,8 @@ PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
 MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
 MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
+RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -159,8 +161,7 @@ run_runtime_check_with_self_heal() {
 
 reset_runtime_stack_and_seed_dev_data() {
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  docker compose up -d postgres blob-storage app >/dev/null
-  docker compose run --rm dev_data >/dev/null
+  start_runtime_stack_and_seed_dev_data postgres blob-storage app
 }
 
 refresh_runtime_after_schema_changes() {
@@ -219,6 +220,65 @@ audit_failure_looks_environmental() {
   local text="$1"
   printf '%s\n' "$text" | grep -Eqi \
     '(temporary failure in name resolution|name or service not known|could not resolve|network is unreachable|connection timed out|timed out|connection reset|connection refused|no route to host|service unavailable|bad gateway|gateway timeout|read timed out|proxyerror|econnreset|enotfound|eai_again)'
+}
+
+runtime_bootstrap_failure_looks_retryable() {
+  local text="$1"
+  printf '%s\n' "$text" | grep -Eqi \
+    '(unexpected status from HEAD request|500 internal server error|503 service unavailable|504 gateway timeout|too many requests|tls handshake timeout|i/o timeout|context deadline exceeded|request canceled while waiting for connection|connection reset by peer|temporary failure in name resolution|net/http: request canceled|eof|failed to copy: httpReadSeeker|error pulling image configuration)'
+}
+
+start_runtime_stack_and_seed_dev_data() {
+  local compose_up_args=("$@")
+  local attempt=1
+  local attempt_log=""
+  local compose_up_rc=0
+  local seed_rc=0
+
+  while (( attempt <= RUNTIME_BOOTSTRAP_ATTEMPTS )); do
+    attempt_log="$(mktemp)"
+
+    echo "==> Start Docker stack"
+    set +e
+    docker compose up -d "${compose_up_args[@]}" 2>&1 | tee "$attempt_log"
+    compose_up_rc=${PIPESTATUS[0]}
+    set -e
+
+    if (( compose_up_rc == 0 )); then
+      echo "==> Seed development data"
+      set +e
+      docker compose run --rm dev_data 2>&1 | tee -a "$attempt_log"
+      seed_rc=${PIPESTATUS[0]}
+      set -e
+
+      if (( seed_rc == 0 )); then
+        rm -f "$attempt_log"
+        return 0
+      fi
+    fi
+
+    if (( attempt >= RUNTIME_BOOTSTRAP_ATTEMPTS )); then
+      rm -f "$attempt_log"
+      if (( compose_up_rc != 0 )); then
+        return "$compose_up_rc"
+      fi
+      return "$seed_rc"
+    fi
+
+    if ! runtime_bootstrap_failure_looks_retryable "$(tail -n 200 "$attempt_log")"; then
+      rm -f "$attempt_log"
+      if (( compose_up_rc != 0 )); then
+        return "$compose_up_rc"
+      fi
+      return "$seed_rc"
+    fi
+
+    echo "Runtime bootstrap hit a retryable Docker/registry failure; resetting partial state and retrying in ${RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS}s (attempt ${attempt}/${RUNTIME_BOOTSTRAP_ATTEMPTS})."
+    docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+    rm -f "$attempt_log"
+    sleep "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
+    attempt=$((attempt + 1))
+  done
 }
 
 auto_fix_lint_with_containerized_tooling() {
@@ -1176,6 +1236,10 @@ main() {
 
   require_positive_integer "HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS" "$MAX_ISSUE_ATTEMPTS"
   require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "$MAX_FIX_ATTEMPTS"
+  require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS" "$RUNTIME_BOOTSTRAP_ATTEMPTS"
+  require_positive_integer \
+    "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" \
+    "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
 
   if [[ ! -d "$REPO_DIR/.git" ]]; then
     echo "Repository not found: $REPO_DIR" >&2
@@ -1195,8 +1259,7 @@ main() {
   run_step "Kill all Docker containers" kill_all_docker_containers
   run_step "Prune Docker system" docker system prune -af --volumes
   run_step "Kill processes on runner ports" kill_processes_on_ports
-  run_step "Start Docker stack" docker compose up -d --build
-  run_step "Seed development data" docker compose run --rm dev_data
+  start_runtime_stack_and_seed_dev_data --build
 
   OPEN_BOT_PRS="$(count_open_bot_prs)"
   echo "Open bot PR count: ${OPEN_BOT_PRS}"

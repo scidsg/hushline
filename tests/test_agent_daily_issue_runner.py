@@ -212,6 +212,101 @@ fi
     assert result.stdout == "non-environmental\n"
 
 
+def test_runtime_bootstrap_retries_retryable_registry_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    if [[ $(grep -c '^compose up -d --build$' {shlex.quote(str(calls_file))}) == "1" ]]; then
+      printf '%s%s%s%s%s\\n' \
+        'Error response from daemon: unknown: failed to resolve reference ' \
+        '"docker.io/library/postgres:16.4-alpine3.20": ' \
+        'unexpected status from HEAD request to ' \
+        'https://registry-1.docker.io/v2/library/postgres/manifests/' \
+        '16.4-alpine3.20: 500 Internal Server Error' \
+        >&2
+      return 1
+    fi
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=0" in result.stdout
+    assert "retryable Docker/registry failure" in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 2
+    assert docker_calls.count("compose run --rm dev_data") == 1
+    assert "compose down -v --remove-orphans" in docker_calls
+
+
+def test_runtime_bootstrap_does_not_retry_non_retryable_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    printf 'invalid compose project configuration\\n' >&2
+    return 1
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "retryable Docker/registry failure" not in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 1
+    assert "compose down -v --remove-orphans" not in docker_calls
+    assert "compose run --rm dev_data" not in docker_calls
+
+
 def test_require_positive_integer_rejects_zero() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -222,6 +317,21 @@ require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "0"
 
     assert result.returncode == 1
     assert "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS must be a positive integer" in result.stderr
+
+
+def test_require_positive_integer_rejects_zero_for_runtime_bootstrap_retry_delay() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" "0"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert (
+        "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS must be a positive integer"
+        in result.stderr
+    )
 
 
 def test_failure_signature_from_text_returns_structured_markers() -> None:

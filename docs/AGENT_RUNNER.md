@@ -22,6 +22,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
 6. Start and seed stack:
    - `docker compose up -d --build`
    - `docker compose run --rm dev_data`
+   - retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
 7. Exit if any open PR exists from `hushline-dev`.
 8. Exit if any open human-authored PR exists.
 9. Select issue target:
