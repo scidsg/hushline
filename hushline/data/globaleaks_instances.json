@@ -7,8 +7,12 @@
     "description": "Italy's Agency for Digital Italy operates a public whistleblowing channel on GlobaLeaks.",
     "submission_url": "https://whistleblowing.agid.gov.it/",
     "host": "whistleblowing.agid.gov.it",
-    "countries": ["Italy"],
-    "languages": ["Italian"],
+    "countries": [
+      "Italy"
+    ],
+    "languages": [
+      "Italian"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -20,8 +24,13 @@
     "description": "Madagascar's anti-corruption agency BIANCO uses a GlobaLeaks-based online reporting platform for corruption complaints.",
     "submission_url": "https://doleances.bianco-mg.org/",
     "host": "doleances.bianco-mg.org",
-    "countries": ["Madagascar"],
-    "languages": ["French", "Malagasy"],
+    "countries": [
+      "Madagascar"
+    ],
+    "languages": [
+      "French",
+      "Malagasy"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -33,8 +42,12 @@
     "description": "Denmark's data protection authority uses GlobaLeaks for whistleblower reporting.",
     "submission_url": "https://dt.sit-wb.dk/",
     "host": "dt.sit-wb.dk",
-    "countries": ["Denmark"],
-    "languages": ["Danish"],
+    "countries": [
+      "Denmark"
+    ],
+    "languages": [
+      "Danish"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -46,8 +59,12 @@
     "description": "Germany's Federal Office of Justice runs a GlobaLeaks-backed external reporting channel.",
     "submission_url": "https://bfj-hinweisgeberstelle.dataport.de/",
     "host": "bfj-hinweisgeberstelle.dataport.de",
-    "countries": ["Germany"],
-    "languages": ["German"],
+    "countries": [
+      "Germany"
+    ],
+    "languages": [
+      "German"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -59,8 +76,12 @@
     "description": "IndonesiaLeaks is a collaborative investigative journalism platform that uses GlobaLeaks for secure document submission.",
     "submission_url": "https://secure.leaks.id/",
     "host": "secure.leaks.id",
-    "countries": ["Indonesia"],
-    "languages": ["Indonesian"],
+    "countries": [
+      "Indonesia"
+    ],
+    "languages": [
+      "Indonesian"
+    ],
     "source_label": "GlobaLeaks investigative journalism use case page",
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
   },
@@ -72,8 +93,25 @@
     "description": "MakaLeaks is an Angolan platform for reporting criminal or illegal activity through GlobaLeaks.",
     "submission_url": "https://www.makaleaks.org/",
     "host": "www.makaleaks.org",
-    "countries": ["Angola"],
-    "languages": ["Portuguese"],
+    "countries": [
+      "Angola"
+    ],
+    "languages": [
+      "Portuguese"
+    ],
+    "source_label": "GlobaLeaks investigative journalism use case page",
+    "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
+  },
+  {
+    "id": "globaleaks-mexicoleaks-mx",
+    "slug": "globaleaks~mexicoleaks-mx",
+    "name": "MexicoLeaks",
+    "website": "https://mexicoleaks.mx/",
+    "description": "GlobaLeaks instance listed on the GlobaLeaks use case pages.",
+    "submission_url": "https://mexicoleaks.mx/",
+    "host": "mexicoleaks.mx",
+    "countries": [],
+    "languages": [],
     "source_label": "GlobaLeaks investigative journalism use case page",
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
   },
@@ -85,8 +123,12 @@
     "description": "Italy's National Anticorruption Authority operates a GlobaLeaks-based whistleblowing portal.",
     "submission_url": "https://whistleblowing.anticorruzione.it/",
     "host": "whistleblowing.anticorruzione.it",
-    "countries": ["Italy"],
-    "languages": ["Italian"],
+    "countries": [
+      "Italy"
+    ],
+    "languages": [
+      "Italian"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -98,8 +140,12 @@
     "description": "Italy's National Cybersecurity Agency uses GlobaLeaks for secure whistleblowing submissions.",
     "submission_url": "https://whistleblowing.acn.gov.it/",
     "host": "whistleblowing.acn.gov.it",
-    "countries": ["Italy"],
-    "languages": ["Italian"],
+    "countries": [
+      "Italy"
+    ],
+    "languages": [
+      "Italian"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -111,8 +157,12 @@
     "description": "Greece's National Transparency Authority provides an external GlobaLeaks whistleblowing channel.",
     "submission_url": "https://extwhistle.aead.gr/",
     "host": "extwhistle.aead.gr",
-    "countries": ["Greece"],
-    "languages": ["Greek"],
+    "countries": [
+      "Greece"
+    ],
+    "languages": [
+      "Greek"
+    ],
     "source_label": "GlobaLeaks anti-corruption use case page",
     "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
@@ -124,10 +174,27 @@
     "description": "PubLeaks is a Dutch multi-newsroom tip line built on GlobaLeaks for anonymous source submissions.",
     "submission_url": "https://secure.publeaks.nl/",
     "host": "secure.publeaks.nl",
-    "countries": ["Netherlands"],
-    "languages": ["Dutch"],
+    "countries": [
+      "Netherlands"
+    ],
+    "languages": [
+      "Dutch"
+    ],
     "source_label": "GlobaLeaks investigative journalism use case page",
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
+  },
+  {
+    "id": "globaleaks-slack-globaleaks-org",
+    "slug": "globaleaks~slack-globaleaks-org",
+    "name": "slack.globaleaks.org",
+    "website": "https://slack.globaleaks.org",
+    "description": "GlobaLeaks instance listed on the GlobaLeaks use case pages.",
+    "submission_url": "https://slack.globaleaks.org",
+    "host": "slack.globaleaks.org",
+    "countries": [],
+    "languages": [],
+    "source_label": "GlobaLeaks anti-corruption use case page",
+    "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
   {
     "id": "globaleaks-ensecurite-sourcesure-eu",
@@ -137,9 +204,26 @@
     "description": "Le Monde's Sourcesure platform uses GlobaLeaks for secure investigative journalism submissions.",
     "submission_url": "https://ensecurite.sourcesure.eu/",
     "host": "ensecurite.sourcesure.eu",
-    "countries": ["France"],
-    "languages": ["French"],
+    "countries": [
+      "France"
+    ],
+    "languages": [
+      "French"
+    ],
     "source_label": "GlobaLeaks investigative journalism use case page",
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
+  },
+  {
+    "id": "globaleaks-bustiadenuncies-antifraucv-es",
+    "slug": "globaleaks~bustiadenuncies-antifraucv-es",
+    "name": "Valencian Antifraud Authority",
+    "website": "https://bustiadenuncies.antifraucv.es/#/",
+    "description": "GlobaLeaks instance listed on the GlobaLeaks use case pages.",
+    "submission_url": "https://bustiadenuncies.antifraucv.es/#/",
+    "host": "bustiadenuncies.antifraucv.es",
+    "countries": [],
+    "languages": [],
+    "source_label": "GlobaLeaks anti-corruption use case page",
+    "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   }
 ]
