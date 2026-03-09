@@ -27,6 +27,7 @@ class OrganizationSetting(Model):
     GUIDANCE_PROMPTS = "guidance_prompts"
     HIDE_DONATE_BUTTON = "hide_donate_button"
     HOMEPAGE_USER_NAME = "homepage_user_name"
+    OUTREACH_COMPLETED_LEADS = "outreach_completed_leads"
     REGISTRATION_ENABLED = "registration_enabled"
     REGISTRATION_CODES_REQUIRED = "registration_codes_required"
 
@@ -42,6 +43,7 @@ class OrganizationSetting(Model):
         GUIDANCE_EXIT_BUTTON_LINK: "https://en.wikipedia.org/wiki/Main_Page",
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
         HIDE_DONATE_BUTTON: False,
+        OUTREACH_COMPLETED_LEADS: {},
         REGISTRATION_ENABLED: False,
         REGISTRATION_CODES_REQUIRED: False,
     }

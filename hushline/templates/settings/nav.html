@@ -3,29 +3,47 @@
 <nav class="settings-tabs" aria-label="Settings navigation">
   <ul class="tab-list">
     {% with buttons = [
-      ('settings.profile', 'Profile', True),
-      ('settings.aliases', 'Aliases', aliases_enabled),
-      ('settings.auth', 'Authentication', True),
-      ('settings.branding', 'Branding', user.is_admin),
-      ('settings.encryption', 'Encryption', True),
-      ('settings.replies', 'Message Statuses', user.pgp_key is not none),
-      ('settings.notifications', 'Notifications', True),
-      ('settings.guidance', 'User Guidance', user.is_admin),
-      ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled),
-      ('settings.advanced', 'Advanced', True),
-      ('settings.admin', 'Admin', user.is_admin)
+      ('settings.profile', 'Profile', True, none),
+      ('settings.aliases', 'Aliases', aliases_enabled, none),
+      ('settings.auth', 'Authentication', True, none),
+      ('settings.branding', 'Branding', user.is_admin, none),
+      ('settings.encryption', 'Encryption', True, none),
+      ('settings.replies', 'Message Statuses', user.pgp_key is not none, none),
+      ('settings.notifications', 'Notifications', True, none),
+      ('settings.guidance', 'User Guidance', user.is_admin, none),
+      ('settings.outreach', 'Outreach', user.is_admin, outreach_open_lead_count),
+      ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled, none),
+      ('settings.advanced', 'Advanced', True, none),
+      ('settings.admin', 'Admin', user.is_admin, none)
     ] %}
-      {% for (endpoint, display_name, show) in buttons %}
+      {% for (endpoint, display_name, show, count) in buttons %}
         {% if show %}
-          <li role="presentation">
-            <a
+          {% if count is not none %}
+            <li
+              role="presentation"
               class="tab{% if endpoint == request.endpoint %} active{% endif %}"
-              {% if endpoint == request.endpoint %}aria-current="page"{% endif %}
-              href="{{ url_for(endpoint) }}"
             >
-              {{ display_name }}
-            </a>
-          </li>
+              <a
+                {% if endpoint == request.endpoint %}aria-current="page"{% endif %}
+                href="{{ url_for(endpoint) }}"
+              >
+                {{ display_name }}
+              </a>
+              <span class="badge" role="img" aria-label="{{ display_name }} open lead count">
+                {{ count }}
+              </span>
+            </li>
+          {% else %}
+            <li role="presentation">
+              <a
+                class="tab{% if endpoint == request.endpoint %} active{% endif %}"
+                {% if endpoint == request.endpoint %}aria-current="page"{% endif %}
+                href="{{ url_for(endpoint) }}"
+              >
+                {{ display_name }}
+              </a>
+            </li>
+          {% endif %}
         {% endif %}
       {% endfor %}
     {% endwith %}

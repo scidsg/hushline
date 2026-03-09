@@ -1,0 +1,246 @@
+{% extends "settings/base.html" %}
+
+{% macro render_lead_cards(leads, panel_source) %}
+  {% if leads %}
+    <div class="user-list">
+      {% for lead in leads %}
+        <article class="user">
+          <h4>{{ lead.name }}</h4>
+          <div class="badgeContainer">
+            {% if lead.is_converted %}
+              <span class="badge" role="img" aria-label="Converted outreach lead">🎉 Converted</span>
+            {% elif lead.is_complete %}
+              <span class="badge" role="img" aria-label="Completed outreach lead">✅ Complete</span>
+            {% else %}
+              <span class="badge" role="img" aria-label="Open outreach lead">📬 Open</span>
+            {% endif %}
+            {% if lead.was_completed and not lead.is_complete and not lead.is_converted %}
+              <span class="badge" role="img" aria-label="Previously completed outreach lead">↺ Previously Complete</span>
+            {% endif %}
+          </div>
+          <p class="meta">Fit: {{ lead.fit_score }}/100</p>
+          <p class="meta">Source: {{ lead.source_label }}</p>
+          <p class="meta">Location: {{ lead.location }}</p>
+          <p class="meta">Why this lead: {{ lead.fit_summary }}</p>
+          <p class="meta">Contact method: {{ lead.contact_method }}</p>
+          <p class="meta">
+            Contact destination:
+            <a href="{{ lead.contact_url }}" rel="noreferrer">{{ lead.contact_host }}</a>
+          </p>
+          <div class="user-actions">
+            <a href="{{ lead.contact_url }}" target="_blank" rel="noreferrer">Visit Website</a>
+            <a href="{{ lead.listing_url }}">View Listing</a>
+          </div>
+
+          <div class="field-group">
+            <div class="label">
+              <label for="outreach-subject-{{ panel_source }}-{{ loop.index }}">Suggested Subject</label>
+            </div>
+            <input
+              id="outreach-subject-{{ panel_source }}-{{ loop.index }}"
+              class="form-field"
+              type="text"
+              readonly
+              value="{{ lead.subject }}"
+            />
+          </div>
+
+          <div class="field-group">
+            <div class="label">
+              <label for="outreach-body-{{ panel_source }}-{{ loop.index }}">Suggested Outreach</label>
+            </div>
+            <textarea
+              id="outreach-body-{{ panel_source }}-{{ loop.index }}"
+              class="form-field"
+              readonly
+              rows="11"
+            >{{ lead.body }}</textarea>
+          </div>
+          
+          <div class="tableActions">
+            {% if not lead.is_converted %}
+              <form
+                action="{{ url_for('settings.outreach_complete') }}"
+                method="POST"
+                class="formBody"
+              >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="source" value="{{ panel_source }}" />
+                <input type="hidden" name="lead_id" value="{{ lead.lead_id }}" />
+                <input
+                  type="hidden"
+                  name="is_complete"
+                  value="{{ 'false' if lead.is_complete else 'true' }}"
+                />
+                <button type="submit">
+                  {{ "Mark Open" if lead.is_complete else "Mark Complete" }}
+                </button>
+              </form>
+              <form
+                action="{{ url_for('settings.outreach_convert') }}"
+                method="POST"
+                class="formBody"
+              >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="source" value="{{ panel_source }}" />
+                <input type="hidden" name="lead_id" value="{{ lead.lead_id }}" />
+                <input type="hidden" name="is_converted" value="true" />
+                <button type="submit">Mark Converted</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No outreach leads found in this tab.</p>
+  {% endif %}
+{% endmacro %}
+
+{% block settings_content %}
+  <h3>Outreach</h3>
+  <p>
+    Human-reviewed outreach drafts built from automated directory listings. Hush Line does not send these messages.
+  </p>
+
+  <div class="tableActions">
+    <form action="{{ url_for('settings.outreach_refresh') }}" method="POST" class="formBody">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="source" value="{{ source_filter }}" />
+      <button type="submit">Refresh Queue</button>
+    </form>
+  </div>
+
+  <div class="admin-highlights">
+    <div class="metric">
+      <p>Open Leads</p>
+      <p>{{ open_lead_count }}</p>
+      <p>{{ lead_counts["all"] }} total</p>
+    </div>
+    <div class="metric">
+      <p>Public Records</p>
+      <p>{{ open_lead_counts["public_record"] }}</p>
+      <p>{{ lead_counts["public_record"] }} total</p>
+    </div>
+    <div class="metric">
+      <p>GlobaLeaks</p>
+      <p>{{ open_lead_counts["globaleaks"] }}</p>
+      <p>{{ lead_counts["globaleaks"] }} total</p>
+    </div>
+    <div class="metric">
+      <p>SecureDrop</p>
+      <p>{{ open_lead_counts["securedrop"] }}</p>
+      <p>{{ lead_counts["securedrop"] }} total</p>
+    </div>
+  </div>
+
+  <div class="directory-tabs outreach-subtabs" id="outreach-tabs">
+    <ul class="tab-list" role="tablist">
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab{% if source_filter == 'all' %} active{% endif %}"
+          data-tab="outreach-all"
+          role="tab"
+          aria-selected="{{ 'true' if source_filter == 'all' else 'false' }}"
+          aria-controls="outreach-all"
+          id="outreach-all-tab"
+        >
+          All
+          <span class="badge" role="img" aria-label="All open lead count"
+            >{{ open_lead_counts["all"] }}</span
+          >
+        </button>
+      </li>
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab{% if source_filter == 'public_record' %} active{% endif %}"
+          data-tab="outreach-public-record"
+          role="tab"
+          aria-selected="{{ 'true' if source_filter == 'public_record' else 'false' }}"
+          aria-controls="outreach-public-record"
+          id="outreach-public-record-tab"
+        >
+          Public Records
+          <span class="badge" role="img" aria-label="Public Records open lead count"
+            >{{ open_lead_counts["public_record"] }}</span
+          >
+        </button>
+      </li>
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab{% if source_filter == 'globaleaks' %} active{% endif %}"
+          data-tab="outreach-globaleaks"
+          role="tab"
+          aria-selected="{{ 'true' if source_filter == 'globaleaks' else 'false' }}"
+          aria-controls="outreach-globaleaks"
+          id="outreach-globaleaks-tab"
+        >
+          GlobaLeaks
+          <span class="badge" role="img" aria-label="GlobaLeaks open lead count"
+            >{{ open_lead_counts["globaleaks"] }}</span
+          >
+        </button>
+      </li>
+      <li role="presentation">
+        <button
+          type="button"
+          class="tab{% if source_filter == 'securedrop' %} active{% endif %}"
+          data-tab="outreach-securedrop"
+          role="tab"
+          aria-selected="{{ 'true' if source_filter == 'securedrop' else 'false' }}"
+          aria-controls="outreach-securedrop"
+          id="outreach-securedrop-tab"
+        >
+          SecureDrop
+          <span class="badge" role="img" aria-label="SecureDrop open lead count"
+            >{{ open_lead_counts["securedrop"] }}</span
+          >
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div
+    id="outreach-all"
+    class="tab-content{% if source_filter == 'all' %} active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="outreach-all-tab"
+  >
+    {{ render_lead_cards(all_leads, "all") }}
+  </div>
+
+  <div
+    id="outreach-public-record"
+    class="tab-content{% if source_filter == 'public_record' %} active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="outreach-public-record-tab"
+  >
+    {{ render_lead_cards(public_record_leads, "public_record") }}
+  </div>
+
+  <div
+    id="outreach-globaleaks"
+    class="tab-content{% if source_filter == 'globaleaks' %} active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="outreach-globaleaks-tab"
+  >
+    {{ render_lead_cards(globaleaks_leads, "globaleaks") }}
+  </div>
+
+  <div
+    id="outreach-securedrop"
+    class="tab-content{% if source_filter == 'securedrop' %} active{% endif %}"
+    role="tabpanel"
+    aria-labelledby="outreach-securedrop-tab"
+  >
+    {{ render_lead_cards(securedrop_leads, "securedrop") }}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script defer src="{{ url_for('static', filename='js/settings_outreach.js') }}"></script>
+{% endblock %}

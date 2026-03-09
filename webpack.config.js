@@ -20,6 +20,7 @@ modules = [
   "settings-fields",
   "settings",
   "settings_admin",
+  "settings_outreach",
   "submit-message",
   "time-shadows",
   "user_search",

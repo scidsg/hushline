@@ -2077,6 +2077,10 @@ img.alert {
   align-items: center;
 }
 
+li.tab:has(.badge) {
+  gap: 0.25rem;
+}
+
 .tab-list li a {
   text-decoration: none;
 }
@@ -3176,6 +3180,48 @@ p.bio+.extra-fields {
 .settings-main .settings-content .settings-tabs+div,
 .message-list {
   width: 100%;
+}
+
+.settings-content .directory-tabs {
+  width: 100%;
+}
+
+.settings-main .settings-content .outreach-subtabs {
+  margin: 0 0 1rem 0;
+}
+
+.outreach-subtabs .tab-list {
+  margin: 0 !important;
+}
+
+.settings-content .admin-highlights {
+  margin-bottom: 0.5rem;
+}
+
+.settings-content .user-actions {
+  margin: 1rem 0;
+}
+
+.settings-main .settings-content .outreach-subtabs .tab-list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+  margin: 0 0 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: var(--border);
+}
+
+.settings-main .settings-content .outreach-subtabs .tab-list li {
+  margin-bottom: 0;
+}
+
+.settings-main .settings-content .outreach-subtabs .tab,
+.settings-main .settings-content .outreach-subtabs .tab.active {
+  width: auto;
+  padding: 0.75rem 0.5rem;
 }
 
 .message-list {
@@ -4307,12 +4353,6 @@ li.tab a {
   color: inherit;
 }
 
-li.tab:not(.active) .badge {
-  filter: saturate(0);
-  opacity: 0.5;
-  font-family: var(--font-sans);
-}
-
 li.tab .badge {
   padding: 0.25rem 0.325rem;
   min-width: 22px;
@@ -4537,7 +4577,45 @@ button:has(.badge) {
   align-items: center;
 }
 
+a.tab:has(.badge) {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 button .badge {
   font-size: var(--font-size-smallest);
   padding: 0.25rem 0.4125rem;
+}
+
+a.tab .badge {
+  font-size: var(--font-size-smallest);
+  padding: 0.25rem 0.4125rem;
+}
+
+.settings-main .settings-content .outreach-subtabs .tab.active {
+  padding: 0.75rem 0.5rem;
+  box-shadow: 0 -3px 0 inset var(--color-brand);
+}
+
+.settings-main .settings-content .outreach-subtabs .tab.active:focus-visible {
+  box-shadow:
+    0 -3px 0 inset var(--color-brand),
+    inset 0 0 0 3px var(--color-brand-min-contrast);
+}
+
+@media (prefers-color-scheme: dark) {
+  .settings-main .settings-content .outreach-subtabs .tab-list {
+    border-bottom: var(--border-dark);
+  }
+
+  .settings-main .settings-content .outreach-subtabs .tab.active {
+    box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
+  }
+
+  .settings-main .settings-content .outreach-subtabs .tab.active:focus-visible {
+    box-shadow:
+      0 -3px 0 inset var(--color-brand-dark-min-saturation),
+      inset 0 0 0 3px var(--color-brand-dark-min-saturation);
+  }
 }

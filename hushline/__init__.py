@@ -217,6 +217,7 @@ def configure_jinja(app: Flask) -> None:
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
             ),
+            outreach_open_lead_count=0,
             setup_incomplete=False,
             user=None,
         )
@@ -228,6 +229,16 @@ def configure_jinja(app: Flask) -> None:
             data["user"] = user
             if user:
                 username = user.primary_username
+                if user.is_admin:
+                    from hushline.outreach import (
+                        annotate_outreach_leads,
+                        count_open_outreach_leads,
+                        get_outreach_leads,
+                    )
+
+                    data["outreach_open_lead_count"] = count_open_outreach_leads(
+                        annotate_outreach_leads(get_outreach_leads())
+                    )
                 data["setup_incomplete"] = bool(
                     not username
                     or not (username.display_name or "").strip()
