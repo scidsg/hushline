@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Mapping, Sequence
+from typing import Mapping, Protocol, Sequence
 from urllib.parse import urlparse
 
 import requests
@@ -67,6 +67,22 @@ _DISCOVERY_KEYWORDS = (
 
 class GlobaLeaksDirectoryRefreshError(Exception):
     pass
+
+
+class _ResponseLike(Protocol):
+    text: str
+
+    def raise_for_status(self) -> None: ...
+
+
+class _SessionLike(Protocol):
+    def get(
+        self,
+        url: str,
+        *,
+        timeout: float,
+        headers: dict[str, str],
+    ) -> _ResponseLike: ...
 
 
 def _sort_key(value: str) -> str:
@@ -429,7 +445,7 @@ def fetch_globaleaks_directory_rows(
     known_rows: Sequence[Mapping[str, object]] = (),
     source_pages: Sequence[Mapping[str, str]] = GLOBALEAKS_USECASE_PAGES,
     timeout_seconds: float = 30.0,
-    session: requests.Session | None = None,
+    session: _SessionLike | None = None,
 ) -> list[dict[str, object]]:
     client = session or requests.Session()
     known_by_host = _index_known_rows_by_host(known_rows)
