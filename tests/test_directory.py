@@ -1,10 +1,8 @@
 import re
-import time
 from types import SimpleNamespace
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
-import requests
 from bs4 import BeautifulSoup
 from flask import url_for
 from flask.testing import FlaskClient
@@ -23,6 +21,7 @@ from hushline.public_record_refresh import (
     DEFAULT_REGION_STATE_MAP,
     US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
+    build_requests_link_checker,
 )
 
 
@@ -836,18 +835,7 @@ def test_globaleaks_listing_slug_cannot_be_messaged(
 @pytest.mark.local_only()
 @pytest.mark.external_network()
 def test_public_record_external_links_resolve() -> None:
-    max_attempts = 3
-    retryable_status_codes = {408, 425, 429, 500, 502, 503, 504}
-    session = requests.Session()
-    session.headers.update(
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (compatible; HushlineLinkCheck/1.0; "
-                "+https://github.com/scidsg/hushline)"
-            )
-        }
-    )
-
+    link_checker = build_requests_link_checker()
     checked: set[str] = set()
     failures: list[str] = []
 
@@ -860,33 +848,9 @@ def test_public_record_external_links_resolve() -> None:
                 continue
 
             checked.add(url)
-
-            last_error: requests.RequestException | None = None
-            last_status_code: int | None = None
-
-            for attempt in range(1, max_attempts + 1):
-                response: requests.Response | None = None
-                try:
-                    response = session.get(url, allow_redirects=True, timeout=15, stream=True)
-                    last_status_code = response.status_code
-                    if response.status_code not in retryable_status_codes:
-                        break
-                except requests.RequestException as exc:
-                    last_error = exc
-                finally:
-                    if response is not None:
-                        response.close()
-
-                if attempt < max_attempts:
-                    time.sleep(attempt)
-
-            if last_status_code is not None and (
-                last_status_code >= 500 or last_status_code in {404, 410}
-            ):
-                failures.append(
-                    f"{listing.name} {label} failed with HTTP {last_status_code}: {url}"
-                )
-            elif last_error is not None and last_status_code is None:
-                failures.append(f"{listing.name} {label} request failed: {url} ({last_error})")
+            check_result = link_checker(url)
+            if check_result.definitive_failure:
+                reason = check_result.reason or "unknown error"
+                failures.append(f"{listing.name} {label} failed ({reason}): {url}")
 
     assert not failures, "Broken public record links:\n" + "\n".join(failures)

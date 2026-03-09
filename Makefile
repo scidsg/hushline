@@ -97,8 +97,21 @@ test: ## Run the test suite
 	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
 
 .PHONY: test-public-record-links
-test-public-record-links: ## Validate live public-record external links
-	$(CMD) poetry run pytest -vv tests/test_directory.py -k public_record_external_links_resolve
+test-public-record-links: ## Audit live public-record external links without failing on actionable removals
+	$(CMD) bash -lc '\
+		set -euo pipefail; \
+		tmp_output="/tmp/public-record-link-check.json"; \
+		tmp_summary="/tmp/public-record-link-check.md"; \
+		poetry run ./scripts/refresh_public_record_law_firms.py \
+			--input hushline/data/public_record_law_firms.json \
+			--output "$$tmp_output" \
+			--summary-output "$$tmp_summary" \
+			--drop-failing-records \
+			--allow-link-failures; \
+		cat "$$tmp_summary"; \
+		if ! grep -Fq -- "- Records dropped: 0" "$$tmp_summary"; then \
+			printf "\n### Actionable cleanup\n\n- Definitive public-record removals were detected. Open or update a cleanup PR with the generated output.\n"; \
+		fi'
 
 .PHONY: refresh-public-record-listings
 refresh-public-record-listings: ## Refresh public-record listing artifact deterministically

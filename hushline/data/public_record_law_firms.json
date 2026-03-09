@@ -48,18 +48,6 @@
     "source_url": "https://www.azbar.org/for-legal-professionals/practice-tools-management/member-directory/?m=Anthony-Cali-177781"
   },
   {
-    "id": "seed-andrew-clarke-weeks",
-    "slug": "public-record~andrew-clarke-weeks",
-    "name": "Andrew Clarke Weeks",
-    "website": "https://legaljusticeatwork.com/",
-    "description": "Whistleblower attorney listing sourced from Kentucky Bar Association public directory.",
-    "city": "Louisville",
-    "state": "KY",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "Kentucky Bar Association public directory",
-    "source_url": "https://www.kybar.org/members/?id=42347567"
-  },
-  {
     "id": "seed-barbara-mahoney",
     "slug": "public-record~barbara-mahoney",
     "name": "Barbara Mahoney",
@@ -216,18 +204,6 @@
     "source_url": "https://members.ctbar.org/member/thelaborlawyer"
   },
   {
-    "id": "seed-eric-seitz",
-    "slug": "public-record~eric-seitz",
-    "name": "Eric Seitz",
-    "website": "https://www.ericseitz.com/",
-    "description": "Whistleblower attorney listing sourced from a Hawaii State Bar Association attorney recognition record.",
-    "city": "Honolulu",
-    "state": "HI",
-    "practice_tags": ["Whistleblowing", "Civil Rights", "Litigation"],
-    "source_label": "Hawaii State Bar Association attorney recognition record",
-    "source_url": "https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"
-  },
-  {
     "id": "seed-gerard-v-mantese",
     "slug": "public-record~gerard-v-mantese",
     "name": "Gerard V. Mantese",
@@ -252,18 +228,6 @@
     "source_url": "https://www.inbar.org/members/?id=30400364"
   },
   {
-    "id": "seed-gregory-james-sauzer",
-    "slug": "public-record~gregory-james-sauzer",
-    "name": "Gregory James Sauzer",
-    "website": "https://www.spsr-law.com/",
-    "description": "Whistleblower attorney listing sourced from Louisiana Attorney Disciplinary Board attorney records.",
-    "city": "New Orleans",
-    "state": "LA",
-    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
-    "source_label": "Louisiana Attorney Disciplinary Board attorney records",
-    "source_url": "https://www.ladb.org/DR/Document.cfm?docket=24-DB-014"
-  },
-  {
     "id": "seed-hillary-j-massey",
     "slug": "public-record~hillary-j-massey",
     "name": "Hillary J. Massey",
@@ -286,18 +250,6 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
-  },
-  {
-    "id": "seed-jerry-ray-poole-jr",
-    "slug": "public-record~jerry-ray-poole-jr",
-    "name": "Jerry Ray Poole, Jr.",
-    "website": "https://www.constangy.com/people-jerry-poole",
-    "description": "Whistleblower attorney listing sourced from The Florida Bar public directory.",
-    "city": "Tampa",
-    "state": "FL",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "The Florida Bar public directory",
-    "source_url": "https://www.floridabar.org/directories/find-mbr/profile/?num=123000"
   },
   {
     "id": "seed-jon-marc-petersen",
