@@ -15,6 +15,7 @@ from hushline.model import (
     PublicRecordListing,
     SecureDropDirectoryListing,
     User,
+    get_globaleaks_directory_listings,
     get_public_record_listings,
     get_securedrop_directory_listings,
 )
@@ -53,6 +54,15 @@ def _sample_globaleaks_listing() -> GlobaLeaksDirectoryListing:
         source_label="Automated GlobaLeaks discovery dataset",
         source_url="https://example.org/source/globaleaks-export",
     )
+
+
+def test_globaleaks_seed_has_rows() -> None:
+    listings = get_globaleaks_directory_listings()
+
+    assert listings
+    assert all(listing.submission_url for listing in listings)
+    assert all(listing.website for listing in listings)
+    assert all(listing.host for listing in listings)
 
 
 def _strict_public_record_listings() -> list[PublicRecordListing]:
