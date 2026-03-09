@@ -13,9 +13,12 @@
   <p class="bio">{{ listing.description }}</p>
 
   <p class="meta dirMeta">
-    🧪 Beta: This listing is automated. Onion addresses require
-    <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
-    to access.
+    🧪 Beta: This listing is automated.
+    {% if listing.has_onion_submission %}
+      Onion addresses require
+      <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
+      to access.
+    {% endif %}
   </p>
 
   <div class="extra-fields">

@@ -251,9 +251,12 @@
   {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated. Onion addresses require
-        <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
-        to access.
+        🧪 Beta: These listings are automated.
+        {% if globaleaks_has_onion_submission %}
+          Onion addresses require
+          <a href="https://www.torproject.org/download/" target="_blank" rel="noopener noreferrer">Tor Browser</a>
+          to access.
+        {% endif %}
       </p>
 
       {% if globaleaks_listings %}
