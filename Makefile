@@ -10,6 +10,7 @@ RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
 REFRESH_PUBLIC_RECORD_ARGS ?=
 REFRESH_SECUREDROP_ARGS ?=
+REFRESH_GLOBALEAKS_ARGS ?=
 
 .PHONY: help
 help: ## Print the help message
@@ -110,6 +111,10 @@ public-record-provenance-report: ## Audit strict provenance coverage for public-
 .PHONY: refresh-securedrop-listings
 refresh-securedrop-listings: ## Refresh SecureDrop directory instance artifact
 	$(CMD) poetry run ./scripts/refresh_securedrop_directory_instances.py $(REFRESH_SECUREDROP_ARGS)
+
+.PHONY: refresh-globaleaks-listings
+refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public source pages
+	$(CMD) poetry run ./scripts/refresh_globaleaks_directory_instances.py $(REFRESH_GLOBALEAKS_ARGS)
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)

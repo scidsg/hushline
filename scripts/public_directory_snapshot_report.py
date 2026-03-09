@@ -134,7 +134,11 @@ def _is_public_user_row(row: Mapping[str, object]) -> bool:
     if isinstance(entry_type, str) and entry_type.strip():
         return entry_type == "user"
 
-    return not bool(row.get("is_public_record")) and not bool(row.get("is_securedrop"))
+    return (
+        not bool(row.get("is_public_record"))
+        and not bool(row.get("is_globaleaks"))
+        and not bool(row.get("is_securedrop"))
+    )
 
 
 def build_snapshot(rows: list[dict[str, Any]]) -> list[dict[str, object]]:

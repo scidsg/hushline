@@ -1,0 +1,64 @@
+name: GlobaLeaks Directory Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 16 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: globaleaks-directory-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Refresh GlobaLeaks directory listings
+        run: |
+          REFRESH_ARGS="--summary-output /tmp/globaleaks-refresh.md"
+          make refresh-globaleaks-listings REFRESH_GLOBALEAKS_ARGS="$REFRESH_ARGS"
+
+      - name: Read refresh summary
+        id: summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          delimiter="GLOBALEAKS_SUMMARY_$(date +%s)"
+
+          if [ -f /tmp/globaleaks-refresh.md ]; then
+            {
+              echo "body<<${delimiter}"
+              cat /tmp/globaleaks-refresh.md
+              echo "${delimiter}"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "body<<${delimiter}"
+            echo "## GlobaLeaks Directory Refresh Summary"
+            echo
+            echo "- Refresh completed."
+            echo "${delimiter}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update refresh PR
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
+        with:
+          branch: bot/globaleaks-directory-refresh
+          delete-branch: true
+          commit-message: "Refresh GlobaLeaks directory listings"
+          title: "Refresh GlobaLeaks directory listings"
+          body: |
+            Automated refresh of `hushline/data/globaleaks_instances.json`.
+
+            ${{ steps.summary.outputs.body }}
+          add-paths: |
+            hushline/data/globaleaks_instances.json

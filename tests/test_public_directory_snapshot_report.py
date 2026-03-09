@@ -44,10 +44,18 @@ def test_build_snapshot_filters_to_public_hushline_users() -> None:
             "is_securedrop": True,
         },
         {
+            "entry_type": "globaleaks",
+            "primary_username": None,
+            "display_name": "Example GlobaLeaks",
+            "profile_url": "/directory/globaleaks/example",
+            "is_globaleaks": True,
+        },
+        {
             "primary_username": "infoonly",
             "display_name": "Info Only",
             "profile_url": "/to/infoonly",
             "is_public_record": False,
+            "is_globaleaks": False,
             "is_securedrop": False,
             "has_pgp_key": False,
         },
