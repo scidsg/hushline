@@ -35,6 +35,10 @@ class GlobaLeaksDirectoryListing:
             return "Unknown"
         return ", ".join(self.countries)
 
+    @property
+    def is_shodan(self) -> bool:
+        return "shodan.io" in self.source_url.casefold() or "shodan" in self.source_label.casefold()
+
 
 def _sort_key(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value.strip())
