@@ -216,6 +216,18 @@
     "source_url": "https://members.ctbar.org/member/thelaborlawyer"
   },
   {
+    "id": "seed-frederick-h-schutt",
+    "slug": "public-record~frederick-h-schutt",
+    "name": "Frederick H. Schutt",
+    "website": "https://www.woodsrogers.com/team/fred-schutt",
+    "description": "Whistleblower attorney listing sourced from Virginia State Bar public directory.",
+    "city": "Richmond",
+    "state": "VA",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Virginia State Bar public directory",
+    "source_url": "https://virginialawyer.vsb.org/articles/professional-notices?article_id=5100257&i=859839"
+  },
+  {
     "id": "seed-gerard-v-mantese",
     "slug": "public-record~gerard-v-mantese",
     "name": "Gerard V. Mantese",
@@ -298,6 +310,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "South Carolina Bar public directory",
     "source_url": "https://www.scbar.org/for-lawyers/networking/sections/employment-and-labor-law-section/"
+  },
+  {
+    "id": "seed-jennifer-s-mirus",
+    "slug": "public-record~jennifer-s-mirus",
+    "name": "Jennifer S. Mirus",
+    "website": "https://www.boardmanclark.com/our-people/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Wisconsin public directory.",
+    "city": "Madison",
+    "state": "WI",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "State Bar of Wisconsin public directory",
+    "source_url": "https://www.wisbar.org/NewsPublications/WisconsinLawyer/WisconsinLawyerPDFs/97/01/20_24.pdf"
+  },
+  {
+    "id": "seed-jeremy-s-grant",
+    "slug": "public-record~jeremy-s-grant",
+    "name": "Jeremy S. Grant",
+    "website": "https://www.drm.com/team/jeremy-grant/",
+    "description": "Whistleblower attorney listing sourced from Vermont Bar Association public directory.",
+    "city": "Burlington",
+    "state": "VT",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Vermont Bar Association public directory",
+    "source_url": "https://www.vtbar.org/2025-annual-meeting-in-review/"
   },
   {
     "id": "seed-jerina-d-phillips",
@@ -636,6 +672,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134"
   },
   {
+    "id": "seed-scott-e-kolpitcke",
+    "slug": "public-record~scott-e-kolpitcke",
+    "name": "Scott E. Kolpitcke",
+    "website": "https://www.ckattorneys.net/",
+    "description": "Whistleblower attorney listing sourced from Wyoming State Bar public directory.",
+    "city": "Powell",
+    "state": "WY",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Wyoming State Bar public directory",
+    "source_url": "https://www.wyomingbar.org/about-us/bar-leadership/"
+  },
+  {
     "id": "seed-sean-w-baker",
     "slug": "public-record~sean-w-baker",
     "name": "Sean W. Baker",
@@ -682,6 +730,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of Georgia speaker profile",
     "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014"
+  },
+  {
+    "id": "seed-todd-bailess",
+    "slug": "public-record~todd-bailess",
+    "name": "Todd Bailess",
+    "website": "https://www.bailesslawfirm.com/meet-our-team/todd-bailess/",
+    "description": "Whistleblower attorney listing sourced from West Virginia State Bar public directory.",
+    "city": "Charleston",
+    "state": "WV",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "West Virginia State Bar public directory",
+    "source_url": "https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf"
   },
   {
     "id": "seed-trudy-hanson-fouser",

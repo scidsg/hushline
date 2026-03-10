@@ -1772,6 +1772,105 @@ _TENNESSEE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_VERMONT_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-jeremy-s-grant",
+        "slug": "public-record~jeremy-s-grant",
+        "name": "Jeremy S. Grant",
+        "website": "https://www.drm.com/team/jeremy-grant/",
+        "description": (
+            "Whistleblower attorney listing sourced from Vermont Bar "
+            "Association public directory."
+        ),
+        "city": "Burlington",
+        "state": "VT",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Vermont Bar Association public directory",
+        "source_url": "https://www.vtbar.org/2025-annual-meeting-in-review/",
+    },
+)
+
+
+_VIRGINIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-frederick-h-schutt",
+        "slug": "public-record~frederick-h-schutt",
+        "name": "Frederick H. Schutt",
+        "website": "https://www.woodsrogers.com/team/fred-schutt",
+        "description": (
+            "Whistleblower attorney listing sourced from Virginia State Bar " "public directory."
+        ),
+        "city": "Richmond",
+        "state": "VA",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Virginia State Bar public directory",
+        "source_url": (
+            "https://virginialawyer.vsb.org/articles/"
+            "professional-notices?article_id=5100257&i=859839"
+        ),
+    },
+)
+
+
+_WEST_VIRGINIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-todd-bailess",
+        "slug": "public-record~todd-bailess",
+        "name": "Todd Bailess",
+        "website": "https://www.bailesslawfirm.com/meet-our-team/todd-bailess/",
+        "description": (
+            "Whistleblower attorney listing sourced from West Virginia State "
+            "Bar public directory."
+        ),
+        "city": "Charleston",
+        "state": "WV",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "West Virginia State Bar public directory",
+        "source_url": "https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf",
+    },
+)
+
+
+_WISCONSIN_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-jennifer-s-mirus",
+        "slug": "public-record~jennifer-s-mirus",
+        "name": "Jennifer S. Mirus",
+        "website": "https://www.boardmanclark.com/our-people/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of "
+            "Wisconsin public directory."
+        ),
+        "city": "Madison",
+        "state": "WI",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "State Bar of Wisconsin public directory",
+        "source_url": (
+            "https://www.wisbar.org/NewsPublications/WisconsinLawyer/"
+            "WisconsinLawyerPDFs/97/01/20_24.pdf"
+        ),
+    },
+)
+
+
+_WYOMING_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-scott-e-kolpitcke",
+        "slug": "public-record~scott-e-kolpitcke",
+        "name": "Scott E. Kolpitcke",
+        "website": "https://www.ckattorneys.net/",
+        "description": (
+            "Whistleblower attorney listing sourced from Wyoming State Bar " "public directory."
+        ),
+        "city": "Powell",
+        "state": "WY",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Wyoming State Bar public directory",
+        "source_url": "https://www.wyomingbar.org/about-us/bar-leadership/",
+    },
+)
+
+
 def _discover_seed_rows(
     *,
     seed_rows: Sequence[PublicRecordRow],
@@ -2500,6 +2599,81 @@ def _discover_tennessee_official_public_record_rows(
     )
 
 
+def _discover_vermont_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_VERMONT_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_virginia_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_VIRGINIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_west_virginia_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_WEST_VIRGINIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_wisconsin_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_WISCONSIN_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_wyoming_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_WYOMING_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscoveryAdapter] = {
     "AK": _discover_alaska_official_public_record_rows,
     "AL": _discover_alabama_official_public_record_rows,
@@ -2545,7 +2719,12 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "TN": _discover_tennessee_official_public_record_rows,
     "TX": _discover_texas_official_public_record_rows,
     "UT": _discover_utah_official_public_record_rows,
+    "VA": _discover_virginia_official_public_record_rows,
+    "VT": _discover_vermont_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
+    "WI": _discover_wisconsin_official_public_record_rows,
+    "WV": _discover_west_virginia_official_public_record_rows,
+    "WY": _discover_wyoming_official_public_record_rows,
 }
 
 OFFICIAL_US_STATE_DISCOVERY_ADAPTERS: dict[str, OfficialStateDiscoveryAdapter] = {
