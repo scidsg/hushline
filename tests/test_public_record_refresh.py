@@ -472,6 +472,58 @@ _BATCH_EIGHT_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = t
 )
 
 
+_BATCH_NINE_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "VA",
+        "seed-frederick-h-schutt",
+        "public-record~frederick-h-schutt",
+        "Frederick H. Schutt",
+        "Virginia State Bar public directory",
+        "https://virginialawyer.vsb.org/articles/professional-notices?article_id=5100257&i=859839",
+    ),
+    (
+        "VT",
+        "seed-jeremy-s-grant",
+        "public-record~jeremy-s-grant",
+        "Jeremy S. Grant",
+        "Vermont Bar Association public directory",
+        "https://www.vtbar.org/2025-annual-meeting-in-review/",
+    ),
+    (
+        "WI",
+        "seed-jennifer-s-mirus",
+        "public-record~jennifer-s-mirus",
+        "Jennifer S. Mirus",
+        "State Bar of Wisconsin public directory",
+        (
+            "https://www.wisbar.org/NewsPublications/WisconsinLawyer/"
+            "WisconsinLawyerPDFs/97/01/20_24.pdf"
+        ),
+    ),
+    (
+        "WV",
+        "seed-todd-bailess",
+        "public-record~todd-bailess",
+        "Todd Bailess",
+        "West Virginia State Bar public directory",
+        "https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf",
+    ),
+    (
+        "WY",
+        "seed-scott-e-kolpitcke",
+        "public-record~scott-e-kolpitcke",
+        "Scott E. Kolpitcke",
+        "Wyoming State Bar public directory",
+        "https://www.wyomingbar.org/about-us/bar-leadership/",
+    ),
+)
+
+_BATCH_NINE_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_NINE_STATE_SEEDS
+)
+
+
 def _row(  # noqa: PLR0913
     *,
     id_value: str | None,
@@ -1199,19 +1251,6 @@ def test_discover_chambers_public_record_rows_is_disabled() -> None:
         )
 
 
-def test_discover_official_us_state_public_record_rows_includes_noop_states() -> None:
-    result = discover_official_us_state_public_record_rows(
-        [],
-        selected_regions=["US"],
-        region_state_map={"US": frozenset({"VA"})},
-    )
-
-    assert isinstance(result, OfficialStateDiscoveryResult)
-    assert result.rows == []
-    assert result.added_count_by_state == {"VA": 0}
-    assert result.unsupported_states == ()
-
-
 def test_discover_official_us_state_public_record_rows_strict_accepts_full_coverage() -> None:
     result = discover_official_us_state_public_record_rows(
         [],
@@ -1227,53 +1266,7 @@ def test_discover_official_us_state_public_record_rows_strict_accepts_full_cover
 
 
 def test_official_source_adapter_harness_covers_current_implemented_states() -> None:
-    assert {
-        "AK",
-        "AL",
-        "AR",
-        "AZ",
-        "CA",
-        "CO",
-        "CT",
-        "DE",
-        "FL",
-        "GA",
-        "HI",
-        "IA",
-        "ID",
-        "IN",
-        "KS",
-        "KY",
-        "IL",
-        "LA",
-        "MA",
-        "MD",
-        "ME",
-        "MI",
-        "MN",
-        "MO",
-        "MS",
-        "MT",
-        "NC",
-        "ND",
-        "NE",
-        "NH",
-        "NJ",
-        "NM",
-        "NV",
-        "NY",
-        "OH",
-        "OK",
-        "OR",
-        "PA",
-        "RI",
-        "SC",
-        "SD",
-        "TN",
-        "TX",
-        "UT",
-        "WA",
-    }.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
+    assert set(_IMPLEMENTED_OFFICIAL_SOURCE_STATES) == set(US_STATE_CODES)
 
 
 @pytest.mark.parametrize("state_code", _IMPLEMENTED_OFFICIAL_SOURCE_STATES)
@@ -1652,6 +1645,44 @@ def test_discover_official_us_state_public_record_rows_adds_batch_eight_seed(  #
 
 
 @pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_NINE_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_nine_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
     ("state_code", "existing_id", "existing_slug", "existing_name"),
     _BATCH_ONE_EXISTING_COLLISION_CASES,
 )
@@ -1810,6 +1841,28 @@ def test_discover_official_us_state_public_record_rows_skips_existing_batch_seve
     _BATCH_EIGHT_EXISTING_COLLISION_CASES,
 )
 def test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_NINE_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed(
     state_code: str,
     existing_id: str,
     existing_slug: str,
