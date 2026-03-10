@@ -18,6 +18,18 @@ def _run_bash(script: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def test_runner_defaults_repo_dir_to_checkout_root() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$REPO_DIR"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == ROOT
+
+
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:
     repo_dir = tmp_path / "repo"
     prompt_file = tmp_path / "prompt.txt"
@@ -348,6 +360,88 @@ printf 'rc=%s\\n' "$rc"
     assert docker_calls.count("compose up -d --build") == 1
     assert docker_calls.count("compose run --rm dev_data") == 1
     assert "compose down -v --remove-orphans" not in docker_calls
+
+
+def test_resolve_bot_git_signing_key_uses_existing_ssh_git_config(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+
+    shell_script = f"""
+repo_dir={shlex.quote(str(repo_dir))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+cd "$repo_dir"
+BOT_GIT_GPG_FORMAT=ssh
+BOT_GIT_SIGNING_KEY=""
+DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH=""
+git() {{
+  if [[ "$1" == "config" && "$2" == "--get" && "$3" == "user.signingkey" ]]; then
+    printf '%s\\n' "$repo_dir/.ssh/bot-signing.pub"
+    return 0
+  fi
+  if [[ "$1" == "config" && "$2" == "--get" && "$3" == "gpg.format" ]]; then
+    printf 'ssh\\n'
+    return 0
+  fi
+  printf 'unexpected git invocation: %s\\n' "$*" >&2
+  return 99
+}}
+resolve_bot_git_signing_key
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(repo_dir / ".ssh" / "bot-signing.pub")
+
+
+def test_resolve_bot_git_signing_key_ignores_non_ssh_git_config(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+
+    shell_script = f"""
+repo_dir={shlex.quote(str(repo_dir))}
+git -C "$repo_dir" init -q
+git -C "$repo_dir" config user.signingkey 102783C80AF9335A
+source {shlex.quote(str(RUNNER_SCRIPT))}
+cd "$repo_dir"
+BOT_GIT_GPG_FORMAT=ssh
+BOT_GIT_SIGNING_KEY=""
+DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH=""
+if resolve_bot_git_signing_key; then
+  printf 'resolved\\n'
+else
+  printf 'missing\\n'
+fi
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "missing\n"
+
+
+def test_assert_ssh_signing_ready_does_not_require_local_private_key_file(tmp_path: Path) -> None:
+    public_key_file = tmp_path / "bot-signing.pub"
+    public_key_file.write_text(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBotSigningKeyExample hushline-dev\n",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  if [[ "$1" == "init" || "$1" == "config" || "$1" == "commit" ]]; then
+    return 0
+  fi
+  printf 'unexpected git invocation: %s\\n' "$*" >&2
+  return 99
+}}
+assert_ssh_signing_ready {shlex.quote(str(public_key_file))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_require_positive_integer_rejects_zero() -> None:
