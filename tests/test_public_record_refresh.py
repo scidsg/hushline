@@ -411,6 +411,67 @@ _BATCH_SEVEN_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = t
 )
 
 
+_BATCH_EIGHT_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "RI",
+        "seed-mark-b-decof",
+        "public-record~mark-b-decof",
+        "Mark B. Decof",
+        "Rhode Island Judiciary attorney records",
+        (
+            "https://www.courts.ri.gov/attorney-resources/Pages/"
+            "Board-of-Bar-Examiners-default.aspx"
+        ),
+    ),
+    (
+        "SC",
+        "seed-j-hagood-tighe",
+        "public-record~j-hagood-tighe",
+        "J. Hagood Tighe",
+        "South Carolina Bar public directory",
+        (
+            "https://www.scbar.org/for-lawyers/networking/sections/"
+            "employment-and-labor-law-section/"
+        ),
+    ),
+    (
+        "SD",
+        "seed-patrick-g-goetzinger",
+        "public-record~patrick-g-goetzinger",
+        "Patrick G. Goetzinger",
+        "State Bar of South Dakota public directory",
+        "https://www.statebarofsouthdakota.com/project-rural-practice/",
+    ),
+    (
+        "TX",
+        "seed-mark-anthony-sanchez",
+        "public-record~mark-anthony-sanchez",
+        "Mark Anthony Sanchez",
+        "State Bar of Texas public directory",
+        (
+            "https://www.texasbar.com/AM/Template.cfm?ContactID=157597&template="
+            "%2FCustomsource%2FMemberDirectory%2FMemberDirectoryDetail.cfm"
+        ),
+    ),
+    (
+        "UT",
+        "seed-lara-a-swensen",
+        "public-record~lara-a-swensen",
+        "Lara A. Swensen",
+        "Utah Courts public legal directory",
+        (
+            "https://www.utcourts.gov/en/about/administration/committees/"
+            "ethics-advisory-committee.html"
+        ),
+    ),
+)
+
+_BATCH_EIGHT_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_EIGHT_STATE_SEEDS
+)
+
+
 def _row(  # noqa: PLR0913
     *,
     id_value: str | None,
@@ -1142,12 +1203,12 @@ def test_discover_official_us_state_public_record_rows_includes_noop_states() ->
     result = discover_official_us_state_public_record_rows(
         [],
         selected_regions=["US"],
-        region_state_map={"US": frozenset({"TX"})},
+        region_state_map={"US": frozenset({"VA"})},
     )
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.rows == []
-    assert result.added_count_by_state == {"TX": 0}
+    assert result.added_count_by_state == {"VA": 0}
     assert result.unsupported_states == ()
 
 
@@ -1205,7 +1266,12 @@ def test_official_source_adapter_harness_covers_current_implemented_states() -> 
         "OK",
         "OR",
         "PA",
+        "RI",
+        "SC",
+        "SD",
         "TN",
+        "TX",
+        "UT",
         "WA",
     }.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
 
@@ -1548,6 +1614,44 @@ def test_discover_official_us_state_public_record_rows_adds_batch_seven_seed(  #
 
 
 @pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_EIGHT_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_eight_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
     ("state_code", "existing_id", "existing_slug", "existing_name"),
     _BATCH_ONE_EXISTING_COLLISION_CASES,
 )
@@ -1684,6 +1788,28 @@ def test_discover_official_us_state_public_record_rows_skips_existing_batch_six_
     _BATCH_SEVEN_EXISTING_COLLISION_CASES,
 )
 def test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_EIGHT_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed(
     state_code: str,
     existing_id: str,
     existing_slug: str,

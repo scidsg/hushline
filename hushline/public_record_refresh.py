@@ -1475,6 +1475,110 @@ _PENNSYLVANIA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
 )
 
 
+_RHODE_ISLAND_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-mark-b-decof",
+        "slug": "public-record~mark-b-decof",
+        "name": "Mark B. Decof",
+        "website": "https://www.decof.com/attorneys/mark-b-decof/",
+        "description": (
+            "Whistleblower attorney listing sourced from Rhode Island Judiciary "
+            "attorney records."
+        ),
+        "city": "Providence",
+        "state": "RI",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Rhode Island Judiciary attorney records",
+        "source_url": (
+            "https://www.courts.ri.gov/attorney-resources/Pages/"
+            "Board-of-Bar-Examiners-default.aspx"
+        ),
+    },
+)
+
+
+_SOUTH_CAROLINA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-j-hagood-tighe",
+        "slug": "public-record~j-hagood-tighe",
+        "name": "J. Hagood Tighe",
+        "website": "https://www.fisherphillips.com/en/people/j-hagood-tighe.html",
+        "description": (
+            "Whistleblower attorney listing sourced from South Carolina Bar " "public directory."
+        ),
+        "city": "Columbia",
+        "state": "SC",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "South Carolina Bar public directory",
+        "source_url": (
+            "https://www.scbar.org/for-lawyers/networking/sections/"
+            "employment-and-labor-law-section/"
+        ),
+    },
+)
+
+
+_SOUTH_DAKOTA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-patrick-g-goetzinger",
+        "slug": "public-record~patrick-g-goetzinger",
+        "name": "Patrick G. Goetzinger",
+        "website": "https://gpna.com/professionals/patrick-g-goetzinger",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of South "
+            "Dakota public directory."
+        ),
+        "city": "Rapid City",
+        "state": "SD",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "State Bar of South Dakota public directory",
+        "source_url": "https://www.statebarofsouthdakota.com/project-rural-practice/",
+    },
+)
+
+
+_TEXAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-mark-anthony-sanchez",
+        "slug": "public-record~mark-anthony-sanchez",
+        "name": "Mark Anthony Sanchez",
+        "website": "https://www.sanchezwilson.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from State Bar of Texas " "public directory."
+        ),
+        "city": "San Antonio",
+        "state": "TX",
+        "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+        "source_label": "State Bar of Texas public directory",
+        "source_url": (
+            "https://www.texasbar.com/AM/Template.cfm?ContactID=157597&template="
+            "%2FCustomsource%2FMemberDirectory%2FMemberDirectoryDetail.cfm"
+        ),
+    },
+)
+
+
+_UTAH_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-lara-a-swensen",
+        "slug": "public-record~lara-a-swensen",
+        "name": "Lara A. Swensen",
+        "website": "https://www.jdrslaw.com/attorney/swensen-lara-a/",
+        "description": (
+            "Whistleblower attorney listing sourced from Utah Courts public " "legal directory."
+        ),
+        "city": "Salt Lake City",
+        "state": "UT",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "Utah Courts public legal directory",
+        "source_url": (
+            "https://www.utcourts.gov/en/about/administration/committees/"
+            "ethics-advisory-committee.html"
+        ),
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -2261,6 +2365,81 @@ def _discover_pennsylvania_official_public_record_rows(
     )
 
 
+def _discover_rhode_island_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_RHODE_ISLAND_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_south_carolina_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_SOUTH_CAROLINA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_south_dakota_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_SOUTH_DAKOTA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_texas_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_TEXAS_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_utah_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_UTAH_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -2360,7 +2539,12 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "OK": _discover_oklahoma_official_public_record_rows,
     "OR": _discover_oregon_official_public_record_rows,
     "PA": _discover_pennsylvania_official_public_record_rows,
+    "RI": _discover_rhode_island_official_public_record_rows,
+    "SC": _discover_south_carolina_official_public_record_rows,
+    "SD": _discover_south_dakota_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
+    "TX": _discover_texas_official_public_record_rows,
+    "UT": _discover_utah_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
 }
 
