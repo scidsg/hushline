@@ -168,6 +168,18 @@
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
+    "id": "seed-elizabeth-a-heaphy",
+    "slug": "public-record~elizabeth-a-heaphy",
+    "name": "Elizabeth A. Heaphy",
+    "website": "https://www.cuddymccarthy.com/",
+    "description": "Whistleblower attorney listing sourced from the State Bar of New Mexico public directory.",
+    "city": "Albuquerque",
+    "state": "NM",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "State Bar of New Mexico public directory",
+    "source_url": "https://www.sbnm.org/cvweb/cgi-bin/Utilities.dll?View=INMEMBERDETAILS&RECORDNO=1&CUSTOMERNO=11321"
+  },
+  {
     "id": "seed-elizabeth-aida-acevedo",
     "slug": "public-record~elizabeth-aida-acevedo",
     "name": "Elizabeth Aida Acevedo",
@@ -226,6 +238,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Indiana State Bar public directory",
     "source_url": "https://www.inbar.org/members/?id=30400364"
+  },
+  {
+    "id": "seed-heather-m-burns",
+    "slug": "public-record~heather-m-burns",
+    "name": "Heather M. Burns",
+    "website": "https://www.uptonhatfield.com/",
+    "description": "Whistleblower attorney listing sourced from a New Hampshire Bar Association CLE speaker profile.",
+    "city": "Concord",
+    "state": "NH",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "New Hampshire Bar Association CLE speaker profile",
+    "source_url": "https://member.nhbar.org/calendar/event/34th-annual-labor-and-employment-law-update"
+  },
+  {
+    "id": "seed-heidi-a-guttau",
+    "slug": "public-record~heidi-a-guttau",
+    "name": "Heidi A. Guttau",
+    "website": "https://www.bairdholm.com/",
+    "description": "Whistleblower attorney listing sourced from a Nebraska Judicial Branch case record.",
+    "city": "Omaha",
+    "state": "NE",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Nebraska Judicial Branch case record",
+    "source_url": "https://supremecourt.nebraska.gov/courts/supreme-court/supreme-court-call/city-omaha-v-professional-firefighters-association-omaha"
   },
   {
     "id": "seed-hillary-j-massey",
@@ -408,6 +444,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/271380"
   },
   {
+    "id": "seed-nathan-c-severson",
+    "slug": "public-record~nathan-c-severson",
+    "name": "Nathan C. Severson",
+    "website": "https://www.swlattorneys.com/",
+    "description": "Whistleblower attorney listing sourced from the North Dakota Court System attorney directory.",
+    "city": "Fargo",
+    "state": "ND",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "North Dakota Court System attorney directory",
+    "source_url": "https://www.ndcourts.gov/lawyers/06402"
+  },
+  {
     "id": "seed-michael-f-brady",
     "slug": "public-record~michael-f-brady",
     "name": "Michael F. Brady",
@@ -502,6 +550,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Iowa State Bar Association jury verdict record",
     "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
+  },
+  {
+    "id": "seed-rubin-m-sinins",
+    "slug": "public-record~rubin-m-sinins",
+    "name": "Rubin M. Sinins",
+    "website": "https://javerbaum.com/",
+    "description": "Whistleblower attorney listing sourced from NJ Courts attorney certification records.",
+    "city": "Newark",
+    "state": "NJ",
+    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "source_label": "NJ Courts attorney certification records",
+    "source_url": "https://www.njcourts.gov/notices/order-board-attorney-certification-new-chair-and-vice-chair-designations-certification"
   },
   {
     "id": "seed-sarah-renee-holloway",

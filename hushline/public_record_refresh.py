@@ -249,8 +249,8 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"montanabar.org"}),
     },
     "NE": {
-        "source_label": "Nebraska Judicial Branch attorney directory",
-        "source_url": "https://supremecourt.nebraska.gov/",
+        "source_label": "Nebraska Judicial Branch case record",
+        "source_url": "https://supremecourt.nebraska.gov/courts/supreme-court/supreme-court-call",
         "allowed_domains": frozenset({"supremecourt.nebraska.gov"}),
     },
     "NV": {
@@ -259,13 +259,13 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"nvbar.org"}),
     },
     "NH": {
-        "source_label": "New Hampshire Bar Association public directory",
-        "source_url": "https://www.nhbar.org/",
+        "source_label": "New Hampshire Bar Association CLE speaker profile",
+        "source_url": "https://member.nhbar.org/calendar/",
         "allowed_domains": frozenset({"nhbar.org"}),
     },
     "NJ": {
-        "source_label": "New Jersey Courts attorney directory",
-        "source_url": "https://portal.njcourts.gov/webe4/AttorneySearch/",
+        "source_label": "NJ Courts attorney certification records",
+        "source_url": "https://www.njcourts.gov/attorneys/certification",
         "allowed_domains": frozenset({"njcourts.gov"}),
     },
     "NM": {
@@ -284,9 +284,9 @@ US_STATE_AUTHORITATIVE_SOURCES: dict[str, USStateAuthoritativeSource] = {
         "allowed_domains": frozenset({"ncbar.gov"}),
     },
     "ND": {
-        "source_label": "State Bar Association of North Dakota public directory",
-        "source_url": "https://www.sband.org/page/LawyerSearch",
-        "allowed_domains": frozenset({"sband.org"}),
+        "source_label": "North Dakota Court System attorney directory",
+        "source_url": "https://www.ndcourts.gov/lawyers",
+        "allowed_domains": frozenset({"ndcourts.gov"}),
     },
     "OH": {
         "source_label": "Supreme Court of Ohio attorney directory",
@@ -1261,6 +1261,112 @@ _NORTH_CAROLINA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = 
 )
 
 
+_NORTH_DAKOTA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-nathan-c-severson",
+        "slug": "public-record~nathan-c-severson",
+        "name": "Nathan C. Severson",
+        "website": "https://www.swlattorneys.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from the North Dakota Court "
+            "System attorney directory."
+        ),
+        "city": "Fargo",
+        "state": "ND",
+        "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+        "source_label": "North Dakota Court System attorney directory",
+        "source_url": "https://www.ndcourts.gov/lawyers/06402",
+    },
+)
+
+
+_NEBRASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-heidi-a-guttau",
+        "slug": "public-record~heidi-a-guttau",
+        "name": "Heidi A. Guttau",
+        "website": "https://www.bairdholm.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a Nebraska Judicial " "Branch case record."
+        ),
+        "city": "Omaha",
+        "state": "NE",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "Nebraska Judicial Branch case record",
+        "source_url": (
+            "https://supremecourt.nebraska.gov/courts/supreme-court/"
+            "supreme-court-call/city-omaha-v-professional-firefighters-"
+            "association-omaha"
+        ),
+    },
+)
+
+
+_NEW_HAMPSHIRE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-heather-m-burns",
+        "slug": "public-record~heather-m-burns",
+        "name": "Heather M. Burns",
+        "website": "https://www.uptonhatfield.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from a New Hampshire Bar "
+            "Association CLE speaker profile."
+        ),
+        "city": "Concord",
+        "state": "NH",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "New Hampshire Bar Association CLE speaker profile",
+        "source_url": (
+            "https://member.nhbar.org/calendar/event/34th-annual-labor-and-" "employment-law-update"
+        ),
+    },
+)
+
+
+_NEW_JERSEY_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-rubin-m-sinins",
+        "slug": "public-record~rubin-m-sinins",
+        "name": "Rubin M. Sinins",
+        "website": "https://javerbaum.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from NJ Courts attorney "
+            "certification records."
+        ),
+        "city": "Newark",
+        "state": "NJ",
+        "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+        "source_label": "NJ Courts attorney certification records",
+        "source_url": (
+            "https://www.njcourts.gov/notices/order-board-attorney-"
+            "certification-new-chair-and-vice-chair-designations-certification"
+        ),
+    },
+)
+
+
+_NEW_MEXICO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
+    {
+        "id": "seed-elizabeth-a-heaphy",
+        "slug": "public-record~elizabeth-a-heaphy",
+        "name": "Elizabeth A. Heaphy",
+        "website": "https://www.cuddymccarthy.com/",
+        "description": (
+            "Whistleblower attorney listing sourced from the State Bar of New "
+            "Mexico public directory."
+        ),
+        "city": "Albuquerque",
+        "state": "NM",
+        "practice_tags": ["Employment", "Investigations", "Litigation"],
+        "source_label": "State Bar of New Mexico public directory",
+        "source_url": (
+            "https://www.sbnm.org/cvweb/cgi-bin/Utilities.dll?View="
+            "INMEMBERDETAILS&RECORDNO=1&CUSTOMERNO=11321"
+        ),
+    },
+)
+
+
 _WASHINGTON_OFFICIAL_PUBLIC_RECORD_SEED_ROWS: tuple[PublicRecordRow, ...] = (
     {
         "id": "seed-barbara-mahoney",
@@ -1897,6 +2003,81 @@ def _discover_north_carolina_official_public_record_rows(
     )
 
 
+def _discover_north_dakota_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_NORTH_DAKOTA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_nebraska_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_NEBRASKA_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_new_hampshire_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_NEW_HAMPSHIRE_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_new_jersey_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_NEW_JERSEY_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
+def _discover_new_mexico_official_public_record_rows(
+    *,
+    existing_rows: Sequence[Mapping[str, object]],
+    max_new_per_state: int,
+    timeout_seconds: float,
+    session: requests.Session | None,
+) -> list[PublicRecordRow]:
+    del timeout_seconds, session
+    return _discover_seed_rows(
+        seed_rows=_NEW_MEXICO_OFFICIAL_PUBLIC_RECORD_SEED_ROWS,
+        existing_rows=existing_rows,
+        max_new_per_state=max_new_per_state,
+    )
+
+
 def _discover_washington_official_public_record_rows(
     *,
     existing_rows: Sequence[Mapping[str, object]],
@@ -1985,6 +2166,11 @@ _OFFICIAL_US_STATE_DISCOVERY_ADAPTER_OVERRIDES: dict[str, OfficialStateDiscovery
     "MS": _discover_mississippi_official_public_record_rows,
     "MT": _discover_montana_official_public_record_rows,
     "NC": _discover_north_carolina_official_public_record_rows,
+    "ND": _discover_north_dakota_official_public_record_rows,
+    "NE": _discover_nebraska_official_public_record_rows,
+    "NH": _discover_new_hampshire_official_public_record_rows,
+    "NJ": _discover_new_jersey_official_public_record_rows,
+    "NM": _discover_new_mexico_official_public_record_rows,
     "OH": _discover_ohio_official_public_record_rows,
     "TN": _discover_tennessee_official_public_record_rows,
     "WA": _discover_washington_official_public_record_rows,
