@@ -351,6 +351,66 @@ _BATCH_SIX_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tup
 )
 
 
+_BATCH_SEVEN_STATE_SEEDS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    (
+        "NV",
+        "seed-luke-w-molleck",
+        "public-record~luke-w-molleck",
+        "Luke W. Molleck",
+        "State Bar of Nevada public directory",
+        (
+            "https://nvbar.org/for-lawyers/bar-service-opportunities/join-a-section/"
+            "labor-and-employment-law-section/"
+        ),
+    ),
+    (
+        "NY",
+        "seed-gary-j-malone",
+        "public-record~gary-j-malone",
+        "Gary J. Malone",
+        "New York Courts attorney directory",
+        "https://decisions.courts.state.ny.us/ad3/Decisions/2023/CV-22-1940.pdf",
+    ),
+    (
+        "OK",
+        "seed-charles-greenough",
+        "public-record~charles-greenough",
+        "Charles Greenough",
+        "Oklahoma Bar Association public directory",
+        (
+            "https://ams.okbar.org/eweb/DynamicPage.aspx?Action=Add&DoNotSave=yes&"
+            "ObjectKeyFrom=1A83491A-9853-4C87-86A4-F7D95601C2E2&ParentDataObject="
+            "Invoice+Detail&ParentObject=CentralizedOrderEntry&WebCode="
+            "ProdDetailAdd&ivd_cst_key=00000000-0000-0000-0000-000000000000&"
+            "ivd_cst_ship_key=00000000-0000-0000-0000-000000000000&ivd_formkey="
+            "69202792-63d7-4ba2-bf4e-a0da41270555&ivd_prc_prd_key="
+            "F5FDCC21-BBDF-4D41-944F-5351AD775A80"
+        ),
+    ),
+    (
+        "OR",
+        "seed-andrew-toney-noland",
+        "public-record~andrew-toney-noland",
+        "Andrew Toney-Noland",
+        "Oregon State Bar public directory",
+        "https://www.osbar.org/sections/labor.html",
+    ),
+    (
+        "PA",
+        "seed-shanon-jude-carson",
+        "public-record~shanon-jude-carson",
+        "Shanon Jude Carson",
+        "Pennsylvania Disciplinary Board attorney directory",
+        "https://www.padisciplinaryboard.org/for-the-public/find-attorney/attorney-detail/85957",
+    ),
+)
+
+_BATCH_SEVEN_EXISTING_COLLISION_CASES: tuple[tuple[str, str, str, str], ...] = tuple(
+    (state_code, seed_id, seed_slug, seed_name)
+    for state_code, seed_id, seed_slug, seed_name, _, _ in _BATCH_SEVEN_STATE_SEEDS
+)
+
+
 def _row(  # noqa: PLR0913
     *,
     id_value: str | None,
@@ -1082,12 +1142,12 @@ def test_discover_official_us_state_public_record_rows_includes_noop_states() ->
     result = discover_official_us_state_public_record_rows(
         [],
         selected_regions=["US"],
-        region_state_map={"US": frozenset({"NY"})},
+        region_state_map={"US": frozenset({"TX"})},
     )
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.rows == []
-    assert result.added_count_by_state == {"NY": 0}
+    assert result.added_count_by_state == {"TX": 0}
     assert result.unsupported_states == ()
 
 
@@ -1101,7 +1161,7 @@ def test_discover_official_us_state_public_record_rows_strict_accepts_full_cover
 
     assert isinstance(result, OfficialStateDiscoveryResult)
     assert result.unsupported_states == ()
-    assert result.added_count_by_state["NY"] == 0
+    assert result.added_count_by_state["NY"] > 0
     assert result.added_count_by_state["CA"] > 0
 
 
@@ -1139,7 +1199,12 @@ def test_official_source_adapter_harness_covers_current_implemented_states() -> 
         "NH",
         "NJ",
         "NM",
+        "NV",
+        "NY",
         "OH",
+        "OK",
+        "OR",
+        "PA",
         "TN",
         "WA",
     }.issubset(_IMPLEMENTED_OFFICIAL_SOURCE_STATES)
@@ -1445,6 +1510,44 @@ def test_discover_official_us_state_public_record_rows_adds_batch_six_seed(  # n
 
 
 @pytest.mark.parametrize(
+    (
+        "state_code",
+        "expected_id",
+        "expected_slug",
+        "expected_name",
+        "expected_source_label",
+        "expected_source_url",
+    ),
+    _BATCH_SEVEN_STATE_SEEDS,
+)
+def test_discover_official_us_state_public_record_rows_adds_batch_seven_seed(  # noqa: PLR0913
+    state_code: str,
+    expected_id: str,
+    expected_slug: str,
+    expected_name: str,
+    expected_source_label: str,
+    expected_source_url: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.unsupported_states == ()
+    assert result.added_count_by_state == {state_code: 1}
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["id"] == expected_id
+    assert row["slug"] == expected_slug
+    assert row["name"] == expected_name
+    assert row["state"] == state_code
+    assert row["source_label"] == expected_source_label
+    assert row["source_url"] == expected_source_url
+
+
+@pytest.mark.parametrize(
     ("state_code", "existing_id", "existing_slug", "existing_name"),
     _BATCH_ONE_EXISTING_COLLISION_CASES,
 )
@@ -1559,6 +1662,28 @@ def test_discover_official_us_state_public_record_rows_skips_existing_batch_five
     _BATCH_SIX_EXISTING_COLLISION_CASES,
 )
 def test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed(
+    state_code: str,
+    existing_id: str,
+    existing_slug: str,
+    existing_name: str,
+) -> None:
+    result = discover_official_us_state_public_record_rows(
+        [{"id": existing_id, "name": existing_name, "slug": existing_slug}],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({state_code})},
+    )
+
+    assert isinstance(result, OfficialStateDiscoveryResult)
+    assert result.rows == []
+    assert result.added_count_by_state == {state_code: 0}
+    assert result.unsupported_states == ()
+
+
+@pytest.mark.parametrize(
+    ("state_code", "existing_id", "existing_slug", "existing_name"),
+    _BATCH_SEVEN_EXISTING_COLLISION_CASES,
+)
+def test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed(
     state_code: str,
     existing_id: str,
     existing_slug: str,
