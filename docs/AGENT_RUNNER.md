@@ -197,16 +197,42 @@ Optional forced issue:
 ./scripts/agent_daily_issue_runner.sh --issue 1389
 ```
 
+## Machine Setup
+
+Each runner host needs its own signed-commit configuration. The daily runner defaults to SSH signing and resolves the signing key in this order:
+
+1. `HUSHLINE_BOT_GIT_SIGNING_KEY`
+2. Existing git config when `gpg.format=ssh` and `user.signingkey` is already set for the checkout
+3. `HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH`, if explicitly set to a local `.pub` file path
+
+Recommended per-host setup:
+
+```bash
+git -C /path/to/hushline config gpg.format ssh
+git -C /path/to/hushline config user.signingkey "$HOME/.ssh/hushline_bot_signing.pub"
+ssh-add "$HOME/.ssh/hushline_bot_signing"
+```
+
+Requirements:
+
+- The matching public key must be added to the GitHub bot account as an SSH signing key.
+- The matching private key must be available to `ssh-agent` before the runner starts.
+- If the machine still has a global GPG signing key from another environment (for example `git config --global user.signingkey 102783C80AF9335A`), do not reuse it with the runner's SSH signing mode.
+- On macOS, using `ssh-add --apple-use-keychain` is optional but not required by the runner.
+
+The runner now performs an SSH signing preflight immediately after configuring git identity and fails early with an actionable error if the host is missing the expected key or the key is not loaded into `ssh-agent`.
+
 ## Environment Variables
 
-- `HUSHLINE_REPO_DIR` (default `$HOME/hushline`)
+- `HUSHLINE_REPO_DIR` (default the repository checkout containing `scripts/agent_daily_issue_runner.sh`)
 - `HUSHLINE_REPO_SLUG` (default `scidsg/hushline`)
 - `HUSHLINE_BASE_BRANCH` (default `main`)
 - `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
 - `HUSHLINE_BOT_GIT_NAME` (default `HUSHLINE_BOT_LOGIN`)
 - `HUSHLINE_BOT_GIT_EMAIL` (default `git-dev@scidsg.org`)
 - `HUSHLINE_BOT_GIT_GPG_FORMAT` (default `ssh`)
-- `HUSHLINE_BOT_GIT_SIGNING_KEY` (optional)
+- `HUSHLINE_BOT_GIT_SIGNING_KEY` (optional; when unset the runner reuses existing SSH git signing config if available)
+- `HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH` (optional; no default)
 - `HUSHLINE_DAILY_PROJECT_OWNER` (default owner from `HUSHLINE_REPO_SLUG`)
 - `HUSHLINE_DAILY_PROJECT_TITLE` (default `Hush Line Roadmap`)
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)

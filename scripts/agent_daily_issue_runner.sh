@@ -3,8 +3,9 @@ set -euo pipefail
 
 FORCE_ISSUE_NUMBER=""
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 
-REPO_DIR="${HUSHLINE_REPO_DIR:-$HOME/hushline}"
+REPO_DIR="${HUSHLINE_REPO_DIR:-$DEFAULT_REPO_DIR}"
 REPO_SLUG="${HUSHLINE_REPO_SLUG:-scidsg/hushline}"
 BASE_BRANCH="${HUSHLINE_BASE_BRANCH:-main}"
 BOT_LOGIN="${HUSHLINE_BOT_LOGIN:-hushline-dev}"
@@ -12,6 +13,7 @@ BOT_GIT_NAME="${HUSHLINE_BOT_GIT_NAME:-$BOT_LOGIN}"
 BOT_GIT_EMAIL="${HUSHLINE_BOT_GIT_EMAIL:-git-dev@scidsg.org}"
 BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
+DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH="${HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.4}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
@@ -111,6 +113,98 @@ require_positive_integer() {
     echo "${name} must be a positive integer (got '${value}')." >&2
     return 1
   fi
+}
+
+resolve_bot_git_signing_key() {
+  local configured_signing_key=""
+  local configured_gpg_format=""
+
+  if [[ "$BOT_GIT_GPG_FORMAT" != "ssh" ]]; then
+    printf '%s\n' "$BOT_GIT_SIGNING_KEY"
+    return 0
+  fi
+
+  if [[ -n "$BOT_GIT_SIGNING_KEY" ]]; then
+    printf '%s\n' "$BOT_GIT_SIGNING_KEY"
+    return 0
+  fi
+
+  configured_signing_key="$(git config --get user.signingkey 2>/dev/null || true)"
+  configured_gpg_format="$(git config --get gpg.format 2>/dev/null || true)"
+  if [[ -n "$configured_signing_key" ]]; then
+    if [[ "$configured_gpg_format" == "ssh" ]] \
+      || signing_key_looks_like_public_key_literal "$configured_signing_key" \
+      || [[ "$configured_signing_key" == *.pub ]]; then
+      printf '%s\n' "$configured_signing_key"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH" && -f "$DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH" ]]; then
+    printf '%s\n' "$DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH"
+    return 0
+  fi
+
+  return 1
+}
+
+signing_key_looks_like_public_key_literal() {
+  local signing_key="$1"
+  [[ "$signing_key" == ssh-*' '* ]]
+}
+
+assert_ssh_signing_ready() {
+  local signing_key="$1"
+  local private_key_hint=""
+  local smoke_dir=""
+  local smoke_output=""
+
+  if [[ -z "$signing_key" ]]; then
+    printf '%s\n' "Blocked: SSH signing key is not configured." >&2
+    return 1
+  fi
+
+  if ! signing_key_looks_like_public_key_literal "$signing_key" && [[ ! -f "$signing_key" ]]; then
+    printf '%s\n' "Blocked: SSH signing key file not found: $signing_key" >&2
+    return 1
+  fi
+
+  if [[ "$signing_key" == *.pub ]]; then
+    private_key_hint="${signing_key%.pub}"
+  fi
+
+  smoke_dir="$(mktemp -d)"
+  set +e
+  smoke_output="$(
+    cd "$smoke_dir" &&
+      git init -q &&
+      git config user.name "$BOT_GIT_NAME" &&
+      git config user.email "$BOT_GIT_EMAIL" &&
+      git config commit.gpgsign true &&
+      git config gpg.format ssh &&
+      git config user.signingkey "$signing_key" &&
+      git commit --allow-empty -m "runner signing preflight" 2>&1
+  )"
+  local smoke_rc=$?
+  set -e
+  rm -rf "$smoke_dir"
+
+  if (( smoke_rc == 0 )); then
+    return 0
+  fi
+
+  if printf '%s\n' "$smoke_output" | grep -Eqi '(incorrect passphrase supplied to decrypt private key|enter passphrase for)'; then
+    if [[ -n "$private_key_hint" ]]; then
+      printf '%s\n' "Blocked: SSH signing key is present but unavailable to Git. Load the matching private key into ssh-agent first, for example: ssh-add $private_key_hint" >&2
+    else
+      printf '%s\n' "Blocked: SSH signing key is present but unavailable to Git. Load the matching private key into ssh-agent first." >&2
+    fi
+    return 1
+  fi
+
+  printf '%s\n' "Blocked: SSH signing preflight failed for $signing_key" >&2
+  printf '%s\n' "$smoke_output" >&2
+  return 1
 }
 
 run_step() {
@@ -524,14 +618,24 @@ collect_issue_candidates() {
 }
 
 configure_bot_git_identity() {
+  local resolved_signing_key=""
   git config user.name "$BOT_GIT_NAME"
   git config user.email "$BOT_GIT_EMAIL"
   git config commit.gpgsign true
   if [[ -n "$BOT_GIT_GPG_FORMAT" ]]; then
     git config gpg.format "$BOT_GIT_GPG_FORMAT"
   fi
-  if [[ -n "$BOT_GIT_SIGNING_KEY" ]]; then
+  if resolved_signing_key="$(resolve_bot_git_signing_key)"; then
+    git config user.signingkey "$resolved_signing_key"
+  elif [[ "$BOT_GIT_GPG_FORMAT" == "ssh" ]]; then
+    printf '%s\n' "Blocked: SSH commit signing is enabled, but no signing key is configured. Set HUSHLINE_BOT_GIT_SIGNING_KEY, configure git with gpg.format=ssh and user.signingkey, or set HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH to a local .pub file." >&2
+    return 1
+  elif [[ -n "$BOT_GIT_SIGNING_KEY" ]]; then
     git config user.signingkey "$BOT_GIT_SIGNING_KEY"
+  fi
+
+  if [[ "$BOT_GIT_GPG_FORMAT" == "ssh" ]]; then
+    assert_ssh_signing_ready "$resolved_signing_key"
   fi
 }
 
