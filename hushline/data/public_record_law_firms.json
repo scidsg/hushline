@@ -252,6 +252,30 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
   {
+    "id": "seed-jerina-d-phillips",
+    "slug": "public-record~jerina-d-phillips",
+    "name": "Jerina D. Phillips",
+    "website": "https://www.lewisrice.com/jerina-d-phillips/",
+    "description": "Whistleblower attorney listing sourced from The Missouri Bar public directory.",
+    "city": "St. Louis",
+    "state": "MO",
+    "practice_tags": ["Employment", "Litigation", "Investigations"],
+    "source_label": "The Missouri Bar public directory",
+    "source_url": "https://news.mobar.org/jerina-d-phillips-receives-2025-diversity-champion-award/"
+  },
+  {
+    "id": "seed-joel-frank-dillard",
+    "slug": "public-record~joel-frank-dillard",
+    "name": "Joel Frank Dillard",
+    "website": "https://joeldillard.com/",
+    "description": "Whistleblower attorney listing sourced from The Mississippi Bar public directory.",
+    "city": "Jackson",
+    "state": "MS",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "The Mississippi Bar public directory",
+    "source_url": "https://www.msbar.org/inside-the-bar/sections/labor-employment-law/"
+  },
+  {
     "id": "seed-jon-marc-petersen",
     "slug": "public-record~jon-marc-petersen",
     "name": "Jon-Marc Petersen",
@@ -300,6 +324,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529"
   },
   {
+    "id": "seed-kevin-g-williams",
+    "slug": "public-record~kevin-g-williams",
+    "name": "Kevin G. Williams",
+    "website": "https://www.belldavispitt.com/",
+    "description": "Whistleblower attorney listing sourced from North Carolina State Bar public directory.",
+    "city": "Winston-Salem",
+    "state": "NC",
+    "practice_tags": ["Employment", "Litigation", "Investigations"],
+    "source_label": "North Carolina State Bar public directory",
+    "source_url": "https://www.ncbar.gov/for-lawyers/directories/leadership/state-bar-officers/"
+  },
+  {
     "id": "seed-kevin-hunter-sharp",
     "slug": "public-record~kevin-hunter-sharp",
     "name": "Kevin Hunter Sharp",
@@ -310,6 +346,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/016287"
+  },
+  {
+    "id": "seed-landon-j-ascheman",
+    "slug": "public-record~landon-j-ascheman",
+    "name": "Landon J. Ascheman",
+    "website": "https://aschemanlaw.com/",
+    "description": "Whistleblower attorney listing sourced from Minnesota Courts attorney records.",
+    "city": "Saint Paul",
+    "state": "MN",
+    "practice_tags": ["Investigations", "Litigation", "Appeals"],
+    "source_label": "Minnesota Courts attorney records",
+    "source_url": "https://mncourts.gov/help-topics/Legal-Paraprofessional-Program/standing-committee"
   },
   {
     "id": "seed-kristin-l-pawlik",
@@ -490,6 +538,18 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/198472"
+  },
+  {
+    "id": "seed-tanis-m-holm",
+    "slug": "public-record~tanis-m-holm",
+    "name": "Tanis M. Holm",
+    "website": "https://www.yellowstonelaw.com/attorney-profile/tanis-m-holm/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Montana public directory.",
+    "city": "Billings",
+    "state": "MT",
+    "practice_tags": ["Investigations", "Litigation", "Employment"],
+    "source_label": "State Bar of Montana public directory",
+    "source_url": "https://www.montanabar.org/About-Us/Sections-and-Committees"
   },
   {
     "id": "seed-todd-h-stanton",
