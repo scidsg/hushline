@@ -288,6 +288,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
   {
+    "id": "seed-j-hagood-tighe",
+    "slug": "public-record~j-hagood-tighe",
+    "name": "J. Hagood Tighe",
+    "website": "https://www.fisherphillips.com/en/people/j-hagood-tighe.html",
+    "description": "Whistleblower attorney listing sourced from South Carolina Bar public directory.",
+    "city": "Columbia",
+    "state": "SC",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "South Carolina Bar public directory",
+    "source_url": "https://www.scbar.org/for-lawyers/networking/sections/employment-and-labor-law-section/"
+  },
+  {
     "id": "seed-jerina-d-phillips",
     "slug": "public-record~jerina-d-phillips",
     "name": "Jerina D. Phillips",
@@ -396,6 +408,18 @@
     "source_url": "https://mncourts.gov/help-topics/Legal-Paraprofessional-Program/standing-committee"
   },
   {
+    "id": "seed-lara-a-swensen",
+    "slug": "public-record~lara-a-swensen",
+    "name": "Lara A. Swensen",
+    "website": "https://www.jdrslaw.com/attorney/swensen-lara-a/",
+    "description": "Whistleblower attorney listing sourced from Utah Courts public legal directory.",
+    "city": "Salt Lake City",
+    "state": "UT",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Utah Courts public legal directory",
+    "source_url": "https://www.utcourts.gov/en/about/administration/committees/ethics-advisory-committee.html"
+  },
+  {
     "id": "seed-kristin-l-pawlik",
     "slug": "public-record~kristin-l-pawlik",
     "name": "Kristin L. Pawlik",
@@ -418,6 +442,30 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "Alabama State Bar public directory",
     "source_url": "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx"
+  },
+  {
+    "id": "seed-mark-anthony-sanchez",
+    "slug": "public-record~mark-anthony-sanchez",
+    "name": "Mark Anthony Sanchez",
+    "website": "https://www.sanchezwilson.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Texas public directory.",
+    "city": "San Antonio",
+    "state": "TX",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of Texas public directory",
+    "source_url": "https://www.texasbar.com/AM/Template.cfm?ContactID=157597&template=%2FCustomsource%2FMemberDirectory%2FMemberDirectoryDetail.cfm"
+  },
+  {
+    "id": "seed-mark-b-decof",
+    "slug": "public-record~mark-b-decof",
+    "name": "Mark B. Decof",
+    "website": "https://www.decof.com/attorneys/mark-b-decof/",
+    "description": "Whistleblower attorney listing sourced from Rhode Island Judiciary attorney records.",
+    "city": "Providence",
+    "state": "RI",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Rhode Island Judiciary attorney records",
+    "source_url": "https://www.courts.ri.gov/attorney-resources/Pages/Board-of-Bar-Examiners-default.aspx"
   },
   {
     "id": "seed-marlene-koury",
@@ -454,6 +502,18 @@
     "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
     "source_label": "North Dakota Court System attorney directory",
     "source_url": "https://www.ndcourts.gov/lawyers/06402"
+  },
+  {
+    "id": "seed-patrick-g-goetzinger",
+    "slug": "public-record~patrick-g-goetzinger",
+    "name": "Patrick G. Goetzinger",
+    "website": "https://gpna.com/professionals/patrick-g-goetzinger",
+    "description": "Whistleblower attorney listing sourced from State Bar of South Dakota public directory.",
+    "city": "Rapid City",
+    "state": "SD",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of South Dakota public directory",
+    "source_url": "https://www.statebarofsouthdakota.com/project-rural-practice/"
   },
   {
     "id": "seed-michael-f-brady",
