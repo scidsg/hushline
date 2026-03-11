@@ -242,6 +242,52 @@ def _append_us_state_coverage_summary(
     return "\n".join(lines) + "\n"
 
 
+def _append_dataset_drift_summary(
+    summary: str,
+    *,
+    baseline_rows: Sequence[Mapping[str, object]],
+    refreshed_rows: Sequence[Mapping[str, object]],
+) -> str:
+    baseline_ids = [
+        row_id
+        for row in baseline_rows
+        for raw_id in [row.get("id")]
+        if isinstance(raw_id, str)
+        for row_id in [raw_id]
+    ]
+    baseline_id_set = set(baseline_ids)
+    refreshed_id_set = {
+        row_id
+        for row in refreshed_rows
+        for raw_id in [row.get("id")]
+        if isinstance(raw_id, str)
+        for row_id in [raw_id]
+    }
+    added_ids = [
+        row_id
+        for row in refreshed_rows
+        for raw_id in [row.get("id")]
+        if isinstance(raw_id, str)
+        for row_id in [raw_id]
+        if row_id not in baseline_id_set
+    ]
+    removed_ids = [row_id for row_id in baseline_ids if row_id not in refreshed_id_set]
+
+    lines = [summary.rstrip(), "", "### Dataset Drift", ""]
+    lines.append(f"- Rows added: {len(added_ids)}")
+    lines.append(f"- Rows removed: {len(removed_ids)}")
+
+    if added_ids:
+        lines.append("- Added IDs:")
+        lines.extend([f"  - `{row_id}`" for row_id in added_ids])
+
+    if removed_ids:
+        lines.append("- Removed IDs:")
+        lines.extend([f"  - `{row_id}`" for row_id in removed_ids])
+
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     args = _parse_args()
     selected_regions = _parse_regions(args.regions)
@@ -254,7 +300,8 @@ def main() -> int:
             max_attempts=args.max_attempts,
         )
 
-    source_rows = _apply_us_state_source_strategy(_load_rows(args.input))
+    baseline_rows = _apply_us_state_source_strategy(_load_rows(args.input))
+    source_rows = baseline_rows
     if args.discover_chambers_ranked_firms:
         raise PublicRecordRefreshError(
             "--discover-chambers-ranked-firms is disabled. "
@@ -282,6 +329,11 @@ def main() -> int:
         drop_failed_links=args.drop_failing_records,
     )
     summary = render_refresh_summary(refresh_result, regions=selected_regions)
+    summary = _append_dataset_drift_summary(
+        summary,
+        baseline_rows=baseline_rows,
+        refreshed_rows=refresh_result.rows,
+    )
     summary = _append_us_state_coverage_summary(
         summary,
         rows=refresh_result.rows,
