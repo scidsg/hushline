@@ -22,6 +22,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
+from hushline.external_urls import canonical_external_url
 from hushline.model import (
     StripeEvent,
     StripeEventStatusEnum,
@@ -495,7 +496,7 @@ def create_blueprint(app: Flask) -> Blueprint:
                 customer=user.stripe_customer_id,
                 line_items=[{"price": business_tier.stripe_price_id, "quantity": 1}],
                 mode="subscription",
-                success_url=url_for("premium.waiting", _external=True),
+                success_url=canonical_external_url("premium.waiting"),
                 automatic_tax={"enabled": True},
                 customer_update={"address": "auto"},
             )
