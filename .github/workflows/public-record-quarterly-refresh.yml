@@ -23,9 +23,19 @@ jobs:
       - name: Refresh public-record listings
         run: |
           make refresh-public-record-corrections \
-            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md
+            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md \
+            REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT=/tmp/pr-refresh.json
 
-      - name: Read refresh summary
+      - name: Upload refresh report artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-record-refresh-report-${{ github.run_id }}
+          path: |
+            /tmp/pr-refresh.md
+            /tmp/pr-refresh.json
+          if-no-files-found: error
+
+      - name: Read refresh report
         id: summary
         shell: bash
         run: |
@@ -43,7 +53,7 @@ jobs:
 
           {
             echo "body<<${delimiter}"
-            echo "## Public Record Refresh Summary"
+            echo "## Public Record Refresh Report"
             echo
             echo "- Refresh completed."
             echo "${delimiter}"
@@ -63,3 +73,4 @@ jobs:
             ${{ steps.summary.outputs.body }}
           add-paths: |
             hushline/data/public_record_law_firms.json
+            docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md

@@ -11,6 +11,7 @@ RUNNER_APP_WAIT_ATTEMPTS ?= 30
 REFRESH_PUBLIC_RECORD_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-quarterly-refresh.md
+REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT ?= /tmp/public-record-quarterly-refresh.json
 REFRESH_SECUREDROP_ARGS ?=
 REFRESH_GLOBALEAKS_ARGS ?=
 
@@ -123,6 +124,7 @@ refresh-public-record-listings: ## Refresh public-record listing artifact determ
 refresh-public-record-corrections: ## Refresh public-record listings for correction PR creation
 	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py \
 		--summary-output "$(REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT)" \
+		--report-json-output "$(REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT)" \
 		--drop-failing-records \
 		--allow-link-failures \
 		$(REFRESH_PUBLIC_RECORD_CORRECTION_ARGS)
