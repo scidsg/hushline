@@ -17,22 +17,25 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      REFRESH_REPORT_DIR: .github/tmp/public-record-refresh
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Refresh public-record listings
         run: |
+          mkdir -p "$REFRESH_REPORT_DIR"
           make refresh-public-record-corrections \
-            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md \
-            REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT=/tmp/pr-refresh.json
+            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.md" \
+            REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.json"
 
       - name: Upload refresh report artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: public-record-refresh-report-${{ github.run_id }}
           path: |
-            /tmp/pr-refresh.md
-            /tmp/pr-refresh.json
+            .github/tmp/public-record-refresh/pr-refresh.md
+            .github/tmp/public-record-refresh/pr-refresh.json
           if-no-files-found: error
 
       - name: Read refresh report
@@ -42,10 +45,10 @@ jobs:
           set -euo pipefail
           delimiter="PUBLIC_RECORD_SUMMARY_$(date +%s)"
 
-          if [ -f /tmp/pr-refresh.md ]; then
+          if [ -f "$REFRESH_REPORT_DIR/pr-refresh.md" ]; then
             {
               echo "body<<${delimiter}"
-              cat /tmp/pr-refresh.md
+              cat "$REFRESH_REPORT_DIR/pr-refresh.md"
               echo "${delimiter}"
             } >> "$GITHUB_OUTPUT"
             exit 0

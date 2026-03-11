@@ -51,12 +51,20 @@ def test_public_record_quarterly_refresh_workflow_uses_correction_pr_flow() -> N
 
     assert "workflow_dispatch:" in workflow_text
     assert '- cron: "0 14 1 1,4,7,10 *"' in workflow_text
+    assert "REFRESH_REPORT_DIR: .github/tmp/public-record-refresh" in workflow_text
+    assert 'mkdir -p "$REFRESH_REPORT_DIR"' in workflow_text
     assert "make refresh-public-record-corrections \\" in workflow_text
-    assert "REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md" in workflow_text
     assert (
-        "REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT=/tmp/pr-refresh.json" in workflow_text
+        'REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.md"'
+        in workflow_text
+    )
+    assert (
+        'REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.json"'
+        in workflow_text
     )
     assert "actions/upload-artifact@" in workflow_text
+    assert ".github/tmp/public-record-refresh/pr-refresh.md" in workflow_text
+    assert 'if [ -f "$REFRESH_REPORT_DIR/pr-refresh.md" ];' in workflow_text
     assert "peter-evans/create-pull-request@" in workflow_text
     assert "docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md" in workflow_text
 
