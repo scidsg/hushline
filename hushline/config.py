@@ -8,6 +8,7 @@ from typing import Any, Mapping, Optional, Self
 import bleach
 from markupsafe import Markup
 
+from hushline.external_urls import normalize_public_base_url
 from hushline.utils import if_not_none, parse_bool
 
 _STRING_CFG_PREFIX = "HL_CFG_"
@@ -87,6 +88,11 @@ def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:
         data["PREFERRED_URL_SCHEME"] = preferred_scheme
     else:
         data["PREFERRED_URL_SCHEME"] = "https" if server_name else "http"
+    if public_base_url := env.get("PUBLIC_BASE_URL"):
+        try:
+            data["PUBLIC_BASE_URL"] = normalize_public_base_url(public_base_url)
+        except ValueError as exc:
+            raise ConfigParseError(str(exc)) from exc
 
     for key in ["FLASK_ENV", "SECRET_KEY"]:
         if val := env.get(key):

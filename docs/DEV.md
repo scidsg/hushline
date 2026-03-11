@@ -14,3 +14,14 @@ See [`./tests/test_migrations.py`](./tests/test_migrations.py) and [`./tests/mig
 ## Submit Loading Feedback
 
 The login, registration, and public submit-message forms use a submit-button spinner while POST/GET requests from those submit actions are in progress.
+
+## Canonical External URLs
+
+Security-sensitive absolute URLs must be generated from canonical deployment config, not from the incoming request host.
+
+Set one of these in deployed environments:
+
+- `PUBLIC_BASE_URL=https://your-public-origin`
+- `SERVER_NAME=your-public-hostname`
+
+`PUBLIC_BASE_URL` is preferred for user-visible or third-party callback URLs because it pins both scheme and host. If neither value is set, production requests that need canonical external URLs will now fail closed instead of deriving the host from request headers.
