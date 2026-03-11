@@ -24,11 +24,11 @@ def _load_refresh_script_module() -> Any:
     return module
 
 
-def test_public_record_weekly_refresh_workflow_uses_correction_pr_flow() -> None:
-    workflow_text = _workflow_text(".github/workflows/public-record-weekly-refresh.yml")
+def test_public_record_quarterly_refresh_workflow_uses_correction_pr_flow() -> None:
+    workflow_text = _workflow_text(".github/workflows/public-record-quarterly-refresh.yml")
 
     assert "workflow_dispatch:" in workflow_text
-    assert '- cron: "0 14 * * 1"' in workflow_text
+    assert '- cron: "0 14 1 1,4,7,10 *"' in workflow_text
     assert "make refresh-public-record-corrections \\" in workflow_text
     assert "REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md" in workflow_text
     assert "peter-evans/create-pull-request@" in workflow_text
