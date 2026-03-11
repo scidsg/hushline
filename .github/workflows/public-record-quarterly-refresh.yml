@@ -17,25 +17,38 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      REFRESH_REPORT_DIR: .github/tmp/public-record-refresh
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Refresh public-record listings
         run: |
+          mkdir -p "$REFRESH_REPORT_DIR"
           make refresh-public-record-corrections \
-            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT=/tmp/pr-refresh.md
+            REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.md" \
+            REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT="$REFRESH_REPORT_DIR/pr-refresh.json"
 
-      - name: Read refresh summary
+      - name: Upload refresh report artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-record-refresh-report-${{ github.run_id }}
+          path: |
+            .github/tmp/public-record-refresh/pr-refresh.md
+            .github/tmp/public-record-refresh/pr-refresh.json
+          if-no-files-found: error
+
+      - name: Read refresh report
         id: summary
         shell: bash
         run: |
           set -euo pipefail
           delimiter="PUBLIC_RECORD_SUMMARY_$(date +%s)"
 
-          if [ -f /tmp/pr-refresh.md ]; then
+          if [ -f "$REFRESH_REPORT_DIR/pr-refresh.md" ]; then
             {
               echo "body<<${delimiter}"
-              cat /tmp/pr-refresh.md
+              cat "$REFRESH_REPORT_DIR/pr-refresh.md"
               echo "${delimiter}"
             } >> "$GITHUB_OUTPUT"
             exit 0
@@ -43,7 +56,7 @@ jobs:
 
           {
             echo "body<<${delimiter}"
-            echo "## Public Record Refresh Summary"
+            echo "## Public Record Refresh Report"
             echo
             echo "- Refresh completed."
             echo "${delimiter}"
@@ -63,3 +76,4 @@ jobs:
             ${{ steps.summary.outputs.body }}
           add-paths: |
             hushline/data/public_record_law_firms.json
+            docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md
