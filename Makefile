@@ -9,6 +9,8 @@ PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
 REFRESH_PUBLIC_RECORD_ARGS ?=
+REFRESH_PUBLIC_RECORD_CORRECTION_ARGS ?=
+REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-weekly-refresh.md
 REFRESH_SECUREDROP_ARGS ?=
 REFRESH_GLOBALEAKS_ARGS ?=
 
@@ -116,6 +118,14 @@ test-public-record-links: ## Audit live public-record external links without fai
 .PHONY: refresh-public-record-listings
 refresh-public-record-listings: ## Refresh public-record listing artifact deterministically
 	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py $(REFRESH_PUBLIC_RECORD_ARGS)
+
+.PHONY: refresh-public-record-corrections
+refresh-public-record-corrections: ## Refresh public-record listings for correction PR creation
+	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py \
+		--summary-output "$(REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT)" \
+		--drop-failing-records \
+		--allow-link-failures \
+		$(REFRESH_PUBLIC_RECORD_CORRECTION_ARGS)
 
 .PHONY: public-record-provenance-report
 public-record-provenance-report: ## Audit strict provenance coverage for public-record listings
