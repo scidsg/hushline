@@ -371,3 +371,26 @@ def test_submission_success_404_when_message_missing(client: FlaskClient) -> Non
     response = client.get(url_for("submission_success"), follow_redirects=True)
     assert response.status_code == 404
     assert "404: Not Found" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_submission_success_uses_public_base_url_for_reply_link(app: Flask, user: User) -> None:
+    app.config["SERVER_NAME"] = None
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+    message = Message(username_id=user.primary_username.id)
+    db.session.add(message)
+    db.session.commit()
+
+    with app.test_request_context(
+        url_for("submission_success"),
+        base_url="http://evil.example",
+    ):
+        from flask import session
+
+        session["reply_slug"] = message.reply_slug
+        response = app.view_functions["submission_success"]()
+
+    assert isinstance(response, str)
+    assert f'href="https://safe.example/reply/{message.reply_slug}"' in response
+    assert "evil.example" not in response

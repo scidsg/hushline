@@ -23,6 +23,7 @@ from wtforms import Field
 
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
+from hushline.external_urls import canonical_external_url
 from hushline.model import (
     FieldDefinition,
     FieldType,
@@ -188,11 +189,9 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     username.bio = form.bio.data.strip()
 
     # Define base_url from the environment or config
-    profile_url = url_for(
+    profile_url = canonical_external_url(
         "profile",
         username=username._username,
-        _external=True,
-        _scheme=current_app.config["PREFERRED_URL_SCHEME"],
     )
 
     async with aiohttp.ClientSession() as client_session:
