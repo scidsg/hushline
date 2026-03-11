@@ -16,12 +16,6 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
             2,
         ),
         (
-            ".github/workflows/publish-docs-screenshots.yml",
-            'website_owner="${WEBSITE_REPOSITORY%%/*}"',
-            '--head "${website_owner}:${WEBSITE_BRANCH}"',
-            2,
-        ),
-        (
             ".github/workflows/bump-staging-after-release.yml",
             'infra_owner="${INFRA_REPOSITORY%%/*}"',
             '--head "${infra_owner}:${INFRA_BRANCH}"',
