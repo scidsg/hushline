@@ -254,6 +254,10 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False
     assert admin_row["is_securedrop"] is False
+    assert admin_row["city"] is None
+    assert admin_row["country"] is None
+    assert admin_row["subdivision"] is None
+    assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
 
 
@@ -302,6 +306,10 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
     assert row["location"] == listing.location
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "public_record"
@@ -320,6 +328,9 @@ def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskCl
         row for row in (response.json or []) if row["display_name"] == legacy_listing.name
     )
     assert legacy_row["entry_type"] == "public_record"
+    assert legacy_row["country"] == legacy_listing.geography.country
+    assert legacy_row["subdivision"] == legacy_listing.geography.subdivision
+    assert legacy_row["countries"] == list(legacy_listing.geography.countries)
     assert legacy_row["directory_section"] == "legacy_public_record"
     assert legacy_row["is_automated"] is True
 
@@ -413,6 +424,10 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
     assert row["location"] == listing.location
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == []
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "globaleaks_directory"
@@ -433,9 +448,79 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
     assert row["location"] == listing.location
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.topics)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "securedrop_directory"
+
+
+def test_public_record_listing_normalizes_us_state_into_country_and_subdivision() -> None:
+    listing = PublicRecordListing(
+        id="public-record-usa",
+        slug="public-record~usa",
+        name="US Public Record Listing",
+        website="https://example.org",
+        description="US attorney listing.",
+        city="Chicago",
+        state="IL",
+        practice_tags=("Labor",),
+        source_label="Official source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Chicago"
+    assert listing.geography.country == "USA"
+    assert listing.geography.subdivision == "IL"
+    assert listing.geography.countries == ("USA",)
+    assert listing.location == "Chicago, IL"
+
+
+def test_public_record_listing_normalizes_legacy_country_stored_in_state() -> None:
+    listing = PublicRecordListing(
+        id="public-record-legacy",
+        slug="public-record~legacy",
+        name="Legacy Public Record Listing",
+        website="https://example.org",
+        description="Legacy attorney listing.",
+        city="Sydney",
+        state="Australia",
+        practice_tags=("Whistleblower",),
+        source_label="Legacy source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Sydney"
+    assert listing.geography.country == "Australia"
+    assert listing.geography.subdivision is None
+    assert listing.geography.countries == ("Australia",)
+    assert listing.location == "Sydney, Australia"
+
+
+def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_country() -> None:
+    listing = SecureDropDirectoryListing(
+        id="securedrop-multi-country",
+        slug="securedrop~multi-country",
+        name="Multi-Country SecureDrop Listing",
+        website="https://example.org",
+        description="Multi-country listing.",
+        directory_url="https://securedrop.org/directory/multi-country/",
+        landing_page_url="https://example.org/landing",
+        onion_address="sample1234567890sample1234567890sample1234567890sample12.onion",
+        onion_name="Example",
+        countries=("All countries", "USA"),
+        languages=("English",),
+        topics=("investigations",),
+        source_label="SecureDrop directory",
+        source_url="https://securedrop.org/api/v1/directory/",
+    )
+
+    assert listing.geography.country is None
+    assert listing.geography.subdivision is None
+    assert listing.geography.countries == ("All countries", "USA")
+    assert listing.location == "All countries, USA"
 
 
 def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
@@ -464,6 +549,13 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Alpha Public Listing",
             website="https://alpha.example",
             description="alpha description",
+            geography=SimpleNamespace(
+                city=None,
+                country="USA",
+                subdivision="CA",
+                countries=("USA",),
+                location="Global",
+            ),
             location="Global",
             practice_tags=("Law",),
             source_label="Public records",
@@ -480,6 +572,13 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Charlie SecureDrop",
             website="https://charlie.example",
             description="charlie description",
+            geography=SimpleNamespace(
+                city=None,
+                country="USA",
+                subdivision=None,
+                countries=("USA",),
+                location="Global",
+            ),
             location="Global",
             topics=("Investigations",),
             source_label="SecureDrop directory",
@@ -496,6 +595,13 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Delta GlobaLeaks",
             website="https://delta.example",
             description="delta description",
+            geography=SimpleNamespace(
+                city=None,
+                country="Italy",
+                subdivision=None,
+                countries=("Italy",),
+                location="Global",
+            ),
             location="Global",
             source_label="Automated GlobaLeaks discovery dataset",
             source_url="https://example.org/globaleaks",

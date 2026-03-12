@@ -9,6 +9,11 @@ from typing import Any
 
 from unidecode import unidecode
 
+from hushline.model.directory_listing_geography import (
+    DirectoryListingGeography,
+    build_public_record_geography,
+)
+
 
 @dataclass(frozen=True)
 class PublicRecordListing:
@@ -22,14 +27,29 @@ class PublicRecordListing:
     practice_tags: tuple[str, ...]
     source_label: str
     source_url: str | None = None
+    country: str | None = None
+    subdivision: str | None = None
     listing_type: str = "attorney"
     directory_section: str = "public_record"
     message_capable: bool = False
     is_automated: bool = True
 
     @property
+    def geography(self) -> DirectoryListingGeography:
+        return build_public_record_geography(
+            city=self.city,
+            state=self.state,
+            country=self.country,
+            subdivision=self.subdivision,
+        )
+
+    @property
+    def countries(self) -> tuple[str, ...]:
+        return self.geography.countries
+
+    @property
     def location(self) -> str:
-        return f"{self.city}, {self.state}"
+        return self.geography.location
 
 
 def _sort_key(value: str) -> str:
@@ -94,6 +114,12 @@ def get_public_record_listing(slug: str) -> PublicRecordListing | None:
 def _build_listing(
     row: dict[str, Any], *, directory_section: str = "public_record"
 ) -> PublicRecordListing:
+    geography = build_public_record_geography(
+        city=row.get("city"),
+        state=row.get("state"),
+        country=row.get("country"),
+        subdivision=row.get("subdivision"),
+    )
     return PublicRecordListing(
         id=row["id"],
         slug=row["slug"],
@@ -105,5 +131,7 @@ def _build_listing(
         practice_tags=tuple(row["practice_tags"]),
         source_label=row["source_label"],
         source_url=row.get("source_url"),
+        country=geography.country,
+        subdivision=geography.subdivision,
         directory_section=directory_section,
     )
