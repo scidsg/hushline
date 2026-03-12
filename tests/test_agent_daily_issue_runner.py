@@ -218,8 +218,8 @@ write_pr_narrative_lead \
         "`tests/test_directory.py`."
     ) in result.stdout
     assert (
-        "The PR includes both implementation work and automated tests so reviewers can "
-        "see the intended behavior and how it is verified."
+        "The change includes both implementation work and automated tests, showing the "
+        "intended behavior and how it is verified."
     ) in result.stdout
     assert (
         "It touches 3 non-log file(s) (4 total including runner artifacts), primarily "

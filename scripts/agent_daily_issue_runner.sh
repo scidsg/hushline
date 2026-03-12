@@ -1083,12 +1083,12 @@ write_pr_narrative_lead() {
 
   if has_non_log_changed_files_matching '^tests/'; then
     if stream_changed_files | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ && $0 !~ /^tests\//' | grep -q .; then
-      review_line="The PR includes both implementation work and automated tests so reviewers can see the intended behavior and how it is verified."
+      review_line="The change includes both implementation work and automated tests, showing the intended behavior and how it is verified."
     else
-      review_line="The PR focuses on automated tests so reviewers can confirm the expected behavior without a broader product change."
+      review_line="The change focuses on automated tests, confirming the expected behavior without a broader product change."
     fi
   elif has_non_log_changed_files_matching '^docs/'; then
-    review_line="The change stays narrowly scoped, with the written explanation living next to the code so non-technical reviewers can follow the update."
+    review_line="The change stays narrowly scoped, with the written explanation living next to the code."
   fi
 
   if issue_has_label "$issue_labels" "test-gap"; then
