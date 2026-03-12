@@ -14,6 +14,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 
 - [Developer docs](./DEV.md)
 - [Architecture](./ARCHITECTURE.md)
+- [Password hash migration study](./PASSWORD-HASH-MIGRATION-STUDY.md)
 - [Privacy](./PRIVACY.md)
 - [Threat model](./THREAT-MODEL.md)
 - [Terms](./TERMS.md)

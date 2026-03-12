@@ -334,6 +334,15 @@ def test_user_init_rejects_direct_password_hash_assignment() -> None:
         User(password_hash=forbidden_hash, password=pw)
 
 
+def test_user_password_hash_round_trip_uses_legacy_scrypt_prefix() -> None:
+    password = secrets.token_urlsafe(16)
+    user = User(password=password)
+
+    assert user.password_hash.startswith("$scrypt$")
+    assert user.check_password(password)
+    assert not user.check_password(f"{password}-wrong")
+
+
 def test_health_json_route(client) -> None:  # type: ignore[no-untyped-def]
     response = client.get("/health.json")
     assert response.status_code == 200
