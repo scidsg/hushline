@@ -91,6 +91,32 @@ def test_preferred_url_scheme_invalid_value() -> None:
         load_config(env)
 
 
+def test_public_base_url_loads() -> None:
+    env = dict(**os.environ)
+    env["PUBLIC_BASE_URL"] = "https://example.com/"
+
+    cfg = load_config(env)
+
+    assert cfg["PUBLIC_BASE_URL"] == "https://example.com"
+
+
+@pytest.mark.parametrize(
+    ("value", "match"),
+    [
+        ("ftp://example.com", "PUBLIC_BASE_URL must use http or https"),
+        ("https://example.com/path", "PUBLIC_BASE_URL must not include a path"),
+        ("https://example.com/?q=1", "PUBLIC_BASE_URL must not include query or fragment"),
+        ("https://example.com/#frag", "PUBLIC_BASE_URL must not include query or fragment"),
+    ],
+)
+def test_public_base_url_invalid(value: str, match: str) -> None:
+    env = dict(**os.environ)
+    env["PUBLIC_BASE_URL"] = value
+
+    with pytest.raises(ConfigParseError, match=match):
+        load_config(env)
+
+
 def test_smtp_notification_reply_to_loads() -> None:
     env = dict(**os.environ)
     env["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"

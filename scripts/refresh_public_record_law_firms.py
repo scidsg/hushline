@@ -3,19 +3,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+from collections import Counter
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from hushline.public_record_refresh import (
     DEFAULT_REGION_TARGETS,
+    OFFICIAL_US_STATE_DISCOVERY_ADAPTERS,
     US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
+    LinkValidationFailure,
+    OfficialStateDiscoveryResult,
     PublicRecordRefreshError,
+    PublicRecordRefreshResult,
     build_requests_link_checker,
     discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
-    render_refresh_summary,
 )
 
 
@@ -25,6 +31,10 @@ def _project_root() -> Path:
 
 def _default_input_path() -> Path:
     return _project_root() / "hushline" / "data" / "public_record_law_firms.json"
+
+
+def _default_roadmap_path() -> Path:
+    return _project_root() / "docs" / "PUBLIC-RECORD-PROVENANCE-ROADMAP.md"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -115,6 +125,12 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional Markdown path to write a refresh summary.",
+    )
+    parser.add_argument(
+        "--report-json-output",
+        type=Path,
+        default=None,
+        help="Optional JSON path to write the structured refresh report.",
     )
     parser.add_argument(
         "--check",
@@ -211,43 +227,11 @@ def _apply_us_state_source_strategy(
     return normalized_rows
 
 
-def _append_us_state_coverage_summary(
-    summary: str,
-    *,
-    rows: Sequence[Mapping[str, object]],
-    selected_regions: Sequence[str],
-) -> str:
-    if "US" not in selected_regions:
-        return summary
-
-    covered_states = sorted(
-        {
-            state
-            for row in rows
-            for raw_state in [row.get("state")]
-            if isinstance(raw_state, str)
-            for state in [raw_state.strip().upper()]
-            if state in US_STATE_CODES
-        },
-    )
-    missing_states = sorted(set(US_STATE_CODES) - set(covered_states))
-
-    lines = [summary.rstrip(), "", "### U.S. State Coverage", ""]
-    lines.append(f"- States covered: {len(covered_states)} / {len(US_STATE_CODES)}")
-    if missing_states:
-        lines.append(f"- Missing states: {', '.join(missing_states)}")
-    else:
-        lines.append("- Missing states: none")
-
-    return "\n".join(lines) + "\n"
-
-
-def _append_dataset_drift_summary(
-    summary: str,
+def _diff_listing_ids(
     *,
     baseline_rows: Sequence[Mapping[str, object]],
     refreshed_rows: Sequence[Mapping[str, object]],
-) -> str:
+) -> tuple[list[str], list[str]]:
     baseline_ids = [
         row_id
         for row in baseline_rows
@@ -272,20 +256,211 @@ def _append_dataset_drift_summary(
         if row_id not in baseline_id_set
     ]
     removed_ids = [row_id for row_id in baseline_ids if row_id not in refreshed_id_set]
+    return added_ids, removed_ids
 
-    lines = [summary.rstrip(), "", "### Dataset Drift", ""]
-    lines.append(f"- Rows added: {len(added_ids)}")
-    lines.append(f"- Rows removed: {len(removed_ids)}")
 
+def _serialize_link_failure(failure: LinkValidationFailure) -> dict[str, str]:
+    return {
+        "listing_id": failure.listing_id,
+        "listing_name": failure.listing_name,
+        "field": failure.field,
+        "url": failure.url,
+        "reason": failure.reason,
+    }
+
+
+def _build_refresh_report(
+    *,
+    baseline_rows: Sequence[Mapping[str, object]],
+    refresh_result: PublicRecordRefreshResult,
+    selected_regions: Sequence[str],
+    official_discovery_result: OfficialStateDiscoveryResult | None = None,
+) -> dict[str, Any]:
+    state_counts = Counter(
+        state_code
+        for row in refresh_result.rows
+        for raw_state in [row.get("state")]
+        if isinstance(raw_state, str)
+        for state_code in [raw_state.strip().upper()]
+        if state_code in US_STATE_CODES
+    )
+    per_state_counts = {
+        state_code: state_counts.get(state_code, 0) for state_code in sorted(US_STATE_CODES)
+    }
+    covered_states = [state_code for state_code, count in per_state_counts.items() if count > 0]
+    missing_states = [state_code for state_code, count in per_state_counts.items() if count == 0]
+    added_ids, removed_ids = _diff_listing_ids(
+        baseline_rows=baseline_rows,
+        refreshed_rows=refresh_result.rows,
+    )
+
+    report: dict[str, Any] = {
+        "output_records": len(refresh_result.rows),
+        "total_strict_listings": sum(per_state_counts.values()),
+        "states_covered": covered_states,
+        "states_missing": missing_states,
+        "rows_added": len(added_ids),
+        "rows_removed": len(removed_ids),
+        "added_ids": added_ids,
+        "removed_ids": removed_ids,
+        "per_state_counts": per_state_counts,
+        "regional_counts": {
+            region: refresh_result.region_counts.get(region, 0) for region in selected_regions
+        },
+        "validation_summary": {
+            "unique_urls_checked": refresh_result.checked_url_count,
+            "link_failures_detected": len(refresh_result.link_failures),
+            "records_dropped": len(refresh_result.dropped_record_ids),
+            "dropped_record_ids": list(refresh_result.dropped_record_ids),
+            "link_failures": [
+                _serialize_link_failure(failure) for failure in refresh_result.link_failures
+            ],
+        },
+    }
+
+    if official_discovery_result is not None:
+        report["official_discovery"] = {
+            "rows_added": len(official_discovery_result.rows),
+            "added_by_state": dict(sorted(official_discovery_result.added_count_by_state.items())),
+            "unsupported_states": list(official_discovery_result.unsupported_states),
+        }
+
+    return report
+
+
+def _render_refresh_report_markdown(report: Mapping[str, Any]) -> str:
+    states_covered = list(report["states_covered"])
+    states_missing = list(report["states_missing"])
+    added_ids = list(report["added_ids"])
+    removed_ids = list(report["removed_ids"])
+    per_state_counts = dict(report["per_state_counts"])
+    regional_counts = dict(report["regional_counts"])
+    validation_summary = dict(report["validation_summary"])
+    link_failures = list(validation_summary["link_failures"])
+    dropped_record_ids = list(validation_summary["dropped_record_ids"])
+
+    lines = [
+        "## Public Record Refresh Report",
+        "",
+        f"- Output records: {report['output_records']}",
+        f"- Total strict U.S. listings: {report['total_strict_listings']}",
+        f"- States covered: {len(states_covered)} / {len(US_STATE_CODES)}",
+        (
+            "- Missing states: none"
+            if not states_missing
+            else "- Missing states: " + ", ".join(states_missing)
+        ),
+        f"- Rows added: {report['rows_added']}",
+        f"- Rows removed: {report['rows_removed']}",
+        "- Regional counts:",
+    ]
+    lines.extend([f"  - {region}: {count}" for region, count in regional_counts.items()])
+
+    lines.extend(["", "### Per-State Counts", "", "| State | Listings |", "| --- | ---: |"])
+    lines.extend([f"| {state_code} | {count} |" for state_code, count in per_state_counts.items()])
+
+    lines.extend(["", "### Dataset Drift", ""])
     if added_ids:
         lines.append("- Added IDs:")
         lines.extend([f"  - `{row_id}`" for row_id in added_ids])
+    else:
+        lines.append("- Added IDs: none")
 
     if removed_ids:
         lines.append("- Removed IDs:")
         lines.extend([f"  - `{row_id}`" for row_id in removed_ids])
+    else:
+        lines.append("- Removed IDs: none")
+
+    lines.extend(
+        [
+            "",
+            "### Validation Summary",
+            "",
+            f"- Unique URLs checked: {validation_summary['unique_urls_checked']}",
+            f"- Link failures detected: {validation_summary['link_failures_detected']}",
+            f"- Records dropped: {validation_summary['records_dropped']}",
+        ],
+    )
+    if dropped_record_ids:
+        lines.append("- Dropped IDs:")
+        lines.extend([f"  - `{record_id}`" for record_id in dropped_record_ids])
+    else:
+        lines.append("- Dropped IDs: none")
+
+    if link_failures:
+        lines.append("- Link failures:")
+        lines.extend(
+            [
+                (
+                    f"  - `{failure['listing_id']}` `{failure['field']}` "
+                    f"({failure['reason']}): {failure['url']}"
+                )
+                for failure in link_failures
+            ],
+        )
+    else:
+        lines.append("- Link failures: none")
+
+    official_discovery = report.get("official_discovery")
+    if isinstance(official_discovery, dict):
+        added_by_state = dict(official_discovery["added_by_state"])
+        unsupported_states = list(official_discovery["unsupported_states"])
+        lines.extend(
+            [
+                "",
+                "### Official Discovery",
+                "",
+                f"- Rows added by implemented adapters: {official_discovery['rows_added']}",
+                (
+                    "- U.S. states without adapters: none"
+                    if not unsupported_states
+                    else "- U.S. states without adapters: " + ", ".join(unsupported_states)
+                ),
+            ],
+        )
+        if added_by_state:
+            lines.append("- Added rows by state:")
+            lines.extend(
+                [f"  - {state_code}: {count}" for state_code, count in added_by_state.items()]
+            )
 
     return "\n".join(lines) + "\n"
+
+
+def _sync_provenance_roadmap(
+    path: Path,
+    *,
+    report: Mapping[str, Any],
+    generated_on: str,
+) -> None:
+    content = path.read_text(encoding="utf-8")
+    state_list = ", ".join(f"`{state_code}`" for state_code in report["states_covered"])
+    adapter_count = len(OFFICIAL_US_STATE_DISCOVERY_ADAPTERS)
+    updated = re.sub(
+        r"## Current Baseline \([^)]+\)\n"
+        r"- Active strict listings: `[^`]+`\n"
+        r"- States with strict listings: .+\n",
+        (
+            f"## Current Baseline ({generated_on})\n"
+            f"- Active strict listings: `{report['total_strict_listings']}`\n"
+            f"- States with strict listings: {state_list or 'none'}\n"
+        ),
+        content,
+        count=1,
+    )
+    updated = re.sub(
+        r"^- .*explicit adapter entries in discovery code.*$",
+        (
+            "- Explicit state adapter entries in discovery code: "
+            f"{adapter_count} / {len(US_STATE_CODES)}."
+        ),
+        updated,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if updated != content:
+        path.write_text(updated, encoding="utf-8")
 
 
 def main() -> int:
@@ -307,8 +482,7 @@ def main() -> int:
             "--discover-chambers-ranked-firms is disabled. "
             "Only official public sources are allowed."
         )
-    official_discovery_unsupported_states: tuple[str, ...] = ()
-    official_discovery_added_count = 0
+    official_discovery_result: OfficialStateDiscoveryResult | None = None
     if args.discover_official_us_state_firms:
         official_discovery_result = discover_official_us_state_public_record_rows(
             source_rows,
@@ -318,8 +492,6 @@ def main() -> int:
             strict_state_adapter_coverage=args.strict_discovery_state_coverage,
         )
         source_rows = [*source_rows, *[dict(row) for row in official_discovery_result.rows]]
-        official_discovery_added_count = len(official_discovery_result.rows)
-        official_discovery_unsupported_states = official_discovery_result.unsupported_states
 
     refresh_result = refresh_public_record_rows(
         source_rows,
@@ -328,35 +500,21 @@ def main() -> int:
         link_checker=link_checker,
         drop_failed_links=args.drop_failing_records,
     )
-    summary = render_refresh_summary(refresh_result, regions=selected_regions)
-    summary = _append_dataset_drift_summary(
-        summary,
+    report = _build_refresh_report(
         baseline_rows=baseline_rows,
-        refreshed_rows=refresh_result.rows,
-    )
-    summary = _append_us_state_coverage_summary(
-        summary,
-        rows=refresh_result.rows,
         selected_regions=selected_regions,
+        refresh_result=refresh_result,
+        official_discovery_result=official_discovery_result,
     )
-    if args.discover_official_us_state_firms:
-        summary_lines = [summary.rstrip(), "", "### Official Discovery", ""]
-        summary_lines.append(
-            f"- Rows added by implemented adapters: {official_discovery_added_count}"
-        )
-        if official_discovery_unsupported_states:
-            summary_lines.append(
-                "- U.S. states without adapters: "
-                + ", ".join(official_discovery_unsupported_states),
-            )
-        else:
-            summary_lines.append("- U.S. states without adapters: none")
-        summary = "\n".join(summary_lines) + "\n"
+    summary = _render_refresh_report_markdown(report)
     print(summary, end="")
 
     if args.summary_output is not None:
         args.summary_output.parent.mkdir(parents=True, exist_ok=True)
         args.summary_output.write_text(summary, encoding="utf-8")
+    if args.report_json_output is not None:
+        args.report_json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.report_json_output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     output_content = _serialized_rows(refresh_result.rows)
     existing_output = args.output.read_text(encoding="utf-8") if args.output.exists() else ""
@@ -367,6 +525,18 @@ def main() -> int:
     if not args.check and output_content != existing_output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(output_content, encoding="utf-8")
+
+    if (
+        not args.check
+        and "US" in selected_regions
+        and args.input.resolve() == _default_input_path().resolve()
+        and args.output.resolve() == _default_input_path().resolve()
+    ):
+        _sync_provenance_roadmap(
+            _default_roadmap_path(),
+            report=report,
+            generated_on=datetime.now().astimezone().date().isoformat(),
+        )
 
     link_failures_detected = bool(refresh_result.link_failures)
     if link_failures_detected and not args.allow_link_failures and not args.drop_failing_records:

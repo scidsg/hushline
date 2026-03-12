@@ -12,9 +12,7 @@
 
   <p>
     <strong>Reply Address</strong><br>
-    {% with reply_url = url_for('message_reply', slug=message.reply_slug, _external=True) %}
-      <a id="reply-url" href="{{ reply_url }}">{{ reply_url }}</a>
-    {% endwith %}
+    <a id="reply-url" href="{{ reply_url }}">{{ reply_url }}</a>
   </p>
   <div class="copy-container">
     <button id="copy-link-button" class="btn" data-target="reply-url" type="button">

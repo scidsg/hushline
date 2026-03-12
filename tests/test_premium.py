@@ -465,6 +465,44 @@ def test_upgrade_process(
     assert stripe_invoice is not None
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_upgrade_process_uses_public_base_url_for_success_url(
+    app: Flask,
+    user: User,
+    business_tier: Tier,
+    mocker: MockFixture,
+) -> None:
+    _ = (user, business_tier)
+    app.config["SERVER_NAME"] = None
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+    checkout_create = mocker.patch(
+        "stripe.checkout.Session.create",
+        return_value=MagicMock(url="https://checkout.stripe.com/session_123"),
+    )
+    mocker.patch(
+        "stripe.Customer.create",
+        return_value=MagicMock(id="cus_123"),
+    )
+
+    with app.test_request_context(
+        url_for("premium.upgrade"),
+        method="POST",
+        base_url="http://evil.example",
+    ):
+        from flask import session
+
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+        response = app.view_functions["premium.upgrade"]()
+
+    assert response.status_code == 302
+    assert response.location == "https://checkout.stripe.com/session_123"
+    assert checkout_create.call_args.kwargs["success_url"] == "https://safe.example/premium/waiting"
+
+
 def test_disable_autorenew_no_user_in_session(client: FlaskClient) -> None:
     response = client.post(url_for("premium.disable_autorenew"))
     assert response.status_code == 302

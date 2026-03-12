@@ -325,6 +325,37 @@ async def test_handle_update_bio_logs_task_exceptions_when_not_testing(
         warning_log.assert_called()
 
 
+@pytest.mark.asyncio()
+async def test_handle_update_bio_uses_public_base_url_for_profile_verification(
+    app: Flask, user: User
+) -> None:
+    username = user.primary_username
+    app.config["SERVER_NAME"] = None
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+
+    with app.test_request_context(
+        "/settings/profile",
+        method="POST",
+        base_url="http://evil.example",
+    ):
+        form = ProfileForm()
+        form.bio.data = "bio"
+        form.extra_field_value1.data = "https://example.com"
+        form.extra_field_label1.data = "site"
+        for i in range(2, 5):
+            getattr(form, f"extra_field_value{i}").data = ""
+            getattr(form, f"extra_field_label{i}").data = ""
+
+        verify_url_mock = AsyncMock()
+        with patch("hushline.settings.common.verify_url", new=verify_url_mock):
+            response = await handle_update_bio(username, form)
+
+    assert response.status_code == 302
+    verify_url_mock.assert_awaited_once()
+    assert verify_url_mock.await_args is not None
+    assert verify_url_mock.await_args.args[4] == f"https://safe.example/to/{username.username}"
+
+
 def test_handle_new_alias_form_unique_violation_returns_none(
     app: Flask, user: User, user_alias: Username
 ) -> None:

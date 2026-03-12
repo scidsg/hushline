@@ -20,6 +20,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.crypto import encrypt_message
 from hushline.db import db
+from hushline.external_urls import canonical_external_url
 from hushline.model import (
     FieldDefinition,
     FieldValue,
@@ -261,4 +262,5 @@ def register_profile_routes(app: Flask) -> None:
         if msg is None:
             abort(404)
 
-        return render_template("submission_success.html", message=msg)
+        reply_url = canonical_external_url("message_reply", slug=msg.reply_slug)
+        return render_template("submission_success.html", message=msg, reply_url=reply_url)
