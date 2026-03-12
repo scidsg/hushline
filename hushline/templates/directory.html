@@ -234,9 +234,6 @@
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
               <p class="bio">{{ listing.description }}</p>
-              {% if listing.location != "Unknown" %}
-                <p class="meta">{{ listing.location }}</p>
-              {% endif %}
               <div class="user-actions">
                 <a
                   href="{{ url_for('public_record_listing', slug=listing.slug) }}"
@@ -267,9 +264,6 @@
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
               <p class="bio">{{ listing.description }}</p>
-              {% if listing.location != "Unknown" %}
-                <p class="meta">{{ listing.location }}</p>
-              {% endif %}
               <div class="user-actions">
                 <a
                   href="{{ url_for('globaleaks_listing', slug=listing.slug) }}"
@@ -300,9 +294,6 @@
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
               <p class="bio">{{ listing.description }}</p>
-              {% if listing.location != "Unknown" %}
-                <p class="meta">{{ listing.location }}</p>
-              {% endif %}
               <div class="user-actions">
                 <a
                   href="{{ url_for('securedrop_listing', slug=listing.slug) }}"
@@ -365,10 +356,6 @@
           {% if entry.bio %}
             <p class="bio">{{ entry.bio }}</p>
           {% endif %}
-          {% if entry.entry_type != "user" and entry.location_summary %}
-            <p class="meta">{{ entry.location_summary }}</p>
-          {% endif %}
-
           <div class="user-actions">
             {% if entry.entry_type == "user" %}
               <a
