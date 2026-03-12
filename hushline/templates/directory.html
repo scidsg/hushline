@@ -365,8 +365,8 @@
           {% if entry.bio %}
             <p class="bio">{{ entry.bio }}</p>
           {% endif %}
-          {% if entry.entry_type != "user" and entry.location and entry.location != "Unknown" %}
-            <p class="meta">{{ entry.location }}</p>
+          {% if entry.entry_type != "user" and entry.location_summary %}
+            <p class="meta">{{ entry.location_summary }}</p>
           {% endif %}
 
           <div class="user-actions">

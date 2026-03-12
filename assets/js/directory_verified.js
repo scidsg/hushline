@@ -126,7 +126,6 @@ document.addEventListener("DOMContentLoaded", function () {
         user.primary_username,
         user.display_name,
         user.bio,
-        user.location,
         user.city,
         user.country,
         user.subdivision,
@@ -202,12 +201,39 @@ document.addEventListener("DOMContentLoaded", function () {
     return badgeContainer;
   }
 
+  function formatLocation(user) {
+    const parts = [];
+    const countries = Array.isArray(user.countries) ? user.countries : [];
+
+    if (user.city) {
+      parts.push(user.city);
+      if (user.subdivision) {
+        parts.push(user.subdivision);
+      }
+      if (user.country) {
+        parts.push(user.country);
+      }
+    } else if (user.subdivision) {
+      parts.push(user.subdivision);
+      if (user.country) {
+        parts.push(user.country);
+      }
+    } else if (countries.length > 0) {
+      parts.push(...countries);
+    } else if (user.country) {
+      parts.push(user.country);
+    }
+
+    return parts.join(", ");
+  }
+
   function buildLocationLine(user, query) {
-    if (!user.location || user.location === "Unknown") {
+    const location = formatLocation(user);
+    if (!location) {
       return "";
     }
 
-    return `<p class="meta">${highlightMatch(user.location, query)}</p>`;
+    return `<p class="meta">${highlightMatch(location, query)}</p>`;
   }
 
   function buildAutomatedListingCard(user, query, tab) {
@@ -221,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     return `
-      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}, Location: ${user.location || "Unknown"}">
+      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}, ${formatLocation(user) ? `Location: ${formatLocation(user)}` : "Location unavailable"}">
         <h3>${displayNameHighlighted}</h3>
         <div class="badgeContainer">${buildBadges(user, tab)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}

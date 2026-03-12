@@ -305,7 +305,7 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
@@ -439,7 +439,7 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
@@ -485,7 +485,7 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
@@ -526,10 +526,10 @@ def test_public_record_listing_normalizes_us_state_into_country_and_subdivision(
     )
 
     assert listing.geography.city == "Chicago"
-    assert listing.geography.country == "USA"
-    assert listing.geography.subdivision == "IL"
-    assert listing.geography.countries == ("USA",)
-    assert listing.location == "Chicago, IL, USA"
+    assert listing.geography.country == "United States"
+    assert listing.geography.subdivision == "Illinois"
+    assert listing.geography.countries == ("United States",)
+    assert listing.location == "Chicago, Illinois, United States"
 
 
 def test_public_record_listing_normalizes_legacy_country_stored_in_state() -> None:
@@ -573,8 +573,8 @@ def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_co
 
     assert listing.geography.country is None
     assert listing.geography.subdivision is None
-    assert listing.geography.countries == ("All countries", "USA")
-    assert listing.location == "All countries, USA"
+    assert listing.geography.countries == ("All countries", "United States")
+    assert listing.location == "All countries, United States"
 
 
 def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
@@ -605,9 +605,9 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             description="alpha description",
             geography=SimpleNamespace(
                 city=None,
-                country="USA",
-                subdivision="CA",
-                countries=("USA",),
+                country="United States",
+                subdivision="California",
+                countries=("United States",),
                 location="Global",
             ),
             location="Global",
@@ -628,9 +628,9 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             description="charlie description",
             geography=SimpleNamespace(
                 city=None,
-                country="USA",
+                country="United States",
                 subdivision=None,
-                countries=("USA",),
+                countries=("United States",),
                 location="Global",
             ),
             location="Global",
@@ -789,11 +789,13 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.description in page_text
     assert listing.website in response.text
     assert "Source" in page_text
+    assert "Location" not in page_text
     assert listing.source_url is not None
     source_link = soup.find("a", href=listing.source_url)
     assert source_link is not None
     assert "Practice Areas" not in page_text
-    assert listing.location in page_text
+    if listing.geography.city:
+        assert listing.geography.city in page_text
     if listing.geography.subdivision:
         assert "State / Region" in page_text
         assert listing.geography.subdivision in page_text
@@ -836,7 +838,7 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.description in page_text
     assert listing.onion_address in page_text
     assert listing.source_url in response.text
-    assert listing.location in page_text
+    assert "Location" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
@@ -874,7 +876,7 @@ def test_globaleaks_listing_page_is_read_only(
     assert listing.description in page_text
     assert listing.submission_url in response.text
     assert listing.source_url in response.text
-    assert listing.location in page_text
+    assert "Location" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
