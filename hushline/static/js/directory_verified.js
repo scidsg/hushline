@@ -187,15 +187,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (user.is_admin) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
 
     if (user.is_verified) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
     if (tab === "all" && !user.has_pgp_key) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
     }
 
     return badgeContainer;
@@ -239,6 +242,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function buildAutomatedListingCard(user, query, tab) {
     const displayNameHighlighted = highlightMatch(user.display_name, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+    const location = formatLocation(user);
     let listingType = "SecureDrop listing";
     if (user.is_public_record) {
       listingType = "Public record listing";
@@ -247,7 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     return `
-      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}, ${formatLocation(user) ? `Location: ${formatLocation(user)}` : "Location unavailable"}">
+      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}, ${location ? `Location: ${location}` : "Location unavailable"}">
         <h3>${displayNameHighlighted}</h3>
         <div class="badgeContainer">${buildBadges(user, tab)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}

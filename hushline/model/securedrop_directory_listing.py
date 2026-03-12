@@ -9,6 +9,11 @@ from typing import Any
 
 from unidecode import unidecode
 
+from hushline.model.directory_listing_geography import (
+    DirectoryListingGeography,
+    build_directory_geography,
+)
+
 
 @dataclass(frozen=True)
 class SecureDropDirectoryListing:
@@ -26,16 +31,26 @@ class SecureDropDirectoryListing:
     topics: tuple[str, ...]
     source_label: str
     source_url: str
+    city: str | None = None
+    country: str | None = None
+    subdivision: str | None = None
     listing_type: str = "securedrop_instance"
     directory_section: str = "securedrop_directory"
     message_capable: bool = False
     is_automated: bool = True
 
     @property
+    def geography(self) -> DirectoryListingGeography:
+        return build_directory_geography(
+            countries=self.countries,
+            city=self.city,
+            country=self.country,
+            subdivision=self.subdivision,
+        )
+
+    @property
     def location(self) -> str:
-        if not self.countries:
-            return "Unknown"
-        return ", ".join(self.countries)
+        return self.geography.location
 
 
 def _sort_key(value: str) -> str:
@@ -74,6 +89,12 @@ def get_securedrop_directory_listing(slug: str) -> SecureDropDirectoryListing | 
 
 
 def _build_listing(row: dict[str, Any]) -> SecureDropDirectoryListing:
+    geography = build_directory_geography(
+        countries=row.get("countries", []),
+        city=row.get("city"),
+        country=row.get("country"),
+        subdivision=row.get("subdivision"),
+    )
     return SecureDropDirectoryListing(
         id=row["id"],
         slug=row["slug"],
@@ -84,9 +105,12 @@ def _build_listing(row: dict[str, Any]) -> SecureDropDirectoryListing:
         landing_page_url=row["landing_page_url"],
         onion_address=row["onion_address"],
         onion_name=row.get("onion_name", ""),
-        countries=tuple(row.get("countries", [])),
+        countries=geography.countries,
         languages=tuple(row.get("languages", [])),
         topics=tuple(row.get("topics", [])),
         source_label=row["source_label"],
         source_url=row["source_url"],
+        city=geography.city,
+        country=geography.country,
+        subdivision=geography.subdivision,
     )

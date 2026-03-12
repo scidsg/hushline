@@ -10,6 +10,11 @@ from urllib.parse import urlparse
 
 from unidecode import unidecode
 
+from hushline.model.directory_listing_geography import (
+    DirectoryListingGeography,
+    build_directory_geography,
+)
+
 
 @dataclass(frozen=True)
 class GlobaLeaksDirectoryListing:
@@ -24,16 +29,26 @@ class GlobaLeaksDirectoryListing:
     languages: tuple[str, ...]
     source_label: str
     source_url: str
+    city: str | None = None
+    country: str | None = None
+    subdivision: str | None = None
     listing_type: str = "globaleaks_instance"
     directory_section: str = "globaleaks_directory"
     message_capable: bool = False
     is_automated: bool = True
 
     @property
+    def geography(self) -> DirectoryListingGeography:
+        return build_directory_geography(
+            countries=self.countries,
+            city=self.city,
+            country=self.country,
+            subdivision=self.subdivision,
+        )
+
+    @property
     def location(self) -> str:
-        if not self.countries:
-            return "Unknown"
-        return ", ".join(self.countries)
+        return self.geography.location
 
     @property
     def has_onion_submission(self) -> bool:
@@ -81,6 +96,12 @@ def _build_listing(row: dict[str, Any]) -> GlobaLeaksDirectoryListing:
     host = row.get("host", "")
     if not host:
         host = urlparse(submission_url).hostname or ""
+    geography = build_directory_geography(
+        countries=row.get("countries", []),
+        city=row.get("city"),
+        country=row.get("country"),
+        subdivision=row.get("subdivision"),
+    )
 
     return GlobaLeaksDirectoryListing(
         id=row["id"],
@@ -90,8 +111,11 @@ def _build_listing(row: dict[str, Any]) -> GlobaLeaksDirectoryListing:
         description=row["description"],
         submission_url=submission_url,
         host=host,
-        countries=tuple(row.get("countries", [])),
+        countries=geography.countries,
         languages=tuple(row.get("languages", [])),
         source_label=row["source_label"],
         source_url=row["source_url"],
+        city=geography.city,
+        country=geography.country,
+        subdivision=geography.subdivision,
     )
