@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from flask import url_for
 from flask.testing import FlaskClient
 
@@ -94,6 +94,15 @@ def _legacy_public_record_listings() -> list[PublicRecordListing]:
         for listing in get_public_record_listings()
         if listing.directory_section == "legacy_public_record"
     ]
+
+
+def _find_directory_card(panel: BeautifulSoup | Tag | None, display_name: str) -> Tag:
+    assert panel is not None
+    for card in panel.select("article.user"):
+        heading = card.select_one("h3")
+        if heading is not None and heading.get_text(" ", strip=True) == display_name:
+            return card
+    raise AssertionError(f"Could not find directory card for {display_name}")
 
 
 def test_directory_accessible(client: FlaskClient) -> None:
@@ -315,7 +324,7 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["directory_section"] == "public_record"
 
 
-def test_directory_public_record_cards_show_location(client: FlaskClient) -> None:
+def test_directory_public_record_cards_do_not_show_location(client: FlaskClient) -> None:
     listing = _first_public_record_listing_or_skip()
 
     response = client.get(url_for("directory"))
@@ -325,10 +334,11 @@ def test_directory_public_record_cards_show_location(client: FlaskClient) -> Non
     public_records_panel = soup.find(id="public-records")
     all_panel = soup.find(id="all")
 
-    assert public_records_panel is not None
-    assert all_panel is not None
-    assert listing.location in public_records_panel.get_text(" ", strip=True)
-    assert listing.location in all_panel.get_text(" ", strip=True)
+    public_record_card = _find_directory_card(public_records_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in public_record_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
 
 
 def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
@@ -449,7 +459,7 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["directory_section"] == "globaleaks_directory"
 
 
-def test_directory_globaleaks_cards_show_location(
+def test_directory_globaleaks_cards_do_not_show_location(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     listing = _sample_globaleaks_listing()
@@ -465,10 +475,11 @@ def test_directory_globaleaks_cards_show_location(
     globaleaks_panel = soup.find(id="globaleaks")
     all_panel = soup.find(id="all")
 
-    assert globaleaks_panel is not None
-    assert all_panel is not None
-    assert listing.location in globaleaks_panel.get_text(" ", strip=True)
-    assert listing.location in all_panel.get_text(" ", strip=True)
+    globaleaks_card = _find_directory_card(globaleaks_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in globaleaks_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
 
 
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
@@ -495,7 +506,7 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["directory_section"] == "securedrop_directory"
 
 
-def test_directory_securedrop_cards_show_location(client: FlaskClient) -> None:
+def test_directory_securedrop_cards_do_not_show_location(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
     response = client.get(url_for("directory"))
@@ -505,10 +516,11 @@ def test_directory_securedrop_cards_show_location(client: FlaskClient) -> None:
     securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
 
-    assert securedrop_panel is not None
-    assert all_panel is not None
-    assert listing.location in securedrop_panel.get_text(" ", strip=True)
-    assert listing.location in all_panel.get_text(" ", strip=True)
+    securedrop_card = _find_directory_card(securedrop_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in securedrop_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
 
 
 def test_public_record_listing_normalizes_us_state_into_country_and_subdivision() -> None:

@@ -1,5 +1,4 @@
 import unicodedata
-from typing import cast
 
 from flask import (
     Flask,
@@ -39,32 +38,6 @@ def _geography_fields(
         "subdivision": subdivision,
         "countries": list(countries),
     }
-
-
-def _geography_summary(
-    city: str | None,
-    country: str | None,
-    subdivision: str | None,
-    countries: tuple[str, ...] | list[str],
-) -> str | None:
-    parts: list[str] = []
-
-    if city:
-        parts.append(city)
-        if subdivision:
-            parts.append(subdivision)
-        if country:
-            parts.append(country)
-    elif subdivision:
-        parts.append(subdivision)
-        if country:
-            parts.append(country)
-    elif countries:
-        parts.extend(countries)
-    elif country:
-        parts.append(country)
-
-    return ", ".join(parts) if parts else None
 
 
 def _directory_user_row(username: Username) -> dict[str, object | None]:
@@ -224,15 +197,6 @@ def register_directory_routes(app: Flask) -> None:
             *[_globaleaks_row(listing) for listing in globaleaks_listings],
             *[_securedrop_row(listing) for listing in securedrop_listings],
         ]
-        for entry in all_directory_entries:
-            if entry["entry_type"] != "user":
-                countries = cast(tuple[str, ...] | list[str], entry.get("countries") or [])
-                entry["location_summary"] = _geography_summary(
-                    cast(str | None, entry.get("city")),
-                    cast(str | None, entry.get("country")),
-                    cast(str | None, entry.get("subdivision")),
-                    countries,
-                )
         all_directory_entries.sort(key=_all_directory_entry_sort_key)
         return render_template(
             "directory.html",
