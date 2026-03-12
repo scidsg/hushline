@@ -85,7 +85,7 @@ class DirectoryListingGeography:
             parts.append(self.city)
             if self.subdivision:
                 parts.append(self.subdivision)
-            elif self.country:
+            if self.country:
                 parts.append(self.country)
         elif self.subdivision:
             parts.append(self.subdivision)

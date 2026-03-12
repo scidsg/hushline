@@ -47,7 +47,35 @@
       </p>
     {% endif %}
 
-    {% if listing.countries %}
+    {% if listing.location != "Unknown" %}
+      <p class="extra-field">
+        <span class="extra-field-label">Location</span>
+        <span class="extra-field-value">{{ listing.location }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.city %}
+      <p class="extra-field">
+        <span class="extra-field-label">City</span>
+        <span class="extra-field-value">{{ listing.geography.city }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.subdivision %}
+      <p class="extra-field">
+        <span class="extra-field-label">State / Region</span>
+        <span class="extra-field-value">{{ listing.geography.subdivision }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.country %}
+      <p class="extra-field">
+        <span class="extra-field-label">Country</span>
+        <span class="extra-field-value">{{ listing.geography.country }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.countries and (listing.countries | length > 1 or not listing.geography.country) %}
       <p class="extra-field">
         <span class="extra-field-label">Countries</span>
         <span class="extra-field-value">{{ listing.countries | join(", ") }}</span>

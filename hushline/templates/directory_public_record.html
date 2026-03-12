@@ -25,6 +25,24 @@
       <span class="extra-field-label">Location</span>
       <span class="extra-field-value">{{ listing.location }}</span>
     </p>
+    {% if listing.geography.city %}
+      <p class="extra-field">
+        <span class="extra-field-label">City</span>
+        <span class="extra-field-value">{{ listing.geography.city }}</span>
+      </p>
+    {% endif %}
+    {% if listing.geography.subdivision %}
+      <p class="extra-field">
+        <span class="extra-field-label">State / Region</span>
+        <span class="extra-field-value">{{ listing.geography.subdivision }}</span>
+      </p>
+    {% endif %}
+    {% if listing.geography.country %}
+      <p class="extra-field">
+        <span class="extra-field-label">Country</span>
+        <span class="extra-field-value">{{ listing.geography.country }}</span>
+      </p>
+    {% endif %}
     {% if listing.source_url or listing.source_label %}
       <p class="extra-field">
         <span class="extra-field-label">Source</span>

@@ -315,6 +315,22 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["directory_section"] == "public_record"
 
 
+def test_directory_public_record_cards_show_location(client: FlaskClient) -> None:
+    listing = _first_public_record_listing_or_skip()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    all_panel = soup.find(id="all")
+
+    assert public_records_panel is not None
+    assert all_panel is not None
+    assert listing.location in public_records_panel.get_text(" ", strip=True)
+    assert listing.location in all_panel.get_text(" ", strip=True)
+
+
 def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
     legacy_listings = _legacy_public_record_listings()
     if not legacy_listings:
@@ -433,6 +449,28 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["directory_section"] == "globaleaks_directory"
 
 
+def test_directory_globaleaks_cards_show_location(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    globaleaks_panel = soup.find(id="globaleaks")
+    all_panel = soup.find(id="all")
+
+    assert globaleaks_panel is not None
+    assert all_panel is not None
+    assert listing.location in globaleaks_panel.get_text(" ", strip=True)
+    assert listing.location in all_panel.get_text(" ", strip=True)
+
+
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
@@ -457,6 +495,22 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["directory_section"] == "securedrop_directory"
 
 
+def test_directory_securedrop_cards_show_location(client: FlaskClient) -> None:
+    listing = _first_securedrop_listing_or_skip()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    securedrop_panel = soup.find(id="securedrop")
+    all_panel = soup.find(id="all")
+
+    assert securedrop_panel is not None
+    assert all_panel is not None
+    assert listing.location in securedrop_panel.get_text(" ", strip=True)
+    assert listing.location in all_panel.get_text(" ", strip=True)
+
+
 def test_public_record_listing_normalizes_us_state_into_country_and_subdivision() -> None:
     listing = PublicRecordListing(
         id="public-record-usa",
@@ -475,7 +529,7 @@ def test_public_record_listing_normalizes_us_state_into_country_and_subdivision(
     assert listing.geography.country == "USA"
     assert listing.geography.subdivision == "IL"
     assert listing.geography.countries == ("USA",)
-    assert listing.location == "Chicago, IL"
+    assert listing.location == "Chicago, IL, USA"
 
 
 def test_public_record_listing_normalizes_legacy_country_stored_in_state() -> None:
@@ -739,6 +793,13 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     source_link = soup.find("a", href=listing.source_url)
     assert source_link is not None
     assert "Practice Areas" not in page_text
+    assert listing.location in page_text
+    if listing.geography.subdivision:
+        assert "State / Region" in page_text
+        assert listing.geography.subdivision in page_text
+    if listing.geography.country:
+        assert "Country" in page_text
+        assert listing.geography.country in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in page_text
 
@@ -775,6 +836,7 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.description in page_text
     assert listing.onion_address in page_text
     assert listing.source_url in response.text
+    assert listing.location in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
@@ -812,6 +874,7 @@ def test_globaleaks_listing_page_is_read_only(
     assert listing.description in page_text
     assert listing.submission_url in response.text
     assert listing.source_url in response.text
+    assert listing.location in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 

@@ -51,6 +51,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
     directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+    directory_verified_static_js = (ROOT / "hushline/static/js/directory_verified.js").read_text(
+        encoding="utf-8"
+    )
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert 'class="directory-sticky-shell"' in directory_template
@@ -71,6 +74,15 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
+    assert "user.location," in directory_verified_js
+    assert "user.city," in directory_verified_js
+    assert "user.country," in directory_verified_js
+    assert "user.subdivision," in directory_verified_js
+    assert "Array.isArray(user.countries)" in directory_verified_js
+    assert "function buildLocationLine(user, query)" in directory_verified_js
+    assert "user.location," in directory_verified_static_js
+    assert "user.country," in directory_verified_static_js
+    assert "function buildLocationLine(user, query)" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
     assert ".visually-hidden" in scss
 
