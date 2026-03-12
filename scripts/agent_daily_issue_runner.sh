@@ -1066,7 +1066,7 @@ write_pr_narrative_lead() {
 
   if [[ "$non_log_files" == "0" ]]; then
     scope_line="This run only changes the runner log artifact."
-    plain_line="In plain language, this run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
+    plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
   elif [[ -n "$changed_areas" ]]; then
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
   else
@@ -1075,9 +1075,9 @@ write_pr_narrative_lead() {
 
   if [[ "$non_log_files" != "0" ]]; then
     if [[ -n "$changed_work" ]]; then
-      plain_line="In plain language, this PR addresses the issue \"$issue_title\" by updating ${changed_work}."
+      plain_line="This PR addresses the issue \"$issue_title\" by updating ${changed_work}."
     else
-      plain_line="In plain language, this PR addresses the issue \"$issue_title\" with a focused implementation change."
+      plain_line="This PR addresses the issue \"$issue_title\" with a focused implementation change."
     fi
   fi
 

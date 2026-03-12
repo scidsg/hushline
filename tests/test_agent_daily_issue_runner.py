@@ -212,7 +212,7 @@ write_pr_narrative_lead \
 
     assert result.returncode == 0, result.stderr
     assert (
-        'In plain language, this PR addresses the issue "Normalize geography across '
+        'This PR addresses the issue "Normalize geography across '
         'directory listing types" by updating data and model code in `hushline/model`, '
         "request-handling code in `hushline/routes`, and automated tests in "
         "`tests/test_directory.py`."
@@ -240,8 +240,8 @@ write_pr_narrative_lead 1622 "Normalize geography across directory listing types
 
     assert result.returncode == 0, result.stderr
     assert (
-        "In plain language, this run does not change the product itself; it only updates "
-        "the runner log artifact that records what the daily runner did."
+        "This run does not change the product itself; it only updates the runner log "
+        "artifact that records what the daily runner did."
     ) in result.stdout
     assert "This run only changes the runner log artifact." in result.stdout
 
