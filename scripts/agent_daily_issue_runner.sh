@@ -860,6 +860,51 @@ stream_changed_files() {
   git show --name-only --pretty="" --no-renames HEAD | sed '/^$/d'
 }
 
+join_with_conjunction() {
+  local conjunction="$1"
+  shift
+
+  local count="$#"
+  local index
+
+  if (( count == 0 )); then
+    return 0
+  fi
+
+  local -a items=("$@")
+
+  if (( count == 1 )); then
+    printf '%s' "${items[0]}"
+    return 0
+  fi
+
+  if (( count == 2 )); then
+    printf '%s %s %s' "${items[0]}" "$conjunction" "${items[1]}"
+    return 0
+  fi
+
+  for (( index = 0; index < count; index++ )); do
+    if (( index > 0 && index < count - 1 )); then
+      printf ', '
+    elif (( index == count - 1 )); then
+      printf ', %s ' "$conjunction"
+    fi
+    printf '%s' "${items[index]}"
+  done
+}
+
+path_area_prefix() {
+  local path="$1"
+  local first second remainder
+  IFS='/' read -r first second remainder <<< "$path"
+
+  if [[ -n "$second" ]]; then
+    printf '%s/%s' "$first" "$second"
+  else
+    printf '%s' "$first"
+  fi
+}
+
 count_non_log_changed_files() {
   stream_changed_files \
     | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/' \
@@ -869,21 +914,138 @@ count_non_log_changed_files() {
 }
 
 summarize_non_log_changed_areas() {
+  local line area
+  local -a areas=()
+  local area_count=0
+  local seen
+  local existing
+
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^docs/agent-logs/run-.*-issue-[0-9]+\.txt$ ]] && continue
+    area="$(path_area_prefix "$line")"
+    seen=0
+    for existing in "${areas[@]-}"; do
+      if [[ "$existing" == "$area" ]]; then
+        seen=1
+        break
+      fi
+    done
+    if (( seen == 0 )); then
+      areas+=("$area")
+      area_count=$((area_count + 1))
+    fi
+    if (( area_count >= 3 )); then
+      break
+    fi
+  done < <(stream_changed_files)
+
+  if (( area_count == 0 )); then
+    return 0
+  fi
+
+  join_with_conjunction "and" "${areas[@]}"
+}
+
+path_narrative_fragment() {
+  local path="$1"
+  local area
+
+  case "$path" in
+    docs/agent-logs/run-*-issue-*.txt)
+      return 1
+      ;;
+    hushline/model/*)
+      printf 'data and model code in `hushline/model`'
+      ;;
+    hushline/routes/*)
+      printf 'request-handling code in `hushline/routes`'
+      ;;
+    hushline/templates/*)
+      printf 'user-facing page templates in `hushline/templates`'
+      ;;
+    hushline/static/*|hushline/static_src/*)
+      printf 'frontend assets in `%s`' "$(path_area_prefix "$path")"
+      ;;
+    hushline/forms/*)
+      printf 'form-handling code in `hushline/forms`'
+      ;;
+    hushline/*)
+      printf 'application code in `%s`' "$(path_area_prefix "$path")"
+      ;;
+    tests/*)
+      printf 'automated tests in `%s`' "$path"
+      ;;
+    docs/*)
+      printf 'documentation in `%s`' "$path"
+      ;;
+    scripts/agent_daily_issue_runner.sh)
+      printf 'the daily runner script in `scripts/agent_daily_issue_runner.sh`'
+      ;;
+    scripts/*)
+      printf 'supporting scripts in `%s`' "$path"
+      ;;
+    migrations/*)
+      printf 'database migrations in `migrations`'
+      ;;
+    .github/workflows/*)
+      printf 'GitHub Actions workflow files in `.github/workflows`'
+      ;;
+    pyproject.toml|poetry.lock)
+      printf 'Python project configuration in `%s`' "$path"
+      ;;
+    package.json|package-lock.json|npm-shrinkwrap.json)
+      printf 'Node dependency metadata in `%s`' "$path"
+      ;;
+    Dockerfile|Dockerfile.*|docker-compose.yml|docker-compose.yaml)
+      printf 'container and runtime configuration in `%s`' "$path"
+      ;;
+    *)
+      area="$(path_area_prefix "$path")"
+      printf 'supporting files in `%s`' "$area"
+      ;;
+  esac
+}
+
+summarize_non_log_changed_work() {
+  local line fragment
+  local -a fragments=()
+  local fragment_count=0
+  local seen
+  local existing
+
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^docs/agent-logs/run-.*-issue-[0-9]+\.txt$ ]] && continue
+    if ! fragment="$(path_narrative_fragment "$line")"; then
+      continue
+    fi
+    seen=0
+    for existing in "${fragments[@]-}"; do
+      if [[ "$existing" == "$fragment" ]]; then
+        seen=1
+        break
+      fi
+    done
+    if (( seen == 0 )); then
+      fragments+=("$fragment")
+      fragment_count=$((fragment_count + 1))
+    fi
+    if (( fragment_count >= 3 )); then
+      break
+    fi
+  done < <(stream_changed_files)
+
+  if (( fragment_count == 0 )); then
+    return 0
+  fi
+
+  join_with_conjunction "and" "${fragments[@]}"
+}
+
+has_non_log_changed_files_matching() {
+  local pattern="$1"
   stream_changed_files \
-    | awk '
-        /^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ { next }
-        {
-          n = split($0, parts, "/")
-          if (n >= 2) {
-            print parts[1] "/" parts[2]
-          } else if (n == 1) {
-            print parts[1]
-          }
-        }
-      ' \
-    | sort -u \
-    | head -n 3 \
-    | paste -sd ', ' -
+    | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/' \
+    | grep -Eq "$pattern"
 }
 
 write_pr_narrative_lead() {
@@ -892,19 +1054,41 @@ write_pr_narrative_lead() {
   local issue_labels="$3"
   local test_gap_target="$4"
 
-  local total_files non_log_files changed_areas scope_line gate_line
+  local total_files non_log_files changed_areas changed_work scope_line gate_line plain_line review_line
   total_files="$(stream_changed_files | wc -l | tr -d ' ')"
   non_log_files="$(count_non_log_changed_files)"
   changed_areas="$(summarize_non_log_changed_areas)"
+  changed_work="$(summarize_non_log_changed_work)"
   scope_line=""
   gate_line=""
+  plain_line=""
+  review_line=""
 
   if [[ "$non_log_files" == "0" ]]; then
     scope_line="This run only changes the runner log artifact."
+    plain_line="In plain language, this run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
   elif [[ -n "$changed_areas" ]]; then
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
   else
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts)."
+  fi
+
+  if [[ "$non_log_files" != "0" ]]; then
+    if [[ -n "$changed_work" ]]; then
+      plain_line="In plain language, this PR addresses the issue \"$issue_title\" by updating ${changed_work}."
+    else
+      plain_line="In plain language, this PR addresses the issue \"$issue_title\" with a focused implementation change."
+    fi
+  fi
+
+  if has_non_log_changed_files_matching '^tests/'; then
+    if stream_changed_files | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ && $0 !~ /^tests\//' | grep -q .; then
+      review_line="The PR includes both implementation work and automated tests so reviewers can see the intended behavior and how it is verified."
+    else
+      review_line="The PR focuses on automated tests so reviewers can confirm the expected behavior without a broader product change."
+    fi
+  elif has_non_log_changed_files_matching '^docs/'; then
+    review_line="The change stays narrowly scoped, with the written explanation living next to the code so non-technical reviewers can follow the update."
   fi
 
   if issue_has_label "$issue_labels" "test-gap"; then
@@ -918,6 +1102,8 @@ write_pr_narrative_lead() {
   cat <<EOF2
 This PR implements #$issue_number (\`$issue_title\`) via the daily runner with a scoped change set focused on the issue requirements.
 
+${plain_line}
+${review_line}
 ${scope_line}${gate_line}
 
 EOF2

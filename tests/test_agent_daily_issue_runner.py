@@ -191,6 +191,61 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "Safe final summary" in run_log_text
 
 
+def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' \
+    'hushline/model/directory.py' \
+    'hushline/routes/directory.py' \
+    'tests/test_directory.py' \
+    'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead \
+  1622 \
+  "Normalize geography across directory listing types" \
+  "" \
+  ""
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        'In plain language, this PR addresses the issue "Normalize geography across '
+        'directory listing types" by updating data and model code in `hushline/model`, '
+        "request-handling code in `hushline/routes`, and automated tests in "
+        "`tests/test_directory.py`."
+    ) in result.stdout
+    assert (
+        "The PR includes both implementation work and automated tests so reviewers can "
+        "see the intended behavior and how it is verified."
+    ) in result.stdout
+    assert (
+        "It touches 3 non-log file(s) (4 total including runner artifacts), primarily "
+        "in hushline/model, hushline/routes, and tests/test_directory.py."
+    ) in result.stdout
+
+
+def test_write_pr_narrative_lead_explains_log_only_run() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types" "" ""
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "In plain language, this run does not change the product itself; it only updates "
+        "the runner log artifact that records what the daily runner did."
+    ) in result.stdout
+    assert "This run only changes the runner log artifact." in result.stdout
+
+
 def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
