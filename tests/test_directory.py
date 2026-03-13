@@ -477,7 +477,7 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert country_select is not None
     assert region_select is not None
     assert region_select.has_attr("disabled")
-    assert country_select.get_text(" ", strip=True) == ("All countries Australia United States")
+    assert country_select.get_text(" ", strip=True) == "All Australia United States"
 
 
 def test_directory_attorney_filter_panel_shows_selected_filters(
@@ -530,7 +530,7 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     assert not panel.has_attr("hidden")
     assert country_select is not None
     assert region_select is not None
-    assert country_select.find("option", selected=True)["value"] == "US"
+    assert country_select.find("option", selected=True)["value"] == "United States"
     assert region_select.find("option", selected=True)["value"] == "CA"
     assert not region_select.has_attr("disabled")
 
@@ -647,16 +647,75 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
     assert response.status_code == 200
     assert response.json == {
         "countries": [
-            {"code": "AU", "label": "Australia"},
-            {"code": "US", "label": "United States"},
+            {"code": "Australia", "label": "Australia"},
+            {"code": "United States", "label": "United States"},
         ],
         "regions": {
-            "US": [
+            "United States": [
                 {"code": "CA", "label": "California"},
                 {"code": "NY", "label": "New York"},
             ]
         },
     }
+
+
+def test_directory_attorney_filters_include_normalized_country_values_outside_legacy_code_map(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    madagascar_listing = PublicRecordListing(
+        id="public-record-madagascar",
+        slug="public-record~madagascar",
+        name="Madagascar Attorney",
+        website="https://madagascar.example",
+        description="Madagascar whistleblower attorney.",
+        city="Antananarivo",
+        state="Madagascar",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (madagascar_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_attorney_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Madagascar", "label": "Madagascar"},
+            {"code": "United States", "label": "United States"},
+        ],
+        "regions": {"United States": [{"code": "CA", "label": "California"}]},
+    }
+
+    page_response = client.get(f"{url_for('directory')}?country=Madagascar")
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    country_select = soup.find(id="attorney-country-filter")
+
+    assert public_records_panel is not None
+    assert country_select is not None
+    assert country_select.find("option", selected=True)["value"] == "Madagascar"
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    assert "Madagascar Attorney" in public_records_text
+    assert "California Attorney" not in public_records_text
 
 
 def test_directory_attorney_filters_json_ignores_untrusted_query_values(
@@ -685,8 +744,8 @@ def test_directory_attorney_filters_json_ignores_untrusted_query_values(
 
     assert response.status_code == 200
     assert response.json == {
-        "countries": [{"code": "US", "label": "United States"}],
-        "regions": {"US": [{"code": "CA", "label": "California"}]},
+        "countries": [{"code": "United States", "label": "United States"}],
+        "regions": {"United States": [{"code": "CA", "label": "California"}]},
     }
 
 
