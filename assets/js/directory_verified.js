@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
+  const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
+  const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
   const initialMarkup = new Map();
   let userData = [];
   let hasRenderedSearch = false;
@@ -18,6 +20,16 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchStatus) {
       searchStatus.textContent = message;
     }
+  }
+
+  function updateAttorneyFiltersToggle() {
+    if (!attorneyFiltersToggle || !attorneyFiltersPanel) {
+      return;
+    }
+
+    const isExpanded = !attorneyFiltersPanel.hidden;
+    attorneyFiltersToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
   }
 
   function activeTabName() {
@@ -366,6 +378,14 @@ document.addEventListener("DOMContentLoaded", function () {
       clearIcon.hidden = true;
       clearIcon.setAttribute("aria-hidden", "true");
       handleSearchInput();
+    });
+  }
+
+  if (attorneyFiltersToggle && attorneyFiltersPanel) {
+    updateAttorneyFiltersToggle();
+    attorneyFiltersToggle.addEventListener("click", function () {
+      attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;
+      updateAttorneyFiltersToggle();
     });
   }
 

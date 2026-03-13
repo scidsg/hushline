@@ -2453,6 +2453,13 @@ textarea#bio {
   padding-bottom: 1rem;
 }
 
+.directory-search-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .directory-search.is-sticky {
   padding-top: 1rem;
   padding-bottom: 1rem;
@@ -2484,6 +2491,54 @@ input:focus {
   align-items: center;
   gap: 8px;
   width: fit-content;
+}
+
+.directory-search-row .search-box {
+  flex: 1 1 18rem;
+  width: min(100%, 32rem);
+}
+
+.directory-filter-toggle {
+  min-width: fit-content;
+  min-height: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+.directory-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.directory-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.directory-filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.directory-filter-group label {
+  margin-bottom: 0.5rem;
+}
+
+.directory-filter-group select {
+  margin-bottom: 0;
+}
+
+.directory-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 #searchIcon {

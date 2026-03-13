@@ -308,6 +308,7 @@ def register_directory_routes(app: Flask) -> None:
         filtered_public_record_listings = _filter_public_record_listings(
             all_public_record_listings, attorney_filter_state
         )
+        attorney_filter_metadata = _attorney_filter_metadata(all_public_record_listings)
         public_record_listings = [
             listing
             for listing in filtered_public_record_listings
@@ -350,6 +351,8 @@ def register_directory_routes(app: Flask) -> None:
             public_record_listings=public_record_listings,
             legacy_public_record_listings=legacy_public_record_listings,
             public_record_total_count=len(all_public_record_listings),
+            attorney_filter_metadata=attorney_filter_metadata,
+            attorney_filter_state=attorney_filter_state,
             globaleaks_listings=globaleaks_listings,
             globaleaks_total_count=len(globaleaks_listings),
             securedrop_listings=securedrop_listings,

@@ -58,6 +58,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
 
     assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
+    assert 'id="attorney-filters-toggle"' in directory_template
+    assert 'id="attorney-filters-panel"' in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
     assert 'aria-live="polite"' in directory_template
@@ -66,6 +68,14 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     )
     assert (
         'const searchStatus = document.getElementById("directory-search-status");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");'
         in directory_verified_js
     )
     assert "Showing all users." in directory_js
@@ -80,12 +90,21 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         "fetch(`${pathPrefix}/directory/users.json${window.location.search}`)"
         in directory_verified_js
     )
+    assert "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;" in directory_verified_js
+    assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
+        directory_verified_js
+    )
+    assert (
+        "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;"
+        in directory_verified_static_js
+    )
     assert "user.city," in directory_verified_js
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
     assert "directory/users.json${window.location.search}" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
+    assert ".directory-filter-panel" in scss
     assert ".visually-hidden" in scss
 
 
