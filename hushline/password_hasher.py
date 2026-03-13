@@ -3,6 +3,7 @@ from typing import Final
 
 from flask import current_app, has_app_context
 from passlib.hash import scrypt
+from werkzeug.security import check_password_hash
 
 LEGACY_PASSLIB_SCRYPT_PREFIX: Final = "$scrypt$"
 PASSWORD_HASH_VERIFICATION_EVENT: Final = "password_hash_verification"
@@ -69,7 +70,7 @@ def _dispatch_password_verification(plaintext_password: str, stored_hash: str) -
 
 
 def _verify_primary_scrypt_password_hash(_plaintext_password: str, _stored_hash: str) -> bool:
-    return False
+    return check_password_hash(_stored_hash, _plaintext_password)
 
 
 def _get_native_hash_prefix(stored_hash: str) -> str | None:
