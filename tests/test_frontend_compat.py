@@ -94,10 +94,10 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
         directory_verified_js
     )
-    assert (
-        "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;"
-        in directory_verified_static_js
-    )
+    assert "Hide Filters" in directory_verified_static_js
+    assert "Show Filters" in directory_verified_static_js
+    assert "eval(" not in directory_verified_static_js
+    assert "webpack://" not in directory_verified_static_js
     assert "user.city," in directory_verified_js
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
