@@ -1,1 +1,497 @@
-document.addEventListener("DOMContentLoaded",function(){const e=window.HushlineUserSearch,t=window.location.pathname.split("/").slice(0,-1).join("/"),i=document.querySelectorAll(".tab[data-tab]"),n=document.querySelectorAll(".tab-content"),r=document.getElementById("searchInput"),a=document.getElementById("clearIcon"),s=document.getElementById("directory-search-status"),o=document.getElementById("attorney-filters-toggle"),c=document.getElementById("attorney-filters-panel"),l=new Map;let d=[],u=!1;function p(e){s&&(s.textContent=e)}function m(){if(!o||!c)return;const e=!c.hidden;o.setAttribute("aria-expanded",e?"true":"false"),o.textContent=e?"Hide Filters":"Show Filters"}function b(){return document.querySelector(".tab.active")?.getAttribute("data-tab")||"all"}function g(){return document.querySelector(".tab-content.active")||document.getElementById("all")}function y(){const e=b();r&&(r.placeholder="verified"!==e?"public-records"!==e?"globaleaks"!==e?"securedrop"!==e?"Search directory...":"Search SecureDrop instances...":"Search GlobaLeaks instances...":"Search attorneys...":"Search verified users...")}function f(t,i){return e.highlightQuery(t||"",i)}function h(e,t){let i="";return e.is_public_record?("all"===t&&(i+='<span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>'),e.is_automated&&(i+='<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>'),i):e.is_securedrop?("securedrop"!==t&&(i+='<span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>'),e.is_automated&&(i+='<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>'),i):e.is_globaleaks?("globaleaks"!==t&&(i+='<span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>'),e.is_automated&&(i+='<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>'),i):(e.is_admin&&(i+='<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>'),e.is_verified&&(i+='<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>'),"all"!==t||e.has_pgp_key||(i+='<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>'),i)}function _(e,t,i,n,r){if(!i.length)return;if(t){const i=document.createElement("p");i.className="label searchLabel",i.textContent=t,e.appendChild(i)}const a=document.createElement("div");a.className="user-list",a.innerHTML=i.map(e=>function(e,t,i){const n=f(e.display_name||e.primary_username,t),r=f(e.primary_username,t),a=e.bio?f(e.bio,t):"";if(e.is_public_record||e.is_globaleaks||e.is_securedrop)return function(e,t,i){const n=f(e.display_name,t),r=e.bio?f(e.bio,t):"";let a="SecureDrop listing";return e.is_public_record?a="Public record listing":e.is_globaleaks&&(a="GlobaLeaks listing"),`\n      <article class="user" aria-label="${a}, Display name:${e.display_name}, Description: ${e.bio||"No description"}">\n        <h3>${n}</h3>\n        <div class="badgeContainer">${h(e,i)}</div>\n        ${r?`<p class="bio">${r}</p>`:""}\n        <div class="user-actions">\n          <a href="${e.profile_url}" aria-label="View read-only listing for ${e.display_name}">View Listing</a>\n        </div>\n      </article>\n    `}(e,t,i);const s=e.is_verified?"Verified":"",o=e.is_admin?`${s} admin user`:`${s} User`,c=h(e,i);return`\n      <article class="user" aria-label="${o}, Display name:${e.display_name||e.primary_username}, Username: ${e.primary_username}, Bio: ${e.bio||"No bio"}">\n        <h3>${n}</h3>\n        <p class="meta">@${r}</p>\n        ${c?`<div class="badgeContainer">${c}</div>`:""}\n        ${a?`<p class="bio">${a}</p>`:""}\n        <div class="user-actions">\n          <a href="${e.profile_url}" aria-label="${e.display_name||e.primary_username}'s profile">View Profile</a>\n        </div>\n      </article>\n    `}(e,n,r)).join(""),e.appendChild(a)}function v(){const t=r.value.trim(),i=g(),n=function(){const e=b();return"verified"===e?"verified users":"public-records"===e?"attorneys":"globaleaks"===e?"GlobaLeaks instances":"securedrop"===e?"SecureDrop instances":"directory entries"}(),s=t.length>0;if(a&&(a.style.visibility=s?"visible":"hidden",a.hidden=!s,a.setAttribute("aria-hidden",s?"false":"true")),0===t.length)return i&&l.has(i.id)&&(i.innerHTML=l.get(i.id)),u&&p(`Showing all ${n}.`),void(u=!1);const o=function(t){const i=b(),n=t.trim().toLowerCase();return d.filter(t=>{if("verified"===i&&(!t.is_verified||t.is_public_record||t.is_globaleaks||t.is_securedrop))return!1;if("public-records"===i&&!t.is_public_record)return!1;if("globaleaks"===i&&!t.is_globaleaks)return!1;if("securedrop"===i&&!t.is_securedrop)return!1;if(""===n)return!0;const r=Array.isArray(t.countries)?t.countries.join(" "):"",a=e.normalizeSearchText([t.primary_username,t.display_name,t.bio,t.city,t.country,t.subdivision,r]);return e.matchesQuery(a,n)})}(t);!function(e,t){const i=g(),n=b();if(!i)return;if(i.innerHTML="",0===e.length)return void(i.innerHTML='<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>');const r=e.filter(e=>e.is_public_record),a=e.filter(e=>e.is_globaleaks),s=e.filter(e=>e.is_securedrop),o=e.filter(e=>!e.is_public_record&&!e.is_globaleaks&&!e.is_securedrop),c=o.filter(e=>e.has_pgp_key),l=o.filter(e=>!e.has_pgp_key);var d;"public-records"!==n?"globaleaks"!==n?"securedrop"!==n?"all"!==n?(_(i,"",c,t,n),_(i,"📇 Info-Only Accounts",l,t,n)):_(i,"",(d=e,[...d].sort((e,t)=>(e.display_name||"").localeCompare(t.display_name||"",void 0,{sensitivity:"base"}))),t,n):_(i,"",s,t,n):_(i,"",a,t,n):_(i,"",r,t,n)}(o,t),p(1===o.length?`Found 1 ${n.slice(0,-1)} matching "${t}".`:`Found ${o.length} ${n} matching "${t}".`),u=!0}n.forEach(e=>{l.set(e.id,e.innerHTML)}),r&&r.addEventListener("input",v),a&&a.addEventListener("click",function(){r&&(r.value="",a.style.visibility="hidden",a.hidden=!0,a.setAttribute("aria-hidden","true"),v())}),o&&c&&(m(),o.addEventListener("click",function(){c.hidden=!c.hidden,m()})),window.activateTab=function(e){const t=document.getElementById(e.getAttribute("aria-controls"));t&&(n.forEach(e=>{e.hidden=!0,e.style.display="none",e.classList.remove("active")}),i.forEach(e=>{e.setAttribute("aria-selected","false"),e.classList.remove("active")}),e.setAttribute("aria-selected","true"),e.classList.add("active"),t.hidden=!1,t.style.display="block",t.classList.add("active"),y(),v())},i.forEach(e=>{e.addEventListener("click",function(e){const t=e.currentTarget,i=document.querySelector(".directory-sticky-shell"),n=document.querySelector(".directory-tabs");if(t.classList.contains("active")&&(i&&i.classList.contains("is-sticky")||n&&n.classList.contains("is-sticky"))){const e=window.matchMedia("(prefers-reduced-motion: reduce)").matches;return void window.scrollTo({top:0,behavior:e?"auto":"smooth"})}window.activateTab(t)}),e.addEventListener("keydown",function(e){if("ArrowLeft"!==e.key&&"ArrowRight"!==e.key)return;e.preventDefault();const t=Array.from(i),n=t.indexOf(e.currentTarget),r=t[(n+("ArrowRight"===e.key?1:-1)+t.length)%t.length];r&&(window.activateTab(r),r.focus())})});const w=document.querySelector(".tab.active")||i[0];w&&window.activateTab(w);const k=document.querySelector(".directory-sticky-shell"),L=document.querySelector(".directory-tabs"),$=document.querySelector(".directory-search");if(L||k){const e=()=>{const e=document.querySelector("header"),t=document.querySelector(".banner"),i=(e?e.getBoundingClientRect().height:0)+(t?t.getBoundingClientRect().height:0),n=k||L;if(n){n.style.setProperty("--directory-sticky-top",`${i}px`);const e=n.getBoundingClientRect().top,t=window.scrollY>i+1&&e<=i;k?.classList.toggle("is-sticky",t),L?.classList.toggle("is-sticky",t),$?.classList.toggle("is-sticky",t)}};e(),window.addEventListener("scroll",e,{passive:!0}),window.addEventListener("hashchange",()=>{requestAnimationFrame(e)}),window.addEventListener("resize",e)}y(),fetch(`${t}/directory/users.json${window.location.search}`).then(e=>{if(!e.ok)throw new Error("Network response was not ok");return e.json()}).then(e=>{d=e,v()}).catch(e=>console.error("Failed to load user data:",e))});
+document.addEventListener("DOMContentLoaded", function () {
+  const userSearch = window.HushlineUserSearch;
+  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+  const tabs = document.querySelectorAll(".tab[data-tab]");
+  const tabPanels = document.querySelectorAll(".tab-content");
+  const searchInput = document.getElementById("searchInput");
+  const clearIcon = document.getElementById("clearIcon");
+  const searchStatus = document.getElementById("directory-search-status");
+  const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
+  const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
+  const initialMarkup = new Map();
+  let userData = [];
+  let hasRenderedSearch = false;
+
+  tabPanels.forEach((panel) => {
+    initialMarkup.set(panel.id, panel.innerHTML);
+  });
+
+  function setSearchStatus(message) {
+    if (searchStatus) {
+      searchStatus.textContent = message;
+    }
+  }
+
+  function updateAttorneyFiltersToggle() {
+    if (!attorneyFiltersToggle || !attorneyFiltersPanel) {
+      return;
+    }
+
+    const isExpanded = !attorneyFiltersPanel.hidden;
+    attorneyFiltersToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
+  }
+
+  function activeTabName() {
+    return document.querySelector(".tab.active")?.getAttribute("data-tab") || "all";
+  }
+
+  function activePanel() {
+    return document.querySelector(".tab-content.active") || document.getElementById("all");
+  }
+
+  function updatePlaceholder() {
+    const activeTab = activeTabName();
+    if (!searchInput) {
+      return;
+    }
+
+    if (activeTab === "verified") {
+      searchInput.placeholder = "Search verified users...";
+      return;
+    }
+
+    if (activeTab === "public-records") {
+      searchInput.placeholder = "Search attorneys...";
+      return;
+    }
+
+    if (activeTab === "globaleaks") {
+      searchInput.placeholder = "Search GlobaLeaks instances...";
+      return;
+    }
+
+    if (activeTab === "securedrop") {
+      searchInput.placeholder = "Search SecureDrop instances...";
+      return;
+    }
+
+    searchInput.placeholder = "Search directory...";
+  }
+
+  function scopeLabel() {
+    const activeTab = activeTabName();
+    if (activeTab === "verified") {
+      return "verified users";
+    }
+
+    if (activeTab === "public-records") {
+      return "attorneys";
+    }
+
+    if (activeTab === "globaleaks") {
+      return "GlobaLeaks instances";
+    }
+
+    if (activeTab === "securedrop") {
+      return "SecureDrop instances";
+    }
+
+    return "directory entries";
+  }
+
+  function loadData() {
+    fetch(`${pathPrefix}/directory/users.json${window.location.search}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        userData = data;
+        handleSearchInput();
+      })
+      .catch((error) => console.error("Failed to load user data:", error));
+  }
+
+  function filterUsers(query) {
+    const tab = activeTabName();
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return userData.filter((user) => {
+      if (
+        tab === "verified" &&
+        (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
+      ) {
+        return false;
+      }
+
+      if (tab === "public-records" && !user.is_public_record) {
+        return false;
+      }
+
+      if (tab === "globaleaks" && !user.is_globaleaks) {
+        return false;
+      }
+
+      if (tab === "securedrop" && !user.is_securedrop) {
+        return false;
+      }
+
+      if (normalizedQuery === "") {
+        return true;
+      }
+
+      const countries = Array.isArray(user.countries) ? user.countries.join(" ") : "";
+      const searchText = userSearch.normalizeSearchText([
+        user.primary_username,
+        user.display_name,
+        user.bio,
+        user.city,
+        user.country,
+        user.subdivision,
+        countries,
+      ]);
+      return userSearch.matchesQuery(searchText, normalizedQuery);
+    });
+  }
+
+  function highlightMatch(text, query) {
+    return userSearch.highlightQuery(text || "", query);
+  }
+
+  function sortedByDisplayName(entries) {
+    return [...entries].sort((a, b) =>
+      (a.display_name || "").localeCompare(b.display_name || "", undefined, {
+        sensitivity: "base",
+      }),
+    );
+  }
+
+  function buildBadges(user, tab) {
+    let badgeContainer = "";
+
+    if (user.is_public_record) {
+      if (tab === "all") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>';
+      }
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
+    if (user.is_securedrop) {
+      if (tab !== "securedrop") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>';
+      }
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
+    if (user.is_globaleaks) {
+      if (tab !== "globaleaks") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>';
+      }
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
+    if (user.is_admin) {
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
+    }
+
+    if (user.is_verified) {
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+    }
+
+    if (tab === "all" && !user.has_pgp_key) {
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
+    }
+
+    return badgeContainer;
+  }
+
+  function buildAutomatedListingCard(user, query, tab) {
+    const displayNameHighlighted = highlightMatch(user.display_name, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+    let listingType = "SecureDrop listing";
+    if (user.is_public_record) {
+      listingType = "Public record listing";
+    } else if (user.is_globaleaks) {
+      listingType = "GlobaLeaks listing";
+    }
+
+    return `
+      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
+        <h3>${displayNameHighlighted}</h3>
+        <div class="badgeContainer">${buildBadges(user, tab)}</div>
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        <div class="user-actions">
+          <a href="${user.profile_url}" aria-label="View read-only listing for ${user.display_name}">View Listing</a>
+        </div>
+      </article>
+    `;
+  }
+
+  function buildUserCard(user, query, tab) {
+    const displayNameHighlighted = highlightMatch(
+      user.display_name || user.primary_username,
+      query,
+    );
+    const usernameHighlighted = highlightMatch(user.primary_username, query);
+    const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+
+    if (user.is_public_record || user.is_globaleaks || user.is_securedrop) {
+      return buildAutomatedListingCard(user, query, tab);
+    }
+
+    const isVerified = user.is_verified ? "Verified" : "";
+    const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+    const badges = buildBadges(user, tab);
+
+    return `
+      <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
+        <h3>${displayNameHighlighted}</h3>
+        <p class="meta">@${usernameHighlighted}</p>
+        ${badges ? `<div class="badgeContainer">${badges}</div>` : ""}
+        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        <div class="user-actions">
+          <a href="${user.profile_url}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
+        </div>
+      </article>
+    `;
+  }
+
+  function appendSection(panel, label, users, query, tab) {
+    if (!users.length) {
+      return;
+    }
+
+    if (label) {
+      const sectionLabel = document.createElement("p");
+      sectionLabel.className = "label searchLabel";
+      sectionLabel.textContent = label;
+      panel.appendChild(sectionLabel);
+    }
+
+    const userListContainer = document.createElement("div");
+    userListContainer.className = "user-list";
+    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query, tab)).join("");
+    panel.appendChild(userListContainer);
+  }
+
+  function displayUsers(users, query) {
+    const panel = activePanel();
+    const tab = activeTabName();
+    if (!panel) {
+      return;
+    }
+
+    panel.innerHTML = "";
+
+    if (users.length === 0) {
+      panel.innerHTML =
+        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
+      return;
+    }
+
+    const publicRecords = users.filter((user) => user.is_public_record);
+    const globalLeaks = users.filter((user) => user.is_globaleaks);
+    const secureDrops = users.filter((user) => user.is_securedrop);
+    const realUsers = users.filter(
+      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
+    );
+    const withPgp = realUsers.filter((user) => user.has_pgp_key);
+    const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
+
+    if (tab === "public-records") {
+      appendSection(panel, "", publicRecords, query, tab);
+      return;
+    }
+
+    if (tab === "globaleaks") {
+      appendSection(panel, "", globalLeaks, query, tab);
+      return;
+    }
+
+    if (tab === "securedrop") {
+      appendSection(panel, "", secureDrops, query, tab);
+      return;
+    }
+
+    if (tab === "all") {
+      appendSection(panel, "", sortedByDisplayName(users), query, tab);
+      return;
+    }
+
+    appendSection(panel, "", withPgp, query, tab);
+    appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
+  }
+
+  function handleSearchInput() {
+    const query = searchInput.value.trim();
+    const panel = activePanel();
+    const currentScopeLabel = scopeLabel();
+    const hasQuery = query.length > 0;
+
+    if (clearIcon) {
+      clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
+      clearIcon.hidden = !hasQuery;
+      clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+    }
+
+    if (query.length === 0) {
+      if (panel && initialMarkup.has(panel.id)) {
+        panel.innerHTML = initialMarkup.get(panel.id);
+      }
+      if (hasRenderedSearch) {
+        setSearchStatus(`Showing all ${currentScopeLabel}.`);
+      }
+      hasRenderedSearch = false;
+      return;
+    }
+
+    const filteredUsers = filterUsers(query);
+    displayUsers(filteredUsers, query);
+    setSearchStatus(
+      filteredUsers.length === 1
+        ? `Found 1 ${currentScopeLabel.slice(0, -1)} matching "${query}".`
+        : `Found ${filteredUsers.length} ${currentScopeLabel} matching "${query}".`,
+    );
+    hasRenderedSearch = true;
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", handleSearchInput);
+  }
+
+  if (clearIcon) {
+    clearIcon.addEventListener("click", function () {
+      if (!searchInput) {
+        return;
+      }
+
+      searchInput.value = "";
+      clearIcon.style.visibility = "hidden";
+      clearIcon.hidden = true;
+      clearIcon.setAttribute("aria-hidden", "true");
+      handleSearchInput();
+    });
+  }
+
+  if (attorneyFiltersToggle && attorneyFiltersPanel) {
+    updateAttorneyFiltersToggle();
+    attorneyFiltersToggle.addEventListener("click", function () {
+      attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;
+      updateAttorneyFiltersToggle();
+    });
+  }
+
+  window.activateTab = function (selectedTab) {
+    const targetPanel = document.getElementById(
+      selectedTab.getAttribute("aria-controls"),
+    );
+    if (!targetPanel) {
+      return;
+    }
+
+    tabPanels.forEach((panel) => {
+      panel.hidden = true;
+      panel.style.display = "none";
+      panel.classList.remove("active");
+    });
+
+    tabs.forEach((tab) => {
+      tab.setAttribute("aria-selected", "false");
+      tab.classList.remove("active");
+    });
+
+    selectedTab.setAttribute("aria-selected", "true");
+    selectedTab.classList.add("active");
+    targetPanel.hidden = false;
+    targetPanel.style.display = "block";
+    targetPanel.classList.add("active");
+
+    updatePlaceholder();
+    handleSearchInput();
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", function (e) {
+      const clickedTab = e.currentTarget;
+      const stickyShell = document.querySelector(".directory-sticky-shell");
+      const directoryTabs = document.querySelector(".directory-tabs");
+      const isStickyActiveTabClick =
+        clickedTab.classList.contains("active") &&
+        ((stickyShell && stickyShell.classList.contains("is-sticky")) ||
+          (directoryTabs && directoryTabs.classList.contains("is-sticky")));
+
+      if (isStickyActiveTabClick) {
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches;
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+        return;
+      }
+
+      window.activateTab(clickedTab);
+    });
+    tab.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+        return;
+      }
+      event.preventDefault();
+      const tabArray = Array.from(tabs);
+      const currentIndex = tabArray.indexOf(event.currentTarget);
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      const nextIndex = (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextTab = tabArray[nextIndex];
+      if (nextTab) {
+        window.activateTab(nextTab);
+        nextTab.focus();
+      }
+    });
+  });
+
+  const defaultTab = document.querySelector(".tab.active") || tabs[0];
+  if (defaultTab) {
+    window.activateTab(defaultTab);
+  }
+
+  const stickyShell = document.querySelector(".directory-sticky-shell");
+  const directoryTabs = document.querySelector(".directory-tabs");
+  const searchBox = document.querySelector(".directory-search");
+  if (directoryTabs || stickyShell) {
+    const updateStickyState = () => {
+      const header = document.querySelector("header");
+      const banner = document.querySelector(".banner");
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const bannerHeight = banner ? banner.getBoundingClientRect().height : 0;
+      const stickyTop = headerHeight + bannerHeight;
+      const stickyAnchor = stickyShell || directoryTabs;
+
+      if (stickyAnchor) {
+        stickyAnchor.style.setProperty("--directory-sticky-top", `${stickyTop}px`);
+        const stickyAnchorTop = stickyAnchor.getBoundingClientRect().top;
+        const isSticky = window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
+        stickyShell?.classList.toggle("is-sticky", isSticky);
+        directoryTabs?.classList.toggle("is-sticky", isSticky);
+        searchBox?.classList.toggle("is-sticky", isSticky);
+      }
+    };
+
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("hashchange", () => {
+      requestAnimationFrame(updateStickyState);
+    });
+    window.addEventListener("resize", updateStickyState);
+  }
+
+  updatePlaceholder();
+  loadData();
+});

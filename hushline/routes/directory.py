@@ -1,4 +1,5 @@
 import unicodedata
+from typing import cast
 
 from flask import (
     Flask,
@@ -24,34 +25,34 @@ from hushline.model import (
     get_securedrop_directory_listing,
     get_securedrop_directory_listings,
 )
-from hushline.model.directory_listing_geography import US_SUBDIVISION_NAMES
+from hushline.model.directory_listing_geography import (
+    US_SUBDIVISION_NAMES,
+    build_directory_geography,
+)
 from hushline.routes.common import get_directory_usernames
 
-_COUNTRY_CODE_BY_NAME = {
-    "Australia": "AU",
-    "Austria": "AT",
-    "Belgium": "BE",
-    "Finland": "FI",
-    "France": "FR",
-    "Germany": "DE",
-    "India": "IN",
-    "Italy": "IT",
-    "Japan": "JP",
-    "Luxembourg": "LU",
-    "Netherlands": "NL",
-    "Portugal": "PT",
-    "Singapore": "SG",
-    "Spain": "ES",
-    "Sweden": "SE",
-    "United States": "US",
+_LEGACY_COUNTRY_NAME_BY_CODE = {
+    "AU": "Australia",
+    "AT": "Austria",
+    "BE": "Belgium",
+    "FI": "Finland",
+    "FR": "France",
+    "DE": "Germany",
+    "IN": "India",
+    "IT": "Italy",
+    "JP": "Japan",
+    "LU": "Luxembourg",
+    "NL": "Netherlands",
+    "PT": "Portugal",
+    "SG": "Singapore",
+    "ES": "Spain",
+    "SE": "Sweden",
+    "US": "United States",
 }
-_COUNTRY_NAME_BY_CODE = {code: name for name, code in _COUNTRY_CODE_BY_NAME.items()}
-_REGION_NAMES_BY_COUNTRY_CODE = {"US": US_SUBDIVISION_NAMES}
+_REGION_NAMES_BY_COUNTRY = {"United States": US_SUBDIVISION_NAMES}
 _REGION_CODES_BY_COUNTRY_NAME = {
-    _COUNTRY_NAME_BY_CODE[country_code]: {
-        region_name: region_code for region_code, region_name in region_names.items()
-    }
-    for country_code, region_names in _REGION_NAMES_BY_COUNTRY_CODE.items()
+    country_name: {region_name: region_code for region_code, region_name in region_names.items()}
+    for country_name, region_names in _REGION_NAMES_BY_COUNTRY.items()
 }
 
 
@@ -63,33 +64,56 @@ def _normalized_filter_code(value: str | None) -> str | None:
     return normalized or None
 
 
-def _attorney_filter_state() -> dict[str, str | None]:
-    country_code = _normalized_filter_code(request.args.get("country"))
-    region_code = _normalized_filter_code(request.args.get("region"))
+def _normalized_attorney_filter_country(value: str | None) -> str | None:
+    if value is None:
+        return None
 
-    country = _COUNTRY_NAME_BY_CODE.get(country_code) if country_code else None
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    legacy_country = _LEGACY_COUNTRY_NAME_BY_CODE.get(normalized.upper())
+    if legacy_country is not None:
+        return legacy_country
+
+    return build_directory_geography(country=normalized).country
+
+
+def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[str, str | None]:
+    country = _normalized_attorney_filter_country(request.args.get("country"))
+    region_code = _normalized_filter_code(request.args.get("region"))
     subdivision = None
+    raw_regions = cast(
+        dict[str, list[dict[str, str]]], attorney_filter_metadata.get("regions") or {}
+    )
+    raw_countries = cast(list[dict[str, str]], attorney_filter_metadata.get("countries") or [])
+    regions_by_country = {
+        country_name: {str(region["code"]): str(region["label"]) for region in country_regions}
+        for country_name, country_regions in raw_regions.items()
+    }
+    available_countries = {str(country_option["code"]) for country_option in raw_countries}
+    available_countries_by_casefold = {
+        available_country.casefold(): available_country for available_country in available_countries
+    }
+
+    if country is not None:
+        country = available_countries_by_casefold.get(country.casefold())
 
     if region_code:
-        if country_code:
-            subdivision = _REGION_NAMES_BY_COUNTRY_CODE.get(country_code, {}).get(region_code)
+        if country:
+            subdivision = regions_by_country.get(country, {}).get(region_code)
         else:
-            for inferred_country_code, region_names in _REGION_NAMES_BY_COUNTRY_CODE.items():
+            for inferred_country, region_names in regions_by_country.items():
                 if region_code in region_names:
-                    country_code = inferred_country_code
-                    country = _COUNTRY_NAME_BY_CODE[inferred_country_code]
+                    country = inferred_country
                     subdivision = region_names[region_code]
                     break
 
         if subdivision is None:
             region_code = None
 
-    if country is None:
-        country_code = None
-
     return {
         "country": country,
-        "country_code": country_code,
         "region": subdivision,
         "region_code": region_code,
     }
@@ -121,7 +145,7 @@ def _filter_public_record_listings(
 def _attorney_filter_metadata(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
 ) -> dict[str, object]:
-    countries: dict[str, str] = {}
+    countries: set[str] = set()
     regions: dict[str, dict[str, str]] = {}
 
     for listing in listings:
@@ -129,11 +153,7 @@ def _attorney_filter_metadata(
         if geography.country is None:
             continue
 
-        country_code = _COUNTRY_CODE_BY_NAME.get(geography.country)
-        if country_code is None:
-            continue
-
-        countries[country_code] = geography.country
+        countries.add(geography.country)
 
         if geography.subdivision is None:
             continue
@@ -144,21 +164,20 @@ def _attorney_filter_metadata(
         if region_code is None:
             continue
 
-        regions.setdefault(country_code, {})[region_code] = geography.subdivision
+        regions.setdefault(geography.country, {})[region_code] = geography.subdivision
 
     return {
         "countries": [
-            {"code": code, "label": label}
-            for code, label in sorted(countries.items(), key=lambda item: item[1].casefold())
+            {"code": country, "label": country} for country in sorted(countries, key=str.casefold)
         ],
         "regions": {
-            country_code: [
+            country_name: [
                 {"code": code, "label": label}
                 for code, label in sorted(
                     country_regions.items(), key=lambda item: item[1].casefold()
                 )
             ]
-            for country_code, country_regions in sorted(regions.items())
+            for country_name, country_regions in sorted(regions.items())
         },
     }
 
@@ -299,16 +318,16 @@ def register_directory_routes(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
-        attorney_filter_state = _attorney_filter_state()
         all_public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        attorney_filter_metadata = _attorney_filter_metadata(all_public_record_listings)
+        attorney_filter_state = _attorney_filter_state(attorney_filter_metadata)
         filtered_public_record_listings = _filter_public_record_listings(
             all_public_record_listings, attorney_filter_state
         )
-        attorney_filter_metadata = _attorney_filter_metadata(all_public_record_listings)
         public_record_listings = [
             listing
             for listing in filtered_public_record_listings
@@ -411,12 +430,19 @@ def register_directory_routes(app: Flask) -> None:
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
-        attorney_filter_state = _attorney_filter_state()
+        public_record_listings = (
+            list(get_public_record_listings())
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
+        attorney_filter_state = _attorney_filter_state(
+            _attorney_filter_metadata(public_record_listings)
+        )
         public_record_rows = (
             [
                 _public_record_row(listing)
                 for listing in _filter_public_record_listings(
-                    get_public_record_listings(), attorney_filter_state
+                    public_record_listings, attorney_filter_state
                 )
             ]
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]

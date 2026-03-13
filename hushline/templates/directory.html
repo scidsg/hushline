@@ -125,9 +125,9 @@
             class="directory-filter-toggle"
             id="attorney-filters-toggle"
             aria-controls="attorney-filters-panel"
-            aria-expanded="{{ 'true' if attorney_filter_state.country_code or attorney_filter_state.region_code else 'false' }}"
+            aria-expanded="{{ 'true' if attorney_filter_state.country or attorney_filter_state.region_code else 'false' }}"
           >
-            {{ 'Hide Filters' if attorney_filter_state.country_code or attorney_filter_state.region_code else 'Show Filters' }}
+            {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
           </button>
         {% endif %}
       </div>
@@ -136,17 +136,17 @@
           method="get"
           class="directory-filter-panel"
           id="attorney-filters-panel"
-          {% if not attorney_filter_state.country_code and not attorney_filter_state.region_code %}hidden{% endif %}
+          {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
         >
           <div class="directory-filter-fields">
             <div class="directory-filter-group">
               <label for="attorney-country-filter">Country</label>
               <select id="attorney-country-filter" name="country">
-                <option value="">All countries</option>
+                <option value="">All</option>
                 {% for country in attorney_filter_metadata.countries %}
                   <option
                     value="{{ country.code }}"
-                    {% if attorney_filter_state.country_code == country.code %}selected{% endif %}
+                    {% if attorney_filter_state.country == country.code %}selected{% endif %}
                   >
                     {{ country.label }}
                   </option>
@@ -158,11 +158,11 @@
               <select
                 id="attorney-region-filter"
                 name="region"
-                {% if not attorney_filter_state.country_code or attorney_filter_state.country_code not in attorney_filter_metadata.regions %}disabled{% endif %}
+                {% if not attorney_filter_state.country or attorney_filter_state.country not in attorney_filter_metadata.regions %}disabled{% endif %}
               >
                 <option value="">All states / regions</option>
-                {% if attorney_filter_state.country_code and attorney_filter_state.country_code in attorney_filter_metadata.regions %}
-                  {% for region in attorney_filter_metadata.regions[attorney_filter_state.country_code] %}
+                {% if attorney_filter_state.country and attorney_filter_state.country in attorney_filter_metadata.regions %}
+                  {% for region in attorney_filter_metadata.regions[attorney_filter_state.country] %}
                     <option
                       value="{{ region.code }}"
                       {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
