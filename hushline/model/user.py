@@ -12,6 +12,7 @@ from hushline.crypto import decrypt_field, encrypt_field
 from hushline.db import db
 from hushline.model.enums import SMTPEncryption, StripeSubscriptionStatusEnum
 from hushline.model.tier import Tier
+from hushline.password_hasher import verify_password
 
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
@@ -130,7 +131,7 @@ class User(Model):
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
-        return scrypt.verify(plaintext_password, self._password_hash)
+        return verify_password(plaintext_password, self._password_hash)
 
     @property
     def totp_secret(self) -> str | None:

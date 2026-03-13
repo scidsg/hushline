@@ -73,6 +73,7 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
 
     uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == username
+    assert uname.user.password_hash.startswith("$scrypt$")
 
 
 def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None:
