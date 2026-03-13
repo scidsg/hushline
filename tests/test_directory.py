@@ -492,7 +492,7 @@ def test_directory_users_json_filters_only_public_record_rows_by_query_params(
     assert securedrop_names == {"Sample SecureDrop"}
 
 
-def test_directory_attorney_filters_json_exposes_metadata_and_active_filters(
+def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     california_listing = PublicRecordListing(
@@ -547,7 +547,37 @@ def test_directory_attorney_filters_json_exposes_metadata_and_active_filters(
                 {"code": "NY", "label": "New York"},
             ]
         },
-        "active_filters": {"country": "US", "region": "CA"},
+    }
+
+
+def test_directory_attorney_filters_json_ignores_untrusted_query_values(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing,),
+    )
+
+    response = client.get(
+        f"{url_for('directory_attorney_filters')}?country=%3Cscript%3E&region=%3Cimg%3E"
+    )
+
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "US", "label": "United States"}],
+        "regions": {"US": [{"code": "CA", "label": "California"}]},
     }
 
 

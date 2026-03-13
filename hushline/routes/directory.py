@@ -120,7 +120,6 @@ def _filter_public_record_listings(
 
 def _attorney_filter_metadata(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
-    filter_state: dict[str, str | None],
 ) -> dict[str, object]:
     countries: dict[str, str] = {}
     regions: dict[str, dict[str, str]] = {}
@@ -160,10 +159,6 @@ def _attorney_filter_metadata(
                 )
             ]
             for country_code, country_regions in sorted(regions.items())
-        },
-        "active_filters": {
-            "country": filter_state["country_code"],
-            "region": filter_state["region_code"],
         },
     }
 
@@ -407,11 +402,9 @@ def register_directory_routes(app: Flask) -> None:
             return {
                 "countries": [],
                 "regions": {},
-                "active_filters": {"country": None, "region": None},
             }
 
-        attorney_filter_state = _attorney_filter_state()
-        return _attorney_filter_metadata(get_public_record_listings(), attorney_filter_state)
+        return _attorney_filter_metadata(get_public_record_listings())
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
