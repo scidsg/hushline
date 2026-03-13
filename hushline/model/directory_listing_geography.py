@@ -64,6 +64,10 @@ _US_SUBDIVISION_NAMES = {
     "WY": "Wyoming",
 }
 _US_SUBDIVISION_CODES = frozenset(_US_SUBDIVISION_NAMES)
+_US_SUBDIVISION_CODES_BY_NAME = {
+    subdivision_name.casefold(): subdivision_code
+    for subdivision_code, subdivision_name in _US_SUBDIVISION_NAMES.items()
+}
 US_SUBDIVISION_NAMES = _US_SUBDIVISION_NAMES
 
 
@@ -94,6 +98,21 @@ def _normalize_subdivision(value: str | None, country: str | None) -> str | None
     return normalized
 
 
+def _normalize_subdivision_code(value: str | None, country: str | None) -> str | None:
+    normalized = _normalize_text(value)
+    if normalized is None:
+        return None
+
+    if country == _USA:
+        subdivision_code = normalized.upper()
+        if subdivision_code in _US_SUBDIVISION_CODES:
+            return subdivision_code
+
+        return _US_SUBDIVISION_CODES_BY_NAME.get(normalized.casefold())
+
+    return normalized
+
+
 @dataclass(frozen=True)
 class DirectoryListingGeography:
     """Normalized location fields shared by all automated directory listings."""
@@ -101,6 +120,7 @@ class DirectoryListingGeography:
     city: str | None = None
     country: str | None = None
     subdivision: str | None = None
+    subdivision_code: str | None = None
     countries: tuple[str, ...] = ()
 
     @property
@@ -136,16 +156,21 @@ def build_public_record_geography(
     normalized_city = _normalize_text(city)
     normalized_country = _normalize_country(country)
     normalized_subdivision = _normalize_subdivision(subdivision, normalized_country)
+    normalized_subdivision_code = _normalize_subdivision_code(subdivision, normalized_country)
     normalized_state = _normalize_text(state)
 
     if normalized_subdivision is None and normalized_state:
         if normalized_country is not None and normalized_state != normalized_country:
             normalized_subdivision = _normalize_subdivision(normalized_state, normalized_country)
+            normalized_subdivision_code = _normalize_subdivision_code(
+                normalized_state, normalized_country
+            )
         elif normalized_country is None:
             state_code = normalized_state.upper()
             if state_code in _US_SUBDIVISION_CODES:
                 normalized_country = _USA
                 normalized_subdivision = _US_SUBDIVISION_NAMES[state_code]
+                normalized_subdivision_code = state_code
             else:
                 normalized_country = _normalize_country(normalized_state)
 
@@ -154,6 +179,7 @@ def build_public_record_geography(
         city=normalized_city,
         country=normalized_country,
         subdivision=normalized_subdivision,
+        subdivision_code=normalized_subdivision_code,
         countries=countries,
     )
 
@@ -173,10 +199,14 @@ def build_directory_geography(
     normalized_city = _normalize_text(city)
     normalized_country = _normalize_country(country)
     normalized_subdivision = _normalize_subdivision(subdivision, normalized_country)
+    normalized_subdivision_code = _normalize_subdivision_code(subdivision, normalized_country)
 
     if normalized_country is None and len(normalized_countries) == 1:
         normalized_country = normalized_countries[0]
         normalized_subdivision = _normalize_subdivision(normalized_subdivision, normalized_country)
+        normalized_subdivision_code = _normalize_subdivision_code(
+            normalized_subdivision, normalized_country
+        )
 
     countries_value = normalized_countries
     if not countries_value and normalized_country:
@@ -186,5 +216,6 @@ def build_directory_geography(
         city=normalized_city,
         country=normalized_country,
         subdivision=normalized_subdivision,
+        subdivision_code=normalized_subdivision_code,
         countries=countries_value,
     )

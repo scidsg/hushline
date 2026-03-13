@@ -25,10 +25,7 @@ from hushline.model import (
     get_securedrop_directory_listing,
     get_securedrop_directory_listings,
 )
-from hushline.model.directory_listing_geography import (
-    US_SUBDIVISION_NAMES,
-    build_directory_geography,
-)
+from hushline.model.directory_listing_geography import build_directory_geography
 from hushline.routes.common import get_directory_usernames
 
 _LEGACY_COUNTRY_NAME_BY_CODE = {
@@ -49,18 +46,13 @@ _LEGACY_COUNTRY_NAME_BY_CODE = {
     "SE": "Sweden",
     "US": "United States",
 }
-_REGION_NAMES_BY_COUNTRY = {"United States": US_SUBDIVISION_NAMES}
-_REGION_CODES_BY_COUNTRY_NAME = {
-    country_name: {region_name: region_code for region_code, region_name in region_names.items()}
-    for country_name, region_names in _REGION_NAMES_BY_COUNTRY.items()
-}
 
 
-def _normalized_filter_code(value: str | None) -> str | None:
+def _normalized_filter_value(value: str | None) -> str | None:
     if value is None:
         return None
 
-    normalized = value.strip().upper()
+    normalized = value.strip()
     return normalized or None
 
 
@@ -81,7 +73,7 @@ def _normalized_attorney_filter_country(value: str | None) -> str | None:
 
 def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[str, str | None]:
     country = _normalized_attorney_filter_country(request.args.get("country"))
-    region_code = _normalized_filter_code(request.args.get("region"))
+    region_code = _normalized_filter_value(request.args.get("region"))
     subdivision = None
     raw_regions = cast(
         dict[str, list[dict[str, str]]], attorney_filter_metadata.get("regions") or {}
@@ -101,12 +93,19 @@ def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[
 
     if region_code:
         if country:
-            subdivision = regions_by_country.get(country, {}).get(region_code)
+            country_regions = regions_by_country.get(country, {})
+            region_codes_by_casefold = {code.casefold(): code for code in country_regions}
+            region_code = region_codes_by_casefold.get(region_code.casefold())
+            if region_code is not None:
+                subdivision = country_regions.get(region_code)
         else:
             for inferred_country, region_names in regions_by_country.items():
-                if region_code in region_names:
+                region_codes_by_casefold = {code.casefold(): code for code in region_names}
+                matched_region_code = region_codes_by_casefold.get(region_code.casefold())
+                if matched_region_code is not None:
                     country = inferred_country
-                    subdivision = region_names[region_code]
+                    region_code = matched_region_code
+                    subdivision = region_names[matched_region_code]
                     break
 
         if subdivision is None:
@@ -158,9 +157,7 @@ def _attorney_filter_metadata(
         if geography.subdivision is None:
             continue
 
-        region_code = _REGION_CODES_BY_COUNTRY_NAME.get(geography.country, {}).get(
-            geography.subdivision
-        )
+        region_code = geography.subdivision_code
         if region_code is None:
             continue
 
@@ -186,12 +183,14 @@ def _geography_fields(
     city: str | None,
     country: str | None,
     subdivision: str | None,
+    subdivision_code: str | None,
     countries: tuple[str, ...] | list[str],
 ) -> dict[str, object | None]:
     return {
         "city": city,
         "country": country,
         "subdivision": subdivision,
+        "subdivision_code": subdivision_code,
         "countries": list(countries),
     }
 
@@ -211,7 +210,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "is_automated": False,
         "message_capable": bool(username.user.pgp_key),
         "meta": f"@{username.username}",
-        **_geography_fields(None, None, None, ()),
+        **_geography_fields(None, None, None, None, ()),
         "practice_tags": [],
         "source_label": None,
         "directory_section": None,
@@ -239,6 +238,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
             geography.city,
             geography.country,
             geography.subdivision,
+            geography.subdivision_code,
             geography.countries,
         ),
         "practice_tags": list(listing.practice_tags),
@@ -268,6 +268,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
             geography.city,
             geography.country,
             geography.subdivision,
+            geography.subdivision_code,
             geography.countries,
         ),
         "practice_tags": [],
@@ -297,6 +298,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
             geography.city,
             geography.country,
             geography.subdivision,
+            geography.subdivision_code,
             geography.countries,
         ),
         "practice_tags": list(listing.topics),

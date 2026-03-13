@@ -266,6 +266,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["city"] is None
     assert admin_row["country"] is None
     assert admin_row["subdivision"] is None
+    assert admin_row["subdivision_code"] is None
     assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
 
@@ -318,6 +319,7 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
     assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
@@ -356,6 +358,7 @@ def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskCl
     assert legacy_row["entry_type"] == "public_record"
     assert legacy_row["country"] == legacy_listing.geography.country
     assert legacy_row["subdivision"] == legacy_listing.geography.subdivision
+    assert legacy_row["subdivision_code"] == legacy_listing.geography.subdivision_code
     assert legacy_row["countries"] == list(legacy_listing.geography.countries)
     assert legacy_row["directory_section"] == "legacy_public_record"
     assert legacy_row["is_automated"] is True
@@ -468,6 +471,7 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     panel = soup.find(id="attorney-filters-panel")
     country_select = soup.find(id="attorney-country-filter")
     region_select = soup.find(id="attorney-region-filter")
+    region_label = soup.find("label", {"for": "attorney-region-filter"})
 
     assert toggle is not None
     assert toggle.get_text(" ", strip=True) == "Show Filters"
@@ -476,7 +480,10 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert panel.has_attr("hidden")
     assert country_select is not None
     assert region_select is not None
+    assert region_label is not None
+    assert region_label.get_text(" ", strip=True) == "State / Province / Region"
     assert region_select.has_attr("disabled")
+    assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
     assert country_select.get_text(" ", strip=True) == "All Australia United States"
 
 
@@ -718,6 +725,72 @@ def test_directory_attorney_filters_include_normalized_country_values_outside_le
     assert "California Attorney" not in public_records_text
 
 
+def test_directory_attorney_filters_support_non_us_subdivisions(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_south_wales_listing = PublicRecordListing(
+        id="public-record-new-south-wales",
+        slug="public-record~new-south-wales",
+        name="New South Wales Attorney",
+        website="https://newsouthwales.example",
+        description="New South Wales whistleblower attorney.",
+        city="Sydney",
+        state="Australia",
+        country="Australia",
+        subdivision="New South Wales",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (new_south_wales_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_attorney_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Australia", "label": "Australia"},
+            {"code": "United States", "label": "United States"},
+        ],
+        "regions": {
+            "Australia": [{"code": "New South Wales", "label": "New South Wales"}],
+            "United States": [{"code": "CA", "label": "California"}],
+        },
+    }
+
+    page_response = client.get(
+        f"{url_for('directory')}?country=Australia&region=New%20South%20Wales"
+    )
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    region_select = soup.find(id="attorney-region-filter")
+
+    assert public_records_panel is not None
+    assert region_select is not None
+    assert region_select.find("option", selected=True)["value"] == "New South Wales"
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    assert "New South Wales Attorney" in public_records_text
+    assert "California Attorney" not in public_records_text
+
+
 def test_directory_attorney_filters_json_ignores_untrusted_query_values(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -841,6 +914,7 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
     assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == []
     assert row["source_label"] == listing.source_label
@@ -888,6 +962,7 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["city"] == listing.geography.city
     assert row["country"] == listing.geography.country
     assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
     assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.topics)
     assert row["source_label"] == listing.source_label
@@ -928,6 +1003,7 @@ def test_public_record_listing_normalizes_us_state_into_country_and_subdivision(
     assert listing.geography.city == "Chicago"
     assert listing.geography.country == "United States"
     assert listing.geography.subdivision == "Illinois"
+    assert listing.geography.subdivision_code == "IL"
     assert listing.geography.countries == ("United States",)
     assert listing.location == "Chicago, Illinois, United States"
 
@@ -949,8 +1025,33 @@ def test_public_record_listing_normalizes_legacy_country_stored_in_state() -> No
     assert listing.geography.city == "Sydney"
     assert listing.geography.country == "Australia"
     assert listing.geography.subdivision is None
+    assert listing.geography.subdivision_code is None
     assert listing.geography.countries == ("Australia",)
     assert listing.location == "Sydney, Australia"
+
+
+def test_public_record_listing_preserves_non_us_subdivision_code() -> None:
+    listing = PublicRecordListing(
+        id="public-record-australia-state",
+        slug="public-record~australia-state",
+        name="Australia Public Record Listing",
+        website="https://example.org",
+        description="Australian attorney listing.",
+        city="Sydney",
+        state="Australia",
+        country="Australia",
+        subdivision="New South Wales",
+        practice_tags=("Whistleblower",),
+        source_label="Official source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Sydney"
+    assert listing.geography.country == "Australia"
+    assert listing.geography.subdivision == "New South Wales"
+    assert listing.geography.subdivision_code == "New South Wales"
+    assert listing.geography.countries == ("Australia",)
+    assert listing.location == "Sydney, New South Wales, Australia"
 
 
 def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_country() -> None:
@@ -1007,6 +1108,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
                 city=None,
                 country="United States",
                 subdivision="California",
+                subdivision_code="CA",
                 countries=("United States",),
                 location="Global",
             ),
@@ -1030,6 +1132,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
                 city=None,
                 country="United States",
                 subdivision=None,
+                subdivision_code=None,
                 countries=("United States",),
                 location="Global",
             ),
@@ -1053,6 +1156,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
                 city=None,
                 country="Italy",
                 subdivision=None,
+                subdivision_code=None,
                 countries=("Italy",),
                 location="Global",
             ),

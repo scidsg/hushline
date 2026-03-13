@@ -199,18 +199,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (user.is_admin) {
-      badgeContainer +=
-        '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
 
     if (user.is_verified) {
-      badgeContainer +=
-        '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
     if (tab === "all" && !user.has_pgp_key) {
-      badgeContainer +=
-        '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
+      badgeContainer += '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
     }
 
     return badgeContainer;
@@ -448,7 +445,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabArray = Array.from(tabs);
       const currentIndex = tabArray.indexOf(event.currentTarget);
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextIndex = (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextIndex =
+        (currentIndex + direction + tabArray.length) % tabArray.length;
       const nextTab = tabArray[nextIndex];
       if (nextTab) {
         window.activateTab(nextTab);

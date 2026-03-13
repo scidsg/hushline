@@ -154,13 +154,13 @@
               </select>
             </div>
             <div class="directory-filter-group">
-              <label for="attorney-region-filter">State / Region</label>
+              <label for="attorney-region-filter">State / Province / Region</label>
               <select
                 id="attorney-region-filter"
                 name="region"
                 {% if not attorney_filter_state.country or attorney_filter_state.country not in attorney_filter_metadata.regions %}disabled{% endif %}
               >
-                <option value="">All states / regions</option>
+                <option value="">All</option>
                 {% if attorney_filter_state.country and attorney_filter_state.country in attorney_filter_metadata.regions %}
                   {% for region in attorney_filter_metadata.regions[attorney_filter_state.country] %}
                     <option
