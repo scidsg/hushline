@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
+from werkzeug.security import generate_password_hash
 
 from hushline.db import db
-from hushline.model import InviteCode, OrganizationSetting
+from hushline.model import InviteCode, OrganizationSetting, User
 
 
 def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
@@ -74,6 +75,30 @@ def test_reg_code_create_avoids_dash_prefixed_codes(app: Flask) -> None:
     delete_result = runner.invoke(args=["reg", "code-delete", invite_code.code])
     assert delete_result.exit_code == 0
     assert f"Invite code {invite_code.code} deleted." in delete_result.output
+
+
+def test_password_hash_report_outputs_legacy_count_and_removal_gate(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(args=["password-hash", "report"])
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert (
+        "Legacy verification success counter: "
+        "password_hash_verification_success_total hash_format=passlib_scrypt"
+    ) in result.output
+    assert (
+        "Rehash-on-auth counters: password_hash_rehash_on_auth_success_total, "
+        "password_hash_rehash_on_auth_failure_total"
+    ) in result.output
+    assert "legacy rows must stay at 0 for one full release cycle" in result.output
 
 
 def test_stripe_configure_skips_when_secret_missing(app: Flask) -> None:

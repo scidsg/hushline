@@ -2,7 +2,6 @@ import secrets
 from typing import TYPE_CHECKING, Any, Optional
 
 from flask import current_app
-from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,7 +11,7 @@ from hushline.crypto import decrypt_field, encrypt_field
 from hushline.db import db
 from hushline.model.enums import SMTPEncryption, StripeSubscriptionStatusEnum
 from hushline.model.tier import Tier
-from hushline.password_hasher import verify_password
+from hushline.password_hasher import hash_password, verify_password
 
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
@@ -127,7 +126,7 @@ class User(Model):
     @password_hash.setter
     def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using scrypt and store it."""
-        self._password_hash = scrypt.hash(plaintext_password)
+        self._password_hash = hash_password(plaintext_password)
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
