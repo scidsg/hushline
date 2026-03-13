@@ -425,6 +425,15 @@ push_branch_for_pr() {
   git push -u origin "$branch"
 }
 
+build_pr_title() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local normalized_title=""
+
+  normalized_title="$(printf '%s' "$issue_title" | tr '\n' ' ' | tr -s ' ')"
+  printf '#%s %s\n' "$issue_number" "$(printf '%s' "$normalized_title" | cut -c1-90)"
+}
+
 kill_all_docker_containers() {
   local ids=()
   while IFS= read -r id; do
@@ -1612,7 +1621,7 @@ main() {
 
   write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
 
-  PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
+  PR_TITLE="$(build_pr_title "$ISSUE_NUMBER" "$ISSUE_TITLE")"
   PR_URL="$({
     gh pr create \
       --repo "$REPO_SLUG" \
