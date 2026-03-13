@@ -371,7 +371,7 @@ def register_directory_routes(app: Flask) -> None:
             public_record_all_listings=filtered_public_record_listings,
             public_record_listings=public_record_listings,
             legacy_public_record_listings=legacy_public_record_listings,
-            public_record_total_count=len(all_public_record_listings),
+            public_record_total_count=len(filtered_public_record_listings),
             attorney_filter_metadata=attorney_filter_metadata,
             attorney_filter_state=attorney_filter_state,
             globaleaks_listings=globaleaks_listings,

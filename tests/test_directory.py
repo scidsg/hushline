@@ -415,9 +415,11 @@ def test_directory_filters_public_records_by_country_and_region_query_params(
     soup = BeautifulSoup(response.text, "html.parser")
     public_records_panel = soup.find(id="public-records")
     all_panel = soup.find(id="all")
+    public_record_count = soup.find(id="public-record-count")
 
     assert public_records_panel is not None
     assert all_panel is not None
+    assert public_record_count is not None
     public_records_text = public_records_panel.get_text(" ", strip=True)
     all_text = all_panel.get_text(" ", strip=True)
 
@@ -427,6 +429,7 @@ def test_directory_filters_public_records_by_country_and_region_query_params(
     assert "California Attorney" in all_text
     assert "New York Attorney" not in all_text
     assert "Australia Attorney" not in all_text
+    assert public_record_count.get_text(" ", strip=True) == "1"
 
 
 def test_directory_attorney_filter_panel_hidden_by_default(
