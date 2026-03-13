@@ -7,10 +7,13 @@ from helpers import get_captcha_from_session_register
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.security import generate_password_hash
 
-from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT
+from hushline.config import (
+    PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
+    PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
+)
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User, Username
-from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD, verify_primary_password_hash
 
 
 def test_user_registration_disabled(client: FlaskClient, user: User) -> None:
@@ -348,6 +351,70 @@ def test_user_login_with_native_werkzeug_scrypt_hash(
     assert login_response.status_code == 200
     assert "Inbox" in login_response.text
     assert user.password_hash == native_hash
+
+
+def test_user_login_rehashes_legacy_passlib_hash_when_enabled(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = True
+    original_hash = user.password_hash
+
+    with patch("hushline.routes.auth.emit_password_rehash_on_auth_telemetry") as telemetry_mock:
+        login_response = client.post(
+            url_for("login"),
+            data={"username": user.primary_username.username, "password": user_password},
+            follow_redirects=True,
+        )
+
+    db.session.refresh(user)
+    assert login_response.status_code == 200
+    assert "Inbox" in login_response.text
+    assert user.password_hash != original_hash
+    assert user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+    assert verify_primary_password_hash(user_password, user.password_hash) is True
+    telemetry_mock.assert_called_once_with(original_hash, success=True)
+
+
+def test_user_login_does_not_rehash_legacy_passlib_hash_when_disabled(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = False
+    original_hash = user.password_hash
+
+    with patch("hushline.routes.auth.emit_password_rehash_on_auth_telemetry") as telemetry_mock:
+        login_response = client.post(
+            url_for("login"),
+            data={"username": user.primary_username.username, "password": user_password},
+            follow_redirects=True,
+        )
+
+    db.session.refresh(user)
+    assert login_response.status_code == 200
+    assert "Inbox" in login_response.text
+    assert user.password_hash == original_hash
+    telemetry_mock.assert_not_called()
+
+
+def test_user_login_rehash_failure_preserves_legacy_passlib_hash(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = True
+    original_hash = user.password_hash
+
+    with (
+        patch("hushline.routes.auth.emit_password_rehash_on_auth_telemetry") as telemetry_mock,
+        patch("hushline.routes.auth.db.session.commit", side_effect=RuntimeError("boom")),
+    ):
+        response = client.post(
+            url_for("login"),
+            data={"username": user.primary_username.username, "password": user_password},
+            follow_redirects=True,
+        )
+
+    db.session.refresh(user)
+    assert response.status_code == 500
+    assert user.password_hash == original_hash
+    telemetry_mock.assert_called_once_with(original_hash, success=False)
 
 
 def test_user_login_handles_case_insensitive_duplicate_rows(

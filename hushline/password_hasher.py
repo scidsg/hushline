@@ -5,7 +5,10 @@ from flask import current_app, has_app_context
 from passlib.hash import scrypt
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT
+from hushline.config import (
+    PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
+    PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
+)
 
 LEGACY_PASSLIB_SCRYPT_PREFIX: Final = "$scrypt$"
 PINNED_WERKZEUG_SCRYPT_METHOD: Final = "scrypt:65536:8:1"
@@ -50,6 +53,27 @@ def verify_primary_password_hash(plaintext_password: str, stored_hash: str) -> b
     if native_prefix == "scrypt:":
         return _verify_primary_scrypt_password_hash(plaintext_password, stored_hash)
     return False
+
+
+def prepare_password_rehash_on_auth(
+    plaintext_password: str,
+    stored_hash: str | None,
+) -> str | None:
+    stored_hash_value = stored_hash or ""
+
+    if not has_app_context():
+        return None
+
+    if not current_app.config.get(PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, False):
+        return None
+
+    if not stored_hash_value.startswith(LEGACY_PASSLIB_SCRYPT_PREFIX):
+        return None
+
+    return generate_password_hash(
+        plaintext_password,
+        method=PINNED_WERKZEUG_SCRYPT_METHOD,
+    )
 
 
 def get_password_hash_format(stored_hash: str | None) -> str:
