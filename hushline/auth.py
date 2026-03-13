@@ -7,7 +7,16 @@ from flask import abort, current_app, flash, redirect, session, url_for
 from hushline.db import db
 from hushline.model import User
 
-AUTH_SESSION_KEYS = ("user_id", "session_id", "username", "is_authenticated")
+PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
+PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
+AUTH_SESSION_KEYS = (
+    "user_id",
+    "session_id",
+    "username",
+    "is_authenticated",
+    PENDING_PASSWORD_REHASH_SESSION_KEY,
+    PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+)
 
 
 def clear_auth_session() -> None:
