@@ -10,7 +10,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
-from hushline.config import AliasMode, FieldsMode
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -21,6 +21,7 @@ from hushline.model import (
     User,
     Username,
 )
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 from hushline.settings import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -226,6 +227,54 @@ def test_change_password_from_native_werkzeug_scrypt_hash(
     assert "Password successfully changed. Please log in again." in response.text
     assert user.password_hash != original_password_hash
     assert user.password_hash.startswith("$scrypt$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_writes_pinned_werkzeug_scrypt_hash_when_enabled(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
+    new_password = "ChangedPassword123!!"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
 
     response = client.post(
         url_for("login"),

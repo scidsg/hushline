@@ -3,9 +3,12 @@ from typing import Final
 
 from flask import current_app, has_app_context
 from passlib.hash import scrypt
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT
 
 LEGACY_PASSLIB_SCRYPT_PREFIX: Final = "$scrypt$"
+PINNED_WERKZEUG_SCRYPT_METHOD: Final = "scrypt:65536:8:1"
 PASSWORD_HASH_VERIFICATION_EVENT: Final = "password_hash_verification"
 PASSWORD_HASH_COUNTER_EVENT: Final = "password_hash_counter"
 PASSWORD_HASH_VERIFICATION_SUCCESS_COUNTER: Final = "password_hash_verification_success_total"
@@ -19,7 +22,13 @@ _DOLLAR_HASH_PREFIX_RE: Final = re.compile(r"^\$(?P<prefix>[a-z0-9_-]{1,32})\$")
 
 
 def hash_password(plaintext_password: str) -> str:
-    hashed_password = scrypt.hash(plaintext_password)
+    if has_app_context() and current_app.config.get(PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, False):
+        hashed_password = generate_password_hash(
+            plaintext_password,
+            method=PINNED_WERKZEUG_SCRYPT_METHOD,
+        )
+    else:
+        hashed_password = scrypt.hash(plaintext_password)
     emit_password_hash_write_telemetry(hashed_password)
     return hashed_password
 

@@ -5,9 +5,11 @@ from flask import Flask
 from passlib.hash import scrypt
 from werkzeug.security import generate_password_hash
 
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT
 from hushline.model import User
 from hushline.password_hasher import (
     LEGACY_PASSLIB_SCRYPT_PREFIX,
+    PINNED_WERKZEUG_SCRYPT_METHOD,
     emit_password_rehash_on_auth_telemetry,
     hash_password,
     verify_password,
@@ -265,6 +267,38 @@ def test_hash_password_logs_write_counter_without_sensitive_data(app: Flask) -> 
     }
     assert plaintext_password not in logged_extra.values()
     assert password_hash not in logged_extra.values()
+
+
+def test_hash_password_uses_pinned_werkzeug_scrypt_method_when_enabled(app: Flask) -> None:
+    plaintext_password = "SecurePassword123!"
+    app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
+
+    with patch.object(app.logger, "info") as info_mock:
+        password_hash = hash_password(plaintext_password)
+
+    assert password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+    assert verify_password(plaintext_password, password_hash) is True
+    info_mock.assert_called_once()
+    assert info_mock.call_args.kwargs["extra"] == {
+        "event": "password_hash_counter",
+        "counter_name": "password_hash_write_total",
+        "count": 1,
+        "hash_format": "native_scrypt",
+    }
+
+
+def test_pinned_werkzeug_scrypt_method_matches_legacy_passlib_cost_baseline() -> None:
+    legacy_cost_fields = dict(
+        field.split("=")
+        for field in LEGACY_PASSLIB_SCRYPT_COST_PREFIX.removeprefix("$scrypt$")
+        .removesuffix("$")
+        .split(",")
+    )
+    _, n_value, r_value, p_value = PINNED_WERKZEUG_SCRYPT_METHOD.split(":")
+
+    assert int(n_value) == 2 ** int(legacy_cost_fields["ln"])
+    assert int(r_value) == int(legacy_cost_fields["r"])
+    assert int(p_value) == int(legacy_cost_fields["p"])
 
 
 @pytest.mark.parametrize(
