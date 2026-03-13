@@ -7,8 +7,10 @@ from helpers import get_captcha_from_session_register
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.security import generate_password_hash
 
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User, Username
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 
 
 def test_user_registration_disabled(client: FlaskClient, user: User) -> None:
@@ -75,6 +77,51 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
     uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
     assert uname.username == username
     assert uname.user.password_hash.startswith("$scrypt$")
+
+
+def test_user_registration_writes_pinned_werkzeug_scrypt_hash_when_enabled(
+    app: Flask, client: FlaskClient
+) -> None:
+    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
+    username = "test_user"
+    password = "SecurePassword123!"
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    response = client.post(
+        url_for("register"),
+        data={
+            "username": username,
+            "password": password,
+            "captcha_answer": captcha_answer,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "👍 Registration successful!" in response.text
+
+    uname = db.session.scalars(db.select(Username).filter_by(_username=username)).one()
+    assert uname.username == username
+    assert uname.user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+
+    login_response = client.post(
+        url_for("login"),
+        data={"username": username, "password": password},
+        follow_redirects=True,
+    )
+    assert login_response.status_code == 200
+    assert "Inbox" in login_response.text
+
+    client.get(url_for("logout"), follow_redirects=True)
+
+    invalid_login_response = client.post(
+        url_for("login"),
+        data={"username": username, "password": f"{password}not correct"},
+        follow_redirects=True,
+    )
+    assert invalid_login_response.status_code == 200
+    assert "⛔️ Invalid username or password." in invalid_login_response.text
 
 
 def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None:

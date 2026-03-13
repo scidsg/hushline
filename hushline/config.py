@@ -13,6 +13,7 @@ from hushline.utils import if_not_none, parse_bool
 
 _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"
+PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT = "PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT"  # noqa: S105
 
 
 class ConfigParseError(Exception):
@@ -162,6 +163,7 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
         ("FILE_UPLOADS_ENABLED", False),
+        (PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, False),
         ("REGISTRATION_SETTINGS_ENABLED", True),
         ("USER_VERIFICATION_ENABLED", False),
     ]
