@@ -30,6 +30,19 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_build_pr_title_omits_codex_daily_prefix() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+build_pr_title 1622 $'Normalize geography\\nacross directory listing types'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "#1622 Normalize geography across directory listing types\n"
+    assert "Codex Daily:" not in result.stdout
+
+
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:
     repo_dir = tmp_path / "repo"
     prompt_file = tmp_path / "prompt.txt"
