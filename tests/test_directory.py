@@ -532,6 +532,9 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     panel = soup.find(id="attorney-filters-panel")
     country_select = soup.find(id="attorney-country-filter")
     region_select = soup.find(id="attorney-region-filter")
+    clear_filters_link = (
+        panel.find("a", href=url_for("directory")) if isinstance(panel, Tag) else None
+    )
 
     assert toggle is not None
     assert toggle.get_text(" ", strip=True) == "Hide Filters"
@@ -540,6 +543,8 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     assert not panel.has_attr("hidden")
     assert country_select is not None
     assert region_select is not None
+    assert clear_filters_link is not None
+    assert clear_filters_link.get_text(" ", strip=True) == "Clear Filters"
     assert country_select.find("option", selected=True)["value"] == "United States"
     assert region_select.find("option", selected=True)["value"] == "CA"
     assert not region_select.has_attr("disabled")
