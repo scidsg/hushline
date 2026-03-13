@@ -99,6 +99,92 @@ def test_password_hash_report_outputs_legacy_count_and_removal_gate(
         "password_hash_rehash_on_auth_failure_total"
     ) in result.output
     assert "legacy rows must stay at 0 for one full release cycle" in result.output
+    assert (
+        "Current build verification support: passlib $scrypt$ and native prefix-based hashes."
+        in result.output
+    )
+    assert (
+        "Measured legacy verification successes: provide --legacy-verification-successes <count>"
+        in result.output
+    )
+    assert "Passlib removal readiness: blocked" in result.output
+
+
+def test_password_hash_can_remove_passlib_blocks_when_legacy_rows_remain(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "0",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert "Measured legacy verification successes: 0" in result.output
+    assert "Error: Passlib removal readiness: blocked (legacy passlib scrypt rows remain)" in (
+        result.output
+    )
+
+
+def test_password_hash_can_remove_passlib_succeeds_when_legacy_rows_and_volume_are_zero(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    native_hash = generate_password_hash(user_password, method="scrypt")
+    user._password_hash = native_hash
+    user2._password_hash = native_hash
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "0",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 0" in result.output
+    assert "Measured legacy verification successes: 0" in result.output
+    assert "Legacy verifier path: passlib_dependency" in result.output
+    assert "Passlib removal readiness: ready" in result.output
+
+
+def test_password_hash_can_remove_passlib_accepts_reviewed_in_repo_legacy_verifier_path(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "7",
+            "--reviewed-in-repo-legacy-verifier",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert "Measured legacy verification successes: 7" in result.output
+    assert "Legacy verifier path: reviewed_in_repo_legacy_verifier" in result.output
+    assert "Passlib removal readiness: ready" in result.output
 
 
 def test_stripe_configure_skips_when_secret_missing(app: Flask) -> None:
