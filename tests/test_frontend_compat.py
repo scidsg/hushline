@@ -78,6 +78,14 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         'const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");'
         in directory_verified_js
     )
+    assert (
+        'const attorneyCountryFilter = document.getElementById("attorney-country-filter");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyRegionFilter = document.getElementById("attorney-region-filter");'
+        in directory_verified_js
+    )
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
     assert 'searchInput.placeholder = "Search attorneys...";' in directory_verified_js
@@ -87,9 +95,23 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
     assert (
-        "fetch(`${pathPrefix}/directory/users.json${window.location.search}`)"
+        "fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)"
         in directory_verified_js
     )
+    assert "fetch(`${pathPrefix}/directory/attorney-filters.json`)" in directory_verified_js
+    assert "window.history.replaceState" in directory_verified_js
+    assert "new AbortController();" in directory_verified_js
+    assert 'attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
+        directory_verified_js
+    )
+    assert 'attorneyFiltersPanel.addEventListener("submit", function (event) {' in (
+        directory_verified_js
+    )
+    assert 'attorneyCountryFilter.addEventListener("change", async function () {' in (
+        directory_verified_js
+    )
+    assert 'attorneyRegionFilter.addEventListener("change", function () {' in directory_verified_js
+    assert 'setSearchStatus("Updating attorney results.");' in directory_verified_js
     assert "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;" in directory_verified_js
     assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
         directory_verified_js
@@ -102,7 +124,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
-    assert "directory/users.json${window.location.search}" in directory_verified_static_js
+    assert "directory/users.json${search}" in directory_verified_static_js
+    assert "directory/attorney-filters.json" in directory_verified_static_js
+    assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
     assert ".directory-filter-panel" in scss
     assert ".visually-hidden" in scss

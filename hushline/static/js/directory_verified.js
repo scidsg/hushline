@@ -8,9 +8,18 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchStatus = document.getElementById("directory-search-status");
   const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
   const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
+  const attorneyCountryFilter = document.getElementById("attorney-country-filter");
+  const attorneyRegionFilter = document.getElementById("attorney-region-filter");
+  const publicRecordsPanel = document.getElementById("public-records");
+  const publicRecordsIntroMarkup = publicRecordsPanel?.querySelector(".dirMeta")?.outerHTML || "";
   const initialMarkup = new Map();
   let userData = [];
   let hasRenderedSearch = false;
+  let attorneyFiltersLoading = false;
+  let attorneyFilterMetadata = { countries: [], regions: {} };
+  let attorneyFilterMetadataRequest = null;
+  let directoryDataRequestController = null;
+  let loadedDirectorySearch = window.location.search;
 
   tabPanels.forEach((panel) => {
     initialMarkup.set(panel.id, panel.innerHTML);
@@ -90,42 +99,34 @@ document.addEventListener("DOMContentLoaded", function () {
     return "directory entries";
   }
 
-  function loadData() {
-    fetch(`${pathPrefix}/directory/users.json${window.location.search}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        userData = data;
-        handleSearchInput();
-      })
-      .catch((error) => console.error("Failed to load user data:", error));
+  function matchesTab(user, tab) {
+    if (
+      tab === "verified" &&
+      (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
+    ) {
+      return false;
+    }
+
+    if (tab === "public-records" && !user.is_public_record) {
+      return false;
+    }
+
+    if (tab === "globaleaks" && !user.is_globaleaks) {
+      return false;
+    }
+
+    if (tab === "securedrop" && !user.is_securedrop) {
+      return false;
+    }
+
+    return true;
   }
 
-  function filterUsers(query) {
-    const tab = activeTabName();
+  function filterUsers(query, tab = activeTabName()) {
     const normalizedQuery = query.trim().toLowerCase();
 
     return userData.filter((user) => {
-      if (
-        tab === "verified" &&
-        (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
-      ) {
-        return false;
-      }
-
-      if (tab === "public-records" && !user.is_public_record) {
-        return false;
-      }
-
-      if (tab === "globaleaks" && !user.is_globaleaks) {
-        return false;
-      }
-
-      if (tab === "securedrop" && !user.is_securedrop) {
+      if (!matchesTab(user, tab)) {
         return false;
       }
 
@@ -199,15 +200,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (user.is_admin) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
     }
 
     if (user.is_verified) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
     if (tab === "all" && !user.has_pgp_key) {
-      badgeContainer += '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
     }
 
     return badgeContainer;
@@ -282,6 +286,45 @@ document.addEventListener("DOMContentLoaded", function () {
     panel.appendChild(userListContainer);
   }
 
+  function renderPanelContent(
+    panel,
+    users,
+    query,
+    tab,
+    { introMarkup = "", showEmptyMessage = true } = {},
+  ) {
+    panel.innerHTML = introMarkup;
+
+    if (users.length === 0) {
+      if (showEmptyMessage) {
+        panel.insertAdjacentHTML(
+          "beforeend",
+          '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>',
+        );
+      }
+      return;
+    }
+
+    const realUsers = users.filter(
+      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
+    );
+    const withPgp = realUsers.filter((user) => user.has_pgp_key);
+    const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
+
+    if (tab === "all") {
+      appendSection(panel, "", sortedByDisplayName(users), query, tab);
+      return;
+    }
+
+    if (tab === "verified") {
+      appendSection(panel, "", withPgp, query, tab);
+      appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
+      return;
+    }
+
+    appendSection(panel, "", users, query, tab);
+  }
+
   function displayUsers(users, query) {
     const panel = activePanel();
     const tab = activeTabName();
@@ -289,45 +332,30 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    panel.innerHTML = "";
+    renderPanelContent(panel, users, query, tab);
+  }
 
-    if (users.length === 0) {
-      panel.innerHTML =
-        '<p class="empty-message"><span class="emoji-message">🫥</span><br>No users found.</p>';
-      return;
+  function buildDefaultPanelMarkup(tab) {
+    const panel = document.createElement("div");
+    const introMarkup = tab === "public-records" ? publicRecordsIntroMarkup : "";
+    const showEmptyMessage = tab !== "public-records";
+
+    renderPanelContent(panel, filterUsers("", tab), "", tab, {
+      introMarkup,
+      showEmptyMessage,
+    });
+
+    return panel.innerHTML;
+  }
+
+  function refreshInitialMarkup() {
+    if (document.getElementById("public-records")) {
+      initialMarkup.set("public-records", buildDefaultPanelMarkup("public-records"));
     }
 
-    const publicRecords = users.filter((user) => user.is_public_record);
-    const globalLeaks = users.filter((user) => user.is_globaleaks);
-    const secureDrops = users.filter((user) => user.is_securedrop);
-    const realUsers = users.filter(
-      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
-    );
-    const withPgp = realUsers.filter((user) => user.has_pgp_key);
-    const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
-
-    if (tab === "public-records") {
-      appendSection(panel, "", publicRecords, query, tab);
-      return;
+    if (document.getElementById("all")) {
+      initialMarkup.set("all", buildDefaultPanelMarkup("all"));
     }
-
-    if (tab === "globaleaks") {
-      appendSection(panel, "", globalLeaks, query, tab);
-      return;
-    }
-
-    if (tab === "securedrop") {
-      appendSection(panel, "", secureDrops, query, tab);
-      return;
-    }
-
-    if (tab === "all") {
-      appendSection(panel, "", sortedByDisplayName(users), query, tab);
-      return;
-    }
-
-    appendSection(panel, "", withPgp, query, tab);
-    appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
   }
 
   function handleSearchInput() {
@@ -363,6 +391,216 @@ document.addEventListener("DOMContentLoaded", function () {
     hasRenderedSearch = true;
   }
 
+  function buildAttorneyFilterSearch() {
+    const params = new URLSearchParams(window.location.search);
+    const country = attorneyCountryFilter?.value.trim() || "";
+    const region = attorneyRegionFilter?.value.trim() || "";
+
+    if (country) {
+      params.set("country", country);
+    } else {
+      params.delete("country");
+    }
+
+    if (region) {
+      params.set("region", region);
+    } else {
+      params.delete("region");
+    }
+
+    const nextSearch = params.toString();
+    return nextSearch ? `?${nextSearch}` : "";
+  }
+
+  function applyAttorneyFiltersFromSearch(search) {
+    if (!attorneyCountryFilter || !attorneyRegionFilter) {
+      return;
+    }
+
+    const params = new URLSearchParams(search);
+    attorneyCountryFilter.value = params.get("country") || "";
+    attorneyRegionFilter.value = params.get("region") || "";
+    updateAttorneyRegionOptions();
+
+    if (attorneyFiltersPanel) {
+      attorneyFiltersPanel.hidden = !(attorneyCountryFilter.value || attorneyRegionFilter.value);
+      updateAttorneyFiltersToggle();
+    }
+  }
+
+  function setAttorneyFiltersLoadingState(isLoading) {
+    if (!attorneyFiltersPanel) {
+      return;
+    }
+
+    attorneyFiltersLoading = isLoading;
+    attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");
+
+    if (attorneyCountryFilter) {
+      attorneyCountryFilter.disabled = isLoading;
+    }
+
+    if (attorneyRegionFilter) {
+      const disabledByCountry = attorneyRegionFilter.dataset.disabledByCountry === "true";
+      attorneyRegionFilter.disabled = isLoading || disabledByCountry;
+    }
+
+    const submitButton = attorneyFiltersPanel.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = isLoading;
+    }
+
+    const resetLink = attorneyFiltersPanel.querySelector("a");
+    if (resetLink) {
+      resetLink.setAttribute("aria-disabled", isLoading ? "true" : "false");
+      resetLink.tabIndex = isLoading ? -1 : 0;
+    }
+  }
+
+  function updateAttorneyRegionOptions() {
+    if (!attorneyCountryFilter || !attorneyRegionFilter) {
+      return;
+    }
+
+    const selectedCountry = attorneyCountryFilter.value;
+    const selectedRegion = attorneyRegionFilter.value;
+    const availableRegions = Array.isArray(attorneyFilterMetadata.regions?.[selectedCountry])
+      ? attorneyFilterMetadata.regions[selectedCountry]
+      : [];
+
+    attorneyRegionFilter.innerHTML = '<option value="">All</option>';
+
+    availableRegions.forEach((region) => {
+      const option = document.createElement("option");
+      option.value = region.code;
+      option.textContent = region.label;
+      if (region.code === selectedRegion) {
+        option.selected = true;
+      }
+      attorneyRegionFilter.appendChild(option);
+    });
+
+    if (!availableRegions.some((region) => region.code === selectedRegion)) {
+      attorneyRegionFilter.value = "";
+    }
+
+    const disabledByCountry = !(selectedCountry && availableRegions.length);
+    attorneyRegionFilter.dataset.disabledByCountry = disabledByCountry ? "true" : "false";
+    attorneyRegionFilter.disabled = attorneyFiltersLoading || disabledByCountry;
+  }
+
+  function ensureAttorneyFilterMetadata() {
+    if (!attorneyCountryFilter || !attorneyRegionFilter) {
+      return Promise.resolve(null);
+    }
+
+    if (attorneyFilterMetadataRequest) {
+      return attorneyFilterMetadataRequest;
+    }
+
+    attorneyFilterMetadataRequest = fetch(`${pathPrefix}/directory/attorney-filters.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        attorneyFilterMetadata = data;
+        updateAttorneyRegionOptions();
+        return data;
+      })
+      .catch((error) => {
+        attorneyFilterMetadataRequest = null;
+        console.error("Failed to load attorney filter metadata:", error);
+        return null;
+      });
+
+    return attorneyFilterMetadataRequest;
+  }
+
+  function setDirectoryUrl(search) {
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}${search}${window.location.hash}`,
+    );
+  }
+
+  function loadData(search = window.location.search, options = {}) {
+    const requestOptions = {};
+    if (options.signal) {
+      requestOptions.signal = options.signal;
+    }
+
+    return fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        userData = data;
+        loadedDirectorySearch = search;
+        refreshInitialMarkup();
+        handleSearchInput();
+      });
+  }
+
+  function requestDirectoryData(search = window.location.search, options = {}) {
+    const { showAttorneyFilterLoadingState = false } = options;
+
+    if (directoryDataRequestController) {
+      directoryDataRequestController.abort();
+    }
+
+    const controller = new AbortController();
+    directoryDataRequestController = controller;
+
+    if (showAttorneyFilterLoadingState) {
+      setAttorneyFiltersLoadingState(true);
+    }
+
+    return loadData(search, { signal: controller.signal }).finally(() => {
+      if (directoryDataRequestController === controller) {
+        directoryDataRequestController = null;
+        if (showAttorneyFilterLoadingState) {
+          setAttorneyFiltersLoadingState(false);
+        }
+      }
+    });
+  }
+
+  async function refreshAttorneyResults() {
+    if (!attorneyFiltersPanel) {
+      return;
+    }
+
+    const nextSearch = buildAttorneyFilterSearch();
+    if (attorneyFiltersLoading || loadedDirectorySearch === nextSearch) {
+      return;
+    }
+    setSearchStatus("Updating attorney results.");
+    setDirectoryUrl(nextSearch);
+
+    try {
+      await requestDirectoryData(nextSearch, { showAttorneyFilterLoadingState: true });
+      if (!searchInput.value.trim()) {
+        setSearchStatus("Attorney results updated.");
+      }
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
+      setDirectoryUrl(loadedDirectorySearch);
+      applyAttorneyFiltersFromSearch(loadedDirectorySearch);
+      setSearchStatus("Unable to update attorney results.");
+      console.error("Failed to update attorney results:", error);
+    }
+  }
+
   if (searchInput) {
     searchInput.addEventListener("input", handleSearchInput);
   }
@@ -389,10 +627,43 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  if (attorneyFiltersPanel && attorneyCountryFilter && attorneyRegionFilter) {
+    const resetLink = attorneyFiltersPanel.querySelector("a");
+
+    attorneyFiltersPanel.addEventListener("submit", function (event) {
+      event.preventDefault();
+      void refreshAttorneyResults();
+    });
+
+    attorneyCountryFilter.addEventListener("change", async function () {
+      await ensureAttorneyFilterMetadata();
+      updateAttorneyRegionOptions();
+      void refreshAttorneyResults();
+    });
+
+    attorneyRegionFilter.addEventListener("change", function () {
+      void refreshAttorneyResults();
+    });
+
+    if (resetLink) {
+      resetLink.addEventListener("click", function (event) {
+        event.preventDefault();
+        if (attorneyFiltersLoading) {
+          return;
+        }
+
+        attorneyCountryFilter.value = "";
+        attorneyRegionFilter.value = "";
+        updateAttorneyRegionOptions();
+        attorneyFiltersPanel.hidden = true;
+        updateAttorneyFiltersToggle();
+        void refreshAttorneyResults();
+      });
+    }
+  }
+
   window.activateTab = function (selectedTab) {
-    const targetPanel = document.getElementById(
-      selectedTab.getAttribute("aria-controls"),
-    );
+    const targetPanel = document.getElementById(selectedTab.getAttribute("aria-controls"));
     if (!targetPanel) {
       return;
     }
@@ -419,8 +690,8 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   tabs.forEach((tab) => {
-    tab.addEventListener("click", function (e) {
-      const clickedTab = e.currentTarget;
+    tab.addEventListener("click", function (event) {
+      const clickedTab = event.currentTarget;
       const stickyShell = document.querySelector(".directory-sticky-shell");
       const directoryTabs = document.querySelector(".directory-tabs");
       const isStickyActiveTabClick =
@@ -445,8 +716,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabArray = Array.from(tabs);
       const currentIndex = tabArray.indexOf(event.currentTarget);
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextIndex =
-        (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextIndex = (currentIndex + direction + tabArray.length) % tabArray.length;
       const nextTab = tabArray[nextIndex];
       if (nextTab) {
         window.activateTab(nextTab);
@@ -491,5 +761,12 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   updatePlaceholder();
-  loadData();
+  void ensureAttorneyFilterMetadata();
+  requestDirectoryData().catch((error) => {
+    if (error.name === "AbortError") {
+      return;
+    }
+
+    console.error("Failed to load user data:", error);
+  });
 });
