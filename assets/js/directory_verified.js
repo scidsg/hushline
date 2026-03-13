@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function loadData() {
-    fetch(`${pathPrefix}/directory/users.json`)
+    fetch(`${pathPrefix}/directory/users.json${window.location.search}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");

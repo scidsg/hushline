@@ -64,6 +64,7 @@ _US_SUBDIVISION_NAMES = {
     "WY": "Wyoming",
 }
 _US_SUBDIVISION_CODES = frozenset(_US_SUBDIVISION_NAMES)
+US_SUBDIVISION_NAMES = _US_SUBDIVISION_NAMES
 
 
 def _normalize_text(value: str | None) -> str | None:
