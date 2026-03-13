@@ -61,6 +61,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'id="public-record-count"' in directory_template
     assert 'id="attorney-filters-toggle"' in directory_template
     assert 'id="attorney-filters-panel"' in directory_template
+    assert "Clear Filters" in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
     assert 'aria-live="polite"' in directory_template
