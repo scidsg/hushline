@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
+  const publicRecordCountBadge = document.getElementById("public-record-count");
   const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
   const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
   const attorneyCountryFilter = document.getElementById("attorney-country-filter");
@@ -47,6 +48,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function activePanel() {
     return document.querySelector(".tab-content.active") || document.getElementById("all");
+  }
+
+  function attorneyResultsCount() {
+    return filterUsers("", "public-records").length;
+  }
+
+  function updatePublicRecordCountBadge() {
+    if (publicRecordCountBadge) {
+      publicRecordCountBadge.textContent = attorneyResultsCount().toString();
+    }
   }
 
   function updatePlaceholder() {
@@ -543,6 +554,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((data) => {
         userData = data;
         loadedDirectorySearch = search;
+        updatePublicRecordCountBadge();
         refreshInitialMarkup();
         handleSearchInput();
       });
@@ -587,7 +599,10 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       await requestDirectoryData(nextSearch, { showAttorneyFilterLoadingState: true });
       if (!searchInput.value.trim()) {
-        setSearchStatus("Attorney results updated.");
+        const count = attorneyResultsCount();
+        setSearchStatus(
+          count === 1 ? "Showing 1 matching attorney." : `Showing ${count} matching attorneys.`,
+        );
       }
     } catch (error) {
       if (error.name === "AbortError") {

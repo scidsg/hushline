@@ -58,6 +58,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
 
     assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
+    assert 'id="public-record-count"' in directory_template
     assert 'id="attorney-filters-toggle"' in directory_template
     assert 'id="attorney-filters-panel"' in directory_template
     assert 'class="visually-hidden"' in directory_template
@@ -69,6 +70,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert (
         'const searchStatus = document.getElementById("directory-search-status");'
         in directory_verified_js
+    )
+    assert 'const publicRecordCountBadge = document.getElementById("public-record-count");' in (
+        directory_verified_js
     )
     assert (
         'const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");'
@@ -94,6 +98,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'return "GlobaLeaks instances";' in directory_verified_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
+    assert "updatePublicRecordCountBadge();" in directory_verified_js
     assert (
         "fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)"
         in directory_verified_js
