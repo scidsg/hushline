@@ -120,65 +120,103 @@
           </button>
         </div>
         {% if directory_verified_tab_enabled %}
-          <button
-            type="button"
-            class="directory-filter-toggle"
-            id="attorney-filters-toggle"
-            aria-controls="attorney-filters-panel"
-            aria-expanded="{{ 'true' if attorney_filter_state.country or attorney_filter_state.region_code else 'false' }}"
-          >
-            {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
-          </button>
+          <div id="attorney-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="attorney-filters-toggle"
+              aria-controls="attorney-filters-panel"
+              aria-expanded="{{ 'true' if attorney_filter_state.country or attorney_filter_state.region_code else 'false' }}"
+            >
+              {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
+            </button>
+          </div>
         {% endif %}
       </div>
       {% if directory_verified_tab_enabled %}
-        <form
-          method="get"
-          class="directory-filter-panel"
-          id="attorney-filters-panel"
-          {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
-        >
-          <div class="directory-filter-fields">
-            <div class="directory-filter-group">
-              <label for="attorney-country-filter">Country</label>
-              <select id="attorney-country-filter" name="country">
-                <option value="">All</option>
-                {% for country in attorney_filter_metadata.countries %}
-                  <option
-                    value="{{ country.code }}"
-                    {% if attorney_filter_state.country == country.code %}selected{% endif %}
-                  >
-                    {{ country.label }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="directory-filter-group">
-              <label for="attorney-region-filter">State / Province / Region</label>
-              <select
-                id="attorney-region-filter"
-                name="region"
-                {% if not attorney_filter_state.country or attorney_filter_state.country not in attorney_filter_metadata.regions %}disabled{% endif %}
-              >
-                <option value="">All</option>
-                {% if attorney_filter_state.country and attorney_filter_state.country in attorney_filter_metadata.regions %}
-                  {% for region in attorney_filter_metadata.regions[attorney_filter_state.country] %}
+        <div id="attorney-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="attorney-filters-panel"
+            {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="attorney-country-filter">Country</label>
+                <select id="attorney-country-filter" name="country">
+                  <option value="">All</option>
+                  {% for country in attorney_filter_metadata.countries %}
                     <option
-                      value="{{ region.code }}"
-                      {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
+                      value="{{ country.code }}"
+                      {% if attorney_filter_state.country == country.code %}selected{% endif %}
                     >
-                      {{ region.label }}
+                      {% if attorney_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
                     </option>
                   {% endfor %}
-                {% endif %}
-              </select>
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="attorney-region-filter">State / Province / Region</label>
+                <select
+                  id="attorney-region-filter"
+                  name="region"
+                  {% if not attorney_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if attorney_filter_state.country and attorney_filter_state.country in attorney_filter_metadata.regions %}
+                    {% for region in attorney_filter_metadata.regions[attorney_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if attorney_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in attorney_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if attorney_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
             </div>
-          </div>
-          <div class="directory-filter-actions">
-            <button type="submit">Apply Filters</button>
-            <a href="{{ url_for('directory') }}">Clear Filters</a>
-          </div>
-        </form>
+            <div
+              class="directory-filter-actions"
+              id="attorney-filters-actions"
+              {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
+            >
+              <a
+                href="{{ url_for('directory') }}"
+                class="meta"
+                id="attorney-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
       {% endif %}
       <p
         id="directory-search-status"

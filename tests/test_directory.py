@@ -470,12 +470,20 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="attorney-filters-toggle-shell")
+    panel_shell = soup.find(id="attorney-filters-panel-shell")
     toggle = soup.find(id="attorney-filters-toggle")
     panel = soup.find(id="attorney-filters-panel")
+    clear_filters_actions = soup.find(id="attorney-filters-actions")
     country_select = soup.find(id="attorney-country-filter")
     region_select = soup.find(id="attorney-region-filter")
     region_label = soup.find("label", {"for": "attorney-region-filter"})
+    clear_filters_link = soup.find(id="attorney-filters-clear")
 
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
     assert toggle is not None
     assert toggle.get_text(" ", strip=True) == "Show Filters"
     assert toggle.get("aria-expanded") == "false"
@@ -485,9 +493,16 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert region_select is not None
     assert region_label is not None
     assert region_label.get_text(" ", strip=True) == "State / Province / Region"
-    assert region_select.has_attr("disabled")
+    assert not region_select.has_attr("disabled")
     assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
-    assert country_select.get_text(" ", strip=True) == "All Australia United States"
+    region_optgroups = region_select.find_all("optgroup")
+    assert [optgroup.get("label") for optgroup in region_optgroups] == ["United States"]
+    assert region_select.find("option", value="CA").get_text(" ", strip=True) == "California (1)"
+    assert country_select.get_text(" ", strip=True) == "All Australia (1) United States (1)"
+    assert clear_filters_actions is not None
+    assert clear_filters_actions.has_attr("hidden")
+    assert clear_filters_link is not None
+    assert not clear_filters_link.has_attr("hidden")
 
 
 def test_directory_attorney_filter_panel_shows_selected_filters(
@@ -528,24 +543,37 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="attorney-filters-toggle-shell")
+    panel_shell = soup.find(id="attorney-filters-panel-shell")
     toggle = soup.find(id="attorney-filters-toggle")
     panel = soup.find(id="attorney-filters-panel")
+    clear_filters_actions = soup.find(id="attorney-filters-actions")
     country_select = soup.find(id="attorney-country-filter")
     region_select = soup.find(id="attorney-region-filter")
     clear_filters_link = (
-        panel.find("a", href=url_for("directory")) if isinstance(panel, Tag) else None
+        panel.find("a", id="attorney-filters-clear", href=url_for("directory"))
+        if isinstance(panel, Tag)
+        else None
     )
 
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
     assert toggle is not None
     assert toggle.get_text(" ", strip=True) == "Hide Filters"
     assert toggle.get("aria-expanded") == "true"
     assert panel is not None
     assert not panel.has_attr("hidden")
+    assert clear_filters_actions is not None
+    assert not clear_filters_actions.has_attr("hidden")
     assert country_select is not None
     assert region_select is not None
     assert clear_filters_link is not None
     assert clear_filters_link.get_text(" ", strip=True) == "Clear Filters"
     assert country_select.find("option", selected=True)["value"] == "United States"
+    assert country_select.find("option", selected=True).get_text(" ", strip=True) == "United States"
+    assert region_select.find("option", selected=True).get_text(" ", strip=True) == "California"
     assert region_select.find("option", selected=True)["value"] == "CA"
     assert not region_select.has_attr("disabled")
 
@@ -662,13 +690,13 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
     assert response.status_code == 200
     assert response.json == {
         "countries": [
-            {"code": "Australia", "label": "Australia"},
-            {"code": "United States", "label": "United States"},
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 2},
         ],
         "regions": {
             "United States": [
-                {"code": "CA", "label": "California"},
-                {"code": "NY", "label": "New York"},
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "NY", "label": "New York", "count": 1},
             ]
         },
     }
@@ -712,10 +740,10 @@ def test_directory_attorney_filters_include_normalized_country_values_outside_le
     assert metadata_response.status_code == 200
     assert metadata_response.json == {
         "countries": [
-            {"code": "Madagascar", "label": "Madagascar"},
-            {"code": "United States", "label": "United States"},
+            {"code": "Madagascar", "label": "Madagascar", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
         ],
-        "regions": {"United States": [{"code": "CA", "label": "California"}]},
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
     }
 
     page_response = client.get(f"{url_for('directory')}?country=Madagascar")
@@ -773,12 +801,12 @@ def test_directory_attorney_filters_support_non_us_subdivisions(
     assert metadata_response.status_code == 200
     assert metadata_response.json == {
         "countries": [
-            {"code": "Australia", "label": "Australia"},
-            {"code": "United States", "label": "United States"},
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
         ],
         "regions": {
-            "Australia": [{"code": "New South Wales", "label": "New South Wales"}],
-            "United States": [{"code": "CA", "label": "California"}],
+            "Australia": [{"code": "New South Wales", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
         },
     }
 
@@ -825,8 +853,8 @@ def test_directory_attorney_filters_json_ignores_untrusted_query_values(
 
     assert response.status_code == 200
     assert response.json == {
-        "countries": [{"code": "United States", "label": "United States"}],
-        "regions": {"United States": [{"code": "CA", "label": "California"}]},
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
     }
 
 
