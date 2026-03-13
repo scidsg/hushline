@@ -5,6 +5,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
+from werkzeug.security import generate_password_hash
 
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User, Username
@@ -281,6 +282,25 @@ def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     assert login_response.status_code == 200
     assert "Inbox" not in login_response.text
     assert "⛔️ Invalid username or password." in login_response.text
+
+
+def test_user_login_with_native_werkzeug_scrypt_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    native_hash = generate_password_hash(user_password, method="scrypt")
+    user._password_hash = native_hash
+    db.session.commit()
+
+    login_response = client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert login_response.status_code == 200
+    assert "Inbox" in login_response.text
+    assert user.password_hash == native_hash
 
 
 def test_user_login_handles_case_insensitive_duplicate_rows(

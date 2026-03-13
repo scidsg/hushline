@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.security import generate_password_hash
 
 from hushline.config import AliasMode, FieldsMode
 from hushline.db import db
@@ -195,6 +196,58 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
     assert "Empty Inbox" in response.text
     assert "Invalid username or password" not in response.text
     assert "/inbox" in response.request.url
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_from_native_werkzeug_scrypt_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    original_password_hash = generate_password_hash(user_password, method="scrypt")
+    new_password = "ChangedPassword123!!"
+
+    user._password_hash = original_password_hash
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash != original_password_hash
+    assert user.password_hash.startswith("$scrypt$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
