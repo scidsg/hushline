@@ -177,3 +177,43 @@ def test_sync_provenance_roadmap_updates_baseline_and_adapter_count(tmp_path: Pa
     assert "- Active strict listings: `2`" in updated
     assert "- States with strict listings: `CA`, `WA`" in updated
     assert "- Explicit state adapter entries in discovery code: 50 / 50." in updated
+
+
+def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -> None:
+    refresh_script = _load_refresh_script_module()
+    roadmap_path = tmp_path / "PUBLIC-RECORD-PROVENANCE-ROADMAP.md"
+    roadmap_path.write_text(
+        "\n".join(
+            [
+                "# Public Record Provenance Roadmap (U.S.)",
+                "",
+                "## Current Baseline (March 10, 2026)",
+                "- Active strict listings: `58`",
+                "- States with strict listings: `AK`",
+                "",
+                "## State Adapter Strategy",
+                "",
+                "- All 50 states now have explicit adapter entries in discovery code.",
+                "",
+                "## EU Phase 0A (Policy-Only Scaffold)",
+                "",
+                "| Country | Status |",
+                "| ------- | ------ |",
+                "| Austria | Candidate |",
+                "",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    refresh_script._sync_provenance_roadmap(
+        roadmap_path,
+        report={"total_strict_listings": 2, "states_covered": ["CA", "WA"]},
+        generated_on="2026-03-11",
+    )
+
+    updated = roadmap_path.read_text(encoding="utf-8")
+    assert "## Current Baseline (2026-03-11)" in updated
+    assert "## EU Phase 0A (Policy-Only Scaffold)" in updated
+    assert "| Austria | Candidate |" in updated
