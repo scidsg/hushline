@@ -177,6 +177,24 @@ async def test_is_safe_verification_url_resolved_public_allowed(app: Flask) -> N
 
 
 @pytest.mark.asyncio()
+async def test_is_safe_verification_url_direct_private_ip_rejected(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        assert await _is_safe_verification_url("https://10.0.0.1") is False
+
+
+@pytest.mark.asyncio()
+async def test_is_safe_verification_url_resolved_blocked_ip_rejected(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        with patch(
+            "hushline.settings.common.asyncio.wait_for",
+            new=AsyncMock(return_value=[(0, 0, 0, "", ("10.0.0.1", 0))]),
+        ):
+            assert await _is_safe_verification_url("https://example.com") is False
+
+
+@pytest.mark.asyncio()
 async def test_verify_url_handles_client_error(user: User) -> None:
     username = user.primary_username
     profile_url = "https://example.com/profile"
@@ -204,6 +222,26 @@ async def test_verify_url_handles_client_error(user: User) -> None:
         await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
 
     db.session.refresh(username)
+    assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_returns_early_when_url_is_not_safe(user: User) -> None:
+    username = user.primary_username
+
+    class _Session:
+        def get(self, *_args: object, **_kwargs: object) -> object:
+            raise AssertionError("session.get should not be called for unsafe URLs")
+
+    with patch("hushline.settings.common._is_safe_verification_url", return_value=False):
+        await verify_url(
+            _Session(),  # type: ignore[arg-type]
+            username,
+            1,
+            "https://example.com",
+            "https://example.com/profile",
+        )
+
     assert username.extra_field_verified1 is False
 
 
@@ -427,6 +465,32 @@ def test_handle_change_username_form_unique_violation_flashes_taken(app: Flask, 
     assert result.status_code == 302
     assert ("message", "💔 This username is already taken.") in messages
     assert session_username == user.primary_username.username
+
+
+def test_handle_change_username_form_internal_error_flashes_generic_error(
+    app: Flask, user: User
+) -> None:
+    form = cast(
+        ChangeUsernameForm,
+        SimpleNamespace(new_username=SimpleNamespace(data="different-name", errors=[])),
+    )
+
+    with (
+        app.test_request_context("/settings/auth", method="POST"),
+        patch("hushline.settings.common.db.session.scalar", side_effect=[False, False]),
+        patch(
+            "hushline.settings.common.db.session.commit",
+            side_effect=IntegrityError("stmt", "params", Exception("boom")),
+        ),
+        patch("hushline.settings.common.current_app.logger.error") as logger_error,
+    ):
+        session["username"] = user.primary_username.username
+        result = handle_change_username_form(user.primary_username, form)
+        messages = session.get("_flashes", [])
+
+    assert result.status_code == 302
+    assert ("message", "⛔️ Internal server error. Username not changed.") in messages
+    logger_error.assert_called_once_with("Error updating username", exc_info=True)
 
 
 def test_handle_change_password_form_rejects_wrong_old_password(

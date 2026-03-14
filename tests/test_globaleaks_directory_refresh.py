@@ -7,6 +7,7 @@ from hushline import globaleaks_directory_refresh as refresh_module
 from hushline.globaleaks_directory_refresh import (
     GLOBALEAKS_SOURCE_URL,
     GlobaLeaksDirectoryRefreshError,
+    _candidate_hosts,
     _choose_host,
     _choose_submission_url,
     _extract_discovery_links,
@@ -61,6 +62,7 @@ def test_normalize_http_url_validates_required_and_optional_fields() -> None:
         == "https://submit.example.org/report"
     )
     assert _normalize_http_url("mailto:test@example.org", field="website", required=False) == ""
+    assert _normalize_http_url("   ", field="website", required=False) == ""
 
     with pytest.raises(
         GlobaLeaksDirectoryRefreshError, match="Missing required URL field: source_url"
@@ -106,6 +108,16 @@ def test_choose_host_falls_back_to_candidate_hosts_or_errors() -> None:
 
     with pytest.raises(GlobaLeaksDirectoryRefreshError, match="missing a usable host"):
         _choose_host({}, "mailto:test@example.org")
+
+
+def test_candidate_hosts_normalizes_and_skips_blank_or_duplicate_values() -> None:
+    assert _candidate_hosts(
+        {
+            "host": " Tips.Example.org ",
+            "domains": ["https://tips.example.org/report", ".", "tips.example.org"],
+            "_shodan": {"http": {"host": " "}},
+        }
+    ) == ["tips.example.org"]
 
 
 def test_refresh_globaleaks_directory_rows_rejects_empty_slug_after_normalization() -> None:

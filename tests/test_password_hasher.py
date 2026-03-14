@@ -10,9 +10,14 @@ from hushline.model import User
 from hushline.password_hasher import (
     LEGACY_PASSLIB_SCRYPT_PREFIX,
     PINNED_WERKZEUG_SCRYPT_METHOD,
+    _emit_password_hash_counter,
+    _emit_password_verification_telemetry,
     emit_password_rehash_on_auth_telemetry,
+    get_password_hash_prefix,
     hash_password,
+    prepare_password_rehash_on_auth,
     verify_password,
+    verify_primary_password_hash,
 )
 
 LEGACY_PASSLIB_SCRYPT_PASSWORD = "SecurePassword123!"
@@ -197,6 +202,10 @@ def test_verify_password_routes_non_scrypt_native_prefixes_to_primary_verifier(
         assert stored_hash not in logged_extra.values()
 
 
+def test_verify_primary_password_hash_rejects_non_scrypt_native_prefix() -> None:
+    assert verify_primary_password_hash("SecurePassword123!", "hl-v2:anything") is False
+
+
 def test_verify_password_unknown_prefix_fails_closed_without_mutating_user(
     app: Flask, user: User
 ) -> None:
@@ -251,6 +260,45 @@ def test_verify_password_malformed_legacy_hash_fails_closed(app: Flask) -> None:
     ]
 
 
+def test_prepare_password_rehash_on_auth_returns_none_without_app_context() -> None:
+    assert prepare_password_rehash_on_auth("SecurePassword123!", "$scrypt$pretend") is None
+
+
+def test_prepare_password_rehash_on_auth_skips_non_legacy_hashes(app: Flask) -> None:
+    app.config["PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"] = True
+
+    assert (
+        prepare_password_rehash_on_auth(
+            "SecurePassword123!",
+            generate_password_hash("SecurePassword123!", method="scrypt"),
+        )
+        is None
+    )
+
+
+def test_prepare_password_rehash_on_auth_returns_none_when_disabled(app: Flask) -> None:
+    app.config["PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"] = False
+
+    assert prepare_password_rehash_on_auth("SecurePassword123!", "$scrypt$pretend") is None
+
+
+def test_prepare_password_rehash_on_auth_rehashes_legacy_hash_when_enabled(app: Flask) -> None:
+    app.config["PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"] = True
+
+    rehashed = prepare_password_rehash_on_auth(
+        LEGACY_PASSLIB_SCRYPT_PASSWORD,
+        scrypt.hash(LEGACY_PASSLIB_SCRYPT_PASSWORD),
+    )
+
+    assert rehashed is not None
+    assert rehashed.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+    assert verify_password(LEGACY_PASSLIB_SCRYPT_PASSWORD, rehashed) is True
+
+
+def test_get_password_hash_prefix_returns_unknown_for_plaintext_like_values() -> None:
+    assert get_password_hash_prefix("not-a-known-prefix") == "unknown"
+
+
 def test_hash_password_logs_write_counter_without_sensitive_data(app: Flask) -> None:
     plaintext_password = "SecurePassword123!"
 
@@ -299,6 +347,11 @@ def test_pinned_werkzeug_scrypt_method_matches_legacy_passlib_cost_baseline() ->
     assert int(n_value) == 2 ** int(legacy_cost_fields["ln"])
     assert int(r_value) == int(legacy_cost_fields["r"])
     assert int(p_value) == int(legacy_cost_fields["p"])
+
+
+def test_password_hash_telemetry_helpers_noop_without_app_context() -> None:
+    _emit_password_verification_telemetry("$scrypt$pretend", True)
+    _emit_password_hash_counter("password_hash_counter_test", hash_format="passlib_scrypt")
 
 
 @pytest.mark.parametrize(
