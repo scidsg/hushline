@@ -640,6 +640,10 @@
   .onboarding-wizard {
     background-color: white;
   }
+
+  .directory-filter-group select {
+    color: var(--color-text);
+  }
 }
 
 /* Dark Mode */
@@ -1188,6 +1192,10 @@
 
   .onboarding-wizard {
     background-color: var(--color-dark-bg);
+  }
+
+  .directory-filter-group select {
+    color: var(--color-text-dark);
   }
 }
 
@@ -2553,6 +2561,7 @@ input:focus {
 
 .directory-filter-group select {
   margin-bottom: 0;
+  line-height: 1.75;
 }
 
 .directory-filter-actions {
