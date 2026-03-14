@@ -205,6 +205,12 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
                 "",
                 "- `source_url` must be the exact official record URL for that listing.",
                 "",
+                "### EU Phase 0C (Per-Country Feasibility Survey)",
+                "",
+                "| Country | Recommendation |",
+                "| ------- | -------------- |",
+                "| Austria | Open country issue |",
+                "",
             ]
         )
         + "\n",
@@ -223,6 +229,8 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
     assert "| Austria | Candidate |" in updated
     assert "### EU Phase 0B (Strict Provenance Gate)" in updated
     assert "- `source_url` must be the exact official record URL for that listing." in updated
+    assert "### EU Phase 0C (Per-Country Feasibility Survey)" in updated
+    assert "| Austria | Open country issue |" in updated
 
 
 def test_public_record_provenance_roadmap_documents_eu_phase_0b_policy() -> None:
@@ -245,3 +253,30 @@ def test_public_record_provenance_roadmap_documents_eu_phase_0b_policy() -> None
     assert "- Lead-generation, referral, or commercial directory sites." in roadmap_text
     assert "- Each exception requires:" in roadmap_text
     assert "  - at least one example record-specific URL per domain" in roadmap_text
+
+
+def test_public_record_provenance_roadmap_documents_eu_phase_0c_feasibility() -> None:
+    roadmap_text = _workflow_text("docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md")
+
+    assert "### EU Phase 0C (Per-Country Feasibility Survey)" in roadmap_text
+    assert (
+        "- `Open country issue` means an official attorney-level source exposed a reproducible "
+        "record URL shape that appears compatible with Phase 0B strict provenance."
+    ) in roadmap_text
+    assert "| Austria     |" in roadmap_text
+    assert "| Netherlands |" in roadmap_text
+    assert "| Portugal    |" in roadmap_text
+    assert "| Germany     |" in roadmap_text
+    assert "| Italy       |" in roadmap_text
+    assert "| Belgium     |" in roadmap_text
+    assert "Search-form workflow -> HTML detail-page extraction" in roadmap_text
+    assert "HTML detail-page extraction" in roadmap_text
+    assert "Search-form workflow -> direct profile extraction" in roadmap_text
+    assert "| Open country issue |" in roadmap_text
+    assert (
+        "- `Defer` means the official source is known, but the current public surface still "
+        "lacks a pinned exact-record URL policy, has material workflow instability, or "
+        "requires a federated exception that is not yet documented."
+    ) in roadmap_text
+    assert "expired-dialog or unknown-error state" in roadmap_text
+    assert "returned HTTP `403`" in roadmap_text
