@@ -5,9 +5,13 @@ from typing import Any, cast
 import pytest
 import requests
 
+from hushline import securedrop_directory_refresh as refresh_module
 from hushline.securedrop_directory_refresh import (
     SECUREDROP_DIRECTORY_API_URL,
     SecureDropDirectoryRefreshError,
+    _choose_website,
+    _normalize_http_url,
+    _normalize_string_list,
     fetch_securedrop_directory_rows,
     refresh_securedrop_directory_rows,
     render_securedrop_refresh_summary,
@@ -100,27 +104,43 @@ def test_refresh_securedrop_directory_rows_is_deterministic_and_schema_compatibl
     ]
 
 
-def test_refresh_securedrop_directory_rows_rejects_duplicates() -> None:
-    duplicate_slug_rows = [
-        _raw_row(
-            title="One",
-            slug="same",
-            directory_url="https://securedrop.org/directory/one/",
-            organization_url="https://one.example",
-            landing_page_url="https://one.example/tips",
-            onion_address="one1234567890one1234567890one1234567890one1234567890.onion",
-        ),
-        _raw_row(
-            title="Two",
-            slug="same",
-            directory_url="https://securedrop.org/directory/two/",
-            organization_url="https://two.example",
-            landing_page_url="https://two.example/tips",
-            onion_address="two1234567890two1234567890two1234567890two1234567890.onion",
-        ),
+def test_normalize_string_list_filters_invalid_blank_and_duplicate_values() -> None:
+    assert _normalize_string_list("English") == []
+    assert _normalize_string_list([" English ", 3, "", "english", "French", " french "]) == [
+        "English",
+        "French",
     ]
-    with pytest.raises(SecureDropDirectoryRefreshError, match="Duplicate SecureDrop listing"):
-        refresh_securedrop_directory_rows(duplicate_slug_rows)
+
+
+def test_normalize_http_url_validates_required_and_optional_missing_values() -> None:
+    assert _normalize_http_url(None, field="landing_page_url", required=False) == ""
+    assert _normalize_http_url("   ", field="landing_page_url", required=False) == ""
+
+    with pytest.raises(
+        SecureDropDirectoryRefreshError,
+        match="Missing required URL field: directory_url",
+    ):
+        _normalize_http_url(None, field="directory_url", required=True)
+
+    with pytest.raises(
+        SecureDropDirectoryRefreshError,
+        match="Missing required URL field: directory_url",
+    ):
+        _normalize_http_url("   ", field="directory_url", required=True)
+
+
+def test_choose_website_requires_a_usable_url() -> None:
+    with pytest.raises(
+        SecureDropDirectoryRefreshError,
+        match="missing organization/landing/directory URL",
+    ):
+        _choose_website(
+            {
+                "organization_url": "mailto:tips@example.org",
+                "landing_page_url": "javascript:alert(1)",
+                "directory_url": "ftp://securedrop.example/directory",
+            }
+        )
 
 
 def test_refresh_securedrop_directory_rows_requires_onion_address() -> None:
@@ -187,6 +207,68 @@ def test_refresh_securedrop_directory_rows_sanitizes_optional_and_website_urls()
     assert fallback["website"] == "https://valid.example/tips"
 
 
+def test_refresh_securedrop_directory_rows_rejects_empty_slug_after_normalization() -> None:
+    with pytest.raises(
+        SecureDropDirectoryRefreshError,
+        match="SecureDrop slug normalized to an empty value",
+    ):
+        refresh_securedrop_directory_rows(
+            [
+                _raw_row(
+                    title="Bad Slug",
+                    slug="!!!",
+                    directory_url="https://securedrop.org/directory/bad-slug/",
+                    organization_url="https://valid.example",
+                    landing_page_url="https://valid.example/tips",
+                    onion_address="badslug1234567890badslug1234567890badslug1234567890.onion",
+                ),
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    ("normalized_rows", "message"),
+    [
+        (
+            [{"id": 1, "slug": "securedrop~one", "name": "One"}],
+            "Normalized row id must be a string",
+        ),
+        (
+            [
+                {"id": "securedrop-one", "slug": "securedrop~one", "name": "One"},
+                {"id": "securedrop-one", "slug": "securedrop~two", "name": "Two"},
+            ],
+            "Duplicate SecureDrop listing id: securedrop-one",
+        ),
+        (
+            [{"id": "securedrop-one", "slug": 1, "name": "One"}],
+            "Normalized row slug must be a string",
+        ),
+        (
+            [
+                {"id": "securedrop-one", "slug": "securedrop~shared", "name": "One"},
+                {"id": "securedrop-two", "slug": "securedrop~shared", "name": "Two"},
+            ],
+            "Duplicate SecureDrop listing slug: securedrop~shared",
+        ),
+    ],
+)
+def test_refresh_securedrop_directory_rows_validates_normalized_row_shapes(
+    monkeypatch: pytest.MonkeyPatch,
+    normalized_rows: list[dict[str, object]],
+    message: str,
+) -> None:
+    rows_iter = iter(normalized_rows)
+
+    def fake_normalize(row: dict[str, object]) -> dict[str, object]:
+        return next(rows_iter)
+
+    monkeypatch.setattr(refresh_module, "_normalize_securedrop_row", fake_normalize)
+
+    with pytest.raises(SecureDropDirectoryRefreshError, match=message):
+        refresh_securedrop_directory_rows([{} for _ in normalized_rows])
+
+
 class _FakeResponse:
     def __init__(self, *, payload: Any, status_code: int = 200) -> None:
         self._payload = payload
@@ -229,6 +311,12 @@ def test_fetch_securedrop_directory_rows_requests_expected_shape() -> None:
 def test_fetch_securedrop_directory_rows_rejects_non_list_payload() -> None:
     session = _FakeSession(payload={"slug": "alpha"})
     with pytest.raises(SecureDropDirectoryRefreshError, match="JSON array"):
+        fetch_securedrop_directory_rows(session=cast(requests.Session, session))
+
+
+def test_fetch_securedrop_directory_rows_rejects_non_object_payload_items() -> None:
+    session = _FakeSession(payload=[{"slug": "alpha"}, "beta"])
+    with pytest.raises(SecureDropDirectoryRefreshError, match="JSON objects"):
         fetch_securedrop_directory_rows(session=cast(requests.Session, session))
 
 
