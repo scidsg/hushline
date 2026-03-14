@@ -211,6 +211,10 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
                 "| ------- | -------------- |",
                 "| Austria | Open country issue |",
                 "",
+                "### EU Phase 0D (Shared Normalization and Model Assessment)",
+                "",
+                "- Country and subdivision data are not preserved by the refresh writer.",
+                "",
             ]
         )
         + "\n",
@@ -231,6 +235,8 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
     assert "- `source_url` must be the exact official record URL for that listing." in updated
     assert "### EU Phase 0C (Per-Country Feasibility Survey)" in updated
     assert "| Austria | Open country issue |" in updated
+    assert "### EU Phase 0D (Shared Normalization and Model Assessment)" in updated
+    assert "- Country and subdivision data are not preserved by the refresh writer." in updated
 
 
 def test_public_record_provenance_roadmap_documents_eu_phase_0b_policy() -> None:
@@ -280,3 +286,25 @@ def test_public_record_provenance_roadmap_documents_eu_phase_0c_feasibility() ->
     ) in roadmap_text
     assert "expired-dialog or unknown-error state" in roadmap_text
     assert "returned HTTP `403`" in roadmap_text
+
+
+def test_public_record_provenance_roadmap_documents_eu_phase_0d_shared_requirements() -> None:
+    roadmap_text = _workflow_text("docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md")
+
+    assert "### EU Phase 0D (Shared Normalization and Model Assessment)" in roadmap_text
+    assert (
+        "- The current automated refresh pipeline still treats `state` as the region key "
+        "for public-record rows"
+    ) in roadmap_text
+    assert (
+        "- Country and subdivision data are not preserved by the refresh writer."
+    ) in roadmap_text
+    assert "- Shared regulator regions are not modeled." in roadmap_text
+    assert "- No CSP change is required for Phase 0 planning." in roadmap_text
+    assert (
+        "- The current refresh pipeline expects deterministic, link-validatable record URLs "
+        "and exact allowed domains."
+    ) in roadmap_text
+    assert "1. Shared EU geography model issue:" in roadmap_text
+    assert "2. Shared EU authority metadata issue:" in roadmap_text
+    assert "3. Shared EU name-normalization issue:" in roadmap_text
