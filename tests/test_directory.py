@@ -1,14 +1,16 @@
 import re
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
 from bs4 import BeautifulSoup, Tag
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 import hushline.model.public_record_listing as public_record_listing_module
+import hushline.routes.directory as directory_routes
 from hushline.db import db
 from hushline.model import (
     GlobaLeaksDirectoryListing,
@@ -704,6 +706,83 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
     }
 
 
+def test_normalized_attorney_filter_country_returns_none_for_blank_values() -> None:
+    assert directory_routes._normalized_attorney_filter_country("   ") is None
+
+
+def test_attorney_filter_state_infers_country_from_region_selection(app: Flask) -> None:
+    attorney_filter_metadata: dict[str, object] = {
+        "countries": [
+            {"code": "United States", "label": "United States", "count": 1},
+            {"code": "Australia", "label": "Australia", "count": 1},
+        ],
+        "regions": {
+            "Australia": [{"code": "NSW", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
+        },
+    }
+
+    with app.test_request_context("/directory?region=ca"):
+        assert directory_routes._attorney_filter_state(attorney_filter_metadata) == {
+            "country": "United States",
+            "region": "California",
+            "region_code": "CA",
+        }
+
+
+def test_attorney_filter_state_clears_invalid_region_code(app: Flask) -> None:
+    attorney_filter_metadata: dict[str, object] = {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {
+            "United States": [
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "NY", "label": "New York", "count": 1},
+            ]
+        },
+    }
+
+    with app.test_request_context("/directory?country=US&region=zz"):
+        assert directory_routes._attorney_filter_state(attorney_filter_metadata) == {
+            "country": "United States",
+            "region": None,
+            "region_code": None,
+        }
+
+
+def test_attorney_filter_metadata_skips_missing_country_and_subdivision_code() -> None:
+    listings = cast(
+        tuple[PublicRecordListing, ...],
+        (
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country=None,
+                    subdivision="California",
+                    subdivision_code="CA",
+                )
+            ),
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country="United States",
+                    subdivision="California",
+                    subdivision_code=None,
+                )
+            ),
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country="United States",
+                    subdivision="California",
+                    subdivision_code="CA",
+                )
+            ),
+        ),
+    )
+
+    assert directory_routes._attorney_filter_metadata(listings) == {
+        "countries": [{"code": "United States", "label": "United States", "count": 2}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
 def test_directory_attorney_filters_include_normalized_country_values_outside_legacy_code_map(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -858,6 +937,19 @@ def test_directory_attorney_filters_json_ignores_untrusted_query_values(
         "countries": [{"code": "United States", "label": "United States", "count": 1}],
         "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
     }
+
+
+def test_directory_attorney_filters_json_returns_empty_metadata_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_attorney_filters"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {"countries": [], "regions": {}}
 
 
 def test_directory_securedrop_render_only_in_securedrop_and_all(
@@ -1465,6 +1557,24 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
         response = client.get(url_for("public_record_listing", slug=listing.slug))
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "patch_target"),
+    [
+        ("public_record_listing", "hushline.routes.directory.get_public_record_listing"),
+        ("globaleaks_listing", "hushline.routes.directory.get_globaleaks_directory_listing"),
+        ("securedrop_listing", "hushline.routes.directory.get_securedrop_directory_listing"),
+    ],
+)
+def test_directory_listing_routes_return_404_for_missing_slugs(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, endpoint: str, patch_target: str
+) -> None:
+    monkeypatch.setattr(patch_target, lambda _slug: None)
+
+    response = client.get(url_for(endpoint, slug="missing-listing"))
 
     assert response.status_code == 404
 
