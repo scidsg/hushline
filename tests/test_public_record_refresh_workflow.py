@@ -201,6 +201,10 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
                 "| ------- | ------ |",
                 "| Austria | Candidate |",
                 "",
+                "### EU Phase 0B (Strict Provenance Gate)",
+                "",
+                "- `source_url` must be the exact official record URL for that listing.",
+                "",
             ]
         )
         + "\n",
@@ -217,3 +221,27 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
     assert "## Current Baseline (2026-03-11)" in updated
     assert "## EU Phase 0A (Policy-Only Scaffold)" in updated
     assert "| Austria | Candidate |" in updated
+    assert "### EU Phase 0B (Strict Provenance Gate)" in updated
+    assert "- `source_url` must be the exact official record URL for that listing." in updated
+
+
+def test_public_record_provenance_roadmap_documents_eu_phase_0b_policy() -> None:
+    roadmap_text = _workflow_text("docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md")
+
+    assert "### EU Phase 0B (Strict Provenance Gate)" in roadmap_text
+    assert "- `source_url` must be the exact official record URL for that listing." in roadmap_text
+    assert (
+        '- The "Expected Official Domain(s)" column in the Phase 0A matrix is planning '
+        "evidence only."
+    ) in roadmap_text
+    assert "| `{Authority Name} attorney directory`" in roadmap_text
+    assert "| `{Authority Name} attorney register`" in roadmap_text
+    assert "| `{Authority Name} attorney census record`" in roadmap_text
+    assert "| `{Authority Name} attorney discipline record`" in roadmap_text
+    assert (
+        "- Private rankings and editorial products such as Chambers, Legal 500, and "
+        "Best Lawyers."
+    ) in roadmap_text
+    assert "- Lead-generation, referral, or commercial directory sites." in roadmap_text
+    assert "- Each exception requires:" in roadmap_text
+    assert "  - at least one example record-specific URL per domain" in roadmap_text

@@ -141,9 +141,64 @@ This artifact tracks the active U.S. implementation roadmap and the policy-only 
 | Spain       | General Council of Spanish Lawyers                                          | `abogacia.es`                                          | Yes                                          | Unknown             | Official census search -> resolve exact result URL                                 | Candidate | National official lawyer census is public; exact per-record URL behavior still needs validation.      |
 | Sweden      | Swedish Bar Association                                                     | `advokatsamfundet.se`                                  | Yes                                          | Unknown             | Official search flow -> validate exact result URL                                  | Deferred  | Public member search exists, but canonical detail URLs still need country issue review.               |
 
+### EU Phase 0B (Strict Provenance Gate)
+
+#### Baseline Alignment
+
+- EU attorney coverage inherits the same strict provenance standard used for the U.S. rollout.
+- No EU adapter or seed dataset may land until a country issue records the authoritative source class, exact allowed domains, approved `source_label` values, and any exception evidence required below.
+
+#### Required Source Standard
+
+- `source_url` must be the exact official record URL for that listing.
+- `source_url` must not be a search form, search-results page, home page, generic directory landing page, or country summary page.
+- `source_url` must not match the listed organization's own `website`; it must point to the external authority source of record.
+- The source record must come from an official bar, regulator, judiciary, or statutory authority acting within its published mandate.
+
+#### Allowed-Domain Policy
+
+- Each country issue must list the exact allowed apex domains. Broad suffix rules such as `.eu`, `.gov`, or "official-looking domains" are not acceptable.
+- `source_url` host may match one listed apex domain or a documented subdomain of that domain.
+- A domain is allowed only when it is controlled by the relevant official authority, or the authority explicitly designates it as the canonical public register.
+- Third-party mirrors, internet archives, unofficial PDFs, press summaries, and republished copies are not allowed.
+- The "Expected Official Domain(s)" column in the Phase 0A matrix is planning evidence only. It does not approve those domains for implementation until a country issue narrows them into an explicit allowed-domain set.
+
+#### EU Source-Label Taxonomy
+
+| Approved Label Pattern                        | Use When                                                         | Example                                                          |
+| --------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `{Authority Name} attorney directory`         | Official bar or law-society membership/profile directory         | `Conseil national des barreaux attorney directory`               |
+| `{Authority Name} attorney register`          | Official statutory or regulatory roll of admitted lawyers        | `BRAK attorney register`                                         |
+| `{Authority Name} attorney census record`     | Official nationwide census or roster naming licensed attorneys   | `Consejo General de la Abogacia Espanola attorney census record` |
+| `{Authority Name} attorney discipline record` | Official judicial or regulatory disciplinary or sanctions record | `Court of Appeal attorney discipline record`                     |
+
+- Labels must name the authority first and the record class second.
+- A country issue must map each permitted source class to one approved display label before implementation starts.
+- Marketing or trust-signaling language such as `top`, `best`, `verified`, `recommended`, or private brand names is disallowed in `source_label`.
+
+#### Disallowed Source Classes
+
+- Private rankings and editorial products such as Chambers, Legal 500, and Best Lawyers.
+- Lead-generation, referral, or commercial directory sites.
+- Law-firm self-reported websites, biographies, or newsroom pages.
+- Unofficial caches, mirrors, scraped copies, and search-engine result pages.
+- Generic official search entrypoints or directory home pages that do not resolve to a record-specific URL.
+
+#### Narrow Exception Rules
+
+- Federated official bar structures may use multiple official domains only if no single national authority domain exists and the country issue documents the official basis for each participating authority.
+- Vendor-hosted domains may be used only if the official authority identifies the domain as its canonical public register and the country issue captures a stable record-specific URL example from that domain.
+- No exception may authorize private rankings, lead-gen sites, or unofficial mirrors.
+- Each exception requires:
+  - an official source proving the authority relationship
+  - the exact allowed domains
+  - at least one example record-specific URL per domain
+  - maintainer approval recorded in the country issue before adapter work starts
+
 ### EU Execution Order
 
-1. Open country issues only from rows marked `Candidate` or `Deferred`.
-2. In each country issue, confirm the exact allowed domain set and whether direct per-record URLs are stable.
-3. Promote `Deferred` rows to `Candidate` only after a country issue captures the exact search/detail URL shape.
-4. Leave `Blocked` rows policy-only until a single authoritative public source, or a maintainer-approved federated policy, is documented.
+1. Treat EU Phase 0B as a hard gate: no EU adapter or seed data before a country issue captures the allowed domains, approved `source_label` values, and any exception evidence.
+2. Open country issues only from rows marked `Candidate` or `Deferred`.
+3. In each country issue, confirm the exact allowed domain set, whether direct per-record URLs are stable, and which Phase 0B source-label pattern applies.
+4. Promote `Deferred` rows to `Candidate` only after a country issue captures the exact search/detail URL shape.
+5. Leave `Blocked` rows policy-only until a single authoritative public source, or a maintainer-approved federated policy, is documented.
