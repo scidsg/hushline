@@ -144,15 +144,15 @@ def _filter_public_record_listings(
 def _attorney_filter_metadata(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
 ) -> dict[str, object]:
-    countries: set[str] = set()
-    regions: dict[str, dict[str, str]] = {}
+    countries: dict[str, int] = {}
+    regions: dict[str, dict[str, dict[str, object]]] = {}
 
     for listing in listings:
         geography = listing.geography
         if geography.country is None:
             continue
 
-        countries.add(geography.country)
+        countries[geography.country] = countries.get(geography.country, 0) + 1
 
         if geography.subdivision is None:
             continue
@@ -161,17 +161,30 @@ def _attorney_filter_metadata(
         if region_code is None:
             continue
 
-        regions.setdefault(geography.country, {})[region_code] = geography.subdivision
+        country_regions = regions.setdefault(geography.country, {})
+        region_entry = cast(
+            dict[str, object],
+            country_regions.setdefault(
+                region_code,
+                {"label": geography.subdivision, "count": 0},
+            ),
+        )
+        region_entry["count"] = cast(int, region_entry["count"]) + 1
 
     return {
         "countries": [
-            {"code": country, "label": country} for country in sorted(countries, key=str.casefold)
+            {"code": country, "label": country, "count": countries[country]}
+            for country in sorted(countries, key=str.casefold)
         ],
         "regions": {
             country_name: [
-                {"code": code, "label": label}
-                for code, label in sorted(
-                    country_regions.items(), key=lambda item: item[1].casefold()
+                {
+                    "code": code,
+                    "label": str(region_data["label"]),
+                    "count": cast(int, region_data["count"]),
+                }
+                for code, region_data in sorted(
+                    country_regions.items(), key=lambda item: str(item[1]["label"]).casefold()
                 )
             ]
             for country_name, country_regions in sorted(regions.items())

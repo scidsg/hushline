@@ -110,13 +110,24 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
         directory_verified_js
     )
-    assert 'attorneyFiltersPanel.addEventListener("submit", function (event) {' in (
-        directory_verified_js
-    )
+    assert "function inferredCountryForRegionCode(regionCode)" in directory_verified_js
+    assert "function updateAttorneySelectExpandedLabels(isExpanded)" in directory_verified_js
     assert 'attorneyCountryFilter.addEventListener("change", async function () {' in (
         directory_verified_js
     )
     assert 'attorneyRegionFilter.addEventListener("change", function () {' in directory_verified_js
+    assert 'attorneyCountryFilter.addEventListener("focus", syncExpandedLabelsOnOpen);' in (
+        directory_verified_js
+    )
+    assert 'attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);' in (
+        directory_verified_js
+    )
+    assert (
+        "attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);"
+        in (directory_verified_js)
+    )
+    assert "updateAttorneyFiltersClearVisibility();" in directory_verified_js
+    assert 'button[type="submit"]' not in directory_template
     assert 'setSearchStatus("Updating attorney results.");' in directory_verified_js
     assert "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;" in directory_verified_js
     assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (

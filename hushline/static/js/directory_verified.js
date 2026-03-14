@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
   const publicRecordCountBadge = document.getElementById("public-record-count");
+  const attorneyFiltersToggleShell = document.getElementById("attorney-filters-toggle-shell");
+  const attorneyFiltersPanelShell = document.getElementById("attorney-filters-panel-shell");
   const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
   const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
   const attorneyCountryFilter = document.getElementById("attorney-country-filter");
@@ -40,6 +42,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const isExpanded = !attorneyFiltersPanel.hidden;
     attorneyFiltersToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
     attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
+  }
+
+  function updateAttorneyFilterVisibility() {
+    const attorneyTabIsActive = activeTabName() === "public-records";
+
+    if (attorneyFiltersToggleShell) {
+      attorneyFiltersToggleShell.hidden = !attorneyTabIsActive;
+    }
+
+    if (attorneyFiltersPanelShell) {
+      attorneyFiltersPanelShell.hidden = !attorneyTabIsActive;
+    }
   }
 
   function activeTabName() {
@@ -431,11 +445,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(search);
     attorneyCountryFilter.value = params.get("country") || "";
     attorneyRegionFilter.value = params.get("region") || "";
+    if (!attorneyCountryFilter.value && attorneyRegionFilter.value) {
+      attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);
+    }
+    updateAttorneyCountryLabels();
     updateAttorneyRegionOptions();
 
     if (attorneyFiltersPanel) {
       attorneyFiltersPanel.hidden = !(attorneyCountryFilter.value || attorneyRegionFilter.value);
       updateAttorneyFiltersToggle();
+      updateAttorneyFiltersClearVisibility();
     }
   }
 
@@ -456,16 +475,93 @@ document.addEventListener("DOMContentLoaded", function () {
       attorneyRegionFilter.disabled = isLoading || disabledByCountry;
     }
 
-    const submitButton = attorneyFiltersPanel.querySelector('button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = isLoading;
-    }
-
     const resetLink = attorneyFiltersPanel.querySelector("a");
     if (resetLink) {
       resetLink.setAttribute("aria-disabled", isLoading ? "true" : "false");
       resetLink.tabIndex = isLoading ? -1 : 0;
     }
+  }
+
+  function updateAttorneyFiltersClearVisibility() {
+    if (!attorneyFiltersPanel || !attorneyCountryFilter || !attorneyRegionFilter) {
+      return;
+    }
+
+    const resetActions = attorneyFiltersPanel.querySelector("#attorney-filters-actions");
+    if (!resetActions) {
+      return;
+    }
+
+    resetActions.hidden = !(attorneyCountryFilter.value || attorneyRegionFilter.value);
+  }
+
+  function updateAttorneyCountryLabels() {
+    if (!attorneyCountryFilter) {
+      return;
+    }
+
+    const selectedCountry = attorneyCountryFilter.value;
+    const showSelectedCount = attorneyCountryFilter.dataset.showSelectedCount === "true";
+
+    Array.from(attorneyCountryFilter.options).forEach((option) => {
+      if (!option.value) {
+        return;
+      }
+
+      const country = Array.isArray(attorneyFilterMetadata.countries)
+        ? attorneyFilterMetadata.countries.find((item) => item.code === option.value)
+        : null;
+      if (!country) {
+        return;
+      }
+
+      option.textContent =
+        option.value === selectedCountry && !showSelectedCount
+          ? country.label
+          : `${country.label} (${country.count})`;
+    });
+  }
+
+  function setAttorneySelectExpandedState(select, isExpanded) {
+    if (!select) {
+      return;
+    }
+
+    select.dataset.showSelectedCount = isExpanded ? "true" : "false";
+  }
+
+  function updateAttorneySelectExpandedLabels(isExpanded) {
+    setAttorneySelectExpandedState(attorneyCountryFilter, isExpanded);
+    setAttorneySelectExpandedState(attorneyRegionFilter, isExpanded);
+    updateAttorneyCountryLabels();
+    updateAttorneyRegionOptions();
+  }
+
+  function inferredCountryForRegionCode(regionCode) {
+    if (!regionCode) {
+      return "";
+    }
+
+    const normalizedRegionCode = regionCode.trim().toLowerCase();
+    const regionsByCountry =
+      attorneyFilterMetadata.regions && typeof attorneyFilterMetadata.regions === "object"
+        ? attorneyFilterMetadata.regions
+        : {};
+
+    for (const [countryName, countryRegions] of Object.entries(regionsByCountry)) {
+      if (!Array.isArray(countryRegions)) {
+        continue;
+      }
+
+      const matchingRegion = countryRegions.find(
+        (region) => String(region.code).trim().toLowerCase() === normalizedRegionCode,
+      );
+      if (matchingRegion) {
+        return countryName;
+      }
+    }
+
+    return "";
   }
 
   function updateAttorneyRegionOptions() {
@@ -475,29 +571,68 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const selectedCountry = attorneyCountryFilter.value;
     const selectedRegion = attorneyRegionFilter.value;
-    const availableRegions = Array.isArray(attorneyFilterMetadata.regions?.[selectedCountry])
-      ? attorneyFilterMetadata.regions[selectedCountry]
-      : [];
+    const showSelectedCount = attorneyRegionFilter.dataset.showSelectedCount === "true";
+    const regionsByCountry =
+      attorneyFilterMetadata.regions && typeof attorneyFilterMetadata.regions === "object"
+        ? attorneyFilterMetadata.regions
+        : {};
+    const availableRegions = selectedCountry
+      ? Array.isArray(regionsByCountry[selectedCountry])
+        ? regionsByCountry[selectedCountry]
+        : []
+      : Object.values(regionsByCountry).flatMap((countryRegions) =>
+          Array.isArray(countryRegions) ? countryRegions : [],
+        );
 
     attorneyRegionFilter.innerHTML = '<option value="">All</option>';
 
-    availableRegions.forEach((region) => {
-      const option = document.createElement("option");
-      option.value = region.code;
-      option.textContent = region.label;
-      if (region.code === selectedRegion) {
-        option.selected = true;
-      }
-      attorneyRegionFilter.appendChild(option);
-    });
+    if (selectedCountry) {
+      availableRegions.forEach((region) => {
+        const option = document.createElement("option");
+        option.value = region.code;
+        option.textContent =
+          region.code === selectedRegion && !showSelectedCount
+            ? region.label
+            : `${region.label} (${region.count})`;
+        if (region.code === selectedRegion) {
+          option.selected = true;
+        }
+        attorneyRegionFilter.appendChild(option);
+      });
+    } else {
+      Object.entries(regionsByCountry).forEach(([countryName, countryRegions]) => {
+        if (!Array.isArray(countryRegions) || !countryRegions.length) {
+          return;
+        }
+
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = countryName;
+
+        countryRegions.forEach((region) => {
+          const option = document.createElement("option");
+          option.value = region.code;
+          option.textContent =
+            region.code === selectedRegion && !showSelectedCount
+              ? region.label
+              : `${region.label} (${region.count})`;
+          if (region.code === selectedRegion) {
+            option.selected = true;
+          }
+          optgroup.appendChild(option);
+        });
+
+        attorneyRegionFilter.appendChild(optgroup);
+      });
+    }
 
     if (!availableRegions.some((region) => region.code === selectedRegion)) {
       attorneyRegionFilter.value = "";
     }
 
-    const disabledByCountry = !(selectedCountry && availableRegions.length);
+    const disabledByCountry = !availableRegions.length;
     attorneyRegionFilter.dataset.disabledByCountry = disabledByCountry ? "true" : "false";
     attorneyRegionFilter.disabled = attorneyFiltersLoading || disabledByCountry;
+    updateAttorneyFiltersClearVisibility();
   }
 
   function ensureAttorneyFilterMetadata() {
@@ -518,6 +653,7 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .then((data) => {
         attorneyFilterMetadata = data;
+        updateAttorneyCountryLabels();
         updateAttorneyRegionOptions();
         return data;
       })
@@ -644,21 +780,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (attorneyFiltersPanel && attorneyCountryFilter && attorneyRegionFilter) {
     const resetLink = attorneyFiltersPanel.querySelector("a");
+    const syncExpandedLabelsOnOpen = function (event) {
+      if (
+        event.type === "keydown" &&
+        event.key !== "ArrowDown" &&
+        event.key !== "ArrowUp" &&
+        event.key !== "Enter" &&
+        event.key !== " "
+      ) {
+        return;
+      }
 
-    attorneyFiltersPanel.addEventListener("submit", function (event) {
-      event.preventDefault();
-      void refreshAttorneyResults();
-    });
+      updateAttorneySelectExpandedLabels(true);
+    };
+    const syncExpandedLabelsOnClose = function () {
+      updateAttorneySelectExpandedLabels(false);
+    };
 
     attorneyCountryFilter.addEventListener("change", async function () {
       await ensureAttorneyFilterMetadata();
+      updateAttorneyCountryLabels();
       updateAttorneyRegionOptions();
+      syncExpandedLabelsOnClose();
       void refreshAttorneyResults();
     });
 
     attorneyRegionFilter.addEventListener("change", function () {
+      if (!attorneyCountryFilter.value && attorneyRegionFilter.value) {
+        attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);
+        updateAttorneyRegionOptions();
+      }
+      updateAttorneyCountryLabels();
+      updateAttorneyFiltersClearVisibility();
+      syncExpandedLabelsOnClose();
       void refreshAttorneyResults();
     });
+
+    attorneyCountryFilter.addEventListener("focus", syncExpandedLabelsOnOpen);
+    attorneyCountryFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
+    attorneyCountryFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
+    attorneyCountryFilter.addEventListener("blur", syncExpandedLabelsOnClose);
+
+    attorneyRegionFilter.addEventListener("focus", syncExpandedLabelsOnOpen);
+    attorneyRegionFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
+    attorneyRegionFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
+    attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);
 
     if (resetLink) {
       resetLink.addEventListener("click", function (event) {
@@ -669,9 +835,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         attorneyCountryFilter.value = "";
         attorneyRegionFilter.value = "";
+        updateAttorneyCountryLabels();
         updateAttorneyRegionOptions();
-        attorneyFiltersPanel.hidden = true;
-        updateAttorneyFiltersToggle();
+        syncExpandedLabelsOnClose();
         void refreshAttorneyResults();
       });
     }
@@ -700,6 +866,7 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.style.display = "block";
     targetPanel.classList.add("active");
 
+    updateAttorneyFilterVisibility();
     updatePlaceholder();
     handleSearchInput();
   };
