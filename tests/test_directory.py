@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qsl, urlparse
 
@@ -7,6 +8,7 @@ from bs4 import BeautifulSoup, Tag
 from flask import url_for
 from flask.testing import FlaskClient
 
+import hushline.model.public_record_listing as public_record_listing_module
 from hushline.db import db
 from hushline.model import (
     GlobaLeaksDirectoryListing,
@@ -1040,6 +1042,7 @@ def test_public_record_listing_normalizes_us_state_into_country_and_subdivision(
     assert listing.geography.country == "United States"
     assert listing.geography.subdivision == "Illinois"
     assert listing.geography.subdivision_code == "IL"
+    assert listing.countries == ("United States",)
     assert listing.geography.countries == ("United States",)
     assert listing.location == "Chicago, Illinois, United States"
 
@@ -1088,6 +1091,106 @@ def test_public_record_listing_preserves_non_us_subdivision_code() -> None:
     assert listing.geography.subdivision_code == "New South Wales"
     assert listing.geography.countries == ("Australia",)
     assert listing.location == "Sydney, New South Wales, Australia"
+
+
+def test_public_record_listing_load_seed_rows_returns_empty_list_for_missing_file(
+    tmp_path: Path,
+) -> None:
+    missing_path = tmp_path / "missing-public-record-seed.json"
+
+    assert public_record_listing_module._load_seed_rows(missing_path) == []
+
+
+def test_public_record_listings_deduplicate_strict_and_legacy_seed_collisions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    strict_seed_path = tmp_path / "strict-public-record-seed.json"
+    legacy_seed_path = tmp_path / "legacy-public-record-seed.json"
+    strict_rows: list[dict[str, object]] = [
+        {
+            "id": "strict-primary",
+            "slug": "public-record~strict-primary",
+            "name": "Strict Primary Listing",
+            "website": "https://strict-primary.example",
+            "description": "Primary strict listing.",
+            "city": "Chicago",
+            "state": "IL",
+            "practice_tags": ["Labor"],
+            "source_label": "Strict source",
+        }
+    ]
+    legacy_rows: list[dict[str, object]] = [
+        {
+            "id": "strict-primary",
+            "slug": "public-record~legacy-duplicate-id",
+            "name": "Legacy Duplicate Id Listing",
+            "website": "https://legacy-duplicate-id.example",
+            "description": "Legacy listing with a duplicate id.",
+            "city": "New York",
+            "state": "NY",
+            "practice_tags": ["Privacy"],
+            "source_label": "Legacy source",
+        },
+        {
+            "id": "legacy-duplicate-slug",
+            "slug": "public-record~strict-primary",
+            "name": "Legacy Duplicate Slug Listing",
+            "website": "https://legacy-duplicate-slug.example",
+            "description": "Legacy listing with a duplicate slug.",
+            "city": "Sacramento",
+            "state": "CA",
+            "practice_tags": ["Employment"],
+            "source_label": "Legacy source",
+        },
+        {
+            "id": "legacy-unique",
+            "slug": "public-record~legacy-unique",
+            "name": "Legacy Unique Listing",
+            "website": "https://legacy-unique.example",
+            "description": "Legacy listing that should remain after deduplication.",
+            "city": "Sydney",
+            "state": "Australia",
+            "practice_tags": ["Whistleblower"],
+            "source_label": "Legacy source",
+        },
+    ]
+
+    def load_seed_rows(path: Path) -> list[dict[str, object]]:
+        if path == strict_seed_path:
+            return strict_rows
+        if path == legacy_seed_path:
+            return legacy_rows
+        raise AssertionError(f"Unexpected path: {path}")
+
+    public_record_listing_module.get_public_record_listings.cache_clear()
+    monkeypatch.setattr(
+        public_record_listing_module,
+        "_seed_path",
+        lambda: strict_seed_path,
+    )
+    monkeypatch.setattr(
+        public_record_listing_module,
+        "_legacy_seed_path",
+        lambda: legacy_seed_path,
+    )
+    monkeypatch.setattr(public_record_listing_module, "_load_seed_rows", load_seed_rows)
+
+    try:
+        listings = public_record_listing_module.get_public_record_listings()
+    finally:
+        public_record_listing_module.get_public_record_listings.cache_clear()
+
+    assert len(listings) == 2
+    assert {listing.id for listing in listings} == {"legacy-unique", "strict-primary"}
+
+    strict_listing = next(listing for listing in listings if listing.id == "strict-primary")
+    assert strict_listing.slug == "public-record~strict-primary"
+    assert strict_listing.directory_section == "public_record"
+
+    legacy_listing = next(listing for listing in listings if listing.id == "legacy-unique")
+    assert legacy_listing.slug == "public-record~legacy-unique"
+    assert legacy_listing.directory_section == "legacy_public_record"
 
 
 def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_country() -> None:
