@@ -223,3 +223,49 @@ This artifact tracks the active U.S. implementation roadmap and the policy-only 
 | Portugal    | [OA microsite home](https://advogado.oa.pt/); [OA notice documenting `https://advogado.oa.pt/nnnnnnn`](https://portal.oa.pt/comunicacao/comunicados/2022/informacao-nova-funcionalidade-pagina-pessoal-do-advogado/); [profile example](https://advogado.oa.pt/13639L)                                                                                      | Attorney                          | Yes. OA states each lawyer receives a direct page keyed by professional number, and public profile pages are crawlable.     | Discovery still depends on the OA public search path that maps names to `cédula` numbers; contact forms use a robot check, but the profile pages themselves are public.                     | Search-form workflow -> direct profile extraction              | Open country issue |
 | Spain       | [General Census of Lawyers](https://www.abogacia.es/servicios/ciudadanos/censo-general-de-letrados/)                                                                                                                                                                                                                                                        | Attorney                          | Unknown. The official census says it exposes a lawyer file, but no record-specific URL was surfaced in crawl.               | The official landing page routes users into app/mobile and census flows, but the exact public lawyer-profile URL pattern remains unverified.                                                | Search-form workflow                                           | Defer              |
 | Sweden      | [Swedish Bar Association member-search entry point](https://www.advokatsamfundet.se/en/)                                                                                                                                                                                                                                                                    | Attorney (members only)           | Unknown. The official site says the public can search among all members, but no profile URL pattern was surfaced.           | No public member-detail permalink or search endpoint was observed in crawl, suggesting a JS-driven or otherwise opaque search/results flow.                                                 | Search-form workflow                                           | Defer              |
+
+### EU Phase 0D (Shared Normalization and Model Assessment)
+
+#### Assessment Basis
+
+- This assessment is based on the current `PublicRecordListing`, shared directory geography helpers, and the `refresh_public_record_law_firms.py` / `hushline.public_record_refresh` pipeline.
+- The current listing model already stores UTF-8 strings for `name`, `city`, `country`, `subdivision`, `source_label`, and `source_url`, so multilingual display values can be rendered without a schema change.
+- The current automated refresh pipeline still treats `state` as the region key for public-record rows and writes back only the legacy attorney fields (`id`, `slug`, `name`, `website`, `description`, `city`, `state`, `practice_tags`, `source_label`, `source_url`).
+
+#### What Can Stay Within the Current Model
+
+- Attorney display names can remain in the existing `name` field for Phase 0 country work. We do not need separate given-name, family-name, honorific, or transliteration columns before opening country adapters.
+- Country names and locality display text can remain free-text UTF-8 values in `city`, `country`, and `subdivision` at the read-model layer.
+- The existing strict provenance fields, `source_label` and `source_url`, are still sufficient for EU adapters and should remain the primary trust surface.
+- `practice_tags`, `description`, and `website` can stay unchanged. They are presentation fields and do not need EU-specific schema work first.
+
+#### Shared Gaps Before EU Adapters Scale Cleanly
+
+- Non-U.S. geography is only partially normalized today. `build_public_record_geography()` can display `country` and `subdivision`, but the refresh pipeline still keys EU rows off `state`, which is a legacy compatibility field rather than a durable jurisdiction model.
+- Country and subdivision data are not preserved by the refresh writer. A future EU seed could be read with `country` / `subdivision` fields, but a correction refresh would currently drop them from the output artifact.
+- Shared regulator regions are not modeled. Federated systems such as Belgium, and likely later Germany, Italy, or Spain, may need an authority-region field distinct from civic geography.
+- The current name normalization is good enough for deterministic sort order, but not for shared identity matching. We only derive slugs from a lossy ASCII-like normalization, so multilingual alternate names or bar-registered spellings would need separate design if adapters must disambiguate same-city attorneys reliably.
+
+#### Metadata That Does Not Belong in This Ticket
+
+- `registration_number` or equivalent bar-roll identifier should be treated as separate design work. Several EU sources appear to expose number-based profile URLs, and that identifier may become necessary for reproducible refreshes and duplicate resolution.
+- `practicing_status` should also be separate design work. Some countries publish distinctions such as active, suspended, trainee, or firm-only entries, but the current model does not define how those values should be normalized or displayed.
+- If maintainers later decide that multilingual name variants must be searchable, a dedicated search-normalization design should add explicit fields instead of overloading `slug` or `description`.
+
+#### Adapter and Pipeline Constraints
+
+- No CSP change is required for Phase 0 planning. Country adapters should continue to run in the server-side refresh pipeline; they should not embed third-party iframes, remote scripts, or browser-side queries into the Hush Line UI.
+- If a source only works through CAPTCHA, opaque JS state, expiring session tokens, or embedded third-party widgets, that country should remain blocked or deferred until maintainers approve a separate design. Adapters must not bypass anti-bot or integrity controls.
+- The current refresh pipeline expects deterministic, link-validatable record URLs and exact allowed domains. Generic search pages, office pages, or authority landing pages remain insufficient provenance for EU rows just as they are for U.S. rows.
+- Any future schema-affecting EU work should preserve the existing strict-source checks: `source_url` cannot equal `website`, cannot point to a generic source page, and cannot broaden allowed-domain policy into suffix-based matching.
+
+#### Required Follow-Up Backlog Items
+
+1. Shared EU geography model issue: persist `country` and `subdivision` through public-record refreshes, and stop relying on `state` as the only non-U.S. jurisdiction carrier.
+2. Shared EU authority metadata issue: design optional `registration_number`, `practicing_status`, and `regulator_region` fields, including normalization rules and display policy.
+3. Shared EU name-normalization issue: define whether attorney matching needs alternate-name, transliteration, or sort-name support beyond the current display-only `name` field.
+
+#### Phase 0D Conclusion
+
+- Country-specific EU adapter tickets can proceed now for jurisdictions that already have Phase 0C evidence, but they should assume only the current display model, provenance policy, and legacy `state`-based refresh path.
+- Shared model work becomes mandatory before EU coverage scales past a few country-specific experiments, especially once adapters need durable `country` / `subdivision`, regulator-region handling, or number-based identity matching.
