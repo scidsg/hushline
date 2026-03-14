@@ -1,5 +1,7 @@
 # Public Record Provenance Roadmap (U.S.)
 
+This artifact tracks the active U.S. implementation roadmap and the policy-only EU scaffold used to open follow-on country issues.
+
 ## Scope
 
 - Build an authoritative, ever-growing U.S. public-record attorney dataset.
@@ -102,3 +104,46 @@
 - Are anti-bot controls/captcha present?
 - Is an official API/feed available?
 - Can provenance be captured reproducibly without private sources?
+
+## EU Phase 0A (Policy-Only Scaffold)
+
+### Scope
+
+- Mirror the U.S. roadmap format before any EU adapter work starts.
+- Keep this section policy-only until a country-specific issue validates the source shape.
+- Use the EU target set already defined in code: `Austria`, `Belgium`, `Finland`, `France`, `Germany`, `Italy`, `Luxembourg`, `Netherlands`, `Portugal`, `Spain`, `Sweden`.
+
+### Evidence Snapshot (March 14, 2026)
+
+- Public-search availability below reflects an evidence review completed on March 14, 2026.
+- Primary evidence came from official national bar/council pages and the European e-Justice "Find a lawyer" provider list (last updated July 1, 2025).
+- No EU discovery adapters are implemented yet. Every row below is planning state only.
+
+### Status Definitions
+
+- `Candidate`: official authority and public search are visible enough to open a country implementation issue.
+- `Blocked`: no single authoritative country-level source is confirmed yet, or the source shape is split in a way that prevents a safe first adapter.
+- `Deferred`: the official authority is known, but the exact search/detail URL policy still needs manual source validation before adapter work starts.
+
+### 11-Country Matrix
+
+| Country     | Official Authority                                                          | Expected Official Domain(s)                            | Public Search                                | Record-Specific URL | Likely Adapter Method                                                              | Status    | Notes                                                                                                 |
+| ----------- | --------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------- |
+| Austria     | Austrian Bar / Austrian Lawyers (`Osterreichischer Rechtsanwaltskammertag`) | `rechtsanwaelte.at`, `oerak.at`, `service.oerak.at`    | Yes                                          | Yes                 | Official search flow -> resolve exact result URL                                   | Candidate | Official directory and attorney detail pages were both observed on official bar domains.              |
+| Belgium     | Split official bars: `AVOCATS.BE` and `Orde van Vlaamse Balies`             | `avocats.be`, `advocaat.be`                            | Yes, but split                               | Unknown             | Federated bar search -> resolve exact result URL per authority                     | Blocked   | No single country-level authority/domain is confirmed for nationwide coverage yet.                    |
+| Finland     | Finnish Bar Association                                                     | `asianajajat.fi`                                       | Yes                                          | Unknown             | Official search flow -> validate exact result URL                                  | Deferred  | Public "Find an attorney" flow exists, but the canonical profile URL shape still needs confirmation.  |
+| France      | `Conseil national des barreaux`                                             | `avocat.fr`                                            | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Candidate | National official directory is public; stable record URL policy still needs country issue validation. |
+| Germany     | Federal Bar / BRAK Nationwide Register of Lawyers                           | `brak.de`, `rechtsanwaltsregister.org`                 | Yes                                          | Unknown             | Official register search -> resolve exact result URL                               | Candidate | Nationwide official register is public and suitable for a first country issue.                        |
+| Italy       | National Bar Council / `Consiglio Nazionale Forense`                        | `consiglionazionaleforense.it`                         | Yes, but entrypoint still needs pinning      | Unknown             | Official register search -> resolve exact result URL or federated local-bar lookup | Deferred  | Official authority is known, but the stable public query surface still needs confirmation.            |
+| Luxembourg  | Luxembourg Bar Association                                                  | `barreau.lu`                                           | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Deferred  | Public bar-register participation is visible, but country-level completeness still needs review.      |
+| Netherlands | Netherlands Bar                                                             | `advocatenorde.nl`, `zoekeenadvocaat.advocatenorde.nl` | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Candidate | National official lawyer search is public and appears viable for follow-on validation.                |
+| Portugal    | Portuguese Bar Association / `Ordem dos Advogados`                          | `portal.oa.pt`                                         | No authoritative public search confirmed yet | No                  | Manual authority review before adapter work                                        | Blocked   | Official authority is identified, but no public lawyer-search/detail source is documented here yet.   |
+| Spain       | General Council of Spanish Lawyers                                          | `abogacia.es`                                          | Yes                                          | Unknown             | Official census search -> resolve exact result URL                                 | Candidate | National official lawyer census is public; exact per-record URL behavior still needs validation.      |
+| Sweden      | Swedish Bar Association                                                     | `advokatsamfundet.se`                                  | Yes                                          | Unknown             | Official search flow -> validate exact result URL                                  | Deferred  | Public member search exists, but canonical detail URLs still need country issue review.               |
+
+### EU Execution Order
+
+1. Open country issues only from rows marked `Candidate` or `Deferred`.
+2. In each country issue, confirm the exact allowed domain set and whether direct per-record URLs are stable.
+3. Promote `Deferred` rows to `Candidate` only after a country issue captures the exact search/detail URL shape.
+4. Leave `Blocked` rows policy-only until a single authoritative public source, or a maintainer-approved federated policy, is documented.
