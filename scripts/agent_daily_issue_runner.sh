@@ -1552,14 +1552,6 @@ main() {
   run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
   run_step "Remove untracked files" git clean -fd
 
-  run_step "Configure bot git identity" configure_bot_git_identity
-
-  run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
-  run_step "Kill all Docker containers" kill_all_docker_containers
-  run_step "Prune Docker system" docker system prune -af --volumes
-  run_step "Kill processes on runner ports" kill_processes_on_ports
-  start_runtime_stack_and_seed_dev_data --build
-
   OPEN_BOT_PRS="$(count_open_bot_prs)"
   echo "Open bot PR count: ${OPEN_BOT_PRS}"
   if [[ "$OPEN_BOT_PRS" != "0" ]]; then
@@ -1593,6 +1585,14 @@ main() {
     echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
     exit 0
   fi
+
+  run_step "Configure bot git identity" configure_bot_git_identity
+
+  run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
+  run_step "Kill all Docker containers" kill_all_docker_containers
+  run_step "Prune Docker system" docker system prune -af --volumes
+  run_step "Kill processes on runner ports" kill_processes_on_ports
+  start_runtime_stack_and_seed_dev_data --build
 
   ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
   ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
