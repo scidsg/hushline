@@ -269,3 +269,57 @@ This artifact tracks the active U.S. implementation roadmap and the policy-only 
 
 - Country-specific EU adapter tickets can proceed now for jurisdictions that already have Phase 0C evidence, but they should assume only the current display model, provenance policy, and legacy `state`-based refresh path.
 - Shared model work becomes mandatory before EU coverage scales past a few country-specific experiments, especially once adapters need durable `country` / `subdivision`, regulator-region handling, or number-based identity matching.
+
+### EU Phase 0E (Rollout Waves and Country-Level Backlog)
+
+#### Research-to-Implementation Gate
+
+- Move a country from research into implementation only when a country issue records:
+  - at least one reproducible attorney-level record URL on the official source of record
+  - the exact allowed-domain set and approved Phase 0B `source_label` mapping
+  - a bounded extraction path that does not depend on CAPTCHA bypasses, expiring sessions, or embedded third-party widgets
+  - confirmation that the current listing model can carry the required fields without unplanned shared schema work
+- Keep a country out of implementation when any of the following remain true:
+  - the evidence stops at a search form, landing page, iframe host, or other non-record URL
+  - the official flow currently fails through HTTP downgrade, session expiry, access denial, or similar instability
+  - nationwide coverage depends on a federated exception that is not yet approved under Phase 0B
+  - the legal basis for public attorney publication is still ambiguous at the country level
+
+#### Proposed Rollout Waves
+
+1. `Wave 1A` (`Implement first`): `Netherlands`, `Portugal`.
+   Both countries already expose public attorney-specific URLs on official domains, so the remaining work is mostly bounded extraction and attorney-only filtering.
+2. `Wave 1B` (`Implement first`): `Austria`.
+   Austria also has official attorney detail URLs, but the country issue should pin which OERAK query components are canonical before coding starts.
+3. `Wave 2` (`Implement later`): `Finland`, `France`, `Luxembourg`, `Spain`, `Sweden`.
+   These countries have identifiable official authorities, but they still need targeted source-validation work to pin an exact-record URL policy or canonical host before adapter implementation.
+4. `Deferred backlog` (`Defer`): `Belgium`, `Germany`, `Italy`.
+   These countries are blocked by federated policy, unstable access, or unverified public access paths that make implementation unsafe to queue behind simple validation work.
+
+#### Country Disposition Matrix
+
+| Country     | Disposition     | Wave             | Evidence-Based Reason                                                                                                                           | Proposed Follow-Up                                                                   |
+| ----------- | --------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Austria     | Implement first | Wave 1B          | Official OERAK lawyer detail URLs were observed; only canonical query-shape decisions remain.                                                   | `EU Wave 1B: implement Austria attorney adapter`                                     |
+| Belgium     | Defer           | Deferred backlog | Coverage is split across official authorities, `advocaat.be` detail URLs are only partial evidence, and AVOCATS.BE detail URLs remain unpinned. | `EU defer backlog: Belgium federated authority policy and source validation`         |
+| Finland     | Implement later | Wave 2           | Official search guidance exists, but no canonical attorney-detail URL was surfaced on March 14, 2026.                                           | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+| France      | Implement later | Wave 2           | The official directory is public, but an embedded `iframe` still obscures the canonical host and allowed-domain set.                            | `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                |
+| Germany     | Defer           | Deferred backlog | The official register flow redirected to HTTP and returned an expired-dialog or unknown-error state on March 14, 2026.                          | `EU defer backlog: Germany official register stability and provenance validation`    |
+| Italy       | Defer           | Deferred backlog | The official CNF lawyer-search endpoint returned HTTP `403` on March 14, 2026, so public access and exact detail URLs remain unverified.        | `EU defer backlog: Italy public attorney-register access validation`                 |
+| Luxembourg  | Implement later | Wave 2           | The official annuaire confirms published bar data, but no distinct per-lawyer permalink has been pinned yet.                                    | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+| Netherlands | Implement first | Wave 1A          | Stable attorney detail URLs were observed on the official NOvA domain; the remaining risk is filtering out firm pages.                          | `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   |
+| Portugal    | Implement first | Wave 1A          | Public OA profile pages keyed by professional number are already visible on official domains.                                                   | `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   |
+| Spain       | Implement later | Wave 2           | The official census exists, but no exact public lawyer-profile URL pattern was confirmed in the March 14, 2026 review.                          | `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                |
+| Sweden      | Implement later | Wave 2           | The official member-search entry point is public, but no reproducible member-detail URL pattern was surfaced.                                   | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+
+#### Issue-Ready Backlog
+
+| Proposed Issue Title                                                                 | Countries                   | Type                               | Why It Exists Now                                                                                                                                                  | Exit Criteria                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------ | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   | Netherlands, Portugal       | Implementation                     | Both countries already satisfy the Phase 0B/0C bar for official attorney-level URLs on official domains.                                                           | Ship bounded server-side adapters, pin allowed domains and labels, exclude firm pages or robot-gated contact surfaces, and add strict provenance tests.                                |
+| `EU Wave 1B: implement Austria attorney adapter`                                     | Austria                     | Implementation                     | Austria has official attorney detail URLs, but canonical URL normalization should be fixed in the issue before import logic lands.                                 | Confirm canonical OERAK detail URL shape, implement discovery plus extraction, and add strict provenance tests.                                                                        |
+| `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` | Finland, Luxembourg, Sweden | Research -> implementation backlog | Each country has an official attorney-search surface, but none has a pinned exact-record URL policy yet.                                                           | Capture reproducible attorney-detail URLs, exact allowed domains, approved labels, and either promote to an implementation issue or keep deferred with fresh blocker evidence.         |
+| `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                | France, Spain               | Research -> implementation backlog | Both countries have national official directories, but canonical lawyer-profile URL patterns remain unverified.                                                    | Pin the canonical host and record URL shape, document allowed domains, and either promote to an implementation issue or keep deferred with fresh blocker evidence.                     |
+| `EU defer backlog: Belgium federated authority policy and source validation`         | Belgium                     | Deferred backlog                   | Belgium needs a Phase 0B federated-domain exception plus complete attorney-detail evidence across participating bar systems.                                       | Document the official basis for each authority/domain, capture at least one attorney-detail URL per approved domain, or keep blocked if nationwide coverage still cannot be justified. |
+| `EU defer backlog: Germany official register stability and provenance validation`    | Germany                     | Deferred backlog                   | The public register flow was unstable and downgraded to HTTP during the March 14, 2026 review, which is incompatible with strict reproducible provenance.          | Reconfirm a stable HTTPS record flow with reproducible attorney-detail URLs, or keep deferred if the register remains session-bound or error-prone.                                    |
+| `EU defer backlog: Italy public attorney-register access validation`                 | Italy                       | Deferred backlog                   | The official CNF endpoint returned HTTP `403` during the March 14, 2026 review, so the public access path itself is not yet trustworthy enough for implementation. | Reconfirm a public attorney-level search/detail flow on official domains with exact-record URLs, or keep deferred if access remains blocked.                                           |
