@@ -1353,11 +1353,43 @@ sanitize_failure_excerpt() {
     -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g'
 }
 
-failure_excerpt_from_text() {
+recent_failure_block_from_text() {
   local text="$1"
-  local excerpt=""
+  local filtered=""
+  local context=""
 
-  excerpt="$(printf '%s\n' "$text" | awk '
+  filtered="$(printf '%s\n' "$text" | awk '
+    /^[[:space:]]*Container / { next }
+    /^#([0-9]+|[[:space:]])/ { next }
+    /^collecting \.\.\./ { next }
+    /^platform / { next }
+    /^cachedir: / { next }
+    /^rootdir: / { next }
+    /^configfile: / { next }
+    /^plugins: / { next }
+    /^asyncio: / { next }
+    /^-+[[:space:]]coverage:/ { next }
+    /^Coverage HTML written/ { next }
+    /^Name[[:space:]]+Stmts[[:space:]]+Miss/ { next }
+    /^TOTAL[[:space:]]+/ { next }
+    /^={5,}/ { next }
+    /^-{5,}/ { next }
+    /^tests\/.* (PASSED|XFAIL|XPASS|SKIPPED)([[:space:]]|\[)/ { next }
+    /^[[:space:]]*$/ { next }
+    { lines[++count] = $0 }
+    END {
+      start = count - 119
+      if (start < 1) {
+        start = 1
+      }
+      for (i = start; i <= count; i += 1) {
+        print lines[i]
+      }
+    }
+  ')"
+
+  context="$(printf '%s\n' "$filtered" | awk '
+    { lines[++count] = $0 }
     /^[^[:space:]]+:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9]([0-9])? / ||
     /^[^[:space:]]+:[0-9]+: error: / ||
     /^FAILED [^[:space:]]+/ ||
@@ -1365,21 +1397,31 @@ failure_excerpt_from_text() {
     /^AssertionError:/ ||
     /Traceback/ ||
     /(^|[^[:alpha:]])Error:/ {
-      if (!seen[$0]++) {
-        print
-        count += 1
-        if (count >= 20) {
-          exit
+      interesting[count] = 1
+      last_interesting = count
+    }
+    END {
+      if (last_interesting == 0) {
+        for (i = 1; i <= count; i += 1) {
+          print lines[i]
         }
+        exit
+      }
+      start = last_interesting - 39
+      if (start < 1) {
+        start = 1
+      }
+      for (i = start; i <= count; i += 1) {
+        print lines[i]
       }
     }
   ')"
 
-  if [[ -z "$excerpt" ]]; then
+  if [[ -z "$context" ]]; then
     return 0
   fi
 
-  sanitize_failure_excerpt "$excerpt"
+  sanitize_failure_excerpt "$context"
 }
 
 build_issue_prompt() {
@@ -1427,8 +1469,8 @@ build_fix_prompt() {
   local branch_name="$3"
   local change_summary="$4"
   local previous_codex_output="$5"
-  local failure_signature="$6"
-  local failure_excerpt="$7"
+  local failure_context="$6"
+  local failure_signature="$7"
   local repeated_failure_count="$8"
 
   {
@@ -1457,22 +1499,22 @@ EOF2
     cat <<'EOF2'
 ---END PRIOR CODEX SUMMARY---
 
+Most recent sanitized failure block:
+---BEGIN FAILURE CONTEXT---
+EOF2
+    printf '%s\n' "$failure_context"
+    cat <<'EOF2'
+---END FAILURE CONTEXT---
+
+EOF2
+    if [[ -n "$failure_signature" ]]; then
+      cat <<'EOF2'
 Failure signature:
 ---BEGIN FAILURE SIGNATURE---
 EOF2
-    printf '%s\n' "$failure_signature"
-    cat <<'EOF2'
+      printf '%s\n' "$failure_signature"
+      cat <<'EOF2'
 ---END FAILURE SIGNATURE---
-
-EOF2
-    if [[ -n "$failure_excerpt" ]]; then
-      cat <<'EOF2'
-Selected sanitized failed check lines:
----BEGIN FAILURE EXCERPT---
-EOF2
-      printf '%s\n' "$failure_excerpt"
-      cat <<'EOF2'
----END FAILURE EXCERPT---
 
 EOF2
     fi
@@ -1482,7 +1524,7 @@ EOF2
     cat <<'EOF2'
 
 Raw failed check output is intentionally withheld because local logs may contain sensitive data.
-Use the failure signature and selected failed check lines above together with the current repository state to identify and resolve the failing checks.
+Use the sanitized recent failure block above as the primary debugging context. Treat the failure signature only as a secondary hint.
 
 Requirements:
 1) Fix only what is required for checks to pass.
@@ -1521,8 +1563,8 @@ run_fix_attempt_loop() {
 
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
+    FAILURE_CONTEXT="$(recent_failure_block_from_text "$FAILURE_LOG_TAIL")"
     FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
-    FAILURE_EXCERPT="$(failure_excerpt_from_text "$FAILURE_LOG_TAIL")"
     if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
       REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
     else
@@ -1535,8 +1577,8 @@ run_fix_attempt_loop() {
       "$branch_name" \
       "$(current_change_summary)" \
       "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
+      "$FAILURE_CONTEXT" \
       "$FAILURE_SIGNATURE" \
-      "$FAILURE_EXCERPT" \
       "$REPEATED_FAILURE_COUNT"
     run_codex_from_prompt
     fix_attempt=$((fix_attempt + 1))
