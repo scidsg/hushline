@@ -650,14 +650,6 @@ configure_bot_git_identity() {
 
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
-  AUDIT_STATUS="ok"
-  AUDIT_NOTE=""
-  NODE_FULL_AUDIT_REQUIRED=0
-  MIGRATION_SMOKE_REQUIRED=0
-  LIGHTHOUSE_PERFORMANCE_REQUIRED=0
-  CCPA_COMPLIANCE_REQUIRED=0
-  GDPR_COMPLIANCE_REQUIRED=0
-  E2EE_PRIVACY_REQUIRED=0
   local lint_failure_tail=""
   refresh_runtime_after_schema_changes || return 1
   if ! run_check_capture "Run lint" make lint; then
@@ -670,99 +662,8 @@ run_local_workflow_checks() {
     fi
     run_check_capture "Re-run lint after deterministic auto-fix" make lint || return 1
   fi
-  run_check_with_self_heal_retry "Run workflow security checks" make workflow-security-checks || return 1
+
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
-  run_runtime_check_with_self_heal "Run test with alembic (CI)" make test-ci-alembic || return 1
-
-  if ccpa_compliance_files_changed; then
-    CCPA_COMPLIANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run CCPA compliance tests (CI)" make test-ccpa-compliance || return 1
-  else
-    echo "==> Run CCPA compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no CCPA compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if gdpr_compliance_files_changed; then
-    GDPR_COMPLIANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run GDPR compliance tests (CI)" make test-gdpr-compliance || return 1
-  else
-    echo "==> Run GDPR compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no GDPR compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if e2ee_privacy_files_changed; then
-    E2EE_PRIVACY_REQUIRED=1
-    run_runtime_check_with_self_heal "Run E2EE/privacy regression tests (CI)" make test-e2ee-privacy-regressions || return 1
-  else
-    echo "==> Run E2EE/privacy regression tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no E2EE/privacy workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if migration_smoke_files_changed; then
-    MIGRATION_SMOKE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run migration smoke tests (CI)" make test-migration-smoke || return 1
-  else
-    echo "==> Run migration smoke tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no migration-smoke workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  local audit_failure_tail=""
-  local audit_blocked=0
-  local -a audit_blocked_reasons=()
-
-  if ! run_check_with_self_heal_retry "Run dependency audit (python)" make audit-python; then
-    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-    if audit_failure_looks_environmental "$audit_failure_tail"; then
-      audit_blocked=1
-      audit_blocked_reasons+=("make audit-python")
-    else
-      return 1
-    fi
-  fi
-
-  if ! run_check_with_self_heal_retry "Run dependency audit (node runtime)" make audit-node-runtime; then
-    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-    if audit_failure_looks_environmental "$audit_failure_tail"; then
-      audit_blocked=1
-      audit_blocked_reasons+=("make audit-node-runtime")
-    else
-      return 1
-    fi
-  fi
-
-  if node_runtime_dependency_files_changed; then
-    NODE_FULL_AUDIT_REQUIRED=1
-    if ! run_check_with_self_heal_retry "Run dependency audit (node full)" make audit-node-full; then
-      audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-      if audit_failure_looks_environmental "$audit_failure_tail"; then
-        audit_blocked=1
-        audit_blocked_reasons+=("make audit-node-full")
-      else
-        return 1
-      fi
-    fi
-  else
-    echo "==> Run dependency audit (node full)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no Node dependency manifest changes detected." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if (( audit_blocked != 0 )); then
-    AUDIT_STATUS="blocked"
-    AUDIT_NOTE="Blocked local dependency audits: ${audit_blocked_reasons[*]}"
-    echo "Dependency audits were blocked by environment/network constraints; continuing with CI gate requirement." \
-      | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  run_runtime_check_with_self_heal "Run W3C validators" make w3c-validators || return 1
-  run_runtime_check_with_self_heal "Run Lighthouse accessibility" make lighthouse-accessibility || return 1
-
-  if lighthouse_performance_files_changed; then
-    LIGHTHOUSE_PERFORMANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run Lighthouse performance" make lighthouse-performance || return 1
-  else
-    echo "==> Run Lighthouse performance" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no lighthouse-performance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
 }
 
 issue_has_label() {
@@ -1150,58 +1051,11 @@ EOF2
 
 ## Validation
 - `make lint`
-- `make workflow-security-checks`
 - `make test` (full suite)
-- `make test-ci-alembic`
-- `make audit-python`
-- `make audit-node-runtime`
-- `make w3c-validators`
-- `make lighthouse-accessibility`
 EOF2
-
-  if (( CCPA_COMPLIANCE_REQUIRED != 0 )); then
-    printf -- '- `make test-ccpa-compliance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-ccpa-compliance` (not required: no CCPA compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( GDPR_COMPLIANCE_REQUIRED != 0 )); then
-    printf -- '- `make test-gdpr-compliance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-gdpr-compliance` (not required: no GDPR compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( E2EE_PRIVACY_REQUIRED != 0 )); then
-    printf -- '- `make test-e2ee-privacy-regressions`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-e2ee-privacy-regressions` (not required: no E2EE/privacy workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( MIGRATION_SMOKE_REQUIRED != 0 )); then
-    printf -- '- `make test-migration-smoke`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-migration-smoke` (not required: no migration-smoke workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( NODE_FULL_AUDIT_REQUIRED != 0 )); then
-    printf -- '- `make audit-node-full`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make audit-node-full` (not required: no Node dependency manifest changes)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( LIGHTHOUSE_PERFORMANCE_REQUIRED != 0 )); then
-    printf -- '- `make lighthouse-performance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make lighthouse-performance` (not required: no lighthouse-performance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if [[ "$AUDIT_STATUS" == "blocked" ]]; then
-    cat >> "$PR_BODY_FILE" <<EOF2
-- Local dependency audits were blocked by environment/network constraints.
-- Merge gate: require a passing \`Dependency Security Audit\` workflow before merge.
-- Blocked commands: ${AUDIT_NOTE}
+  cat >> "$PR_BODY_FILE" <<'EOF2'
+- Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
 EOF2
-  fi
 
   if issue_has_label "$issue_labels" "test-gap"; then
     if [[ -n "$test_gap_target" ]]; then
