@@ -682,7 +682,7 @@ require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" 
 def test_failure_signature_from_text_returns_structured_markers() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\ntests/test_directory.py:673:50: F821 Undefined name `Username`\\nError: boom'
+failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\ntests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'
 failure_signature_from_text "$failure_text"
 """
 
@@ -722,7 +722,7 @@ build_fix_prompt \
   "status summary" \
   "prior codex output" \
   "generic-error" \
-  $'tests/test_directory.py:673:50: F821 Undefined name `Username`' \
+  $'tests/test_module.py:12:34: F821 Undefined name `MissingName`' \
   "2"
 cat "$PROMPT_FILE"
 """
@@ -734,14 +734,14 @@ cat "$PROMPT_FILE"
     assert "---BEGIN CHECK OUTPUT---" not in result.stdout
     assert "generic-error" in result.stdout
     assert "---BEGIN FAILURE EXCERPT---" in result.stdout
-    assert "tests/test_directory.py:673:50: F821 Undefined name `Username`" in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
 
 
 def test_failure_excerpt_from_text_extracts_and_sanitizes_actionable_lines() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR=/Users/scidsg/hushline
-failure_text=$'noise line\\n/Users/scidsg/hushline/tests/test_directory.py:673:50: F821 Undefined name `Username`\\nFAILED tests/test_directory.py::test_example\\n/tmp/codex-secret-artifact.txt\\nTraceback\\n'
+failure_text=$'noise line\\n/Users/scidsg/hushline/tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nFAILED tests/test_example.py::test_case\\n/tmp/codex-secret-artifact.txt\\nTraceback\\n'
 failure_excerpt_from_text "$failure_text"
 """
 
@@ -750,8 +750,8 @@ failure_excerpt_from_text "$failure_text"
     assert result.returncode == 0, result.stderr
     assert "noise line" not in result.stdout
     assert "/Users/scidsg/hushline" not in result.stdout
-    assert "tests/test_directory.py:673:50: F821 Undefined name `Username`" in result.stdout
-    assert "FAILED tests/test_directory.py::test_example" in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
     assert "Traceback" in result.stdout
 
 
