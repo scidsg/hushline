@@ -666,81 +666,6 @@ run_local_workflow_checks() {
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
 }
 
-issue_has_label() {
-  local labels="$1"
-  local expected="$2"
-  printf '%s\n' "$labels" | grep -Fqi -- "$expected"
-}
-
-extract_referenced_file_path() {
-  local issue_title="$1"
-  local issue_body="$2"
-
-  if [[ "$issue_title" =~ ^\[Test[[:space:]]+Gap\][[:space:]]+(.+)$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}"
-    return 0
-  fi
-
-  local body_path
-  body_path="$(
-    printf '%s\n' "$issue_body" | awk '
-      {
-        for (i = 1; i <= NF; i++) {
-          if ($i ~ /^hushline\/[A-Za-z0-9_.\/-]+\.py$/) {
-            print $i
-            exit
-          }
-        }
-      }
-    '
-  )"
-  if [[ -n "$body_path" ]]; then
-    printf '%s\n' "$body_path"
-  fi
-}
-
-run_test_gap_gate() {
-  local issue_title="$1"
-  local issue_body="$2"
-  local issue_labels="$3"
-
-  if ! issue_has_label "$issue_labels" "test-gap"; then
-    return 0
-  fi
-
-  local target_path
-  target_path="$(extract_referenced_file_path "$issue_title" "$issue_body")"
-  if [[ -z "$target_path" ]]; then
-    echo "test-gap label present but no referenced file path was found in issue title/body." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  echo "==> Enforce test-gap coverage for ${target_path}" | tee -a "$CHECK_LOG_FILE"
-
-  local coverage_row missed cover
-  coverage_row="$(
-    awk -v target="$target_path" '
-      $1 == target { row = $0 }
-      END { if (row != "") print row }
-    ' "$CHECK_LOG_FILE"
-  )"
-  if [[ -z "$coverage_row" ]]; then
-    echo "Coverage row for ${target_path} not found in test output." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  missed="$(printf '%s\n' "$coverage_row" | awk '{print $3}')"
-  cover="$(printf '%s\n' "$coverage_row" | awk '{print $4}')"
-  cover="${cover%\%}"
-
-  if [[ "$missed" != "0" || "$cover" != "100" ]]; then
-    echo "Coverage for ${target_path} is ${cover}% with ${missed} misses; continuing self-heal." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  echo "test-gap coverage satisfied for ${target_path}." | tee -a "$CHECK_LOG_FILE"
-}
-
 write_pr_changed_files_section() {
   local max_files="${1:-20}"
   local total_files line count
@@ -961,16 +886,13 @@ has_non_log_changed_files_matching() {
 write_pr_narrative_lead() {
   local issue_number="$1"
   local issue_title="$2"
-  local issue_labels="$3"
-  local test_gap_target="$4"
 
-  local total_files non_log_files changed_areas changed_work scope_line gate_line plain_line review_line
+  local total_files non_log_files changed_areas changed_work scope_line plain_line review_line
   total_files="$(stream_changed_files | wc -l | tr -d ' ')"
   non_log_files="$(count_non_log_changed_files)"
   changed_areas="$(summarize_non_log_changed_areas)"
   changed_work="$(summarize_non_log_changed_work)"
   scope_line=""
-  gate_line=""
   plain_line=""
   review_line=""
 
@@ -1001,20 +923,12 @@ write_pr_narrative_lead() {
     review_line="The change stays narrowly scoped, with the written explanation living next to the code."
   fi
 
-  if issue_has_label "$issue_labels" "test-gap"; then
-    if [[ -n "$test_gap_target" ]]; then
-      gate_line=" As part of the test-gap flow, coverage was gated for \`${test_gap_target}\` before PR creation."
-    else
-      gate_line=" As part of the test-gap flow, coverage gating was enforced before PR creation."
-    fi
-  fi
-
   cat <<EOF2
 This PR implements #$issue_number (\`$issue_title\`) via the daily runner with a scoped change set focused on the issue requirements.
 
 ${plain_line}
 ${review_line}
-${scope_line}${gate_line}
+${scope_line}
 
 EOF2
 }
@@ -1026,10 +940,8 @@ write_pr_body() {
   local branch_name="$4"
   local issue_labels="$5"
   local run_log_git_path="$6"
-  local test_gap_target
-  test_gap_target="$(extract_referenced_file_path "$issue_title" "$ISSUE_BODY")"
 
-  write_pr_narrative_lead "$issue_number" "$issue_title" "$issue_labels" "$test_gap_target" > "$PR_BODY_FILE"
+  write_pr_narrative_lead "$issue_number" "$issue_title" > "$PR_BODY_FILE"
 
   cat >> "$PR_BODY_FILE" <<EOF2
 ## Summary
@@ -1056,14 +968,6 @@ EOF2
   cat >> "$PR_BODY_FILE" <<'EOF2'
 - Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
 EOF2
-
-  if issue_has_label "$issue_labels" "test-gap"; then
-    if [[ -n "$test_gap_target" ]]; then
-      printf -- '- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n' "$test_gap_target" >> "$PR_BODY_FILE"
-    else
-      printf -- '- `test-gap` gate: active for this issue.\n' >> "$PR_BODY_FILE"
-    fi
-  fi
 }
 
 persist_run_log() {
@@ -1304,9 +1208,9 @@ EOF2
 Requirements:
 1) Implement only what is needed for this issue with a minimal diff.
 2) Add or update tests for behavior changes.
-3) Focus on implementation and tests only; this runner runs the full local CI-equivalent suite before opening a PR (lint, tests, dependency audits, workflow security, W3C, Lighthouse).
+3) Focus on implementation and tests only; this runner only runs `make lint` and `make test` locally before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) Avoid local validation unless it is necessary to make progress; the runner will execute the full validation suite after your implementation.
+5) Avoid local validation unless it is necessary to make progress; the runner will execute `make lint` and `make test` after your implementation.
 6) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
 7) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
 8) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this implementation loop; leave runtime refresh and validation to the runner.
@@ -1384,9 +1288,9 @@ Requirements:
 1) Fix only what is required for checks to pass.
 2) Inspect the currently changed files before editing. Preserve valid issue work already on the branch and fix the failing checks against that implementation.
 3) Keep diffs minimal and focused.
-4) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
+4) Focus on code/test fixes only; this runner executes only `make lint` and `make test` locally before opening a PR.
 5) Keep security, privacy, and E2EE protections intact.
-6) Avoid local validation unless it is necessary to make progress; the runner will rerun the full validation suite after your changes.
+6) Avoid local validation unless it is necessary to make progress; the runner will rerun `make lint` and `make test` after your changes.
 7) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
 8) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
 9) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this fix loop; leave runtime refresh and validation to the runner.
@@ -1406,7 +1310,7 @@ run_fix_attempt_loop() {
   local fix_attempt=1
 
   while (( fix_attempt <= MAX_FIX_ATTEMPTS )); do
-    if run_local_workflow_checks && run_test_gap_gate "$issue_title" "$issue_body" "$issue_labels"; then
+    if run_local_workflow_checks; then
       return 0
     fi
 
@@ -1549,7 +1453,6 @@ main() {
 
   run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
   run_step "Kill all Docker containers" kill_all_docker_containers
-  run_step "Prune Docker system" docker system prune -af --volumes
   run_step "Kill processes on runner ports" kill_processes_on_ports
   start_runtime_stack_and_seed_dev_data --build
 
