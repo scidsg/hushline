@@ -179,6 +179,53 @@ main
     assert "runtime-bootstrap" not in calls
 
 
+def test_main_bootstrap_does_not_prune_docker_system(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+configure_bot_git_identity() {{ :; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Prune Docker system" not in calls
+    assert calls[-5:] == [
+        "Configure bot git identity",
+        "Stop and remove Docker resources",
+        "Kill all Docker containers",
+        "Kill processes on runner ports",
+        "runtime-bootstrap",
+    ]
+
+
 def test_build_pr_title_omits_codex_daily_prefix() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -365,9 +412,7 @@ stream_changed_files() {{
 }}
 write_pr_narrative_lead \
   1622 \
-  "Normalize geography across directory listing types" \
-  "" \
-  ""
+  "Normalize geography across directory listing types"
 """
 
     result = _run_bash(shell_script)
@@ -395,7 +440,7 @@ source {shlex.quote(str(RUNNER_SCRIPT))}
 stream_changed_files() {{
   printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
 }}
-write_pr_narrative_lead 1622 "Normalize geography across directory listing types" "" ""
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types"
 """
 
     result = _run_bash(shell_script)
@@ -757,6 +802,7 @@ cat "$PROMPT_FILE"
         "Use the sanitized recent failure block above as the primary debugging context."
         in result.stdout
     )
+    assert "only `make lint` and `make test` locally before opening a PR" in result.stdout
 
 
 def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> None:
@@ -824,7 +870,6 @@ PREVIOUS_FAILURE_SIGNATURE=""
 FAILURE_SIGNATURE=""
 REPEATED_FAILURE_COUNT=0
 run_local_workflow_checks() {{ return 1; }}
-run_test_gap_gate() {{ return 0; }}
 failure_signature_from_text() {{ printf 'same-failure\\n'; }}
 current_change_summary() {{ printf 'summary\\n'; }}
 build_fix_prompt() {{ :; }}
@@ -844,6 +889,28 @@ printf 'rc=%s\\n' "$rc"
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
         in result.stderr
     )
+
+
+def test_fix_attempt_loop_does_not_run_extra_post_test_gate(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+run_local_workflow_checks() {{
+  printf 'checks\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_test_gap_gate() {{
+  printf 'unexpected-test-gap\\n' >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+run_fix_attempt_loop 1558 "Title" "Body" "test-gap" "branch"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == ["checks"]
 
 
 def test_run_local_workflow_checks_runs_lint_then_test_only(tmp_path: Path) -> None:

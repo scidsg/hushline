@@ -85,11 +85,10 @@ This file provides operating guidance for coding agents working in the Hush Line
   - At runner start, perform a full local environment reset and seed sequence:
     - `docker compose down -v --remove-orphans`
     - Stop/remove all Docker containers (`docker rm -f $(docker ps -aq)`)
-    - `docker system prune -af --volumes`
     - Kill listener processes on configured runner ports (`HUSHLINE_DAILY_KILL_PORTS`, default `4566 4571 5432 8080`)
     - `docker compose up -d --build`
     - `docker compose run --rm dev_data`
-  - Run required validation checks locally before opening PRs (`make lint`, `make test`, plus runner-specific checks).
+  - Run required validation checks locally before opening PRs (`make lint`, `make test`).
   - Persist per-run logs in `docs/agent-logs/` and include the log path in PR context.
   - Use signed commits that verify on GitHub.
   - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.

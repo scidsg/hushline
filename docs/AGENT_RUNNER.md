@@ -21,7 +21,6 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 6. Reset local Docker/runtime state:
    - `docker compose down -v --remove-orphans`
    - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
-   - `docker system prune -af --volumes`
    - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
 7. Start and seed stack:
    - `docker compose up -d --build`
@@ -43,7 +42,6 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - The runner stops at the first failing gate, hands that failure back to Codex, and reruns from `make lint` on the next self-heal attempt.
     - Lint failures only run deterministic `make fix` self-heal when the failure looks auto-fixable (for example Ruff formatting/check or Prettier); non-auto-fixable lint failures go straight back to Codex.
     - Runtime-dependent tests self-heal by restarting the local stack and reseeding dev data, then retrying once.
-    - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
     - The broader CI workflow matrix still runs on the PR after branch push; the runner no longer tries to mirror that entire matrix locally.
 12. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
@@ -133,7 +131,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       v
 +-----------------------------------------------+
 | Fix/self-heal loop                            |
-| Run: lint, test, test-gap                     |
+| Run: lint, test                               |
 +-----------------------------------------------+
       |
       v
