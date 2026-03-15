@@ -10,7 +10,7 @@ from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.exceptions import NotFound
 
 from hushline.db import db
-from hushline.model import Message, OrganizationSetting, User, Username
+from hushline.model import AccountCategory, Message, OrganizationSetting, User, Username
 
 msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
@@ -345,6 +345,31 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
         or "&lt;script&gt;alert('xss')&lt;/script&gt;" in html_str
     )
     assert "<script>alert('xss')</script>" not in html_str
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_account_category_renders_first_extra_field(
+    client: FlaskClient, user: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER_LAW_FIRM.value
+    user.primary_username.extra_field_label1 = "Signal username"
+    user.primary_username.extra_field_value1 = "singleusername.666"
+    user.primary_username.extra_field_label2 = "Website"
+    user.primary_username.extra_field_value2 = "https://scidsg.org/"
+    user.primary_username.extra_field_label3 = "Pronouns"
+    user.primary_username.extra_field_value3 = "they/them"
+    user.primary_username.extra_field_label4 = "Timezone"
+    user.primary_username.extra_field_value4 = "UTC"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Category", "Signal username", "Website", "Pronouns", "Timezone"]
+    assert values[0] == "Lawyer / Law Firm"
 
 
 def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:

@@ -186,6 +186,9 @@ async def verify_url(
 
 
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
+    if "account_category" in request.form:
+        username.user.account_category = (form.account_category.data or "").strip() or None
+
     username.bio = form.bio.data.strip()
 
     # Define base_url from the environment or config
@@ -390,6 +393,7 @@ def create_profile_forms(
         show_in_directory=username.show_in_directory
     )
     profile_form = ProfileForm(
+        account_category=username.user.account_category or "",
         bio=username.bio or "",
         **{
             f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
