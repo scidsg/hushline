@@ -414,6 +414,12 @@
     role="tabpanel"
     {% if directory_verified_tab_enabled %}aria-labelledby="all-tab"{% endif %}
   >
+    {% if directory_verified_tab_enabled %}
+      <p class="meta dirMeta">
+        🧪 Beta: This list contains automated listings.
+        Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
+      </p>
+    {% endif %}
     <div class="user-list">
       {% for entry in all_directory_entries %}
         <article class="user">
