@@ -198,7 +198,7 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
     assert banner_link.get("href") == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
-    assert "This list contains automated listings." in banner_text
+    assert "This list contains automated entries." in banner_text
     assert "Contact the Hush Line admin for any corrections." in banner_text
 
 
