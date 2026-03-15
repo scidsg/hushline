@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def _workflow_text(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+
+def _assert_markdown_table_row(text: str, *cells: str) -> None:
+    pattern = r"\|\s*" + r"\s*\|\s*".join(re.escape(cell) for cell in cells) + r"\s*\|"
+    assert re.search(pattern, text)
 
 
 def _load_refresh_script_module() -> Any:
@@ -215,6 +221,10 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
                 "",
                 "- Country and subdivision data are not preserved by the refresh writer.",
                 "",
+                "### EU Phase 0E (Rollout Waves and Country-Level Backlog)",
+                "",
+                "- `Wave 1A` (`Implement first`): `Netherlands`, `Portugal`.",
+                "",
             ]
         )
         + "\n",
@@ -237,6 +247,8 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
     assert "| Austria | Open country issue |" in updated
     assert "### EU Phase 0D (Shared Normalization and Model Assessment)" in updated
     assert "- Country and subdivision data are not preserved by the refresh writer." in updated
+    assert "### EU Phase 0E (Rollout Waves and Country-Level Backlog)" in updated
+    assert "- `Wave 1A` (`Implement first`): `Netherlands`, `Portugal`." in updated
 
 
 def test_public_record_provenance_roadmap_documents_eu_phase_0b_policy() -> None:
@@ -308,3 +320,50 @@ def test_public_record_provenance_roadmap_documents_eu_phase_0d_shared_requireme
     assert "1. Shared EU geography model issue:" in roadmap_text
     assert "2. Shared EU authority metadata issue:" in roadmap_text
     assert "3. Shared EU name-normalization issue:" in roadmap_text
+
+
+def test_public_record_provenance_roadmap_documents_eu_phase_0e_rollout_backlog() -> None:
+    roadmap_text = _workflow_text("docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md")
+
+    assert "### EU Phase 0E (Rollout Waves and Country-Level Backlog)" in roadmap_text
+    assert (
+        "- Move a country from research into implementation only when a country issue " "records:"
+    ) in roadmap_text
+    assert (
+        "- Keep a country out of implementation when any of the following remain true:"
+    ) in roadmap_text
+    assert "1. `Wave 1A` (`Implement first`): `Netherlands`, `Portugal`." in roadmap_text
+    assert "2. `Wave 1B` (`Implement first`): `Austria`." in roadmap_text
+    assert (
+        "3. `Wave 2` (`Implement later`): `Finland`, `France`, `Luxembourg`, " "`Spain`, `Sweden`."
+    ) in roadmap_text
+    assert "4. `Deferred backlog` (`Defer`): `Belgium`, `Germany`, `Italy`." in roadmap_text
+    _assert_markdown_table_row(roadmap_text, "Austria", "Implement first", "Wave 1B")
+    _assert_markdown_table_row(roadmap_text, "Netherlands", "Implement first", "Wave 1A")
+    _assert_markdown_table_row(roadmap_text, "Portugal", "Implement first", "Wave 1A")
+    _assert_markdown_table_row(roadmap_text, "Finland", "Implement later", "Wave 2")
+    _assert_markdown_table_row(roadmap_text, "France", "Implement later", "Wave 2")
+    _assert_markdown_table_row(roadmap_text, "Sweden", "Implement later", "Wave 2")
+    _assert_markdown_table_row(roadmap_text, "Belgium", "Defer", "Deferred backlog")
+    _assert_markdown_table_row(roadmap_text, "Germany", "Defer", "Deferred backlog")
+    _assert_markdown_table_row(roadmap_text, "Italy", "Defer", "Deferred backlog")
+    _assert_markdown_table_row(
+        roadmap_text,
+        "`EU Wave 1A: implement Netherlands and Portugal attorney adapters`",
+        "Netherlands, Portugal",
+        "Implementation",
+    )
+    _assert_markdown_table_row(
+        roadmap_text,
+        "`EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs`",
+        "Finland, Luxembourg, Sweden",
+        "Research -> implementation backlog",
+    )
+    _assert_markdown_table_row(
+        roadmap_text,
+        "`EU defer backlog: Germany official register stability and provenance validation`",
+        "Germany",
+        "Deferred backlog",
+    )
+    assert "expired-dialog or unknown-error state on March 14, 2026" in roadmap_text
+    assert "returned HTTP `403` on March 14, 2026" in roadmap_text
