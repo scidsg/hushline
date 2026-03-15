@@ -187,9 +187,10 @@ async def test_is_safe_verification_url_direct_private_ip_rejected(app: Flask) -
 async def test_is_safe_verification_url_resolved_blocked_ip_rejected(app: Flask) -> None:
     with app.app_context():
         app.config["TESTING"] = False
-        with patch(
-            "hushline.settings.common.asyncio.wait_for",
-            new=AsyncMock(return_value=[(0, 0, 0, "", ("10.0.0.1", 0))]),
+        with patch.object(
+            asyncio.get_running_loop(),
+            "getaddrinfo",
+            return_value=[(0, 0, 0, "", ("224.0.0.1", 0))],
         ):
             assert await _is_safe_verification_url("https://example.com") is False
 
