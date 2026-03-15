@@ -32,9 +32,12 @@ printf '%s\\n' "$REPO_DIR"
 
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
@@ -79,9 +82,12 @@ main
 
 def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
@@ -126,9 +132,12 @@ main
 
 def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}

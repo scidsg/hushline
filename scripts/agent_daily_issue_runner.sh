@@ -1359,7 +1359,7 @@ recent_failure_block_from_text() {
   local context=""
 
   filtered="$(printf '%s\n' "$text" | awk '
-    /^ Container / { next }
+    /^[[:space:]]*Container / { next }
     /^#([0-9]+|[[:space:]])/ { next }
     /^collecting \.\.\./ { next }
     /^platform / { next }
