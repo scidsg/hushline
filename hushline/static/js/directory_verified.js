@@ -13,8 +13,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
   const attorneyCountryFilter = document.getElementById("attorney-country-filter");
   const attorneyRegionFilter = document.getElementById("attorney-region-filter");
-  const publicRecordsPanel = document.getElementById("public-records");
-  const publicRecordsIntroMarkup = publicRecordsPanel?.querySelector(".dirMeta")?.outerHTML || "";
   const initialMarkup = new Map();
   let userData = [];
   let hasRenderedSearch = false;
@@ -360,9 +358,13 @@ document.addEventListener("DOMContentLoaded", function () {
     renderPanelContent(panel, users, query, tab);
   }
 
+  function panelIntroMarkup(panelId) {
+    return document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML || "";
+  }
+
   function buildDefaultPanelMarkup(tab) {
     const panel = document.createElement("div");
-    const introMarkup = tab === "public-records" ? publicRecordsIntroMarkup : "";
+    const introMarkup = panelIntroMarkup(tab);
     const showEmptyMessage = tab !== "public-records";
 
     renderPanelContent(panel, filterUsers("", tab), "", tab, {
