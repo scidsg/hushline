@@ -13,6 +13,7 @@ import hushline.model.public_record_listing as public_record_listing_module
 import hushline.routes.directory as directory_routes
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     GlobaLeaksDirectoryListing,
     PublicRecordListing,
     SecureDropDirectoryListing,
@@ -262,6 +263,8 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     )
     assert admin_row["display_name"] == admin_user.primary_username.username
     assert admin_row["bio"] == "admin bio"
+    assert admin_row["account_category"] is None
+    assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
@@ -273,6 +276,23 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["subdivision_code"] is None
     assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
+
+
+def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
+    user.account_category = AccountCategory.ACTIVIST_ORGANIZER.value
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["account_category"] == AccountCategory.ACTIVIST_ORGANIZER.value
+    assert row["account_category_label"] == "Activist / Organizer"
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(

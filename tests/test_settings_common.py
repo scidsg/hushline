@@ -12,7 +12,15 @@ from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
+from hushline.model import (
+    AccountCategory,
+    FieldDefinition,
+    FieldType,
+    FieldValue,
+    Message,
+    User,
+    Username,
+)
 from hushline.settings.common import (
     _is_blocked_ip,
     _is_safe_verification_url,
@@ -110,6 +118,25 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             )
             assert not username_form.validate()
             assert username_form.new_username.errors
+
+
+def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict({"account_category": "invalid-category", "bio": "valid bio"})
+        )
+        assert not form.validate()
+        assert form.account_category.errors == ["Invalid account category."]
+
+        valid_form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "account_category": AccountCategory.BUSINESS_EMPLOYER.value,
+                    "bio": "valid bio",
+                }
+            )
+        )
+        assert valid_form.validate()
 
 
 def test_is_blocked_ip_classification() -> None:

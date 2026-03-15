@@ -9,6 +9,7 @@ Preparing your account means getting your profile, encryption, and message-deliv
 At minimum, add:
 
 - a recognizable display name
+- an optional account category that matches the type of recipient you are
 - a short bio
 - any extra profile details you want sources to trust, such as a website or Signal handle
 

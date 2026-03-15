@@ -2,6 +2,7 @@
 
 from hushline.model.authentication_log import AuthenticationLog
 from hushline.model.enums import (
+    AccountCategory,
     FieldType,
     MessageStatus,
     SMTPEncryption,

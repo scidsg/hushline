@@ -88,6 +88,55 @@ class SMTPEncryption(enum.Enum):
 
 
 @enum.unique
+class AccountCategory(enum.Enum):
+    JOURNALIST_NEWSROOM = "journalist_newsroom"
+    LAWYER_LAW_FIRM = "lawyer_law_firm"
+    BUSINESS_EMPLOYER = "business_employer"
+    NONPROFIT = "nonprofit"
+    EDUCATOR_SCHOOL = "educator_school"
+    ACTIVIST_ORGANIZER = "activist_organizer"
+    DEVELOPER_SECURITY_RESEARCHER = "developer_security_researcher"
+    OTHER = "other"
+
+    @classmethod
+    def values(cls) -> tuple[str, ...]:
+        return tuple(category.value for category in cls)
+
+    @classmethod
+    def choices(cls) -> list[tuple[str, str]]:
+        return [(category.value, category.label) for category in cls]
+
+    @classmethod
+    def parse_str(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ValueError(f"Invalid {cls.__name__}")
+
+    @property
+    def label(self) -> str:
+        match self:
+            case self.JOURNALIST_NEWSROOM:
+                return "Journalist / Newsroom"
+            case self.LAWYER_LAW_FIRM:
+                return "Lawyer / Law Firm"
+            case self.BUSINESS_EMPLOYER:
+                return "Business / Employer"
+            case self.NONPROFIT:
+                return "Nonprofit"
+            case self.EDUCATOR_SCHOOL:
+                return "Educator / School"
+            case self.ACTIVIST_ORGANIZER:
+                return "Activist / Organizer"
+            case self.DEVELOPER_SECURITY_RESEARCHER:
+                return "Developer / Security Researcher"
+            case self.OTHER:
+                return "Other"
+            case x:
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
+
+
+@enum.unique
 class StripeInvoiceStatusEnum(enum.Enum):
     DRAFT = "draft"
     OPEN = "open"
