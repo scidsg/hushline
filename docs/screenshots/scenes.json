@@ -732,11 +732,11 @@
         },
         {
           "type": "wait_for",
-          "selector": "#attorney-country-filter option:checked[value='United States']"
+          "selector": "#attorney-country-filter:has(option:checked[value='United States'])"
         },
         {
           "type": "wait_for",
-          "selector": "#attorney-region-filter option:checked[value='CA']"
+          "selector": "#attorney-region-filter:has(option:checked[value='CA'])"
         }
       ]
     },
