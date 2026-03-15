@@ -680,10 +680,13 @@ require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" 
 
 
 def test_failure_signature_from_text_returns_structured_markers() -> None:
+    failure_text = (
+        "failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\n'\\\n"
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\n'\
-$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'
+{failure_text}
 failure_signature_from_text "$failure_text"
 """
 
@@ -713,6 +716,10 @@ failure_signature_from_text "totally unmatched output"
 
 def test_build_fix_prompt_withholds_raw_check_output(tmp_path: Path) -> None:
     prompt_file = tmp_path / "prompt.txt"
+    failure_context = (
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\n"
+        "FAILED tests/test_example.py::test_case'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 PROMPT_FILE={shlex.quote(str(prompt_file))}
@@ -722,7 +729,7 @@ build_fix_prompt \
   "branch-name" \
   "status summary" \
   "prior codex output" \
-  $'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nFAILED tests/test_example.py::test_case' \
+  {failure_context} \
   "generic-error" \
   "2"
 cat "$PROMPT_FILE"
@@ -737,17 +744,27 @@ cat "$PROMPT_FILE"
     assert "FAILED tests/test_example.py::test_case" in result.stdout
     assert "generic-error" in result.stdout
     assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
-    assert "Use the sanitized recent failure block above as the primary debugging context." in result.stdout
+    assert (
+        "Use the sanitized recent failure block above as the primary debugging context."
+        in result.stdout
+    )
 
 
 def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> None:
+    failure_text = (
+        "failure_text=$'Container hushline-dev_data-1 Exited\\n'\\\n"
+        "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
+        (
+            "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
+            "F821 Undefined name `MissingName`\\n'\\\n"
+        )
+        "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
+        "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR=/Users/scidsg/hushline
-failure_text=$'Container hushline-dev_data-1 Exited\\n'\
-$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\
-$'/Users/scidsg/hushline/tests/test_module.py:12:34: F821 Undefined name `MissingName`\\n'\
-$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n/tmp/codex-secret-artifact.txt\\nTraceback\\n'
+{failure_text}
 recent_failure_block_from_text "$failure_text"
 """
 
