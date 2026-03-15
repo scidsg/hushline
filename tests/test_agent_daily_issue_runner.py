@@ -844,3 +844,71 @@ printf 'rc=%s\\n' "$rc"
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
         in result.stderr
     )
+
+
+def test_run_local_workflow_checks_runs_lint_then_test_only(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_local_workflow_checks
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+        "runtime:Run test (full suite):make",
+    ]
+
+
+def test_run_local_workflow_checks_stops_after_non_fixable_lint_failure(
+    tmp_path: Path,
+) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+    check_log_file.write_text("lint failure\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+lint_failure_looks_auto_fixable() {{ return 1; }}
+auto_fix_lint_with_containerized_tooling() {{
+  printf 'autofix\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+set +e
+run_local_workflow_checks
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+    ]
