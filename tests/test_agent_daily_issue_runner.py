@@ -30,6 +30,146 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '1\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" not in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+    assert "collect-issue-candidates" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '2\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+    assert "collect-issue-candidates" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: no open issues found in project" in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" in calls
+    assert "collect-issue-candidates" in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
 def test_build_pr_title_omits_codex_daily_prefix() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
