@@ -754,10 +754,8 @@ def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> 
     failure_text = (
         "failure_text=$'Container hushline-dev_data-1 Exited\\n'\\\n"
         "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
-        (
-            "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
-            "F821 Undefined name `MissingName`\\n'\\\n"
-        )
+        "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
+        "F821 Undefined name `MissingName`\\n'\\\n"
         "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
         "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
     )
