@@ -1321,6 +1321,12 @@ failure_signature_from_text() {
   if printf '%s\n' "$text" | grep -Eq 'Traceback'; then
     markers+=("python-traceback")
   fi
+  if printf '%s\n' "$text" | grep -Eq '^[^[:space:]]+:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9]([0-9])? '; then
+    markers+=("lint-diagnostics")
+  fi
+  if printf '%s\n' "$text" | grep -Eq '^[^[:space:]]+:[0-9]+: error: '; then
+    markers+=("type-check-diagnostics")
+  fi
   if printf '%s\n' "$text" | grep -Eq '(^|[^[:alpha:]])Error:'; then
     markers+=("generic-error")
   fi
@@ -1331,6 +1337,49 @@ failure_signature_from_text() {
   fi
 
   printf '%s\n' "${markers[@]}"
+}
+
+sanitize_failure_excerpt() {
+  local text="$1"
+  local escaped_repo_dir escaped_home
+
+  escaped_repo_dir="$(printf '%s\n' "$REPO_DIR" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+  escaped_home="$(printf '%s\n' "$HOME" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+
+  printf '%s\n' "$text" | sed -E \
+    -e "s#${escaped_repo_dir}/##g" \
+    -e "s#${escaped_home}/#~/#g" \
+    -e 's#/var/folders/[^[:space:]]+#/var/folders/[redacted]#g' \
+    -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g'
+}
+
+failure_excerpt_from_text() {
+  local text="$1"
+  local excerpt=""
+
+  excerpt="$(printf '%s\n' "$text" | awk '
+    /^[^[:space:]]+:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9]([0-9])? / ||
+    /^[^[:space:]]+:[0-9]+: error: / ||
+    /^FAILED [^[:space:]]+/ ||
+    /^E[[:space:]]+/ ||
+    /^AssertionError:/ ||
+    /Traceback/ ||
+    /(^|[^[:alpha:]])Error:/ {
+      if (!seen[$0]++) {
+        print
+        count += 1
+        if (count >= 20) {
+          exit
+        }
+      }
+    }
+  ')"
+
+  if [[ -z "$excerpt" ]]; then
+    return 0
+  fi
+
+  sanitize_failure_excerpt "$excerpt"
 }
 
 build_issue_prompt() {
@@ -1379,7 +1428,8 @@ build_fix_prompt() {
   local change_summary="$4"
   local previous_codex_output="$5"
   local failure_signature="$6"
-  local repeated_failure_count="$7"
+  local failure_excerpt="$7"
+  local repeated_failure_count="$8"
 
   {
     cat <<EOF2
@@ -1415,13 +1465,24 @@ EOF2
 ---END FAILURE SIGNATURE---
 
 EOF2
+    if [[ -n "$failure_excerpt" ]]; then
+      cat <<'EOF2'
+Selected sanitized failed check lines:
+---BEGIN FAILURE EXCERPT---
+EOF2
+      printf '%s\n' "$failure_excerpt"
+      cat <<'EOF2'
+---END FAILURE EXCERPT---
+
+EOF2
+    fi
     if [[ "$repeated_failure_count" =~ ^[0-9]+$ ]] && (( repeated_failure_count > 1 )); then
       printf 'This same failure signature has repeated %s times. Reassess root cause from the current repo state before editing; do not repeat the prior partial fix.\n\n' "$repeated_failure_count"
     fi
     cat <<'EOF2'
 
 Raw failed check output is intentionally withheld because local logs may contain sensitive data.
-Use the failure signature above together with the current repository state to identify and resolve the failing checks.
+Use the failure signature and selected failed check lines above together with the current repository state to identify and resolve the failing checks.
 
 Requirements:
 1) Fix only what is required for checks to pass.
@@ -1461,6 +1522,7 @@ run_fix_attempt_loop() {
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
     FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
+    FAILURE_EXCERPT="$(failure_excerpt_from_text "$FAILURE_LOG_TAIL")"
     if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
       REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
     else
@@ -1474,6 +1536,7 @@ run_fix_attempt_loop() {
       "$(current_change_summary)" \
       "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
       "$FAILURE_SIGNATURE" \
+      "$FAILURE_EXCERPT" \
       "$REPEATED_FAILURE_COUNT"
     run_codex_from_prompt
     fix_attempt=$((fix_attempt + 1))

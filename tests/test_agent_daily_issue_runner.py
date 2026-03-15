@@ -682,7 +682,8 @@ require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" 
 def test_failure_signature_from_text_returns_structured_markers() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\nError: boom'
+failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\n'\
+$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'
 failure_signature_from_text "$failure_text"
 """
 
@@ -693,6 +694,7 @@ failure_signature_from_text "$failure_text"
         "pytest-test-failures",
         "assertion-error",
         "python-traceback",
+        "lint-diagnostics",
         "generic-error",
     ]
 
@@ -721,6 +723,7 @@ build_fix_prompt \
   "status summary" \
   "prior codex output" \
   "generic-error" \
+  $'tests/test_module.py:12:34: F821 Undefined name `MissingName`' \
   "2"
 cat "$PROMPT_FILE"
 """
@@ -731,6 +734,28 @@ cat "$PROMPT_FILE"
     assert "Raw failed check output is intentionally withheld" in result.stdout
     assert "---BEGIN CHECK OUTPUT---" not in result.stdout
     assert "generic-error" in result.stdout
+    assert "---BEGIN FAILURE EXCERPT---" in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+
+
+def test_failure_excerpt_from_text_extracts_and_sanitizes_actionable_lines() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR=/Users/scidsg/hushline
+failure_text=$'noise line\\n'\
+$'/Users/scidsg/hushline/tests/test_module.py:12:34: F821 Undefined name `MissingName`\\n'\
+$'FAILED tests/test_example.py::test_case\\n/tmp/codex-secret-artifact.txt\\nTraceback\\n'
+failure_excerpt_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "noise line" not in result.stdout
+    assert "/Users/scidsg/hushline" not in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
+    assert "Traceback" in result.stdout
 
 
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
