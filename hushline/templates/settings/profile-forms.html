@@ -64,7 +64,6 @@
     <div class="form-group">
       {{ profile_form.account_category.label }}
       {{ profile_form.account_category(id='account_category') }}
-      <p class="meta">Optional. Helps sources understand what kind of tip line you run.</p>
       {% for error in profile_form.account_category.errors %}
         <span class="error">{{ error }}</span>
       {% endfor %}
