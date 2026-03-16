@@ -1,5 +1,3 @@
-import os
-
 from flask import url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
@@ -52,7 +50,8 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
     user_count = db.session.query(User).count()
     assert user_count == 0
 
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "test_user"
 
     captcha_answer = get_captcha_from_session_register(client)
@@ -82,8 +81,8 @@ def test_registration_does_not_grant_admin_after_stale_first_user_check(
         key=OrganizationSetting.REGISTRATION_ENABLED,
         value=True,
     )
-
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
 
     captcha_answer = get_captcha_from_session_register(client)
 
@@ -132,7 +131,8 @@ def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> No
     db.session.commit()
     assert db.session.query(User).count() == 1
 
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "test_user"
 
     captcha_answer = get_captcha_from_session_register(client)

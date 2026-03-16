@@ -104,6 +104,28 @@ def test_register_rejects_expired_invite_code(client: FlaskClient, user: User) -
     assert "Invalid or expired invite code" in response.text
 
 
+def test_register_requires_invite_code_by_default_for_first_user(client: FlaskClient) -> None:
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    assert "Invite Code" in response.text
+
+    captcha_answer = get_captcha_from_session_register(client)
+    response = client.post(
+        url_for("register"),
+        data={
+            "username": "first-user-without-invite",
+            "password": "SecurePassword123!",
+            "captcha_answer": captcha_answer,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "This field is required." in response.text
+    assert db.session.scalar(db.select(db.func.count()).select_from(User)) == 0
+
+
 def test_register_valid_invite_code_deletes_code(client: FlaskClient, user: User) -> None:
     _ = user
     OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
