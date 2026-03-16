@@ -532,6 +532,14 @@ document.addEventListener("DOMContentLoaded", function () {
     select.dataset.showSelectedCount = isExpanded ? "true" : "false";
   }
 
+  function setAttorneySelectOpenState(select, isOpen) {
+    if (!select) {
+      return;
+    }
+
+    select.classList.toggle("select-open", isOpen);
+  }
+
   function updateAttorneySelectExpandedLabels(isExpanded) {
     setAttorneySelectExpandedState(attorneyCountryFilter, isExpanded);
     setAttorneySelectExpandedState(attorneyRegionFilter, isExpanded);
@@ -798,12 +806,29 @@ document.addEventListener("DOMContentLoaded", function () {
     const syncExpandedLabelsOnClose = function () {
       updateAttorneySelectExpandedLabels(false);
     };
+    const syncAttorneyChevronOnOpen = function (event) {
+      if (
+        event.type === "keydown" &&
+        event.key !== "ArrowDown" &&
+        event.key !== "ArrowUp" &&
+        event.key !== "Enter" &&
+        event.key !== " "
+      ) {
+        return;
+      }
+
+      setAttorneySelectOpenState(event.currentTarget, true);
+    };
+    const syncAttorneyChevronOnClose = function (event) {
+      setAttorneySelectOpenState(event.currentTarget, false);
+    };
 
     attorneyCountryFilter.addEventListener("change", async function () {
       await ensureAttorneyFilterMetadata();
       updateAttorneyCountryLabels();
       updateAttorneyRegionOptions();
       syncExpandedLabelsOnClose();
+      setAttorneySelectOpenState(attorneyCountryFilter, false);
       void refreshAttorneyResults();
     });
 
@@ -815,6 +840,7 @@ document.addEventListener("DOMContentLoaded", function () {
       updateAttorneyCountryLabels();
       updateAttorneyFiltersClearVisibility();
       syncExpandedLabelsOnClose();
+      setAttorneySelectOpenState(attorneyRegionFilter, false);
       void refreshAttorneyResults();
     });
 
@@ -822,11 +848,17 @@ document.addEventListener("DOMContentLoaded", function () {
     attorneyCountryFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
     attorneyCountryFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
     attorneyCountryFilter.addEventListener("blur", syncExpandedLabelsOnClose);
+    attorneyCountryFilter.addEventListener("pointerdown", syncAttorneyChevronOnOpen);
+    attorneyCountryFilter.addEventListener("keydown", syncAttorneyChevronOnOpen);
+    attorneyCountryFilter.addEventListener("blur", syncAttorneyChevronOnClose);
 
     attorneyRegionFilter.addEventListener("focus", syncExpandedLabelsOnOpen);
     attorneyRegionFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
     attorneyRegionFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
     attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);
+    attorneyRegionFilter.addEventListener("pointerdown", syncAttorneyChevronOnOpen);
+    attorneyRegionFilter.addEventListener("keydown", syncAttorneyChevronOnOpen);
+    attorneyRegionFilter.addEventListener("blur", syncAttorneyChevronOnClose);
 
     if (resetLink) {
       resetLink.addEventListener("click", function (event) {

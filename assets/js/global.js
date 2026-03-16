@@ -56,6 +56,50 @@ function navController() {
 document.addEventListener("DOMContentLoaded", function () {
   navController();
 
+  function setupAnimatedSelectChevron() {
+    const animatedSelects = document.querySelectorAll("select:not([multiple])");
+
+    animatedSelects.forEach((select) => {
+      if (select.dataset.selectChevronInit === "true") {
+        return;
+      }
+
+      if (!select.parentElement?.classList.contains("select-shell")) {
+        const shell = document.createElement("span");
+        shell.className = "select-shell";
+        select.parentNode.insertBefore(shell, select);
+        shell.appendChild(select);
+      }
+
+      const openSelect = () => {
+        select.classList.add("select-open");
+      };
+
+      const closeSelect = () => {
+        select.classList.remove("select-open");
+      };
+
+      select.addEventListener("pointerdown", openSelect);
+      select.addEventListener("mousedown", openSelect);
+      select.addEventListener("blur", closeSelect);
+      select.addEventListener("change", function () {
+        window.setTimeout(closeSelect, 0);
+      });
+      select.addEventListener("keydown", function (event) {
+        if ([" ", "Enter", "ArrowDown", "ArrowUp"].includes(event.key)) {
+          openSelect();
+        }
+        if (event.key === "Escape" || event.key === "Tab") {
+          closeSelect();
+        }
+      });
+
+      select.dataset.selectChevronInit = "true";
+    });
+  }
+
+  setupAnimatedSelectChevron();
+
   function setupFlashDismiss() {
     document.addEventListener("click", function (event) {
       const dismissButton = event.target.closest(".flash-dismiss");

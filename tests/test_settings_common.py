@@ -131,12 +131,31 @@ def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
         valid_form = ProfileForm(
             formdata=MultiDict(
                 {
-                    "account_category": AccountCategory.BUSINESS_EMPLOYER.value,
+                    "account_category": AccountCategory.BUSINESS.value,
                     "bio": "valid bio",
                 }
             )
         )
         assert valid_form.validate()
+
+
+def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
+    with app.app_context():
+        form = ProfileForm()
+
+    assert form.account_category.choices[0] == ("", "Select")
+
+    labels = [label for value, label in form.account_category.choices if value]
+
+    assert "Journalist" in labels
+    assert "Newsroom" in labels
+    assert "Lawyer" in labels
+    assert "Law Firm" in labels
+    assert "Developer" in labels
+    assert "Security Researcher" in labels
+    assert "Journalist / Newsroom" not in labels
+    assert "Lawyer / Law Firm" not in labels
+    assert "Developer / Security Researcher" not in labels
 
 
 def test_is_blocked_ip_classification() -> None:

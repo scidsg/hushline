@@ -89,13 +89,18 @@ class SMTPEncryption(enum.Enum):
 
 @enum.unique
 class AccountCategory(enum.Enum):
-    JOURNALIST_NEWSROOM = "journalist_newsroom"
-    LAWYER_LAW_FIRM = "lawyer_law_firm"
-    BUSINESS_EMPLOYER = "business_employer"
+    JOURNALIST = "journalist"
+    NEWSROOM = "newsroom"
+    LAWYER = "lawyer"
+    LAW_FIRM = "law_firm"
+    BUSINESS = "business"
     NONPROFIT = "nonprofit"
-    EDUCATOR_SCHOOL = "educator_school"
-    ACTIVIST_ORGANIZER = "activist_organizer"
-    DEVELOPER_SECURITY_RESEARCHER = "developer_security_researcher"
+    EDUCATOR = "educator"
+    SCHOOL = "school"
+    ACTIVIST = "activist"
+    ORGANIZER = "organizer"
+    DEVELOPER = "developer"
+    SECURITY_RESEARCHER = "security_researcher"
     OTHER = "other"
 
     @classmethod
@@ -116,20 +121,30 @@ class AccountCategory(enum.Enum):
     @property
     def label(self) -> str:
         match self:
-            case self.JOURNALIST_NEWSROOM:
-                return "Journalist / Newsroom"
-            case self.LAWYER_LAW_FIRM:
-                return "Lawyer / Law Firm"
-            case self.BUSINESS_EMPLOYER:
-                return "Business / Employer"
+            case self.JOURNALIST:
+                return "Journalist"
+            case self.NEWSROOM:
+                return "Newsroom"
+            case self.LAWYER:
+                return "Lawyer"
+            case self.LAW_FIRM:
+                return "Law Firm"
+            case self.BUSINESS:
+                return "Business"
             case self.NONPROFIT:
                 return "Nonprofit"
-            case self.EDUCATOR_SCHOOL:
-                return "Educator / School"
-            case self.ACTIVIST_ORGANIZER:
-                return "Activist / Organizer"
-            case self.DEVELOPER_SECURITY_RESEARCHER:
-                return "Developer / Security Researcher"
+            case self.EDUCATOR:
+                return "Educator"
+            case self.SCHOOL:
+                return "School"
+            case self.ACTIVIST:
+                return "Activist"
+            case self.ORGANIZER:
+                return "Organizer"
+            case self.DEVELOPER:
+                return "Developer"
+            case self.SECURITY_RESEARCHER:
+                return "Security Researcher"
             case self.OTHER:
                 return "Other"
             case x:

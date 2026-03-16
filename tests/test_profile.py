@@ -351,7 +351,7 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
 def test_profile_account_category_renders_first_extra_field(
     client: FlaskClient, user: User
 ) -> None:
-    user.account_category = AccountCategory.LAWYER_LAW_FIRM.value
+    user.account_category = AccountCategory.LAWYER.value
     user.primary_username.extra_field_label1 = "Signal username"
     user.primary_username.extra_field_value1 = "singleusername.666"
     user.primary_username.extra_field_label2 = "Website"
@@ -369,7 +369,7 @@ def test_profile_account_category_renders_first_extra_field(
     labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
     values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
     assert labels == ["Category", "Signal username", "Website", "Pronouns", "Timezone"]
-    assert values[0] == "Lawyer / Law Firm"
+    assert values[0] == "Lawyer"
 
 
 def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:

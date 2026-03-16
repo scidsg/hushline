@@ -300,7 +300,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
 
 
 def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
-    user.account_category = AccountCategory.ACTIVIST_ORGANIZER.value
+    user.account_category = AccountCategory.ACTIVIST.value
     user.primary_username.show_in_directory = True
     db.session.commit()
 
@@ -312,8 +312,8 @@ def test_directory_users_json_includes_account_category(client: FlaskClient, use
         for row in (response.json or [])
         if row["primary_username"] == user.primary_username.username
     )
-    assert row["account_category"] == AccountCategory.ACTIVIST_ORGANIZER.value
-    assert row["account_category_label"] == "Activist / Organizer"
+    assert row["account_category"] == AccountCategory.ACTIVIST.value
+    assert row["account_category_label"] == "Activist"
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(
