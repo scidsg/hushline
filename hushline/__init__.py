@@ -8,6 +8,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
+from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
 from hushline.cli_stripe import register_stripe_commands
 from hushline.config import AliasMode, load_config
@@ -63,7 +64,6 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                         "https://js.stripe.com",
                         "https://cdn.jsdelivr.net",
                         "'wasm-unsafe-eval'",
-                        "'unsafe-eval'",
                     ]
                 ),
                 "script-src-elem": "'self' https://js.stripe.com https://cdn.jsdelivr.net",
@@ -101,6 +101,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     register_error_handlers(app)
 
     # Register custom CLI commands
+    register_password_hash_commands(app)
     register_reg_commands(app)
     register_stripe_commands(app)
 
@@ -215,7 +216,7 @@ def configure_jinja(app: Flask) -> None:
             registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],
             registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, False),
             registration_codes_required=data.get(
-                OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
+                OrganizationSetting.REGISTRATION_CODES_REQUIRED, True
             ),
             setup_incomplete=False,
             user=None,

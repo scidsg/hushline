@@ -2,7 +2,6 @@ import secrets
 from typing import TYPE_CHECKING, Any, Optional
 
 from flask import current_app
-from passlib.hash import scrypt
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,8 +9,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from hushline.config import AliasMode, FieldsMode
 from hushline.crypto import decrypt_field, encrypt_field
 from hushline.db import db
-from hushline.model.enums import SMTPEncryption, StripeSubscriptionStatusEnum
+from hushline.model.enums import (
+    AccountCategory,
+    SMTPEncryption,
+    StripeSubscriptionStatusEnum,
+)
 from hushline.model.tier import Tier
+from hushline.password_hasher import hash_password, verify_password
 
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
@@ -40,6 +44,7 @@ class User(Model):
     SMTP_SENDER_MAX_LENGTH = 255
     STRIPE_ID_MAX_LENGTH = 255
     SESSION_ID_MAX_LENGTH = 255
+    ACCOUNT_CATEGORY_MAX_LENGTH = 64
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
@@ -111,6 +116,9 @@ class User(Model):
     )
 
     onboarding_complete: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
+    account_category: Mapped[Optional[str]] = mapped_column(
+        db.String(ACCOUNT_CATEGORY_MAX_LENGTH), nullable=True
+    )
 
     _PREMIUM_ALIAS_COUNT = 100
 
@@ -126,11 +134,11 @@ class User(Model):
     @password_hash.setter
     def password_hash(self, plaintext_password: str) -> None:
         """Hash plaintext password using scrypt and store it."""
-        self._password_hash = scrypt.hash(plaintext_password)
+        self._password_hash = hash_password(plaintext_password)
 
     def check_password(self, plaintext_password: str) -> bool:
         """Check the plaintext password against the stored hash."""
-        return scrypt.verify(plaintext_password, self._password_hash)
+        return verify_password(plaintext_password, self._password_hash)
 
     @property
     def totp_secret(self) -> str | None:
@@ -232,6 +240,17 @@ class User(Model):
             return True
 
         return not self.is_free_tier
+
+    @property
+    def account_category_label(self) -> str | None:
+        if self.account_category is None:
+            return None
+
+        legacy_label = AccountCategory.legacy_label(self.account_category)
+        if legacy_label is not None:
+            return legacy_label
+
+        return AccountCategory.parse_str(self.account_category).label
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

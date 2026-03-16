@@ -25,6 +25,8 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     all_panel = soup.find(id="all")
     clear_button = soup.find("button", {"id": "clearIcon"})
     search_status = soup.find(id="directory-search-status")
+    region_filter_label = soup.find("label", {"for": "attorney-region-filter"})
+    region_filter = soup.find("select", {"id": "attorney-region-filter"})
 
     assert primary_nav is not None
     assert verified_tab is not None
@@ -95,6 +97,11 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert all_panel.get("aria-labelledby") == "all-tab"
     assert clear_button is not None
     assert clear_button.get("aria-label") == "Clear search field"
+    assert region_filter_label is not None
+    assert region_filter_label.get_text(" ", strip=True) == "State / Province / Region"
+    assert region_filter is not None
+    assert region_filter.find("option") is not None
+    assert region_filter.find("option").get_text(" ", strip=True) == "All"
     assert search_status is not None
     assert search_status.get("role") == "status"
     assert search_status.get("aria-live") == "polite"

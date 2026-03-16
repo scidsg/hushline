@@ -6,6 +6,8 @@ import pytest
 from hushline.config import (
     _JSON_CFG_PREFIX,
     _STRING_CFG_PREFIX,
+    PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
+    PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
     AliasMode,
     ConfigParseError,
     load_config,
@@ -122,3 +124,27 @@ def test_smtp_notification_reply_to_loads() -> None:
     env["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
     cfg = load_config(env)
     assert cfg["NOTIFICATIONS_REPLY_TO"] == "reply@example.com"
+
+
+def test_password_hash_write_use_werkzeug_scrypt_flag_defaults_false_and_parses_true() -> None:
+    env = dict(**os.environ)
+    env.pop(PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, None)
+
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] is False
+
+    env[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = "true"
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] is True
+
+
+def test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true() -> None:
+    env = dict(**os.environ)
+    env.pop(PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, None)
+
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is False
+
+    env[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = "true"
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is True

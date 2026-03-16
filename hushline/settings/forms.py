@@ -38,7 +38,15 @@ from hushline.forms import (
     NoDisallowedLanguage,
     ValidTemplate,
 )
-from hushline.model import FieldDefinition, FieldType, MessageStatus, SMTPEncryption, User, Username
+from hushline.model import (
+    AccountCategory,
+    FieldDefinition,
+    FieldType,
+    MessageStatus,
+    SMTPEncryption,
+    User,
+    Username,
+)
 from hushline.routes.common import valid_username
 
 
@@ -194,6 +202,15 @@ def strip_whitespace(value: Optional[Any]) -> Optional[str]:
 
 
 class ProfileForm(FlaskForm):
+    account_category = SelectField(
+        "Account Category",
+        choices=[("", "Select"), *AccountCategory.choices()],
+        validate_choice=False,
+        validators=[
+            OptionalField(),
+            AnyOf(AccountCategory.values(), message="Invalid account category."),
+        ],
+    )
     bio = TextAreaField(
         "Bio",
         filters=[strip_whitespace],
