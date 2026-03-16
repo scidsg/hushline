@@ -64,7 +64,6 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                         "https://js.stripe.com",
                         "https://cdn.jsdelivr.net",
                         "'wasm-unsafe-eval'",
-                        "'unsafe-eval'",
                     ]
                 ),
                 "script-src-elem": "'self' 'unsafe-inline'",

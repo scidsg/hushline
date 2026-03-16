@@ -5,7 +5,10 @@ from flask.testing import FlaskClient
 def test_csp(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    assert (response.headers.get("Content-Security-Policy") or "").strip()
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert csp
+    assert "'unsafe-eval'" not in csp
 
 
 def test_x_frame_options(client: FlaskClient) -> None:
