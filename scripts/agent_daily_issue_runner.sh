@@ -1108,7 +1108,10 @@ sanitize_failure_excerpt() {
     -e "s#${escaped_repo_dir}/##g" \
     -e "s#${escaped_home}/#~/#g" \
     -e 's#/var/folders/[^[:space:]]+#/var/folders/[redacted]#g' \
-    -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g'
+    -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g' \
+    -e 's#(authorization[[:space:]]*:[[:space:]]*bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
+    -e 's#(^|[[:space:][:punct:]])(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password|passwd|pwd)([[:space:]]*[:=][[:space:]]*|[[:space:]]+)[^[:space:],;]+#\1\2\3[redacted]#Ig' \
+    -e 's#(bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig'
 }
 
 recent_failure_block_from_text() {
