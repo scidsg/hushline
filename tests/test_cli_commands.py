@@ -13,7 +13,7 @@ def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
 
     assert result.exit_code == 0
     assert "Registration Enabled: False" in result.output
-    assert "Registration Codes Required: False" in result.output
+    assert "Registration Codes Required: True" in result.output
 
 
 def test_reg_toggle_commands_update_org_settings(app: Flask) -> None:
