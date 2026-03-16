@@ -860,6 +860,37 @@ recent_failure_block_from_text "$failure_text"
     assert "hunter2" not in result.stdout
 
 
+def test_failure_excerpt_from_text_redacts_sensitive_values() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'AssertionError: token=SECRET123\\n'\
+$'E TOKEN=UPPERSECRET456\\n'\
+$'E api_key:abcd1234\\n'\
+$'E CLIENT_SECRET=topsecret789\\n'\
+$'Error: contact security@example.org\\n'\
+$'Traceback Authorization: Bearer supersecrettoken\\n'\
+$'FAILED tests/test_example.py::test_case\\n'
+sanitize_failure_excerpt "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "AssertionError:" in result.stdout
+    assert "SECRET123" not in result.stdout
+    assert "UPPERSECRET456" not in result.stdout
+    assert "abcd1234" not in result.stdout
+    assert "topsecret789" not in result.stdout
+    assert "security@example.org" not in result.stdout
+    assert "supersecrettoken" not in result.stdout
+    assert "token=[redacted]" in result.stdout
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "api_key:[redacted]" in result.stdout
+    assert "CLIENT_SECRET=[redacted]" in result.stdout
+    assert "[redacted-email]" in result.stdout
+    assert "Authorization: Bearer [redacted]" in result.stdout
+
+
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
