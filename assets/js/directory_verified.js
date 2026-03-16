@@ -241,6 +241,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function buildAutomatedListingCard(user, query, tab) {
+    const safeDisplayName = userSearch.escapeHtml(user.display_name || "");
+    const safeBio = userSearch.escapeHtml(user.bio || "No description");
+    const safeProfileUrl = userSearch.escapeHtml(user.profile_url || "#");
     const displayNameHighlighted = highlightMatch(user.display_name, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
     let listingType = "SecureDrop listing";
@@ -249,20 +252,27 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (user.is_globaleaks) {
       listingType = "GlobaLeaks listing";
     }
+    const safeListingType = userSearch.escapeHtml(listingType);
 
     return `
-      <article class="user" aria-label="${listingType}, Display name:${user.display_name}, Description: ${user.bio || "No description"}">
+      <article class="user" aria-label="${safeListingType}, Display name:${safeDisplayName}, Description: ${safeBio}">
         <h3>${displayNameHighlighted}</h3>
         <div class="badgeContainer">${buildBadges(user, tab)}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${user.profile_url}" aria-label="View read-only listing for ${user.display_name}">View Listing</a>
+          <a href="${safeProfileUrl}" aria-label="View read-only listing for ${safeDisplayName}">View Listing</a>
         </div>
       </article>
     `;
   }
 
   function buildUserCard(user, query, tab) {
+    const safeDisplayName = userSearch.escapeHtml(
+      user.display_name || user.primary_username || "",
+    );
+    const safeUsername = userSearch.escapeHtml(user.primary_username || "");
+    const safeBio = userSearch.escapeHtml(user.bio || "No bio");
+    const safeProfileUrl = userSearch.escapeHtml(user.profile_url || "#");
     const displayNameHighlighted = highlightMatch(
       user.display_name || user.primary_username,
       query,
@@ -274,18 +284,20 @@ document.addEventListener("DOMContentLoaded", function () {
       return buildAutomatedListingCard(user, query, tab);
     }
 
-    const isVerified = user.is_verified ? "Verified" : "";
-    const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
+    const userType = user.is_admin
+      ? `${user.is_verified ? "Verified" : ""} admin user`
+      : `${user.is_verified ? "Verified" : ""} User`;
+    const safeUserType = userSearch.escapeHtml(userType);
     const badges = buildBadges(user, tab);
 
     return `
-      <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
+      <article class="user" aria-label="${safeUserType}, Display name:${safeDisplayName}, Username: ${safeUsername}, Bio: ${safeBio}">
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
         ${badges ? `<div class="badgeContainer">${badges}</div>` : ""}
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${user.profile_url}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
+          <a href="${safeProfileUrl}" aria-label="${safeDisplayName}'s profile">View Profile</a>
         </div>
       </article>
     `;

@@ -369,7 +369,7 @@ def test_profile_account_category_renders_first_extra_field(
     labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
     values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
     assert labels == ["Category", "Signal username", "Website", "Pronouns", "Timezone"]
-    assert values[0] == "Lawyer"
+    assert values[0] == "Attorney"
 
 
 def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:

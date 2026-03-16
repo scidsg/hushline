@@ -24,6 +24,7 @@ from hushline.auth import (
     authentication_required,
     clear_auth_session,
     get_session_user,
+    pop_post_auth_redirect,
     rotate_user_session_id,
     set_session_user,
 )
@@ -73,6 +74,16 @@ def _apply_pending_password_rehash(user: User, *, source_hash: str) -> bool:
     return True
 
 
+def _lock_first_user_registration() -> None:
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+
+    # Serialize first-user privilege assignment so concurrent registrations
+    # cannot both observe an empty users table.
+    db.session.execute(db.select(func.pg_advisory_xact_lock(7255323892615124088)))
+
+
 def register_auth_routes(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str:
@@ -80,7 +91,7 @@ def register_auth_routes(app: Flask) -> None:
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
 
-        # Check if this is the first user
+        # Check if this is the first user for template/rendering hints.
         first_user = db.session.query(User).count() == 0
 
         # Check if registration is allowed
@@ -157,6 +168,12 @@ def register_auth_routes(app: Flask) -> None:
                     math_problem=math_problem,
                     first_user=first_user,
                 )
+
+            _lock_first_user_registration()
+            first_user = db.session.query(User).count() == 0
+            if not registration_enabled and not first_user:
+                flash("⛔️ Registration is disabled.")
+                return redirect(url_for("index"))
 
             user = User(password=password)
 
@@ -291,7 +308,7 @@ def register_auth_routes(app: Flask) -> None:
                 if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
-                return redirect(url_for("inbox"))
+                return redirect(pop_post_auth_redirect())
 
             flash("⛔️ Invalid username or password.")
         return render_template("login.html", form=form)
@@ -386,7 +403,7 @@ def register_auth_routes(app: Flask) -> None:
                 if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
-                return redirect(url_for("inbox"))
+                return redirect(pop_post_auth_redirect())
 
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
             db.session.add(auth_log)
