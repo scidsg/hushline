@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from hushline.config import AliasMode, FieldsMode
 from hushline.crypto import decrypt_field, encrypt_field
 from hushline.db import db
+from hushline.model.directory_listing_geography import build_directory_geography
 from hushline.model.enums import (
     AccountCategory,
     SMTPEncryption,
@@ -261,6 +262,29 @@ class User(Model):
             return legacy_label
 
         return AccountCategory.parse_str(self.account_category).label
+
+    @property
+    def profile_location(self) -> str | None:
+        geography = build_directory_geography(
+            city=self.city,
+            country=self.country,
+            subdivision=self.subdivision,
+        )
+        if geography.location == "Unknown":
+            return None
+
+        if geography.country == "United States":
+            parts: list[str] = []
+            if geography.city:
+                parts.append(geography.city)
+            if geography.subdivision_code:
+                parts.append(geography.subdivision_code)
+            elif geography.subdivision:
+                parts.append(geography.subdivision)
+            parts.append("US")
+            return ", ".join(parts)
+
+        return geography.location
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

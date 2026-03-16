@@ -372,6 +372,42 @@ def test_profile_account_category_renders_first_extra_field(
     assert values[0] == "Attorney"
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_location_renders_as_single_extra_field(client: FlaskClient, user: User) -> None:
+    user.country = "US"
+    user.subdivision = "IL"
+    user.city = "Chicago"
+    user.primary_username.extra_field_label1 = "Signal username"
+    user.primary_username.extra_field_value1 = "singleusername.666"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Location", "Signal username"]
+    assert values[0] == "Chicago, IL, US"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_location_keeps_full_names_outside_us(client: FlaskClient, user: User) -> None:
+    user.country = "Australia"
+    user.subdivision = "New South Wales"
+    user.city = "Sydney"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Location"]
+    assert values[0] == "Sydney, New South Wales, Australia"
+
+
 def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:
     response = client.get(
         url_for("redirect_submit_message", username=user.primary_username.username),
