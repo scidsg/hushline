@@ -88,7 +88,7 @@ fix: ## Format the code
 
 .PHONY: new-database-migration
 new-database-migration: ## Create a new migration
-ifndef message
+ifndef MESSAGE
 	$(error Env var 'MESSAGE' must be set, e.g., `MESSAGE=foo make new-database-migration`)
 endif
 ifdef IS_DOCKER
