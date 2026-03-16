@@ -8,6 +8,14 @@ def test_csp(client: FlaskClient) -> None:
     assert (response.headers.get("Content-Security-Policy") or "").strip()
 
 
+def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+    csp = response.headers["Content-Security-Policy"]
+    assert "script-src-elem 'self' https://js.stripe.com https://cdn.jsdelivr.net" in csp
+    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
 def test_x_frame_options(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
