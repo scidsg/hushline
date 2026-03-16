@@ -836,7 +836,8 @@ recent_failure_block_from_text "$failure_text"
 def test_recent_failure_block_from_text_redacts_secret_like_values() -> None:
     failure_text = (
         "failure_text=$'TOKEN=supersecret123\\n'\\\n"
-        "$'authorization: Bearer abc.def.ghi\\n'\\\n"
+        "$'authorization: Bearer abc/def+ghi~jkl\\n'\\\n"
+        "$'Bearer zyx/wvu+tsr~qpo\\n'\\\n"
         "$'password = hunter2\\n'\\\n"
         "$'FAILED tests/test_example.py::test_case\\n'"
     )
@@ -851,9 +852,11 @@ recent_failure_block_from_text "$failure_text"
     assert result.returncode == 0, result.stderr
     assert "TOKEN=[redacted]" in result.stdout
     assert "authorization: Bearer [redacted]" in result.stdout
+    assert "Bearer [redacted]" in result.stdout
     assert "password = [redacted]" in result.stdout
     assert "supersecret123" not in result.stdout
-    assert "abc.def.ghi" not in result.stdout
+    assert "abc/def+ghi~jkl" not in result.stdout
+    assert "zyx/wvu+tsr~qpo" not in result.stdout
     assert "hunter2" not in result.stdout
 
 
