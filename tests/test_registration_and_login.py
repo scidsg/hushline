@@ -1,4 +1,3 @@
-import os
 from unittest.mock import MagicMock, patch
 
 from flask import Flask, url_for
@@ -60,7 +59,8 @@ def test_user_registration_disabled_first_user(client: FlaskClient) -> None:
 
 def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> None:
     """Test registration without requiring an invite code."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "test_user"
 
     captcha_answer = get_captcha_from_session_register(client)
@@ -85,7 +85,8 @@ def test_user_registration_with_invite_code_disabled(client: FlaskClient) -> Non
 def test_user_registration_writes_pinned_werkzeug_scrypt_hash_when_enabled(
     app: Flask, client: FlaskClient
 ) -> None:
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
     username = "test_user"
     password = "SecurePassword123!"
@@ -129,7 +130,8 @@ def test_user_registration_writes_pinned_werkzeug_scrypt_hash_when_enabled(
 
 def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None:
     """Test registration when an invite code is required."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "True"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, True)
+    db.session.commit()
     username = "newuser"
 
     # Generate an invite code
@@ -158,11 +160,11 @@ def test_user_registration_with_invite_code_enabled(client: FlaskClient) -> None
 
 def test_user_registration_rejects_case_insensitive_duplicate(client: FlaskClient) -> None:
     """Usernames should be unique regardless of case."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     OrganizationSetting.upsert(
         key=OrganizationSetting.REGISTRATION_ENABLED,
         value=True,
     )
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
     db.session.commit()
 
     existing_user = User(password="SecurePassword123!")  # noqa: S106
@@ -208,11 +210,11 @@ def test_username_db_constraint_rejects_case_insensitive_duplicate(client: Flask
 def test_user_registration_handles_case_insensitive_race_integrity_error(
     client: FlaskClient,
 ) -> None:
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
     OrganizationSetting.upsert(
         key=OrganizationSetting.REGISTRATION_ENABLED,
         value=True,
     )
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
     db.session.commit()
 
     captcha_answer = get_captcha_from_session_register(client)
@@ -259,7 +261,8 @@ def test_login_page_loads(client: FlaskClient) -> None:
 
 def test_user_login_after_registration(client: FlaskClient) -> None:
     """Test successful login after user registration."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "newuser"
     password = "SecurePassword123!"
 
@@ -284,7 +287,8 @@ def test_user_login_after_registration(client: FlaskClient) -> None:
 
 def test_user_login_case_insensitive(client: FlaskClient) -> None:
     """Login should accept username case-insensitively."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "newuser"
     password = "SecurePassword123!"
 
@@ -309,7 +313,8 @@ def test_user_login_case_insensitive(client: FlaskClient) -> None:
 
 def test_user_login_with_incorrect_password(client: FlaskClient) -> None:
     """Test failed login with an incorrect password."""
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "newuser"
     password = "SecurePassword123!"
 

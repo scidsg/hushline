@@ -217,7 +217,7 @@ def configure_jinja(app: Flask) -> None:
             registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],
             registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, False),
             registration_codes_required=data.get(
-                OrganizationSetting.REGISTRATION_CODES_REQUIRED, False
+                OrganizationSetting.REGISTRATION_CODES_REQUIRED, True
             ),
             setup_incomplete=False,
             user=None,

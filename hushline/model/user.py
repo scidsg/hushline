@@ -245,6 +245,11 @@ class User(Model):
     def account_category_label(self) -> str | None:
         if self.account_category is None:
             return None
+
+        legacy_label = AccountCategory.legacy_label(self.account_category)
+        if legacy_label is not None:
+            return legacy_label
+
         return AccountCategory.parse_str(self.account_category).label
 
     def __init__(self, **kwargs: Any) -> None:
