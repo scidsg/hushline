@@ -316,6 +316,25 @@ def test_directory_users_json_includes_account_category(client: FlaskClient, use
     assert row["account_category_label"] == "Activist"
 
 
+def test_directory_users_json_includes_legacy_account_category_label(
+    client: FlaskClient, user: User
+) -> None:
+    user.account_category = "journalist_newsroom"
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["account_category"] == "journalist_newsroom"
+    assert row["account_category_label"] == "Journalist / Newsroom"
+
+
 def test_directory_public_records_render_only_in_public_records_and_all(
     client: FlaskClient,
 ) -> None:

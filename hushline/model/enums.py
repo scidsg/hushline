@@ -87,6 +87,16 @@ class SMTPEncryption(enum.Enum):
         return cls.StartTLS
 
 
+_ACCOUNT_CATEGORY_LEGACY_LABELS = {
+    "journalist_newsroom": "Journalist / Newsroom",
+    "lawyer_law_firm": "Lawyer / Law Firm",
+    "business_employer": "Business / Employer",
+    "educator_school": "Educator / School",
+    "activist_organizer": "Activist / Organizer",
+    "developer_security_researcher": "Developer / Security Researcher",
+}
+
+
 @enum.unique
 class AccountCategory(enum.Enum):
     JOURNALIST = "journalist"
@@ -117,6 +127,10 @@ class AccountCategory(enum.Enum):
             if var.value == string:
                 return var
         raise ValueError(f"Invalid {cls.__name__}")
+
+    @classmethod
+    def legacy_label(cls, string: str) -> str | None:
+        return _ACCOUNT_CATEGORY_LEGACY_LABELS.get(string)
 
     @property
     def label(self) -> str:
