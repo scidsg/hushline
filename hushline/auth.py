@@ -2,12 +2,23 @@ from functools import wraps
 from hmac import compare_digest
 from typing import Any, Callable
 
-from flask import abort, current_app, flash, redirect, session, url_for
+from flask import abort, current_app, flash, redirect, request, session, url_for
 
 from hushline.db import db
 from hushline.model import User
 
-AUTH_SESSION_KEYS = ("user_id", "session_id", "username", "is_authenticated")
+PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
+PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
+POST_AUTH_REDIRECT_SESSION_KEY = "post_auth_redirect"
+AUTH_SESSION_KEYS = (
+    "user_id",
+    "session_id",
+    "username",
+    "is_authenticated",
+    POST_AUTH_REDIRECT_SESSION_KEY,
+    PENDING_PASSWORD_REHASH_SESSION_KEY,
+    PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+)
 
 
 def clear_auth_session() -> None:
@@ -26,6 +37,31 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
     session["session_id"] = user.session_id
     session["username"] = username
     session["is_authenticated"] = is_authenticated
+
+
+def stash_post_auth_redirect() -> None:
+    if request.method != "GET":
+        return
+    if request.endpoint == "logout":
+        return
+
+    redirect_target = request.full_path.removesuffix("?")
+    if not redirect_target.startswith("/") or redirect_target.startswith("//"):
+        return
+
+    session[POST_AUTH_REDIRECT_SESSION_KEY] = redirect_target
+
+
+def pop_post_auth_redirect(*, default_endpoint: str = "inbox") -> str:
+    redirect_target = session.pop(POST_AUTH_REDIRECT_SESSION_KEY, None)
+    if (
+        isinstance(redirect_target, str)
+        and redirect_target.startswith("/")
+        and not redirect_target.startswith("//")
+    ):
+        return redirect_target
+
+    return url_for(default_endpoint)
 
 
 def get_session_user() -> User | None:
@@ -54,10 +90,12 @@ def authentication_required(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if not get_session_user():
+            stash_post_auth_redirect()
             flash("👉 Please complete authentication.")
             return redirect(url_for("login"))
 
         if not session.get("is_authenticated", False):
+            stash_post_auth_redirect()
             return redirect(url_for("verify_2fa_login"))
 
         return current_app.ensure_sync(func)(*args, **kwargs)

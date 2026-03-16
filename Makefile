@@ -29,6 +29,11 @@ install:
 run: ## Run the app in a limited mode
 	docker compose up --build
 
+.PHONY: serve
+serve: ## Tear down and rebuild the local Docker stack
+	docker compose down --remove-orphans
+	docker compose up --build
+
 .PHONY: run-full
 run-full: ## Run the app with all features enabled
 	docker compose -f docker-compose.stripe.yaml up --build
@@ -83,7 +88,7 @@ fix: ## Format the code
 
 .PHONY: new-database-migration
 new-database-migration: ## Create a new migration
-ifndef message
+ifndef MESSAGE
 	$(error Env var 'MESSAGE' must be set, e.g., `MESSAGE=foo make new-database-migration`)
 endif
 ifdef IS_DOCKER

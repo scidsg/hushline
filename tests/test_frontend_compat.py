@@ -51,10 +51,18 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
     directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+    user_search_js = (ROOT / "assets/js/user_search.js").read_text(encoding="utf-8")
+    directory_verified_static_js = (ROOT / "hushline/static/js/directory_verified.js").read_text(
+        encoding="utf-8"
+    )
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
+    assert 'id="public-record-count"' in directory_template
+    assert 'id="attorney-filters-toggle"' in directory_template
+    assert 'id="attorney-filters-panel"' in directory_template
+    assert "Clear Filters" in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
     assert 'aria-live="polite"' in directory_template
@@ -65,13 +73,108 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         'const searchStatus = document.getElementById("directory-search-status");'
         in directory_verified_js
     )
+    assert 'const publicRecordCountBadge = document.getElementById("public-record-count");' in (
+        directory_verified_js
+    )
+    assert (
+        'const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyCountryFilter = document.getElementById("attorney-country-filter");'
+        in directory_verified_js
+    )
+    assert (
+        'const attorneyRegionFilter = document.getElementById("attorney-region-filter");'
+        in directory_verified_js
+    )
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
     assert 'searchInput.placeholder = "Search attorneys...";' in directory_verified_js
     assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
+    assert "window.location.search" in directory_verified_js
+    assert "window.location.search" in directory_verified_static_js
+    assert "function escapeHtml(value)" in user_search_js
+    assert "return escapeHtml(sourceText);" in user_search_js
+    assert '<mark class="search-highlight">${escapeHtml(match[0])}</mark>' in user_search_js
+    assert "updatePublicRecordCountBadge();" in directory_verified_js
+    assert (
+        "fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)"
+        in directory_verified_js
+    )
+    assert "fetch(`${pathPrefix}/directory/attorney-filters.json`)" in directory_verified_js
+    assert "window.history.replaceState" in directory_verified_js
+    assert "new AbortController();" in directory_verified_js
+    assert 'attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
+        directory_verified_js
+    )
+    assert "function inferredCountryForRegionCode(regionCode)" in directory_verified_js
+    assert "function updateAttorneySelectExpandedLabels(isExpanded)" in directory_verified_js
+    assert 'attorneyCountryFilter.addEventListener("change", async function () {' in (
+        directory_verified_js
+    )
+    assert 'attorneyRegionFilter.addEventListener("change", function () {' in directory_verified_js
+    assert 'attorneyCountryFilter.addEventListener("focus", syncExpandedLabelsOnOpen);' in (
+        directory_verified_js
+    )
+    assert 'attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);' in (
+        directory_verified_js
+    )
+    assert (
+        "attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);"
+        in (directory_verified_js)
+    )
+    assert "updateAttorneyFiltersClearVisibility();" in directory_verified_js
+    assert 'button[type="submit"]' not in directory_template
+    assert 'setSearchStatus("Updating attorney results.");' in directory_verified_js
+    assert "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;" in directory_verified_js
+    assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
+        directory_verified_js
+    )
+    assert "Hide Filters" in directory_verified_static_js
+    assert "Show Filters" in directory_verified_static_js
+    assert "eval(" not in directory_verified_static_js
+    assert "webpack://" not in directory_verified_static_js
+    assert "const safeDisplayName = userSearch.escapeHtml(" in directory_js
+    assert "const safeDisplayName = userSearch.escapeHtml(" in directory_verified_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No bio");' in directory_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No bio");' in directory_verified_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No description");' in (
+        directory_verified_js
+    )
+    safe_user_aria = (
+        'aria-label="${safeUserType}, Display name:${safeDisplayName}, Username: '
+        '${safeUsername}, Bio: ${safeBio}"'
+    )
+    assert safe_user_aria in directory_js
+    assert safe_user_aria in directory_verified_js
+    assert (
+        'aria-label="${safeListingType}, Display name:${safeDisplayName}, Description: ${safeBio}"'
+        in directory_verified_js
+    )
+    assert (
+        'aria-label="${userType}, Display name:${user.display_name || user.primary_username}'
+        not in (directory_verified_js)
+    )
+    assert (
+        'aria-label="${userType}, Display name:${user.display_name || user.primary_username}'
+        not in (directory_js)
+    )
+    assert "user.city," in directory_verified_js
+    assert "user.country," in directory_verified_js
+    assert "user.subdivision," in directory_verified_js
+    assert "Array.isArray(user.countries)" in directory_verified_js
+    assert "directory/users.json" in directory_verified_static_js
+    assert "directory/attorney-filters.json" in directory_verified_static_js
+    assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
+    assert ".directory-filter-panel" in scss
     assert ".visually-hidden" in scss
 
 
@@ -98,6 +201,12 @@ def test_inbox_sticky_nav_hooks_exist() -> None:
     assert "position: sticky;" in scss
 
 
+def test_settings_field_delete_confirmation_blocks_submit_on_cancel() -> None:
+    js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
+
+    assert '.querySelectorAll(".message-field-delete-button")' in js
+    assert 'return confirm(' in js
+
 def test_settings_sticky_nav_hooks_exist() -> None:
     settings_template = (ROOT / "hushline/templates/settings/nav.html").read_text(
         encoding="utf-8",
@@ -110,3 +219,20 @@ def test_settings_sticky_nav_hooks_exist() -> None:
     assert "--settings-tabs-top" in settings_js
     assert ".settings-tabs {" in scss
     assert "position: sticky;" in scss
+
+
+def test_settings_field_builder_select_hooks_are_wrapper_safe() -> None:
+    settings_fields_js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
+
+    assert "function getFieldFormRoot(fieldType)" in settings_fields_js
+    assert 'return fieldType.closest("form");' in settings_fields_js
+    assert (
+        "const choicesContainer = getFieldFormRoot(fieldType)?.querySelector(" in settings_fields_js
+    )
+    assert (
+        "const requiredCheckboxContainer = getFieldFormRoot(fieldType)?.querySelector("
+        in settings_fields_js
+    )
+    assert "const requiredCheckbox = getFieldFormRoot(fieldType)?.querySelector(" in (
+        settings_fields_js
+    )

@@ -300,7 +300,7 @@ def test_email_headers_post_value_error_shows_flash(
 ) -> None:
     mocker.patch(
         "hushline.routes.email_headers.analyze_raw_email_headers",
-        side_effect=ValueError("No email headers detected. Paste the raw headers and try again."),
+        side_effect=ValueError("No email headers detected"),
     )
     response = client.post(
         url_for("email_headers"),
@@ -308,7 +308,7 @@ def test_email_headers_post_value_error_shows_flash(
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "No email headers detected. Paste the raw headers and try again." in response.text
+    assert "No email headers detected." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -328,15 +328,19 @@ def test_email_headers_export_value_error_redirects_with_flash(
 ) -> None:
     mocker.patch(
         "hushline.routes.email_headers.create_evidence_zip",
-        side_effect=ValueError("No email headers detected. Paste the raw headers and try again."),
+        side_effect=ValueError("No email headers detected"),
     )
     response = client.post(
         url_for("email_headers_evidence_zip"),
         data={"raw_headers": "foo"},
-        follow_redirects=True,
     )
-    assert response.status_code == 200
-    assert "No email headers detected. Paste the raw headers and try again." in response.text
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("email_headers"))
+    with client.session_transaction() as session:
+        messages = session.get("_flashes", [])
+    assert any(
+        tuple(message) == ("message", "⛔️ No email headers detected.") for message in messages
+    )
 
 
 def test_parse_tag_value_pairs_ignores_invalid_parts_and_empty_keys() -> None:

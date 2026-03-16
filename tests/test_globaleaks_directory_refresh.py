@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 import pytest
+import requests
 
+from hushline import globaleaks_directory_refresh as refresh_module
 from hushline.globaleaks_directory_refresh import (
     GLOBALEAKS_SOURCE_URL,
     GlobaLeaksDirectoryRefreshError,
+    _candidate_hosts,
+    _choose_host,
+    _choose_submission_url,
+    _extract_discovery_links,
+    _index_known_rows_by_host,
+    _infer_scheme,
+    _normalize_http_url,
+    _normalize_string_list,
     fetch_globaleaks_directory_rows,
     refresh_globaleaks_directory_rows,
     render_globaleaks_refresh_summary,
@@ -29,6 +39,184 @@ class _FakeSession:
         assert "HushlineGlobaLeaksSync" in headers["User-Agent"]
         self.requested_urls.append(url)
         return self.responses[url]
+
+
+class _ErrorSession:
+    def get(self, url: str, *, timeout: float, headers: dict[str, str]) -> _FakeResponse:
+        raise requests.Timeout(f"timed out fetching {url}")
+
+
+def test_normalize_string_list_handles_split_deduping_and_invalid_inputs() -> None:
+    assert _normalize_string_list(" English | Italian ; english ,, ") == ["English", "Italian"]
+    assert _normalize_string_list(["French", 1, " french ", "", "German"]) == ["French", "German"]
+    assert _normalize_string_list({"languages": ["English"]}) == []
+
+
+def test_normalize_http_url_validates_required_and_optional_fields() -> None:
+    assert (
+        _normalize_http_url(
+            " https://submit.example.org/report ",
+            field="submission_url",
+            required=True,
+        )
+        == "https://submit.example.org/report"
+    )
+    assert _normalize_http_url("mailto:test@example.org", field="website", required=False) == ""
+    assert _normalize_http_url("   ", field="website", required=False) == ""
+
+    with pytest.raises(
+        GlobaLeaksDirectoryRefreshError, match="Missing required URL field: source_url"
+    ):
+        _normalize_http_url(None, field="source_url", required=True)
+
+    with pytest.raises(
+        GlobaLeaksDirectoryRefreshError, match="Missing required URL field: source_url"
+    ):
+        _normalize_http_url("   ", field="source_url", required=True)
+
+
+def test_infer_scheme_uses_port_module_cert_and_http_fallback() -> None:
+    assert _infer_scheme({"port": "443"}) == "https"
+    assert _infer_scheme({"_shodan": {"module": "https-simple-new"}}) == "https"
+    assert _infer_scheme({"ssl.cert.subject.cn": "secure.example.org"}) == "https"
+    assert _infer_scheme({"port": 80, "module": "http-simple-new"}) == "http"
+
+
+def test_choose_submission_url_uses_website_http_location_and_host_fallbacks() -> None:
+    assert (
+        _choose_submission_url({"website": "https://site.example.org/"})
+        == "https://site.example.org/"
+    )
+    assert (
+        _choose_submission_url(
+            {
+                "website": "ftp://site.example.org/",
+                "http.location": "https://submit.example.org/form",
+            }
+        )
+        == "https://submit.example.org/form"
+    )
+    assert _choose_submission_url(
+        {"hostnames": "Tips.example.org | tips.example.org", "port": "443"}
+    ) == ("https://tips.example.org/")
+
+
+def test_choose_host_falls_back_to_candidate_hosts_or_errors() -> None:
+    assert _choose_host(
+        {"ssl.cert.subject.cn": "Secure.Example.org."}, "mailto:test@example.org"
+    ) == ("secure.example.org")
+
+    with pytest.raises(GlobaLeaksDirectoryRefreshError, match="missing a usable host"):
+        _choose_host({}, "mailto:test@example.org")
+
+
+def test_candidate_hosts_normalizes_and_skips_blank_or_duplicate_values() -> None:
+    assert _candidate_hosts(
+        {
+            "host": " Tips.Example.org ",
+            "domains": ["https://tips.example.org/report", ".", "tips.example.org"],
+            "_shodan": {"http": {"host": " "}},
+        }
+    ) == ["tips.example.org"]
+
+
+def test_refresh_globaleaks_directory_rows_rejects_empty_slug_after_normalization() -> None:
+    with pytest.raises(GlobaLeaksDirectoryRefreshError, match="slug normalized to an empty value"):
+        refresh_globaleaks_directory_rows([{"host": "!!!"}])
+
+
+@pytest.mark.parametrize(
+    ("normalized_rows", "message"),
+    [
+        (
+            [{"id": 1, "slug": "globaleaks~one", "name": "One"}],
+            "Normalized row id must be a string",
+        ),
+        (
+            [{"id": "globaleaks-one", "slug": 1, "name": "One"}],
+            "Normalized row slug must be a string",
+        ),
+        (
+            [
+                {"id": "globaleaks-one", "slug": "globaleaks~shared", "name": "One"},
+                {"id": "globaleaks-two", "slug": "globaleaks~shared", "name": "Two"},
+            ],
+            "Duplicate GlobaLeaks listing slug: globaleaks~shared",
+        ),
+    ],
+)
+def test_refresh_globaleaks_directory_rows_validates_normalized_row_shapes(
+    monkeypatch: pytest.MonkeyPatch,
+    normalized_rows: list[dict[str, object]],
+    message: str,
+) -> None:
+    rows_iter = iter(normalized_rows)
+
+    def fake_normalize(
+        row: dict[str, object],
+        *,
+        source_label: str,
+        source_url: str,
+    ) -> dict[str, object]:
+        return next(rows_iter)
+
+    monkeypatch.setattr(refresh_module, "_normalize_globaleaks_row", fake_normalize)
+
+    with pytest.raises(GlobaLeaksDirectoryRefreshError, match=message):
+        refresh_globaleaks_directory_rows([{} for _ in normalized_rows])
+
+
+def test_index_known_rows_by_host_ignores_blank_url_fields() -> None:
+    indexed = _index_known_rows_by_host(
+        [
+            {
+                "host": "known.example.org",
+                "website": " ",
+                "submission_url": None,
+            }
+        ]
+    )
+
+    assert indexed == {
+        "known.example.org": {
+            "host": "known.example.org",
+            "website": " ",
+            "submission_url": None,
+        }
+    }
+
+
+def test_extract_discovery_links_filters_excluded_duplicate_and_non_candidate_hosts() -> None:
+    links = _extract_discovery_links(
+        """
+        <html>
+          <body>
+            <a href="/relative">Relative</a>
+            <a href="https://www.globaleaks.org/usecases/anti-corruption/">Source</a>
+            <a href="https://github.com/globaleaks/globaleaks">GitHub</a>
+            <a href="https://plain.example.org/about">Plain</a>
+            <a href="https://tip.example.org/submit">Tip Desk</a>
+            <a href="https://tip.example.org/other">Tip Desk Duplicate</a>
+            <a href="https://known.example.org/"> </a>
+          </body>
+        </html>
+        """,
+        source_url="https://www.globaleaks.org/usecases/anti-corruption/",
+        known_hosts={"known.example.org"},
+    )
+
+    assert links == [
+        {
+            "name": "Tip Desk",
+            "url": "https://tip.example.org/submit",
+            "host": "tip.example.org",
+        },
+        {
+            "name": "known.example.org",
+            "url": "https://known.example.org/",
+            "host": "known.example.org",
+        },
+    ]
 
 
 def test_refresh_globaleaks_directory_rows_is_deterministic_and_schema_compatible() -> None:
@@ -180,6 +368,72 @@ def test_fetch_globaleaks_directory_rows_scrapes_usecase_pages_and_preserves_kno
             "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/",
         },
     ]
+
+
+def test_fetch_globaleaks_directory_rows_skips_hosts_seen_on_earlier_pages() -> None:
+    session = _FakeSession(
+        {
+            "https://www.globaleaks.org/usecases/anti-corruption/": _FakeResponse(
+                """
+                <html>
+                  <body>
+                    <a href="https://tip.repeat.example.org/submit">Repeat Desk</a>
+                  </body>
+                </html>
+                """
+            ),
+            "https://www.globaleaks.org/usecases/investigative-journalism/": _FakeResponse(
+                """
+                <html>
+                  <body>
+                    <a href="https://tip.repeat.example.org/other">Repeat Desk Again</a>
+                  </body>
+                </html>
+                """
+            ),
+        }
+    )
+
+    rows = fetch_globaleaks_directory_rows(
+        source_pages=(
+            {
+                "source_label": "GlobaLeaks anti-corruption use case page",
+                "source_url": "https://www.globaleaks.org/usecases/anti-corruption/",
+            },
+            {
+                "source_label": "GlobaLeaks investigative journalism use case page",
+                "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/",
+            },
+        ),
+        session=session,
+    )
+
+    assert rows == [
+        {
+            "name": "Repeat Desk",
+            "website": "https://tip.repeat.example.org/submit",
+            "submission_url": "https://tip.repeat.example.org/submit",
+            "host": "tip.repeat.example.org",
+            "source_label": "GlobaLeaks anti-corruption use case page",
+            "source_url": "https://www.globaleaks.org/usecases/anti-corruption/",
+        }
+    ]
+
+
+def test_fetch_globaleaks_directory_rows_wraps_request_failures() -> None:
+    with pytest.raises(
+        GlobaLeaksDirectoryRefreshError,
+        match="Failed to fetch GlobaLeaks discovery pages: timed out fetching",
+    ):
+        fetch_globaleaks_directory_rows(
+            source_pages=(
+                {
+                    "source_label": "GlobaLeaks anti-corruption use case page",
+                    "source_url": "https://www.globaleaks.org/usecases/anti-corruption/",
+                },
+            ),
+            session=_ErrorSession(),
+        )
 
 
 def test_fetch_globaleaks_directory_rows_fails_closed_when_no_candidates_are_found() -> None:

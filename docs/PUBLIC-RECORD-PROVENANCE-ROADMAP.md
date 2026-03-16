@@ -1,5 +1,7 @@
 # Public Record Provenance Roadmap (U.S.)
 
+This artifact tracks the active U.S. implementation roadmap and the policy-only EU scaffold used to open follow-on country issues.
+
 ## Scope
 
 - Build an authoritative, ever-growing U.S. public-record attorney dataset.
@@ -102,3 +104,222 @@
 - Are anti-bot controls/captcha present?
 - Is an official API/feed available?
 - Can provenance be captured reproducibly without private sources?
+
+## EU Phase 0A (Policy-Only Scaffold)
+
+### Scope
+
+- Mirror the U.S. roadmap format before any EU adapter work starts.
+- Keep this section policy-only until a country-specific issue validates the source shape.
+- Use the EU target set already defined in code: `Austria`, `Belgium`, `Finland`, `France`, `Germany`, `Italy`, `Luxembourg`, `Netherlands`, `Portugal`, `Spain`, `Sweden`.
+
+### Evidence Snapshot (March 14, 2026)
+
+- Public-search availability below reflects an evidence review completed on March 14, 2026.
+- Primary evidence came from official national bar/council pages and the European e-Justice "Find a lawyer" provider list (last updated July 1, 2025).
+- No EU discovery adapters are implemented yet. Every row below is planning state only.
+
+### Status Definitions
+
+- `Candidate`: official authority and public search are visible enough to open a country implementation issue.
+- `Blocked`: no single authoritative country-level source is confirmed yet, or the source shape is split in a way that prevents a safe first adapter.
+- `Deferred`: the official authority is known, but the exact search/detail URL policy still needs manual source validation before adapter work starts.
+
+### 11-Country Matrix
+
+| Country     | Official Authority                                                          | Expected Official Domain(s)                            | Public Search                                | Record-Specific URL | Likely Adapter Method                                                              | Status    | Notes                                                                                                 |
+| ----------- | --------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------- |
+| Austria     | Austrian Bar / Austrian Lawyers (`Osterreichischer Rechtsanwaltskammertag`) | `rechtsanwaelte.at`, `oerak.at`, `service.oerak.at`    | Yes                                          | Yes                 | Official search flow -> resolve exact result URL                                   | Candidate | Official directory and attorney detail pages were both observed on official bar domains.              |
+| Belgium     | Split official bars: `AVOCATS.BE` and `Orde van Vlaamse Balies`             | `avocats.be`, `advocaat.be`                            | Yes, but split                               | Unknown             | Federated bar search -> resolve exact result URL per authority                     | Blocked   | No single country-level authority/domain is confirmed for nationwide coverage yet.                    |
+| Finland     | Finnish Bar Association                                                     | `asianajajat.fi`                                       | Yes                                          | Unknown             | Official search flow -> validate exact result URL                                  | Deferred  | Public "Find an attorney" flow exists, but the canonical profile URL shape still needs confirmation.  |
+| France      | `Conseil national des barreaux`                                             | `avocat.fr`                                            | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Candidate | National official directory is public; stable record URL policy still needs country issue validation. |
+| Germany     | Federal Bar / BRAK Nationwide Register of Lawyers                           | `brak.de`, `rechtsanwaltsregister.org`                 | Yes                                          | Unknown             | Official register search -> resolve exact result URL                               | Candidate | Nationwide official register is public and suitable for a first country issue.                        |
+| Italy       | National Bar Council / `Consiglio Nazionale Forense`                        | `consiglionazionaleforense.it`                         | Yes, but entrypoint still needs pinning      | Unknown             | Official register search -> resolve exact result URL or federated local-bar lookup | Deferred  | Official authority is known, but the stable public query surface still needs confirmation.            |
+| Luxembourg  | Luxembourg Bar Association                                                  | `barreau.lu`                                           | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Deferred  | Public bar-register participation is visible, but country-level completeness still needs review.      |
+| Netherlands | Netherlands Bar                                                             | `advocatenorde.nl`, `zoekeenadvocaat.advocatenorde.nl` | Yes                                          | Unknown             | Official search flow -> resolve exact result URL                                   | Candidate | National official lawyer search is public and appears viable for follow-on validation.                |
+| Portugal    | Portuguese Bar Association / `Ordem dos Advogados`                          | `portal.oa.pt`                                         | No authoritative public search confirmed yet | No                  | Manual authority review before adapter work                                        | Blocked   | Official authority is identified, but no public lawyer-search/detail source is documented here yet.   |
+| Spain       | General Council of Spanish Lawyers                                          | `abogacia.es`                                          | Yes                                          | Unknown             | Official census search -> resolve exact result URL                                 | Candidate | National official lawyer census is public; exact per-record URL behavior still needs validation.      |
+| Sweden      | Swedish Bar Association                                                     | `advokatsamfundet.se`                                  | Yes                                          | Unknown             | Official search flow -> validate exact result URL                                  | Deferred  | Public member search exists, but canonical detail URLs still need country issue review.               |
+
+### EU Phase 0B (Strict Provenance Gate)
+
+#### Baseline Alignment
+
+- EU attorney coverage inherits the same strict provenance standard used for the U.S. rollout.
+- No EU adapter or seed dataset may land until a country issue records the authoritative source class, exact allowed domains, approved `source_label` values, and any exception evidence required below.
+
+#### Required Source Standard
+
+- `source_url` must be the exact official record URL for that listing.
+- `source_url` must not be a search form, search-results page, home page, generic directory landing page, or country summary page.
+- `source_url` must not match the listed organization's own `website`; it must point to the external authority source of record.
+- The source record must come from an official bar, regulator, judiciary, or statutory authority acting within its published mandate.
+
+#### Allowed-Domain Policy
+
+- Each country issue must list the exact allowed apex domains. Broad suffix rules such as `.eu`, `.gov`, or "official-looking domains" are not acceptable.
+- `source_url` host may match one listed apex domain or a documented subdomain of that domain.
+- A domain is allowed only when it is controlled by the relevant official authority, or the authority explicitly designates it as the canonical public register.
+- Third-party mirrors, internet archives, unofficial PDFs, press summaries, and republished copies are not allowed.
+- The "Expected Official Domain(s)" column in the Phase 0A matrix is planning evidence only. It does not approve those domains for implementation until a country issue narrows them into an explicit allowed-domain set.
+
+#### EU Source-Label Taxonomy
+
+| Approved Label Pattern                        | Use When                                                         | Example                                                          |
+| --------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `{Authority Name} attorney directory`         | Official bar or law-society membership/profile directory         | `Conseil national des barreaux attorney directory`               |
+| `{Authority Name} attorney register`          | Official statutory or regulatory roll of admitted lawyers        | `BRAK attorney register`                                         |
+| `{Authority Name} attorney census record`     | Official nationwide census or roster naming licensed attorneys   | `Consejo General de la Abogacia Espanola attorney census record` |
+| `{Authority Name} attorney discipline record` | Official judicial or regulatory disciplinary or sanctions record | `Court of Appeal attorney discipline record`                     |
+
+- Labels must name the authority first and the record class second.
+- A country issue must map each permitted source class to one approved display label before implementation starts.
+- Marketing or trust-signaling language such as `top`, `best`, `verified`, `recommended`, or private brand names is disallowed in `source_label`.
+
+#### Disallowed Source Classes
+
+- Private rankings and editorial products such as Chambers, Legal 500, and Best Lawyers.
+- Lead-generation, referral, or commercial directory sites.
+- Law-firm self-reported websites, biographies, or newsroom pages.
+- Unofficial caches, mirrors, scraped copies, and search-engine result pages.
+- Generic official search entrypoints or directory home pages that do not resolve to a record-specific URL.
+
+#### Narrow Exception Rules
+
+- Federated official bar structures may use multiple official domains only if no single national authority domain exists and the country issue documents the official basis for each participating authority.
+- Vendor-hosted domains may be used only if the official authority identifies the domain as its canonical public register and the country issue captures a stable record-specific URL example from that domain.
+- No exception may authorize private rankings, lead-gen sites, or unofficial mirrors.
+- Each exception requires:
+  - an official source proving the authority relationship
+  - the exact allowed domains
+  - at least one example record-specific URL per domain
+  - maintainer approval recorded in the country issue before adapter work starts
+
+### EU Execution Order
+
+1. Treat EU Phase 0B as a hard gate: no EU adapter or seed data before a country issue captures the allowed domains, approved `source_label` values, and any exception evidence.
+2. Open country issues only from rows marked `Candidate` or `Deferred`.
+3. In each country issue, confirm the exact allowed domain set, whether direct per-record URLs are stable, and which Phase 0B source-label pattern applies.
+4. Promote `Deferred` rows to `Candidate` only after a country issue captures the exact search/detail URL shape.
+5. Leave `Blocked` rows policy-only until a single authoritative public source, or a maintainer-approved federated policy, is documented.
+
+### EU Phase 0C (Per-Country Feasibility Survey)
+
+- Evidence below was reviewed on March 14, 2026 from official national bar or regulator pages.
+- `Open country issue` means an official attorney-level source exposed a reproducible record URL shape that appears compatible with Phase 0B strict provenance.
+- `Defer` means the official source is known, but the current public surface still lacks a pinned exact-record URL policy, has material workflow instability, or requires a federated exception that is not yet documented.
+- The Phase 0C recommendation column supersedes the provisional Phase 0A status column when they differ.
+
+| Country     | Official source evidence                                                                                                                                                                                                                                                                                                                                    | Record level seen                 | Provenance URL status                                                                                                       | Concrete blocker risks                                                                                                                                                                      | Likely adapter strategy                                        | Recommendation     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------ |
+| Austria     | [OERAK search](https://service.oerak.at/ravzsuche/Pages/SearchForm.aspx); indexed [OERAK lawyer detail](https://www.oerak.at/en/support-and-services/services/find-a-lawyer/?cHash=0b3d29ab383516621630094d435b7783&tx_rafinden_simplesearch%5Baction%5D=show&tx_rafinden_simplesearch%5Bcontroller%5D=LawyerSearch&tx_rafinden_simplesearch%5Blid%5D=7709) | Attorney                          | Yes. Official lawyer detail pages on `oerak.at` expose a lawyer-specific `lid` URL shape.                                   | Search-form discovery is still required to resolve `lid`; detail URLs include `cHash`, so the country issue should confirm which query parts are canonical before import.                   | Search-form workflow -> HTML detail-page extraction            | Open country issue |
+| Belgium     | [OVB search](https://www.advocaat.be/nl/); indexed [OVB lawyer detail](https://www.advocaat.be/nl/zoek-een-advocaat/advocaat/b4743534-d3e4-4d87-a53c-5629a9f3bbc4); [AVOCATS.BE search](https://www.avocats.be/fr/trouver-un-avocat)                                                                                                                        | Attorney, but split by bar system | Partial. Stable UUID attorney URLs were observed on `advocaat.be`; no AVOCATS.BE lawyer-detail URL was surfaced.            | Nationwide coverage is federated across multiple official authorities and domains; French/German-side detail URL shape remains unpinned; Phase 0B multi-domain exception needed.            | Federated search-form workflow per authority                   | Defer              |
+| Finland     | [Finnish Bar Association attorney-search guidance](https://asianajajat.fi/en/legal-advice/how-do-i-find-an-attorney-at-law/)                                                                                                                                                                                                                                | Attorney                          | Unknown. The official page says the search tool covers all Finnish attorneys-at-law, but no canonical profile URL surfaced. | No indexed attorney-detail URL was observed on the official domain; search/detail flow may be JS-driven or otherwise unindexed, so exact-record provenance is not yet reproducible.         | Search-form workflow                                           | Defer              |
+| France      | [CNB national directory](https://www.cnb.avocat.fr/fr/annuaire-des-avocats-de-france); [avocat.fr directory landing page](https://www.avocat.fr/annuaire-des-avocats-de-france)                                                                                                                                                                             | Attorney                          | Unknown. The national directory is public, but the official landing page exposes it via an embedded `iframe`.               | The embedded directory obscures the canonical host and exact allowed-domain set for record URLs; no direct lawyer permalink was surfaced in the official crawl.                             | Search-form workflow after canonical host/domain pinning       | Defer              |
+| Germany     | [BRAK register overview](https://www.brak.de/service/bundesweites-amtliches-anwaltsverzeichnis/); [official register search](https://www.bea-brak.de/bravsearch/index.brak)                                                                                                                                                                                 | Attorney                          | Not yet. BRAK says the register covers all admitted lawyers, but no stable detail URL was captured.                         | On March 14, 2026 the public register redirected to `http://bravsearch.bea-brak.de/bravsearch/` and returned an expired-dialog or unknown-error state, suggesting a session-bound workflow. | Search-form workflow only if session-safe detail URLs exist    | Defer              |
+| Italy       | [CNF lawyer-search endpoint](https://www.consiglionazionaleforense.it/web/cnf/ricerca-avvocati)                                                                                                                                                                                                                                                             | Attorney (expected)               | Not yet. The official CNF endpoint could not be validated as a public record source.                                        | On March 14, 2026 the official CNF search endpoint returned HTTP `403`, so the access path, exact detail URL shape, and any anti-bot controls remain unverified.                            | Defer until official public search/detail flow is confirmed    | Defer              |
+| Luxembourg  | [Barreau de Luxembourg annuaire](https://www.barreau.lu/annuaire/); [RGPD annuaire note](https://www.barreau.lu/rgpd/); [tableau/list descriptions](https://www.barreau.lu/le-metier-davocat/devenir-avocat/presentation/)                                                                                                                                  | Attorney and firm                 | Unknown. The public annuaire and privacy notice confirm published bar data, but no distinct per-lawyer URL was observed.    | Search results appear inline on the annuaire page; an exact lawyer permalink has not yet been pinned, and the privacy notice frames publication as public verification data.                | Search-form workflow; static seed only if exact URLs are found | Defer              |
+| Netherlands | [NOvA search](https://zoekeenadvocaat.advocatenorde.nl/); indexed [attorney detail example](https://zoekeenadvocaat.advocatenorde.nl/advocaten/velp-gld/de-heer-mr-wg-damen/11398673937)                                                                                                                                                                    | Attorney and firm                 | Yes. Public attorney URLs under `/advocaten/.../{id}` are stable and crawlable on the official domain.                      | The source also exposes office pages under `/kantoren/.../{id}`; the adapter must avoid treating firm pages as attorney provenance when both surfaces exist.                                | HTML detail-page extraction                                    | Open country issue |
+| Portugal    | [OA microsite home](https://advogado.oa.pt/); [OA notice documenting `https://advogado.oa.pt/nnnnnnn`](https://portal.oa.pt/comunicacao/comunicados/2022/informacao-nova-funcionalidade-pagina-pessoal-do-advogado/); [profile example](https://advogado.oa.pt/13639L)                                                                                      | Attorney                          | Yes. OA states each lawyer receives a direct page keyed by professional number, and public profile pages are crawlable.     | Discovery still depends on the OA public search path that maps names to `cédula` numbers; contact forms use a robot check, but the profile pages themselves are public.                     | Search-form workflow -> direct profile extraction              | Open country issue |
+| Spain       | [General Census of Lawyers](https://www.abogacia.es/servicios/ciudadanos/censo-general-de-letrados/)                                                                                                                                                                                                                                                        | Attorney                          | Unknown. The official census says it exposes a lawyer file, but no record-specific URL was surfaced in crawl.               | The official landing page routes users into app/mobile and census flows, but the exact public lawyer-profile URL pattern remains unverified.                                                | Search-form workflow                                           | Defer              |
+| Sweden      | [Swedish Bar Association member-search entry point](https://www.advokatsamfundet.se/en/)                                                                                                                                                                                                                                                                    | Attorney (members only)           | Unknown. The official site says the public can search among all members, but no profile URL pattern was surfaced.           | No public member-detail permalink or search endpoint was observed in crawl, suggesting a JS-driven or otherwise opaque search/results flow.                                                 | Search-form workflow                                           | Defer              |
+
+### EU Phase 0D (Shared Normalization and Model Assessment)
+
+#### Assessment Basis
+
+- This assessment is based on the current `PublicRecordListing`, shared directory geography helpers, and the `refresh_public_record_law_firms.py` / `hushline.public_record_refresh` pipeline.
+- The current listing model already stores UTF-8 strings for `name`, `city`, `country`, `subdivision`, `source_label`, and `source_url`, so multilingual display values can be rendered without a schema change.
+- The current automated refresh pipeline still treats `state` as the region key for public-record rows and writes back only the legacy attorney fields (`id`, `slug`, `name`, `website`, `description`, `city`, `state`, `practice_tags`, `source_label`, `source_url`).
+
+#### What Can Stay Within the Current Model
+
+- Attorney display names can remain in the existing `name` field for Phase 0 country work. We do not need separate given-name, family-name, honorific, or transliteration columns before opening country adapters.
+- Country names and locality display text can remain free-text UTF-8 values in `city`, `country`, and `subdivision` at the read-model layer.
+- The existing strict provenance fields, `source_label` and `source_url`, are still sufficient for EU adapters and should remain the primary trust surface.
+- `practice_tags`, `description`, and `website` can stay unchanged. They are presentation fields and do not need EU-specific schema work first.
+
+#### Shared Gaps Before EU Adapters Scale Cleanly
+
+- Non-U.S. geography is only partially normalized today. `build_public_record_geography()` can display `country` and `subdivision`, but the refresh pipeline still keys EU rows off `state`, which is a legacy compatibility field rather than a durable jurisdiction model.
+- Country and subdivision data are not preserved by the refresh writer. A future EU seed could be read with `country` / `subdivision` fields, but a correction refresh would currently drop them from the output artifact.
+- Shared regulator regions are not modeled. Federated systems such as Belgium, and likely later Germany, Italy, or Spain, may need an authority-region field distinct from civic geography.
+- The current name normalization is good enough for deterministic sort order, but not for shared identity matching. We only derive slugs from a lossy ASCII-like normalization, so multilingual alternate names or bar-registered spellings would need separate design if adapters must disambiguate same-city attorneys reliably.
+
+#### Metadata That Does Not Belong in This Ticket
+
+- `registration_number` or equivalent bar-roll identifier should be treated as separate design work. Several EU sources appear to expose number-based profile URLs, and that identifier may become necessary for reproducible refreshes and duplicate resolution.
+- `practicing_status` should also be separate design work. Some countries publish distinctions such as active, suspended, trainee, or firm-only entries, but the current model does not define how those values should be normalized or displayed.
+- If maintainers later decide that multilingual name variants must be searchable, a dedicated search-normalization design should add explicit fields instead of overloading `slug` or `description`.
+
+#### Adapter and Pipeline Constraints
+
+- No CSP change is required for Phase 0 planning. Country adapters should continue to run in the server-side refresh pipeline; they should not embed third-party iframes, remote scripts, or browser-side queries into the Hush Line UI.
+- If a source only works through CAPTCHA, opaque JS state, expiring session tokens, or embedded third-party widgets, that country should remain blocked or deferred until maintainers approve a separate design. Adapters must not bypass anti-bot or integrity controls.
+- The current refresh pipeline expects deterministic, link-validatable record URLs and exact allowed domains. Generic search pages, office pages, or authority landing pages remain insufficient provenance for EU rows just as they are for U.S. rows.
+- Any future schema-affecting EU work should preserve the existing strict-source checks: `source_url` cannot equal `website`, cannot point to a generic source page, and cannot broaden allowed-domain policy into suffix-based matching.
+
+#### Required Follow-Up Backlog Items
+
+1. Shared EU geography model issue: persist `country` and `subdivision` through public-record refreshes, and stop relying on `state` as the only non-U.S. jurisdiction carrier.
+2. Shared EU authority metadata issue: design optional `registration_number`, `practicing_status`, and `regulator_region` fields, including normalization rules and display policy.
+3. Shared EU name-normalization issue: define whether attorney matching needs alternate-name, transliteration, or sort-name support beyond the current display-only `name` field.
+
+#### Phase 0D Conclusion
+
+- Country-specific EU adapter tickets can proceed now for jurisdictions that already have Phase 0C evidence, but they should assume only the current display model, provenance policy, and legacy `state`-based refresh path.
+- Shared model work becomes mandatory before EU coverage scales past a few country-specific experiments, especially once adapters need durable `country` / `subdivision`, regulator-region handling, or number-based identity matching.
+
+### EU Phase 0E (Rollout Waves and Country-Level Backlog)
+
+#### Research-to-Implementation Gate
+
+- Move a country from research into implementation only when a country issue records:
+  - at least one reproducible attorney-level record URL on the official source of record
+  - the exact allowed-domain set and approved Phase 0B `source_label` mapping
+  - a bounded extraction path that does not depend on CAPTCHA bypasses, expiring sessions, or embedded third-party widgets
+  - confirmation that the current listing model can carry the required fields without unplanned shared schema work
+- Keep a country out of implementation when any of the following remain true:
+  - the evidence stops at a search form, landing page, iframe host, or other non-record URL
+  - the official flow currently fails through HTTP downgrade, session expiry, access denial, or similar instability
+  - nationwide coverage depends on a federated exception that is not yet approved under Phase 0B
+  - the legal basis for public attorney publication is still ambiguous at the country level
+
+#### Proposed Rollout Waves
+
+1. `Wave 1A` (`Implement first`): `Netherlands`, `Portugal`.
+   Both countries already expose public attorney-specific URLs on official domains, so the remaining work is mostly bounded extraction and attorney-only filtering.
+2. `Wave 1B` (`Implement first`): `Austria`.
+   Austria also has official attorney detail URLs, but the country issue should pin which OERAK query components are canonical before coding starts.
+3. `Wave 2` (`Implement later`): `Finland`, `France`, `Luxembourg`, `Spain`, `Sweden`.
+   These countries have identifiable official authorities, but they still need targeted source-validation work to pin an exact-record URL policy or canonical host before adapter implementation.
+4. `Deferred backlog` (`Defer`): `Belgium`, `Germany`, `Italy`.
+   These countries are blocked by federated policy, unstable access, or unverified public access paths that make implementation unsafe to queue behind simple validation work.
+
+#### Country Disposition Matrix
+
+| Country     | Disposition     | Wave             | Evidence-Based Reason                                                                                                                           | Proposed Follow-Up                                                                   |
+| ----------- | --------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Austria     | Implement first | Wave 1B          | Official OERAK lawyer detail URLs were observed; only canonical query-shape decisions remain.                                                   | `EU Wave 1B: implement Austria attorney adapter`                                     |
+| Belgium     | Defer           | Deferred backlog | Coverage is split across official authorities, `advocaat.be` detail URLs are only partial evidence, and AVOCATS.BE detail URLs remain unpinned. | `EU defer backlog: Belgium federated authority policy and source validation`         |
+| Finland     | Implement later | Wave 2           | Official search guidance exists, but no canonical attorney-detail URL was surfaced on March 14, 2026.                                           | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+| France      | Implement later | Wave 2           | The official directory is public, but an embedded `iframe` still obscures the canonical host and allowed-domain set.                            | `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                |
+| Germany     | Defer           | Deferred backlog | The official register flow redirected to HTTP and returned an expired-dialog or unknown-error state on March 14, 2026.                          | `EU defer backlog: Germany official register stability and provenance validation`    |
+| Italy       | Defer           | Deferred backlog | The official CNF lawyer-search endpoint returned HTTP `403` on March 14, 2026, so public access and exact detail URLs remain unverified.        | `EU defer backlog: Italy public attorney-register access validation`                 |
+| Luxembourg  | Implement later | Wave 2           | The official annuaire confirms published bar data, but no distinct per-lawyer permalink has been pinned yet.                                    | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+| Netherlands | Implement first | Wave 1A          | Stable attorney detail URLs were observed on the official NOvA domain; the remaining risk is filtering out firm pages.                          | `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   |
+| Portugal    | Implement first | Wave 1A          | Public OA profile pages keyed by professional number are already visible on official domains.                                                   | `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   |
+| Spain       | Implement later | Wave 2           | The official census exists, but no exact public lawyer-profile URL pattern was confirmed in the March 14, 2026 review.                          | `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                |
+| Sweden      | Implement later | Wave 2           | The official member-search entry point is public, but no reproducible member-detail URL pattern was surfaced.                                   | `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` |
+
+#### Issue-Ready Backlog
+
+| Proposed Issue Title                                                                 | Countries                   | Type                               | Why It Exists Now                                                                                                                                                  | Exit Criteria                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------ | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EU Wave 1A: implement Netherlands and Portugal attorney adapters`                   | Netherlands, Portugal       | Implementation                     | Both countries already satisfy the Phase 0B/0C bar for official attorney-level URLs on official domains.                                                           | Ship bounded server-side adapters, pin allowed domains and labels, exclude firm pages or robot-gated contact surfaces, and add strict provenance tests.                                |
+| `EU Wave 1B: implement Austria attorney adapter`                                     | Austria                     | Implementation                     | Austria has official attorney detail URLs, but canonical URL normalization should be fixed in the issue before import logic lands.                                 | Confirm canonical OERAK detail URL shape, implement discovery plus extraction, and add strict provenance tests.                                                                        |
+| `EU Wave 2A: validate Finland, Luxembourg, and Sweden official attorney detail URLs` | Finland, Luxembourg, Sweden | Research -> implementation backlog | Each country has an official attorney-search surface, but none has a pinned exact-record URL policy yet.                                                           | Capture reproducible attorney-detail URLs, exact allowed domains, approved labels, and either promote to an implementation issue or keep deferred with fresh blocker evidence.         |
+| `EU Wave 2B: validate France and Spain canonical lawyer-profile URLs`                | France, Spain               | Research -> implementation backlog | Both countries have national official directories, but canonical lawyer-profile URL patterns remain unverified.                                                    | Pin the canonical host and record URL shape, document allowed domains, and either promote to an implementation issue or keep deferred with fresh blocker evidence.                     |
+| `EU defer backlog: Belgium federated authority policy and source validation`         | Belgium                     | Deferred backlog                   | Belgium needs a Phase 0B federated-domain exception plus complete attorney-detail evidence across participating bar systems.                                       | Document the official basis for each authority/domain, capture at least one attorney-detail URL per approved domain, or keep blocked if nationwide coverage still cannot be justified. |
+| `EU defer backlog: Germany official register stability and provenance validation`    | Germany                     | Deferred backlog                   | The public register flow was unstable and downgraded to HTTP during the March 14, 2026 review, which is incompatible with strict reproducible provenance.          | Reconfirm a stable HTTPS record flow with reproducible attorney-detail URLs, or keep deferred if the register remains session-bound or error-prone.                                    |
+| `EU defer backlog: Italy public attorney-register access validation`                 | Italy                       | Deferred backlog                   | The official CNF endpoint returned HTTP `403` during the March 14, 2026 review, so the public access path itself is not yet trustworthy enough for implementation. | Reconfirm a public attorney-level search/detail flow on official domains with exact-record URLs, or keep deferred if access remains blocked.                                           |

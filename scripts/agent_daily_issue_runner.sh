@@ -425,6 +425,15 @@ push_branch_for_pr() {
   git push -u origin "$branch"
 }
 
+build_pr_title() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local normalized_title=""
+
+  normalized_title="$(printf '%s' "$issue_title" | tr '\n' ' ' | tr -s ' ')"
+  printf '#%s %s\n' "$issue_number" "$(printf '%s' "$normalized_title" | cut -c1-90)"
+}
+
 kill_all_docker_containers() {
   local ids=()
   while IFS= read -r id; do
@@ -641,14 +650,6 @@ configure_bot_git_identity() {
 
 run_local_workflow_checks() {
   : > "$CHECK_LOG_FILE"
-  AUDIT_STATUS="ok"
-  AUDIT_NOTE=""
-  NODE_FULL_AUDIT_REQUIRED=0
-  MIGRATION_SMOKE_REQUIRED=0
-  LIGHTHOUSE_PERFORMANCE_REQUIRED=0
-  CCPA_COMPLIANCE_REQUIRED=0
-  GDPR_COMPLIANCE_REQUIRED=0
-  E2EE_PRIVACY_REQUIRED=0
   local lint_failure_tail=""
   refresh_runtime_after_schema_changes || return 1
   if ! run_check_capture "Run lint" make lint; then
@@ -661,174 +662,8 @@ run_local_workflow_checks() {
     fi
     run_check_capture "Re-run lint after deterministic auto-fix" make lint || return 1
   fi
-  run_check_with_self_heal_retry "Run workflow security checks" make workflow-security-checks || return 1
+
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
-  run_runtime_check_with_self_heal "Run test with alembic (CI)" make test-ci-alembic || return 1
-
-  if ccpa_compliance_files_changed; then
-    CCPA_COMPLIANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run CCPA compliance tests (CI)" make test-ccpa-compliance || return 1
-  else
-    echo "==> Run CCPA compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no CCPA compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if gdpr_compliance_files_changed; then
-    GDPR_COMPLIANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run GDPR compliance tests (CI)" make test-gdpr-compliance || return 1
-  else
-    echo "==> Run GDPR compliance tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no GDPR compliance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if e2ee_privacy_files_changed; then
-    E2EE_PRIVACY_REQUIRED=1
-    run_runtime_check_with_self_heal "Run E2EE/privacy regression tests (CI)" make test-e2ee-privacy-regressions || return 1
-  else
-    echo "==> Run E2EE/privacy regression tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no E2EE/privacy workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if migration_smoke_files_changed; then
-    MIGRATION_SMOKE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run migration smoke tests (CI)" make test-migration-smoke || return 1
-  else
-    echo "==> Run migration smoke tests (CI)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no migration-smoke workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  local audit_failure_tail=""
-  local audit_blocked=0
-  local -a audit_blocked_reasons=()
-
-  if ! run_check_with_self_heal_retry "Run dependency audit (python)" make audit-python; then
-    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-    if audit_failure_looks_environmental "$audit_failure_tail"; then
-      audit_blocked=1
-      audit_blocked_reasons+=("make audit-python")
-    else
-      return 1
-    fi
-  fi
-
-  if ! run_check_with_self_heal_retry "Run dependency audit (node runtime)" make audit-node-runtime; then
-    audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-    if audit_failure_looks_environmental "$audit_failure_tail"; then
-      audit_blocked=1
-      audit_blocked_reasons+=("make audit-node-runtime")
-    else
-      return 1
-    fi
-  fi
-
-  if node_runtime_dependency_files_changed; then
-    NODE_FULL_AUDIT_REQUIRED=1
-    if ! run_check_with_self_heal_retry "Run dependency audit (node full)" make audit-node-full; then
-      audit_failure_tail="$(tail -n 200 "$CHECK_LOG_FILE")"
-      if audit_failure_looks_environmental "$audit_failure_tail"; then
-        audit_blocked=1
-        audit_blocked_reasons+=("make audit-node-full")
-      else
-        return 1
-      fi
-    fi
-  else
-    echo "==> Run dependency audit (node full)" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no Node dependency manifest changes detected." | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  if (( audit_blocked != 0 )); then
-    AUDIT_STATUS="blocked"
-    AUDIT_NOTE="Blocked local dependency audits: ${audit_blocked_reasons[*]}"
-    echo "Dependency audits were blocked by environment/network constraints; continuing with CI gate requirement." \
-      | tee -a "$CHECK_LOG_FILE"
-  fi
-
-  run_runtime_check_with_self_heal "Run W3C validators" make w3c-validators || return 1
-  run_runtime_check_with_self_heal "Run Lighthouse accessibility" make lighthouse-accessibility || return 1
-
-  if lighthouse_performance_files_changed; then
-    LIGHTHOUSE_PERFORMANCE_REQUIRED=1
-    run_runtime_check_with_self_heal "Run Lighthouse performance" make lighthouse-performance || return 1
-  else
-    echo "==> Run Lighthouse performance" | tee -a "$CHECK_LOG_FILE"
-    echo "Skipped: no lighthouse-performance workflow trigger paths changed." | tee -a "$CHECK_LOG_FILE"
-  fi
-}
-
-issue_has_label() {
-  local labels="$1"
-  local expected="$2"
-  printf '%s\n' "$labels" | grep -Fqi -- "$expected"
-}
-
-extract_referenced_file_path() {
-  local issue_title="$1"
-  local issue_body="$2"
-
-  if [[ "$issue_title" =~ ^\[Test[[:space:]]+Gap\][[:space:]]+(.+)$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}"
-    return 0
-  fi
-
-  local body_path
-  body_path="$(
-    printf '%s\n' "$issue_body" | awk '
-      {
-        for (i = 1; i <= NF; i++) {
-          if ($i ~ /^hushline\/[A-Za-z0-9_.\/-]+\.py$/) {
-            print $i
-            exit
-          }
-        }
-      }
-    '
-  )"
-  if [[ -n "$body_path" ]]; then
-    printf '%s\n' "$body_path"
-  fi
-}
-
-run_test_gap_gate() {
-  local issue_title="$1"
-  local issue_body="$2"
-  local issue_labels="$3"
-
-  if ! issue_has_label "$issue_labels" "test-gap"; then
-    return 0
-  fi
-
-  local target_path
-  target_path="$(extract_referenced_file_path "$issue_title" "$issue_body")"
-  if [[ -z "$target_path" ]]; then
-    echo "test-gap label present but no referenced file path was found in issue title/body." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  echo "==> Enforce test-gap coverage for ${target_path}" | tee -a "$CHECK_LOG_FILE"
-
-  local coverage_row missed cover
-  coverage_row="$(
-    awk -v target="$target_path" '
-      $1 == target { row = $0 }
-      END { if (row != "") print row }
-    ' "$CHECK_LOG_FILE"
-  )"
-  if [[ -z "$coverage_row" ]]; then
-    echo "Coverage row for ${target_path} not found in test output." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  missed="$(printf '%s\n' "$coverage_row" | awk '{print $3}')"
-  cover="$(printf '%s\n' "$coverage_row" | awk '{print $4}')"
-  cover="${cover%\%}"
-
-  if [[ "$missed" != "0" || "$cover" != "100" ]]; then
-    echo "Coverage for ${target_path} is ${cover}% with ${missed} misses; continuing self-heal." | tee -a "$CHECK_LOG_FILE"
-    return 1
-  fi
-
-  echo "test-gap coverage satisfied for ${target_path}." | tee -a "$CHECK_LOG_FILE"
 }
 
 write_pr_changed_files_section() {
@@ -860,6 +695,51 @@ stream_changed_files() {
   git show --name-only --pretty="" --no-renames HEAD | sed '/^$/d'
 }
 
+join_with_conjunction() {
+  local conjunction="$1"
+  shift
+
+  local count="$#"
+  local index
+
+  if (( count == 0 )); then
+    return 0
+  fi
+
+  local -a items=("$@")
+
+  if (( count == 1 )); then
+    printf '%s' "${items[0]}"
+    return 0
+  fi
+
+  if (( count == 2 )); then
+    printf '%s %s %s' "${items[0]}" "$conjunction" "${items[1]}"
+    return 0
+  fi
+
+  for (( index = 0; index < count; index++ )); do
+    if (( index > 0 && index < count - 1 )); then
+      printf ', '
+    elif (( index == count - 1 )); then
+      printf ', %s ' "$conjunction"
+    fi
+    printf '%s' "${items[index]}"
+  done
+}
+
+path_area_prefix() {
+  local path="$1"
+  local first second remainder
+  IFS='/' read -r first second remainder <<< "$path"
+
+  if [[ -n "$second" ]]; then
+    printf '%s/%s' "$first" "$second"
+  else
+    printf '%s' "$first"
+  fi
+}
+
 count_non_log_changed_files() {
   stream_changed_files \
     | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/' \
@@ -869,56 +749,186 @@ count_non_log_changed_files() {
 }
 
 summarize_non_log_changed_areas() {
+  local line area
+  local -a areas=()
+  local area_count=0
+  local seen
+  local existing
+
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^docs/agent-logs/run-.*-issue-[0-9]+\.txt$ ]] && continue
+    area="$(path_area_prefix "$line")"
+    seen=0
+    for existing in "${areas[@]-}"; do
+      if [[ "$existing" == "$area" ]]; then
+        seen=1
+        break
+      fi
+    done
+    if (( seen == 0 )); then
+      areas+=("$area")
+      area_count=$((area_count + 1))
+    fi
+    if (( area_count >= 3 )); then
+      break
+    fi
+  done < <(stream_changed_files)
+
+  if (( area_count == 0 )); then
+    return 0
+  fi
+
+  join_with_conjunction "and" "${areas[@]}"
+}
+
+path_narrative_fragment() {
+  local path="$1"
+  local area
+
+  case "$path" in
+    docs/agent-logs/run-*-issue-*.txt)
+      return 1
+      ;;
+    hushline/model/*)
+      printf 'data and model code in `hushline/model`'
+      ;;
+    hushline/routes/*)
+      printf 'request-handling code in `hushline/routes`'
+      ;;
+    hushline/templates/*)
+      printf 'user-facing page templates in `hushline/templates`'
+      ;;
+    hushline/static/*|hushline/static_src/*)
+      printf 'frontend assets in `%s`' "$(path_area_prefix "$path")"
+      ;;
+    hushline/forms/*)
+      printf 'form-handling code in `hushline/forms`'
+      ;;
+    hushline/*)
+      printf 'application code in `%s`' "$(path_area_prefix "$path")"
+      ;;
+    tests/*)
+      printf 'automated tests in `%s`' "$path"
+      ;;
+    docs/*)
+      printf 'documentation in `%s`' "$path"
+      ;;
+    scripts/agent_daily_issue_runner.sh)
+      printf 'the daily runner script in `scripts/agent_daily_issue_runner.sh`'
+      ;;
+    scripts/*)
+      printf 'supporting scripts in `%s`' "$path"
+      ;;
+    migrations/*)
+      printf 'database migrations in `migrations`'
+      ;;
+    .github/workflows/*)
+      printf 'GitHub Actions workflow files in `.github/workflows`'
+      ;;
+    pyproject.toml|poetry.lock)
+      printf 'Python project configuration in `%s`' "$path"
+      ;;
+    package.json|package-lock.json|npm-shrinkwrap.json)
+      printf 'Node dependency metadata in `%s`' "$path"
+      ;;
+    Dockerfile|Dockerfile.*|docker-compose.yml|docker-compose.yaml)
+      printf 'container and runtime configuration in `%s`' "$path"
+      ;;
+    *)
+      area="$(path_area_prefix "$path")"
+      printf 'supporting files in `%s`' "$area"
+      ;;
+  esac
+}
+
+summarize_non_log_changed_work() {
+  local line fragment
+  local -a fragments=()
+  local fragment_count=0
+  local seen
+  local existing
+
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^docs/agent-logs/run-.*-issue-[0-9]+\.txt$ ]] && continue
+    if ! fragment="$(path_narrative_fragment "$line")"; then
+      continue
+    fi
+    seen=0
+    for existing in "${fragments[@]-}"; do
+      if [[ "$existing" == "$fragment" ]]; then
+        seen=1
+        break
+      fi
+    done
+    if (( seen == 0 )); then
+      fragments+=("$fragment")
+      fragment_count=$((fragment_count + 1))
+    fi
+    if (( fragment_count >= 3 )); then
+      break
+    fi
+  done < <(stream_changed_files)
+
+  if (( fragment_count == 0 )); then
+    return 0
+  fi
+
+  join_with_conjunction "and" "${fragments[@]}"
+}
+
+has_non_log_changed_files_matching() {
+  local pattern="$1"
   stream_changed_files \
-    | awk '
-        /^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ { next }
-        {
-          n = split($0, parts, "/")
-          if (n >= 2) {
-            print parts[1] "/" parts[2]
-          } else if (n == 1) {
-            print parts[1]
-          }
-        }
-      ' \
-    | sort -u \
-    | head -n 3 \
-    | paste -sd ', ' -
+    | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/' \
+    | grep -Eq "$pattern"
 }
 
 write_pr_narrative_lead() {
   local issue_number="$1"
   local issue_title="$2"
-  local issue_labels="$3"
-  local test_gap_target="$4"
 
-  local total_files non_log_files changed_areas scope_line gate_line
+  local total_files non_log_files changed_areas changed_work scope_line plain_line review_line
   total_files="$(stream_changed_files | wc -l | tr -d ' ')"
   non_log_files="$(count_non_log_changed_files)"
   changed_areas="$(summarize_non_log_changed_areas)"
+  changed_work="$(summarize_non_log_changed_work)"
   scope_line=""
-  gate_line=""
+  plain_line=""
+  review_line=""
 
   if [[ "$non_log_files" == "0" ]]; then
     scope_line="This run only changes the runner log artifact."
+    plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
   elif [[ -n "$changed_areas" ]]; then
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
   else
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts)."
   fi
 
-  if issue_has_label "$issue_labels" "test-gap"; then
-    if [[ -n "$test_gap_target" ]]; then
-      gate_line=" As part of the test-gap flow, coverage was gated for \`${test_gap_target}\` before PR creation."
+  if [[ "$non_log_files" != "0" ]]; then
+    if [[ -n "$changed_work" ]]; then
+      plain_line="This PR addresses the issue \"$issue_title\" by updating ${changed_work}."
     else
-      gate_line=" As part of the test-gap flow, coverage gating was enforced before PR creation."
+      plain_line="This PR addresses the issue \"$issue_title\" with a focused implementation change."
     fi
+  fi
+
+  if has_non_log_changed_files_matching '^tests/'; then
+    if stream_changed_files | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ && $0 !~ /^tests\//' | grep -q .; then
+      review_line="The change includes both implementation work and automated tests, showing the intended behavior and how it is verified."
+    else
+      review_line="The change focuses on automated tests, confirming the expected behavior without a broader product change."
+    fi
+  elif has_non_log_changed_files_matching '^docs/'; then
+    review_line="The change stays narrowly scoped, with the written explanation living next to the code."
   fi
 
   cat <<EOF2
 This PR implements #$issue_number (\`$issue_title\`) via the daily runner with a scoped change set focused on the issue requirements.
 
-${scope_line}${gate_line}
+${plain_line}
+${review_line}
+${scope_line}
 
 EOF2
 }
@@ -930,10 +940,8 @@ write_pr_body() {
   local branch_name="$4"
   local issue_labels="$5"
   local run_log_git_path="$6"
-  local test_gap_target
-  test_gap_target="$(extract_referenced_file_path "$issue_title" "$ISSUE_BODY")"
 
-  write_pr_narrative_lead "$issue_number" "$issue_title" "$issue_labels" "$test_gap_target" > "$PR_BODY_FILE"
+  write_pr_narrative_lead "$issue_number" "$issue_title" > "$PR_BODY_FILE"
 
   cat >> "$PR_BODY_FILE" <<EOF2
 ## Summary
@@ -955,66 +963,11 @@ EOF2
 
 ## Validation
 - `make lint`
-- `make workflow-security-checks`
 - `make test` (full suite)
-- `make test-ci-alembic`
-- `make audit-python`
-- `make audit-node-runtime`
-- `make w3c-validators`
-- `make lighthouse-accessibility`
 EOF2
-
-  if (( CCPA_COMPLIANCE_REQUIRED != 0 )); then
-    printf -- '- `make test-ccpa-compliance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-ccpa-compliance` (not required: no CCPA compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( GDPR_COMPLIANCE_REQUIRED != 0 )); then
-    printf -- '- `make test-gdpr-compliance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-gdpr-compliance` (not required: no GDPR compliance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( E2EE_PRIVACY_REQUIRED != 0 )); then
-    printf -- '- `make test-e2ee-privacy-regressions`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-e2ee-privacy-regressions` (not required: no E2EE/privacy workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( MIGRATION_SMOKE_REQUIRED != 0 )); then
-    printf -- '- `make test-migration-smoke`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make test-migration-smoke` (not required: no migration-smoke workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( NODE_FULL_AUDIT_REQUIRED != 0 )); then
-    printf -- '- `make audit-node-full`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make audit-node-full` (not required: no Node dependency manifest changes)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if (( LIGHTHOUSE_PERFORMANCE_REQUIRED != 0 )); then
-    printf -- '- `make lighthouse-performance`\n' >> "$PR_BODY_FILE"
-  else
-    printf -- '- `make lighthouse-performance` (not required: no lighthouse-performance workflow trigger paths changed)\n' >> "$PR_BODY_FILE"
-  fi
-
-  if [[ "$AUDIT_STATUS" == "blocked" ]]; then
-    cat >> "$PR_BODY_FILE" <<EOF2
-- Local dependency audits were blocked by environment/network constraints.
-- Merge gate: require a passing \`Dependency Security Audit\` workflow before merge.
-- Blocked commands: ${AUDIT_NOTE}
+  cat >> "$PR_BODY_FILE" <<'EOF2'
+- Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
 EOF2
-  fi
-
-  if issue_has_label "$issue_labels" "test-gap"; then
-    if [[ -n "$test_gap_target" ]]; then
-      printf -- '- `test-gap` gate: `%s` coverage reached `100%%` with `0` misses.\n' "$test_gap_target" >> "$PR_BODY_FILE"
-    else
-      printf -- '- `test-gap` gate: active for this issue.\n' >> "$PR_BODY_FILE"
-    fi
-  fi
 }
 
 persist_run_log() {
@@ -1126,6 +1079,12 @@ failure_signature_from_text() {
   if printf '%s\n' "$text" | grep -Eq 'Traceback'; then
     markers+=("python-traceback")
   fi
+  if printf '%s\n' "$text" | grep -Eq '^[^[:space:]]+:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9]([0-9])? '; then
+    markers+=("lint-diagnostics")
+  fi
+  if printf '%s\n' "$text" | grep -Eq '^[^[:space:]]+:[0-9]+: error: '; then
+    markers+=("type-check-diagnostics")
+  fi
   if printf '%s\n' "$text" | grep -Eq '(^|[^[:alpha:]])Error:'; then
     markers+=("generic-error")
   fi
@@ -1136,6 +1095,97 @@ failure_signature_from_text() {
   fi
 
   printf '%s\n' "${markers[@]}"
+}
+
+sanitize_failure_excerpt() {
+  local text="$1"
+  local escaped_repo_dir escaped_home
+
+  escaped_repo_dir="$(printf '%s\n' "$REPO_DIR" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+  escaped_home="$(printf '%s\n' "$HOME" | sed 's/[.[\*^$()+?{|]/\\&/g')"
+
+  printf '%s\n' "$text" | sed -E \
+    -e "s#${escaped_repo_dir}/##g" \
+    -e "s#${escaped_home}/#~/#g" \
+    -e 's#/var/folders/[^[:space:]]+#/var/folders/[redacted]#g' \
+    -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g' \
+    -e 's#(https?://)[^/@[:space:]]+:[^/@[:space:]]+@#\1[redacted]@#g' \
+    -e 's#(authorization[[:space:]]*:[[:space:]]*bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
+    -e 's#\b(Bearer|Basic)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
+    -e 's/\b(AKIA|ASIA)[A-Z0-9]{16}\b/[redacted-aws-access-key]/g' \
+    -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[redacted-email]/g' \
+    -e 's#(^|[[:space:][:punct:]])(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password|passwd|pwd|cookie|session([_-]?id)?|client[_-]?secret|private[_-]?key)([[:space:]]*[:=][[:space:]]*|[[:space:]]+)[^[:space:],;]+#\1\2\4[redacted]#Ig'
+}
+
+recent_failure_block_from_text() {
+  local text="$1"
+  local filtered=""
+  local context=""
+
+  filtered="$(printf '%s\n' "$text" | awk '
+    /^[[:space:]]*Container / { next }
+    /^#([0-9]+|[[:space:]])/ { next }
+    /^collecting \.\.\./ { next }
+    /^platform / { next }
+    /^cachedir: / { next }
+    /^rootdir: / { next }
+    /^configfile: / { next }
+    /^plugins: / { next }
+    /^asyncio: / { next }
+    /^-+[[:space:]]coverage:/ { next }
+    /^Coverage HTML written/ { next }
+    /^Name[[:space:]]+Stmts[[:space:]]+Miss/ { next }
+    /^TOTAL[[:space:]]+/ { next }
+    /^={5,}/ { next }
+    /^-{5,}/ { next }
+    /^tests\/.* (PASSED|XFAIL|XPASS|SKIPPED)([[:space:]]|\[)/ { next }
+    /^[[:space:]]*$/ { next }
+    { lines[++count] = $0 }
+    END {
+      start = count - 119
+      if (start < 1) {
+        start = 1
+      }
+      for (i = start; i <= count; i += 1) {
+        print lines[i]
+      }
+    }
+  ')"
+
+  context="$(printf '%s\n' "$filtered" | awk '
+    { lines[++count] = $0 }
+    /^[^[:space:]]+:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9]([0-9])? / ||
+    /^[^[:space:]]+:[0-9]+: error: / ||
+    /^FAILED [^[:space:]]+/ ||
+    /^E[[:space:]]+/ ||
+    /^AssertionError:/ ||
+    /Traceback/ ||
+    /(^|[^[:alpha:]])Error:/ {
+      interesting[count] = 1
+      last_interesting = count
+    }
+    END {
+      if (last_interesting == 0) {
+        for (i = 1; i <= count; i += 1) {
+          print lines[i]
+        }
+        exit
+      }
+      start = last_interesting - 39
+      if (start < 1) {
+        start = 1
+      }
+      for (i = start; i <= count; i += 1) {
+        print lines[i]
+      }
+    }
+  ')"
+
+  if [[ -z "$context" ]]; then
+    return 0
+  fi
+
+  sanitize_failure_excerpt "$context"
 }
 
 build_issue_prompt() {
@@ -1164,9 +1214,9 @@ EOF2
 Requirements:
 1) Implement only what is needed for this issue with a minimal diff.
 2) Add or update tests for behavior changes.
-3) Focus on implementation and tests only; this runner runs the full local CI-equivalent suite before opening a PR (lint, tests, dependency audits, workflow security, W3C, Lighthouse).
+3) Focus on implementation and tests only; this runner only runs `make lint` and `make test` locally before opening a PR.
 4) Keep security, privacy, and E2EE protections intact.
-5) Avoid local validation unless it is necessary to make progress; the runner will execute the full validation suite after your implementation.
+5) Avoid local validation unless it is necessary to make progress; the runner will execute `make lint` and `make test` after your implementation.
 6) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
 7) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
 8) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this implementation loop; leave runtime refresh and validation to the runner.
@@ -1183,8 +1233,9 @@ build_fix_prompt() {
   local branch_name="$3"
   local change_summary="$4"
   local previous_codex_output="$5"
-  local failure_signature="$6"
-  local repeated_failure_count="$7"
+  local failure_context="$6"
+  local failure_signature="$7"
+  local repeated_failure_count="$8"
 
   {
     cat <<EOF2
@@ -1212,29 +1263,40 @@ EOF2
     cat <<'EOF2'
 ---END PRIOR CODEX SUMMARY---
 
+Most recent sanitized failure block:
+---BEGIN FAILURE CONTEXT---
+EOF2
+    printf '%s\n' "$failure_context"
+    cat <<'EOF2'
+---END FAILURE CONTEXT---
+
+EOF2
+    if [[ -n "$failure_signature" ]]; then
+      cat <<'EOF2'
 Failure signature:
 ---BEGIN FAILURE SIGNATURE---
 EOF2
-    printf '%s\n' "$failure_signature"
-    cat <<'EOF2'
+      printf '%s\n' "$failure_signature"
+      cat <<'EOF2'
 ---END FAILURE SIGNATURE---
 
 EOF2
+    fi
     if [[ "$repeated_failure_count" =~ ^[0-9]+$ ]] && (( repeated_failure_count > 1 )); then
       printf 'This same failure signature has repeated %s times. Reassess root cause from the current repo state before editing; do not repeat the prior partial fix.\n\n' "$repeated_failure_count"
     fi
     cat <<'EOF2'
 
 Raw failed check output is intentionally withheld because local logs may contain sensitive data.
-Use the failure signature above together with the current repository state to identify and resolve the failing checks.
+Use the sanitized recent failure block above as the primary debugging context. Treat the failure signature only as a secondary hint.
 
 Requirements:
 1) Fix only what is required for checks to pass.
 2) Inspect the currently changed files before editing. Preserve valid issue work already on the branch and fix the failing checks against that implementation.
 3) Keep diffs minimal and focused.
-4) Focus on code/test fixes only; this runner executes the full local CI-equivalent suite before opening a PR.
+4) Focus on code/test fixes only; this runner executes only `make lint` and `make test` locally before opening a PR.
 5) Keep security, privacy, and E2EE protections intact.
-6) Avoid local validation unless it is necessary to make progress; the runner will rerun the full validation suite after your changes.
+6) Avoid local validation unless it is necessary to make progress; the runner will rerun `make lint` and `make test` after your changes.
 7) If you need local validation/fix commands, use repository make targets (for example `make lint`, `make fix`, `make test`) instead of host-only tool invocations.
 8) Do not invoke host `poetry`, `ruff`, or `pytest` directly; assume check tooling lives in the app container unless the repo make target handles it for you.
 9) If you touch schema-affecting files (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), do not run container-backed make validation commands in this fix loop; leave runtime refresh and validation to the runner.
@@ -1254,7 +1316,7 @@ run_fix_attempt_loop() {
   local fix_attempt=1
 
   while (( fix_attempt <= MAX_FIX_ATTEMPTS )); do
-    if run_local_workflow_checks && run_test_gap_gate "$issue_title" "$issue_body" "$issue_labels"; then
+    if run_local_workflow_checks; then
       return 0
     fi
 
@@ -1265,6 +1327,7 @@ run_fix_attempt_loop() {
 
     echo "Workflow checks failed; Codex self-heal attempt $fix_attempt."
     FAILURE_LOG_TAIL="$(tail -n 400 "$CHECK_LOG_FILE")"
+    FAILURE_CONTEXT="$(recent_failure_block_from_text "$FAILURE_LOG_TAIL")"
     FAILURE_SIGNATURE="$(failure_signature_from_text "$FAILURE_LOG_TAIL")"
     if [[ -n "$FAILURE_SIGNATURE" && "$FAILURE_SIGNATURE" == "$PREVIOUS_FAILURE_SIGNATURE" ]]; then
       REPEATED_FAILURE_COUNT=$((REPEATED_FAILURE_COUNT + 1))
@@ -1278,6 +1341,7 @@ run_fix_attempt_loop() {
       "$branch_name" \
       "$(current_change_summary)" \
       "$(sed -n '1,80p' "$CODEX_OUTPUT_FILE")" \
+      "$FAILURE_CONTEXT" \
       "$FAILURE_SIGNATURE" \
       "$REPEATED_FAILURE_COUNT"
     run_codex_from_prompt
@@ -1357,14 +1421,6 @@ main() {
   run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
   run_step "Remove untracked files" git clean -fd
 
-  run_step "Configure bot git identity" configure_bot_git_identity
-
-  run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
-  run_step "Kill all Docker containers" kill_all_docker_containers
-  run_step "Prune Docker system" docker system prune -af --volumes
-  run_step "Kill processes on runner ports" kill_processes_on_ports
-  start_runtime_stack_and_seed_dev_data --build
-
   OPEN_BOT_PRS="$(count_open_bot_prs)"
   echo "Open bot PR count: ${OPEN_BOT_PRS}"
   if [[ "$OPEN_BOT_PRS" != "0" ]]; then
@@ -1399,6 +1455,13 @@ main() {
     exit 0
   fi
 
+  run_step "Configure bot git identity" configure_bot_git_identity
+
+  run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
+  run_step "Kill all Docker containers" kill_all_docker_containers
+  run_step "Kill processes on runner ports" kill_processes_on_ports
+  start_runtime_stack_and_seed_dev_data --build
+
   ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
   ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
   ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
@@ -1426,7 +1489,7 @@ main() {
 
   write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
 
-  PR_TITLE="Codex Daily: #$ISSUE_NUMBER $(printf '%s' "$ISSUE_TITLE" | tr '\n' ' ' | cut -c1-90)"
+  PR_TITLE="$(build_pr_title "$ISSUE_NUMBER" "$ISSUE_TITLE")"
   PR_URL="$({
     gh pr create \
       --repo "$REPO_SLUG" \

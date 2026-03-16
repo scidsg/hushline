@@ -1,22 +1,40 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, cast
 
 import pytest
+import requests
 
+from hushline import public_record_refresh
 from hushline.public_record_refresh import (
     DEFAULT_REGION_STATE_MAP,
     OFFICIAL_US_STATE_DISCOVERY_ADAPTERS,
     US_STATE_AUTHORITATIVE_SOURCES,
     US_STATE_CODES,
     LinkCheckResult,
+    LinkValidationFailure,
     OfficialStateDiscoveryResult,
     PublicRecordRefreshError,
+    PublicRecordRefreshResult,
+    _apply_region_targets,
+    _chambers_public_profile_url,
+    _chambers_public_profile_url_from_source_url,
+    _ChambersIndexEntry,
+    _discovered_description,
+    _fetch_json_payload,
+    _normalize_practice_tags,
+    _NormalizedListing,
+    _optional_string,
+    _parse_chambers_index_entries,
+    _required_string,
+    _slug_base,
+    _validate_regions,
     build_requests_link_checker,
     discover_chambers_public_record_rows,
     discover_official_us_state_public_record_rows,
     refresh_public_record_rows,
+    render_refresh_summary,
 )
 from tests.public_record_adapter_harness import (
     assert_official_source_adapter_rows,
@@ -532,7 +550,7 @@ def _row(  # noqa: PLR0913
     state: str,
     website: str,
     source_url: str | None = None,
-) -> dict[str, object]:
+) -> public_record_refresh.PublicRecordRow:
     source_slug = re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")
     state_code = state.strip().upper()
     state_source = US_STATE_AUTHORITATIVE_SOURCES.get(state_code)
@@ -567,7 +585,7 @@ def _row(  # noqa: PLR0913
         row["id"] = id_value
     if slug is not None:
         row["slug"] = slug
-    return row
+    return cast(public_record_refresh.PublicRecordRow, row)
 
 
 def _discover_rows_for_state(
@@ -579,6 +597,28 @@ def _discover_rows_for_state(
         existing_rows,
         selected_regions=["US"],
         region_state_map={"US": frozenset({state_code})},
+    )
+
+
+def _normalized_listing(
+    *,
+    listing_id: str,
+    slug: str,
+    name: str,
+    region: str,
+) -> _NormalizedListing:
+    return _NormalizedListing(
+        id=listing_id,
+        slug=slug,
+        name=name,
+        website="https://example.test",
+        description=f"{name} description",
+        city="City",
+        state=region,
+        practice_tags=("Whistleblowing",),
+        source_label="Authoritative source",
+        source_url="https://records.example/source",
+        region=region,
     )
 
 
@@ -1240,6 +1280,709 @@ def test_build_requests_link_checker_marks_404_as_definitive_failure() -> None:
     assert result.ok is False
     assert result.reason == "HTTP 404"
     assert result.definitive_failure is True
+
+
+def test_build_requests_link_checker_rejects_invalid_arguments() -> None:
+    with pytest.raises(PublicRecordRefreshError, match="--max-attempts must be >= 1"):
+        build_requests_link_checker(max_attempts=0)
+
+    with pytest.raises(PublicRecordRefreshError, match="--timeout-seconds must be > 0"):
+        build_requests_link_checker(timeout_seconds=0)
+
+
+def test_build_requests_link_checker_returns_last_server_error_after_retries() -> None:
+    class _FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+
+        def close(self) -> None:
+            return None
+
+    class _FakeSession:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+
+        def get(self, *_args: Any, **_kwargs: Any) -> _FakeResponse:
+            return _FakeResponse(500)
+
+    checker = build_requests_link_checker(
+        session=_FakeSession(),  # type: ignore[arg-type]
+        max_attempts=1,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    result = checker("https://retry.example")
+
+    assert result.ok is False
+    assert result.reason == "HTTP 500"
+    assert result.definitive_failure is False
+
+
+def test_build_requests_link_checker_returns_last_request_exception_reason() -> None:
+    class _FakeSession:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+
+        def get(self, *_args: Any, **_kwargs: Any) -> object:
+            raise requests.RequestException("network timeout")
+
+    checker = build_requests_link_checker(
+        session=_FakeSession(),  # type: ignore[arg-type]
+        max_attempts=1,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    result = checker("https://retry.example")
+
+    assert result.ok is False
+    assert result.reason == "network timeout"
+    assert result.definitive_failure is False
+
+
+def test_render_refresh_summary_includes_dropped_ids_and_link_failures() -> None:
+    summary = render_refresh_summary(
+        PublicRecordRefreshResult(
+            rows=[],
+            region_counts={"US": 2, "EU": 0},
+            checked_url_count=3,
+            link_failures=[
+                LinkValidationFailure(
+                    listing_id="seed-one",
+                    listing_name="Seed One",
+                    field="website",
+                    url="https://broken.example",
+                    reason="HTTP 404",
+                )
+            ],
+            dropped_record_ids=["seed-one"],
+        ),
+        regions=["US", "EU"],
+    )
+
+    assert "## Public Record Refresh Summary" in summary
+    assert "- Output records: 0" in summary
+    assert "- Regional counts:" in summary
+    assert "  - US: 2" in summary
+    assert "- Dropped IDs:" in summary
+    assert "  - `seed-one`" in summary
+    assert "- Link failures:" in summary
+    assert "  - `seed-one` `website` (HTTP 404): https://broken.example" in summary
+
+
+def test_parse_chambers_index_entries_skips_invalid_rows_and_sorts() -> None:
+    entries = _parse_chambers_index_entries(
+        [
+            "not-a-dict",
+            {"oid": "2", "on": "Zulu LLP"},
+            {"oid": "bad", "on": "Ignored LLP"},
+            {"oid": 1, "on": " Alpha LLP ", "ptgid": None},
+            {"oid": 3, "on": None},
+        ],
+        default_group_id=5,
+    )
+
+    assert entries == [
+        _ChambersIndexEntry(organisation_id=1, name="Alpha LLP", group_id=5),
+        _ChambersIndexEntry(organisation_id=2, name="Zulu LLP", group_id=5),
+    ]
+
+
+def test_fetch_json_payload_handles_non_200_and_successful_json() -> None:
+    closed: list[int] = []
+
+    class _Response:
+        def __init__(self, status_code: int, payload: object) -> None:
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self) -> object:
+            return self._payload
+
+        def close(self) -> None:
+            closed.append(self.status_code)
+
+    class _Session:
+        def __init__(self) -> None:
+            self._responses = iter(
+                [
+                    _Response(503, {"ignored": True}),
+                    _Response(200, {"ok": True}),
+                ]
+            )
+
+        def get(self, *_args: Any, **_kwargs: Any) -> _Response:
+            return next(self._responses)
+
+    session = cast(requests.Session, _Session())
+
+    assert _fetch_json_payload(session, "https://example.test/one", timeout_seconds=5) is None
+    assert _fetch_json_payload(session, "https://example.test/two", timeout_seconds=5) == {
+        "ok": True
+    }
+    assert closed == [503, 200]
+
+
+def test_discovered_description_handles_tag_list_shapes() -> None:
+    assert _discovered_description("Paris", "France", []) == (
+        "A Chambers-ranked law firm with a public profile in Paris, France."
+    )
+    assert _discovered_description("Paris", "France", ["Whistleblowing"]) == (
+        "A Chambers-ranked law firm with a public profile in Paris, France, "
+        "covering Whistleblowing matters."
+    )
+    assert _discovered_description("Paris", "France", ["Whistleblowing", "Employment"]) == (
+        "A Chambers-ranked law firm with a public profile in Paris, France, "
+        "covering Whistleblowing and Employment matters."
+    )
+    assert _discovered_description(
+        "Paris",
+        "France",
+        ["Whistleblowing", "Employment", "Investigations"],
+    ) == (
+        "A Chambers-ranked law firm with a public profile in Paris, France, "
+        "covering Whistleblowing, Employment, and Investigations matters."
+    )
+
+
+def test_validate_regions_rejects_unknown_region() -> None:
+    with pytest.raises(PublicRecordRefreshError, match="Unknown regions requested: LATAM"):
+        _validate_regions(["US", "LATAM"], {"US": frozenset({"CA"})})
+
+
+def test_chambers_public_profile_url_helpers_cover_supported_and_invalid_inputs() -> None:
+    assert _chambers_public_profile_url(name="Alpha LLP", organisation_id=7, group_id=999) is None
+    assert (
+        _chambers_public_profile_url(
+            name="Alpha LLP",
+            organisation_id=7,
+            group_id=5,
+        )
+        == "https://chambers.com/law-firm/alpha-llp-usa-5:7"
+    )
+    assert (
+        _chambers_public_profile_url_from_source_url(
+            name="Alpha LLP",
+            source_url="https://profiles-portal.chambers.com/api/organisations/7/profile-basics?groupId=5",
+        )
+        == "https://chambers.com/law-firm/alpha-llp-usa-5:7"
+    )
+    assert (
+        _chambers_public_profile_url_from_source_url(
+            name="Alpha LLP",
+            source_url="https://example.test/not-chambers",
+        )
+        is None
+    )
+
+
+def test_apply_region_targets_handles_none_and_invalid_target_configurations() -> None:
+    normalized_rows = [
+        _normalized_listing(
+            listing_id="seed-us",
+            slug="public-record~us",
+            name="US Firm",
+            region="US",
+        ),
+        _normalized_listing(
+            listing_id="seed-eu",
+            slug="public-record~eu",
+            name="EU Firm",
+            region="EU",
+        ),
+    ]
+
+    assert _apply_region_targets(normalized_rows, ["EU", "US"], None) == [
+        _normalized_listing(
+            listing_id="seed-eu",
+            slug="public-record~eu",
+            name="EU Firm",
+            region="EU",
+        ),
+        _normalized_listing(
+            listing_id="seed-us",
+            slug="public-record~us",
+            name="US Firm",
+            region="US",
+        ),
+    ]
+
+    with pytest.raises(PublicRecordRefreshError, match="Missing region target for EU"):
+        _apply_region_targets([normalized_rows[1]], ["EU"], {})
+
+    with pytest.raises(PublicRecordRefreshError, match="Region target must be >= 0 for EU"):
+        _apply_region_targets([normalized_rows[1]], ["EU"], {"EU": -1})
+
+
+def test_normalization_helpers_validate_and_filter_values() -> None:
+    assert _normalize_practice_tags([" Whistleblowing ", "", "Whistleblowing", "Employment"]) == (
+        "Whistleblowing",
+        "Employment",
+    )
+
+    with pytest.raises(PublicRecordRefreshError, match="practice_tags must be a list"):
+        _normalize_practice_tags("not-a-list")
+
+    with pytest.raises(PublicRecordRefreshError, match="practice_tags entries must be strings"):
+        _normalize_practice_tags(["Whistleblowing", 1])
+
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="practice_tags must contain at least one non-empty tag",
+    ):
+        _normalize_practice_tags([" ", "\t"])
+
+    assert _required_string({"name": " Alpha LLP "}, "name") == "Alpha LLP"
+
+    with pytest.raises(PublicRecordRefreshError, match="Missing required field: name"):
+        _required_string({}, "name")
+
+    with pytest.raises(PublicRecordRefreshError, match="Field 'name' must be a string"):
+        _required_string({"name": 1}, "name")
+
+    with pytest.raises(PublicRecordRefreshError, match="Field 'name' cannot be empty"):
+        _required_string({"name": "   "}, "name")
+
+    assert _optional_string(None) is None
+    assert _optional_string(" Alpha LLP ") == "Alpha LLP"
+
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="Optional string field must be a string or null",
+    ):
+        _optional_string(1)
+
+    assert _slug_base(" Alpha LLP ") == "alpha-llp"
+
+    with pytest.raises(PublicRecordRefreshError, match="Unable to derive slug from value"):
+        _slug_base("!!!")
+
+
+def test_discover_seed_rows_respects_zero_limit_and_maximum() -> None:
+    seed_rows: list[public_record_refresh.PublicRecordRow] = [
+        _row(
+            state="CA",
+            id_value="seed-one",
+            slug="public-record~seed-one",
+            name="Seed One",
+            website="https://seed-one.example",
+        ),
+        _row(
+            state="CA",
+            id_value="seed-two",
+            slug="public-record~seed-two",
+            name="Seed Two",
+            website="https://seed-two.example",
+        ),
+    ]
+
+    assert (
+        public_record_refresh._discover_seed_rows(
+            seed_rows=seed_rows,
+            existing_rows=[],
+            max_new_per_state=0,
+        )
+        == []
+    )
+    assert public_record_refresh._discover_seed_rows(
+        seed_rows=seed_rows,
+        existing_rows=[],
+        max_new_per_state=1,
+    ) == [seed_rows[0]]
+
+
+def test_discover_noop_official_public_record_rows_returns_empty_list() -> None:
+    assert (
+        public_record_refresh._discover_noop_official_public_record_rows(
+            existing_rows=[
+                _row(
+                    state="CA",
+                    id_value="seed-one",
+                    slug="public-record~seed-one",
+                    name="Seed One",
+                    website="https://seed-one.example",
+                )
+            ],
+            max_new_per_state=5,
+            timeout_seconds=5,
+            session=None,
+        )
+        == []
+    )
+
+
+def test_parse_chambers_index_entries_returns_empty_for_non_list_payload() -> None:
+    assert _parse_chambers_index_entries({"not": "a-list"}, default_group_id=5) == []
+
+
+def test_fetch_json_payload_handles_exceptions_and_invalid_json() -> None:
+    closed: list[str] = []
+
+    class _Response:
+        status_code = 200
+
+        def json(self) -> object:
+            raise ValueError("bad json")
+
+        def close(self) -> None:
+            closed.append("closed")
+
+    class _Session:
+        def __init__(self) -> None:
+            self._calls = 0
+
+        def get(self, *_args: Any, **_kwargs: Any) -> _Response:
+            self._calls += 1
+            if self._calls == 1:
+                raise requests.RequestException("network down")
+            return _Response()
+
+    session = cast(requests.Session, _Session())
+
+    assert _fetch_json_payload(session, "https://example.test/one", timeout_seconds=5) is None
+    assert _fetch_json_payload(session, "https://example.test/two", timeout_seconds=5) is None
+    assert closed == ["closed"]
+
+
+def test_chambers_discovery_helpers_cover_locations_tags_and_url_normalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert public_record_refresh._normalize_discovered_website(None) is None
+    assert (
+        public_record_refresh._normalize_discovered_website("https://example.test")
+        == "https://example.test"
+    )
+    assert (
+        public_record_refresh._normalize_discovered_website("www.example.test")
+        == "https://www.example.test"
+    )
+    assert (
+        public_record_refresh._normalize_discovered_website("example.test")
+        == "https://example.test"
+    )
+
+    assert public_record_refresh._iter_office_candidates({"locations": "bad"}) == []
+    assert public_record_refresh._iter_office_candidates(
+        {
+            "headOffice": {"town": "Headquarters", "country": "USA"},
+            "locations": [
+                "bad-location",
+                {"country": "France", "offices": [{"town": "Paris"}, "bad-office"]},
+                {"country": "Germany", "offices": "bad-list"},
+            ],
+        }
+    ) == [
+        {"town": "Headquarters", "country": "USA"},
+        {"town": "Paris", "country": "France"},
+    ]
+
+    assert (
+        public_record_refresh._pick_discovered_location(
+            {"locations": []},
+            region="US",
+            allowed_states=frozenset({"CA"}),
+        )
+        is None
+    )
+    assert (
+        public_record_refresh._pick_discovered_location(
+            {"headOffice": {"country": "Canada", "town": "Toronto", "region": "Ontario"}},
+            region="US",
+            allowed_states=frozenset({"CA"}),
+        )
+        is None
+    )
+    assert (
+        public_record_refresh._pick_discovered_location(
+            {"headOffice": {"country": "United States", "town": "Austin", "region": "Texas"}},
+            region="US",
+            allowed_states=frozenset({"CA"}),
+        )
+        is None
+    )
+    assert public_record_refresh._pick_discovered_location(
+        {
+            "headOffice": {
+                "country": "United States",
+                "town": "San Francisco",
+                "region": "California",
+            }
+        },
+        region="US",
+        allowed_states=frozenset({"CA"}),
+    ) == ("San Francisco", "CA")
+    assert public_record_refresh._pick_discovered_location(
+        {
+            "headOffice": {
+                "country": "USA",
+                "town": "Seattle",
+                "address": "123 Pike Street, Seattle WA",
+            }
+        },
+        region="US",
+        allowed_states=frozenset({"WA"}),
+    ) == ("Seattle", "WA")
+    assert (
+        public_record_refresh._pick_discovered_location(
+            {"headOffice": {"town": "Paris"}},
+            region="EU",
+            allowed_states=frozenset({"France"}),
+        )
+        is None
+    )
+    assert (
+        public_record_refresh._pick_discovered_location(
+            {"headOffice": {"country": "France", "town": "Paris"}},
+            region="EU",
+            allowed_states=frozenset({"Germany"}),
+        )
+        is None
+    )
+    assert public_record_refresh._pick_discovered_location(
+        {
+            "locations": [
+                {"country": "France", "offices": [{"town": "Paris"}]},
+                {"country": "Germany", "offices": [{"town": "Berlin"}]},
+            ]
+        },
+        region="EU",
+        allowed_states=frozenset({"France", "Germany"}),
+    ) == ("Paris", "France")
+
+    assert public_record_refresh._canonical_country(" Republic of Singapore ") == "Singapore"
+    assert public_record_refresh._canonical_country("U.S.A.") == "USA"
+    assert public_record_refresh._canonical_country("United States") == "USA"
+    assert public_record_refresh._canonical_country(None) is None
+
+    assert public_record_refresh._us_state_code_for_office({"region": "CA"}) == "CA"
+    assert public_record_refresh._us_state_code_for_office({"region": "Massachusetts"}) == "MA"
+    assert (
+        public_record_refresh._us_state_code_for_office(
+            {"address": "100 Main Street, New York, NY"}
+        )
+        == "NY"
+    )
+    assert public_record_refresh._us_state_code_for_office({}) is None
+    assert public_record_refresh._us_state_code_for_office({"address": "No state here"}) is None
+
+    ranked_offices_payload = {
+        "headOffice": {"website": "https://hq.example"},
+        "locations": [{"country": "France", "offices": [{"phone": "+33"}]}],
+    }
+    assert public_record_refresh._first_office_field(ranked_offices_payload, "website") == (
+        "https://hq.example"
+    )
+    assert public_record_refresh._first_office_field(ranked_offices_payload, "phone") == "+33"
+    assert public_record_refresh._first_office_field(ranked_offices_payload, "missing") is None
+
+    payloads = iter(
+        [
+            {"not": "a-list"},
+            [
+                "bad-item",
+                {"practiceAreaName": "Whistleblowing investigations"},
+                {"displayName": "Employment law"},
+                {"practiceAreaName": "White collar defense"},
+                {"practiceAreaName": "Employment law"},
+            ],
+            [
+                {"displayName": "Fraud matters"},
+                {"practiceAreaName": "Employment counseling"},
+            ],
+            [{"displayName": "Corporate advisory"}],
+        ]
+    )
+    monkeypatch.setattr(
+        public_record_refresh,
+        "_fetch_json_payload",
+        lambda *_args, **_kwargs: next(payloads),
+    )
+    session = cast(requests.Session, object())
+    assert public_record_refresh._discover_practice_tags(
+        session,
+        organisation_id=1,
+        group_id=5,
+        timeout_seconds=5,
+    ) == ("Whistleblowing", "Investigations", "Employment")
+    assert public_record_refresh._discover_practice_tags(
+        session,
+        organisation_id=1,
+        group_id=5,
+        timeout_seconds=5,
+    ) == ("Whistleblowing", "Investigations", "Employment")
+    assert public_record_refresh._discover_practice_tags(
+        session,
+        organisation_id=1,
+        group_id=5,
+        timeout_seconds=5,
+    ) == ("Fraud", "Employment")
+    assert public_record_refresh._discover_practice_tags(
+        session,
+        organisation_id=1,
+        group_id=5,
+        timeout_seconds=5,
+    ) == ("Whistleblowing", "Investigations", "Employment")
+
+
+def test_discover_official_us_state_public_record_rows_validates_arguments_and_missing_adapters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(PublicRecordRefreshError, match="Discovery timeout_seconds must be > 0"):
+        discover_official_us_state_public_record_rows([], timeout_seconds=0)
+
+    with pytest.raises(PublicRecordRefreshError, match="max_new_per_state must be >= 0"):
+        discover_official_us_state_public_record_rows([], max_new_per_state=-1)
+
+    no_us_result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["EU"],
+        region_state_map={"EU": frozenset({"France"})},
+    )
+    assert no_us_result == OfficialStateDiscoveryResult(
+        rows=[],
+        added_count_by_state={},
+        unsupported_states=(),
+    )
+
+    monkeypatch.setattr(
+        public_record_refresh,
+        "OFFICIAL_US_STATE_DISCOVERY_ADAPTERS",
+        {"CA": OFFICIAL_US_STATE_DISCOVERY_ADAPTERS["CA"]},
+    )
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="Official-source discovery adapters are missing for states: NY",
+    ):
+        discover_official_us_state_public_record_rows(
+            [],
+            selected_regions=["US"],
+            region_state_map={"US": frozenset({"CA", "NY"})},
+            strict_state_adapter_coverage=True,
+        )
+
+    result = discover_official_us_state_public_record_rows(
+        [],
+        selected_regions=["US"],
+        region_state_map={"US": frozenset({"CA", "NY"})},
+    )
+    assert result.unsupported_states == ("NY",)
+    assert result.added_count_by_state == {"CA": len(result.rows)}
+
+
+def test_authoritative_source_and_url_helper_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="Listing slug must start with 'public-record~': bad-slug",
+    ):
+        public_record_refresh._normalize_row(
+            _row(
+                state="CA",
+                id_value="seed-one",
+                slug="bad-slug",
+                name="Seed One",
+                website="https://seed-one.example",
+            ),
+            {"US": frozenset({"CA"})},
+        )
+
+    public_record_refresh._validate_authoritative_source(
+        name="Alpha Avocats",
+        state="France",
+        website="https://alpha.example",
+        source_label="French bar directory",
+        source_url=None,
+    )
+
+    assert public_record_refresh._url_host("not a url") is None
+    assert not public_record_refresh._is_chambers_search_url("not a url")
+    assert not public_record_refresh._is_chambers_source_url("not a url")
+    assert public_record_refresh._is_ohio_attorney_profile_source_url(
+        "https://www.ohiobar.org/attorneysearch#/12345/attyinfo"
+    )
+    assert not public_record_refresh._is_ohio_attorney_profile_source_url(
+        "https://www.ohiobar.org/not-attorneysearch#/12345/attyinfo"
+    )
+
+    monkeypatch.setattr(public_record_refresh, "_is_chambers_source_url", lambda _value: False)
+    monkeypatch.setattr(public_record_refresh, "_is_chambers_search_url", lambda _value: True)
+    with pytest.raises(PublicRecordRefreshError, match="uses a Chambers search URL"):
+        public_record_refresh._validate_authoritative_source(
+            name="Alpha LLP",
+            state="France",
+            website="https://alpha.example",
+            source_label="Official directory",
+            source_url="https://www.chambers.com/search?query=alpha",
+        )
+
+    ca_rule = US_STATE_AUTHORITATIVE_SOURCES["CA"]
+    monkeypatch.setattr(
+        public_record_refresh,
+        "US_STATE_AUTHORITATIVE_SOURCES",
+        {"NY": US_STATE_AUTHORITATIVE_SOURCES["NY"]},
+    )
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="missing an authoritative source rule for state 'CA'",
+    ):
+        public_record_refresh._validate_us_state_source_policy(
+            name="Alpha LLP",
+            state="CA",
+            source_label=ca_rule["source_label"],
+            source_url="https://apps.calbar.ca.gov/attorney/Licensee/Detail/350631",
+        )
+
+    monkeypatch.setattr(
+        public_record_refresh,
+        "US_STATE_AUTHORITATIVE_SOURCES",
+        {"CA": ca_rule},
+    )
+    with pytest.raises(PublicRecordRefreshError, match="invalid source_url hostname"):
+        public_record_refresh._validate_us_state_source_policy(
+            name="Alpha LLP",
+            state="CA",
+            source_label=ca_rule["source_label"],
+            source_url="not a url",
+        )
+    with pytest.raises(
+        PublicRecordRefreshError, match="source_url host 'example.test' is not allowed"
+    ):
+        public_record_refresh._validate_us_state_source_policy(
+            name="Alpha LLP",
+            state="CA",
+            source_label=ca_rule["source_label"],
+            source_url="https://example.test/record/alpha",
+        )
+
+
+def test_validate_links_skips_empty_fields_and_region_lookup_requires_mapping() -> None:
+    row = _NormalizedListing(
+        id="seed-one",
+        slug="public-record~seed-one",
+        name="Seed One",
+        website="https://example.test/profile",
+        description="Seed One description",
+        city="City",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="California Bar public directory",
+        source_url=None,
+        region="US",
+    )
+    checked_urls: list[str] = []
+
+    def link_checker(url: str) -> LinkCheckResult:
+        checked_urls.append(url)
+        return LinkCheckResult(ok=True, definitive_failure=False, reason=None)
+
+    result = public_record_refresh._validate_links([row], link_checker, drop_failed_links=True)
+    assert result.rows == [row]
+    assert result.checked_url_count == 1
+    assert checked_urls == ["https://example.test/profile"]
+
+    with pytest.raises(
+        PublicRecordRefreshError,
+        match="State/country 'Atlantis' does not map to any configured region",
+    ):
+        public_record_refresh._region_for_state("Atlantis", {"US": frozenset({"CA"})})
 
 
 def test_discover_chambers_public_record_rows_is_disabled() -> None:

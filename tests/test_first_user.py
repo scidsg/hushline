@@ -1,5 +1,3 @@
-import os
-
 from flask import url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
@@ -52,7 +50,8 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
     user_count = db.session.query(User).count()
     assert user_count == 0
 
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "test_user"
 
     captcha_answer = get_captcha_from_session_register(client)
@@ -75,6 +74,47 @@ def test_first_user_is_admin(client: FlaskClient) -> None:
     assert user.primary_username.show_in_directory
 
 
+def test_registration_does_not_grant_admin_after_stale_first_user_check(
+    client: FlaskClient, user_password: str
+) -> None:
+    OrganizationSetting.upsert(
+        key=OrganizationSetting.REGISTRATION_ENABLED,
+        value=True,
+    )
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    existing_user = User(password=user_password)
+    existing_user.tier_id = 1
+    existing_user.is_admin = True
+    db.session.add(existing_user)
+    db.session.flush()
+    db.session.add(
+        Username(_username="already_registered", user_id=existing_user.id, is_primary=True)
+    )
+    db.session.commit()
+
+    response = client.post(
+        url_for("register"),
+        data={
+            "username": "late_submitter",
+            "password": "SecurePassword123!",
+            "captcha_answer": captcha_answer,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "👍 Registration successful!" in response.text
+
+    late_username = db.session.scalars(
+        db.select(Username).filter_by(_username="late_submitter")
+    ).one()
+    assert not late_username.user.is_admin
+    assert not late_username.show_in_directory
+
+
 def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> None:
     OrganizationSetting.upsert(
         key=OrganizationSetting.REGISTRATION_ENABLED,
@@ -91,7 +131,8 @@ def test_second_user_is_not_admin(client: FlaskClient, user_password: str) -> No
     db.session.commit()
     assert db.session.query(User).count() == 1
 
-    os.environ["REGISTRATION_CODES_REQUIRED"] = "False"
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = "test_user"
 
     captcha_answer = get_captcha_from_session_register(client)
