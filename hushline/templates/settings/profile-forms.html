@@ -60,6 +60,15 @@
   {%endif%}
 >
   {{ profile_form.hidden_tag() }}
+  {% if not is_alias %}
+    <div class="form-group">
+      {{ profile_form.account_category.label }}
+      {{ profile_form.account_category(id='account_category') }}
+      {% for error in profile_form.account_category.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
   <div class="form-group">
     <div class="label-with-wordcount">
       <label for="bio">Bio</label>

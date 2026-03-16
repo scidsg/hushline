@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
+from werkzeug.security import generate_password_hash
 
 from hushline.db import db
-from hushline.model import InviteCode, OrganizationSetting
+from hushline.model import InviteCode, OrganizationSetting, Tier, User
 
 
 def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
@@ -12,7 +13,7 @@ def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
 
     assert result.exit_code == 0
     assert "Registration Enabled: False" in result.output
-    assert "Registration Codes Required: False" in result.output
+    assert "Registration Codes Required: True" in result.output
 
 
 def test_reg_toggle_commands_update_org_settings(app: Flask) -> None:
@@ -76,6 +77,144 @@ def test_reg_code_create_avoids_dash_prefixed_codes(app: Flask) -> None:
     assert f"Invite code {invite_code.code} deleted." in delete_result.output
 
 
+def test_password_hash_report_outputs_legacy_count_and_removal_gate(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(args=["password-hash", "report"])
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert (
+        "Legacy verification success counter: "
+        "password_hash_verification_success_total hash_format=passlib_scrypt"
+    ) in result.output
+    assert (
+        "Rehash-on-auth counters: password_hash_rehash_on_auth_success_total, "
+        "password_hash_rehash_on_auth_failure_total"
+    ) in result.output
+    assert "legacy rows must stay at 0 for one full release cycle" in result.output
+    assert (
+        "Current build verification support: passlib $scrypt$ and native prefix-based hashes."
+        in result.output
+    )
+    assert (
+        "Measured legacy verification successes: provide --legacy-verification-successes <count>"
+        in result.output
+    )
+    assert "Passlib removal readiness: blocked" in result.output
+
+
+def test_password_hash_report_blocks_when_measured_legacy_successes_non_zero(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    native_hash = generate_password_hash(user_password, method="scrypt")
+    user._password_hash = native_hash
+    user2._password_hash = native_hash
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "report",
+            "--legacy-verification-successes",
+            "3",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 0" in result.output
+    assert "Measured legacy verification successes: 3" in result.output
+    assert "Legacy verifier path: passlib_dependency" in result.output
+    assert "Passlib removal readiness: blocked" in result.output
+    assert "Passlib removal reason: measured legacy verification success volume is non-zero" in (
+        result.output
+    )
+
+
+def test_password_hash_can_remove_passlib_blocks_when_legacy_rows_remain(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "0",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert "Measured legacy verification successes: 0" in result.output
+    assert "Error: Passlib removal readiness: blocked (legacy passlib scrypt rows remain)" in (
+        result.output
+    )
+
+
+def test_password_hash_can_remove_passlib_succeeds_when_legacy_rows_and_volume_are_zero(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    native_hash = generate_password_hash(user_password, method="scrypt")
+    user._password_hash = native_hash
+    user2._password_hash = native_hash
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "0",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 0" in result.output
+    assert "Measured legacy verification successes: 0" in result.output
+    assert "Legacy verifier path: passlib_dependency" in result.output
+    assert "Passlib removal readiness: ready" in result.output
+
+
+def test_password_hash_can_remove_passlib_accepts_reviewed_in_repo_legacy_verifier_path(
+    app: Flask, user: User, user2: User, user_password: str
+) -> None:
+    runner = app.test_cli_runner()
+    user._password_hash = generate_password_hash(user_password, method="scrypt")
+    db.session.commit()
+
+    assert user2.password_hash.startswith("$scrypt$")
+
+    result = runner.invoke(
+        args=[
+            "password-hash",
+            "can-remove-passlib",
+            "--legacy-verification-successes",
+            "7",
+            "--reviewed-in-repo-legacy-verifier",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy passlib scrypt rows: 1" in result.output
+    assert "Measured legacy verification successes: 7" in result.output
+    assert "Legacy verifier path: reviewed_in_repo_legacy_verifier" in result.output
+    assert "Passlib removal readiness: ready" in result.output
+
+
 def test_stripe_configure_skips_when_secret_missing(app: Flask) -> None:
     app.config["STRIPE_SECRET_KEY"] = ""
     runner = app.test_cli_runner()
@@ -87,6 +226,27 @@ def test_stripe_configure_skips_when_secret_missing(app: Flask) -> None:
         result = runner.invoke(args=["stripe", "configure"])
 
     assert result.exit_code == 0
+    init_stripe.assert_not_called()
+    create_products.assert_not_called()
+
+
+def test_stripe_configure_creates_missing_tiers_when_lookup_returns_none(app: Flask) -> None:
+    app.config["STRIPE_SECRET_KEY"] = ""
+    runner = app.test_cli_runner()
+    db.session.execute(db.delete(Tier))
+    db.session.commit()
+
+    with (
+        patch("hushline.cli_stripe.Tier.free_tier", return_value=None),
+        patch("hushline.cli_stripe.Tier.business_tier", return_value=None),
+        patch("hushline.cli_stripe.premium.init_stripe") as init_stripe,
+        patch("hushline.cli_stripe.premium.create_products_and_prices") as create_products,
+    ):
+        result = runner.invoke(args=["stripe", "configure"])
+
+    assert result.exit_code == 0
+    assert db.session.scalar(db.select(Tier).filter_by(name="Free")) is not None
+    assert db.session.scalar(db.select(Tier).filter_by(name="Business")) is not None
     init_stripe.assert_not_called()
     create_products.assert_not_called()
 

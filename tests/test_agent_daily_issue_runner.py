@@ -30,6 +30,215 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '1\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" not in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+    assert "collect-issue-candidates" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '2\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+    assert "collect-issue-candidates" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: no open issues found in project" in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs" in calls
+    assert "count-open-human-prs" in calls
+    assert "collect-issue-candidates" in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_bootstrap_does_not_prune_docker_system(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+configure_bot_git_identity() {{ :; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Prune Docker system" not in calls
+    assert calls[-5:] == [
+        "Configure bot git identity",
+        "Stop and remove Docker resources",
+        "Kill all Docker containers",
+        "Kill processes on runner ports",
+        "runtime-bootstrap",
+    ]
+
+
+def test_build_pr_title_omits_codex_daily_prefix() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+build_pr_title 1622 $'Normalize geography\\nacross directory listing types'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "#1622 Normalize geography across directory listing types\n"
+    assert "Codex Daily:" not in result.stdout
+
+
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:
     repo_dir = tmp_path / "repo"
     prompt_file = tmp_path / "prompt.txt"
@@ -189,6 +398,59 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "VERBOSE_TRANSCRIPT_LINE" in console_text
     assert "VERBOSE_TRANSCRIPT_LINE" not in run_log_text
     assert "Safe final summary" in run_log_text
+
+
+def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' \
+    'hushline/model/directory.py' \
+    'hushline/routes/directory.py' \
+    'tests/test_directory.py' \
+    'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead \
+  1622 \
+  "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        'This PR addresses the issue "Normalize geography across '
+        'directory listing types" by updating data and model code in `hushline/model`, '
+        "request-handling code in `hushline/routes`, and automated tests in "
+        "`tests/test_directory.py`."
+    ) in result.stdout
+    assert (
+        "The change includes both implementation work and automated tests, showing the "
+        "intended behavior and how it is verified."
+    ) in result.stdout
+    assert (
+        "It touches 3 non-log file(s) (4 total including runner artifacts), primarily "
+        "in hushline/model, hushline/routes, and tests/test_directory.py."
+    ) in result.stdout
+
+
+def test_write_pr_narrative_lead_explains_log_only_run() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "This run does not change the product itself; it only updates the runner log "
+        "artifact that records what the daily runner did."
+    ) in result.stdout
+    assert "This run only changes the runner log artifact." in result.stdout
 
 
 def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
@@ -472,9 +734,13 @@ require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" 
 
 
 def test_failure_signature_from_text_returns_structured_markers() -> None:
+    failure_text = (
+        "failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\n'\\\n"
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\nError: boom'
+{failure_text}
 failure_signature_from_text "$failure_text"
 """
 
@@ -485,6 +751,7 @@ failure_signature_from_text "$failure_text"
         "pytest-test-failures",
         "assertion-error",
         "python-traceback",
+        "lint-diagnostics",
         "generic-error",
     ]
 
@@ -503,6 +770,10 @@ failure_signature_from_text "totally unmatched output"
 
 def test_build_fix_prompt_withholds_raw_check_output(tmp_path: Path) -> None:
     prompt_file = tmp_path / "prompt.txt"
+    failure_context = (
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\n"
+        "FAILED tests/test_example.py::test_case'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 PROMPT_FILE={shlex.quote(str(prompt_file))}
@@ -512,6 +783,7 @@ build_fix_prompt \
   "branch-name" \
   "status summary" \
   "prior codex output" \
+  {failure_context} \
   "generic-error" \
   "2"
 cat "$PROMPT_FILE"
@@ -522,7 +794,101 @@ cat "$PROMPT_FILE"
     assert result.returncode == 0, result.stderr
     assert "Raw failed check output is intentionally withheld" in result.stdout
     assert "---BEGIN CHECK OUTPUT---" not in result.stdout
+    assert "---BEGIN FAILURE CONTEXT---" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
     assert "generic-error" in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert (
+        "Use the sanitized recent failure block above as the primary debugging context."
+        in result.stdout
+    )
+    assert "only `make lint` and `make test` locally before opening a PR" in result.stdout
+
+
+def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> None:
+    failure_text = (
+        "failure_text=$'Container hushline-dev_data-1 Exited\\n'\\\n"
+        "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
+        "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
+        "F821 Undefined name `MissingName`\\n'\\\n"
+        "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
+        "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR=/Users/scidsg/hushline
+{failure_text}
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Container hushline-dev_data-1 Exited" not in result.stdout
+    assert "PASSED" not in result.stdout
+    assert "/Users/scidsg/hushline" not in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
+    assert "Traceback" in result.stdout
+    assert "make: *** [fix] Error 1" in result.stdout
+
+
+def test_recent_failure_block_from_text_redacts_secret_like_values() -> None:
+    failure_text = (
+        "failure_text=$'TOKEN=supersecret123\\n'\\\n"
+        "$'authorization: Bearer abc/def+ghi~jkl\\n'\\\n"
+        "$'Bearer zyx/wvu+tsr~qpo\\n'\\\n"
+        "$'password = hunter2\\n'\\\n"
+        "$'FAILED tests/test_example.py::test_case\\n'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+{failure_text}
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "authorization: Bearer [redacted]" in result.stdout
+    assert "Bearer [redacted]" in result.stdout
+    assert "password = [redacted]" in result.stdout
+    assert "supersecret123" not in result.stdout
+    assert "abc/def+ghi~jkl" not in result.stdout
+    assert "zyx/wvu+tsr~qpo" not in result.stdout
+    assert "hunter2" not in result.stdout
+
+
+def test_failure_excerpt_from_text_redacts_sensitive_values() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'AssertionError: token=SECRET123\\n'\
+$'E TOKEN=UPPERSECRET456\\n'\
+$'E api_key:abcd1234\\n'\
+$'E CLIENT_SECRET=topsecret789\\n'\
+$'Error: contact security@example.org\\n'\
+$'Traceback Authorization: Bearer supersecrettoken\\n'\
+$'FAILED tests/test_example.py::test_case\\n'
+sanitize_failure_excerpt "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "AssertionError:" in result.stdout
+    assert "SECRET123" not in result.stdout
+    assert "UPPERSECRET456" not in result.stdout
+    assert "abcd1234" not in result.stdout
+    assert "topsecret789" not in result.stdout
+    assert "security@example.org" not in result.stdout
+    assert "supersecrettoken" not in result.stdout
+    assert "token=[redacted]" in result.stdout
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "api_key:[redacted]" in result.stdout
+    assert "CLIENT_SECRET=[redacted]" in result.stdout
+    assert "[redacted-email]" in result.stdout
+    assert "Authorization: Bearer [redacted]" in result.stdout
 
 
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
@@ -562,7 +928,6 @@ PREVIOUS_FAILURE_SIGNATURE=""
 FAILURE_SIGNATURE=""
 REPEATED_FAILURE_COUNT=0
 run_local_workflow_checks() {{ return 1; }}
-run_test_gap_gate() {{ return 0; }}
 failure_signature_from_text() {{ printf 'same-failure\\n'; }}
 current_change_summary() {{ printf 'summary\\n'; }}
 build_fix_prompt() {{ :; }}
@@ -582,3 +947,93 @@ printf 'rc=%s\\n' "$rc"
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
         in result.stderr
     )
+
+
+def test_fix_attempt_loop_does_not_run_extra_post_test_gate(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+run_local_workflow_checks() {{
+  printf 'checks\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_test_gap_gate() {{
+  printf 'unexpected-test-gap\\n' >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+run_fix_attempt_loop 1558 "Title" "Body" "test-gap" "branch"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == ["checks"]
+
+
+def test_run_local_workflow_checks_runs_lint_then_test_only(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_local_workflow_checks
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+        "runtime:Run test (full suite):make",
+    ]
+
+
+def test_run_local_workflow_checks_stops_after_non_fixable_lint_failure(
+    tmp_path: Path,
+) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+    check_log_file.write_text("lint failure\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+lint_failure_looks_auto_fixable() {{ return 1; }}
+auto_fix_lint_with_containerized_tooling() {{
+  printf 'autofix\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+set +e
+run_local_workflow_checks
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+    ]

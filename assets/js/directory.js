@@ -48,6 +48,17 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function buildUserCard(user, query) {
+    const safeDisplayName = userSearch.escapeHtml(
+      user.display_name || user.primary_username || "",
+    );
+    const safeUsername = userSearch.escapeHtml(user.primary_username || "");
+    const safeBio = userSearch.escapeHtml(user.bio || "No bio");
+    const safeUserType = userSearch.escapeHtml(
+      user.is_admin
+        ? `${user.is_verified ? "Verified" : ""} admin user`
+        : `${user.is_verified ? "Verified" : ""} User`,
+    );
+    const safeProfileUrl = userSearch.escapeHtml(`${pathPrefix}/to/${user.primary_username}`);
     const displayNameHighlighted = highlightMatch(
       user.display_name || user.primary_username,
       query,
@@ -63,17 +74,14 @@ document.addEventListener("DOMContentLoaded", function () {
       badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
 
-    const isVerified = user.is_verified ? "Verified" : "";
-    const userType = user.is_admin ? `${isVerified} admin user` : `${isVerified} User`;
-
     return `
-      <article class="user" aria-label="${userType}, Display name:${user.display_name || user.primary_username}, Username: ${user.primary_username}, Bio: ${user.bio || "No bio"}">
+      <article class="user" aria-label="${safeUserType}, Display name:${safeDisplayName}, Username: ${safeUsername}, Bio: ${safeBio}">
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
         <div class="badgeContainer">${badgeContainer}</div>
         ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
         <div class="user-actions">
-          <a href="${pathPrefix}/to/${user.primary_username}" aria-label="${user.display_name || user.primary_username}'s profile">View Profile</a>
+          <a href="${safeProfileUrl}" aria-label="${safeDisplayName}'s profile">View Profile</a>
         </div>
       </article>
     `;

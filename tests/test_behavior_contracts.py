@@ -82,6 +82,8 @@ def _authenticate_as(client: FlaskClient, user: User) -> None:
 
 def test_contract_register_login_and_2fa_challenge(client: FlaskClient, app: Flask) -> None:
     app.config["STRIPE_SECRET_KEY"] = ""
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
     username = f"contract-{uuid.uuid4().hex[:8]}"
     password = "SecurePassword123!"
     captcha_answer = get_captcha_from_session_register(client)

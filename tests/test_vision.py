@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 from flask import get_flashed_messages, url_for
 from flask.testing import FlaskClient
@@ -27,19 +25,10 @@ def test_vision_redirects_to_login_when_session_user_missing(client: FlaskClient
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_vision_redirects_with_flash_when_user_missing_after_auth(
-    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    original_get = db.session.get
-    call_count = 0
-
-    def fake_get(model: type[User], ident: object, *args: Any, **kwargs: Any) -> User | None:
-        nonlocal call_count
-        call_count += 1
-        if call_count == 2 and model is User:
-            return None
-        return original_get(model, ident, *args, **kwargs)
-
-    monkeypatch.setattr(db.session, "get", fake_get)
+    monkeypatch.setattr("hushline.auth.get_session_user", lambda: user)
+    monkeypatch.setattr("hushline.routes.vision.db.session.get", lambda *_args, **_kwargs: None)
 
     response = client.get(url_for("vision"), follow_redirects=False)
     assert response.status_code == 302
