@@ -787,6 +787,30 @@ recent_failure_block_from_text "$failure_text"
     assert "make: *** [fix] Error 1" in result.stdout
 
 
+def test_recent_failure_block_from_text_redacts_secret_like_values() -> None:
+    failure_text = (
+        "failure_text=$'TOKEN=supersecret123\\n'\\\n"
+        "$'authorization: Bearer abc.def.ghi\\n'\\\n"
+        "$'password = hunter2\\n'\\\n"
+        "$'FAILED tests/test_example.py::test_case\\n'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+{failure_text}
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "authorization: Bearer [redacted]" in result.stdout
+    assert "password = [redacted]" in result.stdout
+    assert "supersecret123" not in result.stdout
+    assert "abc.def.ghi" not in result.stdout
+    assert "hunter2" not in result.stdout
+
+
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
