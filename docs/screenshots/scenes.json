@@ -1041,11 +1041,6 @@
         },
         {
           "type": "fill_if_exists",
-          "selector": "#field_3, [name='field_3']",
-          "value": "Screenshot test value 3"
-        },
-        {
-          "type": "fill_if_exists",
           "selector": "#field_4, [name='field_4']",
           "value": "Screenshot test value 4"
         },
