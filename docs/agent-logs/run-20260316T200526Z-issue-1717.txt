@@ -5574,3 +5574,19 @@ Coverage HTML written to dir htmlcov
 
 
 ========== 1210 passed, 1 deselected, 1 xfailed in 169.95s (0:02:49) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-1717 7910a15c] chore: agent daily for #1717
+ 13 files changed, 6861 insertions(+), 9799 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260314T180539Z-issue-1673.txt
+ create mode 100644 docs/agent-logs/run-20260316T200526Z-issue-1717.txt
+ create mode 100644 migrations/versions/1a2b3c4d5e6a_add_user_location_fields.py
+ create mode 100644 tests/migrations/revision_1a2b3c4d5e6a.py
+Remote branch 'codex/daily-issue-1717' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-1717' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1717        
+remote: 
+To https://github.com/scidsg/hushline.git
+ * [new branch]        codex/daily-issue-1717 -> codex/daily-issue-1717
+branch 'codex/daily-issue-1717' set up to track 'origin/codex/daily-issue-1717'.
+Opened PR: https://github.com/scidsg/hushline/pull/1718
