@@ -18,6 +18,7 @@ modules = [
   "premium-waiting",
   "service-worker",
   "settings-fields",
+  "settings-location",
   "settings",
   "settings_admin",
   "submit-message",

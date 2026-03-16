@@ -231,7 +231,9 @@ def test_profile_location_settings_use_country_select_and_dependency_script() ->
     profile_forms_template = (ROOT / "hushline/templates/settings/profile-forms.html").read_text(
         encoding="utf-8"
     )
+    location_asset_js = (ROOT / "assets/js/settings-location.js").read_text(encoding="utf-8")
     location_js = (ROOT / "hushline/static/js/settings-location.js").read_text(encoding="utf-8")
+    webpack_config = (ROOT / "webpack.config.js").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert "settings-location.js" in profile_template
@@ -240,6 +242,8 @@ def test_profile_location_settings_use_country_select_and_dependency_script() ->
     assert "autocomplete='address-level1'" in profile_forms_template
     assert "data_states_url=url_for('.profile_states')" in profile_forms_template
     assert "data_cities_url=url_for('.profile_cities')" in profile_forms_template
+    assert 'const countryInput = document.getElementById("country");' in location_asset_js
+    assert '"settings-location",' in webpack_config
     assert 'const countryInput = document.getElementById("country");' in location_js
     assert 'const subdivisionInput = document.getElementById("subdivision");' in location_js
     assert 'const cityInput = document.getElementById("city");' in location_js
