@@ -188,6 +188,12 @@ async def verify_url(
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     if "account_category" in request.form:
         username.user.account_category = (form.account_category.data or "").strip() or None
+    if "country" in request.form:
+        username.user.country = (form.country.data or "").strip() or None
+    if "city" in request.form:
+        username.user.city = (form.city.data or "").strip() or None
+    if "subdivision" in request.form:
+        username.user.subdivision = (form.subdivision.data or "").strip() or None
 
     username.bio = form.bio.data.strip()
 
@@ -394,6 +400,9 @@ def create_profile_forms(
     )
     profile_form = ProfileForm(
         account_category=username.user.account_category or "",
+        country=username.user.country or "",
+        city=username.user.city or "",
+        subdivision=username.user.subdivision or "",
         bio=username.bio or "",
         **{
             f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")

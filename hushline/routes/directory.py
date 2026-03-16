@@ -210,6 +210,11 @@ def _geography_fields(
 
 def _directory_user_row(username: Username) -> dict[str, object | None]:
     user = username.user
+    geography = build_directory_geography(
+        city=getattr(user, "city", None),
+        country=getattr(user, "country", None),
+        subdivision=getattr(user, "subdivision", None),
+    )
     return {
         "entry_type": "user",
         "primary_username": username.username,
@@ -226,7 +231,13 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "is_automated": False,
         "message_capable": bool(user.pgp_key),
         "meta": f"@{username.username}",
-        **_geography_fields(None, None, None, None, ()),
+        **_geography_fields(
+            geography.city,
+            geography.country,
+            geography.subdivision,
+            geography.subdivision_code,
+            geography.countries,
+        ),
         "practice_tags": [],
         "source_label": None,
         "directory_section": None,

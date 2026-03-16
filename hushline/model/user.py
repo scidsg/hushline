@@ -45,6 +45,7 @@ class User(Model):
     STRIPE_ID_MAX_LENGTH = 255
     SESSION_ID_MAX_LENGTH = 255
     ACCOUNT_CATEGORY_MAX_LENGTH = 64
+    DIRECTORY_LOCATION_MAX_LENGTH = 255
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
@@ -118,6 +119,15 @@ class User(Model):
     onboarding_complete: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
     account_category: Mapped[Optional[str]] = mapped_column(
         db.String(ACCOUNT_CATEGORY_MAX_LENGTH), nullable=True
+    )
+    country: Mapped[Optional[str]] = mapped_column(
+        db.String(DIRECTORY_LOCATION_MAX_LENGTH), nullable=True
+    )
+    city: Mapped[Optional[str]] = mapped_column(
+        db.String(DIRECTORY_LOCATION_MAX_LENGTH), nullable=True
+    )
+    subdivision: Mapped[Optional[str]] = mapped_column(
+        db.String(DIRECTORY_LOCATION_MAX_LENGTH), nullable=True
     )
 
     _PREMIUM_ALIAS_COUNT = 100

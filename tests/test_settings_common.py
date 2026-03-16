@@ -132,6 +132,9 @@ def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
             formdata=MultiDict(
                 {
                     "account_category": AccountCategory.BUSINESS.value,
+                    "country": "United States",
+                    "city": "Chicago",
+                    "subdivision": "Illinois",
                     "bio": "valid bio",
                 }
             )

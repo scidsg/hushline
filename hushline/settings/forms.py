@@ -211,6 +211,21 @@ class ProfileForm(FlaskForm):
             AnyOf(AccountCategory.values(), message="Invalid account category."),
         ],
     )
+    country = StringField(
+        "Country",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=User.DIRECTORY_LOCATION_MAX_LENGTH)],
+    )
+    city = StringField(
+        "City",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=User.DIRECTORY_LOCATION_MAX_LENGTH)],
+    )
+    subdivision = StringField(
+        "State / Province / Region",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=User.DIRECTORY_LOCATION_MAX_LENGTH)],
+    )
     bio = TextAreaField(
         "Bio",
         filters=[strip_whitespace],
