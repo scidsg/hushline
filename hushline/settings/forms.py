@@ -204,7 +204,7 @@ def strip_whitespace(value: Optional[Any]) -> Optional[str]:
 class ProfileForm(FlaskForm):
     account_category = SelectField(
         "Account Category",
-        choices=[("", "Not specified"), *AccountCategory.choices()],
+        choices=[("", "Select"), *AccountCategory.choices()],
         validate_choice=False,
         validators=[
             OptionalField(),

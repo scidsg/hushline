@@ -997,7 +997,7 @@ def test_change_account_category(client: FlaskClient, user: User) -> None:
     response = client.post(
         url_for("settings.profile"),
         data={
-            "account_category": AccountCategory.DEVELOPER_SECURITY_RESEARCHER.value,
+            "account_category": AccountCategory.DEVELOPER.value,
             "bio": user.primary_username.bio or "",
             "update_bio": "",
         },
@@ -1007,7 +1007,7 @@ def test_change_account_category(client: FlaskClient, user: User) -> None:
     assert "Bio and fields updated successfully" in response.text
 
     db.session.refresh(user)
-    assert user.account_category == AccountCategory.DEVELOPER_SECURITY_RESEARCHER.value
+    assert user.account_category == AccountCategory.DEVELOPER.value
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1063,7 +1063,7 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
 def test_alias_change_bio_preserves_account_category(
     client: FlaskClient, user: User, user_alias: Username
 ) -> None:
-    user.account_category = AccountCategory.JOURNALIST_NEWSROOM.value
+    user.account_category = AccountCategory.JOURNALIST.value
     db.session.commit()
 
     response = client.post(
@@ -1077,7 +1077,7 @@ def test_alias_change_bio_preserves_account_category(
     assert response.status_code == 200
 
     db.session.refresh(user)
-    assert user.account_category == AccountCategory.JOURNALIST_NEWSROOM.value
+    assert user.account_category == AccountCategory.JOURNALIST.value
 
 
 @pytest.mark.usefixtures("_authenticated_user")
