@@ -1,6 +1,8 @@
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+from hushline.model import User
+
 
 def test_csp(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
@@ -16,6 +18,16 @@ def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> No
     assert response.status_code == 200
     csp = response.headers["Content-Security-Policy"]
     assert "script-src-elem 'self' https://js.stripe.com https://cdn.jsdelivr.net" in csp
+    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
+def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> None:
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert csp
+    assert "'unsafe-eval'" not in csp
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
 
 
