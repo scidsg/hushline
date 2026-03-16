@@ -1805,7 +1805,7 @@ select {
   font-family: var(--font-sans);
 }
 
-input,
+input:not([type="file"]),
 select {
   height: 44px;
 }
