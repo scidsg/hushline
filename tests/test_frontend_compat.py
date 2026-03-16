@@ -109,9 +109,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     )
     assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
     assert "fetch(`${directoryPath}/attorney-filters.json`)" in directory_verified_js
-    assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
-        directory_js
-    )
+    assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (directory_js)
     assert "fetch(`${directoryPath}/users.json`)" in directory_js
     assert "window.history.replaceState" in directory_verified_js
     assert "new AbortController();" in directory_verified_js
