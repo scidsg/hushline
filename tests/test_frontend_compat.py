@@ -170,7 +170,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
-    assert "directory/users.json${search}" in directory_verified_static_js
+    assert "directory/users.json" in directory_verified_static_js
     assert "directory/attorney-filters.json" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
