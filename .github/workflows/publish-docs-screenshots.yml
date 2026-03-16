@@ -49,6 +49,7 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
             -o /tmp/docs-screenshots-artifact/artifact.zip
           unzip -q /tmp/docs-screenshots-artifact/artifact.zip -d /tmp/docs-screenshots-artifact/unpacked
+          rm -f /tmp/docs-screenshots-artifact/artifact.zip
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=/tmp/docs-screenshots-artifact/unpacked" >> "$GITHUB_OUTPUT"
 
@@ -85,8 +86,16 @@ jobs:
             exit 1
           fi
 
-          git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" /tmp/hushline-screenshots
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --single-branch \
+            --branch "${SCREENSHOTS_DEFAULT_BRANCH}" \
+            "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" \
+            /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
+          git sparse-checkout init --cone
+          git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "releases/${RELEASE_KEY}"
           git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
 
           mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
