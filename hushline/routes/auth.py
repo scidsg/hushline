@@ -24,6 +24,7 @@ from hushline.auth import (
     authentication_required,
     clear_auth_session,
     get_session_user,
+    pop_post_auth_redirect,
     rotate_user_session_id,
     set_session_user,
 )
@@ -291,7 +292,7 @@ def register_auth_routes(app: Flask) -> None:
                 if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
-                return redirect(url_for("inbox"))
+                return redirect(pop_post_auth_redirect())
 
             flash("⛔️ Invalid username or password.")
         return render_template("login.html", form=form)
@@ -386,7 +387,7 @@ def register_auth_routes(app: Flask) -> None:
                 if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
-                return redirect(url_for("inbox"))
+                return redirect(pop_post_auth_redirect())
 
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
             db.session.add(auth_log)
