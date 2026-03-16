@@ -51,6 +51,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
     directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+    user_search_js = (ROOT / "assets/js/user_search.js").read_text(encoding="utf-8")
     directory_verified_static_js = (ROOT / "hushline/static/js/directory_verified.js").read_text(
         encoding="utf-8"
     )
@@ -99,6 +100,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'return "GlobaLeaks instances";' in directory_verified_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
+    assert "function escapeHtml(value)" in user_search_js
+    assert "return escapeHtml(sourceText);" in user_search_js
+    assert '<mark class="search-highlight">${escapeHtml(match[0])}</mark>' in user_search_js
     assert "updatePublicRecordCountBadge();" in directory_verified_js
     assert (
         "fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)"
@@ -137,6 +141,31 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "Show Filters" in directory_verified_static_js
     assert "eval(" not in directory_verified_static_js
     assert "webpack://" not in directory_verified_static_js
+    assert "const safeDisplayName = userSearch.escapeHtml(" in directory_js
+    assert "const safeDisplayName = userSearch.escapeHtml(" in directory_verified_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No bio");' in directory_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No bio");' in directory_verified_js
+    assert 'const safeBio = userSearch.escapeHtml(user.bio || "No description");' in (
+        directory_verified_js
+    )
+    safe_user_aria = (
+        'aria-label="${safeUserType}, Display name:${safeDisplayName}, Username: '
+        '${safeUsername}, Bio: ${safeBio}"'
+    )
+    assert safe_user_aria in directory_js
+    assert safe_user_aria in directory_verified_js
+    assert (
+        'aria-label="${safeListingType}, Display name:${safeDisplayName}, Description: ${safeBio}"'
+        in directory_verified_js
+    )
+    assert (
+        'aria-label="${userType}, Display name:${user.display_name || user.primary_username}'
+        not in (directory_verified_js)
+    )
+    assert (
+        'aria-label="${userType}, Display name:${user.display_name || user.primary_username}'
+        not in (directory_js)
+    )
     assert "user.city," in directory_verified_js
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
