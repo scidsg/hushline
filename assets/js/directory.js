@@ -1,6 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
   const userSearch = window.HushlineUserSearch;
-  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+  const directoryPath = window.location.pathname.replace(/\/$/, "");
+  const pathPrefix = directoryPath.endsWith("/directory")
+    ? directoryPath.slice(0, -"/directory".length)
+    : directoryPath.split("/").slice(0, -1).join("/");
   const searchInput = document.getElementById("searchInput");
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
@@ -18,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function loadData() {
-    fetch(`${pathPrefix}/directory/users.json`)
+    fetch(`${directoryPath}/users.json`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");

@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const userSearch = window.HushlineUserSearch;
-  const pathPrefix = window.location.pathname.split("/").slice(0, -1).join("/");
+  const directoryPath = window.location.pathname.replace(/\/$/, "");
   const tabs = document.querySelectorAll(".tab[data-tab]");
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
@@ -666,7 +666,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return attorneyFilterMetadataRequest;
     }
 
-    attorneyFilterMetadataRequest = fetch(`${pathPrefix}/directory/attorney-filters.json`)
+      attorneyFilterMetadataRequest = fetch(`${directoryPath}/attorney-filters.json`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -702,7 +702,7 @@ document.addEventListener("DOMContentLoaded", function () {
       requestOptions.signal = options.signal;
     }
 
-    return fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)
+    return fetch(`${directoryPath}/users.json${search}`, requestOptions)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");

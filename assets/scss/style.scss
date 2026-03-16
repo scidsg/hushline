@@ -1759,6 +1759,11 @@ label {
   line-height: 1;
 }
 
+input[type="checkbox"]+label,
+input[type="radio"]+label {
+  line-height: 1.4;
+}
+
 .meta {
   font-size: var(--font-size-small);
   line-height: var(--line-height-base);
@@ -1805,7 +1810,7 @@ select {
   font-family: var(--font-sans);
 }
 
-input:not([type="file"]),
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
 select {
   height: 44px;
 }

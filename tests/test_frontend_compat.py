@@ -104,11 +104,15 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "return escapeHtml(sourceText);" in user_search_js
     assert '<mark class="search-highlight">${escapeHtml(match[0])}</mark>' in user_search_js
     assert "updatePublicRecordCountBadge();" in directory_verified_js
-    assert (
-        "fetch(`${pathPrefix}/directory/users.json${search}`, requestOptions)"
-        in directory_verified_js
+    assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
+        directory_verified_js
     )
-    assert "fetch(`${pathPrefix}/directory/attorney-filters.json`)" in directory_verified_js
+    assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
+    assert "fetch(`${directoryPath}/attorney-filters.json`)" in directory_verified_js
+    assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
+        directory_js
+    )
+    assert "fetch(`${directoryPath}/users.json`)" in directory_js
     assert "window.history.replaceState" in directory_verified_js
     assert "new AbortController();" in directory_verified_js
     assert 'attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
@@ -170,8 +174,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.country," in directory_verified_js
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
-    assert "directory/users.json" in directory_verified_static_js
-    assert "directory/attorney-filters.json" in directory_verified_static_js
+    assert "users.json" in directory_verified_static_js
+    assert "attorney-filters.json" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
     assert ".directory-filter-panel" in scss
