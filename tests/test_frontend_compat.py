@@ -205,7 +205,8 @@ def test_settings_field_delete_confirmation_blocks_submit_on_cancel() -> None:
     js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
 
     assert '.querySelectorAll(".message-field-delete-button")' in js
-    assert 'return confirm(' in js
+    assert "return confirm(" in js
+
 
 def test_settings_sticky_nav_hooks_exist() -> None:
     settings_template = (ROOT / "hushline/templates/settings/nav.html").read_text(
