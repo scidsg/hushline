@@ -224,6 +224,38 @@ def test_settings_sticky_nav_hooks_exist() -> None:
     assert "position: sticky;" in scss
 
 
+def test_profile_location_settings_use_country_select_and_dependency_script() -> None:
+    profile_template = (ROOT / "hushline/templates/settings/profile.html").read_text(
+        encoding="utf-8"
+    )
+    profile_forms_template = (ROOT / "hushline/templates/settings/profile-forms.html").read_text(
+        encoding="utf-8"
+    )
+    location_js = (ROOT / "hushline/static/js/settings-location.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert "settings-location.js" in profile_template
+    assert "autocomplete='country-name'" in profile_forms_template
+    assert "autocomplete='address-level2'" in profile_forms_template
+    assert "autocomplete='address-level1'" in profile_forms_template
+    assert "data_states_url=url_for('.profile_states')" in profile_forms_template
+    assert "data_cities_url=url_for('.profile_cities')" in profile_forms_template
+    assert 'const countryInput = document.getElementById("country");' in location_js
+    assert 'const subdivisionInput = document.getElementById("subdivision");' in location_js
+    assert 'const cityInput = document.getElementById("city");' in location_js
+    assert "const statesUrl = countryInput.dataset.statesUrl;" in location_js
+    assert "const citiesUrl = subdivisionInput.dataset.citiesUrl;" in location_js
+    assert "async function loadStates(selectedValue)" in location_js
+    assert "async function loadCities(selectedValue)" in location_js
+    assert 'countryInput.addEventListener("change", async function () {' in location_js
+    assert 'subdivisionInput.addEventListener("change", async function () {' in location_js
+    assert "${statesUrl}?country=${encodeURIComponent(country)}" in location_js
+    assert "const params = new URLSearchParams({" in location_js
+    assert '#country:has(option:checked[value=""])' in scss
+    assert '#subdivision:has(option:checked[value=""])' in scss
+    assert '#city:has(option:checked[value=""])' in scss
+
+
 def test_settings_field_builder_select_hooks_are_wrapper_safe() -> None:
     settings_fields_js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
 

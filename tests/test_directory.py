@@ -316,6 +316,31 @@ def test_directory_users_json_includes_account_category(client: FlaskClient, use
     assert row["account_category_label"] == "Activist"
 
 
+def test_directory_users_json_includes_normalized_user_location(
+    client: FlaskClient, user: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.country = "US"
+    user.city = "Chicago"
+    user.subdivision = "il"
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["city"] == "Chicago"
+    assert row["country"] == "United States"
+    assert row["subdivision"] == "Illinois"
+    assert row["subdivision_code"] == "IL"
+    assert row["countries"] == ["United States"]
+
+
 def test_directory_users_json_includes_legacy_account_category_label(
     client: FlaskClient, user: User
 ) -> None:

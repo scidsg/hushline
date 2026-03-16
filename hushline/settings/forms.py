@@ -38,6 +38,15 @@ from hushline.forms import (
     NoDisallowedLanguage,
     ValidTemplate,
 )
+from hushline.geo import (
+    city_choice_label,
+    city_choice_value,
+    country_choices,
+    normalize_city_name,
+    normalize_country_name,
+    state_choice_label,
+    state_choice_value,
+)
 from hushline.model import (
     AccountCategory,
     FieldDefinition,
@@ -211,6 +220,24 @@ class ProfileForm(FlaskForm):
             AnyOf(AccountCategory.values(), message="Invalid account category."),
         ],
     )
+    country = SelectField(
+        "Country",
+        choices=country_choices(),
+        validate_choice=False,
+        validators=[OptionalField()],
+    )
+    subdivision = SelectField(
+        "State / Province / Region",
+        choices=[("", "Select")],
+        validate_choice=False,
+        validators=[OptionalField()],
+    )
+    city = SelectField(
+        "City",
+        choices=[("", "Select")],
+        validate_choice=False,
+        validators=[OptionalField()],
+    )
     bio = TextAreaField(
         "Bio",
         filters=[strip_whitespace],
@@ -273,6 +300,65 @@ class ProfileForm(FlaskForm):
         validators=[OptionalField(), Length(max=Username.EXTRA_FIELD_VALUE_MAX_LENGTH)],
     )
     submit = SubmitField("Update Bio", name="update_bio", widget=Button())
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        has_formdata = kwargs.get("formdata") is not None
+        super().__init__(*args, **kwargs)
+
+        normalized_country = normalize_country_name(self.country.data)
+        if normalized_country is not None:
+            self.country.data = normalized_country
+        elif self.country.data:
+            self.country.choices = [
+                ("", "Select"),
+                (self.country.data, self.country.data),
+                *[
+                    choice
+                    for choice in self.country.choices
+                    if choice[0] not in {"", self.country.data}
+                ],
+            ]
+
+        self.subdivision.choices = [("", "Select")]
+        self.city.choices = [("", "Select")]
+
+        if not has_formdata:
+            selected_subdivision_value = state_choice_value(
+                self.subdivision.data, self.country.data
+            )
+            if selected_subdivision_value is not None:
+                self.subdivision.data = selected_subdivision_value
+
+            selected_city_value = city_choice_value(
+                self.city.data, self.country.data, self.subdivision.data
+            )
+            if selected_city_value is not None:
+                self.city.data = selected_city_value
+
+        if self.subdivision.data:
+            subdivision_label = state_choice_label(self.subdivision.data, self.country.data)
+            self.subdivision.choices.append(
+                (self.subdivision.data, subdivision_label or self.subdivision.data)
+            )
+
+        if self.city.data:
+            city_label = city_choice_label(self.city.data, self.country.data, self.subdivision.data)
+            self.city.choices.append((self.city.data, city_label or self.city.data))
+
+    def validate_country(self, field: SelectField) -> None:
+        if field.data and normalize_country_name(field.data) is None:
+            raise ValidationError("Invalid country.")
+
+    def validate_subdivision(self, field: SelectField) -> None:
+        if field.data and state_choice_value(field.data, self.country.data) is None:
+            raise ValidationError("Invalid state / province / region.")
+
+    def validate_city(self, field: SelectField) -> None:
+        if not field.data:
+            return
+
+        if normalize_city_name(field.data, self.country.data, self.subdivision.data) is None:
+            raise ValidationError("Invalid city.")
 
 
 class UpdateBrandPrimaryColorForm(FlaskForm):

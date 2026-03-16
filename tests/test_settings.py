@@ -63,6 +63,20 @@ def test_user_account_category_persists(user: User) -> None:
     assert updated_user.account_category_label == "Nonprofit"
 
 
+def test_user_location_persists(user: User) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert updated_user.country == "United States"
+    assert updated_user.city == "Chicago"
+    assert updated_user.subdivision == "Illinois"
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_settings_page_loads(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("settings.profile"), follow_redirects=True)
@@ -1029,6 +1043,86 @@ def test_change_account_category_rejects_invalid_value(client: FlaskClient, user
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "US",
+            "city": "Chicago",
+            "subdivision": "IL",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.city == "Chicago"
+    assert user.subdivision == "Illinois"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location_clears_incomplete_dependency_chain(
+    client: FlaskClient, user: User
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country is None
+    assert user.city is None
+    assert user.subdivision is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_states_endpoint_returns_country_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_states"),
+        query_string={"country": "US"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(
+        option["value"] == "IL" and option["label"] == "Illinois" for option in payload["states"]
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_cities_endpoint_returns_state_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_cities"),
+        query_string={"country": "US", "subdivision": "IL"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(option["label"] == "Chicago" for option in payload["cities"])
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
     data = {
         "bio": str(uuid4()),
@@ -1078,6 +1172,31 @@ def test_alias_change_bio_preserves_account_category(
 
     db.session.refresh(user)
     assert user.account_category == AccountCategory.JOURNALIST.value
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_preserves_account_location(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "bio": str(uuid4()),
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.city == "Chicago"
+    assert user.subdivision == "Illinois"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

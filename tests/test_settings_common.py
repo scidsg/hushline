@@ -12,6 +12,7 @@ from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
+from hushline.geo import city_choice_value, state_choice_value
 from hushline.model import (
     AccountCategory,
     FieldDefinition,
@@ -25,6 +26,7 @@ from hushline.settings.common import (
     _is_blocked_ip,
     _is_safe_verification_url,
     build_field_forms,
+    create_profile_forms,
     handle_change_password_form,
     handle_change_username_form,
     handle_field_post,
@@ -132,11 +134,51 @@ def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
             formdata=MultiDict(
                 {
                     "account_category": AccountCategory.BUSINESS.value,
+                    "country": "United States",
+                    "city": "Chicago",
+                    "subdivision": "Illinois",
                     "bio": "valid bio",
                 }
             )
         )
         assert valid_form.validate()
+
+
+def test_profile_form_rejects_invalid_country(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(formdata=MultiDict({"country": "Atlantis", "bio": "valid bio"}))
+
+    assert not form.validate()
+    assert form.country.errors == ["Invalid country."]
+
+
+def test_profile_form_rejects_invalid_subdivision_for_country(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict(
+                {"country": "United States", "subdivision": "Atlantis", "bio": "valid bio"}
+            )
+        )
+
+    assert not form.validate()
+    assert form.subdivision.errors == ["Invalid state / province / region."]
+
+
+def test_profile_form_rejects_invalid_city_for_subdivision(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "country": "United States",
+                    "subdivision": "Illinois",
+                    "city": "Atlantis",
+                    "bio": "valid bio",
+                }
+            )
+        )
+
+    assert not form.validate()
+    assert form.city.errors == ["Invalid city."]
 
 
 def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
@@ -156,6 +198,34 @@ def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
     assert "Journalist / Newsroom" not in labels
     assert "Lawyer / Law Firm" not in labels
     assert "Developer / Security Researcher" not in labels
+
+
+def test_create_profile_forms_disables_location_inputs_until_dependencies(user: User) -> None:
+    _, _, profile_form = create_profile_forms(user.primary_username)
+
+    assert profile_form.subdivision.render_kw is not None
+    assert profile_form.subdivision.render_kw.get("disabled") == "disabled"
+    assert profile_form.city.render_kw is not None
+    assert profile_form.city.render_kw.get("disabled") == "disabled"
+
+    user.country = "United States"
+    _, _, profile_form_with_country = create_profile_forms(user.primary_username)
+    assert profile_form_with_country.subdivision.render_kw is None or (
+        "disabled" not in profile_form_with_country.subdivision.render_kw
+    )
+    assert profile_form_with_country.city.render_kw is not None
+    assert profile_form_with_country.city.render_kw.get("disabled") == "disabled"
+
+
+def test_create_profile_forms_selects_saved_subdivision_and_city(user: User) -> None:
+    user.country = "United States"
+    user.subdivision = "Illinois"
+    user.city = "Chicago"
+
+    _, _, profile_form = create_profile_forms(user.primary_username)
+
+    assert profile_form.subdivision.data == state_choice_value("Illinois", "United States")
+    assert profile_form.city.data == city_choice_value("Chicago", "United States", "Illinois")
 
 
 def test_is_blocked_ip_classification() -> None:

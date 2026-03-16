@@ -24,6 +24,11 @@ from wtforms import Field
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.external_urls import canonical_external_url
+from hushline.geo import (
+    normalize_city_name,
+    normalize_country_name,
+    normalize_subdivision_name,
+)
 from hushline.model import (
     FieldDefinition,
     FieldType,
@@ -188,6 +193,27 @@ async def verify_url(
 async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
     if "account_category" in request.form:
         username.user.account_category = (form.account_category.data or "").strip() or None
+    if "country" in request.form:
+        normalized_country = normalize_country_name(form.country.data)
+        username.user.country = normalized_country
+
+        if normalized_country is None or "subdivision" not in request.form:
+            username.user.subdivision = None
+            username.user.city = None
+        else:
+            normalized_subdivision = normalize_subdivision_name(
+                form.subdivision.data, normalized_country
+            )
+            username.user.subdivision = normalized_subdivision
+
+            if normalized_subdivision is None or "city" not in request.form:
+                username.user.city = None
+            else:
+                username.user.city = normalize_city_name(
+                    form.city.data,
+                    normalized_country,
+                    normalized_subdivision,
+                )
 
     username.bio = form.bio.data.strip()
 
@@ -388,12 +414,18 @@ def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
 def create_profile_forms(
     username: Username,
 ) -> tuple[DisplayNameForm, DirectoryVisibilityForm, ProfileForm]:
+    normalized_country = (
+        normalize_country_name(username.user.country) or username.user.country or ""
+    )
     display_name_form = DisplayNameForm(display_name=username.display_name)
     directory_visibility_form = DirectoryVisibilityForm(
         show_in_directory=username.show_in_directory
     )
     profile_form = ProfileForm(
         account_category=username.user.account_category or "",
+        country=normalized_country,
+        subdivision=username.user.subdivision or "",
+        city=username.user.city or "",
         bio=username.bio or "",
         **{
             f"extra_field_label{i}": getattr(username, f"extra_field_label{i}", "")
@@ -404,6 +436,10 @@ def create_profile_forms(
             for i in range(1, 5)
         },
     )
+    if not profile_form.country.data and not profile_form.subdivision.data:
+        set_input_disabled(profile_form.subdivision)
+    if not profile_form.subdivision.data and not profile_form.city.data:
+        set_input_disabled(profile_form.city)
     return display_name_form, directory_visibility_form, profile_form
 
 

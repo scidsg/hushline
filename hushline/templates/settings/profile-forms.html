@@ -68,6 +68,27 @@
         <span class="error">{{ error }}</span>
       {% endfor %}
     </div>
+    <div class="form-group">
+      {{ profile_form.country.label }}
+      {{ profile_form.country(id='country', autocomplete='country-name', data_states_url=url_for('.profile_states')) }}
+      {% for error in profile_form.country.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ profile_form.subdivision.label }}
+      {{ profile_form.subdivision(id='subdivision', autocomplete='address-level1', data_cities_url=url_for('.profile_cities')) }}
+      {% for error in profile_form.subdivision.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      {{ profile_form.city.label }}
+      {{ profile_form.city(id='city', autocomplete='address-level2') }}
+      {% for error in profile_form.city.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
+    </div>
   {% endif %}
   <div class="form-group">
     <div class="label-with-wordcount">
