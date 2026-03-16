@@ -3,6 +3,7 @@ from typing import Tuple
 from flask import (
     Blueprint,
     abort,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -13,6 +14,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
+from hushline.geo import city_options_for_state, state_options
 from hushline.model import (
     Tier,
     User,
@@ -68,6 +70,23 @@ def register_profile_routes(bp: Blueprint) -> None:
             new_field_form=new_field_form,
             business_tier_display_price=business_tier_display_price,
         ), status_code
+
+    @bp.route("/profile/states.json")
+    @authentication_required
+    def profile_states() -> Response:
+        return jsonify({"states": state_options(request.args.get("country"))})
+
+    @bp.route("/profile/cities.json")
+    @authentication_required
+    def profile_cities() -> Response:
+        return jsonify(
+            {
+                "cities": city_options_for_state(
+                    request.args.get("country"),
+                    request.args.get("subdivision"),
+                )
+            }
+        )
 
     @bp.route("/profile/fields", methods=["GET", "POST"])
     @authentication_required

@@ -1059,9 +1059,67 @@ def test_change_profile_location(client: FlaskClient, user: User) -> None:
     assert "Bio and fields updated successfully" in response.text
 
     db.session.refresh(user)
-    assert user.country == "US"
+    assert user.country == "United States"
     assert user.city == "Chicago"
-    assert user.subdivision == "IL"
+    assert user.subdivision == "Illinois"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location_clears_incomplete_dependency_chain(
+    client: FlaskClient, user: User
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country is None
+    assert user.city is None
+    assert user.subdivision is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_states_endpoint_returns_country_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_states"),
+        query_string={"country": "US"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(
+        option["value"] == "IL" and option["label"] == "Illinois" for option in payload["states"]
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_cities_endpoint_returns_state_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_cities"),
+        query_string={"country": "US", "subdivision": "IL"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(option["label"] == "Chicago" for option in payload["cities"])
 
 
 @pytest.mark.usefixtures("_authenticated_user")

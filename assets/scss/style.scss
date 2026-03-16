@@ -241,12 +241,18 @@
     background-image: url("../img/dropdown.png");
   }
 
-  #account_category {
+  #account_category,
+  #country,
+  #subdivision,
+  #city {
     color: var(--color-text);
     background-image: none;
   }
 
-  #account_category:has(option:checked[value=""]) {
+  #account_category:has(option:checked[value=""]),
+  #country:has(option:checked[value=""]),
+  #subdivision:has(option:checked[value=""]),
+  #city:has(option:checked[value=""]) {
     color: var(--color-text-light);
   }
 
@@ -789,12 +795,18 @@
     background-image: url("../img/dropdown-dm.png");
   }
 
-  #account_category {
+  #account_category,
+  #country,
+  #subdivision,
+  #city {
     color: var(--color-text-dark);
     background-image: none;
   }
 
-  #account_category:has(option:checked[value=""]) {
+  #account_category:has(option:checked[value=""]),
+  #country:has(option:checked[value=""]),
+  #subdivision:has(option:checked[value=""]),
+  #city:has(option:checked[value=""]) {
     color: var(--color-text-dark-alt);
   }
 
