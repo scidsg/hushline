@@ -184,3 +184,20 @@ def test_settings_sticky_nav_hooks_exist() -> None:
     assert "--settings-tabs-top" in settings_js
     assert ".settings-tabs {" in scss
     assert "position: sticky;" in scss
+
+
+def test_settings_field_builder_select_hooks_are_wrapper_safe() -> None:
+    settings_fields_js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
+
+    assert "function getFieldFormRoot(fieldType)" in settings_fields_js
+    assert 'return fieldType.closest("form");' in settings_fields_js
+    assert (
+        "const choicesContainer = getFieldFormRoot(fieldType)?.querySelector(" in settings_fields_js
+    )
+    assert (
+        "const requiredCheckboxContainer = getFieldFormRoot(fieldType)?.querySelector("
+        in settings_fields_js
+    )
+    assert "const requiredCheckbox = getFieldFormRoot(fieldType)?.querySelector(" in (
+        settings_fields_js
+    )

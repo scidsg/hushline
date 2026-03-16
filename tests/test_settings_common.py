@@ -149,7 +149,7 @@ def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
 
     assert "Journalist" in labels
     assert "Newsroom" in labels
-    assert "Lawyer" in labels
+    assert "Attorney" in labels
     assert "Law Firm" in labels
     assert "Developer" in labels
     assert "Security Researcher" in labels
