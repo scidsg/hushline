@@ -16,7 +16,7 @@ Start here: <https://hushline.app/library/docs/getting-started/start-here/>
 [![Python Dependency Audit](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/dependency-security-audit.yml)
 [![W3C Validators](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/w3c-validators.yml)
 [![Public Record Link Check](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/public-record-link-check.yml)
-[![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-website/main/badge-docs-screenshots.json)](https://github.com/scidsg/hushline-website/tree/main/src/assets/img/screenshots)
+[![Docs Screenshots](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/scidsg/hushline-screenshots/main/badge-docs-screenshots.json)](https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest)
 
 ## Why Hush Line
 
@@ -82,7 +82,7 @@ Quick summary:
 - AI-first is allowed for low-risk work such as scoped docs/process edits and isolated low-risk implementation tasks with clear rollback.
 - If scope expands into high-risk areas (for example DB/auth/env/security), ownership immediately escalates to human-first.
 - Ownership mode is tracked (`human-first` vs `ai-first`) with a quarterly operating target of roughly 70/30.
-- Approved coding model policy is defined in [`AGENTS.md`](./AGENTS.md). As of 2026-02-13, the minimum approved coding model is `gpt-5.3-codex high`.
+- Approved coding model policy is defined in [`AGENTS.md`](./AGENTS.md). As of 2026-02-13, the minimum approved coding model is `gpt-5.4 high`.
 
 Policy discussion thread: <https://github.com/orgs/scidsg/discussions/1313>
 
@@ -134,14 +134,14 @@ If local audit commands are blocked by network/tooling availability, document th
   <tr>
     <td valign="bottom" width="73%">
       <img
-        src="https://raw.githubusercontent.com/scidsg/hushline-website/main/src/assets/img/screenshots/guest/guest-directory-verified-desktop-light-fold.png"
+        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png"
         width="100%"
         alt="Guest directory screenshot"
       />
     </td>
     <td valign="bottom" width="27%">
       <img
-        src="https://raw.githubusercontent.com/scidsg/hushline-website/main/src/assets/img/screenshots/newman/auth-newman-onboarding-profile-mobile-light-fold.png"
+        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/newman/auth-newman-onboarding-profile-mobile-light-fold.png"
         width="100%"
         alt="Onboarding screenshot"
       />
@@ -149,7 +149,7 @@ If local audit commands are blocked by network/tooling availability, document th
   </tr>
 </table>
 
-More screenshots: <https://github.com/scidsg/hushline-website/tree/main/src/assets/img/screenshots>
+More screenshots: <https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest>
 
 ## In the Media
 

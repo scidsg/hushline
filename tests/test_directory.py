@@ -1,14 +1,19 @@
 import re
+from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
-from bs4 import BeautifulSoup
-from flask import url_for
+from bs4 import BeautifulSoup, Tag
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+import hushline.model.public_record_listing as public_record_listing_module
+import hushline.routes.directory as directory_routes
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     GlobaLeaksDirectoryListing,
     PublicRecordListing,
     SecureDropDirectoryListing,
@@ -96,6 +101,15 @@ def _legacy_public_record_listings() -> list[PublicRecordListing]:
     ]
 
 
+def _find_directory_card(panel: BeautifulSoup | Tag | None, display_name: str) -> Tag:
+    assert panel is not None
+    for card in panel.select("article.user"):
+        heading = card.select_one("h3")
+        if heading is not None and heading.get_text(" ", strip=True) == display_name:
+            return card
+    raise AssertionError(f"Could not find directory card for {display_name}")
+
+
 def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -168,6 +182,26 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert "Onion addresses require" not in banner_text
 
 
+def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    banner = all_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_link = banner.select_one("a")
+    assert banner_link is not None
+    assert banner_link.text.strip() == "Hush Line admin"
+    assert banner_link.get("href") == "/to/admin"
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
+    assert banner_text.startswith("🧪 Beta:")
+    assert "This list contains automated entries." in banner_text
+    assert "Contact the Hush Line admin for any corrections." in banner_text
+
+
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
@@ -185,6 +219,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
+    assert all_panel.select_one(".dirMeta") is None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
     assert "🌐 GlobaLeaks" not in all_panel.get_text(" ", strip=True)
     assert "🛡️ SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
@@ -249,12 +284,55 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     )
     assert admin_row["display_name"] == admin_user.primary_username.username
     assert admin_row["bio"] == "admin bio"
+    assert admin_row["account_category"] is None
+    assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False
     assert admin_row["is_securedrop"] is False
+    assert admin_row["city"] is None
+    assert admin_row["country"] is None
+    assert admin_row["subdivision"] is None
+    assert admin_row["subdivision_code"] is None
+    assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
+
+
+def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
+    user.account_category = AccountCategory.ACTIVIST.value
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["account_category"] == AccountCategory.ACTIVIST.value
+    assert row["account_category_label"] == "Activist"
+
+
+def test_directory_users_json_includes_legacy_account_category_label(
+    client: FlaskClient, user: User
+) -> None:
+    user.account_category = "journalist_newsroom"
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["account_category"] == "journalist_newsroom"
+    assert row["account_category_label"] == "Journalist / Newsroom"
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(
@@ -301,10 +379,32 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "public_record"
+
+
+def test_directory_public_record_cards_do_not_show_location(client: FlaskClient) -> None:
+    listing = _first_public_record_listing_or_skip()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    all_panel = soup.find(id="all")
+
+    public_record_card = _find_directory_card(public_records_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in public_record_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
 
 
 def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
@@ -320,8 +420,596 @@ def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskCl
         row for row in (response.json or []) if row["display_name"] == legacy_listing.name
     )
     assert legacy_row["entry_type"] == "public_record"
+    assert legacy_row["country"] == legacy_listing.geography.country
+    assert legacy_row["subdivision"] == legacy_listing.geography.subdivision
+    assert legacy_row["subdivision_code"] == legacy_listing.geography.subdivision_code
+    assert legacy_row["countries"] == list(legacy_listing.geography.countries)
     assert legacy_row["directory_section"] == "legacy_public_record"
     assert legacy_row["is_automated"] is True
+
+
+def test_directory_filters_public_records_by_country_and_region_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    new_york_listing = PublicRecordListing(
+        id="public-record-new-york",
+        slug="public-record~new-york",
+        name="New York Attorney",
+        website="https://newyork.example",
+        description="New York whistleblower attorney.",
+        city="New York",
+        state="NY",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    australia_listing = PublicRecordListing(
+        id="public-record-australia",
+        slug="public-record~australia",
+        name="Australia Attorney",
+        website="https://australia.example",
+        description="Australian whistleblower attorney.",
+        city="Sydney",
+        state="Australia",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, new_york_listing, australia_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?country=US&region=CA")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    all_panel = soup.find(id="all")
+    public_record_count = soup.find(id="public-record-count")
+
+    assert public_records_panel is not None
+    assert all_panel is not None
+    assert public_record_count is not None
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    all_text = all_panel.get_text(" ", strip=True)
+
+    assert "California Attorney" in public_records_text
+    assert "New York Attorney" not in public_records_text
+    assert "Australia Attorney" not in public_records_text
+    assert "California Attorney" in all_text
+    assert "New York Attorney" not in all_text
+    assert "Australia Attorney" not in all_text
+    assert public_record_count.get_text(" ", strip=True) == "1"
+
+
+def test_directory_attorney_filter_panel_hidden_by_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    australia_listing = PublicRecordListing(
+        id="public-record-australia",
+        slug="public-record~australia",
+        name="Australia Attorney",
+        website="https://australia.example",
+        description="Australian whistleblower attorney.",
+        city="Sydney",
+        state="Australia",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, australia_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="attorney-filters-toggle-shell")
+    panel_shell = soup.find(id="attorney-filters-panel-shell")
+    toggle = soup.find(id="attorney-filters-toggle")
+    panel = soup.find(id="attorney-filters-panel")
+    clear_filters_actions = soup.find(id="attorney-filters-actions")
+    country_select = soup.find(id="attorney-country-filter")
+    region_select = soup.find(id="attorney-region-filter")
+    region_label = soup.find("label", {"for": "attorney-region-filter"})
+    clear_filters_link = soup.find(id="attorney-filters-clear")
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle.get("aria-expanded") == "false"
+    assert panel is not None
+    assert panel.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert region_label is not None
+    assert region_label.get_text(" ", strip=True) == "State / Province / Region"
+    assert not region_select.has_attr("disabled")
+    assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
+    region_optgroups = region_select.find_all("optgroup")
+    assert [optgroup.get("label") for optgroup in region_optgroups] == ["United States"]
+    assert region_select.find("option", value="CA").get_text(" ", strip=True) == "California (1)"
+    assert country_select.get_text(" ", strip=True) == "All Australia (1) United States (1)"
+    assert clear_filters_actions is not None
+    assert clear_filters_actions.has_attr("hidden")
+    assert clear_filters_link is not None
+    assert not clear_filters_link.has_attr("hidden")
+
+
+def test_directory_attorney_filter_panel_shows_selected_filters(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    new_york_listing = PublicRecordListing(
+        id="public-record-new-york",
+        slug="public-record~new-york",
+        name="New York Attorney",
+        website="https://newyork.example",
+        description="New York whistleblower attorney.",
+        city="New York",
+        state="NY",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, new_york_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?country=US&region=CA")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="attorney-filters-toggle-shell")
+    panel_shell = soup.find(id="attorney-filters-panel-shell")
+    toggle = soup.find(id="attorney-filters-toggle")
+    panel = soup.find(id="attorney-filters-panel")
+    clear_filters_actions = soup.find(id="attorney-filters-actions")
+    country_select = soup.find(id="attorney-country-filter")
+    region_select = soup.find(id="attorney-region-filter")
+    clear_filters_link = (
+        panel.find("a", id="attorney-filters-clear", href=url_for("directory"))
+        if isinstance(panel, Tag)
+        else None
+    )
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle.get("aria-expanded") == "true"
+    assert panel is not None
+    assert not panel.has_attr("hidden")
+    assert clear_filters_actions is not None
+    assert not clear_filters_actions.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert clear_filters_link is not None
+    assert clear_filters_link.get_text(" ", strip=True) == "Clear Filters"
+    assert country_select.find("option", selected=True)["value"] == "United States"
+    assert country_select.find("option", selected=True).get_text(" ", strip=True) == "United States"
+    assert region_select.find("option", selected=True).get_text(" ", strip=True) == "California"
+    assert region_select.find("option", selected=True)["value"] == "CA"
+    assert not region_select.has_attr("disabled")
+
+
+def test_directory_users_json_filters_only_public_record_rows_by_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    new_york_listing = PublicRecordListing(
+        id="public-record-new-york",
+        slug="public-record~new-york",
+        name="New York Attorney",
+        website="https://newyork.example",
+        description="New York whistleblower attorney.",
+        city="New York",
+        state="NY",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    securedrop_listing = SecureDropDirectoryListing(
+        id="securedrop-sample",
+        slug="securedrop~sample",
+        name="Sample SecureDrop",
+        website="https://securedrop.example",
+        description="SecureDrop listing.",
+        directory_url="https://securedrop.example/directory",
+        landing_page_url="https://securedrop.example/landing",
+        onion_address="sample1234567890sample1234567890sample1234567890sample12.onion",
+        onion_name="Sample",
+        countries=("United States",),
+        languages=("English",),
+        topics=("Investigations",),
+        source_label="SecureDrop directory",
+        source_url="https://securedrop.example/source",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, new_york_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: (securedrop_listing,),
+    )
+
+    response = client.get(f"{url_for('directory_users')}?country=US&region=CA")
+    assert response.status_code == 200
+
+    rows = response.json or []
+    public_record_names = {
+        row["display_name"] for row in rows if row["entry_type"] == "public_record"
+    }
+    securedrop_names = {row["display_name"] for row in rows if row["entry_type"] == "securedrop"}
+
+    assert public_record_names == {"California Attorney"}
+    assert securedrop_names == {"Sample SecureDrop"}
+
+
+def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    new_york_listing = PublicRecordListing(
+        id="public-record-new-york",
+        slug="public-record~new-york",
+        name="New York Attorney",
+        website="https://newyork.example",
+        description="New York whistleblower attorney.",
+        city="New York",
+        state="NY",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    australia_listing = PublicRecordListing(
+        id="public-record-australia",
+        slug="public-record~australia",
+        name="Australia Attorney",
+        website="https://australia.example",
+        description="Australian whistleblower attorney.",
+        city="Sydney",
+        state="Australia",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, new_york_listing, australia_listing),
+    )
+
+    response = client.get(f"{url_for('directory_attorney_filters')}?country=US&region=CA")
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 2},
+        ],
+        "regions": {
+            "United States": [
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "NY", "label": "New York", "count": 1},
+            ]
+        },
+    }
+
+
+def test_normalized_attorney_filter_country_returns_none_for_blank_values() -> None:
+    assert directory_routes._normalized_attorney_filter_country("   ") is None
+
+
+def test_attorney_filter_state_infers_country_from_region_selection(app: Flask) -> None:
+    attorney_filter_metadata: dict[str, object] = {
+        "countries": [
+            {"code": "United States", "label": "United States", "count": 1},
+            {"code": "Australia", "label": "Australia", "count": 1},
+        ],
+        "regions": {
+            "Australia": [{"code": "NSW", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
+        },
+    }
+
+    with app.test_request_context("/directory?region=ca"):
+        assert directory_routes._attorney_filter_state(attorney_filter_metadata) == {
+            "country": "United States",
+            "region": "California",
+            "region_code": "CA",
+        }
+
+
+def test_attorney_filter_state_clears_invalid_region_code(app: Flask) -> None:
+    attorney_filter_metadata: dict[str, object] = {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {
+            "United States": [
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "NY", "label": "New York", "count": 1},
+            ]
+        },
+    }
+
+    with app.test_request_context("/directory?country=US&region=zz"):
+        assert directory_routes._attorney_filter_state(attorney_filter_metadata) == {
+            "country": "United States",
+            "region": None,
+            "region_code": None,
+        }
+
+
+def test_attorney_filter_metadata_skips_missing_country_and_subdivision_code() -> None:
+    listings = cast(
+        tuple[PublicRecordListing, ...],
+        (
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country=None,
+                    subdivision="California",
+                    subdivision_code="CA",
+                )
+            ),
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country="United States",
+                    subdivision="California",
+                    subdivision_code=None,
+                )
+            ),
+            SimpleNamespace(
+                geography=SimpleNamespace(
+                    country="United States",
+                    subdivision="California",
+                    subdivision_code="CA",
+                )
+            ),
+        ),
+    )
+
+    assert directory_routes._attorney_filter_metadata(listings) == {
+        "countries": [{"code": "United States", "label": "United States", "count": 2}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
+def test_directory_attorney_filters_include_normalized_country_values_outside_legacy_code_map(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    madagascar_listing = PublicRecordListing(
+        id="public-record-madagascar",
+        slug="public-record~madagascar",
+        name="Madagascar Attorney",
+        website="https://madagascar.example",
+        description="Madagascar whistleblower attorney.",
+        city="Antananarivo",
+        state="Madagascar",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (madagascar_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_attorney_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Madagascar", "label": "Madagascar", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
+        ],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+    page_response = client.get(f"{url_for('directory')}?country=Madagascar")
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    country_select = soup.find(id="attorney-country-filter")
+
+    assert public_records_panel is not None
+    assert country_select is not None
+    assert country_select.find("option", selected=True)["value"] == "Madagascar"
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    assert "Madagascar Attorney" in public_records_text
+    assert "California Attorney" not in public_records_text
+
+
+def test_directory_attorney_filters_support_non_us_subdivisions(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_south_wales_listing = PublicRecordListing(
+        id="public-record-new-south-wales",
+        slug="public-record~new-south-wales",
+        name="New South Wales Attorney",
+        website="https://newsouthwales.example",
+        description="New South Wales whistleblower attorney.",
+        city="Sydney",
+        state="Australia",
+        country="Australia",
+        subdivision="New South Wales",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (new_south_wales_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_attorney_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
+        ],
+        "regions": {
+            "Australia": [{"code": "New South Wales", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
+        },
+    }
+
+    page_response = client.get(
+        f"{url_for('directory')}?country=Australia&region=New%20South%20Wales"
+    )
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    region_select = soup.find(id="attorney-region-filter")
+
+    assert public_records_panel is not None
+    assert region_select is not None
+    assert region_select.find("option", selected=True)["value"] == "New South Wales"
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    assert "New South Wales Attorney" in public_records_text
+    assert "California Attorney" not in public_records_text
+
+
+def test_directory_attorney_filters_json_ignores_untrusted_query_values(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing,),
+    )
+
+    response = client.get(
+        f"{url_for('directory_attorney_filters')}?country=%3Cscript%3E&region=%3Cimg%3E"
+    )
+
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
+def test_directory_attorney_filters_json_returns_empty_metadata_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_attorney_filters"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {"countries": [], "regions": {}}
 
 
 def test_directory_securedrop_render_only_in_securedrop_and_all(
@@ -412,10 +1100,38 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == []
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "globaleaks_directory"
+
+
+def test_directory_globaleaks_cards_do_not_show_location(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    globaleaks_panel = soup.find(id="globaleaks")
+    all_panel = soup.find(id="all")
+
+    globaleaks_card = _find_directory_card(globaleaks_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in globaleaks_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
 
 
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
@@ -432,10 +1148,225 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["is_automated"] is True
     assert row["message_capable"] is False
     assert row["bio"] == listing.description
-    assert row["location"] == listing.location
+    assert "location" not in row
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
+    assert row["countries"] == list(listing.geography.countries)
     assert row["practice_tags"] == list(listing.topics)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "securedrop_directory"
+
+
+def test_directory_securedrop_cards_do_not_show_location(client: FlaskClient) -> None:
+    listing = _first_securedrop_listing_or_skip()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    securedrop_panel = soup.find(id="securedrop")
+    all_panel = soup.find(id="all")
+
+    securedrop_card = _find_directory_card(securedrop_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in securedrop_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
+
+
+def test_public_record_listing_normalizes_us_state_into_country_and_subdivision() -> None:
+    listing = PublicRecordListing(
+        id="public-record-usa",
+        slug="public-record~usa",
+        name="US Public Record Listing",
+        website="https://example.org",
+        description="US attorney listing.",
+        city="Chicago",
+        state="IL",
+        practice_tags=("Labor",),
+        source_label="Official source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Chicago"
+    assert listing.geography.country == "United States"
+    assert listing.geography.subdivision == "Illinois"
+    assert listing.geography.subdivision_code == "IL"
+    assert listing.countries == ("United States",)
+    assert listing.geography.countries == ("United States",)
+    assert listing.location == "Chicago, Illinois, United States"
+
+
+def test_public_record_listing_normalizes_legacy_country_stored_in_state() -> None:
+    listing = PublicRecordListing(
+        id="public-record-legacy",
+        slug="public-record~legacy",
+        name="Legacy Public Record Listing",
+        website="https://example.org",
+        description="Legacy attorney listing.",
+        city="Sydney",
+        state="Australia",
+        practice_tags=("Whistleblower",),
+        source_label="Legacy source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Sydney"
+    assert listing.geography.country == "Australia"
+    assert listing.geography.subdivision is None
+    assert listing.geography.subdivision_code is None
+    assert listing.geography.countries == ("Australia",)
+    assert listing.location == "Sydney, Australia"
+
+
+def test_public_record_listing_preserves_non_us_subdivision_code() -> None:
+    listing = PublicRecordListing(
+        id="public-record-australia-state",
+        slug="public-record~australia-state",
+        name="Australia Public Record Listing",
+        website="https://example.org",
+        description="Australian attorney listing.",
+        city="Sydney",
+        state="Australia",
+        country="Australia",
+        subdivision="New South Wales",
+        practice_tags=("Whistleblower",),
+        source_label="Official source",
+        source_url="https://example.org/source",
+    )
+
+    assert listing.geography.city == "Sydney"
+    assert listing.geography.country == "Australia"
+    assert listing.geography.subdivision == "New South Wales"
+    assert listing.geography.subdivision_code == "New South Wales"
+    assert listing.geography.countries == ("Australia",)
+    assert listing.location == "Sydney, New South Wales, Australia"
+
+
+def test_public_record_listing_load_seed_rows_returns_empty_list_for_missing_file(
+    tmp_path: Path,
+) -> None:
+    missing_path = tmp_path / "missing-public-record-seed.json"
+
+    assert public_record_listing_module._load_seed_rows(missing_path) == []
+
+
+def test_public_record_listings_deduplicate_strict_and_legacy_seed_collisions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    strict_seed_path = tmp_path / "strict-public-record-seed.json"
+    legacy_seed_path = tmp_path / "legacy-public-record-seed.json"
+    strict_rows: list[dict[str, object]] = [
+        {
+            "id": "strict-primary",
+            "slug": "public-record~strict-primary",
+            "name": "Strict Primary Listing",
+            "website": "https://strict-primary.example",
+            "description": "Primary strict listing.",
+            "city": "Chicago",
+            "state": "IL",
+            "practice_tags": ["Labor"],
+            "source_label": "Strict source",
+        }
+    ]
+    legacy_rows: list[dict[str, object]] = [
+        {
+            "id": "strict-primary",
+            "slug": "public-record~legacy-duplicate-id",
+            "name": "Legacy Duplicate Id Listing",
+            "website": "https://legacy-duplicate-id.example",
+            "description": "Legacy listing with a duplicate id.",
+            "city": "New York",
+            "state": "NY",
+            "practice_tags": ["Privacy"],
+            "source_label": "Legacy source",
+        },
+        {
+            "id": "legacy-duplicate-slug",
+            "slug": "public-record~strict-primary",
+            "name": "Legacy Duplicate Slug Listing",
+            "website": "https://legacy-duplicate-slug.example",
+            "description": "Legacy listing with a duplicate slug.",
+            "city": "Sacramento",
+            "state": "CA",
+            "practice_tags": ["Employment"],
+            "source_label": "Legacy source",
+        },
+        {
+            "id": "legacy-unique",
+            "slug": "public-record~legacy-unique",
+            "name": "Legacy Unique Listing",
+            "website": "https://legacy-unique.example",
+            "description": "Legacy listing that should remain after deduplication.",
+            "city": "Sydney",
+            "state": "Australia",
+            "practice_tags": ["Whistleblower"],
+            "source_label": "Legacy source",
+        },
+    ]
+
+    def load_seed_rows(path: Path) -> list[dict[str, object]]:
+        if path == strict_seed_path:
+            return strict_rows
+        if path == legacy_seed_path:
+            return legacy_rows
+        raise AssertionError(f"Unexpected path: {path}")
+
+    public_record_listing_module.get_public_record_listings.cache_clear()
+    monkeypatch.setattr(
+        public_record_listing_module,
+        "_seed_path",
+        lambda: strict_seed_path,
+    )
+    monkeypatch.setattr(
+        public_record_listing_module,
+        "_legacy_seed_path",
+        lambda: legacy_seed_path,
+    )
+    monkeypatch.setattr(public_record_listing_module, "_load_seed_rows", load_seed_rows)
+
+    try:
+        listings = public_record_listing_module.get_public_record_listings()
+    finally:
+        public_record_listing_module.get_public_record_listings.cache_clear()
+
+    assert len(listings) == 2
+    assert {listing.id for listing in listings} == {"legacy-unique", "strict-primary"}
+
+    strict_listing = next(listing for listing in listings if listing.id == "strict-primary")
+    assert strict_listing.slug == "public-record~strict-primary"
+    assert strict_listing.directory_section == "public_record"
+
+    legacy_listing = next(listing for listing in listings if listing.id == "legacy-unique")
+    assert legacy_listing.slug == "public-record~legacy-unique"
+    assert legacy_listing.directory_section == "legacy_public_record"
+
+
+def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_country() -> None:
+    listing = SecureDropDirectoryListing(
+        id="securedrop-multi-country",
+        slug="securedrop~multi-country",
+        name="Multi-Country SecureDrop Listing",
+        website="https://example.org",
+        description="Multi-country listing.",
+        directory_url="https://securedrop.org/directory/multi-country/",
+        landing_page_url="https://example.org/landing",
+        onion_address="sample1234567890sample1234567890sample1234567890sample12.onion",
+        onion_name="Example",
+        countries=("All countries", "USA"),
+        languages=("English",),
+        topics=("investigations",),
+        source_label="SecureDrop directory",
+        source_url="https://securedrop.org/api/v1/directory/",
+    )
+
+    assert listing.geography.country is None
+    assert listing.geography.subdivision is None
+    assert listing.geography.countries == ("All countries", "United States")
+    assert listing.location == "All countries, United States"
 
 
 def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
@@ -464,6 +1395,14 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Alpha Public Listing",
             website="https://alpha.example",
             description="alpha description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision="California",
+                subdivision_code="CA",
+                countries=("United States",),
+                location="Global",
+            ),
             location="Global",
             practice_tags=("Law",),
             source_label="Public records",
@@ -480,6 +1419,14 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Charlie SecureDrop",
             website="https://charlie.example",
             description="charlie description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision=None,
+                subdivision_code=None,
+                countries=("United States",),
+                location="Global",
+            ),
             location="Global",
             topics=("Investigations",),
             source_label="SecureDrop directory",
@@ -496,6 +1443,14 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
             name="Delta GlobaLeaks",
             website="https://delta.example",
             description="delta description",
+            geography=SimpleNamespace(
+                city=None,
+                country="Italy",
+                subdivision=None,
+                subdivision_code=None,
+                countries=("Italy",),
+                location="Global",
+            ),
             location="Global",
             source_label="Automated GlobaLeaks discovery dataset",
             source_url="https://example.org/globaleaks",
@@ -629,10 +1584,19 @@ def test_public_record_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.description in page_text
     assert listing.website in response.text
     assert "Source" in page_text
+    assert "Location" not in page_text
     assert listing.source_url is not None
     source_link = soup.find("a", href=listing.source_url)
     assert source_link is not None
     assert "Practice Areas" not in page_text
+    if listing.geography.city:
+        assert listing.geography.city in page_text
+    if listing.geography.subdivision:
+        assert "State / Region" in page_text
+        assert listing.geography.subdivision in page_text
+    if listing.geography.country:
+        assert "Country" in page_text
+        assert listing.geography.country in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in page_text
 
@@ -657,6 +1621,24 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
     assert response.status_code == 404
 
 
+@pytest.mark.parametrize(
+    ("endpoint", "patch_target"),
+    [
+        ("public_record_listing", "hushline.routes.directory.get_public_record_listing"),
+        ("globaleaks_listing", "hushline.routes.directory.get_globaleaks_directory_listing"),
+        ("securedrop_listing", "hushline.routes.directory.get_securedrop_directory_listing"),
+    ],
+)
+def test_directory_listing_routes_return_404_for_missing_slugs(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, endpoint: str, patch_target: str
+) -> None:
+    monkeypatch.setattr(patch_target, lambda _slug: None)
+
+    response = client.get(url_for(endpoint, slug="missing-listing"))
+
+    assert response.status_code == 404
+
+
 def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
@@ -669,6 +1651,7 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert listing.description in page_text
     assert listing.onion_address in page_text
     assert listing.source_url in response.text
+    assert "Location" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
@@ -706,6 +1689,7 @@ def test_globaleaks_listing_page_is_read_only(
     assert listing.description in page_text
     assert listing.submission_url in response.text
     assert listing.source_url in response.text
+    assert "Location" not in page_text
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 

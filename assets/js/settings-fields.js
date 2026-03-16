@@ -1,4 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
+  function getFieldFormRoot(fieldType) {
+    return fieldType.closest("form");
+  }
+
   // All field forms start closed
   document
     .querySelectorAll(".field-form-content")
@@ -36,8 +40,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Hide choices when the field type is text or multiline_text
   function updateChoicesVisibility(fieldType) {
-    const choicesContainer =
-      fieldType.parentElement.parentElement.querySelector(`.choices-container`);
+    const choicesContainer = getFieldFormRoot(fieldType)?.querySelector(
+      ".choices-container",
+    );
+    if (!choicesContainer) {
+      return;
+    }
     if (fieldType.value === "text" || fieldType.value === "multiline_text") {
       choicesContainer.style.display = "none";
     } else {
@@ -54,12 +62,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Hide required checkbox when the field type is multiple choice
   function updateRequiredVisibility(fieldType) {
-    const requiredCheckboxContainer =
-      fieldType.parentElement.parentElement.querySelector(
-        `.required-checkbox-container`,
-      );
-    const requiredCheckbox =
-      fieldType.parentElement.parentElement.querySelector(`.required-checkbox`);
+    const requiredCheckboxContainer = getFieldFormRoot(fieldType)?.querySelector(
+      ".required-checkbox-container",
+    );
+    const requiredCheckbox = getFieldFormRoot(fieldType)?.querySelector(
+      ".required-checkbox",
+    );
+    if (!requiredCheckboxContainer || !requiredCheckbox) {
+      return;
+    }
     if (fieldType.value === "choice_multiple") {
       requiredCheckbox.checked = false;
       requiredCheckboxContainer.style.display = "none";

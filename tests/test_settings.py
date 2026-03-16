@@ -8,10 +8,12 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.security import generate_password_hash
 
-from hushline.config import AliasMode, FieldsMode
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     AuthenticationLog,
     Message,
     OrganizationSetting,
@@ -20,6 +22,7 @@ from hushline.model import (
     User,
     Username,
 )
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 from hushline.settings import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -47,6 +50,17 @@ from hushline.settings.notifications import (
     ToggleNotificationsForm,
 )
 from tests.helpers import form_to_data
+
+
+def test_user_account_category_persists(user: User) -> None:
+    user.account_category = AccountCategory.NONPROFIT.value
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert updated_user.account_category == AccountCategory.NONPROFIT.value
+    assert updated_user.account_category_label == "Nonprofit"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -195,6 +209,106 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
     assert "Empty Inbox" in response.text
     assert "Invalid username or password" not in response.text
     assert "/inbox" in response.request.url
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_from_native_werkzeug_scrypt_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    original_password_hash = generate_password_hash(user_password, method="scrypt")
+    new_password = "ChangedPassword123!!"
+
+    user._password_hash = original_password_hash
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash != original_password_hash
+    assert user.password_hash.startswith("$scrypt$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_writes_pinned_werkzeug_scrypt_hash_when_enabled(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
+    new_password = "ChangedPassword123!!"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -879,6 +993,42 @@ def test_change_bio(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": AccountCategory.DEVELOPER.value,
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.DEVELOPER.value
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category_rejects_invalid_value(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": "not-a-real-category",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "Invalid account category." in response.text
+
+    db.session.refresh(user)
+    assert user.account_category is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
     data = {
         "bio": str(uuid4()),
@@ -907,6 +1057,27 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
         value = f"extra_field_value{i}"
         assert getattr(updated_user, label) == data[label]
         assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_preserves_account_category(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.account_category = AccountCategory.JOURNALIST.value
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "bio": str(uuid4()),
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.JOURNALIST.value
 
 
 @pytest.mark.usefixtures("_authenticated_user")
