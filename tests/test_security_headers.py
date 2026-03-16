@@ -19,6 +19,13 @@ def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> No
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
 
 
+def test_base_template_uses_external_no_js_bootstrap_script(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+    assert 'src="/static/no-js.js"' in response.text
+    assert 'document.documentElement.classList.remove("no-js");' not in response.text
+
+
 def test_x_frame_options(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
