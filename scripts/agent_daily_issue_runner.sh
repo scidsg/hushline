@@ -1109,9 +1109,12 @@ sanitize_failure_excerpt() {
     -e "s#${escaped_home}/#~/#g" \
     -e 's#/var/folders/[^[:space:]]+#/var/folders/[redacted]#g' \
     -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g' \
+    -e 's#(https?://)[^/@[:space:]]+:[^/@[:space:]]+@#\1[redacted]@#g' \
     -e 's#(authorization[[:space:]]*:[[:space:]]*bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
-    -e 's#(^|[[:space:][:punct:]])(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password|passwd|pwd)([[:space:]]*[:=][[:space:]]*|[[:space:]]+)[^[:space:],;]+#\1\2\3[redacted]#Ig' \
-    -e 's#(bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig'
+    -e 's#\b(Bearer|Basic)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
+    -e 's/\b(AKIA|ASIA)[A-Z0-9]{16}\b/[redacted-aws-access-key]/g' \
+    -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[redacted-email]/g' \
+    -e 's#(^|[[:space:][:punct:]])(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password|passwd|pwd|cookie|session([_-]?id)?|client[_-]?secret|private[_-]?key)([[:space:]]*[:=][[:space:]]*|[[:space:]]+)[^[:space:],;]+#\1\2\4[redacted]#Ig'
 }
 
 recent_failure_block_from_text() {
