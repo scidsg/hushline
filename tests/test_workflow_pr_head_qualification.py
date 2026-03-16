@@ -38,11 +38,23 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
 
 def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> None:
     workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
+    artifact_section = workflow_text.split("      - name: Download screenshot artifact", 1)[
+        1
+    ].split("      - name: Publish screenshots to hushline-screenshots", 1)[0]
     archive_section = workflow_text.split(
         "      - name: Publish screenshots to hushline-screenshots", 1
     )[1]
 
+    assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
     assert "SCREENSHOTS_DEFAULT_BRANCH: main" in archive_section
+    assert "--depth 1" in archive_section
+    assert "--filter=blob:none" in archive_section
+    assert "--single-branch" in archive_section
+    assert "git sparse-checkout init --cone" in archive_section
+    assert (
+        "git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "
+        '"releases/${RELEASE_KEY}"' in archive_section
+    )
     assert (
         'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"'
         in archive_section
