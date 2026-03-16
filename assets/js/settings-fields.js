@@ -168,7 +168,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .forEach(function (button) {
       const count = button.dataset.messageCount;
       button.onclick = function () {
-        confirm(
+        return confirm(
           [
             "Deleting this field will delete the associated values on all messages.",
             `This will affect ${count} message(s) and cannot be undone.`,
