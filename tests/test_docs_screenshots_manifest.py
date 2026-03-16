@@ -71,3 +71,44 @@ def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> 
         {"type": "click", "selector": "#globaleaks-tab"},
         {"type": "wait_for", "selector": "#globaleaks.tab-content.active"},
     ]
+
+
+def test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fill() -> None:
+    scenes = _scene_map()
+
+    assert scenes["guest-message-submitted"]["actions"] == [
+        {
+            "type": "fill_if_exists",
+            "selector": "#field_1, [name='field_1']",
+            "value": "Technology",
+        },
+        {
+            "type": "fill_if_exists",
+            "selector": "#field_2, [name='field_2']",
+            "value": "Screenshot test value 2",
+        },
+        {
+            "type": "fill_if_exists",
+            "selector": "#field_4, [name='field_4']",
+            "value": "Screenshot test value 4",
+        },
+        {
+            "type": "click_if_exists",
+            "selector": "#messageForm input[type='checkbox']",
+        },
+        {
+            "type": "fill_if_exists",
+            "selector": "#content, textarea#content, textarea.form-field",
+            "value": "Screenshot test message body.",
+        },
+        {"type": "solve_math_captcha"},
+        {
+            "type": "submit_form",
+            "selector": "#messageForm",
+            "waitForNetworkIdle": True,
+        },
+        {
+            "type": "wait_for",
+            "selector": "#reply-url",
+        },
+    ]
