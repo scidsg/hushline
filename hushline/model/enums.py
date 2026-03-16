@@ -126,7 +126,7 @@ class AccountCategory(enum.Enum):
             case self.NEWSROOM:
                 return "Newsroom"
             case self.LAWYER:
-                return "Lawyer"
+                return "Attorney"
             case self.LAW_FIRM:
                 return "Law Firm"
             case self.BUSINESS:
