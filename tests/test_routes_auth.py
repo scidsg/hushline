@@ -13,6 +13,7 @@ from hushline.auth import (
     AUTH_SESSION_KEYS,
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+    POST_AUTH_REDIRECT_SESSION_KEY,
 )
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
@@ -238,6 +239,28 @@ def test_login_redirects_to_select_tier_when_premium_enabled(
     assert response.headers["Location"].endswith(url_for("premium.select_tier"))
 
 
+def test_login_redirects_to_original_protected_page(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+    with client.session_transaction() as sess:
+        assert sess[POST_AUTH_REDIRECT_SESSION_KEY] == url_for("settings.profile")
+
+    response = client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.profile"))
+
+    with client.session_transaction() as sess:
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+
+
 def test_login_clears_auth_session_when_2fa_commit_fails(
     app: Flask, client: FlaskClient, user: User, user_password: str
 ) -> None:
@@ -351,6 +374,40 @@ def test_verify_2fa_login_success_redirects_to_select_tier_when_enabled(
     )
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("premium.select_tier"))
+
+
+def test_verify_2fa_login_redirects_to_original_protected_page(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    totp_secret = pyotp.random_base32()
+    user.totp_secret = totp_secret
+    db.session.commit()
+
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+    with client.session_transaction() as sess:
+        assert sess[POST_AUTH_REDIRECT_SESSION_KEY] == url_for("settings.profile")
+
+    response = client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("verify_2fa_login"))
+
+    response = client.post(
+        url_for("verify_2fa_login"),
+        data={"verification_code": pyotp.TOTP(totp_secret).now()},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.profile"))
+
+    with client.session_transaction() as sess:
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
 
 
 def test_verify_2fa_login_failed_rehash_commit_clears_auth_session(
