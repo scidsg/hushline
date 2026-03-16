@@ -13,6 +13,7 @@ import hushline.model.public_record_listing as public_record_listing_module
 import hushline.routes.directory as directory_routes
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     GlobaLeaksDirectoryListing,
     PublicRecordListing,
     SecureDropDirectoryListing,
@@ -181,6 +182,26 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert "Onion addresses require" not in banner_text
 
 
+def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    banner = all_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_link = banner.select_one("a")
+    assert banner_link is not None
+    assert banner_link.text.strip() == "Hush Line admin"
+    assert banner_link.get("href") == "/to/admin"
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
+    assert banner_text.startswith("🧪 Beta:")
+    assert "This list contains automated entries." in banner_text
+    assert "Contact the Hush Line admin for any corrections." in banner_text
+
+
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
@@ -198,6 +219,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
+    assert all_panel.select_one(".dirMeta") is None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
     assert "🌐 GlobaLeaks" not in all_panel.get_text(" ", strip=True)
     assert "🛡️ SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
@@ -262,6 +284,8 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     )
     assert admin_row["display_name"] == admin_user.primary_username.username
     assert admin_row["bio"] == "admin bio"
+    assert admin_row["account_category"] is None
+    assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
     assert isinstance(admin_row["has_pgp_key"], bool)
@@ -273,6 +297,23 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["subdivision_code"] is None
     assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
+
+
+def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
+    user.account_category = AccountCategory.ACTIVIST.value
+    user.primary_username.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["account_category"] == AccountCategory.ACTIVIST.value
+    assert row["account_category_label"] == "Activist"
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(

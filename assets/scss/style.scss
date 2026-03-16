@@ -237,6 +237,19 @@
     background-image: url("../img/dropdown.png");
   }
 
+  .select-shell::after {
+    background-image: url("../img/dropdown.png");
+  }
+
+  #account_category {
+    color: var(--color-text);
+    background-image: none;
+  }
+
+  #account_category:has(option:checked[value=""]) {
+    color: var(--color-text-light);
+  }
+
   code,
   pre {
     border: var(--border);
@@ -770,6 +783,19 @@
   select {
     appearance: none;
     background-image: url("../img/dropdown-dm.png");
+  }
+
+  .select-shell::after {
+    background-image: url("../img/dropdown-dm.png");
+  }
+
+  #account_category {
+    color: var(--color-text-dark);
+    background-image: none;
+  }
+
+  #account_category:has(option:checked[value=""]) {
+    color: var(--color-text-dark-alt);
   }
 
   code,
@@ -1450,7 +1476,7 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
 }
 
 .metric p:nth-child(2n) {
-  font-size: 2rem;
+  font-size: 1.75rem;
   margin: 0.5rem 0 0.125rem 0;
 }
 
@@ -1779,9 +1805,13 @@ select {
   font-family: var(--font-sans);
 }
 
-input,
+input:not([type="file"]),
 select {
   height: 44px;
+}
+
+select {
+  line-height: 1.75;
 }
 
 input:disabled,
@@ -2553,15 +2583,45 @@ input:focus {
 .directory-filter-group {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .directory-filter-group label {
   margin-bottom: 0.5rem;
 }
 
-.directory-filter-group select {
+.select-shell {
+  display: block;
+  position: relative;
+}
+
+.select-shell > select {
+  background-image: none;
+  padding-right: 2.5rem;
+}
+
+.directory-filter-group .select-shell > select {
   margin-bottom: 0;
   line-height: 1.75;
+}
+
+.select-shell::after {
+  content: "";
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  width: 0.625rem;
+  height: 0.625rem;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(0deg);
+  transition: transform 0.3s ease;
+}
+
+.select-shell:has(> select.select-open)::after {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .directory-filter-actions {

@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash
 from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     AuthenticationLog,
     Message,
     OrganizationSetting,
@@ -49,6 +50,17 @@ from hushline.settings.notifications import (
     ToggleNotificationsForm,
 )
 from tests.helpers import form_to_data
+
+
+def test_user_account_category_persists(user: User) -> None:
+    user.account_category = AccountCategory.NONPROFIT.value
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert updated_user.account_category == AccountCategory.NONPROFIT.value
+    assert updated_user.account_category_label == "Nonprofit"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -981,6 +993,42 @@ def test_change_bio(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": AccountCategory.DEVELOPER.value,
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.DEVELOPER.value
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category_rejects_invalid_value(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": "not-a-real-category",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "Invalid account category." in response.text
+
+    db.session.refresh(user)
+    assert user.account_category is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
     data = {
         "bio": str(uuid4()),
@@ -1009,6 +1057,27 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
         value = f"extra_field_value{i}"
         assert getattr(updated_user, label) == data[label]
         assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_preserves_account_category(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.account_category = AccountCategory.JOURNALIST.value
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "bio": str(uuid4()),
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.JOURNALIST.value
 
 
 @pytest.mark.usefixtures("_authenticated_user")

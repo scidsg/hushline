@@ -55,11 +55,11 @@ def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> 
         {"type": "wait_for", "selector": "#attorney-filters-panel:not([hidden])"},
         {
             "type": "wait_for",
-            "selector": "#attorney-country-filter option:checked[value='United States']",
+            "selector": "#attorney-country-filter:has(option:checked[value='United States'])",
         },
         {
             "type": "wait_for",
-            "selector": "#attorney-region-filter option:checked[value='CA']",
+            "selector": "#attorney-region-filter:has(option:checked[value='CA'])",
         },
     ]
     assert scenes["guest-directory-attorney-adam-j-levitt"]["waitForSelector"] == "h2.submit"

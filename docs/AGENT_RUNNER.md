@@ -2,7 +2,7 @@
 
 Script: `scripts/agent_daily_issue_runner.sh`
 
-This runner runs directly in the local repo and now executes the full local CI-equivalent gate set before opening a PR.
+This runner runs directly in the local repo and performs a narrow local gate before opening a PR.
 
 ## Execution Flow
 
@@ -21,7 +21,6 @@ This runner runs directly in the local repo and now executes the full local CI-e
 6. Reset local Docker/runtime state:
    - `docker compose down -v --remove-orphans`
    - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
-   - `docker system prune -af --volumes`
    - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
 7. Start and seed stack:
    - `docker compose up -d --build`
@@ -39,24 +38,11 @@ This runner runs directly in the local repo and now executes the full local CI-e
 11. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
-    - `make workflow-security-checks`
     - `make test` (full suite)
-    - `make test-ci-alembic`
-    - `make test-ccpa-compliance` when CCPA workflow trigger paths change
-    - `make test-gdpr-compliance` when GDPR workflow trigger paths change
-    - `make test-e2ee-privacy-regressions` when E2EE/privacy workflow trigger paths change
-    - `make test-migration-smoke` when migration workflow trigger paths change
-    - `make audit-python`
-    - `make audit-node-runtime`
-    - `make audit-node-full` when Node dependency manifests change (`package.json` / `package-lock.json` / `npm-shrinkwrap.json`)
-    - `make w3c-validators`
-    - `make lighthouse-accessibility`
-    - `make lighthouse-performance` when lighthouse-performance workflow trigger paths change
-    - Every executed check gets a local self-heal retry before handing failures to Codex.
+    - The runner stops at the first failing gate, hands that failure back to Codex, and reruns from `make lint` on the next self-heal attempt.
     - Lint failures only run deterministic `make fix` self-heal when the failure looks auto-fixable (for example Ruff formatting/check or Prettier); non-auto-fixable lint failures go straight back to Codex.
-    - Runtime-dependent checks (tests, W3C, Lighthouse) self-heal by restarting the local stack and reseeding dev data, then retrying once.
-    - If the issue has label `test-gap`, require the referenced file in the issue title/body to show `0` misses and `100%` coverage in the test output table.
-    - If local dependency audits are blocked by environment/network issues, continue with explicit PR note and require a passing `Dependency Security Audit` workflow before merge.
+    - Runtime-dependent tests self-heal by restarting the local stack and reseeding dev data, then retrying once.
+    - The broader CI workflow matrix still runs on the PR after branch push; the runner no longer tries to mirror that entire matrix locally.
 12. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
     - Persisted logs are sanitized before commit to remove developer filesystem paths, emails, and Codex session metadata.
@@ -145,7 +131,7 @@ This runner runs directly in the local repo and now executes the full local CI-e
       v
 +-----------------------------------------------+
 | Fix/self-heal loop                            |
-| Run: lint, test, dependency audits, test-gap  |
+| Run: lint, test                               |
 +-----------------------------------------------+
       |
       v

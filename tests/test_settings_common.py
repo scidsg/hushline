@@ -12,7 +12,15 @@ from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
+from hushline.model import (
+    AccountCategory,
+    FieldDefinition,
+    FieldType,
+    FieldValue,
+    Message,
+    User,
+    Username,
+)
 from hushline.settings.common import (
     _is_blocked_ip,
     _is_safe_verification_url,
@@ -110,6 +118,44 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             )
             assert not username_form.validate()
             assert username_form.new_username.errors
+
+
+def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict({"account_category": "invalid-category", "bio": "valid bio"})
+        )
+        assert not form.validate()
+        assert form.account_category.errors == ["Invalid account category."]
+
+        valid_form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "account_category": AccountCategory.BUSINESS.value,
+                    "bio": "valid bio",
+                }
+            )
+        )
+        assert valid_form.validate()
+
+
+def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
+    with app.app_context():
+        form = ProfileForm()
+
+    assert form.account_category.choices[0] == ("", "Select")
+
+    labels = [label for value, label in form.account_category.choices if value]
+
+    assert "Journalist" in labels
+    assert "Newsroom" in labels
+    assert "Attorney" in labels
+    assert "Law Firm" in labels
+    assert "Developer" in labels
+    assert "Security Researcher" in labels
+    assert "Journalist / Newsroom" not in labels
+    assert "Lawyer / Law Firm" not in labels
+    assert "Developer / Security Researcher" not in labels
 
 
 def test_is_blocked_ip_classification() -> None:
