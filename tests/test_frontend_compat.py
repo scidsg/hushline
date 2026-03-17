@@ -98,6 +98,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
+    assert 'return user.account_category === "lawyer";' in directory_verified_js
+    assert "if (!user.is_public_record && !isAttorneyUser(user)) {" in directory_verified_js
+    assert "if (isAttorneyUser(user) && !matchesAttorneyFilters(user)) {" in directory_verified_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
     assert "function escapeHtml(value)" in user_search_js

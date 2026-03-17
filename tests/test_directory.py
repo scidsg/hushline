@@ -134,7 +134,10 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     assert banner_link.text.strip() == "Hush Line admin"
     assert banner_link.get("href") == "/to/admin"
     banner_text = public_records_panel.get_text(" ", strip=True)
-    assert "Beta: These listings are automated and pulled from public records." in banner_text
+    assert (
+        "Beta: This tab includes self-reported attorneys and automated listings pulled from "
+        "public records." in banner_text
+    )
     assert "Message the Hush Line admin for any corrections." in banner_text
 
 
@@ -358,6 +361,74 @@ def test_directory_users_json_includes_legacy_account_category_label(
     )
     assert row["account_category"] == "journalist_newsroom"
     assert row["account_category_label"] == "Journalist / Newsroom"
+
+
+def test_directory_self_reported_attorneys_render_in_attorneys_tab(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Self-Reported Attorney"
+    user.primary_username.bio = "Attorney profile."
+    user2.account_category = AccountCategory.ACTIVIST.value
+    user2.primary_username.show_in_directory = True
+    user2.primary_username._display_name = "Non-Attorney"
+    db.session.commit()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    public_record_count = soup.find(id="public-record-count")
+
+    assert public_records_panel is not None
+    assert public_record_count is not None
+    assert "Self-Reported Attorney" in public_records_panel.get_text(" ", strip=True)
+    assert "Non-Attorney" not in public_records_panel.get_text(" ", strip=True)
+
+    attorney_card = _find_directory_card(public_records_panel, "Self-Reported Attorney")
+    attorney_link = attorney_card.select_one("a")
+    assert attorney_link is not None
+    assert attorney_link.get("href") == url_for("profile", username=user.primary_username.username)
+    assert attorney_link.get_text(" ", strip=True) == "View Profile"
+    assert public_record_count.get_text(" ", strip=True) == str(
+        len(get_public_record_listings()) + 1
+    )
+
+
+def test_directory_filters_self_reported_attorneys_by_country_and_region_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Illinois Attorney"
+    user2.account_category = AccountCategory.LAWYER.value
+    user2.country = "US"
+    user2.subdivision = "CA"
+    user2.primary_username.show_in_directory = True
+    user2.primary_username._display_name = "California Attorney"
+    db.session.commit()
+
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?country=US&region=IL")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    public_record_count = soup.find(id="public-record-count")
+
+    assert public_records_panel is not None
+    assert public_record_count is not None
+    public_records_text = public_records_panel.get_text(" ", strip=True)
+    assert "Illinois Attorney" in public_records_text
+    assert "California Attorney" not in public_records_text
+    assert public_record_count.get_text(" ", strip=True) == "1"
 
 
 def test_directory_public_records_render_only_in_public_records_and_all(
@@ -788,6 +859,29 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
                 {"code": "NY", "label": "New York", "count": 1},
             ]
         },
+    }
+
+
+def test_directory_attorney_filters_json_includes_self_reported_attorneys(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user2.account_category = AccountCategory.ACTIVIST.value
+    user2.country = "US"
+    user2.subdivision = "CA"
+    user2.primary_username.show_in_directory = True
+    db.session.commit()
+
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+
+    response = client.get(url_for("directory_attorney_filters"))
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "IL", "label": "Illinois", "count": 1}]},
     }
 
 
