@@ -67,3 +67,17 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     assert 'screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"' not in archive_section
     assert "gh pr create \\" not in archive_section
     assert 'gh pr merge "$pr_url" \\' not in archive_section
+
+
+def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -> None:
+    workflow_text = _workflow_text(".github/workflows/dev_deploy.yml")
+
+    assert workflow_text.count("- name: Generate session fernet key") == 2
+    assert workflow_text.count("python3 - <<'PY' >> \"$GITHUB_OUTPUT\"") == 2
+    assert "base64.urlsafe_b64encode(os.urandom(32)).decode()" in workflow_text
+    assert (
+        workflow_text.count(
+            'SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"'
+        )
+        == 4
+    )
