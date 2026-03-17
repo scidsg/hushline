@@ -90,6 +90,47 @@ Why this is the best first pilot:
 
 Keep `/email-headers` as the fallback pilot only if maintainers want a non-settings control sample first. It is lower risk than `/settings/auth`, but it proves less of the settings-specific dispatch pattern that issue #647 is concerned with.
 
+## Approved Multi-Form Route Convention
+
+For any migrated route that renders multiple independent forms on one endpoint, use this pattern:
+
+1. Instantiate every form at the top of the route on both `GET` and `POST`.
+2. Select the submitted form once, before validation, by checking the bound submit fields for that route.
+3. Validate and handle only the submitted form.
+4. Populate default field values only for forms that were not just submitted, so invalid POSTs preserve the user's entered values.
+5. Keep request-, session-, database-, crypto-, or network-dependent validation in the route or its dedicated handler, not in a generic dispatch helper.
+
+Minimal route shape:
+
+```python
+form_a = FormA()
+form_b = FormB()
+submitted_form = next(
+    (form for form in (form_a, form_b) if form.submit.name in request.form),
+    None,
+)
+
+if submitted_form is not form_a:
+    form_a.field.data = existing_value
+
+status_code = 200
+if request.method == "POST":
+    if submitted_form is form_a and form_a.validate():
+        return handle_form_a(form_a)
+    if submitted_form is form_b and form_b.validate():
+        return handle_form_b(form_b)
+    form_error()
+    status_code = existing_invalid_post_status
+
+return render_template(...), status_code
+```
+
+Notes:
+
+- The submitted-form selection should stay route-local unless several routes prove they need the exact same helper.
+- Routes with multiple submit buttons on one form may still branch on the bound submit fields for that form, but should keep that branching explicit and close to the route handler.
+- CSRF handling stays unchanged: each rendered form keeps its own `hidden_tag()` and retains the route's current failure behavior.
+
 ## Pilot Implementation Plan
 
 Scope only one route/template/test cluster:
@@ -299,6 +340,8 @@ Backout:
 
 Before implementation begins on any phase, lock in route contracts first.
 
+## Minimum Regression Checklist
+
 For every migrated endpoint, add or confirm tests for:
 
 - successful POST for each form on the page
@@ -307,6 +350,9 @@ For every migrated endpoint, add or confirm tests for:
 - field-level error rendering on the form that was actually submitted
 - unchanged redirect target and flash copy for both success and failure paths
 - unchanged persistence side effects in the database and session
+- unchanged session/auth side effects for routes that log out, rotate session state, or otherwise mutate authentication state
+- unchanged runtime guard behavior when validation depends on request/session/crypto/network state
+- unchanged CSP posture if templates or static assets are touched
 
 Pilot-specific tests to add before refactoring `/settings/auth`:
 
