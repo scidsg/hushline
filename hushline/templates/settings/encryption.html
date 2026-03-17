@@ -10,6 +10,7 @@
     action="{{ url_for('settings.update_pgp_key_proton') }}"
     class="formBody"
   >
+    {% set proton_email_field = pgp_proton_form.email %}
     {{ pgp_proton_form.hidden_tag() }}
     <label for="searchInput">Proton Email Search</label>
     <div class="search-box">
@@ -20,13 +21,7 @@
           alt=""
         />
       </span>
-      <input
-        id="searchInput"
-        type="email"
-        name="email"
-        placeholder="Search Proton email..."
-        required
-      />
+      {{ proton_email_field(id='searchInput') }}
     </div>
     <button type="submit">Search Proton</button>
   </form>

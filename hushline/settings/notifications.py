@@ -39,6 +39,23 @@ class ToggleEncryptEntireBodyForm(FlaskForm):
     submit = SubmitField("Submit", name="toggle_encrypt_entire_body", widget=DisplayNoneButton())
 
 
+def _submitted_notifications_form(
+    toggle_notifications_form: ToggleNotificationsForm,
+    toggle_include_content_form: ToggleIncludeContentForm,
+    toggle_encrypt_entire_body_form: ToggleEncryptEntireBodyForm,
+    email_forwarding_form: EmailForwardingForm,
+) -> FlaskForm | None:
+    for form in (
+        toggle_notifications_form,
+        toggle_include_content_form,
+        toggle_encrypt_entire_body_form,
+        email_forwarding_form,
+    ):
+        if form.submit.name in request.form:
+            return form
+    return None
+
+
 def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optional[Response]:
     if form.email_address.data and not user.pgp_key:
         flash("⛔️ Email forwarding requires a configured PGP key.")
@@ -113,13 +130,16 @@ def register_notifications_routes(bp: Blueprint) -> None:
                 custom_smtp_settings=user.smtp_server or None,
             )
         )
+        submitted_form = _submitted_notifications_form(
+            toggle_notifications_form,
+            toggle_include_content_form,
+            toggle_encrypt_entire_body_form,
+            email_forwarding_form,
+        )
 
         status_code = 200
         if request.method == "POST":
-            if (
-                toggle_notifications_form.submit.name in request.form
-                and toggle_notifications_form.validate()
-            ):
+            if submitted_form is toggle_notifications_form and toggle_notifications_form.validate():
                 user.enable_email_notifications = (
                     toggle_notifications_form.enable_email_notifications.data
                 )
@@ -130,7 +150,7 @@ def register_notifications_routes(bp: Blueprint) -> None:
                     flash("👍 Email notifications disabled.")
                 return redirect_to_self()
             elif (
-                toggle_include_content_form.submit.name in request.form
+                submitted_form is toggle_include_content_form
                 and toggle_include_content_form.validate()
             ):
                 user.email_include_message_content = (
@@ -143,7 +163,7 @@ def register_notifications_routes(bp: Blueprint) -> None:
                     flash("👍 Email message content disabled.")
                 return redirect_to_self()
             elif (
-                toggle_encrypt_entire_body_form.submit.name in request.form
+                submitted_form is toggle_encrypt_entire_body_form
                 and toggle_encrypt_entire_body_form.validate()
             ):
                 user.email_encrypt_entire_body = (
@@ -156,7 +176,7 @@ def register_notifications_routes(bp: Blueprint) -> None:
                     flash("👍 Only encrypted fields of email messages will be encrypted.")
                 return redirect_to_self()
             elif (
-                email_forwarding_form.submit.name in request.form
+                submitted_form is email_forwarding_form
                 and email_forwarding_form.validate()
                 and (resp := handle_email_forwarding_form(user, email_forwarding_form))
             ):
