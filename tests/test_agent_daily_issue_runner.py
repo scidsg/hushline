@@ -554,7 +554,9 @@ docker() {{
         '#13 54.81     | Probable Causes:' \
         '#13 54.81     |     - the hostname cannot be resolved by your DNS' \
         '#13 54.81     |     - your network is not connected to the internet' \
-        'target app: failed to solve: process \"/bin/sh -c poetry install --no-root\" did not complete successfully: exit code: 1' \
+        'target app: failed to solve: process ' \
+        '\"/bin/sh -c poetry install --no-root\" ' \
+        'did not complete successfully: exit code: 1' \
         >&2
       return 1
     fi
