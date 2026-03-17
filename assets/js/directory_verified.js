@@ -122,6 +122,29 @@ document.addEventListener("DOMContentLoaded", function () {
     return "directory entries";
   }
 
+  function isAttorneyUser(user) {
+    return user.account_category === "lawyer";
+  }
+
+  function matchesAttorneyFilters(user) {
+    const selectedCountry = attorneyCountryFilter?.value.trim() || "";
+    const selectedRegion = attorneyRegionFilter?.value.trim() || "";
+
+    if (selectedCountry && user.country !== selectedCountry) {
+      return false;
+    }
+
+    if (
+      selectedRegion &&
+      user.subdivision_code !== selectedRegion &&
+      user.subdivision !== selectedRegion
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
   function matchesTab(user, tab) {
     if (
       tab === "verified" &&
@@ -130,8 +153,14 @@ document.addEventListener("DOMContentLoaded", function () {
       return false;
     }
 
-    if (tab === "public-records" && !user.is_public_record) {
-      return false;
+    if (tab === "public-records") {
+      if (!user.is_public_record && !isAttorneyUser(user)) {
+        return false;
+      }
+
+      if (isAttorneyUser(user) && !matchesAttorneyFilters(user)) {
+        return false;
+      }
     }
 
     if (tab === "globaleaks" && !user.is_globaleaks) {

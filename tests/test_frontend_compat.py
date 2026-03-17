@@ -10,6 +10,17 @@ def test_package_json_declares_node_20_plus() -> None:
     assert engines.get("node") == ">=20"
 
 
+def test_static_js_bundles_avoid_eval_wrappers() -> None:
+    webpack_config = (ROOT / "webpack.config.js").read_text(encoding="utf-8")
+
+    assert 'devtool: isDev ? "source-map" : false,' in webpack_config
+
+    for static_js in sorted((ROOT / "hushline/static/js").glob("*.js")):
+        bundle = static_js.read_text(encoding="utf-8")
+        assert "eval(" not in bundle, static_js.name
+        assert "webpack://" not in bundle, static_js.name
+
+
 def test_client_side_encryption_has_platform_guards() -> None:
     js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
 

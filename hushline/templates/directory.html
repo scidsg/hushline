@@ -38,7 +38,7 @@
               id="public-records-tab"
             >
               Attorneys
-              <span id="public-record-count" class="badge" role="img" aria-label="Public record count"
+              <span id="public-record-count" class="badge" role="img" aria-label="Attorney count"
                 >{{ public_record_total_count }}</span
               >
             </button>
@@ -321,12 +321,40 @@
       aria-labelledby="public-records-tab"
     >
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated and pulled from public records.
+        🧪 Beta: This tab includes self-reported attorneys and automated listings pulled from public records.
         Message the <a href="/to/admin">Hush Line admin</a> for any corrections.
       </p>
 
-      {% if public_record_all_listings %}
+      {% if attorney_usernames or public_record_all_listings %}
         <div class="user-list">
+          {% for username in attorney_usernames %}
+            <article class="user">
+              <h3>{{ username.display_name or username.username }}</h3>
+              {% if username.username %}
+                <p class="meta">@{{ username.username }}</p>
+              {% endif %}
+              {% if username.is_verified or username.user.is_admin %}
+                <div class="badgeContainer">
+                  {% if username.user.is_admin %}
+                    <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                  {% endif %}
+                  {% if username.is_verified %}
+                    <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if username.bio %}
+                <p class="bio">{{ username.bio }}</p>
+              {% endif %}
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('profile', username=username.username) }}"
+                  aria-label="{{ (username.display_name or username.username) }}'s profile"
+                  >View Profile</a
+                >
+              </div>
+            </article>
+          {% endfor %}
           {% for listing in public_record_all_listings %}
             <article class="user">
               <h3>{{ listing.name }}</h3>

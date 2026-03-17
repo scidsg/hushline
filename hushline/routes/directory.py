@@ -13,6 +13,7 @@ from unidecode import unidecode
 from werkzeug.wrappers.response import Response
 
 from hushline.model import (
+    AccountCategory,
     GlobaLeaksDirectoryListing,
     OrganizationSetting,
     PublicRecordListing,
@@ -25,7 +26,10 @@ from hushline.model import (
     get_securedrop_directory_listing,
     get_securedrop_directory_listings,
 )
-from hushline.model.directory_listing_geography import build_directory_geography
+from hushline.model.directory_listing_geography import (
+    DirectoryListingGeography,
+    build_directory_geography,
+)
 from hushline.routes.common import get_directory_usernames
 
 _LEGACY_COUNTRY_NAME_BY_CODE = {
@@ -132,6 +136,20 @@ def _listing_matches_attorney_filters(
     return True
 
 
+def _username_matches_attorney_filters(
+    username: Username, filter_state: dict[str, str | None]
+) -> bool:
+    geography = _username_geography(username)
+
+    if filter_state["country"] and geography.country != filter_state["country"]:
+        return False
+
+    if filter_state["region"] and geography.subdivision != filter_state["region"]:
+        return False
+
+    return True
+
+
 def _filter_public_record_listings(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
     filter_state: dict[str, str | None],
@@ -143,33 +161,39 @@ def _filter_public_record_listings(
 
 def _attorney_filter_metadata(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
+    attorney_usernames: list[Username] | tuple[Username, ...] = (),
 ) -> dict[str, object]:
     countries: dict[str, int] = {}
     regions: dict[str, dict[str, dict[str, object]]] = {}
 
-    for listing in listings:
-        geography = listing.geography
-        if geography.country is None:
-            continue
+    def add_geography(geography: DirectoryListingGeography) -> None:
+        country = geography.country
+        subdivision = geography.subdivision
+        subdivision_code = geography.subdivision_code
 
-        countries[geography.country] = countries.get(geography.country, 0) + 1
+        if country is None:
+            return
 
-        if geography.subdivision is None:
-            continue
+        countries[country] = countries.get(country, 0) + 1
 
-        region_code = geography.subdivision_code
-        if region_code is None:
-            continue
+        if subdivision is None or subdivision_code is None:
+            return
 
-        country_regions = regions.setdefault(geography.country, {})
+        country_regions = regions.setdefault(country, {})
         region_entry = cast(
             dict[str, object],
             country_regions.setdefault(
-                region_code,
-                {"label": geography.subdivision, "count": 0},
+                subdivision_code,
+                {"label": subdivision, "count": 0},
             ),
         )
         region_entry["count"] = cast(int, region_entry["count"]) + 1
+
+    for listing in listings:
+        add_geography(listing.geography)
+
+    for username in attorney_usernames:
+        add_geography(_username_geography(username))
 
     return {
         "countries": [
@@ -208,13 +232,22 @@ def _geography_fields(
     }
 
 
-def _directory_user_row(username: Username) -> dict[str, object | None]:
+def _username_geography(username: Username) -> DirectoryListingGeography:
     user = username.user
-    geography = build_directory_geography(
+    return build_directory_geography(
         city=getattr(user, "city", None),
         country=getattr(user, "country", None),
         subdivision=getattr(user, "subdivision", None),
     )
+
+
+def _is_self_reported_attorney(username: Username) -> bool:
+    return getattr(username.user, "account_category", None) == AccountCategory.LAWYER.value
+
+
+def _directory_user_row(username: Username) -> dict[str, object | None]:
+    user = username.user
+    geography = _username_geography(username)
     return {
         "entry_type": "user",
         "primary_username": username.username,
@@ -353,13 +386,23 @@ def register_directory_routes(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
+        attorney_usernames = [
+            username for username in usernames if _is_self_reported_attorney(username)
+        ]
         all_public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        attorney_filter_metadata = _attorney_filter_metadata(all_public_record_listings)
+        attorney_filter_metadata = _attorney_filter_metadata(
+            all_public_record_listings, attorney_usernames
+        )
         attorney_filter_state = _attorney_filter_state(attorney_filter_metadata)
+        filtered_attorney_usernames = [
+            username
+            for username in attorney_usernames
+            if _username_matches_attorney_filters(username, attorney_filter_state)
+        ]
         filtered_public_record_listings = _filter_public_record_listings(
             all_public_record_listings, attorney_filter_state
         )
@@ -401,10 +444,12 @@ def register_directory_routes(app: Flask) -> None:
             info_usernames=info_usernames,
             verified_pgp_usernames=verified_pgp_usernames,
             verified_info_usernames=verified_info_usernames,
+            attorney_usernames=filtered_attorney_usernames,
             public_record_all_listings=filtered_public_record_listings,
             public_record_listings=public_record_listings,
             legacy_public_record_listings=legacy_public_record_listings,
-            public_record_total_count=len(filtered_public_record_listings),
+            public_record_total_count=len(filtered_attorney_usernames)
+            + len(filtered_public_record_listings),
             attorney_filter_metadata=attorney_filter_metadata,
             attorney_filter_state=attorney_filter_state,
             globaleaks_listings=globaleaks_listings,
@@ -461,7 +506,14 @@ def register_directory_routes(app: Flask) -> None:
                 "regions": {},
             }
 
-        return _attorney_filter_metadata(get_public_record_listings())
+        return _attorney_filter_metadata(
+            get_public_record_listings(),
+            tuple(
+                username
+                for username in get_directory_usernames()
+                if _is_self_reported_attorney(username)
+            ),
+        )
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
@@ -471,7 +523,14 @@ def register_directory_routes(app: Flask) -> None:
             else []
         )
         attorney_filter_state = _attorney_filter_state(
-            _attorney_filter_metadata(public_record_listings)
+            _attorney_filter_metadata(
+                public_record_listings,
+                tuple(
+                    username
+                    for username in get_directory_usernames()
+                    if _is_self_reported_attorney(username)
+                ),
+            )
         )
         public_record_rows = (
             [

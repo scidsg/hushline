@@ -37,7 +37,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     badge = public_records_tab.select_one("span.badge")
     assert badge is not None
     assert badge.get("role") == "img"
-    assert badge.get("aria-label") == "Public record count"
+    assert badge.get("aria-label") == "Attorney count"
     assert badge.get_text(strip=True).isdigit()
 
     # Button label text excluding the badge
