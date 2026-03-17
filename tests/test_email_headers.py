@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 import dns.exception
 import dns.resolver
 import pytest
-from flask import url_for
+from bs4 import BeautifulSoup
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
@@ -121,6 +122,13 @@ def test_email_headers_post_without_dkim_still_reports_auth_results(
     assert "No DKIM-Signature headers were found." in response.text
     assert "SPF result is neutral." in response.text
     assert "DMARC result is fail." in response.text
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    export_form = soup.find("form", attrs={"action": url_for("email_headers_evidence_zip")})
+    assert export_form is not None
+    hidden_headers = export_form.find("input", attrs={"name": "raw_headers", "type": "hidden"})
+    assert hidden_headers is not None
+    assert hidden_headers.get("value") == raw_headers
 
 
 def test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail() -> None:
@@ -292,6 +300,8 @@ def test_email_headers_post_invalid_form_shows_validation_flash(client: FlaskCli
     )
     assert response.status_code == 200
     assert "Please paste valid raw headers before submitting." in response.text
+    assert "This field is required." in response.text
+    assert "Download Report" not in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -312,6 +322,33 @@ def test_email_headers_post_value_error_shows_flash(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_missing_csrf_preserves_invalid_post_behavior(
+    client: FlaskClient, app: Flask, mocker: MockFixture
+) -> None:
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    analyze = mocker.patch("hushline.routes.email_headers.analyze_raw_email_headers")
+    try:
+        raw_headers = "From: Alerts <alerts@example.org>\n"
+        response = client.post(
+            url_for("email_headers"),
+            data={"raw_headers": raw_headers, "submit": "Validate Headers"},
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 200
+        assert "Please paste valid raw headers before submitting." in response.text
+        assert "The CSRF token is missing." not in response.text
+        soup = BeautifulSoup(response.data, "html.parser")
+        textarea = soup.find("textarea", attrs={"name": "raw_headers"})
+        assert textarea is not None
+        assert textarea.text.strip() == raw_headers.strip()
+        analyze.assert_not_called()
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskClient) -> None:
     response = client.post(
         url_for("email_headers_evidence_zip"),
@@ -320,6 +357,32 @@ def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskCli
     )
     assert response.status_code == 200
     assert "Could not generate report. Re-run validation first." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_email_headers_export_missing_csrf_redirects_with_flash(
+    client: FlaskClient, app: Flask, mocker: MockFixture
+) -> None:
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    create_archive = mocker.patch("hushline.routes.email_headers.create_evidence_zip")
+    try:
+        response = client.post(
+            url_for("email_headers_evidence_zip"),
+            data={"raw_headers": "From: x@y\n", "submit": "Download Report"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith(url_for("email_headers"))
+        create_archive.assert_not_called()
+        with client.session_transaction() as session:
+            assert [
+                "message",
+                "⛔️ Could not generate report. Re-run validation first.",
+            ] in session.get("_flashes", [])
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_setting
 
 
 @pytest.mark.usefixtures("_authenticated_user")

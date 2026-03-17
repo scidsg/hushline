@@ -19,13 +19,16 @@
     </div>
     <div>
       {{ form.submit(class="btn-primary") }}
-      {% if report %}
-        <button type="submit" class="btn" formaction="{{ url_for('email_headers_evidence_zip') }}">
-          Download Report
-        </button>
-      {% endif %}
     </div>
   </form>
+
+  {% if report %}
+    <form method="POST" action="{{ url_for('email_headers_evidence_zip') }}">
+      {{ export_form.hidden_tag() }}
+      {{ export_form.raw_headers() }}
+      {{ export_form.submit(class="btn") }}
+    </form>
+  {% endif %}
 
   {% if report %}
     <section aria-labelledby="email-summary">

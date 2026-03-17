@@ -21,13 +21,14 @@ from hushline.routes.tools import TOOL_TABS, TOOLS_SIDEBAR_THRESHOLD
 def register_email_headers_routes(app: Flask) -> None:
     @app.route("/email-headers", methods=["GET", "POST"])
     @authentication_required
-    def email_headers() -> str:
+    def email_headers() -> tuple[str, int]:
         form = RawEmailHeadersForm()
         export_form = RawEmailHeadersExportForm()
         report = None
+        status_code = 200
 
         if request.method == "POST":
-            if form.validate_on_submit():
+            if form.validate():
                 try:
                     report = analyze_raw_email_headers(form.raw_headers.data)
                     export_form.raw_headers.data = form.raw_headers.data
@@ -46,13 +47,13 @@ def register_email_headers_routes(app: Flask) -> None:
             report=report,
             tool_tabs=TOOL_TABS,
             tools_sidebar=len(TOOL_TABS) >= TOOLS_SIDEBAR_THRESHOLD,
-        )
+        ), status_code
 
     @app.route("/email-headers/evidence.zip", methods=["POST"])
     @authentication_required
     def email_headers_evidence_zip() -> Response:
         form = RawEmailHeadersExportForm()
-        if not form.validate_on_submit():
+        if not form.validate():
             flash("⛔️ Could not generate report. Re-run validation first.")
             return redirect(url_for("email_headers"))
 
