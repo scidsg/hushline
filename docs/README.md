@@ -20,6 +20,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Agent runner](./AGENT_RUNNER.md)
 - [Agentic code policy](./AGENTIC-CODE-POLICY.md)
 - [Security audit hitlist](./SECURITY-AUDIT-HITLIST.md)
+- [Flask-WTF/WTForms modernization strategy](./FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md)
 - [Python 3.13 upgrade readiness](./PYTHON-3.13-UPGRADE-READINESS.md)
 - [Public-record provenance roadmap](./PUBLIC-RECORD-PROVENANCE-ROADMAP.md)
 - [Screenshots](./screenshots/README.md)
