@@ -1,3 +1,7 @@
+/******/ (() => { // webpackBootstrap
+/*!****************************************!*\
+  !*** ./assets/js/settings-location.js ***!
+  \****************************************/
 document.addEventListener("DOMContentLoaded", function () {
   const countryInput = document.getElementById("country");
   const subdivisionInput = document.getElementById("subdivision");
@@ -93,3 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
     await loadCities(cityInput.value);
   })();
 });
+
+/******/ })()
+;
+//# sourceMappingURL=settings-location.js.map

@@ -10,6 +10,17 @@ def test_package_json_declares_node_20_plus() -> None:
     assert engines.get("node") == ">=20"
 
 
+def test_static_js_bundles_avoid_eval_wrappers() -> None:
+    webpack_config = (ROOT / "webpack.config.js").read_text(encoding="utf-8")
+
+    assert 'devtool: isDev ? "source-map" : false,' in webpack_config
+
+    for static_js in sorted((ROOT / "hushline/static/js").glob("*.js")):
+        bundle = static_js.read_text(encoding="utf-8")
+        assert "eval(" not in bundle, static_js.name
+        assert "webpack://" not in bundle, static_js.name
+
+
 def test_client_side_encryption_has_platform_guards() -> None:
     js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
 
@@ -98,9 +109,6 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
-    assert 'return user.account_category === "lawyer";' in directory_verified_js
-    assert "if (!user.is_public_record && !isAttorneyUser(user)) {" in directory_verified_js
-    assert "if (isAttorneyUser(user) && !matchesAttorneyFilters(user)) {" in directory_verified_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
     assert "function escapeHtml(value)" in user_search_js

@@ -1,3 +1,7 @@
+/******/ (() => { // webpackBootstrap
+/*!*****************************************!*\
+  !*** ./assets/js/directory_verified.js ***!
+  \*****************************************/
 document.addEventListener("DOMContentLoaded", function () {
   const userSearch = window.HushlineUserSearch;
   const directoryPath = window.location.pathname.replace(/\/$/, "");
@@ -7,24 +11,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const clearIcon = document.getElementById("clearIcon");
   const searchStatus = document.getElementById("directory-search-status");
   const publicRecordCountBadge = document.getElementById("public-record-count");
-  const attorneyFiltersToggleShell = document.getElementById(
-    "attorney-filters-toggle-shell",
-  );
-  const attorneyFiltersPanelShell = document.getElementById(
-    "attorney-filters-panel-shell",
-  );
-  const attorneyFiltersToggle = document.getElementById(
-    "attorney-filters-toggle",
-  );
-  const attorneyFiltersPanel = document.getElementById(
-    "attorney-filters-panel",
-  );
-  const attorneyCountryFilter = document.getElementById(
-    "attorney-country-filter",
-  );
-  const attorneyRegionFilter = document.getElementById(
-    "attorney-region-filter",
-  );
+  const attorneyFiltersToggleShell = document.getElementById("attorney-filters-toggle-shell");
+  const attorneyFiltersPanelShell = document.getElementById("attorney-filters-panel-shell");
+  const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
+  const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
+  const attorneyCountryFilter = document.getElementById("attorney-country-filter");
+  const attorneyRegionFilter = document.getElementById("attorney-region-filter");
   const initialMarkup = new Map();
   let userData = [];
   let hasRenderedSearch = false;
@@ -50,13 +42,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const isExpanded = !attorneyFiltersPanel.hidden;
-    attorneyFiltersToggle.setAttribute(
-      "aria-expanded",
-      isExpanded ? "true" : "false",
-    );
-    attorneyFiltersToggle.textContent = isExpanded
-      ? "Hide Filters"
-      : "Show Filters";
+    attorneyFiltersToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
   }
 
   function updateAttorneyFilterVisibility() {
@@ -72,16 +59,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function activeTabName() {
-    return (
-      document.querySelector(".tab.active")?.getAttribute("data-tab") || "all"
-    );
+    return document.querySelector(".tab.active")?.getAttribute("data-tab") || "all";
   }
 
   function activePanel() {
-    return (
-      document.querySelector(".tab-content.active") ||
-      document.getElementById("all")
-    );
+    return document.querySelector(".tab-content.active") || document.getElementById("all");
   }
 
   function attorneyResultsCount() {
@@ -170,10 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function matchesTab(user, tab) {
     if (
       tab === "verified" &&
-      (!user.is_verified ||
-        user.is_public_record ||
-        user.is_globaleaks ||
-        user.is_securedrop)
+      (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
     ) {
       return false;
     }
@@ -211,9 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return true;
       }
 
-      const countries = Array.isArray(user.countries)
-        ? user.countries.join(" ")
-        : "";
+      const countries = Array.isArray(user.countries) ? user.countries.join(" ") : "";
       const searchText = userSearch.normalizeSearchText([
         user.primary_username,
         user.display_name,
@@ -373,9 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const userListContainer = document.createElement("div");
     userListContainer.className = "user-list";
-    userListContainer.innerHTML = users
-      .map((user) => buildUserCard(user, query, tab))
-      .join("");
+    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query, tab)).join("");
     panel.appendChild(userListContainer);
   }
 
@@ -399,8 +374,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const realUsers = users.filter(
-      (user) =>
-        !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
+      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
     );
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
@@ -430,10 +404,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function panelIntroMarkup(panelId) {
-    return (
-      document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML ||
-      ""
-    );
+    return document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML || "";
   }
 
   function buildDefaultPanelMarkup(tab) {
@@ -451,10 +422,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshInitialMarkup() {
     if (document.getElementById("public-records")) {
-      initialMarkup.set(
-        "public-records",
-        buildDefaultPanelMarkup("public-records"),
-      );
+      initialMarkup.set("public-records", buildDefaultPanelMarkup("public-records"));
     }
 
     if (document.getElementById("all")) {
@@ -525,17 +493,13 @@ document.addEventListener("DOMContentLoaded", function () {
     attorneyCountryFilter.value = params.get("country") || "";
     attorneyRegionFilter.value = params.get("region") || "";
     if (!attorneyCountryFilter.value && attorneyRegionFilter.value) {
-      attorneyCountryFilter.value = inferredCountryForRegionCode(
-        attorneyRegionFilter.value,
-      );
+      attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);
     }
     updateAttorneyCountryLabels();
     updateAttorneyRegionOptions();
 
     if (attorneyFiltersPanel) {
-      attorneyFiltersPanel.hidden = !(
-        attorneyCountryFilter.value || attorneyRegionFilter.value
-      );
+      attorneyFiltersPanel.hidden = !(attorneyCountryFilter.value || attorneyRegionFilter.value);
       updateAttorneyFiltersToggle();
       updateAttorneyFiltersClearVisibility();
     }
@@ -547,18 +511,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     attorneyFiltersLoading = isLoading;
-    attorneyFiltersPanel.setAttribute(
-      "aria-busy",
-      isLoading ? "true" : "false",
-    );
+    attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");
 
     if (attorneyCountryFilter) {
       attorneyCountryFilter.disabled = isLoading;
     }
 
     if (attorneyRegionFilter) {
-      const disabledByCountry =
-        attorneyRegionFilter.dataset.disabledByCountry === "true";
+      const disabledByCountry = attorneyRegionFilter.dataset.disabledByCountry === "true";
       attorneyRegionFilter.disabled = isLoading || disabledByCountry;
     }
 
@@ -570,24 +530,16 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateAttorneyFiltersClearVisibility() {
-    if (
-      !attorneyFiltersPanel ||
-      !attorneyCountryFilter ||
-      !attorneyRegionFilter
-    ) {
+    if (!attorneyFiltersPanel || !attorneyCountryFilter || !attorneyRegionFilter) {
       return;
     }
 
-    const resetActions = attorneyFiltersPanel.querySelector(
-      "#attorney-filters-actions",
-    );
+    const resetActions = attorneyFiltersPanel.querySelector("#attorney-filters-actions");
     if (!resetActions) {
       return;
     }
 
-    resetActions.hidden = !(
-      attorneyCountryFilter.value || attorneyRegionFilter.value
-    );
+    resetActions.hidden = !(attorneyCountryFilter.value || attorneyRegionFilter.value);
   }
 
   function updateAttorneyCountryLabels() {
@@ -596,8 +548,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const selectedCountry = attorneyCountryFilter.value;
-    const showSelectedCount =
-      attorneyCountryFilter.dataset.showSelectedCount === "true";
+    const showSelectedCount = attorneyCountryFilter.dataset.showSelectedCount === "true";
 
     Array.from(attorneyCountryFilter.options).forEach((option) => {
       if (!option.value) {
@@ -605,9 +556,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const country = Array.isArray(attorneyFilterMetadata.countries)
-        ? attorneyFilterMetadata.countries.find(
-            (item) => item.code === option.value,
-          )
+        ? attorneyFilterMetadata.countries.find((item) => item.code === option.value)
         : null;
       if (!country) {
         return;
@@ -650,21 +599,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const normalizedRegionCode = regionCode.trim().toLowerCase();
     const regionsByCountry =
-      attorneyFilterMetadata.regions &&
-      typeof attorneyFilterMetadata.regions === "object"
+      attorneyFilterMetadata.regions && typeof attorneyFilterMetadata.regions === "object"
         ? attorneyFilterMetadata.regions
         : {};
 
-    for (const [countryName, countryRegions] of Object.entries(
-      regionsByCountry,
-    )) {
+    for (const [countryName, countryRegions] of Object.entries(regionsByCountry)) {
       if (!Array.isArray(countryRegions)) {
         continue;
       }
 
       const matchingRegion = countryRegions.find(
-        (region) =>
-          String(region.code).trim().toLowerCase() === normalizedRegionCode,
+        (region) => String(region.code).trim().toLowerCase() === normalizedRegionCode,
       );
       if (matchingRegion) {
         return countryName;
@@ -681,11 +626,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const selectedCountry = attorneyCountryFilter.value;
     const selectedRegion = attorneyRegionFilter.value;
-    const showSelectedCount =
-      attorneyRegionFilter.dataset.showSelectedCount === "true";
+    const showSelectedCount = attorneyRegionFilter.dataset.showSelectedCount === "true";
     const regionsByCountry =
-      attorneyFilterMetadata.regions &&
-      typeof attorneyFilterMetadata.regions === "object"
+      attorneyFilterMetadata.regions && typeof attorneyFilterMetadata.regions === "object"
         ? attorneyFilterMetadata.regions
         : {};
     const availableRegions = selectedCountry
@@ -712,31 +655,29 @@ document.addEventListener("DOMContentLoaded", function () {
         attorneyRegionFilter.appendChild(option);
       });
     } else {
-      Object.entries(regionsByCountry).forEach(
-        ([countryName, countryRegions]) => {
-          if (!Array.isArray(countryRegions) || !countryRegions.length) {
-            return;
+      Object.entries(regionsByCountry).forEach(([countryName, countryRegions]) => {
+        if (!Array.isArray(countryRegions) || !countryRegions.length) {
+          return;
+        }
+
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = countryName;
+
+        countryRegions.forEach((region) => {
+          const option = document.createElement("option");
+          option.value = region.code;
+          option.textContent =
+            region.code === selectedRegion && !showSelectedCount
+              ? region.label
+              : `${region.label} (${region.count})`;
+          if (region.code === selectedRegion) {
+            option.selected = true;
           }
+          optgroup.appendChild(option);
+        });
 
-          const optgroup = document.createElement("optgroup");
-          optgroup.label = countryName;
-
-          countryRegions.forEach((region) => {
-            const option = document.createElement("option");
-            option.value = region.code;
-            option.textContent =
-              region.code === selectedRegion && !showSelectedCount
-                ? region.label
-                : `${region.label} (${region.count})`;
-            if (region.code === selectedRegion) {
-              option.selected = true;
-            }
-            optgroup.appendChild(option);
-          });
-
-          attorneyRegionFilter.appendChild(optgroup);
-        },
-      );
+        attorneyRegionFilter.appendChild(optgroup);
+      });
     }
 
     if (!availableRegions.some((region) => region.code === selectedRegion)) {
@@ -744,9 +685,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const disabledByCountry = !availableRegions.length;
-    attorneyRegionFilter.dataset.disabledByCountry = disabledByCountry
-      ? "true"
-      : "false";
+    attorneyRegionFilter.dataset.disabledByCountry = disabledByCountry ? "true" : "false";
     attorneyRegionFilter.disabled = attorneyFiltersLoading || disabledByCountry;
     updateAttorneyFiltersClearVisibility();
   }
@@ -760,9 +699,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return attorneyFilterMetadataRequest;
     }
 
-    attorneyFilterMetadataRequest = fetch(
-      `${directoryPath}/attorney-filters.json`,
-    )
+      attorneyFilterMetadataRequest = fetch(`${directoryPath}/attorney-filters.json`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -851,15 +788,11 @@ document.addEventListener("DOMContentLoaded", function () {
     setDirectoryUrl(nextSearch);
 
     try {
-      await requestDirectoryData(nextSearch, {
-        showAttorneyFilterLoadingState: true,
-      });
+      await requestDirectoryData(nextSearch, { showAttorneyFilterLoadingState: true });
       if (!searchInput.value.trim()) {
         const count = attorneyResultsCount();
         setSearchStatus(
-          count === 1
-            ? "Showing 1 matching attorney."
-            : `Showing ${count} matching attorneys.`,
+          count === 1 ? "Showing 1 matching attorney." : `Showing ${count} matching attorneys.`,
         );
       }
     } catch (error) {
@@ -946,9 +879,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     attorneyRegionFilter.addEventListener("change", function () {
       if (!attorneyCountryFilter.value && attorneyRegionFilter.value) {
-        attorneyCountryFilter.value = inferredCountryForRegionCode(
-          attorneyRegionFilter.value,
-        );
+        attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);
         updateAttorneyRegionOptions();
       }
       updateAttorneyCountryLabels();
@@ -959,33 +890,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     attorneyCountryFilter.addEventListener("focus", syncExpandedLabelsOnOpen);
-    attorneyCountryFilter.addEventListener(
-      "pointerdown",
-      syncExpandedLabelsOnOpen,
-    );
+    attorneyCountryFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
     attorneyCountryFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
     attorneyCountryFilter.addEventListener("blur", syncExpandedLabelsOnClose);
-    attorneyCountryFilter.addEventListener(
-      "pointerdown",
-      syncAttorneyChevronOnOpen,
-    );
-    attorneyCountryFilter.addEventListener(
-      "keydown",
-      syncAttorneyChevronOnOpen,
-    );
+    attorneyCountryFilter.addEventListener("pointerdown", syncAttorneyChevronOnOpen);
+    attorneyCountryFilter.addEventListener("keydown", syncAttorneyChevronOnOpen);
     attorneyCountryFilter.addEventListener("blur", syncAttorneyChevronOnClose);
 
     attorneyRegionFilter.addEventListener("focus", syncExpandedLabelsOnOpen);
-    attorneyRegionFilter.addEventListener(
-      "pointerdown",
-      syncExpandedLabelsOnOpen,
-    );
+    attorneyRegionFilter.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
     attorneyRegionFilter.addEventListener("keydown", syncExpandedLabelsOnOpen);
     attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);
-    attorneyRegionFilter.addEventListener(
-      "pointerdown",
-      syncAttorneyChevronOnOpen,
-    );
+    attorneyRegionFilter.addEventListener("pointerdown", syncAttorneyChevronOnOpen);
     attorneyRegionFilter.addEventListener("keydown", syncAttorneyChevronOnOpen);
     attorneyRegionFilter.addEventListener("blur", syncAttorneyChevronOnClose);
 
@@ -1007,9 +923,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   window.activateTab = function (selectedTab) {
-    const targetPanel = document.getElementById(
-      selectedTab.getAttribute("aria-controls"),
-    );
+    const targetPanel = document.getElementById(selectedTab.getAttribute("aria-controls"));
     if (!targetPanel) {
       return;
     }
@@ -1047,13 +961,9 @@ document.addEventListener("DOMContentLoaded", function () {
           (directoryTabs && directoryTabs.classList.contains("is-sticky")));
 
       if (isStickyActiveTabClick) {
-        const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        window.scrollTo({
-          top: 0,
-          behavior: prefersReducedMotion ? "auto" : "smooth",
-        });
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches;
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
         return;
       }
 
@@ -1067,8 +977,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabArray = Array.from(tabs);
       const currentIndex = tabArray.indexOf(event.currentTarget);
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextIndex =
-        (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextIndex = (currentIndex + direction + tabArray.length) % tabArray.length;
       const nextTab = tabArray[nextIndex];
       if (nextTab) {
         window.activateTab(nextTab);
@@ -1095,13 +1004,9 @@ document.addEventListener("DOMContentLoaded", function () {
       const stickyAnchor = stickyShell || directoryTabs;
 
       if (stickyAnchor) {
-        stickyAnchor.style.setProperty(
-          "--directory-sticky-top",
-          `${stickyTop}px`,
-        );
+        stickyAnchor.style.setProperty("--directory-sticky-top", `${stickyTop}px`);
         const stickyAnchorTop = stickyAnchor.getBoundingClientRect().top;
-        const isSticky =
-          window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
+        const isSticky = window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
         stickyShell?.classList.toggle("is-sticky", isSticky);
         directoryTabs?.classList.toggle("is-sticky", isSticky);
         searchBox?.classList.toggle("is-sticky", isSticky);
@@ -1126,3 +1031,7 @@ document.addEventListener("DOMContentLoaded", function () {
     console.error("Failed to load user data:", error);
   });
 });
+
+/******/ })()
+;
+//# sourceMappingURL=directory_verified.js.map
