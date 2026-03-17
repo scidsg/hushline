@@ -530,7 +530,61 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=0" in result.stdout
-    assert "retryable Docker/registry failure" in result.stdout
+    assert "retryable network/bootstrap failure" in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 2
+    assert docker_calls.count("compose run --rm dev_data") == 1
+    assert "compose down -v --remove-orphans" in docker_calls
+
+
+def test_runtime_bootstrap_retries_retryable_pypi_dns_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    if [[ $(grep -c '^compose up -d --build$' {shlex.quote(str(calls_file))}) == "1" ]]; then
+      printf '%s\\n' \
+        '#13 54.81     | All attempts to connect to files.pythonhosted.org failed.' \
+        '#13 54.81     | Probable Causes:' \
+        '#13 54.81     |     - the hostname cannot be resolved by your DNS' \
+        '#13 54.81     |     - your network is not connected to the internet' \
+        'target app: failed to solve: process ' \
+        '\"/bin/sh -c poetry install --no-root\" ' \
+        'did not complete successfully: exit code: 1' \
+        >&2
+      return 1
+    fi
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=0" in result.stdout
+    assert "retryable network/bootstrap failure" in result.stdout
 
     docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
     assert docker_calls.count("compose up -d --build") == 2
@@ -573,7 +627,7 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
-    assert "retryable Docker/registry failure" not in result.stdout
+    assert "retryable network/bootstrap failure" not in result.stdout
 
     docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
     assert docker_calls.count("compose up -d --build") == 1
@@ -616,7 +670,7 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
-    assert "retryable Docker/registry failure" not in result.stdout
+    assert "retryable network/bootstrap failure" not in result.stdout
 
     docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
     assert docker_calls.count("compose up -d --build") == 1
