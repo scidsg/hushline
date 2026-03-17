@@ -34,6 +34,23 @@ class DeleteInviteCodeForm(FlaskForm):
     submit = SubmitField("Delete", name="delete_invite_code", widget=Button())
 
 
+def _submitted_registration_form(
+    toggle_registration_form: ToggleRegistrationForm,
+    toggle_registration_codes_form: ToggleRegistrationCodesForm,
+    create_invite_code_form: CreateInviteCodeForm,
+    delete_invite_code_form: DeleteInviteCodeForm,
+) -> FlaskForm | None:
+    for form in (
+        toggle_registration_form,
+        toggle_registration_codes_form,
+        create_invite_code_form,
+        delete_invite_code_form,
+    ):
+        if form.submit.name in request.form:
+            return form
+    return None
+
+
 def register_registration_routes(bp: Blueprint) -> None:
     @bp.route("/registration", methods=["GET", "POST"])
     @admin_authentication_required
@@ -46,14 +63,17 @@ def register_registration_routes(bp: Blueprint) -> None:
 
         create_invite_code_form = CreateInviteCodeForm()
         delete_invite_code_form = DeleteInviteCodeForm()
+        submitted_form = _submitted_registration_form(
+            toggle_registration_form,
+            toggle_registration_codes_form,
+            create_invite_code_form,
+            delete_invite_code_form,
+        )
 
         status_code = 200
         if request.method == "POST":
             # Registration enabled
-            if (
-                toggle_registration_form.submit.name in request.form
-                and toggle_registration_form.validate()
-            ):
+            if submitted_form is toggle_registration_form and toggle_registration_form.validate():
                 OrganizationSetting.upsert(
                     key=OrganizationSetting.REGISTRATION_ENABLED,
                     value=toggle_registration_form.registration_enabled.data,
@@ -66,7 +86,7 @@ def register_registration_routes(bp: Blueprint) -> None:
                 return redirect(url_for(".registration"))
             # Registration codes required
             elif (
-                toggle_registration_codes_form.submit.name in request.form
+                submitted_form is toggle_registration_codes_form
                 and toggle_registration_codes_form.validate()
             ):
                 OrganizationSetting.upsert(
@@ -80,20 +100,14 @@ def register_registration_routes(bp: Blueprint) -> None:
                     flash("👍 Registration codes not required.")
                 return redirect(url_for(".registration"))
             # Create invite code
-            elif (
-                create_invite_code_form.submit.name in request.form
-                and create_invite_code_form.validate()
-            ):
+            elif submitted_form is create_invite_code_form and create_invite_code_form.validate():
                 new_invite_code = InviteCode()
                 db.session.add(new_invite_code)
                 db.session.commit()
                 flash(f"👍 Invite code {new_invite_code.code} created.")
                 return redirect(url_for(".registration"))
             # Delete invite code
-            elif (
-                delete_invite_code_form.submit.name in request.form
-                and delete_invite_code_form.validate()
-            ):
+            elif submitted_form is delete_invite_code_form and delete_invite_code_form.validate():
                 invite_code = db.session.scalars(
                     db.select(InviteCode).filter_by(id=delete_invite_code_form.invite_code_id.data)
                 ).one_or_none()
