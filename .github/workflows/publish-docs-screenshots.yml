@@ -94,7 +94,7 @@ jobs:
             "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" \
             /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
-          git sparse-checkout init --cone
+          git sparse-checkout init --no-cone
           git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "releases/${RELEASE_KEY}"
           git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
 
