@@ -4,12 +4,17 @@
   <h3>Message Statuses</h3>
   <p>When you receive a message, the sender gets a temporary address where they can view the status of their message.
     Set custom message statuses for your community below. Rich text using markdown is supported.</p>
-  {% for (status, msg_status_text) in status_tuples %}
-    {% set form = form_maker(status, msg_status_text.markdown if msg_status_text and msg_status_text.markdown else '') %}
+  {% for status, form in status_forms %}
     <div class="response">
       <h4>{{ status.emoji }} {{ status.display_str }}</h4>
       <form method="POST" class="formBody">
         {{ form.hidden_tag() }}
+        {% for error in form.errors.get('csrf_token', []) %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+        {% for error in form.status.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
         {{ form.markdown.label }}
         {{ form.markdown }}
         {% for error in form.markdown.errors %}
