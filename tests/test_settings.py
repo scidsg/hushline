@@ -477,6 +477,32 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_encryption_invalid_manual_key_form_shows_only_manual_key_errors(
+    client: FlaskClient, user: User
+) -> None:
+    oversized_pgp_key = "A" * 100001
+
+    response = client.post(
+        url_for("settings.encryption"),
+        data=form_to_data(PGPKeyForm(data={"pgp_key": oversized_pgp_key})),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 100000 characters." in response.text
+    assert "⛔️ Invalid email address." not in response.text
+
+    db.session.refresh(user)
+    assert user.pgp_key is None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    pgp_key_input = soup.find("textarea", attrs={"id": "pgp_key"})
+    assert pgp_key_input is not None
+    assert pgp_key_input.text.lstrip("\r\n") == oversized_pgp_key
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_add_pgp_key_without_encryption_subkey(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read().strip()
@@ -526,6 +552,22 @@ def test_add_pgp_key_proton_invalid_form_redirects_index(client: FlaskClient) ->
     response = client.post(url_for("settings.update_pgp_key_proton"), data={"email": ""})
     assert response.status_code == 302
     assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_invalid_email_does_not_fetch_lookup(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "not-an-email"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "⛔️ Invalid email address." in response.text
+    requests_get.assert_not_called()
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -625,6 +667,44 @@ def test_update_smtp_settings_reject_private_host(
     )
     assert response.status_code == 400
     assert "SMTP server must resolve to a public IP address" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_notifications_invalid_email_forwarding_post_shows_only_forwarding_errors(
+    client: FlaskClient, user: User
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            "forwarding_enabled": "y",
+            "email_address": "primary@example.com",
+            "custom_smtp_settings": "y",
+            "smtp_settings-smtp_encryption": "StartTLS",
+            EmailForwardingForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "SMTP Sender Address is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Username is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Server is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Port is required if custom SMTP settings are enabled." in response.text
+    assert "This field is required." not in response.text
+
+    db.session.refresh(user)
+    assert user.email is None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    email_input = soup.find("input", attrs={"name": "email_address"})
+    assert email_input is not None
+    assert email_input.get("value") == "primary@example.com"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
