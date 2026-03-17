@@ -50,7 +50,7 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     assert "--depth 1" in archive_section
     assert "--filter=blob:none" in archive_section
     assert "--single-branch" in archive_section
-    assert "git sparse-checkout init --cone" in archive_section
+    assert "git sparse-checkout init --no-cone" in archive_section
     assert (
         "git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "
         '"releases/${RELEASE_KEY}"' in archive_section
