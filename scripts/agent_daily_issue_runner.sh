@@ -319,7 +319,7 @@ audit_failure_looks_environmental() {
 runtime_bootstrap_failure_looks_retryable() {
   local text="$1"
   printf '%s\n' "$text" | grep -Eqi \
-    '(unexpected status from HEAD request|500 internal server error|503 service unavailable|504 gateway timeout|too many requests|tls handshake timeout|i/o timeout|context deadline exceeded|request canceled while waiting for connection|connection reset by peer|temporary failure in name resolution|net/http: request canceled|failed to copy: httpReadSeeker|error pulling image configuration)'
+    '(unexpected status from HEAD request|500 internal server error|503 service unavailable|504 gateway timeout|too many requests|tls handshake timeout|i/o timeout|context deadline exceeded|request canceled while waiting for connection|connection reset by peer|temporary failure in name resolution|name or service not known|no such host|hostname cannot be resolved by your DNS|network is not connected to the internet|all attempts to connect to files\.pythonhosted\.org failed|all attempts to connect to pypi\.org failed|net/http: request canceled|failed to copy: httpReadSeeker|error pulling image configuration)'
 }
 
 start_runtime_stack_and_seed_dev_data() {
@@ -367,7 +367,7 @@ start_runtime_stack_and_seed_dev_data() {
       return "$seed_rc"
     fi
 
-    echo "Runtime bootstrap hit a retryable Docker/registry failure; resetting partial state and retrying in ${RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS}s (attempt ${attempt}/${RUNTIME_BOOTSTRAP_ATTEMPTS})."
+    echo "Runtime bootstrap hit a retryable network/bootstrap failure; resetting partial state and retrying in ${RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS}s (attempt ${attempt}/${RUNTIME_BOOTSTRAP_ATTEMPTS})."
     docker compose down -v --remove-orphans >/dev/null 2>&1 || true
     rm -f "$attempt_log"
     sleep "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
