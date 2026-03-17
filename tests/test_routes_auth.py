@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pyotp
@@ -14,11 +15,16 @@ from hushline.auth import (
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
+    stash_post_auth_redirect,
 )
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User
-from hushline.routes.auth import _apply_pending_password_rehash, _password_hash_digest
+from hushline.routes.auth import (
+    _apply_pending_password_rehash,
+    _lock_first_user_registration,
+    _password_hash_digest,
+)
 from tests.helpers import get_captcha_from_session_register
 
 TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
@@ -281,6 +287,93 @@ def test_login_redirects_to_original_protected_page(
 
     with client.session_transaction() as sess:
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+
+
+def test_stash_post_auth_redirect_skips_logout_and_preserves_session(app: Flask) -> None:
+    with app.test_request_context("/logout", method="GET"):
+        session["sentinel"] = "keep"
+        session[POST_AUTH_REDIRECT_SESSION_KEY] = "/already-set"
+
+        with patch(
+            "hushline.auth.request",
+            SimpleNamespace(method="GET", endpoint="logout", full_path="/logout"),
+        ):
+            stash_post_auth_redirect()
+
+        assert session["sentinel"] == "keep"
+        assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
+
+
+def test_stash_post_auth_redirect_rejects_unsafe_target_and_preserves_session(app: Flask) -> None:
+    with app.test_request_context("/settings/profile", method="GET"):
+        session["sentinel"] = "keep"
+        session[POST_AUTH_REDIRECT_SESSION_KEY] = "/already-set"
+
+        with patch(
+            "hushline.auth.request",
+            SimpleNamespace(
+                method="GET",
+                endpoint="settings.profile",
+                full_path="https://example.com/phish",
+            ),
+        ):
+            stash_post_auth_redirect()
+
+        assert session["sentinel"] == "keep"
+        assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
+
+
+@pytest.mark.parametrize(
+    "bind",
+    [
+        None,
+        SimpleNamespace(dialect=SimpleNamespace(name="sqlite")),
+    ],
+)
+def test_lock_first_user_registration_noops_without_postgres_bind(bind: object) -> None:
+    with (
+        patch("hushline.routes.auth.db.session.get_bind", return_value=bind),
+        patch("hushline.routes.auth.db.session.execute") as execute_mock,
+    ):
+        _lock_first_user_registration()
+
+    execute_mock.assert_not_called()
+
+
+def test_register_rejects_when_first_user_recheck_finds_existing_user(
+    client: FlaskClient,
+) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
+
+    captcha_answer = get_captcha_from_session_register(client)
+
+    query_counts = iter((0, 1))
+
+    def _fake_query(model: type[User]) -> SimpleNamespace:
+        assert model is User
+        return SimpleNamespace(count=lambda: next(query_counts))
+
+    with (
+        patch("hushline.routes.auth._lock_first_user_registration") as lock_mock,
+        patch("hushline.routes.auth.db.session.query", side_effect=_fake_query),
+    ):
+        response = client.post(
+            url_for("register"),
+            data={
+                "username": "late-first-user",
+                "password": "SecurePassword123!",
+                "captcha_answer": captcha_answer,
+            },
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("index"))
+    lock_mock.assert_called_once_with()
+    assert db.session.scalar(db.select(db.func.count()).select_from(User)) == 0
+    with client.session_transaction() as sess:
+        assert ["message", "⛔️ Registration is disabled."] in sess["_flashes"]
 
 
 def test_login_clears_auth_session_when_2fa_commit_fails(

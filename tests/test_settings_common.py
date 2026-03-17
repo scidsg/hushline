@@ -12,7 +12,13 @@ from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
-from hushline.geo import city_choice_value, state_choice_value
+from hushline.geo import (
+    city_choice_value,
+    city_options_for_state,
+    country_iso2,
+    normalize_city_name,
+    state_choice_value,
+)
 from hushline.model import (
     AccountCategory,
     FieldDefinition,
@@ -179,6 +185,77 @@ def test_profile_form_rejects_invalid_city_for_subdivision(app: Flask) -> None:
 
     assert not form.validate()
     assert form.city.errors == ["Invalid city."]
+
+
+@pytest.mark.parametrize("country", ["", "   ", "Atlantis"])
+def test_country_iso2_returns_none_for_empty_or_unknown_country(country: str) -> None:
+    assert country_iso2(country) is None
+
+
+@pytest.mark.parametrize(
+    ("country", "subdivision"),
+    [
+        ("Atlantis", "Illinois"),
+        ("United States", "Atlantis"),
+    ],
+)
+def test_city_options_for_state_returns_empty_for_unresolved_inputs(
+    country: str, subdivision: str
+) -> None:
+    assert city_options_for_state(country, subdivision) == []
+
+
+def test_city_choice_value_returns_none_for_blank_or_unknown_city() -> None:
+    assert city_choice_value("   ", "United States", "Illinois") is None
+    assert city_choice_value("Atlantis", "United States", "Illinois") is None
+
+
+def test_city_choice_value_returns_first_match_when_multiple_cities_exist() -> None:
+    with patch(
+        "hushline.geo._city_options_by_name",
+        return_value={
+            "springfield": (
+                {"value": "first", "name": "Springfield", "subdivision": "Illinois"},
+                {"value": "second", "name": "Springfield", "subdivision": "Illinois"},
+            )
+        },
+    ):
+        assert city_choice_value("Springfield", "United States", "Illinois") == "first"
+
+
+@pytest.mark.parametrize(
+    ("value", "country", "subdivision"),
+    [
+        (None, "United States", "Illinois"),
+        ("   ", "United States", "Illinois"),
+        ("Chicago", "Atlantis", "Illinois"),
+        ("Chicago", "United States", "Atlantis"),
+    ],
+)
+def test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs(
+    value: str | None, country: str, subdivision: str
+) -> None:
+    assert normalize_city_name(value, country, subdivision) is None
+
+
+def test_profile_form_allows_empty_city_without_normalizing(app: Flask) -> None:
+    with app.test_request_context(), patch(
+        "hushline.settings.forms.normalize_city_name",
+        side_effect=AssertionError("normalize_city_name should not be called"),
+    ):
+        form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "country": "United States",
+                    "subdivision": "Illinois",
+                    "city": "",
+                    "bio": "valid bio",
+                }
+            )
+        )
+
+        assert form.validate()
+        assert form.city.errors == []
 
 
 def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
