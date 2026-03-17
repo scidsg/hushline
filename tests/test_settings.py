@@ -151,6 +151,120 @@ def test_change_username_rejects_case_insensitive_duplicate(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_settings_auth_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        original_password_hash = user.password_hash
+        original_username = user.primary_username.username
+
+        response = client.post(
+            url_for("settings.auth"),
+            data={ChangeUsernameForm.submit.name: ""},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 400
+        db.session.refresh(user)
+        assert user.password_hash == original_password_hash
+        assert user.primary_username.username == original_username
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_invalid_username_post_shows_only_username_errors_and_no_password_side_effect(
+    client: FlaskClient, user: User
+) -> None:
+    original_password_hash = user.password_hash
+    invalid_username = "x"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(ChangeUsernameForm(data={"new_username": invalid_username})),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field must be between" in response.text
+    assert "This field is required." not in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    username_input = soup.find("input", attrs={"id": "new_username"})
+    assert username_input is not None
+    assert username_input.get("value") == invalid_username
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_invalid_password_post_shows_only_password_errors_and_preserves_password_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    original_password_hash = user.password_hash
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(data={"old_password": user_password, "new_password": "short"})
+        ),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field must be between" in response.text
+    assert "This field is required." not in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_username_post_does_not_trigger_password_form_validation(
+    client: FlaskClient, user: User
+) -> None:
+    new_username = user.primary_username.username + "-iso"
+
+    def fail_password_validate(*args: object, **kwargs: object) -> bool:
+        raise AssertionError("password form validated")
+
+    with patch.object(ChangePasswordForm, "validate", new=fail_password_validate):
+        response = client.post(
+            url_for("settings.auth"),
+            data=form_to_data(ChangeUsernameForm(data={"new_username": new_username})),
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "Username changed successfully" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_password_post_does_not_trigger_username_form_validation(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    new_password = "ChangedPassword123!!"
+
+    def fail_username_validate(*args: object, **kwargs: object) -> bool:
+        raise AssertionError("username form validated")
+
+    with patch.object(ChangeUsernameForm, "validate", new=fail_username_validate):
+        response = client.post(
+            url_for("settings.auth"),
+            data=form_to_data(
+                ChangePasswordForm(
+                    data={"old_password": user_password, "new_password": new_password}
+                )
+            ),
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_change_password(app: Flask, client: FlaskClient, user: User, user_password: str) -> None:
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
