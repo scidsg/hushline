@@ -928,6 +928,20 @@ def test_attorney_filter_state_clears_invalid_region_code(app: Flask) -> None:
         }
 
 
+def test_username_matches_attorney_filters_rejects_country_mismatch(user: User) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.country = "US"
+    user.subdivision = "IL"
+
+    assert (
+        directory_routes._username_matches_attorney_filters(
+            user.primary_username,
+            {"country": "Australia", "region": "Illinois"},
+        )
+        is False
+    )
+
+
 def test_attorney_filter_metadata_skips_missing_country_and_subdivision_code() -> None:
     listings = cast(
         tuple[PublicRecordListing, ...],

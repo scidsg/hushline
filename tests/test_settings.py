@@ -1093,6 +1093,35 @@ def test_change_profile_location_clears_incomplete_dependency_chain(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location_clears_city_when_city_field_is_omitted(
+    client: FlaskClient, user: User
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "US",
+            "subdivision": "IL",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.subdivision == "Illinois"
+    assert user.city is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_states_endpoint_returns_country_scoped_options(client: FlaskClient) -> None:
     response = client.get(
         url_for("settings.profile_states"),
