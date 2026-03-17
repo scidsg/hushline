@@ -24,6 +24,16 @@ from hushline.settings.forms import (
 )
 
 
+def _submitted_auth_form(
+    change_username_form: ChangeUsernameForm,
+    change_password_form: ChangePasswordForm,
+) -> ChangeUsernameForm | ChangePasswordForm | None:
+    for form in (change_username_form, change_password_form):
+        if form.submit.name in request.form:
+            return form
+    return None
+
+
 def register_auth_routes(bp: Blueprint) -> None:
     @bp.route("/auth", methods=["GET", "POST"])
     @authentication_required
@@ -31,20 +41,24 @@ def register_auth_routes(bp: Blueprint) -> None:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         change_username_form = ChangeUsernameForm()
         change_password_form = ChangePasswordForm()
+        submitted_form = _submitted_auth_form(change_username_form, change_password_form)
+
+        if submitted_form is not change_username_form:
+            change_username_form.new_username.data = session["username"]
 
         status_code = 200
         if request.method == "POST":
-            if change_username_form.submit.name in request.form and change_username_form.validate():
+            if submitted_form is change_username_form and change_username_form.validate():
                 return handle_change_username_form(user.primary_username, change_username_form)
-            elif (
-                change_password_form.submit.name in request.form
+            if (
+                submitted_form is change_password_form
                 and change_password_form.validate()
                 and (resp := handle_change_password_form(user, change_password_form))
             ):
                 return resp
-            else:
-                form_error()
-                status_code = 400
+
+            form_error()
+            status_code = 400
 
         return render_template(
             "settings/auth.html",
