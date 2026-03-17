@@ -274,15 +274,22 @@ class User(Model):
             return None
 
         if geography.country == "United States":
-            parts: list[str] = []
+            parts: list[tuple[str, str]] = []
             if geography.city:
-                parts.append(geography.city)
-            if geography.subdivision_code:
-                parts.append(geography.subdivision_code)
-            elif geography.subdivision:
-                parts.append(geography.subdivision)
-            parts.append("US")
-            return ", ".join(parts)
+                parts.append((geography.city, geography.city))
+            if geography.subdivision:
+                parts.append(
+                    (geography.subdivision, geography.subdivision_code or geography.subdivision)
+                )
+            if geography.country:
+                parts.append((geography.country, "US"))
+
+            if not parts:
+                return None
+
+            leading, *trailing = parts
+            rendered_parts = [leading[0], *(abbreviated for _, abbreviated in trailing)]
+            return ", ".join(rendered_parts)
 
         return geography.location
 
