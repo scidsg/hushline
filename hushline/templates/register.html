@@ -31,12 +31,12 @@
         {% endfor %}
       {% endif %}
     </div>
-    {% if registration_codes_required %}
+    {% if form.invite_code is not none %}
       <div>
         {{ form.invite_code.label }}
         {{ form.invite_code(size=32) }}
         {% for error in form.invite_code.errors %}
-          <span>{{ error }}</span>
+          <span class="error">{{ error }}</span>
         {% endfor %}
       </div>
     {% endif %}

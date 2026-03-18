@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from helpers import get_captcha_from_session_register
@@ -251,12 +252,74 @@ def test_register_page_loads(client: FlaskClient) -> None:
     assert 'data-submit-spinner="true"' in response.text
 
 
+def test_register_requires_csrf_token(app: Flask, client: FlaskClient) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+        db.session.commit()
+        captcha_answer = get_captcha_from_session_register(client)
+
+        response = client.post(
+            url_for("register"),
+            data={
+                "username": "csrf-register-user",
+                "password": "SecurePassword123!",
+                "captcha_answer": captcha_answer,
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 200
+    assert (
+        db.session.scalars(db.select(Username).filter_by(_username="csrf-register-user")).first()
+        is None
+    )
+
+
 def test_login_page_loads(client: FlaskClient) -> None:
     """Test if the login page loads successfully."""
     response = client.get(url_for("login"))
     assert response.status_code == 200
     assert "<h2>Login</h2>" in response.text
     assert 'data-submit-spinner="true"' in response.text
+
+
+def test_login_invalid_post_shows_errors_and_preserves_username(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("login"),
+        data={"username": "CaseUser", "password": ""},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+    assert "This field is required." in response.text
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    username_input = soup.find("input", attrs={"id": "username"})
+    assert username_input is not None
+    assert username_input.get("value") == "CaseUser"
+
+
+def test_login_requires_csrf_token(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("login"),
+            data={"username": user.primary_username.username, "password": user_password},
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        assert sess.get("is_authenticated") is not True
 
 
 def test_user_login_after_registration(client: FlaskClient) -> None:

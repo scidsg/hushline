@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
@@ -368,6 +369,30 @@ def test_onboarding_profile_invalid_form_returns_400(client: FlaskClient) -> Non
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_profile_invalid_form_preserves_submitted_values(client: FlaskClient) -> None:
+    submitted_display_name = "x" * 81
+    response = client.post(
+        url_for("onboarding"),
+        data={
+            "step": "profile",
+            "display_name": submitted_display_name,
+            "bio": "Submitted bio",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    display_name_input = soup.find("input", attrs={"id": "display_name"})
+    bio_input = soup.find("textarea", attrs={"id": "bio"})
+    assert display_name_input is not None
+    assert bio_input is not None
+    assert display_name_input.get("value") == submitted_display_name
+    assert bio_input.text.lstrip("\r\n") == "Submitted bio"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_onboarding_encryption_proton_invalid_form_returns_400(client: FlaskClient) -> None:
     response = client.post(
         url_for("onboarding"),
@@ -375,6 +400,24 @@ def test_onboarding_encryption_proton_invalid_form_returns_400(client: FlaskClie
         follow_redirects=False,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_encryption_proton_invalid_form_preserves_submitted_email(
+    client: FlaskClient,
+) -> None:
+    response = client.post(
+        url_for("onboarding"),
+        data={"step": "encryption", "method": "proton", "email": "not-an-email"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    email_input = soup.find("input", attrs={"id": "searchInput"})
+    assert email_input is not None
+    assert email_input.get("value") == "not-an-email"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -501,6 +544,54 @@ def test_onboarding_notifications_invalid_form_returns_400(client: FlaskClient, 
         follow_redirects=False,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_profile_requires_csrf_token(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    original_display_name = user.primary_username.display_name
+    original_bio = user.primary_username.bio
+    try:
+        response = client.post(
+            url_for("onboarding"),
+            data={"step": "profile", "display_name": "Test User", "bio": "Short bio"},
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 400
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.display_name == original_display_name
+    assert user.primary_username.bio == original_bio
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_onboarding_notifications_requires_csrf_token(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    user.pgp_key = _load_test_pgp_key()
+    original_email = user.email
+    db.session.commit()
+
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("onboarding"),
+            data={"step": "notifications", "email_address": "tips@example.com"},
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 400
+    db.session.refresh(user)
+    assert user.email == original_email
+    assert user.enable_email_notifications is False
 
 
 @pytest.mark.usefixtures("_authenticated_user")

@@ -452,6 +452,30 @@ def test_verify_2fa_login_rejects_when_user_has_no_totp_secret(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_verify_2fa_login_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
+    totp_secret = pyotp.random_base32()
+    user.totp_secret = totp_secret
+    db.session.commit()
+    with client.session_transaction() as sess:
+        sess["is_authenticated"] = False
+
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("verify_2fa_login"),
+            data={"verification_code": pyotp.TOTP(totp_secret).now()},
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        assert sess.get("is_authenticated") is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_verify_2fa_login_success_redirects_to_onboarding(client: FlaskClient, user: User) -> None:
     totp_secret = pyotp.random_base32()
     user.totp_secret = totp_secret
