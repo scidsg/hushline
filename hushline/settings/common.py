@@ -466,8 +466,8 @@ async def handle_profile_post(
     return None
 
 
-def handle_field_post(username: Username) -> Response | None:
-    field_form = FieldForm()
+def handle_field_post(username: Username, field_form: FieldForm | None = None) -> Response | None:
+    field_form = field_form or FieldForm()
     if field_form.validate():
         # Create a new field
         if field_form.submit.name in request.form:
@@ -554,21 +554,37 @@ def handle_field_post(username: Username) -> Response | None:
     return None
 
 
-def build_field_forms(username: Username) -> tuple[list[FieldForm], FieldForm]:
+def _field_form_for_definition(field: FieldDefinition) -> FieldForm:
+    form = FieldForm(formdata=None, obj=field)
+    form.field_type.data = field.field_type.value
+    form.delete.widget.dataset["message-count"] = field.message_count
+
+    form.choices.entries = []
+    for choice in field.choices:
+        choice_form = FieldChoiceForm()
+        choice_form.choice.data = choice
+        form.choices.append_entry(choice_form.data)
+
+    return form
+
+
+def build_field_forms(
+    username: Username, submitted_form: FieldForm | None = None
+) -> tuple[list[FieldForm], FieldForm]:
     field_forms = []
+    submitted_field_id = (submitted_form.id.data or "").strip() if submitted_form else ""
+
     for field in username.message_fields:
-        form = FieldForm(obj=field)
-        form.field_type.data = field.field_type.value
-        form.delete.widget.dataset["message-count"] = field.message_count
-
-        form.choices.entries = []
-        for choice in field.choices:
-            choice_form = FieldChoiceForm()
-            choice_form.choice.data = choice
-            form.choices.append_entry(choice_form.data)
-
+        if submitted_form is not None and submitted_field_id == str(field.id):
+            form = submitted_form
+            form.delete.widget.dataset["message-count"] = field.message_count
+        else:
+            form = _field_form_for_definition(field)
         field_forms.append(form)
 
-    new_field_form = FieldForm()
+    if submitted_form is not None and not submitted_field_id:
+        new_field_form = submitted_form
+    else:
+        new_field_form = FieldForm(formdata=None)
 
     return field_forms, new_field_form

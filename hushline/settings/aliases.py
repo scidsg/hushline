@@ -31,8 +31,41 @@ from hushline.settings.common import (
 )
 from hushline.settings.forms import (
     DeleteAliasForm,
+    DirectoryVisibilityForm,
+    DisplayNameForm,
+    FieldForm,
     NewAliasForm,
+    ProfileForm,
 )
+
+ProfileForms = tuple[DisplayNameForm, DirectoryVisibilityForm, ProfileForm]
+
+
+def _render_alias_page(
+    alias: Username,
+    status_code: int = 200,
+    forms: ProfileForms | None = None,
+    submitted_field_form: FieldForm | None = None,
+) -> tuple[str, int]:
+    if forms is None:
+        forms = create_profile_forms(alias)
+    display_name_form, directory_visibility_form, profile_form = forms
+    field_forms, new_field_form = build_field_forms(alias, submitted_form=submitted_field_form)
+
+    return (
+        render_template(
+            "settings/alias.html",
+            user=alias.user,
+            alias=alias,
+            display_name_form=display_name_form,
+            directory_visibility_form=directory_visibility_form,
+            profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
+            delete_alias_form=DeleteAliasForm(),
+        ),
+        status_code,
+    )
 
 
 def register_aliases_routes(bp: Blueprint) -> None:
@@ -75,36 +108,26 @@ def register_aliases_routes(bp: Blueprint) -> None:
             flash("⛔️ Alias not found.")
             return abort(404)
 
-        display_name_form, directory_visibility_form, profile_form = create_profile_forms(alias)
-        field_forms, new_field_form = build_field_forms(alias)
-        delete_alias_form = DeleteAliasForm()
-
         status_code = 200
         if request.method == "POST":
+            profile_forms = create_profile_forms(alias)
+            delete_alias_form = DeleteAliasForm()
             if (
                 delete_alias_form.submit.name in request.form
                 and delete_alias_form.validate_on_submit()
             ):
                 return delete_alias(alias.id)
-            res = await handle_profile_post(
-                display_name_form, directory_visibility_form, profile_form, alias
-            )
+            res = await handle_profile_post(*profile_forms, alias)
             if res:
                 return res
 
-            status_code = 400
+            return _render_alias_page(
+                alias,
+                status_code=400,
+                forms=profile_forms,
+            )
 
-        return render_template(
-            "settings/alias.html",
-            user=alias.user,
-            alias=alias,
-            display_name_form=display_name_form,
-            directory_visibility_form=directory_visibility_form,
-            profile_form=profile_form,
-            field_forms=field_forms,
-            new_field_form=new_field_form,
-            delete_alias_form=delete_alias_form,
-        ), status_code
+        return _render_alias_page(alias, status_code=status_code)
 
     @bp.route("/alias/<int:username_id>/delete", methods=["POST"])
     @authentication_required
@@ -161,8 +184,15 @@ def register_aliases_routes(bp: Blueprint) -> None:
         alias.create_default_field_defs()
 
         if request.method == "POST":
-            res = handle_field_post(alias)
+            field_form = FieldForm()
+            res = handle_field_post(alias, field_form)
             if res:
                 return res
+            form_error()
+            return _render_alias_page(
+                alias,
+                status_code=400,
+                submitted_field_form=field_form,
+            )
 
         return redirect(url_for(".alias", username_id=alias.id))
