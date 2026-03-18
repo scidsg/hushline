@@ -51,6 +51,7 @@ from hushline.settings.notifications import (
     ToggleIncludeContentForm,
     ToggleNotificationsForm,
 )
+from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
 
 
@@ -2248,6 +2249,19 @@ def test_profile_renders_business_price_with_two_decimals(client: FlaskClient) -
     response = client.get(url_for("settings.profile"), follow_redirects=False)
     assert response.status_code == 200
     assert "$20.55/mo to unlock more features!" in response.text
+
+
+def test_business_tier_display_price_returns_empty_when_tier_missing() -> None:
+    with patch("hushline.settings.profile.Tier.business_tier", return_value=None):
+        assert _business_tier_display_price() == ""
+
+
+def test_business_tier_display_price_omits_decimal_for_whole_dollars() -> None:
+    with patch(
+        "hushline.settings.profile.Tier.business_tier",
+        return_value=type("TierStub", (), {"monthly_amount": 2000})(),
+    ):
+        assert _business_tier_display_price() == "20"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
