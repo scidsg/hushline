@@ -13,10 +13,12 @@ from wtforms.validators import ValidationError
 
 from hushline.db import db
 from hushline.geo import (
+    city_choice_label,
     city_choice_value,
     city_options_for_state,
     country_iso2,
     normalize_city_name,
+    normalize_subdivision_name,
     state_choice_value,
 )
 from hushline.model import (
@@ -238,6 +240,10 @@ def test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs(
     assert normalize_city_name(value, country, subdivision) is None
 
 
+def test_normalize_subdivision_name_returns_trimmed_value_for_unknown_country() -> None:
+    assert normalize_subdivision_name("  Atlantis Province  ", "Atlantis") == "Atlantis Province"
+
+
 def test_profile_form_allows_empty_city_without_normalizing(app: Flask) -> None:
     with app.test_request_context(), patch(
         "hushline.settings.forms.normalize_city_name",
@@ -256,6 +262,46 @@ def test_profile_form_allows_empty_city_without_normalizing(app: Flask) -> None:
 
         assert form.validate()
         assert form.city.errors == []
+
+
+def test_profile_form_preserves_unknown_saved_country_choice(app: Flask) -> None:
+    with app.app_context():
+        form = ProfileForm(data={"country": "Atlantis"})
+
+    assert form.country.data == "Atlantis"
+    assert form.country.choices[:2] == [("", "Select"), ("Atlantis", "Atlantis")]
+
+
+def test_profile_form_preserves_unknown_saved_subdivision_and_city_labels(
+    app: Flask,
+) -> None:
+    with app.app_context():
+        form = ProfileForm(
+            data={
+                "country": "United States",
+                "subdivision": "Unknown State",
+                "city": "Unknown City",
+            }
+        )
+
+    assert ("Unknown State", "Unknown State") in form.subdivision.choices
+    assert ("Unknown City", "Unknown City") in form.city.choices
+
+
+def test_city_choice_label_returns_raw_value_when_lookup_is_ambiguous() -> None:
+    with patch(
+        "hushline.geo._city_option_by_value",
+        return_value={},
+    ), patch(
+        "hushline.geo._city_options_by_name",
+        return_value={
+            "springfield": (
+                {"value": "first", "label": "Springfield"},
+                {"value": "second", "label": "Springfield"},
+            )
+        },
+    ):
+        assert city_choice_label("Springfield", "United States", "Illinois") == "Springfield"
 
 
 def test_profile_form_account_category_choices_are_split(app: Flask) -> None:

@@ -1,4 +1,6 @@
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +11,7 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import User
+from hushline.routes.onboarding import OnboardingStepForm, _submitted_onboarding_form
 
 
 def _load_test_pgp_key() -> str:
@@ -271,6 +274,38 @@ def test_onboarding_handles_missing_primary_username(client: FlaskClient, user: 
     response = client.get(url_for("onboarding"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+def test_submitted_onboarding_form_selects_expected_step_form() -> None:
+    forms = cast(
+        dict[str, OnboardingStepForm],
+        {
+            "profile": SimpleNamespace(name="profile"),
+            "proton": SimpleNamespace(name="proton"),
+            "manual": SimpleNamespace(name="manual"),
+            "notifications": SimpleNamespace(name="notifications"),
+            "directory": SimpleNamespace(name="directory"),
+        },
+    )
+
+    assert _submitted_onboarding_form(step="profile", method=None, forms=forms) is forms["profile"]
+    assert (
+        _submitted_onboarding_form(step="encryption", method="proton", forms=forms)
+        is forms["proton"]
+    )
+    assert (
+        _submitted_onboarding_form(step="encryption", method="manual", forms=forms)
+        is forms["manual"]
+    )
+    assert _submitted_onboarding_form(step="encryption", method="bogus", forms=forms) is None
+    assert (
+        _submitted_onboarding_form(step="notifications", method=None, forms=forms)
+        is forms["notifications"]
+    )
+    assert (
+        _submitted_onboarding_form(step="directory", method=None, forms=forms) is forms["directory"]
+    )
+    assert _submitted_onboarding_form(step="unknown", method=None, forms=forms) is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
