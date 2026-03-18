@@ -5,7 +5,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
 from bs4 import BeautifulSoup
 from flask import url_for
 from flask.testing import FlaskClient
-from flask_wtf import FlaskForm
+from wtforms import FieldList, FormField, SubmitField
 
 T = TypeVar("T")
 
@@ -45,8 +45,30 @@ def format_param_dict(params: Mapping[str, Any]) -> Tuple[str, str]:
     return (", ".join(params.keys()), ", ".join(f":{x}" for x in params))
 
 
-def form_to_data(form: FlaskForm) -> dict[str, Any]:
-    return {field.name: field.data for field in form}
+def _field_to_data(field: Any, submit_name: str | None) -> dict[str, Any]:
+    if isinstance(field, FormField):
+        return form_to_data(field.form, submit_name=submit_name)
+
+    if isinstance(field, FieldList):
+        data: dict[str, Any] = {}
+        for entry in field.entries:
+            if isinstance(entry, FormField):
+                data.update(form_to_data(entry.form, submit_name=submit_name))
+            else:
+                data[entry.name] = entry.data
+        return data
+
+    if isinstance(field, SubmitField) and submit_name is not None and field.name != submit_name:
+        return {}
+
+    return {field.name: field.data}
+
+
+def form_to_data(form: Any, submit_name: str | None = None) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    for field in form:
+        data.update(_field_to_data(field, submit_name))
+    return data
 
 
 class Missing:
