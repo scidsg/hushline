@@ -80,19 +80,24 @@ def test_profile_404s_when_case_insensitive_lookup_is_ambiguous(app: Flask) -> N
         app.view_functions["profile"]("CaseUser")
 
 
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_does_not_expose_owner_user_id(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("profile", username=user.primary_username.username))
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.data, "html.parser")
     assert soup.find("input", attrs={"name": "username_user_id"}) is None
+    assert soup.find("input", attrs={"name": "encrypted_email_body", "type": "hidden"}) is not None
 
     nonce_input = soup.find("input", attrs={"name": "owner_guard_nonce"})
     signature_input = soup.find("input", attrs={"name": "owner_guard_signature"})
+    captcha_input = soup.find("input", attrs={"name": "captcha_answer", "id": "captcha_answer"})
     assert nonce_input is not None
     assert signature_input is not None
+    assert captcha_input is not None
     assert nonce_input.get("value")
     assert signature_input.get("value")
+    assert captcha_input.get("value") in (None, "")
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -240,6 +245,33 @@ def test_profile_post_form_validation_errors_are_rendered(client: FlaskClient, u
     )
     assert response.status_code == 400
     assert "There was an error submitting your message" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **get_profile_submission_data(client, user.primary_username.username),
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 400
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")

@@ -125,8 +125,8 @@ def register_profile_routes(app: Flask) -> None:
 
         if request.method == "POST":
             current_app.logger.debug("Profile form submitted.")
-            owner_guard_nonce = (request.form.get("owner_guard_nonce") or "").strip()
-            owner_guard_signature = (request.form.get("owner_guard_signature") or "").strip()
+            owner_guard_nonce = (form.owner_guard_nonce.data or "").strip()
+            owner_guard_signature = (form.owner_guard_signature.data or "").strip()
             expected_signature = _owner_guard_signature(
                 uname.username,
                 uname.user_id,
@@ -148,7 +148,7 @@ def register_profile_routes(app: Flask) -> None:
                     )
                     return _render_profile(400)
 
-                captcha_answer = request.form.get("captcha_answer", "")
+                captcha_answer = form.captcha_answer.data or ""
                 if not validate_captcha(captcha_answer):
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
                     return _render_profile(400)
