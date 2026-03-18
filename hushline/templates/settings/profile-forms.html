@@ -15,11 +15,12 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ display_name_form.hidden_tag() }}
+  {% for error in display_name_form.errors.get('csrf_token', []) %}
+    <span class="error">{{ error }}</span>
+  {% endfor %}
   {{ display_name_form.display_name.label }}
   {{ display_name_form.display_name(id='display_name') }}
   {% if display_name_form.display_name.errors %}
@@ -34,11 +35,12 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ directory_visibility_form.hidden_tag() }}
+  {% for error in directory_visibility_form.errors.get('csrf_token', []) %}
+    <span class="error">{{ error }}</span>
+  {% endfor %}
   <div class="checkbox-group toggle-ui">
     {{ directory_visibility_form.show_in_directory() }}
     <label for="show_in_directory" class="toggle-label">
@@ -55,11 +57,12 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ profile_form.hidden_tag() }}
+  {% for error in profile_form.errors.get('csrf_token', []) %}
+    <span class="error">{{ error }}</span>
+  {% endfor %}
   {% if not is_alias %}
     <div class="form-group">
       {{ profile_form.account_category.label }}
@@ -92,10 +95,13 @@
   {% endif %}
   <div class="form-group">
     <div class="label-with-wordcount">
-      <label for="bio">Bio</label>
+      {{ profile_form.bio.label(for='bio') }}
       <span class="meta"><span class="bio-count">0</span>/250</span>
     </div>
-    <textarea id="bio" name="bio" rows="4" maxlength="250">{{ username.bio or '' }}</textarea>
+    <textarea id="bio" name="bio" rows="4" maxlength="250">{{ profile_form.bio.data or '' }}</textarea>
+    {% for error in profile_form.bio.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
   </div>
 
   <h5>Profile Details</h5>

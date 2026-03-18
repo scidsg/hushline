@@ -15,6 +15,8 @@ from hushline.db import db
 from hushline.model import (
     AccountCategory,
     AuthenticationLog,
+    FieldDefinition,
+    FieldType,
     Message,
     OrganizationSetting,
     SMTPEncryption,
@@ -1201,6 +1203,32 @@ def test_change_bio(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_bio_invalid_post_renders_error_and_preserves_submitted_bio(
+    client: FlaskClient, user: User
+) -> None:
+    oversized_bio = "x" * 251
+    original_bio = user.primary_username.bio
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={"bio": oversized_bio, "update_bio": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 250 characters." in response.text
+
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.bio == original_bio
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    bio_input = soup.find("textarea", attrs={"id": "bio"})
+    assert bio_input is not None
+    assert bio_input.text == oversized_bio
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_change_account_category(client: FlaskClient, user: User) -> None:
     response = client.post(
         url_for("settings.profile"),
@@ -1374,6 +1402,32 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
         value = f"extra_field_value{i}"
         assert getattr(updated_user, label) == data[label]
         assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_invalid_post_renders_error_and_preserves_submitted_bio(
+    client: FlaskClient, user_alias: Username
+) -> None:
+    oversized_bio = "x" * 251
+    original_bio = user_alias.bio
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={"bio": oversized_bio, "update_bio": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 250 characters." in response.text
+
+    db.session.refresh(user_alias)
+    assert user_alias.bio == original_bio
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    bio_input = soup.find("textarea", attrs={"id": "bio"})
+    assert bio_input is not None
+    assert bio_input.text == oversized_bio
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -2151,7 +2205,7 @@ def test_alias_fields_post_uses_handle_field_post_result(
     app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
     monkeypatch.setattr(
         "hushline.settings.aliases.handle_field_post",
-        lambda _alias: ("handled", 201),
+        lambda _alias, _field_form=None: ("handled", 201),
     )
     response = client.post(
         url_for("settings.alias_fields", username_id=user_alias.id),
@@ -2203,7 +2257,7 @@ def test_profile_fields_post_uses_handle_field_post_result(
     app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
     monkeypatch.setattr(
         "hushline.settings.profile.handle_field_post",
-        lambda _username: ("handled", 202),
+        lambda _username, _field_form=None: ("handled", 202),
     )
     response = client.post(
         url_for("settings.profile_fields"),
@@ -2211,3 +2265,124 @@ def test_profile_fields_post_uses_handle_field_post_result(
         follow_redirects=False,
     )
     assert response.status_code == 202
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_add_post_renders_errors_without_creating_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    original_count = len(user.primary_username.message_fields)
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={"label": "", "field_type": FieldType.TEXT.value, "add_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(user.primary_username)
+    assert len(user.primary_username.message_fields) == original_count
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    new_field_form = soup.select_one(".field-form-new form")
+    assert new_field_form is not None
+    assert "This field is required." in new_field_form.text
+
+    profile_action = url_for("settings.profile")
+    display_name_input = soup.select_one("input[name='display_name']")
+    assert display_name_input is not None
+    assert display_name_input.find_parent("form")["action"] == profile_action
+
+    directory_toggle = soup.select_one("input[name='show_in_directory']")
+    assert directory_toggle is not None
+    assert directory_toggle.find_parent("form")["action"] == profile_action
+
+    bio_input = soup.select_one("textarea[name='bio']")
+    assert bio_input is not None
+    assert bio_input.find_parent("form")["action"] == profile_action
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_update_post_renders_errors_without_updating_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    field = user.primary_username.message_fields[0]
+    original_label = field.label
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={
+            "id": str(field.id),
+            "label": "",
+            "field_type": field.field_type.value,
+            "update_field": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(field)
+    assert field.label == original_label
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    existing_field_form = soup.select_one(f".field-form-{field.id} form")
+    assert existing_field_form is not None
+    assert "This field is required." in existing_field_form.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_delete_post_renders_errors_without_deleting_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    field = user.primary_username.message_fields[0]
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={"id": str(field.id), "delete_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert db.session.get(FieldDefinition, field.id) is not None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    existing_field_form = soup.select_one(f".field-form-{field.id} form")
+    assert existing_field_form is not None
+    assert "This field is required." in existing_field_form.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_invalid_add_post_renders_errors_without_creating_field(
+    client: FlaskClient, app: Flask, user_alias: Username
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user_alias.create_default_field_defs()
+    original_count = len(user_alias.message_fields)
+
+    response = client.post(
+        url_for("settings.alias_fields", username_id=user_alias.id),
+        data={"label": "", "field_type": FieldType.TEXT.value, "add_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(user_alias)
+    assert len(user_alias.message_fields) == original_count
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    new_field_form = soup.select_one(".field-form-new form")
+    assert new_field_form is not None
+    assert "This field is required." in new_field_form.text

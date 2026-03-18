@@ -18,13 +18,62 @@ from hushline.geo import city_options_for_state, state_options
 from hushline.model import (
     Tier,
     User,
+    Username,
 )
 from hushline.settings.common import (
     build_field_forms,
     create_profile_forms,
+    form_error,
     handle_field_post,
     handle_profile_post,
 )
+from hushline.settings.forms import (
+    DirectoryVisibilityForm,
+    DisplayNameForm,
+    FieldForm,
+    ProfileForm,
+)
+
+ProfileForms = tuple[DisplayNameForm, DirectoryVisibilityForm, ProfileForm]
+
+
+def _business_tier_display_price() -> str:
+    business_tier = Tier.business_tier()
+    if not business_tier:
+        return ""
+
+    price_usd = business_tier.monthly_amount / 100
+    if price_usd % 1 == 0:
+        return str(int(price_usd))
+    return f"{price_usd:.2f}"
+
+
+def _render_profile_page(
+    user: User,
+    username: Username,
+    status_code: int = 200,
+    forms: ProfileForms | None = None,
+    submitted_field_form: FieldForm | None = None,
+) -> tuple[str, int]:
+    if forms is None:
+        forms = create_profile_forms(username)
+    display_name_form, directory_visibility_form, profile_form = forms
+    field_forms, new_field_form = build_field_forms(username, submitted_form=submitted_field_form)
+
+    return (
+        render_template(
+            "settings/profile.html",
+            user=user,
+            username=username,
+            display_name_form=display_name_form,
+            directory_visibility_form=directory_visibility_form,
+            profile_form=profile_form,
+            field_forms=field_forms,
+            new_field_form=new_field_form,
+            business_tier_display_price=_business_tier_display_price(),
+        ),
+        status_code,
+    )
 
 
 def register_profile_routes(bp: Blueprint) -> None:
@@ -37,39 +86,21 @@ def register_profile_routes(bp: Blueprint) -> None:
         if username is None:
             raise Exception("Username was unexpectedly none")
 
-        display_name_form, directory_visibility_form, profile_form = create_profile_forms(username)
-        field_forms, new_field_form = build_field_forms(username)
-
         status_code = 200
         if request.method == "POST":
-            res = await handle_profile_post(
-                display_name_form, directory_visibility_form, profile_form, username
-            )
+            profile_forms = create_profile_forms(username)
+            res = await handle_profile_post(*profile_forms, username)
             if res:
                 return res
 
-            status_code = 400
+            return _render_profile_page(
+                user,
+                username,
+                status_code=400,
+                forms=profile_forms,
+            )
 
-        business_tier = Tier.business_tier()
-        business_tier_display_price = ""
-        if business_tier:
-            price_usd = business_tier.monthly_amount / 100
-            if price_usd % 1 == 0:
-                business_tier_display_price = str(int(price_usd))
-            else:
-                business_tier_display_price = f"{price_usd:.2f}"
-
-        return render_template(
-            "settings/profile.html",
-            user=user,
-            username=username,
-            display_name_form=display_name_form,
-            directory_visibility_form=directory_visibility_form,
-            profile_form=profile_form,
-            field_forms=field_forms,
-            new_field_form=new_field_form,
-            business_tier_display_price=business_tier_display_price,
-        ), status_code
+        return _render_profile_page(user, username, status_code=status_code)
 
     @bp.route("/profile/states.json")
     @authentication_required
@@ -104,8 +135,16 @@ def register_profile_routes(bp: Blueprint) -> None:
         username.create_default_field_defs()
 
         if request.method == "POST":
-            res = handle_field_post(username)
+            field_form = FieldForm()
+            res = handle_field_post(username, field_form)
             if res:
                 return res
+            form_error()
+            return _render_profile_page(
+                user,
+                username,
+                status_code=400,
+                submitted_field_form=field_form,
+            )
 
         return redirect(url_for(".profile"))
