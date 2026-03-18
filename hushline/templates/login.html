@@ -8,10 +8,16 @@
     <div>
       {{ form.username.label(for="username") }}
       {{ form.username(id="username", required=True) }}
+      {% for error in form.username.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
     </div>
     <div>
       {{ form.password.label(for="password") }}
       {{ form.password(id="password", required=True) }}
+      {% for error in form.password.errors %}
+        <span class="error">{{ error }}</span>
+      {% endfor %}
     </div>
     <button type="submit">Login</button>
   </form>

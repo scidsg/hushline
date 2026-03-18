@@ -122,7 +122,7 @@ def register_auth_routes(app: Flask) -> None:
             # Use the existing math problem from the session
             math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
 
-        if form.validate_on_submit():
+        if request.method == "POST" and form.validate():
             captcha_answer = request.form.get("captcha_answer", "")
             app.logger.debug(f"Session math_answer: {session.get('math_answer')}")
             app.logger.debug(f"User entered captcha_answer: {captcha_answer}")
@@ -235,7 +235,7 @@ def register_auth_routes(app: Flask) -> None:
             return redirect(url_for("inbox"))
 
         form = LoginForm()
-        if form.validate_on_submit():
+        if request.method == "POST" and form.validate():
             session.pop(PENDING_PASSWORD_REHASH_SESSION_KEY, None)
             session.pop(PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY, None)
             try:
@@ -326,7 +326,7 @@ def register_auth_routes(app: Flask) -> None:
 
         form = TwoFactorForm()
 
-        if form.validate_on_submit():
+        if request.method == "POST" and form.validate():
             if not user.totp_secret:
                 flash("⛔️ 2FA is not enabled.")
                 return redirect(url_for("login"))
