@@ -98,12 +98,8 @@
     data-submit-spinner="true"
   >
     {{ form.hidden_tag() }}
-    <input type="hidden" name="owner_guard_nonce" value="{{ owner_guard_nonce }}" />
-    <input
-      type="hidden"
-      name="owner_guard_signature"
-      value="{{ owner_guard_signature }}"
-    />
+    {{ form.owner_guard_nonce(type="hidden", value=owner_guard_nonce) }}
+    {{ form.owner_guard_signature(type="hidden", value=owner_guard_signature) }}
 
     {% for data in field_data %}
       {% if data['field'].enabled %}
@@ -144,14 +140,13 @@
         <p>🤖 Solve the math problem to submit your message.</p>
         <div class="captcha_container">
           <label for="captcha_answer">{{ math_problem }}</label>
-          <input
-            type="text"
-            id="captcha_answer"
-            name="captcha_answer"
-            required=""
-            autocomplete="off"
-            aria-label="Solve {{ math_problem }} to submit your message"
-          />
+          {{ form.captcha_answer(
+            id="captcha_answer",
+            value="",
+            required="",
+            autocomplete="off",
+            aria_label="Solve " ~ math_problem ~ " to submit your message",
+          ) }}
         </div>
       </div>
     {% endif %}
