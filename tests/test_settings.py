@@ -2292,6 +2292,19 @@ def test_profile_fields_invalid_add_post_renders_errors_without_creating_field(
     assert new_field_form is not None
     assert "This field is required." in new_field_form.text
 
+    profile_action = url_for("settings.profile")
+    display_name_input = soup.select_one("input[name='display_name']")
+    assert display_name_input is not None
+    assert display_name_input.find_parent("form")["action"] == profile_action
+
+    directory_toggle = soup.select_one("input[name='show_in_directory']")
+    assert directory_toggle is not None
+    assert directory_toggle.find_parent("form")["action"] == profile_action
+
+    bio_input = soup.select_one("textarea[name='bio']")
+    assert bio_input is not None
+    assert bio_input.find_parent("form")["action"] == profile_action
+
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_profile_fields_invalid_update_post_renders_errors_without_updating_field(

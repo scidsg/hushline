@@ -15,9 +15,7 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ display_name_form.hidden_tag() }}
   {% for error in display_name_form.errors.get('csrf_token', []) %}
@@ -37,9 +35,7 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ directory_visibility_form.hidden_tag() }}
   {% for error in directory_visibility_form.errors.get('csrf_token', []) %}
@@ -61,9 +57,7 @@
 <form
   method="POST"
   class="formBody"
-  {% if is_alias %}
-    action="{{ url_for('.alias', username_id=alias.id) }}"
-  {%endif%}
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
 >
   {{ profile_form.hidden_tag() }}
   {% for error in profile_form.errors.get('csrf_token', []) %}
