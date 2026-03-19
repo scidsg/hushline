@@ -1,31 +1,35 @@
 Daily runner log
-Timestamp (UTC): 20260317T233931Z
-Issue: #1727
+Timestamp (UTC): 20260319T050049Z
+Issue: #1750
 Repository: scidsg/hushline
 
 Runner Codex config: [redacted]
 ==> Fetch latest from origin
+From github.com:scidsg/hushline
+   d25a6b38..121d5174  codex/epic-554 -> origin/codex/epic-554
 ==> Checkout main
 Already on 'main'
 Your branch is up to date with 'origin/main'.
 ==> Reset to origin/main
-HEAD is now at 83384e8a #1731 Phase 4: modernize admin multi-form settings routes (#1740)
+HEAD is now at eb13af74 fix: resolve epic parent routing in daily runner (#1756)
 ==> Remove untracked files
-Open bot PR count: 0
+Selected issue #1750 from project queue.
+Issue #1750 is a child of epic #554.
 Open human-authored PR count: 0
-Selected issue #1727 from project queue.
+Open unrelated bot PR count: 0
+==> Mark issue #1750 as In Progress
 ==> Configure bot git identity
 ==> Stop and remove Docker resources
- Container hushline-webpack-1 Stopping 
  Container hushline-app-1 Stopping 
+ Container hushline-webpack-1 Stopping 
  Container hushline-webpack-1 Stopped 
  Container hushline-webpack-1 Removing 
  Container hushline-webpack-1 Removed 
  Container hushline-app-1 Stopped 
  Container hushline-app-1 Removing 
  Container hushline-app-1 Removed 
- Container hushline-blob-storage-1 Stopping 
  Container hushline-dev_data-1 Stopping 
+ Container hushline-blob-storage-1 Stopping 
  Container hushline-dev_data-1 Stopped 
  Container hushline-dev_data-1 Removing 
  Container hushline-dev_data-1 Removed 
@@ -43,58 +47,59 @@ Selected issue #1727 from project queue.
 ==> Kill all Docker containers
 ==> Kill processes on runner ports
 ==> Start Docker stack
- Image hushline-app Building 
  Image hushline-dev_data Building 
+ Image hushline-app Building 
 #1 [internal] load local bake definitions
 #1 reading from stdin 913B done
 #1 DONE 0.0s
 
-#2 [dev_data internal] load build definition from Dockerfile.dev
+#2 [app internal] load build definition from Dockerfile.dev
 #2 transferring dockerfile: 1.16kB done
 #2 DONE 0.0s
 
 #3 [dev_data internal] load metadata for docker.io/library/python:3.12.6-slim-bookworm
-#3 DONE 0.3s
+#3 DONE 0.5s
 
-#4 [dev_data internal] load .dockerignore
+#4 [app internal] load .dockerignore
 #4 transferring context: 144B done
 #4 DONE 0.0s
 
-#5 [dev_data 1/8] FROM docker.io/library/python:3.12.6-slim-bookworm@sha256:ad48727987b259854d52241fac3bc633574364867b8e20aec305e6e7f4028b26
+#5 [app 1/8] FROM docker.io/library/python:3.12.6-slim-bookworm@sha256:ad48727987b259854d52241fac3bc633574364867b8e20aec305e6e7f4028b26
 #5 resolve docker.io/library/python:3.12.6-slim-bookworm@sha256:ad48727987b259854d52241fac3bc633574364867b8e20aec305e6e7f4028b26 done
 #5 DONE 0.0s
 
-#6 [app internal] load build context
-#6 transferring context: 68B done
+#6 [dev_data internal] load build context
+#6 transferring context: 3.35kB done
 #6 DONE 0.0s
 
-#7 [app 2/8] RUN apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update &&     apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --fix-missing --no-install-recommends     curl     build-essential     clang     pkg-config     libffi-dev     libpq-dev     libpcsclite-dev     nettle-dev     nodejs     npm &&     rm -rf /var/lib/apt/lists/*
+#7 [dev_data 4/8] RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" &&     python -m pip install --no-cache-dir poetry
 #7 CACHED
 
-#8 [app 5/8] RUN npm install --global prettier@3.3.3
+#8 [dev_data 2/8] RUN apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update &&     apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --fix-missing --no-install-recommends     curl     build-essential     clang     pkg-config     libffi-dev     libpq-dev     libpcsclite-dev     nettle-dev     nodejs     npm &&     rm -rf /var/lib/apt/lists/*
 #8 CACHED
 
-#9 [app 3/8] RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+#9 [dev_data 3/8] RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 #9 CACHED
 
-#10 [app 6/8] WORKDIR /app
+#10 [dev_data 6/8] WORKDIR /app
 #10 CACHED
 
-#11 [app 7/8] COPY pyproject.toml poetry.lock ./
+#11 [dev_data 7/8] COPY pyproject.toml poetry.lock ./
 #11 CACHED
 
-#12 [app 4/8] RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" &&     python -m pip install --no-cache-dir poetry
+#12 [dev_data 5/8] RUN npm install --global prettier@3.3.3
 #12 CACHED
 
-#13 [app 8/8] RUN poetry install --no-root
+#13 [dev_data 8/8] RUN poetry install --no-root
 #13 CACHED
 
 #14 [app] exporting to image
 #14 exporting layers done
 #14 exporting manifest sha256:c4f1e5b508db1c9c6f2f8d564a733d85fe8f771d2fd2048c29c7718dcbfa3c30 done
 #14 exporting config sha256:24628dfc3f6b67b09bc2372242007836337b02dd2ba59b27d96c8fb745504945 done
-#14 exporting attestation manifest sha256:2b0cf49308ae1be2e0a7cb3c36a5d0115964ca6948b39d0caa8e40132cdc5781 0.0s done
-#14 exporting manifest list sha256:87aba62e195e624fd915a490ab86ddd31aab7d7c61878235a64f87991d6d3fbe done
+#14 exporting attestation manifest sha256:2df2ee2a6558af2c4fea3e640e795b495f33fd531c588f68ca70bde48a95ec5f 0.0s done
+#14 exporting manifest list sha256:4ebdb7ff3549c31bceb8eef0e8dff63dacf75622416456e7cef874cde646b15c 0.0s done
+#14 naming to docker.io/library/hushline-app:latest
 #14 naming to docker.io/library/hushline-app:latest done
 #14 unpacking to docker.io/library/hushline-app:latest done
 #14 DONE 0.1s
@@ -102,17 +107,17 @@ Selected issue #1727 from project queue.
 #15 [dev_data] exporting to image
 #15 exporting layers done
 #15 exporting manifest sha256:a47fb7309f88da6658adf7d7ee95e6af24be22a51ddc3a21df4a9f59c5def009 done
-#15 exporting config sha256:651ed34d26c5b217622107645a24d055c99f682c2881949f45bee53a6ec6e3eb 0.0s done
-#15 exporting attestation manifest sha256:f5f378ccae7aad094b6f97ff388420db40c8961ede99798eb117c72efcf45d9b 0.0s done
-#15 exporting manifest list sha256:04e23473597d95f5a46f456860a95710351503184cfbe27dabb466f1c97e56b6 done
+#15 exporting config sha256:651ed34d26c5b217622107645a24d055c99f682c2881949f45bee53a6ec6e3eb done
+#15 exporting attestation manifest sha256:f57572e31830a5e6325a12f5ff2795ee3632a4eeca12bbbf804a98437175b126 0.0s done
+#15 exporting manifest list sha256:a676cb06ec4b3570bd02bbdf7ed0911735d42479b11add4a0bd23b8303a0a4ad 0.0s done
 #15 naming to docker.io/library/hushline-dev_data:latest done
 #15 unpacking to docker.io/library/hushline-dev_data:latest done
 #15 DONE 0.1s
 
-#16 [app] resolving provenance for metadata file
+#16 [dev_data] resolving provenance for metadata file
 #16 DONE 0.0s
 
-#17 [dev_data] resolving provenance for metadata file
+#17 [app] resolving provenance for metadata file
 #17 DONE 0.0s
  Image hushline-dev_data Built 
  Image hushline-app Built 
@@ -120,8 +125,8 @@ Selected issue #1727 from project queue.
  Network hushline_default Created 
  Volume hushline_hushline-node-modules Creating 
  Volume hushline_hushline-node-modules Created 
- Container hushline-blob-storage-1 Creating 
  Container hushline-webpack-1 Creating 
+ Container hushline-blob-storage-1 Creating 
  Container hushline-postgres-1 Creating 
  Container hushline-webpack-1 Created 
  Container hushline-blob-storage-1 Created 
@@ -130,21 +135,21 @@ Selected issue #1727 from project queue.
  Container hushline-dev_data-1 Created 
  Container hushline-app-1 Creating 
  Container hushline-app-1 Created 
- Container hushline-blob-storage-1 Starting 
- Container hushline-postgres-1 Starting 
  Container hushline-webpack-1 Starting 
+ Container hushline-postgres-1 Starting 
+ Container hushline-blob-storage-1 Starting 
  Container hushline-postgres-1 Started 
  Container hushline-postgres-1 Waiting 
- Container hushline-webpack-1 Started 
  Container hushline-blob-storage-1 Started 
+ Container hushline-webpack-1 Started 
  Container hushline-postgres-1 Healthy 
  Container hushline-dev_data-1 Starting 
  Container hushline-dev_data-1 Started 
  Container hushline-blob-storage-1 Waiting 
  Container hushline-dev_data-1 Waiting 
  Container hushline-postgres-1 Waiting 
- Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
  Container hushline-dev_data-1 Exited 
  Container hushline-app-1 Starting 
  Container hushline-app-1 Started 
@@ -152,30 +157,30 @@ Selected issue #1727 from project queue.
  Container hushline-postgres-1 Running 
  Container hushline-postgres-1 Waiting 
  Container hushline-postgres-1 Healthy 
- Container hushline-dev_data-run-c72071e9eb67 Creating 
- Container hushline-dev_data-run-c72071e9eb67 Created 
+ Container hushline-dev_data-run-0ad7c4a0543e Creating 
+ Container hushline-dev_data-run-0ad7c4a0543e Created 
 poetry run ./scripts/dev_migrations.py
 Creating database tables
 Database tables created
 poetry run ./scripts/dev_data.py
-2026-03-17 23:40:04,883:INFO:Password hash counter
-2026-03-17 23:40:05,065:INFO:Password hash counter
-2026-03-17 23:40:05,241:INFO:Password hash counter
-2026-03-17 23:40:05,417:INFO:Password hash counter
-2026-03-17 23:40:05,599:INFO:Password hash counter
-2026-03-17 23:40:05,794:INFO:Password hash counter
-2026-03-17 23:40:05,972:INFO:Password hash counter
-2026-03-17 23:40:06,151:INFO:Password hash counter
-2026-03-17 23:40:06,327:INFO:Password hash counter
-2026-03-17 23:40:06,503:INFO:Password hash counter
-2026-03-17 23:40:06,678:INFO:Password hash counter
-2026-03-17 23:40:06,878:INFO:Password hash counter
-2026-03-17 23:40:07,055:INFO:Password hash counter
-2026-03-17 23:40:07,230:INFO:Password hash counter
-2026-03-17 23:40:07,407:INFO:Password hash counter
-2026-03-17 23:40:07,583:INFO:Password hash counter
-2026-03-17 23:40:07,758:INFO:Password hash counter
-2026-03-17 23:40:07,959:INFO:Password hash counter
+2026-03-19 05:01:32,203:INFO:Password hash counter
+2026-03-19 05:01:32,395:INFO:Password hash counter
+2026-03-19 05:01:32,582:INFO:Password hash counter
+2026-03-19 05:01:32,771:INFO:Password hash counter
+2026-03-19 05:01:32,988:INFO:Password hash counter
+2026-03-19 05:01:33,172:INFO:Password hash counter
+2026-03-19 05:01:33,348:INFO:Password hash counter
+2026-03-19 05:01:33,524:INFO:Password hash counter
+2026-03-19 05:01:33,700:INFO:Password hash counter
+2026-03-19 05:01:33,888:INFO:Password hash counter
+2026-03-19 05:01:34,096:INFO:Password hash counter
+2026-03-19 05:01:34,278:INFO:Password hash counter
+2026-03-19 05:01:34,454:INFO:Password hash counter
+2026-03-19 05:01:34,630:INFO:Password hash counter
+2026-03-19 05:01:34,808:INFO:Password hash counter
+2026-03-19 05:01:34,991:INFO:Password hash counter
+2026-03-19 05:01:35,206:INFO:Password hash counter
+2026-03-19 05:01:35,388:INFO:Password hash counter
 Adding dev data
 User updated:
   username = admin
@@ -221,23 +226,21 @@ Tier:
   monthly_amount = 500
 Dev data added
 Public storage bucket: public
-==> Create branch codex/daily-issue-1727
-Switched to a new branch 'codex/daily-issue-1727'
+==> Fetch epic base branch codex/epic-554
+==> Create branch codex/daily-issue-1750 from origin/codex/epic-554
+Switched to a new branch 'codex/daily-issue-1750'
 M	hushline/static/js/directory_verified.js
 M	hushline/static/js/settings-location.js
+branch 'codex/daily-issue-1750' set up to track 'origin/codex/epic-554'.
 ==> Codex issue attempt 1
 Codex execution started; transcript output is excluded from persisted run logs.
 Codex execution completed.
 Codex final message:
-Implemented the Phase 0 foundation without changing app runtime behavior.
+Updated the host fast-feedback lint workflow to Python 3.13 in [tests.yml]([redacted-path] leaving the rest of the workflow unchanged.
 
-I extended [`tests/helpers.py`]([redacted-path] so `form_to_data()` now flattens nested `FormField` and `FieldList(FormField(...))` payloads, preserves WTForms-generated prefixed field names, and can target a single submit button via `submit_name`. I added focused coverage in [`tests/test_helpers.py`]([redacted-path] for the three missing cases the modernization plan called out: prefixed forms, subforms, and multi-submit forms.
+Added a regression test in [test_workflow_pr_head_qualification.py]([redacted-path] that asserts the `lint` job in `.github/workflows/tests.yml` uses `actions/setup-python` with `python-version: "3.13"` and no longer contains the old `3.12` pin.
 
-I also documented the approved multi-form route convention and an explicit migration regression checklist in [`docs/FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md`]([redacted-path]
-
-Validation: `make test TESTS="tests/test_helpers.py"` passed. I did not run full `make lint` or full `make test`.
-
-Note: the existing unrelated worktree changes in [`hushline/static/js/directory_verified.js`]([redacted-path] and [`hushline/static/js/settings-location.js`]([redacted-path] were left untouched.
+I did not run local validation; the runner can execute `make lint` and `make test` next.
 ==> Refresh local runtime after schema changes
 Skipped: no schema-affecting files changed.
 ==> Run lint
@@ -245,6 +248,21 @@ docker compose run --rm app poetry run ruff format --check && \
 	docker compose run --rm app poetry run ruff check --output-format full && \
 	docker compose run --rm app poetry run mypy . && \
 	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --check ./*.md ./docs ./.github/workflows/* ./hushline; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --check ./*.md ./docs ./.github/workflows/* ./hushline; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-e53d638cb7b5 Creating 
+ Container hushline-app-run-e53d638cb7b5 Created 
+195 files already formatted
  Container hushline-postgres-1 Running 
  Container hushline-blob-storage-1 Running 
  Container hushline-postgres-1 Waiting 
@@ -257,23 +275,8 @@ docker compose run --rm app poetry run ruff format --check && \
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-7f5a866c7507 Creating 
- Container hushline-app-run-7f5a866c7507 Created 
-194 files already formatted
- Container hushline-postgres-1 Running 
- Container hushline-blob-storage-1 Running 
- Container hushline-postgres-1 Waiting 
- Container hushline-postgres-1 Healthy 
- Container hushline-dev_data-1 Starting 
- Container hushline-dev_data-1 Started 
- Container hushline-dev_data-1 Waiting 
- Container hushline-postgres-1 Waiting 
- Container hushline-blob-storage-1 Waiting 
- Container hushline-blob-storage-1 Healthy 
- Container hushline-postgres-1 Healthy 
- Container hushline-dev_data-1 Exited 
- Container hushline-app-run-91728d5539d8 Creating 
- Container hushline-app-run-91728d5539d8 Created 
+ Container hushline-app-run-aaa5aabf436b Creating 
+ Container hushline-app-run-aaa5aabf436b Created 
 All checks passed!
  Container hushline-blob-storage-1 Running 
  Container hushline-postgres-1 Running 
@@ -281,17 +284,17 @@ All checks passed!
  Container hushline-postgres-1 Healthy 
  Container hushline-dev_data-1 Starting 
  Container hushline-dev_data-1 Started 
- Container hushline-blob-storage-1 Waiting 
  Container hushline-dev_data-1 Waiting 
  Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-dbf5278c87c6 Creating 
- Container hushline-app-run-dbf5278c87c6 Created 
-Success: no issues found in 193 source files
- Container hushline-blob-storage-1 Running 
+ Container hushline-app-run-0b895ddfeb1f Creating 
+ Container hushline-app-run-0b895ddfeb1f Created 
+Success: no issues found in 194 source files
  Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
  Container hushline-postgres-1 Waiting 
  Container hushline-postgres-1 Healthy 
  Container hushline-dev_data-1 Starting 
@@ -302,8 +305,8 @@ Success: no issues found in 193 source files
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-8f8a47e82dc9 Creating 
- Container hushline-app-run-8f8a47e82dc9 Created 
+ Container hushline-app-run-837ea4104209 Creating 
+ Container hushline-app-run-837ea4104209 Created 
 Checking formatting...
 [warn] hushline/static/js/directory_verified.js
 [warn] hushline/static/js/settings-location.js
@@ -314,11 +317,9 @@ Workflow checks failed; Codex self-heal attempt 1.
 Codex execution started; transcript output is excluded from persisted run logs.
 Codex execution completed.
 Codex final message:
-Applied the narrow fix for the reported failure: I ran `make fix PRETTIER_TARGETS='hushline/static/js/directory_verified.js hushline/static/js/settings-location.js'` after inspecting the existing branch changes. That reformatted the two bundled JS files back to the repo’s Prettier expectations.
+The failing local workflow-equivalent check was the Prettier pass on the two already-modified JS bundles. I ran the repo fix target scoped to those files, which normalized them and removed both JS files from the diff. The branch now only carries the intended issue work in [tests.yml]([redacted-path] and [test_workflow_pr_head_qualification.py]([redacted-path]
 
-Current working tree no longer has JS formatting deltas. The remaining branch changes are the intended issue work in [docs/FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md]([redacted-path] [tests/helpers.py]([redacted-path] and the new [tests/test_helpers.py]([redacted-path]
-
-I did not rerun full `make lint` or `make test`.
+Validation run: `make fix PRETTIER_TARGETS='hushline/static/js/directory_verified.js hushline/static/js/settings-location.js'`. I did not rerun `make lint` or `make test`; the runner can do that next.
 ==> Refresh local runtime after schema changes
 Skipped: no schema-affecting files changed.
 ==> Run lint
@@ -338,9 +339,9 @@ docker compose run --rm app poetry run ruff format --check && \
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-fbc64165858f Creating 
- Container hushline-app-run-fbc64165858f Created 
-194 files already formatted
+ Container hushline-app-run-563a2aa7f8e6 Creating 
+ Container hushline-app-run-563a2aa7f8e6 Created 
+195 files already formatted
  Container hushline-postgres-1 Running 
  Container hushline-blob-storage-1 Running 
  Container hushline-postgres-1 Waiting 
@@ -353,9 +354,24 @@ docker compose run --rm app poetry run ruff format --check && \
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-3cd3f4795721 Creating 
- Container hushline-app-run-3cd3f4795721 Created 
+ Container hushline-app-run-3a231e37c7e0 Creating 
+ Container hushline-app-run-3a231e37c7e0 Created 
 All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-4c6f1d5c6553 Creating 
+ Container hushline-app-run-4c6f1d5c6553 Created 
+Success: no issues found in 194 source files
  Container hushline-postgres-1 Running 
  Container hushline-blob-storage-1 Running 
  Container hushline-postgres-1 Waiting 
@@ -368,23 +384,8 @@ All checks passed!
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-64ef50aec19d Creating 
- Container hushline-app-run-64ef50aec19d Created 
-Success: no issues found in 193 source files
- Container hushline-postgres-1 Running 
- Container hushline-blob-storage-1 Running 
- Container hushline-postgres-1 Waiting 
- Container hushline-postgres-1 Healthy 
- Container hushline-dev_data-1 Starting 
- Container hushline-dev_data-1 Started 
- Container hushline-dev_data-1 Waiting 
- Container hushline-postgres-1 Waiting 
- Container hushline-blob-storage-1 Waiting 
- Container hushline-postgres-1 Healthy 
- Container hushline-blob-storage-1 Healthy 
- Container hushline-dev_data-1 Exited 
- Container hushline-app-run-d6cf460a73bf Creating 
- Container hushline-app-run-d6cf460a73bf Created 
+ Container hushline-app-run-3926b5eba933 Creating 
+ Container hushline-app-run-3926b5eba933 Created 
 Checking formatting...
 All matched files use Prettier code style!
 ==> Run test (full suite)
@@ -395,14 +396,14 @@ docker compose run --rm app poetry run pytest --cov hushline --cov-report term -
  Container hushline-postgres-1 Healthy 
  Container hushline-dev_data-1 Starting 
  Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
  Container hushline-postgres-1 Waiting 
  Container hushline-blob-storage-1 Waiting 
- Container hushline-dev_data-1 Waiting 
  Container hushline-postgres-1 Healthy 
  Container hushline-blob-storage-1 Healthy 
  Container hushline-dev_data-1 Exited 
- Container hushline-app-run-97b0cb0a7e56 Creating 
- Container hushline-app-run-97b0cb0a7e56 Created 
+ Container hushline-app-run-a2b1a039e916 Creating 
+ Container hushline-app-run-a2b1a039e916 Created 
 ============================= test session starts ==============================
 platform linux -- Python 3.12.6, pytest-8.3.4, pluggy-1.5.0 -- /root/.cache/pypoetry/virtualenvs/hushline-9TtSrW0h-py3.12/bin/python
 cachedir: .pytest_cache
@@ -410,7 +411,7 @@ rootdir: /app
 configfile: pyproject.toml
 plugins: asyncio-0.25.3, cov-5.0.0, mock-3.14.0
 asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=function
-collecting ... collected 1271 items / 1 deselected / 1270 selected
+collecting ... collected 1306 items / 1 deselected / 1305 selected
 
 tests/test_2fa.py::test_enable_2fa PASSED                                [  0%]
 tests/test_2fa.py::test_valid_2fa_should_login PASSED                    [  0%]
@@ -424,7 +425,7 @@ tests/test_accessibility.py::test_settings_nav_marks_current_page PASSED [  0%]
 tests/test_accessibility.py::test_inbox_filter_nav_marks_current_page PASSED [  0%]
 tests/test_accessibility.py::test_guidance_modal_has_accessible_attributes PASSED [  0%]
 tests/test_admin.py::test_admin_settings_shows_verified_on_managed_service PASSED [  0%]
-tests/test_admin.py::test_admin_settings_includes_user_search PASSED     [  1%]
+tests/test_admin.py::test_admin_settings_includes_user_search PASSED     [  0%]
 tests/test_admin.py::test_admin_settings_hides_verified_on_nonmanaged_service PASSED [  1%]
 tests/test_admin.py::test_toggle_verified_on_managed_service PASSED      [  1%]
 tests/test_admin.py::test_toggle_verified_on_nonmanaged_service PASSED   [  1%]
@@ -437,7 +438,7 @@ tests/test_admin.py::test_delete_self_blocked PASSED                     [  1%]
 tests/test_admin.py::test_delete_alias_does_not_delete_user PASSED       [  1%]
 tests/test_admin.py::test_delete_primary_deletes_aliases PASSED          [  1%]
 tests/test_admin.py::test_admin_actions_require_csrf_token PASSED        [  1%]
-tests/test_admin.py::test_toggle_verified_user_not_found PASSED          [  2%]
+tests/test_admin.py::test_toggle_verified_user_not_found PASSED          [  1%]
 tests/test_admin.py::test_toggle_verified_username_nonmanaged_forbidden PASSED [  2%]
 tests/test_admin.py::test_toggle_verified_username_not_found PASSED      [  2%]
 tests/test_admin.py::test_toggle_admin_missing_bool_field_returns_bad_request PASSED [  2%]
@@ -450,56 +451,65 @@ tests/test_admin.py::test_update_tier_success PASSED                     [  2%]
 tests/test_admin.py::test_delete_user_not_found PASSED                   [  2%]
 tests/test_admin.py::test_delete_username_not_found PASSED               [  2%]
 tests/test_admin.py::test_delete_primary_username_blocked PASSED         [  2%]
-tests/test_admin.py::test_admin_csrf_invalid_token_returns_bad_request PASSED [  3%]
+tests/test_admin.py::test_admin_csrf_invalid_token_returns_bad_request PASSED [  2%]
 tests/test_agent_daily_issue_runner.py::test_runner_defaults_repo_dir_to_checkout_root PASSED [  3%]
 tests/test_agent_daily_issue_runner.py::test_main_exits_before_runtime_bootstrap_when_bot_pr_exists PASSED [  3%]
 tests/test_agent_daily_issue_runner.py::test_main_exits_before_runtime_bootstrap_when_human_pr_exists PASSED [  3%]
 tests/test_agent_daily_issue_runner.py::test_main_exits_before_runtime_bootstrap_when_no_issue_is_available PASSED [  3%]
 tests/test_agent_daily_issue_runner.py::test_main_bootstrap_does_not_prune_docker_system PASSED [  3%]
 tests/test_agent_daily_issue_runner.py::test_build_pr_title_omits_codex_daily_prefix PASSED [  3%]
-tests/test_agent_daily_issue_runner.py::test_persisted_runner_log_excludes_codex_transcript PASSED [  3%]
-tests/test_agent_daily_issue_runner.py::test_persisted_runner_log_redacts_developer_metadata PASSED [  3%]
-tests/test_agent_daily_issue_runner.py::test_verbose_codex_output_streams_to_console_only PASSED [  3%]
-tests/test_agent_daily_issue_runner.py::test_write_pr_narrative_lead_adds_plain_language_summary PASSED [  3%]
-tests/test_agent_daily_issue_runner.py::test_write_pr_narrative_lead_explains_log_only_run PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_build_branch_name_uses_issue_prefix PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_build_epic_branch_name_uses_epic_prefix PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_resolve_issue_parent_epic_outputs_parent_metadata PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_resolve_project_status_edit_args_outputs_project_field_and_option_ids PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_resolve_issue_project_item_id_outputs_matching_project_item PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_main_allows_existing_epic_pr_before_runtime_bootstrap PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_main_marks_issue_in_progress_before_runtime_bootstrap PASSED [  3%]
+tests/test_agent_daily_issue_runner.py::test_write_pr_body_for_child_issue_references_epic_and_closes_child_issue PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_main_marks_issue_ready_for_review_after_opening_pr PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_persisted_runner_log_excludes_codex_transcript PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_persisted_runner_log_redacts_developer_metadata PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_verbose_codex_output_streams_to_console_only PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_write_pr_narrative_lead_adds_plain_language_summary PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_write_pr_narrative_lead_explains_log_only_run PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_audit_failure_environmental_classifier_matches_network_errors PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_audit_failure_environmental_classifier_rejects_tls_vulnerability_text PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_runtime_bootstrap_retries_retryable_registry_failure PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_runtime_bootstrap_retries_retryable_pypi_dns_failure PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_runtime_bootstrap_does_not_retry_non_retryable_failure PASSED [  4%]
 tests/test_agent_daily_issue_runner.py::test_runtime_bootstrap_does_not_retry_seed_eoferror PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_resolve_bot_git_signing_key_uses_existing_ssh_git_config PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_resolve_bot_git_signing_key_ignores_non_ssh_git_config PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_assert_ssh_signing_ready_does_not_require_local_private_key_file PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_require_positive_integer_rejects_zero PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_require_positive_integer_rejects_zero_for_runtime_bootstrap_retry_delay PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_failure_signature_from_text_returns_structured_markers PASSED [  4%]
-tests/test_agent_daily_issue_runner.py::test_failure_signature_from_text_falls_back_when_no_marker_matches PASSED [  4%]
+tests/test_agent_daily_issue_runner.py::test_resolve_bot_git_signing_key_uses_existing_ssh_git_config PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_resolve_bot_git_signing_key_ignores_non_ssh_git_config PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_assert_ssh_signing_ready_does_not_require_local_private_key_file PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_require_positive_integer_rejects_zero PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_require_positive_integer_rejects_zero_for_runtime_bootstrap_retry_delay PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_failure_signature_from_text_returns_structured_markers PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_failure_signature_from_text_falls_back_when_no_marker_matches PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_build_fix_prompt_withholds_raw_check_output PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_recent_failure_block_from_text_extracts_recent_actionable_context PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_recent_failure_block_from_text_redacts_secret_like_values PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_failure_excerpt_from_text_redacts_sensitive_values PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_issue_attempt_loop_stops_after_max_attempts PASSED [  5%]
 tests/test_agent_daily_issue_runner.py::test_fix_attempt_loop_stops_after_max_attempts PASSED [  5%]
-tests/test_agent_daily_issue_runner.py::test_fix_attempt_loop_does_not_run_extra_post_test_gate PASSED [  5%]
-tests/test_agent_daily_issue_runner.py::test_run_local_workflow_checks_runs_lint_then_test_only PASSED [  5%]
-tests/test_agent_daily_issue_runner.py::test_run_local_workflow_checks_stops_after_non_fixable_lint_failure PASSED [  5%]
-tests/test_authentication_log_model.py::test_authentication_log_init_sets_optional_fields PASSED [  5%]
-tests/test_behavior_contracts.py::test_contract_register_login_and_2fa_challenge PASSED [  5%]
-tests/test_behavior_contracts.py::test_contract_notifications_generic_mode PASSED [  5%]
-tests/test_behavior_contracts.py::test_contract_notifications_field_content_mode PASSED [  5%]
+tests/test_agent_daily_issue_runner.py::test_fix_attempt_loop_does_not_run_extra_post_test_gate PASSED [  6%]
+tests/test_agent_daily_issue_runner.py::test_run_local_workflow_checks_runs_lint_then_test_only PASSED [  6%]
+tests/test_agent_daily_issue_runner.py::test_run_local_workflow_checks_stops_after_non_fixable_lint_failure PASSED [  6%]
+tests/test_authentication_log_model.py::test_authentication_log_init_sets_optional_fields PASSED [  6%]
+tests/test_behavior_contracts.py::test_contract_register_login_and_2fa_challenge PASSED [  6%]
+tests/test_behavior_contracts.py::test_contract_notifications_generic_mode PASSED [  6%]
+tests/test_behavior_contracts.py::test_contract_notifications_field_content_mode PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_notifications_full_body_mode_prefers_client_encrypted_body PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_notifications_full_body_mode_falls_back_to_server_encrypt PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_2fa_enable_then_disable_round_trip PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_onboarding_notifications_and_directory_persist_expected_state PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_directory_users_surface_verified_and_unverified_accounts PASSED [  6%]
 tests/test_behavior_contracts.py::test_contract_whistleblower_message_flow_defaults_and_actions PASSED [  6%]
-tests/test_behavior_contracts.py::test_contract_message_actions_do_not_cross_user_boundaries PASSED [  6%]
-tests/test_behavior_contracts.py::test_contract_authenticated_settings_profile_and_auth_round_trip PASSED [  6%]
-tests/test_behavior_contracts.py::test_contract_authenticated_encryption_and_data_export_flow PASSED [  6%]
-tests/test_behavior_contracts.py::test_contract_paid_user_alias_vision_and_subscription_controls PASSED [  6%]
-tests/test_behavior_contracts.py::test_contract_admin_branding_guidance_and_registration_controls PASSED [  6%]
-tests/test_ccpa_compliance.py::test_ccpa_compliance_evidence_policy_and_functionality PASSED [  6%]
+tests/test_behavior_contracts.py::test_contract_message_actions_do_not_cross_user_boundaries PASSED [  7%]
+tests/test_behavior_contracts.py::test_contract_authenticated_settings_profile_and_auth_round_trip PASSED [  7%]
+tests/test_behavior_contracts.py::test_contract_authenticated_encryption_and_data_export_flow PASSED [  7%]
+tests/test_behavior_contracts.py::test_contract_paid_user_alias_vision_and_subscription_controls PASSED [  7%]
+tests/test_behavior_contracts.py::test_contract_admin_branding_guidance_and_registration_controls PASSED [  7%]
+tests/test_ccpa_compliance.py::test_ccpa_compliance_evidence_policy_and_functionality PASSED [  7%]
 tests/test_cli_commands.py::test_reg_settings_command_outputs_current_values PASSED [  7%]
 tests/test_cli_commands.py::test_reg_toggle_commands_update_org_settings PASSED [  7%]
 tests/test_cli_commands.py::test_reg_code_commands_create_list_and_delete PASSED [  7%]
@@ -507,12 +517,12 @@ tests/test_cli_commands.py::test_reg_code_create_avoids_dash_prefixed_codes PASS
 tests/test_cli_commands.py::test_password_hash_report_outputs_legacy_count_and_removal_gate PASSED [  7%]
 tests/test_cli_commands.py::test_password_hash_report_blocks_when_measured_legacy_successes_non_zero PASSED [  7%]
 tests/test_cli_commands.py::test_password_hash_can_remove_passlib_blocks_when_legacy_rows_remain PASSED [  7%]
-tests/test_cli_commands.py::test_password_hash_can_remove_passlib_succeeds_when_legacy_rows_and_volume_are_zero PASSED [  7%]
-tests/test_cli_commands.py::test_password_hash_can_remove_passlib_accepts_reviewed_in_repo_legacy_verifier_path PASSED [  7%]
-tests/test_cli_commands.py::test_stripe_configure_skips_when_secret_missing PASSED [  7%]
-tests/test_cli_commands.py::test_stripe_configure_creates_missing_tiers_when_lookup_returns_none PASSED [  7%]
-tests/test_cli_commands.py::test_stripe_configure_runs_premium_setup_when_secret_present PASSED [  7%]
-tests/test_cli_commands.py::test_stripe_start_worker_skips_without_secret PASSED [  7%]
+tests/test_cli_commands.py::test_password_hash_can_remove_passlib_succeeds_when_legacy_rows_and_volume_are_zero PASSED [  8%]
+tests/test_cli_commands.py::test_password_hash_can_remove_passlib_accepts_reviewed_in_repo_legacy_verifier_path PASSED [  8%]
+tests/test_cli_commands.py::test_stripe_configure_skips_when_secret_missing PASSED [  8%]
+tests/test_cli_commands.py::test_stripe_configure_creates_missing_tiers_when_lookup_returns_none PASSED [  8%]
+tests/test_cli_commands.py::test_stripe_configure_runs_premium_setup_when_secret_present PASSED [  8%]
+tests/test_cli_commands.py::test_stripe_start_worker_skips_without_secret PASSED [  8%]
 tests/test_cli_commands.py::test_stripe_start_worker_runs_async_worker PASSED [  8%]
 tests/test_config.py::test_config_parse_string PASSED                    [  8%]
 tests/test_config.py::test_config_parse_json PASSED                      [  8%]
@@ -520,12 +530,12 @@ tests/test_config.py::test_config_parse_json_fail PASSED                 [  8%]
 tests/test_config.py::test_parse_alias_mode PASSED                       [  8%]
 tests/test_config.py::test_preferred_url_scheme_defaults PASSED          [  8%]
 tests/test_config.py::test_preferred_url_scheme_override PASSED          [  8%]
-tests/test_config.py::test_preferred_url_scheme_invalid_value PASSED     [  8%]
-tests/test_config.py::test_public_base_url_loads PASSED                  [  8%]
-tests/test_config.py::test_public_base_url_invalid[ftp://example.com-PUBLIC_BASE_URL must use http or https] PASSED [  8%]
-tests/test_config.py::test_public_base_url_invalid[https://example.com/path-PUBLIC_BASE_URL must not include a path] PASSED [  8%]
-tests/test_config.py::test_public_base_url_invalid[https://example.com/?q=1-PUBLIC_BASE_URL must not include query or fragment] PASSED [  8%]
-tests/test_config.py::test_public_base_url_invalid[https://example.com/#frag-PUBLIC_BASE_URL must not include query or fragment] PASSED [  8%]
+tests/test_config.py::test_preferred_url_scheme_invalid_value PASSED     [  9%]
+tests/test_config.py::test_public_base_url_loads PASSED                  [  9%]
+tests/test_config.py::test_public_base_url_invalid[ftp://example.com-PUBLIC_BASE_URL must use http or https] PASSED [  9%]
+tests/test_config.py::test_public_base_url_invalid[https://example.com/path-PUBLIC_BASE_URL must not include a path] PASSED [  9%]
+tests/test_config.py::test_public_base_url_invalid[https://example.com/?q=1-PUBLIC_BASE_URL must not include query or fragment] PASSED [  9%]
+tests/test_config.py::test_public_base_url_invalid[https://example.com/#frag-PUBLIC_BASE_URL must not include query or fragment] PASSED [  9%]
 tests/test_config.py::test_smtp_notification_reply_to_loads PASSED       [  9%]
 tests/test_config.py::test_password_hash_write_use_werkzeug_scrypt_flag_defaults_false_and_parses_true PASSED [  9%]
 tests/test_config.py::test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true PASSED [  9%]
@@ -533,11 +543,11 @@ tests/test_content_safety.py::test_contains_disallowed_text_rejects_empty_input 
 tests/test_content_safety.py::test_contains_disallowed_text_applies_allowlist_before_engine PASSED [  9%]
 tests/test_content_safety.py::test_profanity_engine_returns_none_and_logs_once_when_library_missing PASSED [  9%]
 tests/test_content_safety.py::test_contains_disallowed_text_returns_false_when_engine_missing PASSED [  9%]
-tests/test_content_safety.py::test_profanity_engine_loads_library_wordlist PASSED [  9%]
-tests/test_coverage_push.py::test_cli_stripe_configure_creates_missing_tiers PASSED [  9%]
-tests/test_coverage_push.py::test_button_widgets_and_coerce_status PASSED [  9%]
-tests/test_coverage_push.py::test_custom_validators_negative_paths PASSED [  9%]
-tests/test_coverage_push.py::test_email_forwarding_form_requires_email_and_smtp_fields PASSED [  9%]
+tests/test_content_safety.py::test_profanity_engine_loads_library_wordlist PASSED [ 10%]
+tests/test_coverage_push.py::test_cli_stripe_configure_creates_missing_tiers PASSED [ 10%]
+tests/test_coverage_push.py::test_button_widgets_and_coerce_status PASSED [ 10%]
+tests/test_coverage_push.py::test_custom_validators_negative_paths PASSED [ 10%]
+tests/test_coverage_push.py::test_email_forwarding_form_requires_email_and_smtp_fields PASSED [ 10%]
 tests/test_coverage_push.py::test_email_forwarding_form_validate_short_circuits_when_base_invalid PASSED [ 10%]
 tests/test_coverage_push.py::test_set_homepage_username_form_rejects_unknown_user PASSED [ 10%]
 tests/test_coverage_push.py::test_base_smtp_config_not_implemented PASSED [ 10%]
@@ -546,11 +556,11 @@ tests/test_coverage_push.py::test_send_email_decodes_bytes_and_returns_false_whe
 tests/test_coverage_push.py::test_message_status_text_upsert_delete_paths PASSED [ 10%]
 tests/test_coverage_push.py::test_encrypted_session_invalid_token_invalid_json_and_missing_key PASSED [ 10%]
 tests/test_coverage_push.py::test_data_export_invalid_form_returns_400 PASSED [ 10%]
-tests/test_coverage_push.py::test_data_export_encrypt_requires_pgp PASSED [ 10%]
-tests/test_coverage_push.py::test_data_export_encrypt_failure_redirects_to_advanced PASSED [ 10%]
-tests/test_coverage_push.py::test_build_zip_skips_non_pgp_and_unencrypted_values PASSED [ 10%]
-tests/test_coverage_push.py::test_write_pgp_messages_handles_empty_username_ids PASSED [ 10%]
-tests/test_coverage_push.py::test_write_pgp_messages_skips_unencrypted_field_values PASSED [ 10%]
+tests/test_coverage_push.py::test_data_export_encrypt_requires_pgp PASSED [ 11%]
+tests/test_coverage_push.py::test_data_export_encrypt_failure_redirects_to_advanced PASSED [ 11%]
+tests/test_coverage_push.py::test_build_zip_skips_non_pgp_and_unencrypted_values PASSED [ 11%]
+tests/test_coverage_push.py::test_write_pgp_messages_handles_empty_username_ids PASSED [ 11%]
+tests/test_coverage_push.py::test_write_pgp_messages_skips_unencrypted_field_values PASSED [ 11%]
 tests/test_coverage_push.py::test_user_alias_mode_edge_cases PASSED      [ 11%]
 tests/test_coverage_push.py::test_user_init_rejects_direct_password_hash_assignment PASSED [ 11%]
 tests/test_coverage_push.py::test_health_json_route PASSED               [ 11%]
@@ -559,11 +569,11 @@ tests/test_coverage_push.py::test_registration_toggle_false_paths PASSED [ 11%]
 tests/test_coverage_push.py::test_blob_storage_none_driver_when_missing_config PASSED [ 11%]
 tests/test_coverage_push.py::test_encrypt_helpers_branch_types PASSED    [ 11%]
 tests/test_coverage_push.py::test_handle_email_forwarding_form_smtp_validation_exception PASSED [ 11%]
-tests/test_coverage_push.py::test_notifications_toggle_false_flash_paths PASSED [ 11%]
-tests/test_coverage_push.py::test_notifications_toggle_include_content_true_path PASSED [ 11%]
-tests/test_coverage_push.py::test_authentication_required_redirects_to_2fa_when_not_authenticated PASSED [ 11%]
-tests/test_coverage_push.py::test_authentication_required_clears_session_on_session_id_mismatch PASSED [ 11%]
-tests/test_coverage_push.py::test_authentication_required_clears_session_when_user_id_missing PASSED [ 11%]
+tests/test_coverage_push.py::test_notifications_toggle_false_flash_paths PASSED [ 12%]
+tests/test_coverage_push.py::test_notifications_toggle_include_content_true_path PASSED [ 12%]
+tests/test_coverage_push.py::test_authentication_required_redirects_to_2fa_when_not_authenticated PASSED [ 12%]
+tests/test_coverage_push.py::test_authentication_required_clears_session_on_session_id_mismatch PASSED [ 12%]
+tests/test_coverage_push.py::test_authentication_required_clears_session_when_user_id_missing PASSED [ 12%]
 tests/test_coverage_push.py::test_admin_authentication_required_forbids_non_admin PASSED [ 12%]
 tests/test_coverage_push.py::test_create_products_and_prices_finds_product_in_list PASSED [ 12%]
 tests/test_coverage_push.py::test_create_products_and_prices_reuses_existing_default_price PASSED [ 12%]
@@ -572,11 +582,11 @@ tests/test_coverage_push.py::test_create_products_and_prices_recreates_price_whe
 tests/test_coverage_push.py::test_utils_if_not_none_and_parse_bool PASSED [ 12%]
 tests/test_coverage_push_remaining.py::test_enums_defensive_paths PASSED [ 12%]
 tests/test_coverage_push_remaining.py::test_model_repr_and_field_definition_move_up_noop PASSED [ 12%]
-tests/test_coverage_push_remaining.py::test_field_value_remaining_paths PASSED [ 12%]
-tests/test_coverage_push_remaining.py::test_hushline_init_remaining_paths PASSED [ 12%]
-tests/test_coverage_push_remaining.py::test_crypto_encrypt_message_string_branch PASSED [ 12%]
-tests/test_coverage_push_remaining.py::test_stripe_invoice_remaining_paths PASSED [ 12%]
-tests/test_coverage_push_remaining.py::test_alias_route_delete_button_path PASSED [ 12%]
+tests/test_coverage_push_remaining.py::test_field_value_remaining_paths PASSED [ 13%]
+tests/test_coverage_push_remaining.py::test_hushline_init_remaining_paths PASSED [ 13%]
+tests/test_coverage_push_remaining.py::test_crypto_encrypt_message_string_branch PASSED [ 13%]
+tests/test_coverage_push_remaining.py::test_stripe_invoice_remaining_paths PASSED [ 13%]
+tests/test_coverage_push_remaining.py::test_alias_route_delete_button_path PASSED [ 13%]
 tests/test_coverage_push_remaining.py::test_branding_delete_logo_multirow_safety PASSED [ 13%]
 tests/test_coverage_push_remaining.py::test_guidance_none_prompts_default_path PASSED [ 13%]
 tests/test_coverage_push_remaining.py::test_settings_common_remaining_paths PASSED [ 13%]
@@ -585,10 +595,10 @@ tests/test_coverage_push_remaining.py::test_worker_no_pending_event_hits_continu
 tests/test_crypto.py::test_get_encryption_key_requires_env PASSED        [ 13%]
 tests/test_crypto.py::test_scoped_key_derivation_changes_key PASSED      [ 13%]
 tests/test_crypto.py::test_encrypt_and_decrypt_field PASSED              [ 13%]
-tests/test_crypto.py::test_encrypt_field_uses_zero_timestamp PASSED      [ 13%]
-tests/test_crypto.py::test_none_roundtrips PASSED                        [ 13%]
-tests/test_crypto.py::test_pgp_helpers PASSED                            [ 13%]
-tests/test_crypto.py::test_pgp_helpers_invalid_key PASSED                [ 13%]
+tests/test_crypto.py::test_encrypt_field_uses_zero_timestamp PASSED      [ 14%]
+tests/test_crypto.py::test_none_roundtrips PASSED                        [ 14%]
+tests/test_crypto.py::test_pgp_helpers PASSED                            [ 14%]
+tests/test_crypto.py::test_pgp_helpers_invalid_key PASSED                [ 14%]
 tests/test_crypto.py::test_gen_reply_slug_uses_diceware_words PASSED     [ 14%]
 tests/test_data_export.py::test_data_export_requires_auth PASSED         [ 14%]
 tests/test_data_export.py::test_data_export_zip_contains_csv_and_pgp PASSED [ 14%]
@@ -598,10 +608,10 @@ tests/test_delete_account.py::test_delete_account PASSED                 [ 14%]
 tests/test_delete_account.py::test_cannot_delete_only_admin_account PASSED [ 14%]
 tests/test_delete_account.py::test_delete_account_multiple_admins PASSED [ 14%]
 tests/test_delete_account.py::test_delete_account_redirects_to_login_without_user_id PASSED [ 14%]
-tests/test_delete_account.py::test_delete_account_redirects_to_login_when_user_missing PASSED [ 14%]
-tests/test_deployment_migrations.py::test_staging_compose_uses_migration_sidecar PASSED [ 14%]
-tests/test_deployment_migrations.py::test_staging_compose_disables_app_startup_migrations PASSED [ 14%]
-tests/test_deployment_migrations.py::test_prod_start_script_supports_disabling_startup_migrations PASSED [ 14%]
+tests/test_delete_account.py::test_delete_account_redirects_to_login_when_user_missing PASSED [ 15%]
+tests/test_deployment_migrations.py::test_staging_compose_uses_migration_sidecar PASSED [ 15%]
+tests/test_deployment_migrations.py::test_staging_compose_disables_app_startup_migrations PASSED [ 15%]
+tests/test_deployment_migrations.py::test_prod_start_script_supports_disabling_startup_migrations PASSED [ 15%]
 tests/test_directory.py::test_globaleaks_seed_has_rows PASSED            [ 15%]
 tests/test_directory.py::test_directory_accessible PASSED                [ 15%]
 tests/test_directory.py::test_directory_public_record_banner_links_to_admin PASSED [ 15%]
@@ -611,10 +621,10 @@ tests/test_directory.py::test_directory_all_tab_banner_links_to_admin PASSED [ 1
 tests/test_directory.py::test_directory_hides_tab_bar_when_verified_tabs_disabled PASSED [ 15%]
 tests/test_directory.py::test_directory_users_json_excludes_public_records_when_verified_tabs_disabled PASSED [ 15%]
 tests/test_directory.py::test_directory_lists_only_opted_in_users PASSED [ 15%]
-tests/test_directory.py::test_directory_session_user_json_defaults_to_logged_out PASSED [ 15%]
-tests/test_directory.py::test_directory_session_user_json_logged_in PASSED [ 15%]
-tests/test_directory.py::test_directory_users_json_includes_display_name_fallback_and_flags PASSED [ 15%]
-tests/test_directory.py::test_directory_users_json_includes_account_category PASSED [ 15%]
+tests/test_directory.py::test_directory_session_user_json_defaults_to_logged_out PASSED [ 16%]
+tests/test_directory.py::test_directory_session_user_json_logged_in PASSED [ 16%]
+tests/test_directory.py::test_directory_users_json_includes_display_name_fallback_and_flags PASSED [ 16%]
+tests/test_directory.py::test_directory_users_json_includes_account_category PASSED [ 16%]
 tests/test_directory.py::test_directory_users_json_includes_normalized_user_location PASSED [ 16%]
 tests/test_directory.py::test_directory_users_json_includes_legacy_account_category_label PASSED [ 16%]
 tests/test_directory.py::test_directory_self_reported_attorneys_render_in_attorneys_tab PASSED [ 16%]
@@ -624,9 +634,9 @@ tests/test_directory.py::test_directory_users_json_includes_public_record_rows P
 tests/test_directory.py::test_directory_public_record_cards_do_not_show_location PASSED [ 16%]
 tests/test_directory.py::test_directory_users_json_includes_legacy_public_record_rows PASSED [ 16%]
 tests/test_directory.py::test_directory_filters_public_records_by_country_and_region_query_params PASSED [ 16%]
-tests/test_directory.py::test_directory_attorney_filter_panel_hidden_by_default PASSED [ 16%]
-tests/test_directory.py::test_directory_attorney_filter_panel_shows_selected_filters PASSED [ 16%]
-tests/test_directory.py::test_directory_users_json_filters_only_public_record_rows_by_query_params PASSED [ 16%]
+tests/test_directory.py::test_directory_attorney_filter_panel_hidden_by_default PASSED [ 17%]
+tests/test_directory.py::test_directory_attorney_filter_panel_shows_selected_filters PASSED [ 17%]
+tests/test_directory.py::test_directory_users_json_filters_only_public_record_rows_by_query_params PASSED [ 17%]
 tests/test_directory.py::test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters PASSED [ 17%]
 tests/test_directory.py::test_directory_attorney_filters_json_includes_self_reported_attorneys PASSED [ 17%]
 tests/test_directory.py::test_normalized_attorney_filter_country_returns_none_for_blank_values PASSED [ 17%]
@@ -637,9 +647,9 @@ tests/test_directory.py::test_attorney_filter_metadata_skips_missing_country_and
 tests/test_directory.py::test_directory_attorney_filters_include_normalized_country_values_outside_legacy_code_map PASSED [ 17%]
 tests/test_directory.py::test_directory_attorney_filters_support_non_us_subdivisions PASSED [ 17%]
 tests/test_directory.py::test_directory_attorney_filters_json_ignores_untrusted_query_values PASSED [ 17%]
-tests/test_directory.py::test_directory_attorney_filters_json_returns_empty_metadata_when_verified_tabs_disabled PASSED [ 17%]
-tests/test_directory.py::test_directory_securedrop_render_only_in_securedrop_and_all PASSED [ 17%]
-tests/test_directory.py::test_directory_globaleaks_render_only_in_globaleaks_and_all PASSED [ 17%]
+tests/test_directory.py::test_directory_attorney_filters_json_returns_empty_metadata_when_verified_tabs_disabled PASSED [ 18%]
+tests/test_directory.py::test_directory_securedrop_render_only_in_securedrop_and_all PASSED [ 18%]
+tests/test_directory.py::test_directory_globaleaks_render_only_in_globaleaks_and_all PASSED [ 18%]
 tests/test_directory.py::test_directory_users_json_includes_globaleaks_rows PASSED [ 18%]
 tests/test_directory.py::test_directory_globaleaks_cards_do_not_show_location PASSED [ 18%]
 tests/test_directory.py::test_directory_users_json_includes_securedrop_rows PASSED [ 18%]
@@ -650,9 +660,9 @@ tests/test_directory.py::test_public_record_listing_preserves_non_us_subdivision
 tests/test_directory.py::test_public_record_listing_load_seed_rows_returns_empty_list_for_missing_file PASSED [ 18%]
 tests/test_directory.py::test_public_record_listings_deduplicate_strict_and_legacy_seed_collisions PASSED [ 18%]
 tests/test_directory.py::test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_country PASSED [ 18%]
-tests/test_directory.py::test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge PASSED [ 18%]
-tests/test_directory.py::test_public_record_seed_regions_have_coverage PASSED [ 18%]
-tests/test_directory.py::test_public_record_listing_page_is_read_only PASSED [ 18%]
+tests/test_directory.py::test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge PASSED [ 19%]
+tests/test_directory.py::test_public_record_seed_regions_have_coverage PASSED [ 19%]
+tests/test_directory.py::test_public_record_listing_page_is_read_only PASSED [ 19%]
 tests/test_directory.py::test_public_record_listing_route_rejects_post PASSED [ 19%]
 tests/test_directory.py::test_public_record_listing_route_hidden_when_verified_tabs_disabled PASSED [ 19%]
 tests/test_directory.py::test_directory_listing_routes_return_404_for_missing_slugs[public_record_listing-hushline.routes.directory.get_public_record_listing] PASSED [ 19%]
@@ -663,8 +673,8 @@ tests/test_directory.py::test_globaleaks_listing_page_is_read_only PASSED [ 19%]
 tests/test_directory.py::test_globaleaks_listing_page_mentions_tor_for_onion_submission PASSED [ 19%]
 tests/test_directory.py::test_globaleaks_listing_route_hidden_when_verified_tabs_disabled PASSED [ 19%]
 tests/test_directory.py::test_securedrop_listing_page_omits_landing_page_link_when_missing PASSED [ 19%]
-tests/test_directory.py::test_securedrop_listing_route_hidden_when_verified_tabs_disabled PASSED [ 19%]
-tests/test_directory.py::test_public_record_listing_slug_cannot_be_messaged PASSED [ 19%]
+tests/test_directory.py::test_securedrop_listing_route_hidden_when_verified_tabs_disabled PASSED [ 20%]
+tests/test_directory.py::test_public_record_listing_slug_cannot_be_messaged PASSED [ 20%]
 tests/test_directory.py::test_globaleaks_listing_slug_cannot_be_messaged PASSED [ 20%]
 tests/test_directory_listing_geography.py::test_build_directory_geography_normalizes_us_subdivision_codes[IL-Illinois-IL] PASSED [ 20%]
 tests/test_directory_listing_geography.py::test_build_directory_geography_normalizes_us_subdivision_codes[Illinois-Illinois-IL] PASSED [ 20%]
@@ -676,8 +686,9 @@ tests/test_directory_listing_geography.py::test_build_public_record_geography_us
 tests/test_directory_listing_geography.py::test_build_public_record_geography_uses_us_state_code_when_country_missing PASSED [ 20%]
 tests/test_directory_listing_geography.py::test_build_public_record_geography_uses_non_us_state_value_as_country_when_missing PASSED [ 20%]
 tests/test_directory_listing_geography.py::test_build_directory_geography_keeps_non_us_subdivision_strings PASSED [ 20%]
-tests/test_docs_library_mirror.py::test_library_docs_mirror_contains_required_pages PASSED [ 20%]
-tests/test_docs_library_mirror.py::test_library_docs_relative_links_resolve PASSED [ 20%]
+tests/test_docker_runtime_images.py::test_dev_and_prod_dockerfiles_use_the_same_python_313_bookworm_runtime_image PASSED [ 20%]
+tests/test_docs_library_mirror.py::test_library_docs_mirror_contains_required_pages PASSED [ 21%]
+tests/test_docs_library_mirror.py::test_library_docs_relative_links_resolve PASSED [ 21%]
 tests/test_docs_screenshots_manifest.py::test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs PASSED [ 21%]
 tests/test_docs_screenshots_manifest.py::test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fill PASSED [ 21%]
 tests/test_email.py::test_create_smtp_config_variants PASSED             [ 21%]
@@ -689,8 +700,8 @@ tests/test_email.py::test_send_email_success_and_retry PASSED            [ 21%]
 tests/test_email.py::test_send_email_recipient_refusal_returns_false PASSED [ 21%]
 tests/test_email.py::test_send_email_sets_reply_to_header PASSED         [ 21%]
 tests/test_email_headers.py::test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key PASSED [ 21%]
-tests/test_email_headers.py::test_email_headers_page_renders PASSED      [ 21%]
-tests/test_email_headers.py::test_email_headers_export_requires_authentication PASSED [ 21%]
+tests/test_email_headers.py::test_email_headers_page_renders PASSED      [ 22%]
+tests/test_email_headers.py::test_email_headers_export_requires_authentication PASSED [ 22%]
 tests/test_email_headers.py::test_email_headers_page_renders_authenticated PASSED [ 22%]
 tests/test_email_headers.py::test_email_headers_post_without_dkim_still_reports_auth_results PASSED [ 22%]
 tests/test_email_headers.py::test_analyze_raw_email_headers_marks_likely_forged_on_triple_fail PASSED [ 22%]
@@ -702,8 +713,8 @@ tests/test_email_headers.py::test_analyze_raw_email_headers_warns_on_unparseable
 tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised0-not_found-No DKIM key found] PASSED [ 22%]
 tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised1-error-DNS lookup failed: NoAnswer] PASSED [ 22%]
 tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised2-error-DNS lookup failed: NoNameservers] PASSED [ 22%]
-tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised3-error-DNS lookup failed: Timeout] PASSED [ 22%]
-tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised4-error-DNS error: DNSException] PASSED [ 22%]
+tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised3-error-DNS lookup failed: Timeout] PASSED [ 23%]
+tests/test_email_headers.py::test_analyze_raw_email_headers_handles_dns_lookup_errors[raised4-error-DNS error: DNSException] PASSED [ 23%]
 tests/test_email_headers.py::test_create_evidence_zip_contains_pdf_json_and_valid_checksums PASSED [ 23%]
 tests/test_email_headers.py::test_email_headers_export_zip_contains_evidence_artifacts PASSED [ 23%]
 tests/test_email_headers.py::test_email_headers_post_invalid_form_shows_validation_flash PASSED [ 23%]
@@ -715,7 +726,7 @@ tests/test_email_headers.py::test_email_headers_export_value_error_redirects_wit
 tests/test_email_headers.py::test_parse_tag_value_pairs_ignores_invalid_parts_and_empty_keys PASSED [ 23%]
 tests/test_email_headers.py::test_build_interpretation_includes_strong_chain_multiple_signatures_and_strong_keys PASSED [ 23%]
 tests/test_email_headers.py::test_render_minimal_pdf_renders_when_no_lines_provided PASSED [ 23%]
-tests/test_email_headers.py::test_render_report_pdf_includes_none_sections_and_warnings_block PASSED [ 23%]
+tests/test_email_headers.py::test_render_report_pdf_includes_none_sections_and_warnings_block PASSED [ 24%]
 tests/test_email_headers.py::test_create_evidence_zip_includes_lookup_error_details PASSED [ 24%]
 tests/test_external_urls.py::test_normalize_public_base_url_strips_trailing_slash PASSED [ 24%]
 tests/test_external_urls.py::test_normalize_public_base_url_rejects_invalid_values[ftp://example.com-PUBLIC_BASE_URL must use http or https] PASSED [ 24%]
@@ -728,7 +739,7 @@ tests/test_external_urls.py::test_canonical_external_url_falls_back_to_request_d
 tests/test_external_urls.py::test_canonical_external_url_requires_canonical_config_in_production PASSED [ 24%]
 tests/test_fields.py::test_add_fields_and_move_up PASSED                 [ 24%]
 tests/test_fields.py::test_add_fields_and_move_down PASSED               [ 24%]
-tests/test_fields.py::test_field_value_encryption PASSED                 [ 24%]
+tests/test_fields.py::test_field_value_encryption PASSED                 [ 25%]
 tests/test_fields.py::test_field_value_unencryption PASSED               [ 25%]
 tests/test_first_user.py::test_no_users_redirect_to_register PASSED      [ 25%]
 tests/test_first_user.py::test_no_users_register_should_show_alert PASSED [ 25%]
@@ -741,7 +752,7 @@ tests/test_frontend_compat.py::test_static_js_bundles_avoid_eval_wrappers PASSED
 tests/test_frontend_compat.py::test_client_side_encryption_has_platform_guards PASSED [ 25%]
 tests/test_frontend_compat.py::test_profile_template_avoids_inline_submit_handlers PASSED [ 25%]
 tests/test_frontend_compat.py::test_submit_spinner_hooks_exist_for_scoped_forms PASSED [ 25%]
-tests/test_frontend_compat.py::test_directory_search_accessibility_hooks_exist PASSED [ 25%]
+tests/test_frontend_compat.py::test_directory_search_accessibility_hooks_exist PASSED [ 26%]
 tests/test_frontend_compat.py::test_directory_sticky_active_tab_scroll_to_top_hook_exists PASSED [ 26%]
 tests/test_frontend_compat.py::test_inbox_sticky_nav_hooks_exist PASSED  [ 26%]
 tests/test_frontend_compat.py::test_settings_field_delete_confirmation_blocks_submit_on_cancel PASSED [ 26%]
@@ -792,7 +803,7 @@ tests/test_make_admin.py::test_toggle_admin_prints_when_user_missing PASSED [ 29
 tests/test_make_admin.py::test_toggle_admin_flips_admin_flag_case_insensitive PASSED [ 29%]
 tests/test_make_admin.py::test_make_admin_main_without_username_exits PASSED [ 29%]
 tests/test_make_admin.py::test_make_admin_main_with_username_runs PASSED [ 29%]
-tests/test_md.py::test_md_to_html_returns_markup_input_unchanged PASSED  [ 30%]
+tests/test_md.py::test_md_to_html_returns_markup_input_unchanged PASSED  [ 29%]
 tests/test_md.py::test_md_to_html_sanitizes_disallowed_tags_and_keeps_links PASSED [ 30%]
 tests/test_migrations.py::test_linear_revision_history PASSED            [ 30%]
 tests/test_migrations.py::test_upgrade_with_data[46aedec8fd9b] PASSED    [ 30%]
@@ -805,7 +816,7 @@ tests/test_migrations.py::test_upgrade_with_data[b6a1e3f5a2b1] PASSED    [ 30%]
 tests/test_migrations.py::test_upgrade_with_data[7d6a9f2f8c1a] PASSED    [ 30%]
 tests/test_migrations.py::test_upgrade_with_data[2e3e5b1f2b3c] PASSED    [ 30%]
 tests/test_migrations.py::test_upgrade_with_data[9f7c4c3ea9a1] PASSED    [ 30%]
-tests/test_migrations.py::test_upgrade_with_data[3c1b2a4d5e6f] PASSED    [ 31%]
+tests/test_migrations.py::test_upgrade_with_data[3c1b2a4d5e6f] PASSED    [ 30%]
 tests/test_migrations.py::test_upgrade_with_data[8f3f1f0a1b2c] PASSED    [ 31%]
 tests/test_migrations.py::test_upgrade_with_data[1a2b3c4d5e6a] PASSED    [ 31%]
 tests/test_migrations.py::test_downgrade_with_data[46aedec8fd9b] PASSED  [ 31%]
@@ -818,7 +829,7 @@ tests/test_migrations.py::test_downgrade_with_data[b6a1e3f5a2b1] PASSED  [ 31%]
 tests/test_migrations.py::test_downgrade_with_data[7d6a9f2f8c1a] PASSED  [ 31%]
 tests/test_migrations.py::test_downgrade_with_data[2e3e5b1f2b3c] PASSED  [ 31%]
 tests/test_migrations.py::test_downgrade_with_data[9f7c4c3ea9a1] PASSED  [ 31%]
-tests/test_migrations.py::test_downgrade_with_data[3c1b2a4d5e6f] PASSED  [ 32%]
+tests/test_migrations.py::test_downgrade_with_data[3c1b2a4d5e6f] PASSED  [ 31%]
 tests/test_migrations.py::test_downgrade_with_data[8f3f1f0a1b2c] PASSED  [ 32%]
 tests/test_migrations.py::test_downgrade_with_data[1a2b3c4d5e6a] PASSED  [ 32%]
 tests/test_migrations.py::test_double_upgrade[46aedec8fd9b] PASSED       [ 32%]
@@ -831,7 +842,7 @@ tests/test_migrations.py::test_double_upgrade[b6a1e3f5a2b1] PASSED       [ 32%]
 tests/test_migrations.py::test_double_upgrade[7d6a9f2f8c1a] PASSED       [ 32%]
 tests/test_migrations.py::test_double_upgrade[2e3e5b1f2b3c] PASSED       [ 32%]
 tests/test_migrations.py::test_double_upgrade[9f7c4c3ea9a1] PASSED       [ 32%]
-tests/test_migrations.py::test_double_upgrade[3c1b2a4d5e6f] PASSED       [ 33%]
+tests/test_migrations.py::test_double_upgrade[3c1b2a4d5e6f] PASSED       [ 32%]
 tests/test_migrations.py::test_double_upgrade[8f3f1f0a1b2c] PASSED       [ 33%]
 tests/test_migrations.py::test_double_upgrade[1a2b3c4d5e6a] PASSED       [ 33%]
 tests/test_notifications.py::test_notifications_disabled PASSED          [ 33%]
@@ -843,8 +854,8 @@ tests/test_notifications.py::test_notifications_full_body_encryption_server_fall
 tests/test_onboarding.py::test_onboarding_flow PASSED                    [ 33%]
 tests/test_onboarding.py::test_onboarding_directory_opt_out_persists_false PASSED [ 33%]
 tests/test_onboarding.py::test_onboarding_directory_opt_out_overrides_prepopulated_true PASSED [ 33%]
-tests/test_onboarding.py::test_onboarding_skip PASSED                    [ 34%]
-tests/test_onboarding.py::test_onboarding_proton_search_prefills_manual_key PASSED [ 34%]
+tests/test_onboarding.py::test_onboarding_skip PASSED                    [ 33%]
+tests/test_onboarding.py::test_onboarding_proton_search_prefills_manual_key PASSED [ 33%]
 tests/test_onboarding.py::test_onboarding_requires_all_steps_when_any_value_incomplete[display_name] PASSED [ 34%]
 tests/test_onboarding.py::test_onboarding_requires_all_steps_when_any_value_incomplete[bio] PASSED [ 34%]
 tests/test_onboarding.py::test_onboarding_requires_all_steps_when_any_value_incomplete[pgp_key] PASSED [ 34%]
@@ -856,7 +867,8 @@ tests/test_onboarding.py::test_onboarding_requires_all_steps_when_any_value_inco
 tests/test_onboarding.py::test_onboarding_redirects_to_inbox_when_already_complete PASSED [ 34%]
 tests/test_onboarding.py::test_onboarding_allows_non_profile_step_when_already_complete PASSED [ 34%]
 tests/test_onboarding.py::test_onboarding_handles_missing_primary_username PASSED [ 34%]
-tests/test_onboarding.py::test_onboarding_encryption_unknown_method_returns_bad_request PASSED [ 35%]
+tests/test_onboarding.py::test_submitted_onboarding_form_selects_expected_step_form PASSED [ 34%]
+tests/test_onboarding.py::test_onboarding_encryption_unknown_method_returns_bad_request PASSED [ 34%]
 tests/test_onboarding.py::test_onboarding_encryption_manual_invalid_key_shows_error PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_proton_fetch_failure_shows_error PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_notifications_requires_pgp_key PASSED [ 35%]
@@ -864,23 +876,27 @@ tests/test_onboarding.py::test_onboarding_missing_user_redirects_login PASSED [ 
 tests/test_onboarding.py::test_onboarding_invalid_step_defaults_to_profile PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_post_invalid_step_defaults_to_profile PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_profile_invalid_form_returns_400 PASSED [ 35%]
+tests/test_onboarding.py::test_onboarding_profile_invalid_form_preserves_submitted_values PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_encryption_proton_invalid_form_returns_400 PASSED [ 35%]
+tests/test_onboarding.py::test_onboarding_encryption_proton_invalid_form_preserves_submitted_email PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_proton_key_without_encryption_subkey_returns_400 PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_proton_no_key_found_returns_400 PASSED [ 35%]
 tests/test_onboarding.py::test_onboarding_proton_non_200_response_returns_400 PASSED [ 35%]
-tests/test_onboarding.py::test_onboarding_encryption_manual_missing_key_returns_400 PASSED [ 35%]
+tests/test_onboarding.py::test_onboarding_encryption_manual_missing_key_returns_400 PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_encryption_manual_whitespace_key_returns_400 PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_encryption_manual_invalid_form_returns_400_with_csrf PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_encryption_manual_non_encryptable_key_returns_400 PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_notifications_invalid_form_returns_400 PASSED [ 36%]
+tests/test_onboarding.py::test_onboarding_profile_requires_csrf_token PASSED [ 36%]
+tests/test_onboarding.py::test_onboarding_notifications_requires_csrf_token PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_directory_invalid_form_returns_400_with_csrf PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_unknown_step_post_returns_400 PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_directory_redirects_to_select_tier_when_stripe_enabled PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_skip_missing_user_redirects_login PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_skip_invalid_form_redirects_onboarding_with_csrf PASSED [ 36%]
 tests/test_onboarding.py::test_onboarding_skip_redirects_to_select_tier_when_enabled PASSED [ 36%]
-tests/test_onboarding.py::test_webpack_build_includes_onboarding_bundle PASSED [ 36%]
-tests/test_password_hasher.py::test_verify_password_uses_legacy_passlib_scrypt_fixture_and_logs_success PASSED [ 36%]
+tests/test_onboarding.py::test_webpack_build_includes_onboarding_bundle PASSED [ 37%]
+tests/test_password_hasher.py::test_verify_password_uses_legacy_passlib_scrypt_fixture_and_logs_success PASSED [ 37%]
 tests/test_password_hasher.py::test_verify_password_rejects_wrong_password_for_legacy_passlib_scrypt_fixture PASSED [ 37%]
 tests/test_password_hasher.py::test_legacy_passlib_scrypt_fixture_documents_prefix_and_cost_baseline PASSED [ 37%]
 tests/test_password_hasher.py::test_verify_password_uses_native_werkzeug_scrypt_hash_and_logs_success PASSED [ 37%]
@@ -892,8 +908,8 @@ tests/test_password_hasher.py::test_verify_password_malformed_legacy_hash_fails_
 tests/test_password_hasher.py::test_prepare_password_rehash_on_auth_returns_none_without_app_context PASSED [ 37%]
 tests/test_password_hasher.py::test_prepare_password_rehash_on_auth_skips_non_legacy_hashes PASSED [ 37%]
 tests/test_password_hasher.py::test_prepare_password_rehash_on_auth_returns_none_when_disabled PASSED [ 37%]
-tests/test_password_hasher.py::test_prepare_password_rehash_on_auth_rehashes_legacy_hash_when_enabled PASSED [ 37%]
-tests/test_password_hasher.py::test_get_password_hash_prefix_returns_unknown_for_plaintext_like_values PASSED [ 37%]
+tests/test_password_hasher.py::test_prepare_password_rehash_on_auth_rehashes_legacy_hash_when_enabled PASSED [ 38%]
+tests/test_password_hasher.py::test_get_password_hash_prefix_returns_unknown_for_plaintext_like_values PASSED [ 38%]
 tests/test_password_hasher.py::test_hash_password_logs_write_counter_without_sensitive_data PASSED [ 38%]
 tests/test_password_hasher.py::test_hash_password_uses_pinned_werkzeug_scrypt_method_when_enabled PASSED [ 38%]
 tests/test_password_hasher.py::test_pinned_werkzeug_scrypt_method_matches_legacy_passlib_cost_baseline PASSED [ 38%]
@@ -905,8 +921,8 @@ tests/test_premium.py::test_update_price_existing PASSED                 [ 38%]
 tests/test_premium.py::test_update_price_new PASSED                      [ 38%]
 tests/test_premium.py::test_create_customer PASSED                       [ 38%]
 tests/test_premium.py::test_create_customer_updates_existing_customer PASSED [ 38%]
-tests/test_premium.py::test_create_customer_recreates_when_modify_fails PASSED [ 38%]
-tests/test_premium.py::test_get_subscription PASSED                      [ 38%]
+tests/test_premium.py::test_create_customer_recreates_when_modify_fails PASSED [ 39%]
+tests/test_premium.py::test_get_subscription PASSED                      [ 39%]
 tests/test_premium.py::test_get_business_price_string_formats PASSED     [ 39%]
 tests/test_premium.py::test_get_business_price_string_missing_tier PASSED [ 39%]
 tests/test_premium.py::test_create_products_and_prices_missing_business_tier PASSED [ 39%]
@@ -918,7 +934,7 @@ tests/test_premium.py::test_handle_subscription_updated_upgrade PASSED   [ 39%]
 tests/test_premium.py::test_handle_subscription_updated_downgrade PASSED [ 39%]
 tests/test_premium.py::test_handle_subscription_updated_raises_for_missing_subscription PASSED [ 39%]
 tests/test_premium.py::test_handle_subscription_deleted PASSED           [ 39%]
-tests/test_premium.py::test_handle_subscription_deleted_raises_for_missing_subscription PASSED [ 39%]
+tests/test_premium.py::test_handle_subscription_deleted_raises_for_missing_subscription PASSED [ 40%]
 tests/test_premium.py::test_handle_invoice_created PASSED                [ 40%]
 tests/test_premium.py::test_handle_invoice_created_value_error_is_handled PASSED [ 40%]
 tests/test_premium.py::test_handle_invoice_updated PASSED                [ 40%]
@@ -970,7 +986,7 @@ tests/test_premium.py::test_premium_webhook_rejects_invalid_signature PASSED [ 4
 tests/test_premium.py::test_premium_webhook_ignores_duplicate_event PASSED [ 43%]
 tests/test_premium.py::test_premium_webhook_stores_new_event PASSED      [ 43%]
 tests/test_premium.py::test_worker_processes_subscription_created_event PASSED [ 43%]
-tests/test_premium.py::test_worker_marks_event_error_when_handler_raises PASSED [ 44%]
+tests/test_premium.py::test_worker_marks_event_error_when_handler_raises PASSED [ 43%]
 tests/test_premium.py::test_worker_waits_for_tables_before_starting PASSED [ 44%]
 tests/test_premium.py::test_worker_processes_subscription_updated_and_deleted_events PASSED [ 44%]
 tests/test_premium.py::test_worker_processes_invoice_created_event PASSED [ 44%]
@@ -983,9 +999,10 @@ tests/test_profile.py::test_profile_submit_message PASSED                [ 44%]
 tests/test_profile.py::test_profile_submit_message_to_alias PASSED       [ 44%]
 tests/test_profile.py::test_profile_failed_submit_preserves_input PASSED [ 44%]
 tests/test_profile.py::test_profile_rejects_owner_guard_mismatch PASSED  [ 44%]
-tests/test_profile.py::test_profile_pgp_required PASSED                  [ 45%]
+tests/test_profile.py::test_profile_pgp_required PASSED                  [ 44%]
 tests/test_profile.py::test_profile_post_rejects_when_target_has_no_pgp_key PASSED [ 45%]
 tests/test_profile.py::test_profile_post_form_validation_errors_are_rendered PASSED [ 45%]
+tests/test_profile.py::test_profile_requires_csrf_token PASSED           [ 45%]
 tests/test_profile.py::test_profile_full_body_encryption_fallback_to_generic_when_no_fields PASSED [ 45%]
 tests/test_profile.py::test_profile_full_body_encryption_exception_falls_back_to_generic PASSED [ 45%]
 tests/test_profile.py::test_profile_extra_fields PASSED                  [ 45%]
@@ -1008,7 +1025,7 @@ tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_dup
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_enforces_region_targets PASSED [ 46%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_keeps_rows_above_region_targets PASSED [ 46%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_flags_and_drops_link_failures PASSED [ 46%]
-tests/test_public_record_refresh.py::test_refresh_public_record_rows_keeps_rows_on_transient_link_failures PASSED [ 47%]
+tests/test_public_record_refresh.py::test_refresh_public_record_rows_keeps_rows_on_transient_link_failures PASSED [ 46%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_legacy_self_reported_source_label PASSED [ 47%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_source_matching_website PASSED [ 47%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_missing_us_source_url PASSED [ 47%]
@@ -1021,7 +1038,7 @@ tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_cha
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_rejects_chambers_source_url PASSED [ 47%]
 tests/test_public_record_refresh.py::test_refresh_public_record_rows_allows_non_chambers_hosts_with_chambers_substrings PASSED [ 47%]
 tests/test_public_record_refresh.py::test_build_requests_link_checker_retries_then_succeeds PASSED [ 47%]
-tests/test_public_record_refresh.py::test_build_requests_link_checker_marks_404_as_definitive_failure PASSED [ 48%]
+tests/test_public_record_refresh.py::test_build_requests_link_checker_marks_404_as_definitive_failure PASSED [ 47%]
 tests/test_public_record_refresh.py::test_build_requests_link_checker_rejects_invalid_arguments PASSED [ 48%]
 tests/test_public_record_refresh.py::test_build_requests_link_checker_returns_last_server_error_after_retries PASSED [ 48%]
 tests/test_public_record_refresh.py::test_build_requests_link_checker_returns_last_request_exception_reason PASSED [ 48%]
@@ -1034,7 +1051,7 @@ tests/test_public_record_refresh.py::test_chambers_public_profile_url_helpers_co
 tests/test_public_record_refresh.py::test_apply_region_targets_handles_none_and_invalid_target_configurations PASSED [ 48%]
 tests/test_public_record_refresh.py::test_normalization_helpers_validate_and_filter_values PASSED [ 48%]
 tests/test_public_record_refresh.py::test_discover_seed_rows_respects_zero_limit_and_maximum PASSED [ 48%]
-tests/test_public_record_refresh.py::test_discover_noop_official_public_record_rows_returns_empty_list PASSED [ 49%]
+tests/test_public_record_refresh.py::test_discover_noop_official_public_record_rows_returns_empty_list PASSED [ 48%]
 tests/test_public_record_refresh.py::test_parse_chambers_index_entries_returns_empty_for_non_list_payload PASSED [ 49%]
 tests/test_public_record_refresh.py::test_fetch_json_payload_handles_exceptions_and_invalid_json PASSED [ 49%]
 tests/test_public_record_refresh.py::test_chambers_discovery_helpers_cover_locations_tags_and_url_normalization PASSED [ 49%]
@@ -1046,8 +1063,8 @@ tests/test_public_record_refresh.py::test_discover_official_us_state_public_reco
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_covers_current_implemented_states PASSED [ 49%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AK] PASSED [ 49%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AL] PASSED [ 49%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AR] PASSED [ 50%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AZ] PASSED [ 50%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AR] PASSED [ 49%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[AZ] PASSED [ 49%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[CA] PASSED [ 50%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[CO] PASSED [ 50%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[CT] PASSED [ 50%]
@@ -1059,8 +1076,8 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_valida
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[ID] PASSED [ 50%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[IL] PASSED [ 50%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[IN] PASSED [ 50%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[KS] PASSED [ 51%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[KY] PASSED [ 51%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[KS] PASSED [ 50%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[KY] PASSED [ 50%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[LA] PASSED [ 51%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[MA] PASSED [ 51%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[MD] PASSED [ 51%]
@@ -1072,8 +1089,8 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_valida
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[MT] PASSED [ 51%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NC] PASSED [ 51%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[ND] PASSED [ 51%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NE] PASSED [ 52%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NH] PASSED [ 52%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NE] PASSED [ 51%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NH] PASSED [ 51%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NJ] PASSED [ 52%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NM] PASSED [ 52%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[NV] PASSED [ 52%]
@@ -1085,8 +1102,8 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_valida
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[RI] PASSED [ 52%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[SC] PASSED [ 52%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[SD] PASSED [ 52%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[TN] PASSED [ 53%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[TX] PASSED [ 53%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[TN] PASSED [ 52%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[TX] PASSED [ 52%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[UT] PASSED [ 53%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[VA] PASSED [ 53%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_validates_state_outputs[VT] PASSED [ 53%]
@@ -1097,9 +1114,9 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_valida
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-AK] PASSED [ 53%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-AL] PASSED [ 53%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-AR] PASSED [ 53%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-AZ] PASSED [ 54%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-CA] PASSED [ 54%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-CO] PASSED [ 54%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-AZ] PASSED [ 53%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-CA] PASSED [ 53%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-CO] PASSED [ 53%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-CT] PASSED [ 54%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-DE] PASSED [ 54%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-FL] PASSED [ 54%]
@@ -1110,9 +1127,9 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-IL] PASSED [ 54%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-IN] PASSED [ 54%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-KS] PASSED [ 54%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-KY] PASSED [ 55%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-LA] PASSED [ 55%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-MA] PASSED [ 55%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-KY] PASSED [ 54%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-LA] PASSED [ 54%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-MA] PASSED [ 54%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-MD] PASSED [ 55%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-ME] PASSED [ 55%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-MI] PASSED [ 55%]
@@ -1123,9 +1140,9 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NC] PASSED [ 55%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-ND] PASSED [ 55%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NE] PASSED [ 55%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NH] PASSED [ 56%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NJ] PASSED [ 56%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NM] PASSED [ 56%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NH] PASSED [ 55%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NJ] PASSED [ 55%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NM] PASSED [ 55%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NV] PASSED [ 56%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-NY] PASSED [ 56%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-OH] PASSED [ 56%]
@@ -1135,10 +1152,10 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-RI] PASSED [ 56%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-SC] PASSED [ 56%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-SD] PASSED [ 56%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-TN] PASSED [ 57%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-TX] PASSED [ 57%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-UT] PASSED [ 57%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-VA] PASSED [ 57%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-TN] PASSED [ 56%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-TX] PASSED [ 56%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-UT] PASSED [ 56%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-VA] PASSED [ 56%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-VT] PASSED [ 57%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-WA] PASSED [ 57%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[id-WI] PASSED [ 57%]
@@ -1148,10 +1165,10 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-AL] PASSED [ 57%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-AR] PASSED [ 57%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-AZ] PASSED [ 57%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CA] PASSED [ 58%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CO] PASSED [ 58%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CT] PASSED [ 58%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-DE] PASSED [ 58%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CA] PASSED [ 57%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CO] PASSED [ 57%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-CT] PASSED [ 57%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-DE] PASSED [ 57%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-FL] PASSED [ 58%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-GA] PASSED [ 58%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-HI] PASSED [ 58%]
@@ -1161,10 +1178,10 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-IN] PASSED [ 58%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-KS] PASSED [ 58%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-KY] PASSED [ 58%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-LA] PASSED [ 59%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MA] PASSED [ 59%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MD] PASSED [ 59%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-ME] PASSED [ 59%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-LA] PASSED [ 58%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MA] PASSED [ 58%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MD] PASSED [ 58%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-ME] PASSED [ 58%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MI] PASSED [ 59%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MN] PASSED [ 59%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-MO] PASSED [ 59%]
@@ -1173,11 +1190,11 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NC] PASSED [ 59%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-ND] PASSED [ 59%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NE] PASSED [ 59%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NH] PASSED [ 60%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NJ] PASSED [ 60%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NM] PASSED [ 60%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NV] PASSED [ 60%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NY] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NH] PASSED [ 59%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NJ] PASSED [ 59%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NM] PASSED [ 59%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NV] PASSED [ 59%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-NY] PASSED [ 59%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-OH] PASSED [ 60%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-OK] PASSED [ 60%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-OR] PASSED [ 60%]
@@ -1186,12 +1203,12 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-SC] PASSED [ 60%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-SD] PASSED [ 60%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-TN] PASSED [ 60%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-TX] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-UT] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-VA] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-VT] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WA] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WI] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-TX] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-UT] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-VA] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-VT] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WA] PASSED [ 60%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WI] PASSED [ 60%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WV] PASSED [ 61%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[slug-WY] PASSED [ 61%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-AK] PASSED [ 61%]
@@ -1199,12 +1216,12 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-AR] PASSED [ 61%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-AZ] PASSED [ 61%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-CA] PASSED [ 61%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-CO] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-CT] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-DE] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-FL] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-GA] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-HI] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-CO] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-CT] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-DE] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-FL] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-GA] PASSED [ 61%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-HI] PASSED [ 61%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-IA] PASSED [ 62%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-ID] PASSED [ 62%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-IL] PASSED [ 62%]
@@ -1212,378 +1229,390 @@ tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-KS] PASSED [ 62%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-KY] PASSED [ 62%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-LA] PASSED [ 62%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MA] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MD] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-ME] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MI] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MN] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MO] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MA] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MD] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-ME] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MI] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MN] PASSED [ 62%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MO] PASSED [ 62%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MS] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-MT] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NC] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-ND] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NE] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NH] PASSED [ 63%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NJ] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NM] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NV] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NY] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OH] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OK] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OR] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NJ] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NM] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NV] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-NY] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OH] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OK] PASSED [ 63%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-OR] PASSED [ 63%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-PA] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-RI] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-SC] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-SD] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-TN] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-TX] PASSED [ 64%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-UT] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-VA] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-VT] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WA] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WI] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WV] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WY] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-UT] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-VA] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-VT] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WA] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WI] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WV] PASSED [ 64%]
+tests/test_public_record_refresh.py::test_official_source_adapter_harness_skips_existing_rows[name-WY] PASSED [ 64%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_california_seeds PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seed[AK-seed-jon-marc-petersen-public-record~jon-marc-petersen-Jon-Marc Petersen-Alaska Bar Association public directory-https://member.alaskabar.org/cv5/cgi-bin/memberdll.dll/Info?CUSTOMERCD=8744&WRP=Customer_Profile.htm] PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seed[AL-seed-marc-james-ayers-public-record~marc-james-ayers-Marc James Ayers-Alabama State Bar public directory-https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx] PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seed[AR-seed-kristin-l-pawlik-public-record~kristin-l-pawlik-Kristin L. Pawlik-Arkansas Bar Association public directory-https://www.arkbar.com/?pg=board-of-trustees] PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seed[AZ-seed-anthony-cali-public-record~anthony-cali-Anthony Cali-State Bar of Arizona public directory-https://www.azbar.org/for-legal-professionals/practice-tools-management/member-directory/?m=Anthony-Cali-177781] PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seed[CO-seed-rachel-brock-public-record~rachel-brock-Rachel Brock-Colorado Bar Association public directory-https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275] PASSED [ 65%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[CT-seed-eric-r-brown-public-record~eric-r-brown-Eric R. Brown-Connecticut Bar Association public directory-https://members.ctbar.org/member/thelaborlawyer] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[DE-seed-richard-l-abbott-public-record~richard-l-abbott-Richard L. Abbott-Delaware Courts published opinion-https://courts.delaware.gov/Opinions/Download.aspx?id=342050] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[FL-seed-jerry-ray-poole-jr-public-record~jerry-ray-poole-jr-Jerry Ray Poole, Jr.-The Florida Bar public directory-https://www.floridabar.org/directories/find-mbr/profile/?num=123000] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[GA-seed-todd-h-stanton-public-record~todd-h-stanton-Todd H. Stanton-State Bar of Georgia speaker profile-https://icle.gabar.org/speaker/todd-stanton-1261014] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[HI-seed-eric-seitz-public-record~eric-seitz-Eric Seitz-Hawaii State Bar Association attorney recognition record-https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[IA-seed-roxanne-barton-conlin-public-record~roxanne-barton-conlin-Roxanne Barton Conlin-Iowa State Bar Association jury verdict record-https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[ID-seed-trudy-hanson-fouser-public-record~trudy-hanson-fouser-Trudy Hanson Fouser-Idaho State Bar attorney profile-https://isb.idaho.gov/blog/trudy-hanson-fouser/] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[CT-seed-eric-r-brown-public-record~eric-r-brown-Eric R. Brown-Connecticut Bar Association public directory-https://members.ctbar.org/member/thelaborlawyer] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[DE-seed-richard-l-abbott-public-record~richard-l-abbott-Richard L. Abbott-Delaware Courts published opinion-https://courts.delaware.gov/Opinions/Download.aspx?id=342050] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[FL-seed-jerry-ray-poole-jr-public-record~jerry-ray-poole-jr-Jerry Ray Poole, Jr.-The Florida Bar public directory-https://www.floridabar.org/directories/find-mbr/profile/?num=123000] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[GA-seed-todd-h-stanton-public-record~todd-h-stanton-Todd H. Stanton-State Bar of Georgia speaker profile-https://icle.gabar.org/speaker/todd-stanton-1261014] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_two_seed[HI-seed-eric-seitz-public-record~eric-seitz-Eric Seitz-Hawaii State Bar Association attorney recognition record-https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[IA-seed-roxanne-barton-conlin-public-record~roxanne-barton-conlin-Roxanne Barton Conlin-Iowa State Bar Association jury verdict record-https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument] PASSED [ 65%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[ID-seed-trudy-hanson-fouser-public-record~trudy-hanson-fouser-Trudy Hanson Fouser-Idaho State Bar attorney profile-https://isb.idaho.gov/blog/trudy-hanson-fouser/] PASSED [ 65%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[IN-seed-georgianna-quinn-tutwiler-public-record~georgianna-quinn-tutwiler-Georgianna Quinn Tutwiler-Indiana State Bar public directory-https://www.inbar.org/members/?id=30400364] PASSED [ 66%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[KS-seed-michael-f-brady-public-record~michael-f-brady-Michael F. Brady-Kansas Judicial Branch published opinion-https://kscourts.gov/Cases-Decisions/Decisions/Published/Brown-v-Ford-Storage-and-Moving-Co-Inc] PASSED [ 66%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_three_seed[KY-seed-andrew-clarke-weeks-public-record~andrew-clarke-weeks-Andrew Clarke Weeks-Kentucky Bar Association public directory-https://www.kybar.org/members/?id=42347567] PASSED [ 66%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[LA-seed-gregory-james-sauzer-public-record~gregory-james-sauzer-Gregory James Sauzer-Louisiana Attorney Disciplinary Board attorney records-https://www.ladb.org/DR/Document.cfm?docket=24-DB-014] PASSED [ 66%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[MA-seed-hillary-j-massey-public-record~hillary-j-massey-Hillary J. Massey-Massachusetts BBO attorney records-https://bbopublic.massbbo.org/web/f/SJC_WellBeing_Cmte_Report.pdf] PASSED [ 66%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[MD-seed-sean-w-baker-public-record~sean-w-baker-Sean W. Baker-Maryland Courts attorney discipline records-https://www.courts.state.md.us/attygrievance/sanctions07] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[ME-seed-daniel-b-eccher-public-record~daniel-b-eccher-Daniel B. Eccher-Maine Board of Overseers of the Bar public directory-https://mebarconnect.mainebar.org/people/daniel-eccher] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[MI-seed-gerard-v-mantese-public-record~gerard-v-mantese-Gerard V. Mantese-State Bar of Michigan public directory-https://connect.michbar.org/laborlaw[redacted-path] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MN-seed-landon-j-ascheman-public-record~landon-j-ascheman-Landon J. Ascheman-Minnesota Courts attorney records-https://mncourts.gov/help-topics/Legal-Paraprofessional-Program/standing-committee] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MO-seed-jerina-d-phillips-public-record~jerina-d-phillips-Jerina D. Phillips-The Missouri Bar public directory-https://news.mobar.org/jerina-d-phillips-receives-2025-diversity-champion-award/] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MS-seed-joel-frank-dillard-public-record~joel-frank-dillard-Joel Frank Dillard-The Mississippi Bar public directory-https://www.msbar.org/inside-the-bar/sections/labor-employment-law/] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MT-seed-tanis-m-holm-public-record~tanis-m-holm-Tanis M. Holm-State Bar of Montana public directory-https://www.montanabar.org/About-Us/Sections-and-Committees] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[NC-seed-kevin-g-williams-public-record~kevin-g-williams-Kevin G. Williams-North Carolina State Bar public directory-https://www.ncbar.gov/for-lawyers/directories/leadership/state-bar-officers/] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[MD-seed-sean-w-baker-public-record~sean-w-baker-Sean W. Baker-Maryland Courts attorney discipline records-https://www.courts.state.md.us/attygrievance/sanctions07] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[ME-seed-daniel-b-eccher-public-record~daniel-b-eccher-Daniel B. Eccher-Maine Board of Overseers of the Bar public directory-https://mebarconnect.mainebar.org/people/daniel-eccher] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_four_seed[MI-seed-gerard-v-mantese-public-record~gerard-v-mantese-Gerard V. Mantese-State Bar of Michigan public directory-https://connect.michbar.org/laborlaw[redacted-path] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MN-seed-landon-j-ascheman-public-record~landon-j-ascheman-Landon J. Ascheman-Minnesota Courts attorney records-https://mncourts.gov/help-topics/Legal-Paraprofessional-Program/standing-committee] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MO-seed-jerina-d-phillips-public-record~jerina-d-phillips-Jerina D. Phillips-The Missouri Bar public directory-https://news.mobar.org/jerina-d-phillips-receives-2025-diversity-champion-award/] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MS-seed-joel-frank-dillard-public-record~joel-frank-dillard-Joel Frank Dillard-The Mississippi Bar public directory-https://www.msbar.org/inside-the-bar/sections/labor-employment-law/] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[MT-seed-tanis-m-holm-public-record~tanis-m-holm-Tanis M. Holm-State Bar of Montana public directory-https://www.montanabar.org/About-Us/Sections-and-Committees] PASSED [ 66%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_five_seed[NC-seed-kevin-g-williams-public-record~kevin-g-williams-Kevin G. Williams-North Carolina State Bar public directory-https://www.ncbar.gov/for-lawyers/directories/leadership/state-bar-officers/] PASSED [ 66%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_six_seed[ND-seed-nathan-c-severson-public-record~nathan-c-severson-Nathan C. Severson-North Dakota Court System attorney directory-https://www.ndcourts.gov/lawyers/06402] PASSED [ 67%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_six_seed[NE-seed-heidi-a-guttau-public-record~heidi-a-guttau-Heidi A. Guttau-Nebraska Judicial Branch case record-https://supremecourt.nebraska.gov/courts/supreme-court/supreme-court-call/city-omaha-v-professional-firefighters-association-omaha] PASSED [ 67%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_six_seed[NH-seed-heather-m-burns-public-record~heather-m-burns-Heather M. Burns-New Hampshire Bar Association CLE speaker profile-https://member.nhbar.org/calendar/event/34th-annual-labor-and-employment-law-update] PASSED [ 67%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_six_seed[NJ-seed-rubin-m-sinins-public-record~rubin-m-sinins-Rubin M. Sinins-NJ Courts attorney certification records-https://www.njcourts.gov/notices/order-board-attorney-certification-new-chair-and-vice-chair-designations-certification] PASSED [ 67%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_six_seed[NM-seed-elizabeth-a-heaphy-public-record~elizabeth-a-heaphy-Elizabeth A. Heaphy-State Bar of New Mexico public directory-https://www.sbnm.org/cvweb/cgi-bin/Utilities.dll?View=INMEMBERDETAILS&RECORDNO=1&CUSTOMERNO=11321] PASSED [ 67%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[NV-seed-luke-w-molleck-public-record~luke-w-molleck-Luke W. Molleck-State Bar of Nevada public directory-https://nvbar.org/for-lawyers/bar-service-opportunities/join-a-section/labor-and-employment-law-section/] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[NY-seed-gary-j-malone-public-record~gary-j-malone-Gary J. Malone-New York Courts attorney directory-https://decisions.courts.state.ny.us/ad3/Decisions/2023/CV-22-1940.pdf] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[OK-seed-charles-greenough-public-record~charles-greenough-Charles Greenough-Oklahoma Bar Association public directory-https://ams.okbar.org/eweb/DynamicPage.aspx?Action=Add&DoNotSave=yes&ObjectKeyFrom=1A83491A-9853-4C87-86A4-F7D95601C2E2&ParentDataObject=Invoice+Detail&ParentObject=CentralizedOrderEntry&WebCode=ProdDetailAdd&ivd_cst_key=00000000-0000-0000-0000-000000000000&ivd_cst_ship_key=00000000-0000-0000-0000-000000000000&ivd_formkey=69202792-63d7-4ba2-bf4e-a0da41270555&ivd_prc_prd_key=F5FDCC21-BBDF-4D41-944F-5351AD775A80] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[OR-seed-andrew-toney-noland-public-record~andrew-toney-noland-Andrew Toney-Noland-Oregon State Bar public directory-https://www.osbar.org/sections/labor.html] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[PA-seed-shanon-jude-carson-public-record~shanon-jude-carson-Shanon Jude Carson-Pennsylvania Disciplinary Board attorney directory-https://www.padisciplinaryboard.org/for-the-public/find-attorney/attorney-detail/85957] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[RI-seed-mark-b-decof-public-record~mark-b-decof-Mark B. Decof-Rhode Island Judiciary attorney records-https://www.courts.ri.gov/attorney-resources/Pages/Board-of-Bar-Examiners-default.aspx] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[SC-seed-j-hagood-tighe-public-record~j-hagood-tighe-J. Hagood Tighe-South Carolina Bar public directory-https://www.scbar.org/for-lawyers/networking/sections/employment-and-labor-law-section/] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[SD-seed-patrick-g-goetzinger-public-record~patrick-g-goetzinger-Patrick G. Goetzinger-State Bar of South Dakota public directory-https://www.statebarofsouthdakota.com/project-rural-practice/] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[NV-seed-luke-w-molleck-public-record~luke-w-molleck-Luke W. Molleck-State Bar of Nevada public directory-https://nvbar.org/for-lawyers/bar-service-opportunities/join-a-section/labor-and-employment-law-section/] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[NY-seed-gary-j-malone-public-record~gary-j-malone-Gary J. Malone-New York Courts attorney directory-https://decisions.courts.state.ny.us/ad3/Decisions/2023/CV-22-1940.pdf] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[OK-seed-charles-greenough-public-record~charles-greenough-Charles Greenough-Oklahoma Bar Association public directory-https://ams.okbar.org/eweb/DynamicPage.aspx?Action=Add&DoNotSave=yes&ObjectKeyFrom=1A83491A-9853-4C87-86A4-F7D95601C2E2&ParentDataObject=Invoice+Detail&ParentObject=CentralizedOrderEntry&WebCode=ProdDetailAdd&ivd_cst_key=00000000-0000-0000-0000-000000000000&ivd_cst_ship_key=00000000-0000-0000-0000-000000000000&ivd_formkey=69202792-63d7-4ba2-bf4e-a0da41270555&ivd_prc_prd_key=F5FDCC21-BBDF-4D41-944F-5351AD775A80] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[OR-seed-andrew-toney-noland-public-record~andrew-toney-noland-Andrew Toney-Noland-Oregon State Bar public directory-https://www.osbar.org/sections/labor.html] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_seven_seed[PA-seed-shanon-jude-carson-public-record~shanon-jude-carson-Shanon Jude Carson-Pennsylvania Disciplinary Board attorney directory-https://www.padisciplinaryboard.org/for-the-public/find-attorney/attorney-detail/85957] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[RI-seed-mark-b-decof-public-record~mark-b-decof-Mark B. Decof-Rhode Island Judiciary attorney records-https://www.courts.ri.gov/attorney-resources/Pages/Board-of-Bar-Examiners-default.aspx] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[SC-seed-j-hagood-tighe-public-record~j-hagood-tighe-J. Hagood Tighe-South Carolina Bar public directory-https://www.scbar.org/for-lawyers/networking/sections/employment-and-labor-law-section/] PASSED [ 67%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[SD-seed-patrick-g-goetzinger-public-record~patrick-g-goetzinger-Patrick G. Goetzinger-State Bar of South Dakota public directory-https://www.statebarofsouthdakota.com/project-rural-practice/] PASSED [ 67%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[TX-seed-mark-anthony-sanchez-public-record~mark-anthony-sanchez-Mark Anthony Sanchez-State Bar of Texas public directory-https://www.texasbar.com/AM/Template.cfm?ContactID=157597&template=%2FCustomsource%2FMemberDirectory%2FMemberDirectoryDetail.cfm] PASSED [ 68%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_eight_seed[UT-seed-lara-a-swensen-public-record~lara-a-swensen-Lara A. Swensen-Utah Courts public legal directory-https://www.utcourts.gov/en/about/administration/committees/ethics-advisory-committee.html] PASSED [ 68%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[VA-seed-frederick-h-schutt-public-record~frederick-h-schutt-Frederick H. Schutt-Virginia State Bar public directory-https://virginialawyer.vsb.org/articles/professional-notices?article_id=5100257&i=859839] PASSED [ 68%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[VT-seed-jeremy-s-grant-public-record~jeremy-s-grant-Jeremy S. Grant-Vermont Bar Association public directory-https://www.vtbar.org/2025-annual-meeting-in-review/] PASSED [ 68%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[WI-seed-jennifer-s-mirus-public-record~jennifer-s-mirus-Jennifer S. Mirus-State Bar of Wisconsin public directory-https://www.wisbar.org/NewsPublications/WisconsinLawyer/WisconsinLawyerPDFs/97/01/20_24.pdf] PASSED [ 68%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[WV-seed-todd-bailess-public-record~todd-bailess-Todd Bailess-West Virginia State Bar public directory-https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[WY-seed-scott-e-kolpitcke-public-record~scott-e-kolpitcke-Scott E. Kolpitcke-Wyoming State Bar public directory-https://www.wyomingbar.org/about-us/bar-leadership/] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AK-seed-jon-marc-petersen-public-record~jon-marc-petersen-Jon-Marc Petersen] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AL-seed-marc-james-ayers-public-record~marc-james-ayers-Marc James Ayers] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AR-seed-kristin-l-pawlik-public-record~kristin-l-pawlik-Kristin L. Pawlik] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AZ-seed-anthony-cali-public-record~anthony-cali-Anthony Cali] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[CO-seed-rachel-brock-public-record~rachel-brock-Rachel Brock] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[CT-seed-eric-r-brown-public-record~eric-r-brown-Eric R. Brown] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[WV-seed-todd-bailess-public-record~todd-bailess-Todd Bailess-West Virginia State Bar public directory-https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_batch_nine_seed[WY-seed-scott-e-kolpitcke-public-record~scott-e-kolpitcke-Scott E. Kolpitcke-Wyoming State Bar public directory-https://www.wyomingbar.org/about-us/bar-leadership/] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AK-seed-jon-marc-petersen-public-record~jon-marc-petersen-Jon-Marc Petersen] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AL-seed-marc-james-ayers-public-record~marc-james-ayers-Marc James Ayers] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AR-seed-kristin-l-pawlik-public-record~kristin-l-pawlik-Kristin L. Pawlik] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[AZ-seed-anthony-cali-public-record~anthony-cali-Anthony Cali] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seed[CO-seed-rachel-brock-public-record~rachel-brock-Rachel Brock] PASSED [ 68%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[CT-seed-eric-r-brown-public-record~eric-r-brown-Eric R. Brown] PASSED [ 68%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[DE-seed-richard-l-abbott-public-record~richard-l-abbott-Richard L. Abbott] PASSED [ 69%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[FL-seed-jerry-ray-poole-jr-public-record~jerry-ray-poole-jr-Jerry Ray Poole, Jr.] PASSED [ 69%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[GA-seed-todd-h-stanton-public-record~todd-h-stanton-Todd H. Stanton] PASSED [ 69%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_two_seed[HI-seed-eric-seitz-public-record~eric-seitz-Eric Seitz] PASSED [ 69%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[LA-seed-gregory-james-sauzer-public-record~gregory-james-sauzer-Gregory James Sauzer] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MA-seed-hillary-j-massey-public-record~hillary-j-massey-Hillary J. Massey] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MD-seed-sean-w-baker-public-record~sean-w-baker-Sean W. Baker] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[ME-seed-daniel-b-eccher-public-record~daniel-b-eccher-Daniel B. Eccher] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MI-seed-gerard-v-mantese-public-record~gerard-v-mantese-Gerard V. Mantese] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[IA-seed-roxanne-barton-conlin-public-record~roxanne-barton-conlin-Roxanne Barton Conlin] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[ID-seed-trudy-hanson-fouser-public-record~trudy-hanson-fouser-Trudy Hanson Fouser] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[IN-seed-georgianna-quinn-tutwiler-public-record~georgianna-quinn-tutwiler-Georgianna Quinn Tutwiler] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[KS-seed-michael-f-brady-public-record~michael-f-brady-Michael F. Brady] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[LA-seed-gregory-james-sauzer-public-record~gregory-james-sauzer-Gregory James Sauzer] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MA-seed-hillary-j-massey-public-record~hillary-j-massey-Hillary J. Massey] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MD-seed-sean-w-baker-public-record~sean-w-baker-Sean W. Baker] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[ME-seed-daniel-b-eccher-public-record~daniel-b-eccher-Daniel B. Eccher] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_four_seed[MI-seed-gerard-v-mantese-public-record~gerard-v-mantese-Gerard V. Mantese] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[IA-seed-roxanne-barton-conlin-public-record~roxanne-barton-conlin-Roxanne Barton Conlin] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[ID-seed-trudy-hanson-fouser-public-record~trudy-hanson-fouser-Trudy Hanson Fouser] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[IN-seed-georgianna-quinn-tutwiler-public-record~georgianna-quinn-tutwiler-Georgianna Quinn Tutwiler] PASSED [ 69%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[KS-seed-michael-f-brady-public-record~michael-f-brady-Michael F. Brady] PASSED [ 69%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_three_seed[KY-seed-andrew-clarke-weeks-public-record~andrew-clarke-weeks-Andrew Clarke Weeks] PASSED [ 70%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[MN-seed-landon-j-ascheman-public-record~landon-j-ascheman-Landon J. Ascheman] PASSED [ 70%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[MO-seed-jerina-d-phillips-public-record~jerina-d-phillips-Jerina D. Phillips] PASSED [ 70%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[MS-seed-joel-frank-dillard-public-record~joel-frank-dillard-Joel Frank Dillard] PASSED [ 70%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[MT-seed-tanis-m-holm-public-record~tanis-m-holm-Tanis M. Holm] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[NC-seed-kevin-g-williams-public-record~kevin-g-williams-Kevin G. Williams] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[ND-seed-nathan-c-severson-public-record~nathan-c-severson-Nathan C. Severson] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NE-seed-heidi-a-guttau-public-record~heidi-a-guttau-Heidi A. Guttau] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NH-seed-heather-m-burns-public-record~heather-m-burns-Heather M. Burns] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NJ-seed-rubin-m-sinins-public-record~rubin-m-sinins-Rubin M. Sinins] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NM-seed-elizabeth-a-heaphy-public-record~elizabeth-a-heaphy-Elizabeth A. Heaphy] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[NV-seed-luke-w-molleck-public-record~luke-w-molleck-Luke W. Molleck] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[NY-seed-gary-j-malone-public-record~gary-j-malone-Gary J. Malone] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[MT-seed-tanis-m-holm-public-record~tanis-m-holm-Tanis M. Holm] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_five_seed[NC-seed-kevin-g-williams-public-record~kevin-g-williams-Kevin G. Williams] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[ND-seed-nathan-c-severson-public-record~nathan-c-severson-Nathan C. Severson] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NE-seed-heidi-a-guttau-public-record~heidi-a-guttau-Heidi A. Guttau] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NH-seed-heather-m-burns-public-record~heather-m-burns-Heather M. Burns] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NJ-seed-rubin-m-sinins-public-record~rubin-m-sinins-Rubin M. Sinins] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_six_seed[NM-seed-elizabeth-a-heaphy-public-record~elizabeth-a-heaphy-Elizabeth A. Heaphy] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[NV-seed-luke-w-molleck-public-record~luke-w-molleck-Luke W. Molleck] PASSED [ 70%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[NY-seed-gary-j-malone-public-record~gary-j-malone-Gary J. Malone] PASSED [ 70%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[OK-seed-charles-greenough-public-record~charles-greenough-Charles Greenough] PASSED [ 71%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[OR-seed-andrew-toney-noland-public-record~andrew-toney-noland-Andrew Toney-Noland] PASSED [ 71%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_seven_seed[PA-seed-shanon-jude-carson-public-record~shanon-jude-carson-Shanon Jude Carson] PASSED [ 71%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[RI-seed-mark-b-decof-public-record~mark-b-decof-Mark B. Decof] PASSED [ 71%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[SC-seed-j-hagood-tighe-public-record~j-hagood-tighe-J. Hagood Tighe] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[SD-seed-patrick-g-goetzinger-public-record~patrick-g-goetzinger-Patrick G. Goetzinger] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[TX-seed-mark-anthony-sanchez-public-record~mark-anthony-sanchez-Mark Anthony Sanchez] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[UT-seed-lara-a-swensen-public-record~lara-a-swensen-Lara A. Swensen] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[VA-seed-frederick-h-schutt-public-record~frederick-h-schutt-Frederick H. Schutt] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[VT-seed-jeremy-s-grant-public-record~jeremy-s-grant-Jeremy S. Grant] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WI-seed-jennifer-s-mirus-public-record~jennifer-s-mirus-Jennifer S. Mirus] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WV-seed-todd-bailess-public-record~todd-bailess-Todd Bailess] PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WY-seed-scott-e-kolpitcke-public-record~scott-e-kolpitcke-Scott E. Kolpitcke] PASSED [ 72%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[SC-seed-j-hagood-tighe-public-record~j-hagood-tighe-J. Hagood Tighe] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[SD-seed-patrick-g-goetzinger-public-record~patrick-g-goetzinger-Patrick G. Goetzinger] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[TX-seed-mark-anthony-sanchez-public-record~mark-anthony-sanchez-Mark Anthony Sanchez] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_eight_seed[UT-seed-lara-a-swensen-public-record~lara-a-swensen-Lara A. Swensen] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[VA-seed-frederick-h-schutt-public-record~frederick-h-schutt-Frederick H. Schutt] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[VT-seed-jeremy-s-grant-public-record~jeremy-s-grant-Jeremy S. Grant] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WI-seed-jennifer-s-mirus-public-record~jennifer-s-mirus-Jennifer S. Mirus] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WV-seed-todd-bailess-public-record~todd-bailess-Todd Bailess] PASSED [ 71%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_batch_nine_seed[WY-seed-scott-e-kolpitcke-public-record~scott-e-kolpitcke-Scott E. Kolpitcke] PASSED [ 71%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_washington_seed PASSED [ 72%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_washington_seed PASSED [ 72%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_ohio_seed PASSED [ 72%]
 tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_ohio_seed PASSED [ 72%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_tennessee_seeds PASSED [ 73%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_tennessee_seeds PASSED [ 73%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_illinois_seeds PASSED [ 73%]
-tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_illinois_seeds PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_public_record_quarterly_refresh_workflow_uses_correction_pr_flow PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_refresh_public_record_corrections_make_target_matches_workflow_semantics PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_refresh_report_matches_structured_values PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_sync_provenance_roadmap_updates_baseline_and_adapter_count PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_sync_provenance_roadmap_preserves_eu_planning_section PASSED [ 73%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_tennessee_seeds PASSED [ 72%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_tennessee_seeds PASSED [ 72%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_adds_illinois_seeds PASSED [ 72%]
+tests/test_public_record_refresh.py::test_discover_official_us_state_public_record_rows_skips_existing_illinois_seeds PASSED [ 72%]
+tests/test_public_record_refresh_workflow.py::test_public_record_quarterly_refresh_workflow_uses_correction_pr_flow PASSED [ 72%]
+tests/test_public_record_refresh_workflow.py::test_refresh_public_record_corrections_make_target_matches_workflow_semantics PASSED [ 72%]
+tests/test_public_record_refresh_workflow.py::test_refresh_report_matches_structured_values PASSED [ 72%]
+tests/test_public_record_refresh_workflow.py::test_sync_provenance_roadmap_updates_baseline_and_adapter_count PASSED [ 72%]
+tests/test_public_record_refresh_workflow.py::test_sync_provenance_roadmap_preserves_eu_planning_section PASSED [ 72%]
 tests/test_public_record_refresh_workflow.py::test_public_record_provenance_roadmap_documents_eu_phase_0b_policy PASSED [ 73%]
 tests/test_public_record_refresh_workflow.py::test_public_record_provenance_roadmap_documents_eu_phase_0c_feasibility PASSED [ 73%]
 tests/test_public_record_refresh_workflow.py::test_public_record_provenance_roadmap_documents_eu_phase_0d_shared_requirements PASSED [ 73%]
-tests/test_public_record_refresh_workflow.py::test_public_record_provenance_roadmap_documents_eu_phase_0e_rollout_backlog PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_disabled PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_disabled_first_user PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_with_invite_code_disabled PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_writes_pinned_werkzeug_scrypt_hash_when_enabled PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_with_invite_code_enabled PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_rejects_case_insensitive_duplicate PASSED [ 74%]
-tests/test_registration_and_login.py::test_username_db_constraint_rejects_case_insensitive_duplicate PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_registration_handles_case_insensitive_race_integrity_error PASSED [ 74%]
-tests/test_registration_and_login.py::test_register_page_loads PASSED    [ 74%]
+tests/test_public_record_refresh_workflow.py::test_public_record_provenance_roadmap_documents_eu_phase_0e_rollout_backlog PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_disabled PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_disabled_first_user PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_with_invite_code_disabled PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_writes_pinned_werkzeug_scrypt_hash_when_enabled PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_with_invite_code_enabled PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_rejects_case_insensitive_duplicate PASSED [ 73%]
+tests/test_registration_and_login.py::test_username_db_constraint_rejects_case_insensitive_duplicate PASSED [ 73%]
+tests/test_registration_and_login.py::test_user_registration_handles_case_insensitive_race_integrity_error PASSED [ 73%]
+tests/test_registration_and_login.py::test_register_page_loads PASSED    [ 73%]
+tests/test_registration_and_login.py::test_register_requires_csrf_token PASSED [ 74%]
 tests/test_registration_and_login.py::test_login_page_loads PASSED       [ 74%]
+tests/test_registration_and_login.py::test_login_invalid_post_shows_errors_and_preserves_username PASSED [ 74%]
+tests/test_registration_and_login.py::test_login_requires_csrf_token PASSED [ 74%]
 tests/test_registration_and_login.py::test_user_login_after_registration PASSED [ 74%]
 tests/test_registration_and_login.py::test_user_login_case_insensitive PASSED [ 74%]
-tests/test_registration_and_login.py::test_user_login_with_incorrect_password PASSED [ 75%]
-tests/test_registration_and_login.py::test_user_login_with_native_werkzeug_scrypt_hash PASSED [ 75%]
-tests/test_registration_and_login.py::test_user_login_rehashes_legacy_passlib_hash_when_enabled PASSED [ 75%]
-tests/test_registration_and_login.py::test_user_login_does_not_rehash_legacy_passlib_hash_when_disabled PASSED [ 75%]
-tests/test_registration_and_login.py::test_user_login_rehash_failure_preserves_legacy_passlib_hash PASSED [ 75%]
-tests/test_registration_and_login.py::test_user_login_handles_case_insensitive_duplicate_rows PASSED [ 75%]
-tests/test_replies.py::test_message_reply_404_for_unknown_slug PASSED    [ 75%]
+tests/test_registration_and_login.py::test_user_login_with_incorrect_password PASSED [ 74%]
+tests/test_registration_and_login.py::test_user_login_with_native_werkzeug_scrypt_hash PASSED [ 74%]
+tests/test_registration_and_login.py::test_user_login_rehashes_legacy_passlib_hash_when_enabled PASSED [ 74%]
+tests/test_registration_and_login.py::test_user_login_does_not_rehash_legacy_passlib_hash_when_disabled PASSED [ 74%]
+tests/test_registration_and_login.py::test_user_login_rehash_failure_preserves_legacy_passlib_hash PASSED [ 74%]
+tests/test_registration_and_login.py::test_user_login_handles_case_insensitive_duplicate_rows PASSED [ 74%]
+tests/test_replies.py::test_message_reply_404_for_unknown_slug PASSED    [ 74%]
 tests/test_replies.py::test_default_replies PASSED                       [ 75%]
 tests/test_replies.py::test_custom_replies PASSED                        [ 75%]
 tests/test_replies.py::test_set_custom_replies PASSED                    [ 75%]
 tests/test_replies.py::test_set_custom_replies_redirects_back_with_success_flash PASSED [ 75%]
 tests/test_replies.py::test_message_page PASSED                          [ 75%]
 tests/test_replies.py::test_message_page_wrong_user PASSED               [ 75%]
-tests/test_replies.py::test_set_message_status_success PASSED            [ 76%]
-tests/test_replies.py::test_set_message_status_invalid_form PASSED       [ 76%]
-tests/test_replies.py::test_set_message_status_message_not_found PASSED  [ 76%]
-tests/test_replies.py::test_set_message_status_multiple_rows_guard PASSED [ 76%]
-tests/test_replies.py::test_settings_replies_invalid_form_returns_400 PASSED [ 76%]
-tests/test_replies.py::test_settings_replies_invalid_status_renders_field_error_and_does_not_persist PASSED [ 76%]
-tests/test_replies.py::test_settings_replies_missing_csrf_renders_error_on_submitted_form PASSED [ 76%]
+tests/test_replies.py::test_set_message_status_success PASSED            [ 75%]
+tests/test_replies.py::test_set_message_status_invalid_form PASSED       [ 75%]
+tests/test_replies.py::test_set_message_status_message_not_found PASSED  [ 75%]
+tests/test_replies.py::test_set_message_status_multiple_rows_guard PASSED [ 75%]
+tests/test_replies.py::test_settings_replies_invalid_form_returns_400 PASSED [ 75%]
+tests/test_replies.py::test_settings_replies_invalid_status_renders_field_error_and_does_not_persist PASSED [ 75%]
+tests/test_replies.py::test_settings_replies_missing_csrf_renders_error_on_submitted_form PASSED [ 75%]
 tests/test_resend_message.py::test_resend_message_sends_per_field PASSED [ 76%]
 tests/test_resend_message.py::test_resend_message_blocks_other_users_messages PASSED [ 76%]
 tests/test_resend_message.py::test_resend_message_requires_email_notifications PASSED [ 76%]
 tests/test_resend_message.py::test_resend_message_requires_csrf_token PASSED [ 76%]
 tests/test_resend_message.py::test_resend_button_visible_with_required_settings PASSED [ 76%]
-tests/test_resend_message.py::test_resend_button_hidden_without_notifications_or_content PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_full_body_uses_existing_armored_value_without_reencryption PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_full_body_encrypts_value_with_embedded_pgp_header_substring PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_full_body_encrypts_plaintext_value PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_full_body_encryption_failure_falls_back_to_generic PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_include_content_false_sends_generic PASSED [ 77%]
-tests/test_resend_message.py::test_resend_message_include_content_true_with_empty_values_sends_generic PASSED [ 77%]
-tests/test_routes_auth.py::test_register_redirects_when_already_logged_in PASSED [ 77%]
+tests/test_resend_message.py::test_resend_button_hidden_without_notifications_or_content PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_full_body_uses_existing_armored_value_without_reencryption PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_full_body_encrypts_value_with_embedded_pgp_header_substring PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_full_body_encrypts_plaintext_value PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_full_body_encryption_failure_falls_back_to_generic PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_include_content_false_sends_generic PASSED [ 76%]
+tests/test_resend_message.py::test_resend_message_include_content_true_with_empty_values_sends_generic PASSED [ 76%]
+tests/test_routes_auth.py::test_register_redirects_when_already_logged_in PASSED [ 76%]
 tests/test_routes_auth.py::test_register_rejects_incorrect_captcha PASSED [ 77%]
 tests/test_routes_auth.py::test_register_rejects_invalid_invite_code PASSED [ 77%]
 tests/test_routes_auth.py::test_register_rejects_expired_invite_code PASSED [ 77%]
 tests/test_routes_auth.py::test_register_requires_invite_code_by_default_for_first_user PASSED [ 77%]
 tests/test_routes_auth.py::test_register_valid_invite_code_deletes_code PASSED [ 77%]
-tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_invalid_session_state PASSED [ 78%]
-tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_non_legacy_source_hash PASSED [ 78%]
-tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_mismatched_source_digest PASSED [ 78%]
-tests/test_routes_auth.py::test_register_handles_unexpected_integrity_error PASSED [ 78%]
-tests/test_routes_auth.py::test_login_redirects_when_already_logged_in PASSED [ 78%]
-tests/test_routes_auth.py::test_login_redirects_to_select_tier_when_premium_enabled PASSED [ 78%]
-tests/test_routes_auth.py::test_login_redirects_to_original_protected_page PASSED [ 78%]
-tests/test_routes_auth.py::test_stash_post_auth_redirect_skips_logout_and_preserves_session PASSED [ 78%]
+tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_invalid_session_state PASSED [ 77%]
+tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_non_legacy_source_hash PASSED [ 77%]
+tests/test_routes_auth.py::test_apply_pending_password_rehash_rejects_mismatched_source_digest PASSED [ 77%]
+tests/test_routes_auth.py::test_register_handles_unexpected_integrity_error PASSED [ 77%]
+tests/test_routes_auth.py::test_login_redirects_when_already_logged_in PASSED [ 77%]
+tests/test_routes_auth.py::test_login_redirects_to_select_tier_when_premium_enabled PASSED [ 77%]
+tests/test_routes_auth.py::test_login_redirects_to_original_protected_page PASSED [ 77%]
+tests/test_routes_auth.py::test_stash_post_auth_redirect_skips_logout_and_preserves_session PASSED [ 77%]
 tests/test_routes_auth.py::test_stash_post_auth_redirect_rejects_unsafe_target_and_preserves_session PASSED [ 78%]
 tests/test_routes_auth.py::test_lock_first_user_registration_noops_without_postgres_bind[None] PASSED [ 78%]
 tests/test_routes_auth.py::test_lock_first_user_registration_noops_without_postgres_bind[bind1] PASSED [ 78%]
 tests/test_routes_auth.py::test_register_rejects_when_first_user_recheck_finds_existing_user PASSED [ 78%]
 tests/test_routes_auth.py::test_login_clears_auth_session_when_2fa_commit_fails PASSED [ 78%]
-tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_login_and_clears_session_for_missing_user PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_inbox_when_already_authenticated PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_rejects_when_user_has_no_totp_secret PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_success_redirects_to_onboarding PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_success_redirects_to_select_tier_when_enabled PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_original_protected_page PASSED [ 79%]
-tests/test_routes_auth.py::test_verify_2fa_login_failed_rehash_commit_clears_auth_session PASSED [ 79%]
+tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_login_and_clears_session_for_missing_user PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_inbox_when_already_authenticated PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_rejects_when_user_has_no_totp_secret PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_requires_csrf_token PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_success_redirects_to_onboarding PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_success_redirects_to_select_tier_when_enabled PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_redirects_to_original_protected_page PASSED [ 78%]
+tests/test_routes_auth.py::test_verify_2fa_login_failed_rehash_commit_clears_auth_session PASSED [ 78%]
 tests/test_routes_common.py::test_valid_username_validator PASSED        [ 79%]
 tests/test_routes_common.py::test_get_directory_usernames_sorts_admin_first_and_normalized PASSED [ 79%]
 tests/test_routes_common.py::test_validate_captcha PASSED                [ 79%]
 tests/test_routes_common.py::test_get_ip_address_success PASSED          [ 79%]
 tests/test_routes_common.py::test_get_ip_address_fallback PASSED         [ 79%]
-tests/test_routes_common.py::test_do_send_email_returns_early_without_enabled_notifications PASSED [ 80%]
-tests/test_routes_common.py::test_do_send_email_uses_user_custom_smtp PASSED [ 80%]
-tests/test_routes_common.py::test_do_send_email_uses_default_smtp PASSED [ 80%]
-tests/test_routes_common.py::test_do_send_email_uses_notifications_address_as_reply_to_fallback PASSED [ 80%]
-tests/test_routes_common.py::test_do_send_email_catches_errors PASSED    [ 80%]
-tests/test_routes_common.py::test_do_send_email_skips_when_default_smtp_incomplete PASSED [ 80%]
-tests/test_routes_common.py::test_formatters PASSED                      [ 80%]
-tests/test_routes_forms.py::test_login_password_max_matches_registration PASSED [ 80%]
+tests/test_routes_common.py::test_do_send_email_returns_early_without_enabled_notifications PASSED [ 79%]
+tests/test_routes_common.py::test_do_send_email_uses_user_custom_smtp PASSED [ 79%]
+tests/test_routes_common.py::test_do_send_email_uses_default_smtp PASSED [ 79%]
+tests/test_routes_common.py::test_do_send_email_uses_notifications_address_as_reply_to_fallback PASSED [ 79%]
+tests/test_routes_common.py::test_do_send_email_catches_errors PASSED    [ 79%]
+tests/test_routes_common.py::test_do_send_email_skips_when_default_smtp_incomplete PASSED [ 79%]
+tests/test_routes_common.py::test_formatters PASSED                      [ 79%]
+tests/test_routes_forms.py::test_login_password_max_matches_registration PASSED [ 79%]
 tests/test_routes_forms.py::test_login_username_max_matches_registration PASSED [ 80%]
 tests/test_routes_forms.py::test_dynamic_message_form_skips_disabled_fields_and_maps_names PASSED [ 80%]
 tests/test_routes_forms.py::test_dynamic_message_form_unknown_field_type_raises PASSED [ 80%]
 tests/test_routes_forms.py::test_dynamic_message_form_choice_fields_select_and_multicheckbox PASSED [ 80%]
 tests/test_routes_forms.py::test_onboarding_profile_form_rejects_disallowed_language PASSED [ 80%]
-tests/test_routes_init.py::test_info_route_renders_server_ip PASSED      [ 81%]
-tests/test_routes_init.py::test_health_json_route_returns_ok PASSED      [ 81%]
-tests/test_safe_template.py::test_empty PASSED                           [ 81%]
-tests/test_safe_template.py::test_no_vars PASSED                         [ 81%]
-tests/test_safe_template.py::test_missing_var PASSED                     [ 81%]
-tests/test_safe_template.py::test_invalid_var_syntax PASSED              [ 81%]
-tests/test_safe_template.py::test_unclosed_var PASSED                    [ 81%]
-tests/test_safe_template.py::test_unopened_var PASSED                    [ 81%]
-tests/test_safe_template.py::test_invalid_var_value PASSED               [ 81%]
+tests/test_routes_init.py::test_info_route_renders_server_ip PASSED      [ 80%]
+tests/test_routes_init.py::test_health_json_route_returns_ok PASSED      [ 80%]
+tests/test_safe_template.py::test_empty PASSED                           [ 80%]
+tests/test_safe_template.py::test_no_vars PASSED                         [ 80%]
+tests/test_safe_template.py::test_missing_var PASSED                     [ 80%]
+tests/test_safe_template.py::test_invalid_var_syntax PASSED              [ 80%]
+tests/test_safe_template.py::test_unclosed_var PASSED                    [ 80%]
+tests/test_safe_template.py::test_unopened_var PASSED                    [ 80%]
+tests/test_safe_template.py::test_invalid_var_value PASSED               [ 80%]
 tests/test_safe_template.py::test_single_var PASSED                      [ 81%]
 tests/test_safe_template.py::test_multiple_vars PASSED                   [ 81%]
 tests/test_secure_session.py::TestSessionEnabled::test_get_set PASSED    [ 81%]
 tests/test_secure_session.py::TestSessionEnabled::test_key_only_session_access_sets_vary_cookie PASSED [ 81%]
-tests/test_secure_session.py::TestNoSessionEnabled::test_no_session PASSED [ 82%]
-tests/test_securedrop_directory_listing.py::test_get_securedrop_directory_listings_returns_empty_tuple_for_missing_seed_file PASSED [ 82%]
-tests/test_securedrop_directory_listing.py::test_get_securedrop_directory_listings_returns_empty_tuple_for_non_list_seed_json PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_is_deterministic_and_schema_compatible PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_normalize_string_list_filters_invalid_blank_and_duplicate_values PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_normalize_http_url_validates_required_and_optional_missing_values PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_choose_website_requires_a_usable_url PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_requires_onion_address PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_rejects_invalid_required_directory_url PASSED [ 82%]
+tests/test_secure_session.py::TestNoSessionEnabled::test_no_session PASSED [ 81%]
+tests/test_securedrop_directory_listing.py::test_get_securedrop_directory_listings_returns_empty_tuple_for_missing_seed_file PASSED [ 81%]
+tests/test_securedrop_directory_listing.py::test_get_securedrop_directory_listings_returns_empty_tuple_for_non_list_seed_json PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_is_deterministic_and_schema_compatible PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_normalize_string_list_filters_invalid_blank_and_duplicate_values PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_normalize_http_url_validates_required_and_optional_missing_values PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_choose_website_requires_a_usable_url PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_requires_onion_address PASSED [ 81%]
+tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_rejects_invalid_required_directory_url PASSED [ 81%]
 tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_sanitizes_optional_and_website_urls PASSED [ 82%]
 tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_rejects_empty_slug_after_normalization PASSED [ 82%]
 tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows0-Normalized row id must be a string] PASSED [ 82%]
 tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows1-Duplicate SecureDrop listing id: securedrop-one] PASSED [ 82%]
-tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows2-Normalized row slug must be a string] PASSED [ 83%]
-tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows3-Duplicate SecureDrop listing slug: securedrop~shared] PASSED [ 83%]
-tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_requests_expected_shape PASSED [ 83%]
-tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_rejects_non_list_payload PASSED [ 83%]
-tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_rejects_non_object_payload_items PASSED [ 83%]
-tests/test_securedrop_directory_refresh.py::test_render_securedrop_refresh_summary PASSED [ 83%]
-tests/test_security_headers.py::test_csp PASSED                          [ 83%]
-tests/test_security_headers.py::test_csp_script_src_elem_disallows_inline_scripts PASSED [ 83%]
-tests/test_security_headers.py::test_profile_page_keeps_csp_enforced PASSED [ 83%]
+tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows2-Normalized row slug must be a string] PASSED [ 82%]
+tests/test_securedrop_directory_refresh.py::test_refresh_securedrop_directory_rows_validates_normalized_row_shapes[normalized_rows3-Duplicate SecureDrop listing slug: securedrop~shared] PASSED [ 82%]
+tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_requests_expected_shape PASSED [ 82%]
+tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_rejects_non_list_payload PASSED [ 82%]
+tests/test_securedrop_directory_refresh.py::test_fetch_securedrop_directory_rows_rejects_non_object_payload_items PASSED [ 82%]
+tests/test_securedrop_directory_refresh.py::test_render_securedrop_refresh_summary PASSED [ 82%]
+tests/test_security_headers.py::test_csp PASSED                          [ 82%]
+tests/test_security_headers.py::test_csp_script_src_elem_disallows_inline_scripts PASSED [ 82%]
+tests/test_security_headers.py::test_profile_page_keeps_csp_enforced PASSED [ 82%]
 tests/test_security_headers.py::test_base_template_uses_external_no_js_bootstrap_script PASSED [ 83%]
 tests/test_security_headers.py::test_x_frame_options PASSED              [ 83%]
 tests/test_security_headers.py::test_x_content_type_options PASSED       [ 83%]
-tests/test_security_headers.py::test_permissions_policy PASSED           [ 84%]
-tests/test_security_headers.py::test_referrer_policy PASSED              [ 84%]
-tests/test_security_headers.py::test_x_xss_protection PASSED             [ 84%]
-tests/test_security_headers.py::test_strict_transport_security PASSED    [ 84%]
-tests/test_security_headers.py::test_no_strict_transport_security_onion PASSED [ 84%]
-tests/test_settings.py::test_user_account_category_persists PASSED       [ 84%]
-tests/test_settings.py::test_user_location_persists PASSED               [ 84%]
-tests/test_settings.py::test_settings_page_loads PASSED                  [ 84%]
-tests/test_settings.py::test_change_display_name PASSED                  [ 84%]
-tests/test_settings.py::test_change_username PASSED                      [ 84%]
+tests/test_security_headers.py::test_permissions_policy PASSED           [ 83%]
+tests/test_security_headers.py::test_referrer_policy PASSED              [ 83%]
+tests/test_security_headers.py::test_x_xss_protection PASSED             [ 83%]
+tests/test_security_headers.py::test_strict_transport_security PASSED    [ 83%]
+tests/test_security_headers.py::test_no_strict_transport_security_onion PASSED [ 83%]
+tests/test_settings.py::test_user_account_category_persists PASSED       [ 83%]
+tests/test_settings.py::test_user_location_persists PASSED               [ 83%]
+tests/test_settings.py::test_settings_page_loads PASSED                  [ 83%]
+tests/test_settings.py::test_change_display_name PASSED                  [ 83%]
+tests/test_settings.py::test_change_username PASSED                      [ 83%]
 tests/test_settings.py::test_change_username_rejects_case_insensitive_duplicate PASSED [ 84%]
 tests/test_settings.py::test_settings_auth_requires_csrf_token PASSED    [ 84%]
 tests/test_settings.py::test_invalid_username_post_shows_only_username_errors_and_no_password_side_effect PASSED [ 84%]
-tests/test_settings.py::test_invalid_password_post_shows_only_password_errors_and_preserves_password_hash PASSED [ 85%]
-tests/test_settings.py::test_username_post_does_not_trigger_password_form_validation PASSED [ 85%]
-tests/test_settings.py::test_password_post_does_not_trigger_username_form_validation PASSED [ 85%]
-tests/test_settings.py::test_change_password PASSED                      [ 85%]
-tests/test_settings.py::test_change_password_from_native_werkzeug_scrypt_hash PASSED [ 85%]
-tests/test_settings.py::test_change_password_writes_pinned_werkzeug_scrypt_hash_when_enabled PASSED [ 85%]
-tests/test_settings.py::test_add_pgp_key PASSED                          [ 85%]
-tests/test_settings.py::test_add_invalid_pgp_key PASSED                  [ 85%]
-tests/test_settings.py::test_encryption_invalid_manual_key_form_shows_only_manual_key_errors PASSED [ 85%]
-tests/test_settings.py::test_add_pgp_key_without_encryption_subkey PASSED [ 85%]
+tests/test_settings.py::test_invalid_password_post_shows_only_password_errors_and_preserves_password_hash PASSED [ 84%]
+tests/test_settings.py::test_username_post_does_not_trigger_password_form_validation PASSED [ 84%]
+tests/test_settings.py::test_password_post_does_not_trigger_username_form_validation PASSED [ 84%]
+tests/test_settings.py::test_change_password PASSED                      [ 84%]
+tests/test_settings.py::test_change_password_from_native_werkzeug_scrypt_hash PASSED [ 84%]
+tests/test_settings.py::test_change_password_writes_pinned_werkzeug_scrypt_hash_when_enabled PASSED [ 84%]
+tests/test_settings.py::test_add_pgp_key PASSED                          [ 84%]
+tests/test_settings.py::test_add_invalid_pgp_key PASSED                  [ 84%]
+tests/test_settings.py::test_encryption_invalid_manual_key_form_shows_only_manual_key_errors PASSED [ 84%]
+tests/test_settings.py::test_add_pgp_key_without_encryption_subkey PASSED [ 84%]
 tests/test_settings.py::test_add_pgp_key_proton_redirects_to_encryption PASSED [ 85%]
 tests/test_settings.py::test_add_pgp_key_proton_invalid_form_redirects_index PASSED [ 85%]
 tests/test_settings.py::test_add_pgp_key_proton_invalid_email_does_not_fetch_lookup PASSED [ 85%]
-tests/test_settings.py::test_add_pgp_key_proton_request_exception_redirects_encryption PASSED [ 86%]
-tests/test_settings.py::test_add_pgp_key_proton_non_encryptable_key_redirects_encryption PASSED [ 86%]
-tests/test_settings.py::test_add_pgp_key_proton_invalid_key_redirects_encryption PASSED [ 86%]
-tests/test_settings.py::test_add_pgp_key_proton_non_200_redirects_encryption PASSED [ 86%]
-tests/test_settings.py::test_advanced_settings_page_loads PASSED         [ 86%]
-tests/test_settings.py::test_update_smtp_settings_reject_private_host PASSED [ 86%]
-tests/test_settings.py::test_notifications_invalid_email_forwarding_post_shows_only_forwarding_errors PASSED [ 86%]
-tests/test_settings.py::test_update_smtp_settings_no_pgp PASSED          [ 86%]
-tests/test_settings.py::test_update_smtp_settings_starttls PASSED        [ 86%]
-tests/test_settings.py::test_update_smtp_settings_ssl PASSED             [ 86%]
+tests/test_settings.py::test_add_pgp_key_proton_request_exception_redirects_encryption PASSED [ 85%]
+tests/test_settings.py::test_add_pgp_key_proton_non_encryptable_key_redirects_encryption PASSED [ 85%]
+tests/test_settings.py::test_add_pgp_key_proton_invalid_key_redirects_encryption PASSED [ 85%]
+tests/test_settings.py::test_add_pgp_key_proton_non_200_redirects_encryption PASSED [ 85%]
+tests/test_settings.py::test_advanced_settings_page_loads PASSED         [ 85%]
+tests/test_settings.py::test_update_smtp_settings_reject_private_host PASSED [ 85%]
+tests/test_settings.py::test_notifications_invalid_email_forwarding_post_shows_only_forwarding_errors PASSED [ 85%]
+tests/test_settings.py::test_update_smtp_settings_no_pgp PASSED          [ 85%]
+tests/test_settings.py::test_update_smtp_settings_starttls PASSED        [ 85%]
+tests/test_settings.py::test_update_smtp_settings_ssl PASSED             [ 85%]
 tests/test_settings.py::test_update_smtp_settings_default_forwarding PASSED [ 86%]
 tests/test_settings.py::test_toggle_notifications_setting PASSED         [ 86%]
-tests/test_settings.py::test_toggle_include_content_setting PASSED       [ 87%]
-tests/test_settings.py::test_toggle_encrypt_entire_body_setting PASSED   [ 87%]
-tests/test_settings.py::test_notifications_invalid_post_returns_400 PASSED [ 87%]
-tests/test_settings.py::test_add_alias PASSED                            [ 87%]
-tests/test_settings.py::test_add_alias_fails_when_alias_mode_is_never PASSED [ 87%]
-tests/test_settings.py::test_add_alias_not_exceed_max PASSED             [ 87%]
-tests/test_settings.py::test_add_alias_duplicate PASSED                  [ 87%]
-tests/test_settings.py::test_add_alias_duplicate_case_insensitive PASSED [ 87%]
-tests/test_settings.py::test_alias_page_loads PASSED                     [ 87%]
-tests/test_settings.py::test_delete_alias PASSED                         [ 87%]
-tests/test_settings.py::test_delete_alias_requires_csrf_token PASSED     [ 87%]
+tests/test_settings.py::test_toggle_include_content_setting PASSED       [ 86%]
+tests/test_settings.py::test_toggle_encrypt_entire_body_setting PASSED   [ 86%]
+tests/test_settings.py::test_notifications_invalid_post_returns_400 PASSED [ 86%]
+tests/test_settings.py::test_add_alias PASSED                            [ 86%]
+tests/test_settings.py::test_add_alias_fails_when_alias_mode_is_never PASSED [ 86%]
+tests/test_settings.py::test_add_alias_not_exceed_max PASSED             [ 86%]
+tests/test_settings.py::test_add_alias_duplicate PASSED                  [ 86%]
+tests/test_settings.py::test_add_alias_duplicate_case_insensitive PASSED [ 86%]
+tests/test_settings.py::test_alias_page_loads PASSED                     [ 86%]
+tests/test_settings.py::test_delete_alias PASSED                         [ 86%]
+tests/test_settings.py::test_delete_alias_requires_csrf_token PASSED     [ 86%]
 tests/test_settings.py::test_delete_account PASSED                       [ 87%]
 tests/test_settings.py::test_alias_change_display_name PASSED            [ 87%]
-tests/test_settings.py::test_change_bio PASSED                           [ 88%]
-tests/test_settings.py::test_change_account_category PASSED              [ 88%]
-tests/test_settings.py::test_change_account_category_rejects_invalid_value PASSED [ 88%]
-tests/test_settings.py::test_change_profile_location PASSED              [ 88%]
-tests/test_settings.py::test_change_profile_location_clears_incomplete_dependency_chain PASSED [ 88%]
-tests/test_settings.py::test_change_profile_location_clears_city_when_city_field_is_omitted PASSED [ 88%]
-tests/test_settings.py::test_profile_states_endpoint_returns_country_scoped_options PASSED [ 88%]
-tests/test_settings.py::test_profile_cities_endpoint_returns_state_scoped_options PASSED [ 88%]
-tests/test_settings.py::test_alias_change_bio PASSED                     [ 88%]
+tests/test_settings.py::test_change_bio PASSED                           [ 87%]
+tests/test_settings.py::test_change_bio_invalid_post_renders_error_and_preserves_submitted_bio PASSED [ 87%]
+tests/test_settings.py::test_change_account_category PASSED              [ 87%]
+tests/test_settings.py::test_change_account_category_rejects_invalid_value PASSED [ 87%]
+tests/test_settings.py::test_change_profile_location PASSED              [ 87%]
+tests/test_settings.py::test_change_profile_location_clears_incomplete_dependency_chain PASSED [ 87%]
+tests/test_settings.py::test_change_profile_location_clears_city_when_city_field_is_omitted PASSED [ 87%]
+tests/test_settings.py::test_profile_states_endpoint_returns_country_scoped_options PASSED [ 87%]
+tests/test_settings.py::test_profile_cities_endpoint_returns_state_scoped_options PASSED [ 87%]
+tests/test_settings.py::test_alias_change_bio PASSED                     [ 87%]
+tests/test_settings.py::test_alias_change_bio_invalid_post_renders_error_and_preserves_submitted_bio PASSED [ 87%]
 tests/test_settings.py::test_alias_change_bio_preserves_account_category PASSED [ 88%]
 tests/test_settings.py::test_alias_change_bio_preserves_account_location PASSED [ 88%]
 tests/test_settings.py::test_change_directory_visibility PASSED          [ 88%]
 tests/test_settings.py::test_alias_change_directory_visibility PASSED    [ 88%]
-tests/test_settings.py::test_update_brand_primary_color PASSED           [ 89%]
-tests/test_settings.py::test_update_brand_app_name PASSED                [ 89%]
-tests/test_settings.py::test_update_brand_logo PASSED                    [ 89%]
-tests/test_settings.py::test_enable_disable_guidance PASSED              [ 89%]
-tests/test_settings.py::test_update_guidance_emergency_exit PASSED       [ 89%]
-tests/test_settings.py::test_update_guidance_emergency_exit_requires_url PASSED [ 89%]
-tests/test_settings.py::test_update_guidance_prompts PASSED              [ 89%]
-tests/test_settings.py::test_diretory_intro_text PASSED                  [ 89%]
-tests/test_settings.py::test_directory_intro_text_reset_to_default PASSED [ 89%]
+tests/test_settings.py::test_update_brand_primary_color PASSED           [ 88%]
+tests/test_settings.py::test_update_brand_app_name PASSED                [ 88%]
+tests/test_settings.py::test_update_brand_logo PASSED                    [ 88%]
+tests/test_settings.py::test_enable_disable_guidance PASSED              [ 88%]
+tests/test_settings.py::test_update_guidance_emergency_exit PASSED       [ 88%]
+tests/test_settings.py::test_update_guidance_emergency_exit_requires_url PASSED [ 88%]
+tests/test_settings.py::test_update_guidance_prompts PASSED              [ 88%]
+tests/test_settings.py::test_diretory_intro_text PASSED                  [ 88%]
+tests/test_settings.py::test_directory_intro_text_reset_to_default PASSED [ 88%]
 tests/test_settings.py::test_directory_intro_text_reset_aborts_when_multiple_rows_would_delete PASSED [ 89%]
 tests/test_settings.py::test_homepage_user PASSED                        [ 89%]
 tests/test_settings.py::test_homepage_reset_when_already_default PASSED  [ 89%]
-tests/test_settings.py::test_homepage_reset_multiple_rows_error PASSED   [ 90%]
-tests/test_settings.py::test_index_clears_invalid_session_user PASSED    [ 90%]
-tests/test_settings.py::test_index_warns_when_homepage_username_missing PASSED [ 90%]
-tests/test_settings.py::test_index_redirects_authenticated_user_to_inbox PASSED [ 90%]
-tests/test_settings.py::test_update_profile_header PASSED                [ 90%]
-tests/test_settings.py::test_update_profile_header_reset_when_already_default PASSED [ 90%]
-tests/test_settings.py::test_update_profile_header_reset_multiple_rows_error PASSED [ 90%]
-tests/test_settings.py::test_profile_fields_enabled PASSED               [ 90%]
-tests/test_settings.py::test_profile_fields_disabled PASSED              [ 90%]
-tests/test_settings.py::test_alias_fields_enabled PASSED                 [ 90%]
+tests/test_settings.py::test_homepage_reset_multiple_rows_error PASSED   [ 89%]
+tests/test_settings.py::test_index_clears_invalid_session_user PASSED    [ 89%]
+tests/test_settings.py::test_index_warns_when_homepage_username_missing PASSED [ 89%]
+tests/test_settings.py::test_index_redirects_authenticated_user_to_inbox PASSED [ 89%]
+tests/test_settings.py::test_update_profile_header PASSED                [ 89%]
+tests/test_settings.py::test_update_profile_header_reset_when_already_default PASSED [ 89%]
+tests/test_settings.py::test_update_profile_header_reset_multiple_rows_error PASSED [ 89%]
+tests/test_settings.py::test_profile_fields_enabled PASSED               [ 89%]
+tests/test_settings.py::test_profile_fields_disabled PASSED              [ 89%]
+tests/test_settings.py::test_alias_fields_enabled PASSED                 [ 89%]
 tests/test_settings.py::test_alias_fields_disabled PASSED                [ 90%]
 tests/test_settings.py::test_hide_donate_button PASSED                   [ 90%]
 tests/test_settings.py::test_encryption_post_invalid_form_returns_400 PASSED [ 90%]
-tests/test_settings.py::test_alias_route_missing_alias_returns_404 PASSED [ 91%]
-tests/test_settings.py::test_delete_alias_missing_alias_returns_404 PASSED [ 91%]
-tests/test_settings.py::test_alias_fields_missing_alias_redirects_index PASSED [ 91%]
-tests/test_settings.py::test_alias_route_invalid_post_returns_400 PASSED [ 91%]
-tests/test_settings.py::test_alias_fields_post_uses_handle_field_post_result PASSED [ 91%]
-tests/test_settings.py::test_profile_route_raises_if_primary_username_missing PASSED [ 91%]
-tests/test_settings.py::test_profile_fields_raises_if_primary_username_missing PASSED [ 91%]
-tests/test_settings.py::test_profile_invalid_post_returns_400 PASSED     [ 91%]
-tests/test_settings.py::test_profile_renders_business_price_with_two_decimals PASSED [ 91%]
+tests/test_settings.py::test_alias_route_missing_alias_returns_404 PASSED [ 90%]
+tests/test_settings.py::test_delete_alias_missing_alias_returns_404 PASSED [ 90%]
+tests/test_settings.py::test_alias_fields_missing_alias_redirects_index PASSED [ 90%]
+tests/test_settings.py::test_alias_route_invalid_post_returns_400 PASSED [ 90%]
+tests/test_settings.py::test_alias_fields_post_uses_handle_field_post_result PASSED [ 90%]
+tests/test_settings.py::test_profile_route_raises_if_primary_username_missing PASSED [ 90%]
+tests/test_settings.py::test_profile_fields_raises_if_primary_username_missing PASSED [ 90%]
+tests/test_settings.py::test_profile_invalid_post_returns_400 PASSED     [ 90%]
+tests/test_settings.py::test_profile_renders_business_price_with_two_decimals PASSED [ 90%]
+tests/test_settings.py::test_business_tier_display_price_returns_empty_when_tier_missing PASSED [ 90%]
+tests/test_settings.py::test_business_tier_display_price_omits_decimal_for_whole_dollars PASSED [ 91%]
 tests/test_settings.py::test_profile_fields_post_uses_handle_field_post_result PASSED [ 91%]
+tests/test_settings.py::test_profile_fields_invalid_add_post_renders_errors_without_creating_field PASSED [ 91%]
+tests/test_settings.py::test_profile_fields_invalid_update_post_renders_errors_without_updating_field PASSED [ 91%]
+tests/test_settings.py::test_profile_fields_invalid_delete_post_renders_errors_without_deleting_field PASSED [ 91%]
+tests/test_settings.py::test_alias_fields_invalid_add_post_renders_errors_without_creating_field PASSED [ 91%]
 tests/test_settings_common.py::test_set_and_unset_field_attribute PASSED [ 91%]
 tests/test_settings_common.py::test_set_input_disabled_toggle PASSED     [ 91%]
 tests/test_settings_common.py::test_settings_forms_reject_disallowed_language PASSED [ 91%]
-tests/test_settings_common.py::test_profile_form_rejects_invalid_account_category PASSED [ 92%]
-tests/test_settings_common.py::test_profile_form_rejects_invalid_country PASSED [ 92%]
-tests/test_settings_common.py::test_profile_form_rejects_invalid_subdivision_for_country PASSED [ 92%]
-tests/test_settings_common.py::test_profile_form_rejects_invalid_city_for_subdivision PASSED [ 92%]
+tests/test_settings_common.py::test_profile_form_rejects_invalid_account_category PASSED [ 91%]
+tests/test_settings_common.py::test_profile_form_rejects_invalid_country PASSED [ 91%]
+tests/test_settings_common.py::test_profile_form_rejects_invalid_subdivision_for_country PASSED [ 91%]
+tests/test_settings_common.py::test_profile_form_rejects_invalid_city_for_subdivision PASSED [ 91%]
 tests/test_settings_common.py::test_country_iso2_returns_none_for_empty_or_unknown_country[] PASSED [ 92%]
 tests/test_settings_common.py::test_country_iso2_returns_none_for_empty_or_unknown_country[   ] PASSED [ 92%]
 tests/test_settings_common.py::test_country_iso2_returns_none_for_empty_or_unknown_country[Atlantis] PASSED [ 92%]
@@ -1593,9 +1622,13 @@ tests/test_settings_common.py::test_city_choice_value_returns_none_for_blank_or_
 tests/test_settings_common.py::test_city_choice_value_returns_first_match_when_multiple_cities_exist PASSED [ 92%]
 tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[None-United States-Illinois] PASSED [ 92%]
 tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[   -United States-Illinois] PASSED [ 92%]
-tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[Chicago-Atlantis-Illinois] PASSED [ 93%]
-tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[Chicago-United States-Atlantis] PASSED [ 93%]
-tests/test_settings_common.py::test_profile_form_allows_empty_city_without_normalizing PASSED [ 93%]
+tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[Chicago-Atlantis-Illinois] PASSED [ 92%]
+tests/test_settings_common.py::test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs[Chicago-United States-Atlantis] PASSED [ 92%]
+tests/test_settings_common.py::test_normalize_subdivision_name_returns_trimmed_value_for_unknown_country PASSED [ 92%]
+tests/test_settings_common.py::test_profile_form_allows_empty_city_without_normalizing PASSED [ 92%]
+tests/test_settings_common.py::test_profile_form_preserves_unknown_saved_country_choice PASSED [ 93%]
+tests/test_settings_common.py::test_profile_form_preserves_unknown_saved_subdivision_and_city_labels PASSED [ 93%]
+tests/test_settings_common.py::test_city_choice_label_returns_raw_value_when_lookup_is_ambiguous PASSED [ 93%]
 tests/test_settings_common.py::test_profile_form_account_category_choices_are_split PASSED [ 93%]
 tests/test_settings_common.py::test_create_profile_forms_disables_location_inputs_until_dependencies PASSED [ 93%]
 tests/test_settings_common.py::test_create_profile_forms_selects_saved_subdivision_and_city PASSED [ 93%]
@@ -1605,7 +1638,7 @@ tests/test_settings_common.py::test_is_safe_verification_url_missing_hostname_re
 tests/test_settings_common.py::test_is_safe_verification_url_testing_short_circuit PASSED [ 93%]
 tests/test_settings_common.py::test_is_safe_verification_url_dns_error_rejected PASSED [ 93%]
 tests/test_settings_common.py::test_is_safe_verification_url_resolved_private_rejected PASSED [ 93%]
-tests/test_settings_common.py::test_is_safe_verification_url_resolved_public_allowed PASSED [ 94%]
+tests/test_settings_common.py::test_is_safe_verification_url_resolved_public_allowed PASSED [ 93%]
 tests/test_settings_common.py::test_is_safe_verification_url_direct_private_ip_rejected PASSED [ 94%]
 tests/test_settings_common.py::test_is_safe_verification_url_resolved_blocked_ip_rejected PASSED [ 94%]
 tests/test_settings_common.py::test_verify_url_handles_client_error PASSED [ 94%]
@@ -1618,7 +1651,7 @@ tests/test_settings_common.py::test_handle_update_bio_uses_public_base_url_for_p
 tests/test_settings_common.py::test_handle_new_alias_form_unique_violation_returns_none PASSED [ 94%]
 tests/test_settings_common.py::test_handle_new_alias_form_integrity_error_returns_none PASSED [ 94%]
 tests/test_settings_common.py::test_handle_change_username_form_unique_violation_flashes_taken PASSED [ 94%]
-tests/test_settings_common.py::test_handle_change_username_form_internal_error_flashes_generic_error PASSED [ 95%]
+tests/test_settings_common.py::test_handle_change_username_form_internal_error_flashes_generic_error PASSED [ 94%]
 tests/test_settings_common.py::test_handle_change_password_form_rejects_wrong_old_password PASSED [ 95%]
 tests/test_settings_common.py::test_handle_pgp_key_form_empty_value_clears_key_and_email PASSED [ 95%]
 tests/test_settings_common.py::test_handle_profile_post_invalid_form_returns_none PASSED [ 95%]
@@ -1631,7 +1664,7 @@ tests/test_settings_registration.py::test_registration_settings_disabled_returns
 tests/test_settings_registration.py::test_registration_toggle_enabled PASSED [ 95%]
 tests/test_settings_registration.py::test_registration_toggle_enabled_does_not_validate_other_forms PASSED [ 95%]
 tests/test_settings_registration.py::test_registration_toggle_codes_required PASSED [ 95%]
-tests/test_settings_registration.py::test_registration_create_invite_code PASSED [ 96%]
+tests/test_settings_registration.py::test_registration_create_invite_code PASSED [ 95%]
 tests/test_settings_registration.py::test_registration_delete_invite_code PASSED [ 96%]
 tests/test_settings_registration.py::test_registration_delete_invite_code_not_found PASSED [ 96%]
 tests/test_settings_registration.py::test_registration_invalid_form_submission PASSED [ 96%]
@@ -1643,8 +1676,8 @@ tests/test_settings_twofa.py::test_toggle_2fa_redirects_to_login_without_user_id
 tests/test_settings_twofa.py::test_disable_2fa_clears_secret PASSED      [ 96%]
 tests/test_settings_twofa.py::test_disable_2fa_redirects_to_login_without_user_id PASSED [ 96%]
 tests/test_settings_twofa.py::test_confirm_disable_2fa_page_loads PASSED [ 96%]
-tests/test_settings_twofa.py::test_verify_2fa_setup_redirects_to_login_for_missing_user PASSED [ 97%]
-tests/test_settings_twofa.py::test_verify_2fa_setup_without_totp_secret_redirects_back_to_enable PASSED [ 97%]
+tests/test_settings_twofa.py::test_verify_2fa_setup_redirects_to_login_for_missing_user PASSED [ 96%]
+tests/test_settings_twofa.py::test_verify_2fa_setup_without_totp_secret_redirects_back_to_enable PASSED [ 96%]
 tests/test_settings_twofa.py::test_verify_2fa_setup_invalid_code_redirects_back_to_enable PASSED [ 97%]
 tests/test_settings_twofa.py::test_verify_2fa_setup_valid_code_redirects_logout_and_clears_setup_flag PASSED [ 97%]
 tests/test_storage.py::TestFsDriver::test_put_and_serve PASSED           [ 97%]
@@ -1656,10 +1689,12 @@ tests/test_storage.py::test_fs_driver_rejects_relative_root PASSED       [ 97%]
 tests/test_storage.py::test_fs_driver_rejects_non_absolute_full_path PASSED [ 97%]
 tests/test_storage.py::test_fs_driver_rejects_windows_reserved_device_names PASSED [ 97%]
 tests/test_storage.py::test_fs_driver_allows_empty_and_dot_only_path_segments PASSED [ 97%]
-tests/test_storage.py::test_s3_driver_private_serve_uses_presigned_url PASSED [ 98%]
-tests/test_storage.py::test_blob_storage_init_rejects_unknown_driver PASSED [ 98%]
+tests/test_storage.py::test_s3_driver_private_serve_uses_presigned_url PASSED [ 97%]
+tests/test_storage.py::test_blob_storage_init_rejects_unknown_driver PASSED [ 97%]
 tests/test_storage.py::test_blob_storage_init_rejects_double_registration PASSED [ 98%]
 tests/test_storage.py::test_blob_storage_abort_when_driver_not_configured PASSED [ 98%]
+tests/test_user_profile_location.py::test_user_new_session_id_returns_distinct_tokens PASSED [ 98%]
+tests/test_user_profile_location.py::test_profile_location_returns_country_when_us_geography_only_has_country PASSED [ 98%]
 tests/test_user_profile_location.py::test_profile_location_spells_out_state_when_city_missing PASSED [ 98%]
 tests/test_user_profile_location.py::test_profile_location_spells_out_country_when_state_missing PASSED [ 98%]
 tests/test_user_profile_location.py::test_profile_location_spells_out_country_when_it_is_the_only_field PASSED [ 98%]
@@ -1681,7 +1716,8 @@ tests/test_vision.py::test_vision_renders_for_free_user PASSED           [ 99%]
 tests/test_vision.py::test_vision_renders_for_paid_user PASSED           [ 99%]
 tests/test_workflow_pr_head_qualification.py::test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads PASSED [ 99%]
 tests/test_workflow_pr_head_qualification.py::test_screenshots_archive_workflow_publishes_directly_without_pr_flow PASSED [ 99%]
-tests/test_workflow_pr_head_qualification.py::test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs PASSED [100%]
+tests/test_workflow_pr_head_qualification.py::test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs PASSED [ 99%]
+tests/test_workflow_pr_head_qualification.py::test_tests_workflow_lint_job_uses_host_python_313 PASSED [100%]
 
 ---------- coverage: platform linux, python 3.12.6-final-0 -----------
 Name                                             Stmts   Miss  Cover
@@ -1730,11 +1766,11 @@ hushline/routes/auth.py                            227      0   100%
 hushline/routes/common.py                           73      0   100%
 hushline/routes/directory.py                       177      0   100%
 hushline/routes/email_headers.py                    45      0   100%
-hushline/routes/forms.py                            75      0   100%
+hushline/routes/forms.py                            78      0   100%
 hushline/routes/inbox.py                            27      0   100%
 hushline/routes/index.py                            36      0   100%
 hushline/routes/message.py                         102      0   100%
-hushline/routes/onboarding.py                      120      0   100%
+hushline/routes/onboarding.py                      147      0   100%
 hushline/routes/profile.py                         135      0   100%
 hushline/routes/tools.py                             2      0   100%
 hushline/routes/vision.py                           15      0   100%
@@ -1744,17 +1780,17 @@ hushline/securedrop_directory_refresh.py           114      0   100%
 hushline/settings/__init__.py                       35      0   100%
 hushline/settings/admin.py                          16      0   100%
 hushline/settings/advanced.py                       13      0   100%
-hushline/settings/aliases.py                        74      0   100%
+hushline/settings/aliases.py                        83      0   100%
 hushline/settings/auth.py                           32      0   100%
 hushline/settings/branding.py                      116      0   100%
-hushline/settings/common.py                        302      0   100%
+hushline/settings/common.py                        311      0   100%
 hushline/settings/data_export.py                    99      0   100%
 hushline/settings/delete_account.py                 25      0   100%
 hushline/settings/encryption.py                     27      0   100%
 hushline/settings/forms.py                         183      1    99%
 hushline/settings/guidance.py                       66      0   100%
 hushline/settings/notifications.py                 108      0   100%
-hushline/settings/profile.py                        55      0   100%
+hushline/settings/profile.py                        66      0   100%
 hushline/settings/proton.py                         38      0   100%
 hushline/settings/registration.py                   77      0   100%
 hushline/settings/replies.py                        33      0   100%
@@ -1764,23 +1800,22 @@ hushline/user_deletion.py                           17      0   100%
 hushline/utils.py                                   21      0   100%
 hushline/version.py                                  1      0   100%
 --------------------------------------------------------------------
-TOTAL                                             6945      3    99%
+TOTAL                                             7004      3    99%
 Coverage HTML written to dir htmlcov
 
 
-========== 1269 passed, 1 deselected, 1 xfailed in 241.61s (0:04:01) ===========
+========== 1304 passed, 1 deselected, 1 xfailed in 249.14s (0:04:09) ===========
 Pruning old runner logs, keeping newest 10.
-[codex/daily-issue-1727 18988e1e] chore: agent daily for #1727
- 5 files changed, 1919 insertions(+), 4974 deletions(-)
- delete mode 100644 docs/agent-logs/run-20260316T150004Z-issue-1426.txt
- create mode 100644 docs/agent-logs/run-20260317T233931Z-issue-1727.txt
- create mode 100644 tests/test_helpers.py
-Remote branch 'codex/daily-issue-1727' does not exist; creating it with a standard push.
+[codex/daily-issue-1750 9c1c9cac] chore: agent daily for #1750 (epic #554)
+ 3 files changed, 714 insertions(+), 733 deletions(-)
+ rename docs/agent-logs/{run-20260317T210222Z-issue-1729.txt => run-20260319T050049Z-issue-1750.txt} (83%)
+Remote branch 'codex/daily-issue-1750' does not exist; creating it with a standard push.
 remote: 
-remote: Create a pull request for 'codex/daily-issue-1727' on GitHub by visiting:        
-remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1727        
+remote: Create a pull request for 'codex/daily-issue-1750' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1750        
 remote: 
 To github.com:scidsg/hushline.git
- * [new branch]        codex/daily-issue-1727 -> codex/daily-issue-1727
-branch 'codex/daily-issue-1727' set up to track 'origin/codex/daily-issue-1727'.
-Opened PR: https://github.com/scidsg/hushline/pull/1741
+ * [new branch]        codex/daily-issue-1750 -> codex/daily-issue-1750
+branch 'codex/daily-issue-1750' set up to track 'origin/codex/daily-issue-1750'.
+Opened PR: https://github.com/scidsg/hushline/pull/1758
+==> Mark issue #1750 as Ready for Review
