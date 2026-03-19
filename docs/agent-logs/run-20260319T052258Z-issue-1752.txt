@@ -1930,3 +1930,19 @@ Coverage HTML written to dir htmlcov
 
 
 ========== 1309 passed, 1 deselected, 1 xfailed in 250.13s (0:04:10) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-1752 4d321d2e] chore: agent daily for #1752 (epic #554)
+ 3 files changed, 1993 insertions(+), 4837 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260317T220202Z-issue-1731.txt
+ create mode 100644 docs/agent-logs/run-20260319T052258Z-issue-1752.txt
+ create mode 100644 tests/test_native_dependencies.py
+Remote branch 'codex/daily-issue-1752' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-1752' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1752        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-1752 -> codex/daily-issue-1752
+branch 'codex/daily-issue-1752' set up to track 'origin/codex/daily-issue-1752'.
+Opened PR: https://github.com/scidsg/hushline/pull/1760
+==> Mark issue #1752 as Ready for Review
