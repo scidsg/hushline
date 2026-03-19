@@ -75,7 +75,16 @@ async function runAction(page, action, defaultWaitTimeoutMs) {
           timeout: timeoutMs,
         });
       }
+      let dialogPromise = null;
+      if (action.acceptDialog === true) {
+        dialogPromise = page.waitForEvent("dialog", { timeout: timeoutMs }).then((dialog) =>
+          dialog.accept(),
+        );
+      }
       await page.click(action.selector);
+      if (dialogPromise) {
+        await dialogPromise;
+      }
       if (action.waitForNetworkIdle) {
         await page.waitForLoadState("networkidle");
       }
@@ -87,7 +96,16 @@ async function runAction(page, action, defaultWaitTimeoutMs) {
       if (count > 0) {
         const isVisible = await locator.isVisible();
         if (isVisible) {
+          let dialogPromise = null;
+          if (action.acceptDialog === true) {
+            dialogPromise = page
+              .waitForEvent("dialog", { timeout: timeoutMs })
+              .then((dialog) => dialog.accept());
+          }
           await locator.click();
+          if (dialogPromise) {
+            await dialogPromise;
+          }
           if (action.waitForNetworkIdle) {
             await page.waitForLoadState("networkidle");
           }
