@@ -95,6 +95,8 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.
   - If the selected issue is a child of a GitHub parent epic, create/update the child issue branch as usual, but target its PR at the shared epic branch instead of `main`.
   - The shared epic branch should be the only long-lived PR that targets `main` for that epic.
+  - Move the selected issue's project status to `In Progress` while work is underway.
+  - Move the selected issue's project status to `Ready for Review` after the PR is open.
   - Return to `main` after PR creation.
 
 ## Required Checks Before PR

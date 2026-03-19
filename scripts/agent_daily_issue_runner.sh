@@ -21,6 +21,9 @@ CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
 PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
+PROJECT_STATUS_FIELD_NAME="${HUSHLINE_DAILY_PROJECT_STATUS_FIELD_NAME:-Status}"
+PROJECT_STATUS_IN_PROGRESS="${HUSHLINE_DAILY_PROJECT_STATUS_IN_PROGRESS:-In Progress}"
+PROJECT_STATUS_READY_FOR_REVIEW="${HUSHLINE_DAILY_PROJECT_STATUS_READY_FOR_REVIEW:-Ready for Review}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
 MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
@@ -649,6 +652,175 @@ resolve_project_number() {
   } || true)"
 
   printf '%s\n' "$number"
+}
+
+resolve_project_status_edit_args() {
+  local project_number="$1"
+  local target_status_name="$2"
+  local number="${project_number}"
+
+  gh api graphql \
+    -f owner="$PROJECT_OWNER" \
+    -F projectNumber="$number" \
+    -f query='
+      query($owner: String!, $projectNumber: Int!) {
+        user(login: $owner) {
+          projectV2(number: $projectNumber) {
+            id
+            fields(first: 100) {
+              nodes {
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                  options {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+        organization(login: $owner) {
+          projectV2(number: $projectNumber) {
+            id
+            fields(first: 100) {
+              nodes {
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                  options {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ' 2>/dev/null \
+    | PROJECT_STATUS_FIELD_NAME="$PROJECT_STATUS_FIELD_NAME" \
+      TARGET_STATUS_NAME="$target_status_name" \
+      node -e '
+        const fs = require("fs");
+        const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+        const data = payload && payload.data ? payload.data : {};
+        const project =
+          (data.user && data.user.projectV2) ||
+          (data.organization && data.organization.projectV2) ||
+          null;
+        if (!project || !project.id) {
+          process.exit(0);
+        }
+
+        const targetFieldName = String(process.env.PROJECT_STATUS_FIELD_NAME || "")
+          .trim()
+          .toLowerCase();
+        const targetStatusName = String(process.env.TARGET_STATUS_NAME || "")
+          .trim()
+          .toLowerCase();
+        const fields =
+          project.fields && Array.isArray(project.fields.nodes) ? project.fields.nodes : [];
+        const statusField = fields.find((field) => {
+          const name = String((field && field.name) || "").trim().toLowerCase();
+          return name === targetFieldName;
+        });
+        if (!statusField || !statusField.id || !Array.isArray(statusField.options)) {
+          process.exit(0);
+        }
+
+        const option = statusField.options.find((candidate) => {
+          const name = String((candidate && candidate.name) || "").trim().toLowerCase();
+          return name === targetStatusName;
+        });
+        if (!option || !option.id) {
+          process.exit(0);
+        }
+
+        process.stdout.write(`${project.id}\t${statusField.id}\t${option.id}\n`);
+      ' || true
+}
+
+resolve_issue_project_item_id() {
+  local issue_number="$1"
+  local project_number="$2"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+  local number="${issue_number}"
+  local project_num="${project_number}"
+
+  gh api graphql \
+    -F issueNumber="$number" \
+    -f query='
+      query($issueNumber: Int!) {
+        repository(owner: "'"$owner"'", name: "'"$repo"'") {
+          issue(number: $issueNumber) {
+            projectItems(first: 100) {
+              nodes {
+                id
+                project {
+                  number
+                }
+              }
+            }
+          }
+        }
+      }
+    ' 2>/dev/null \
+    | TARGET_PROJECT_NUMBER="$project_num" node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const items =
+        payload &&
+        payload.data &&
+        payload.data.repository &&
+        payload.data.repository.issue &&
+        payload.data.repository.issue.projectItems &&
+        Array.isArray(payload.data.repository.issue.projectItems.nodes)
+          ? payload.data.repository.issue.projectItems.nodes
+          : [];
+      const targetProjectNumber = Number(process.env.TARGET_PROJECT_NUMBER || "0");
+      const match = items.find((item) => {
+        const projectNumber = Number(item && item.project && item.project.number);
+        return Number.isInteger(projectNumber) && projectNumber === targetProjectNumber;
+      });
+      if (!match || !match.id) {
+        process.exit(0);
+      }
+      process.stdout.write(String(match.id));
+    ' || true
+}
+
+set_issue_project_status() {
+  local issue_number="$1"
+  local target_status_name="$2"
+  local project_number project_id field_id option_id item_id edit_args
+
+  project_number="$(resolve_project_number)"
+  if [[ -z "$project_number" ]]; then
+    echo "Warning: could not resolve project number for status update to '${target_status_name}'." >&2
+    return 0
+  fi
+
+  edit_args="$(resolve_project_status_edit_args "$project_number" "$target_status_name")"
+  if [[ -z "$edit_args" ]]; then
+    echo "Warning: could not resolve project status field/option for '${target_status_name}'." >&2
+    return 0
+  fi
+  IFS=$'\t' read -r project_id field_id option_id <<< "$edit_args"
+
+  item_id="$(resolve_issue_project_item_id "$issue_number" "$project_number")"
+  if [[ -z "$item_id" ]]; then
+    echo "Warning: issue #${issue_number} is not attached to project '${PROJECT_TITLE}' for status '${target_status_name}'." >&2
+    return 0
+  fi
+
+  gh project item-edit \
+    --id "$item_id" \
+    --project-id "$project_id" \
+    --field-id "$field_id" \
+    --single-select-option-id "$option_id" >/dev/null
 }
 
 collect_issue_candidates_from_project() {
@@ -1607,6 +1779,12 @@ main() {
     fi
   fi
 
+  run_step \
+    "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_IN_PROGRESS}" \
+    set_issue_project_status \
+    "$ISSUE_NUMBER" \
+    "$PROJECT_STATUS_IN_PROGRESS"
+
   run_step "Configure bot git identity" configure_bot_git_identity
 
   run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
@@ -1694,6 +1872,13 @@ main() {
     } )"
     echo "Opened PR: $PR_URL"
   fi
+
+  run_step \
+    "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_READY_FOR_REVIEW}" \
+    set_issue_project_status \
+    "$ISSUE_NUMBER" \
+    "$PROJECT_STATUS_READY_FOR_REVIEW"
+
   persist_run_log "$ISSUE_NUMBER"
 
   # Ensure committed runner log includes PR creation and post-check execution details.

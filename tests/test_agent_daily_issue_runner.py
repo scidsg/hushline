@@ -284,6 +284,61 @@ resolve_issue_parent_epic 1732
     assert result.stdout == "1735\tEpic title\thttps://github.com/scidsg/hushline/issues/1735\n"
 
 
+def test_resolve_project_status_edit_args_outputs_project_field_and_option_ids() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "id": "PVT_project",
+        "fields": {{
+          "nodes": [
+            {{
+              "id": "PVTSSF_status",
+              "name": "Status",
+              "options": [
+                {{"id": "opt_todo", "name": "Todo"}},
+                {{"id": "opt_in_progress", "name": "In Progress"}},
+                {{"id": "opt_ready", "name": "Ready for Review"}}
+              ]
+            }}
+          ]
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+resolve_project_status_edit_args 7 "Ready for Review"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "PVT_project\tPVTSSF_status\topt_ready\n"
+
+
+def test_resolve_issue_project_item_id_outputs_matching_project_item() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  cat <<'EOF'
+{{"data":{{"repository":{{"issue":{{"projectItems":{{"nodes":[{{"id":"PVTI_other","project":{{"number":8}}}},{{"id":"PVTI_target","project":{{"number":7}}}}]}}}}}}}}}}
+EOF
+}}
+resolve_issue_project_item_id 1732 7
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "PVTI_target"
+
+
 def test_main_allows_existing_epic_pr_before_runtime_bootstrap(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -338,6 +393,52 @@ main
     assert "runtime-bootstrap" in calls
 
 
+def test_main_marks_issue_in_progress_before_runtime_bootstrap(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Mark issue #1558 as In Progress" in calls
+    assert "status:1558:In Progress" in calls
+    assert calls.index("Mark issue #1558 as In Progress") < calls.index("runtime-bootstrap")
+
+
 def test_write_pr_body_for_child_issue_references_epic_and_closes_child_issue(
     tmp_path: Path,
 ) -> None:
@@ -381,6 +482,92 @@ cat "$PR_BODY_FILE"
     assert "- Epic: https://github.com/scidsg/hushline/issues/1735" in result.stdout
     assert "- Child issue: https://github.com/scidsg/hushline/issues/1732" in result.stdout
     assert "- Base branch: codex/epic-1735" in result.stdout
+
+
+def test_main_marks_issue_ready_for_review_after_opening_pr(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1558.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "diff --cached --quiet")
+      return 1
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'pr-body:%s:%s\\n' "$1" "$5" >> {shlex.quote(str(call_log))}
+}}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "status:1558:In Progress" in calls
+    assert "status:1558:Ready for Review" in calls
+    assert calls.index("status:1558:Ready for Review") > calls.index("push:codex/daily-issue-1558")
 
 
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:

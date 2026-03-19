@@ -21,27 +21,30 @@ This runner runs directly in the local repo and performs a narrow local gate bef
    - for non-epic issues, exit if any open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
-6. Configure bot git identity and signed commit settings.
-7. Reset local Docker/runtime state:
+6. Move the selected issue into project status `In Progress`.
+7. Configure bot git identity and signed commit settings.
+8. Reset local Docker/runtime state:
    - `docker compose down -v --remove-orphans`
    - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
    - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
-8. Start and seed stack:
+9. Start and seed stack:
    - `docker compose up -d --build`
    - `docker compose run --rm dev_data`
    - retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
-9. Create/update work branch:
-   - regular issues use `codex/daily-issue-<issue_number>` by default
-   - child issues with a parent epic still use `codex/daily-issue-<issue_number>` as the work branch
-   - child issues with a parent epic use `codex/epic-<epic_issue_number>` as the PR base branch
-   - if the epic base branch does not exist yet, create and push it from `main` before starting the child branch
-   - if the child issue branch already has an open PR, update that child PR instead of opening a duplicate
-10. Run a bounded Codex issue loop until repository changes exist (max attempts configurable via `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS`, default `10`).
+10. Create/update work branch:
+
+- regular issues use `codex/daily-issue-<issue_number>` by default
+- child issues with a parent epic still use `codex/daily-issue-<issue_number>` as the work branch
+- child issues with a parent epic use `codex/epic-<epic_issue_number>` as the PR base branch
+- if the epic base branch does not exist yet, create and push it from `main` before starting the child branch
+- if the child issue branch already has an open PR, update that child PR instead of opening a duplicate
+
+11. Run a bounded Codex issue loop until repository changes exist (max attempts configurable via `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS`, default `10`).
     - The issue/fix prompts tell Codex to avoid local container-backed make validation by default, and to defer validation entirely to the runner when schema-affecting files are touched (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`).
     - The fix prompt includes the current branch diff summary, the prior Codex summary, and an extracted failure signature so Codex can repair the current implementation instead of repeating a narrow patch against the same failing symptom.
     - Raw failed check output is intentionally withheld from Codex prompts because local check logs may contain sensitive operational data.
     - Codex transcript output is captured in a temporary file for the duration of the run and is excluded from the persisted runner log; only the final Codex summary is written into the run log.
-11. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
+12. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
     - `make test` (full suite)
@@ -49,17 +52,18 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - Lint failures only run deterministic `make fix` self-heal when the failure looks auto-fixable (for example Ruff formatting/check or Prettier); non-auto-fixable lint failures go straight back to Codex.
     - Runtime-dependent tests self-heal by restarting the local stack and reseeding dev data, then retrying once.
     - The broader CI workflow matrix still runs on the PR after branch push; the runner no longer tries to mirror that entire matrix locally.
-12. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+13. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
     - Persisted logs are sanitized before commit to remove developer filesystem paths, emails, and Codex session metadata.
-13. Commit, push branch, and open/update PR:
+14. Commit, push branch, and open/update PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
     - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
     - the long-lived epic PR, when present, remains the only PR that targets `main`
-14. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
-15. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
-16. Return to `main` on exit (explicit checkout + cleanup trap fallback).
+15. Move the selected issue into project status `Ready for Review` once the PR exists.
+16. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
+17. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
+18. Return to `main` on exit (explicit checkout + cleanup trap fallback).
     - Exit cleanup force-resets the repo to `origin/main` and removes untracked files so interrupted runs do not leave bot work on `main`.
 
 ## ASCII Workflow (Current)
@@ -104,6 +108,11 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       v
 +----------------------------------------------+
 | Resolve parent epic + child/epic branch rules |
++----------------------------------------------+
+      |
+      v
++----------------------------------------------+
+| Mark issue In Progress via project status     |
 +----------------------------------------------+
       |
       v
@@ -162,6 +171,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 | Persist run log (docs/agent-logs/run-...)    |
 | git add/commit/push branch                    |
 | Build PR body + create/update PR              |
+| Mark issue Ready for Review                   |
 | Append PR URL to run log                      |
 | Commit/push updated run log if changed        |
 +----------------------------------------------+
@@ -233,6 +243,9 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_PROJECT_OWNER` (default owner from `HUSHLINE_REPO_SLUG`)
 - `HUSHLINE_DAILY_PROJECT_TITLE` (default `Hush Line Roadmap`)
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
+- `HUSHLINE_DAILY_PROJECT_STATUS_FIELD_NAME` (default `Status`)
+- `HUSHLINE_DAILY_PROJECT_STATUS_IN_PROGRESS` (default `In Progress`)
+- `HUSHLINE_DAILY_PROJECT_STATUS_READY_FOR_REVIEW` (default `Ready for Review`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_EPIC_BRANCH_PREFIX` (default `codex/epic-`)
