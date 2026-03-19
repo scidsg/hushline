@@ -571,7 +571,7 @@ resolve_issue_parent_epic() {
   local repo="${REPO_SLUG##*/}"
 
   gh api graphql \
-    -f issueNumber="$issue_number" \
+    -F issueNumber="$issue_number" \
     -f query='
       query($issueNumber: Int!) {
         repository(owner: "'"$owner"'", name: "'"$repo"'") {
