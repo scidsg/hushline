@@ -284,6 +284,45 @@ resolve_issue_parent_epic 1732
     assert result.stdout == "1735\tEpic title\thttps://github.com/scidsg/hushline/issues/1735\n"
 
 
+def test_resolve_issue_parent_epic_passes_issue_number_as_graphql_int() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  local saw_graphql=0
+  local saw_issue_number=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      graphql)
+        saw_graphql=1
+        ;;
+      -F)
+        shift
+        if [[ "${{1-}}" == "issueNumber=1732" ]]; then
+          saw_issue_number=1
+        fi
+        ;;
+    esac
+    shift || break
+  done
+
+  if (( saw_graphql == 1 && saw_issue_number == 1 )); then
+    cat <<'EOF'
+{{"data":{{"repository":{{"issue":{{"parent":{{"number":1735,"title":"Epic title","url":"https://github.com/scidsg/hushline/issues/1735"}}}}}}}}}}
+EOF
+    return 0
+  fi
+
+  return 1
+}}
+resolve_issue_parent_epic 1732
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1735\tEpic title\thttps://github.com/scidsg/hushline/issues/1735\n"
+
+
 def test_resolve_project_status_edit_args_outputs_project_field_and_option_ids() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
