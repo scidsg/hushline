@@ -477,7 +477,8 @@ cat "$PR_BODY_FILE"
 
     assert result.returncode == 0, result.stderr
     assert "This PR implements child issue #1732" in result.stdout
-    assert "Closes #1732" in result.stdout
+    assert "Linked issue: #1732" in result.stdout
+    assert "Closes #1732" not in result.stdout
     assert "Closes #1735" not in result.stdout
     assert "- Epic: https://github.com/scidsg/hushline/issues/1735" in result.stdout
     assert "- Child issue: https://github.com/scidsg/hushline/issues/1732" in result.stdout

@@ -1,0 +1,62 @@
+name: Close Epic Child Issue on Merge
+
+on:
+  pull_request_target:
+    types:
+      - closed
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  close-child-issue:
+    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.base.ref, 'codex/epic-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close linked child issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const body = String(context.payload.pull_request.body || "");
+            const match = body.match(/(?:^|\n)Linked issue:\s*#(\d+)\b/i);
+
+            if (!match) {
+              core.info("No linked child issue marker found in PR body.");
+              return;
+            }
+
+            const issueNumber = Number(match[1]);
+            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+              core.info("Linked child issue marker did not contain a valid issue number.");
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request.number;
+            const baseRef = String(context.payload.pull_request.base.ref || "");
+            const issue = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+
+            if (issue.data.state === "closed") {
+              core.info(`Issue #${issueNumber} is already closed.`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body: `Closed automatically after PR #${prNumber} merged into epic branch \`${baseRef}\`.`,
+            });
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              state: "closed",
+            });

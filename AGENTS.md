@@ -97,6 +97,7 @@ This file provides operating guidance for coding agents working in the Hush Line
   - The shared epic branch should be the only long-lived PR that targets `main` for that epic.
   - Move the selected issue's project status to `In Progress` while work is underway.
   - Move the selected issue's project status to `Ready for Review` after the PR is open.
+  - For child PRs that target an epic branch, do not rely on GitHub auto-close keywords alone; the child issue must be explicitly closed when that PR is merged into the epic branch.
   - Return to `main` after PR creation.
 
 ## Required Checks Before PR

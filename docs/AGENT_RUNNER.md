@@ -61,9 +61,11 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
     - the long-lived epic PR, when present, remains the only PR that targets `main`
 15. Move the selected issue into project status `Ready for Review` once the PR exists.
-16. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
-17. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
-18. Return to `main` on exit (explicit checkout + cleanup trap fallback).
+16. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
+17. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
+18. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
+19. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
+20. Return to `main` on exit (explicit checkout + cleanup trap fallback).
     - Exit cleanup force-resets the repo to `origin/main` and removes untracked files so interrupted runs do not leave bot work on `main`.
 
 ## ASCII Workflow (Current)

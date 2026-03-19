@@ -1227,12 +1227,17 @@ $(if [[ -n "$epic_issue_number" ]]; then
   printf '%s\n' "- Automated daily runner update for child issue #$issue_number."
   printf '%s\n' "- Part of epic #$epic_issue_number: ${epic_issue_title}"
   printf '%s\n' "- This PR targets the epic integration branch \`$base_branch_name\`."
+  printf '%s\n' "- The child issue is closed explicitly by workflow after this PR merges into the epic branch."
 else
   printf '%s\n' "- Automated daily issue runner implementation for #$issue_number."
   printf '%s\n' "- Implements issue goal: ${issue_title}"
 fi)
 
-Closes #$issue_number
+$(if [[ -n "$epic_issue_number" ]]; then
+  printf 'Linked issue: #%s\n' "$issue_number"
+else
+  printf 'Closes #%s\n' "$issue_number"
+fi)
 
 ## Context
 $(if [[ -n "$epic_issue_number" ]]; then
