@@ -4,6 +4,11 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "docs" / "screenshots" / "scenes.json"
+INDUSTRY_FIELD_FORM_SELECTOR = (
+    ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry'))"
+)
+INDUSTRY_FIELD_TOGGLE_SELECTOR = f"{INDUSTRY_FIELD_FORM_SELECTOR} .field-form-toggle"
+INDUSTRY_FIELD_DELETE_SELECTOR = f"{INDUSTRY_FIELD_FORM_SELECTOR} button[name='delete_field']"
 
 
 def _scene_map() -> dict[str, dict[str, Any]]:
@@ -123,29 +128,29 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
     expected_cleanup = [
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+            "selector": INDUSTRY_FIELD_TOGGLE_SELECTOR,
         },
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
             "waitForNetworkIdle": True,
         },
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+            "selector": INDUSTRY_FIELD_TOGGLE_SELECTOR,
         },
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
             "waitForNetworkIdle": True,
         },
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+            "selector": INDUSTRY_FIELD_TOGGLE_SELECTOR,
         },
         {
             "type": "click_if_exists",
-            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
             "waitForNetworkIdle": True,
         },
     ]

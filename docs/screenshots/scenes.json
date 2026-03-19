@@ -273,29 +273,29 @@
       "actions": [
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
@@ -813,29 +813,29 @@
       "actions": [
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         }
       ]
@@ -858,29 +858,29 @@
       "actions": [
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) .field-form-toggle"
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) .field-form-toggle"
         },
         {
           "type": "click_if_exists",
-          "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+          "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
           "waitForNetworkIdle": true
         },
         {
