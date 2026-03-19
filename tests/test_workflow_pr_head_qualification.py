@@ -81,3 +81,12 @@ def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -
         )
         == 4
     )
+
+
+def test_tests_workflow_lint_job_uses_host_python_313() -> None:
+    workflow_text = _workflow_text(".github/workflows/tests.yml")
+    lint_section = workflow_text.split("  lint:\n", 1)[1].split("  test:\n", 1)[0]
+
+    assert "actions/setup-python" in lint_section
+    assert 'python-version: "3.13"' in lint_section
+    assert 'python-version: "3.12"' not in lint_section
