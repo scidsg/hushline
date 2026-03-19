@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "docs" / "screenshots" / "scenes.json"
 
 
-def _scene_map() -> dict[str, dict[str, object]]:
+def _scene_map() -> dict[str, dict[str, Any]]:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     return {scene["slug"]: scene for scene in manifest["scenes"]}
 
@@ -112,3 +113,52 @@ def test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fi
             "selector": "#reply-url",
         },
     ]
+
+
+def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_custom_fields() -> (
+    None
+):
+    scenes = _scene_map()
+
+    expected_cleanup = [
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+        },
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "waitForNetworkIdle": True,
+        },
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+        },
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "waitForNetworkIdle": True,
+        },
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) .field-form-toggle",
+        },
+        {
+            "type": "click_if_exists",
+            "selector": ".field-form:not(.field-form-new) button[name='delete_field']",
+            "waitForNetworkIdle": True,
+        },
+    ]
+
+    assert (
+        scenes["auth-artvandelay-profile-custom-form-setup-industry"]["actions"][:6]
+        == expected_cleanup
+    )
+    assert (
+        scenes["auth-artvandelay-profile-custom-form-reset-default-guest"]["actions"]
+        == expected_cleanup
+    )
+    assert (
+        scenes["auth-artvandelay-profile-custom-form-setup-industry-guest"]["actions"][:6]
+        == expected_cleanup
+    )
