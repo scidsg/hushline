@@ -13,23 +13,29 @@ This runner runs directly in the local repo and performs a narrow local gate bef
    - `git checkout main`
    - `git reset --hard origin/main`
    - `git clean -fd`
-4. Check cheap GitHub exit conditions before bootstrapping runtime:
-   - exit if any open PR exists from `hushline-dev`
+4. Select issue target before bootstrapping runtime:
+   - Use `--issue <n>` when provided (must still be open), otherwise
+   - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
+5. Check cheap GitHub exit conditions before bootstrapping runtime:
    - exit if any open human-authored PR exists
-   - exit if no eligible open issue exists (or if a forced issue is no longer open)
-5. Configure bot git identity and signed commit settings.
-6. Reset local Docker/runtime state:
+   - for non-epic issues, exit if any open PR exists from `hushline-dev`
+   - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
+   - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
+6. Configure bot git identity and signed commit settings.
+7. Reset local Docker/runtime state:
    - `docker compose down -v --remove-orphans`
    - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
    - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
-7. Start and seed stack:
+8. Start and seed stack:
    - `docker compose up -d --build`
    - `docker compose run --rm dev_data`
    - retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
-8. Select issue target:
-   - Use `--issue <n>` when provided (must still be open), otherwise
-   - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-9. Create/update issue branch `codex/daily-issue-<issue_number>` from `main`.
+9. Create/update work branch:
+   - regular issues use `codex/daily-issue-<issue_number>` by default
+   - child issues with a parent epic still use `codex/daily-issue-<issue_number>` as the work branch
+   - child issues with a parent epic use `codex/epic-<epic_issue_number>` as the PR base branch
+   - if the epic base branch does not exist yet, create and push it from `main` before starting the child branch
+   - if the child issue branch already has an open PR, update that child PR instead of opening a duplicate
 10. Run a bounded Codex issue loop until repository changes exist (max attempts configurable via `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS`, default `10`).
     - The issue/fix prompts tell Codex to avoid local container-backed make validation by default, and to defer validation entirely to the runner when schema-affecting files are touched (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`).
     - The fix prompt includes the current branch diff summary, the prior Codex summary, and an extracted failure signature so Codex can repair the current implementation instead of repeating a narrow patch against the same failing symptom.
@@ -46,9 +52,11 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 12. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
     - Persisted logs are sanitized before commit to remove developer filesystem paths, emails, and Codex session metadata.
-13. Commit, push branch, and open PR:
+13. Commit, push branch, and open/update PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
+    - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
+    - the long-lived epic PR, when present, remains the only PR that targets `main`
 14. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
 15. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 16. Return to `main` on exit (explicit checkout + cleanup trap fallback).
@@ -79,18 +87,14 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       |
       v
 +------------------------------------------------+
-| Refresh workspace + configure bot git identity |
-| Docker reset, port cleanup, stack up, seed     |
+| Refresh workspace                              |
 +------------------------------------------------+
       |
       v
-+---------------------+
-| Open bot PRs > 0 ?  |--yes--> [Skip + Exit]
-+---------------------+
++-----------------------------------------------+
+| Select issue: forced --issue or project queue |
++-----------------------------------------------+
       |
-      no
-      |
-      v
 +------------------------+
 | Open human PRs > 0 ?   |--yes--> [Skip + Exit]
 +------------------------+
@@ -98,9 +102,15 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       no
       |
       v
-+-----------------------------------------------+
-| Select issue: forced --issue or project queue |
-+-----------------------------------------------+
++----------------------------------------------+
+| Resolve parent epic + child/epic branch rules |
++----------------------------------------------+
+      |
+      v
++----------------------------------------------+
+| Configure bot git identity                    |
+| Docker reset, port cleanup, stack up, seed    |
++----------------------------------------------+
       |
       v
 +------------------------+
@@ -110,8 +120,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       yes
       |
       v
-+----------------------------------------------+
-| Load issue metadata + checkout issue branch  |
+| Load issue metadata + checkout work branch   |
 | Build initial issue prompt                   |
 +----------------------------------------------+
       |
@@ -152,7 +161,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 +----------------------------------------------+
 | Persist run log (docs/agent-logs/run-...)    |
 | git add/commit/push branch                    |
-| Build PR body + create PR                     |
+| Build PR body + create/update PR              |
 | Append PR URL to run log                      |
 | Commit/push updated run log if changed        |
 +----------------------------------------------+
@@ -226,6 +235,8 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_PROJECT_COLUMN` (default `Agent Eligible`)
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
+- `HUSHLINE_DAILY_EPIC_BRANCH_PREFIX` (default `codex/epic-`)
+  - used for the shared epic integration branch that child PRs target
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS` (default `10`; positive integer)
