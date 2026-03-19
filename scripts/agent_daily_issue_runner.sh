@@ -15,11 +15,15 @@ BOT_GIT_GPG_FORMAT="${HUSHLINE_BOT_GIT_GPG_FORMAT:-ssh}"
 BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH="${HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
+EPIC_BRANCH_PREFIX="${HUSHLINE_DAILY_EPIC_BRANCH_PREFIX:-codex/epic-}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.4}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
 PROJECT_TITLE="${HUSHLINE_DAILY_PROJECT_TITLE:-Hush Line Roadmap}"
 PROJECT_COLUMN="${HUSHLINE_DAILY_PROJECT_COLUMN:-Agent Eligible}"
+PROJECT_STATUS_FIELD_NAME="${HUSHLINE_DAILY_PROJECT_STATUS_FIELD_NAME:-Status}"
+PROJECT_STATUS_IN_PROGRESS="${HUSHLINE_DAILY_PROJECT_STATUS_IN_PROGRESS:-In Progress}"
+PROJECT_STATUS_READY_FOR_REVIEW="${HUSHLINE_DAILY_PROJECT_STATUS_READY_FOR_REVIEW:-Ready for Review}"
 PROJECT_ITEM_LIMIT="${HUSHLINE_DAILY_PROJECT_ITEM_LIMIT:-200}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
 MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
@@ -434,6 +438,17 @@ build_pr_title() {
   printf '#%s %s\n' "$issue_number" "$(printf '%s' "$normalized_title" | cut -c1-90)"
 }
 
+build_branch_name() {
+  local issue_number="$1"
+
+  printf '%s%s\n' "$BRANCH_PREFIX" "$issue_number"
+}
+
+build_epic_branch_name() {
+  local epic_issue_number="$1"
+  printf '%s%s\n' "$EPIC_BRANCH_PREFIX" "$epic_issue_number"
+}
+
 kill_all_docker_containers() {
   local ids=()
   while IFS= read -r id; do
@@ -484,6 +499,46 @@ count_open_bot_prs() {
     --jq 'length'
 }
 
+count_open_bot_prs_excluding_heads() {
+  local allowed_heads=("$@")
+  local head allowed skip count=0
+
+  while IFS= read -r head; do
+    [[ -z "$head" ]] && continue
+    skip=0
+    for allowed in "${allowed_heads[@]}"; do
+      if [[ -n "$allowed" && "$head" == "$allowed" ]]; then
+        skip=1
+        break
+      fi
+    done
+    if (( skip == 0 )); then
+      count=$((count + 1))
+    fi
+  done < <(
+    gh pr list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --author "$BOT_LOGIN" \
+      --limit 100 \
+      --json headRefName \
+      --jq '.[].headRefName // empty'
+  )
+
+  printf '%s\n' "$count"
+}
+
+find_open_pr_for_head_branch() {
+  local head_branch="$1"
+  gh pr list \
+    --repo "$REPO_SLUG" \
+    --state open \
+    --head "$head_branch" \
+    --limit 1 \
+    --json number,url,title \
+    --jq '.[0] // empty'
+}
+
 count_open_human_prs() {
   gh pr list \
     --repo "$REPO_SLUG" \
@@ -508,6 +563,46 @@ issue_is_open() {
     gh issue view "$issue_number" --repo "$REPO_SLUG" --json state --jq .state
   } || true)"
   [[ "$state" == "OPEN" ]]
+}
+
+resolve_issue_parent_epic() {
+  local issue_number="$1"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+
+  gh api graphql \
+    -f issueNumber="$issue_number" \
+    -f query='
+      query($issueNumber: Int!) {
+        repository(owner: "'"$owner"'", name: "'"$repo"'") {
+          issue(number: $issueNumber) {
+            parent {
+              number
+              title
+              url
+            }
+          }
+        }
+      }
+    ' 2>/dev/null \
+    | node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const parent =
+        payload &&
+        payload.data &&
+        payload.data.repository &&
+        payload.data.repository.issue &&
+        payload.data.repository.issue.parent
+          ? payload.data.repository.issue.parent
+          : null;
+      if (!parent || !Number.isInteger(parent.number) || parent.number <= 0) {
+        process.exit(0);
+      }
+      process.stdout.write(
+        `${parent.number}\t${String(parent.title || "").replace(/\t/g, " ")}\t${String(parent.url || "")}\n`,
+      );
+    ' || true
 }
 
 resolve_project_number() {
@@ -557,6 +652,175 @@ resolve_project_number() {
   } || true)"
 
   printf '%s\n' "$number"
+}
+
+resolve_project_status_edit_args() {
+  local project_number="$1"
+  local target_status_name="$2"
+  local number="${project_number}"
+
+  gh api graphql \
+    -f owner="$PROJECT_OWNER" \
+    -F projectNumber="$number" \
+    -f query='
+      query($owner: String!, $projectNumber: Int!) {
+        user(login: $owner) {
+          projectV2(number: $projectNumber) {
+            id
+            fields(first: 100) {
+              nodes {
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                  options {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+        organization(login: $owner) {
+          projectV2(number: $projectNumber) {
+            id
+            fields(first: 100) {
+              nodes {
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                  options {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ' 2>/dev/null \
+    | PROJECT_STATUS_FIELD_NAME="$PROJECT_STATUS_FIELD_NAME" \
+      TARGET_STATUS_NAME="$target_status_name" \
+      node -e '
+        const fs = require("fs");
+        const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+        const data = payload && payload.data ? payload.data : {};
+        const project =
+          (data.user && data.user.projectV2) ||
+          (data.organization && data.organization.projectV2) ||
+          null;
+        if (!project || !project.id) {
+          process.exit(0);
+        }
+
+        const targetFieldName = String(process.env.PROJECT_STATUS_FIELD_NAME || "")
+          .trim()
+          .toLowerCase();
+        const targetStatusName = String(process.env.TARGET_STATUS_NAME || "")
+          .trim()
+          .toLowerCase();
+        const fields =
+          project.fields && Array.isArray(project.fields.nodes) ? project.fields.nodes : [];
+        const statusField = fields.find((field) => {
+          const name = String((field && field.name) || "").trim().toLowerCase();
+          return name === targetFieldName;
+        });
+        if (!statusField || !statusField.id || !Array.isArray(statusField.options)) {
+          process.exit(0);
+        }
+
+        const option = statusField.options.find((candidate) => {
+          const name = String((candidate && candidate.name) || "").trim().toLowerCase();
+          return name === targetStatusName;
+        });
+        if (!option || !option.id) {
+          process.exit(0);
+        }
+
+        process.stdout.write(`${project.id}\t${statusField.id}\t${option.id}\n`);
+      ' || true
+}
+
+resolve_issue_project_item_id() {
+  local issue_number="$1"
+  local project_number="$2"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+  local number="${issue_number}"
+  local project_num="${project_number}"
+
+  gh api graphql \
+    -F issueNumber="$number" \
+    -f query='
+      query($issueNumber: Int!) {
+        repository(owner: "'"$owner"'", name: "'"$repo"'") {
+          issue(number: $issueNumber) {
+            projectItems(first: 100) {
+              nodes {
+                id
+                project {
+                  number
+                }
+              }
+            }
+          }
+        }
+      }
+    ' 2>/dev/null \
+    | TARGET_PROJECT_NUMBER="$project_num" node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const items =
+        payload &&
+        payload.data &&
+        payload.data.repository &&
+        payload.data.repository.issue &&
+        payload.data.repository.issue.projectItems &&
+        Array.isArray(payload.data.repository.issue.projectItems.nodes)
+          ? payload.data.repository.issue.projectItems.nodes
+          : [];
+      const targetProjectNumber = Number(process.env.TARGET_PROJECT_NUMBER || "0");
+      const match = items.find((item) => {
+        const projectNumber = Number(item && item.project && item.project.number);
+        return Number.isInteger(projectNumber) && projectNumber === targetProjectNumber;
+      });
+      if (!match || !match.id) {
+        process.exit(0);
+      }
+      process.stdout.write(String(match.id));
+    ' || true
+}
+
+set_issue_project_status() {
+  local issue_number="$1"
+  local target_status_name="$2"
+  local project_number project_id field_id option_id item_id edit_args
+
+  project_number="$(resolve_project_number)"
+  if [[ -z "$project_number" ]]; then
+    echo "Warning: could not resolve project number for status update to '${target_status_name}'." >&2
+    return 0
+  fi
+
+  edit_args="$(resolve_project_status_edit_args "$project_number" "$target_status_name")"
+  if [[ -z "$edit_args" ]]; then
+    echo "Warning: could not resolve project status field/option for '${target_status_name}'." >&2
+    return 0
+  fi
+  IFS=$'\t' read -r project_id field_id option_id <<< "$edit_args"
+
+  item_id="$(resolve_issue_project_item_id "$issue_number" "$project_number")"
+  if [[ -z "$item_id" ]]; then
+    echo "Warning: issue #${issue_number} is not attached to project '${PROJECT_TITLE}' for status '${target_status_name}'." >&2
+    return 0
+  fi
+
+  gh project item-edit \
+    --id "$item_id" \
+    --project-id "$project_id" \
+    --field-id "$field_id" \
+    --single-select-option-id "$option_id" >/dev/null
 }
 
 collect_issue_candidates_from_project() {
@@ -886,6 +1150,8 @@ has_non_log_changed_files_matching() {
 write_pr_narrative_lead() {
   local issue_number="$1"
   local issue_title="$2"
+  local epic_issue_number="${3:-}"
+  local epic_issue_title="${4:-}"
 
   local total_files non_log_files changed_areas changed_work scope_line plain_line review_line
   total_files="$(stream_changed_files | wc -l | tr -d ' ')"
@@ -924,7 +1190,15 @@ write_pr_narrative_lead() {
   fi
 
   cat <<EOF2
-This PR implements #$issue_number (\`$issue_title\`) via the daily runner with a scoped change set focused on the issue requirements.
+$(if [[ -n "$epic_issue_number" ]]; then
+  printf 'This PR implements child issue #%s (`%s`) under epic #%s (`%s`).\n' \
+    "$issue_number" "$issue_title" "$epic_issue_number" "$epic_issue_title"
+  printf 'It is intended to merge into the epic branch first, not directly into `%s`.\n' \
+    "$BASE_BRANCH"
+else
+  printf 'This PR implements #%s (`%s`) via the daily runner with a scoped change set focused on the issue requirements.\n' \
+    "$issue_number" "$issue_title"
+fi)
 
 ${plain_line}
 ${review_line}
@@ -938,21 +1212,42 @@ write_pr_body() {
   local issue_title="$2"
   local issue_url="$3"
   local branch_name="$4"
-  local issue_labels="$5"
-  local run_log_git_path="$6"
+  local base_branch_name="$5"
+  local issue_labels="$6"
+  local run_log_git_path="$7"
+  local epic_issue_number="${8:-}"
+  local epic_issue_title="${9:-}"
+  local epic_issue_url="${10:-}"
 
-  write_pr_narrative_lead "$issue_number" "$issue_title" > "$PR_BODY_FILE"
+  write_pr_narrative_lead "$issue_number" "$issue_title" "$epic_issue_number" "$epic_issue_title" > "$PR_BODY_FILE"
 
   cat >> "$PR_BODY_FILE" <<EOF2
 ## Summary
-- Automated daily issue runner implementation for #$issue_number.
-- Implements issue goal: ${issue_title}
+$(if [[ -n "$epic_issue_number" ]]; then
+  printf '%s\n' "- Automated daily runner update for child issue #$issue_number."
+  printf '%s\n' "- Part of epic #$epic_issue_number: ${epic_issue_title}"
+  printf '%s\n' "- This PR targets the epic integration branch \`$base_branch_name\`."
+  printf '%s\n' "- The child issue is closed explicitly by workflow after this PR merges into the epic branch."
+else
+  printf '%s\n' "- Automated daily issue runner implementation for #$issue_number."
+  printf '%s\n' "- Implements issue goal: ${issue_title}"
+fi)
 
-Closes #$issue_number
+$(if [[ -n "$epic_issue_number" ]]; then
+  printf 'Linked issue: #%s\n' "$issue_number"
+else
+  printf 'Closes #%s\n' "$issue_number"
+fi)
 
 ## Context
-- Issue: $issue_url
+$(if [[ -n "$epic_issue_number" ]]; then
+  printf '%s\n' "- Epic: $epic_issue_url"
+  printf '%s\n' "- Child issue: $issue_url"
+else
+  printf '%s\n' "- Issue: $issue_url"
+fi)
 - Branch: $branch_name
+- Base branch: $base_branch_name
 - Runner log: $run_log_git_path
 
 ## Changed Files
@@ -1421,20 +1716,6 @@ main() {
   run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
   run_step "Remove untracked files" git clean -fd
 
-  OPEN_BOT_PRS="$(count_open_bot_prs)"
-  echo "Open bot PR count: ${OPEN_BOT_PRS}"
-  if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-    echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
-    exit 0
-  fi
-
-  OPEN_HUMAN_PRS="$(count_open_human_prs)"
-  echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
-  if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-    echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
-    exit 0
-  fi
-
   ISSUE_NUMBER=""
   if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
     if ! issue_is_open "$FORCE_ISSUE_NUMBER"; then
@@ -1455,6 +1736,60 @@ main() {
     exit 0
   fi
 
+  EPIC_ISSUE_NUMBER=""
+  EPIC_ISSUE_TITLE=""
+  EPIC_ISSUE_URL=""
+  EPIC_BRANCH_NAME=""
+  EPIC_BRANCH_START_REF=""
+  if EPIC_PARENT_INFO="$(resolve_issue_parent_epic "$ISSUE_NUMBER")" && [[ -n "$EPIC_PARENT_INFO" ]]; then
+    IFS=$'\t' read -r EPIC_ISSUE_NUMBER EPIC_ISSUE_TITLE EPIC_ISSUE_URL <<< "$EPIC_PARENT_INFO"
+    echo "Issue #${ISSUE_NUMBER} is a child of epic #${EPIC_ISSUE_NUMBER}."
+    EPIC_BRANCH_NAME="$(build_epic_branch_name "$EPIC_ISSUE_NUMBER")"
+  fi
+
+  BRANCH_NAME="$(build_branch_name "$ISSUE_NUMBER")"
+  PR_BASE_BRANCH="$BASE_BRANCH"
+  EXISTING_EPIC_PR_JSON=""
+  EXISTING_CHILD_PR_JSON=""
+
+  OPEN_HUMAN_PRS="$(count_open_human_prs)"
+  echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+  if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+    echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+    exit 0
+  fi
+
+  if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
+    EXISTING_EPIC_PR_JSON="$(find_open_pr_for_head_branch "$EPIC_BRANCH_NAME")"
+    EXISTING_CHILD_PR_JSON="$(find_open_pr_for_head_branch "$BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
+    echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
+    if [[ "$OPEN_BOT_PRS" != "0" ]]; then
+      echo "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
+      exit 0
+    fi
+    PR_BASE_BRANCH="$EPIC_BRANCH_NAME"
+    if [[ -n "$EXISTING_EPIC_PR_JSON" ]]; then
+      echo "Epic branch ${EPIC_BRANCH_NAME} already has an open PR to ${BASE_BRANCH}; child PRs may target it."
+    fi
+    if [[ -n "$EXISTING_CHILD_PR_JSON" ]]; then
+      echo "Child branch ${BRANCH_NAME} already has an open PR; runner will update it."
+    fi
+  else
+    OPEN_BOT_PRS="$(count_open_bot_prs)"
+    echo "Open bot PR count: ${OPEN_BOT_PRS}"
+    if [[ "$OPEN_BOT_PRS" != "0" ]]; then
+      echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
+      exit 0
+    fi
+  fi
+
+  run_step \
+    "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_IN_PROGRESS}" \
+    set_issue_project_status \
+    "$ISSUE_NUMBER" \
+    "$PROJECT_STATUS_IN_PROGRESS"
+
   run_step "Configure bot git identity" configure_bot_git_identity
 
   run_step "Stop and remove Docker resources" docker compose down -v --remove-orphans
@@ -1466,9 +1801,27 @@ main() {
   ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
   ISSUE_URL="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
   ISSUE_LABELS="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty')"
-  BRANCH_NAME="${BRANCH_PREFIX}${ISSUE_NUMBER}"
 
-  run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
+  if [[ -n "$EPIC_BRANCH_NAME" ]]; then
+    if remote_branch_exists "$EPIC_BRANCH_NAME"; then
+      run_step "Fetch epic base branch $EPIC_BRANCH_NAME" \
+        git fetch origin "$EPIC_BRANCH_NAME:refs/remotes/origin/$EPIC_BRANCH_NAME"
+      EPIC_BRANCH_START_REF="origin/$EPIC_BRANCH_NAME"
+    else
+      run_step "Create epic base branch $EPIC_BRANCH_NAME" \
+        git checkout -B "$EPIC_BRANCH_NAME" "$BASE_BRANCH"
+      push_branch_for_pr "$EPIC_BRANCH_NAME"
+      EPIC_BRANCH_START_REF="$EPIC_BRANCH_NAME"
+    fi
+  fi
+
+  if remote_branch_exists "$BRANCH_NAME"; then
+    run_step "Create branch $BRANCH_NAME from origin/$BRANCH_NAME" git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
+  elif [[ -n "$EPIC_BRANCH_START_REF" ]]; then
+    run_step "Create branch $BRANCH_NAME from $EPIC_BRANCH_START_REF" git checkout -B "$BRANCH_NAME" "$EPIC_BRANCH_START_REF"
+  else
+    run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
+  fi
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
@@ -1482,24 +1835,55 @@ main() {
   fi
 
   COMMIT_MESSAGE="chore: agent daily for #$ISSUE_NUMBER"
+  if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
+    COMMIT_MESSAGE="${COMMIT_MESSAGE} (epic #${EPIC_ISSUE_NUMBER})"
+  fi
   git commit -m "$COMMIT_MESSAGE"
 
   # Keep branch update simple while preventing blind overwrite.
   push_branch_for_pr "$BRANCH_NAME"
 
-  write_pr_body "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_URL" "$BRANCH_NAME" "$ISSUE_LABELS" "$RUN_LOG_GIT_PATH"
+  write_pr_body \
+    "$ISSUE_NUMBER" \
+    "$ISSUE_TITLE" \
+    "$ISSUE_URL" \
+    "$BRANCH_NAME" \
+    "$PR_BASE_BRANCH" \
+    "$ISSUE_LABELS" \
+    "$RUN_LOG_GIT_PATH" \
+    "$EPIC_ISSUE_NUMBER" \
+    "$EPIC_ISSUE_TITLE" \
+    "$EPIC_ISSUE_URL"
 
   PR_TITLE="$(build_pr_title "$ISSUE_NUMBER" "$ISSUE_TITLE")"
-  PR_URL="$({
-    gh pr create \
-      --repo "$REPO_SLUG" \
-      --base "$BASE_BRANCH" \
-      --head "$BRANCH_NAME" \
-      --title "$PR_TITLE" \
-      --body-file "$PR_BODY_FILE"
-  } )"
 
-  echo "Opened PR: $PR_URL"
+  if [[ -n "$EXISTING_CHILD_PR_JSON" ]]; then
+    EXISTING_PR_NUMBER="$(printf '%s\n' "$EXISTING_CHILD_PR_JSON" | node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(0,"utf8")); process.stdout.write(String(data.number || ""));')"
+    gh pr edit "$EXISTING_PR_NUMBER" \
+      --repo "$REPO_SLUG" \
+      --base "$PR_BASE_BRANCH" \
+      --title "$PR_TITLE" \
+      --body-file "$PR_BODY_FILE" >/dev/null
+    PR_URL="$(gh pr view "$EXISTING_PR_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
+    echo "Updated PR: $PR_URL"
+  else
+    PR_URL="$({
+      gh pr create \
+        --repo "$REPO_SLUG" \
+        --base "$PR_BASE_BRANCH" \
+        --head "$BRANCH_NAME" \
+        --title "$PR_TITLE" \
+        --body-file "$PR_BODY_FILE"
+    } )"
+    echo "Opened PR: $PR_URL"
+  fi
+
+  run_step \
+    "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_READY_FOR_REVIEW}" \
+    set_issue_project_status \
+    "$ISSUE_NUMBER" \
+    "$PROJECT_STATUS_READY_FOR_REVIEW"
+
   persist_run_log "$ISSUE_NUMBER"
 
   # Ensure committed runner log includes PR creation and post-check execution details.
