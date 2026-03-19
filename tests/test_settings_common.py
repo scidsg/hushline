@@ -20,6 +20,7 @@ from hushline.geo import (
     normalize_city_name,
     normalize_subdivision_name,
     state_choice_value,
+    state_options,
 )
 from hushline.model import (
     AccountCategory,
@@ -194,6 +195,10 @@ def test_country_iso2_returns_none_for_empty_or_unknown_country(country: str) ->
     assert country_iso2(country) is None
 
 
+def test_state_options_returns_empty_for_unknown_country() -> None:
+    assert state_options("Atlantis") == []
+
+
 @pytest.mark.parametrize(
     ("country", "subdivision"),
     [
@@ -262,6 +267,21 @@ def test_profile_form_allows_empty_city_without_normalizing(app: Flask) -> None:
 
         assert form.validate()
         assert form.city.errors == []
+
+
+def test_profile_form_validate_city_returns_early_for_blank_field(app: Flask) -> None:
+    with app.test_request_context(), patch(
+        "hushline.settings.forms.normalize_city_name",
+        side_effect=AssertionError("normalize_city_name should not be called"),
+    ):
+        form = ProfileForm()
+        form.country.data = "United States"
+        form.subdivision.data = "Illinois"
+        form.city.data = ""
+
+        form.validate_city(form.city)
+
+        assert not form.city.errors
 
 
 def test_profile_form_preserves_unknown_saved_country_choice(app: Flask) -> None:
