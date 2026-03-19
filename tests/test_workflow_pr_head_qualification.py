@@ -90,3 +90,22 @@ def test_tests_workflow_lint_job_uses_host_python_313() -> None:
     assert "actions/setup-python" in lint_section
     assert 'python-version: "3.13"' in lint_section
     assert 'python-version: "3.12"' not in lint_section
+
+
+def test_dependency_audit_workflow_only_runs_python_audit_when_poetry_lock_changes() -> None:
+    workflow_text = _workflow_text(".github/workflows/dependency-security-audit.yml")
+    detect_section = workflow_text.split("  detect-python-lockfile-change:\n", 1)[1].split(
+        "  python-audit:\n", 1
+    )[0]
+    python_audit_section = workflow_text.split("  python-audit:\n", 1)[1].split(
+        "  node-runtime-audit:\n", 1
+    )[0]
+
+    assert "git diff --name-only" in detect_section
+    assert "grep -Fxq 'poetry.lock'" in detect_section
+    assert "pyproject.toml" not in detect_section
+    assert "needs: detect-python-lockfile-change" in python_audit_section
+    assert (
+        "if: needs.detect-python-lockfile-change.outputs.poetry_lock_changed == 'true'"
+        in python_audit_section
+    )
