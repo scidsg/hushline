@@ -133,6 +133,7 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
         {
             "type": "click_if_exists",
             "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
+            "acceptDialog": True,
             "waitForNetworkIdle": True,
         },
         {
@@ -142,6 +143,7 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
         {
             "type": "click_if_exists",
             "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
+            "acceptDialog": True,
             "waitForNetworkIdle": True,
         },
         {
@@ -151,6 +153,7 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
         {
             "type": "click_if_exists",
             "selector": INDUSTRY_FIELD_DELETE_SELECTOR,
+            "acceptDialog": True,
             "waitForNetworkIdle": True,
         },
     ]
@@ -167,3 +170,28 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
         scenes["auth-artvandelay-profile-custom-form-setup-industry-guest"]["actions"][:6]
         == expected_cleanup
     )
+
+
+def test_docs_screenshots_manifest_artvandelay_profile_cleanup_accepts_delete_confirmations() -> (
+    None
+):
+    scenes = _scene_map()
+
+    reset_actions = scenes["auth-artvandelay-profile-custom-form-reset-default-guest"]["actions"]
+    setup_actions = scenes["auth-artvandelay-profile-custom-form-setup-industry-guest"]["actions"]
+
+    reset_delete_actions = [
+        action
+        for action in reset_actions
+        if action.get("selector", "").endswith("button[name='delete_field']")
+    ]
+    setup_delete_actions = [
+        action
+        for action in setup_actions
+        if action.get("selector", "").endswith("button[name='delete_field']")
+    ]
+
+    assert reset_delete_actions
+    assert setup_delete_actions
+    assert all(action["acceptDialog"] is True for action in reset_delete_actions)
+    assert all(action["acceptDialog"] is True for action in setup_delete_actions)

@@ -278,6 +278,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -287,6 +288,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -296,6 +298,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -818,6 +821,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -827,6 +831,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -836,6 +841,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         }
       ]
@@ -863,6 +869,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -872,6 +879,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -881,6 +889,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
