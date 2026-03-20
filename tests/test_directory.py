@@ -129,16 +129,18 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     public_records_panel = soup.find(id="public-records")
     assert public_records_panel is not None
 
-    banner_link = public_records_panel.select_one(".dirMeta a")
+    banner = public_records_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_link = banner.select_one("a")
     assert banner_link is not None
-    assert banner_link.text.strip() == "Hush Line admin"
+    assert banner_link.text.strip() == "Request a correction"
     assert banner_link.get("href") == "/to/admin"
-    banner_text = public_records_panel.get_text(" ", strip=True)
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert (
         "Beta: This tab includes self-reported attorneys and automated listings pulled from "
         "public records." in banner_text
     )
-    assert "Message the Hush Line admin for any corrections." in banner_text
+    assert "Request a correction" in banner_text
 
 
 def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
@@ -151,13 +153,20 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
     securedrop_panel = soup.find(id="securedrop")
     assert securedrop_panel is not None
 
-    banner_links = securedrop_panel.select(".dirMeta a")
+    banner = securedrop_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_links = banner.select("a")
     links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
-    assert links_by_text["Hush Line admin"] == "/to/admin"
-    banner_text = securedrop_panel.get_text(" ", strip=True)
+    assert links_by_text["SecureDrop API"] == "https://securedrop.org/api/v1/directory/?format=json"
+    assert links_by_text["Request a correction"] == "/to/admin"
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
-    assert "These listings are automated." in banner_text
-    assert "Contact the Hush Line admin for any corrections." in banner_text
+    assert (
+        "These listings are automated from the Freedom of the Press Foundation's public"
+        in banner_text
+    )
+    assert "SecureDrop API" in banner_text
+    assert "Request a correction" in banner_text
     assert "Onion addresses require" not in banner_text
     assert "Tor Browser" not in banner_text
 
@@ -176,12 +185,15 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert banner is not None
     banner_links = globaleaks_panel.select(".dirMeta a")
     links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
-    assert links_by_text["Hush Line admin"] == "/to/admin"
+    assert links_by_text["Request a correction"] == "/to/admin"
     assert "Tor Browser" not in links_by_text
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
-    assert "This list contains manual and automated entries." in banner_text
-    assert "Contact the Hush Line admin for any corrections." in banner_text
+    assert (
+        "This list contains manual and automated entries and should not be considered exhaustive "
+        "or authoritative." in banner_text
+    )
+    assert "Request a correction" in banner_text
     assert "Onion addresses require" not in banner_text
 
 
