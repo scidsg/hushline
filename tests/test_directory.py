@@ -180,7 +180,7 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert "Tor Browser" not in links_by_text
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
-    assert "These listings are automated." in banner_text
+    assert "This list contains manual and automated entries." in banner_text
     assert "Contact the Hush Line admin for any corrections." in banner_text
     assert "Onion addresses require" not in banner_text
 

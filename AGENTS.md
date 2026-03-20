@@ -175,7 +175,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 ## Documentation
 
-When behavior changes or features are added/removed, update documentation in `docs/`.
+When behavior changes or features are added/removed, update relevant documentation in `docs/`.
 
 ## PR Guidance
 
