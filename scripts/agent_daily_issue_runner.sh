@@ -816,31 +816,215 @@ set_issue_project_status() {
     return 0
   fi
 
-  gh project item-edit \
-    --id "$item_id" \
-    --project-id "$project_id" \
-    --field-id "$field_id" \
-    --single-select-option-id "$option_id" >/dev/null
+  gh api graphql \
+    -f projectId="$project_id" \
+    -f itemId="$item_id" \
+    -f fieldId="$field_id" \
+    -f optionId="$option_id" \
+    -f query='
+      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+        updateProjectV2ItemFieldValue(
+          input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: { singleSelectOptionId: $optionId }
+          }
+        ) {
+          projectV2Item {
+            id
+          }
+        }
+      }
+    ' >/dev/null
 }
 
 collect_issue_candidates_from_project() {
   local project_number="$1"
-  gh project item-list \
-    "$project_number" \
-    --owner "$PROJECT_OWNER" \
-    --limit "$PROJECT_ITEM_LIMIT" \
-    --query "is:issue is:open status:\"$PROJECT_COLUMN\"" \
-    --format json 2>/dev/null \
-    | REPO_SLUG="$REPO_SLUG" node -e '
+  local cursor=""
+  local has_next_page="1"
+  local next_cursor=""
+  local collected=0
+  local page_size=100
+  local seen_file=""
+  local response=""
+  local page_output=""
+  local line=""
+  local kind=""
+  local value=""
+  local extra=""
+
+  seen_file="$(mktemp)"
+
+  while [[ "$has_next_page" == "1" ]] && (( collected < PROJECT_ITEM_LIMIT )); do
+    if [[ -n "$cursor" ]]; then
+      response="$({
+        gh api graphql \
+          -f owner="$PROJECT_OWNER" \
+          -F projectNumber="$project_number" \
+          -F itemLimit="$page_size" \
+          -f cursor="$cursor" \
+          -f query='
+            query($owner: String!, $projectNumber: Int!, $itemLimit: Int!, $cursor: String) {
+              user(login: $owner) {
+                projectV2(number: $projectNumber) {
+                  items(first: $itemLimit, after: $cursor) {
+                    nodes {
+                      fieldValueByName(name: "'"$PROJECT_STATUS_FIELD_NAME"'") {
+                        ... on ProjectV2ItemFieldSingleSelectValue {
+                          name
+                        }
+                      }
+                      content {
+                        ... on Issue {
+                          number
+                          state
+                          url
+                          repository {
+                            owner {
+                              login
+                            }
+                            name
+                          }
+                        }
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                  }
+                }
+              }
+              organization(login: $owner) {
+                projectV2(number: $projectNumber) {
+                  items(first: $itemLimit, after: $cursor) {
+                    nodes {
+                      fieldValueByName(name: "'"$PROJECT_STATUS_FIELD_NAME"'") {
+                        ... on ProjectV2ItemFieldSingleSelectValue {
+                          name
+                        }
+                      }
+                      content {
+                        ... on Issue {
+                          number
+                          state
+                          url
+                          repository {
+                            owner {
+                              login
+                            }
+                            name
+                          }
+                        }
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                  }
+                }
+              }
+            }
+          ' 2>/dev/null
+      } || true)"
+    else
+      response="$({
+        gh api graphql \
+          -f owner="$PROJECT_OWNER" \
+          -F projectNumber="$project_number" \
+          -F itemLimit="$page_size" \
+          -f query='
+          query($owner: String!, $projectNumber: Int!, $itemLimit: Int!, $cursor: String) {
+            user(login: $owner) {
+              projectV2(number: $projectNumber) {
+                items(first: $itemLimit, after: $cursor) {
+                  nodes {
+                    fieldValueByName(name: "'"$PROJECT_STATUS_FIELD_NAME"'") {
+                      ... on ProjectV2ItemFieldSingleSelectValue {
+                        name
+                      }
+                    }
+                    content {
+                      ... on Issue {
+                        number
+                        state
+                        url
+                        repository {
+                          owner {
+                            login
+                          }
+                          name
+                        }
+                      }
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            }
+            organization(login: $owner) {
+              projectV2(number: $projectNumber) {
+                items(first: $itemLimit, after: $cursor) {
+                  nodes {
+                    fieldValueByName(name: "'"$PROJECT_STATUS_FIELD_NAME"'") {
+                      ... on ProjectV2ItemFieldSingleSelectValue {
+                        name
+                      }
+                    }
+                    content {
+                      ... on Issue {
+                        number
+                        state
+                        url
+                        repository {
+                          owner {
+                            login
+                          }
+                          name
+                        }
+                      }
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            }
+          }
+        ' 2>/dev/null
+      } || true)"
+    fi
+
+    if [[ -z "$response" ]]; then
+      break
+    fi
+
+    page_output="$(printf '%s' "$response" | REPO_SLUG="$REPO_SLUG" PROJECT_COLUMN="$PROJECT_COLUMN" node -e '
       const fs = require("fs");
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
-      const items = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload.items)
-          ? payload.items
+      const data = payload && payload.data ? payload.data : {};
+      const project =
+        (data.user && data.user.projectV2) ||
+        (data.organization && data.organization.projectV2) ||
+        null;
+      const itemsConnection = project && project.items ? project.items : null;
+      const items =
+        itemsConnection && Array.isArray(itemsConnection.nodes)
+          ? itemsConnection.nodes
           : [];
+      const pageInfo =
+        itemsConnection && itemsConnection.pageInfo
+          ? itemsConnection.pageInfo
+          : {};
       const expectedRepo = String(process.env.REPO_SLUG || "").trim().toLowerCase();
-      const seen = new Set();
+      const expectedStatus = String(process.env.PROJECT_COLUMN || "").trim().toLowerCase();
 
       function getRepositorySlug(content) {
         const repo = content && content.repository;
@@ -863,6 +1047,16 @@ collect_issue_candidates_from_project() {
 
         const contentType = String(content.type || "").toLowerCase();
         if (contentType && contentType !== "issue") continue;
+        if (String(content.state || "").toUpperCase() !== "OPEN") continue;
+
+        const statusName = String(
+          item &&
+          item.fieldValueByName &&
+          item.fieldValueByName.name
+            ? item.fieldValueByName.name
+            : "",
+        ).trim().toLowerCase();
+        if (expectedStatus && statusName !== expectedStatus) continue;
 
         const contentRepo = getRepositorySlug(content);
         if (expectedRepo && contentRepo && contentRepo !== expectedRepo) continue;
@@ -871,12 +1065,46 @@ collect_issue_candidates_from_project() {
         if (!Number.isInteger(number) || number <= 0) {
           number = getIssueNumberFromUrl(content.url);
         }
-        if (!Number.isInteger(number) || number <= 0 || seen.has(number)) continue;
+        if (!Number.isInteger(number) || number <= 0) continue;
 
-        seen.add(number);
-        process.stdout.write(`${number}\n`);
+        process.stdout.write(`issue\t${number}\n`);
       }
-    '
+
+      const hasNextPage = pageInfo && pageInfo.hasNextPage ? "1" : "0";
+      const endCursor = pageInfo && pageInfo.endCursor ? String(pageInfo.endCursor) : "";
+      process.stdout.write(`pageinfo\t${hasNextPage}\t${endCursor}\n`);
+    ')"
+
+    has_next_page="0"
+    next_cursor=""
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      IFS=$'\t' read -r kind value extra <<< "$line"
+      if [[ "$kind" == "issue" ]]; then
+        if ! grep -qx "$value" "$seen_file"; then
+          printf '%s\n' "$value" >> "$seen_file"
+          printf '%s\n' "$value"
+          collected=$((collected + 1))
+          if (( collected >= PROJECT_ITEM_LIMIT )); then
+            break
+          fi
+        fi
+      elif [[ "$kind" == "pageinfo" ]]; then
+        has_next_page="$value"
+        next_cursor="$extra"
+      fi
+    done <<< "$page_output"
+
+    if (( collected >= PROJECT_ITEM_LIMIT )); then
+      break
+    fi
+    if [[ "$has_next_page" != "1" || -z "$next_cursor" ]]; then
+      break
+    fi
+    cursor="$next_cursor"
+  done
+
+  rm -f "$seen_file"
 }
 
 collect_issue_candidates() {

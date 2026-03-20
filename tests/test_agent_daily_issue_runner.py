@@ -378,6 +378,221 @@ resolve_issue_project_item_id 1732 7
     assert result.stdout == "PVTI_target"
 
 
+def test_set_issue_project_status_uses_graphql_mutation() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_ready\\n'; }}
+resolve_issue_project_item_id() {{ printf 'PVTI_target\\n'; }}
+gh() {{
+  local saw_graphql=0
+  local project_id=""
+  local item_id=""
+  local field_id=""
+  local option_id=""
+  local query_text=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      api)
+        ;;
+      graphql)
+        saw_graphql=1
+        ;;
+      -f)
+        case "$2" in
+          projectId=*) project_id="${{2#projectId=}}" ;;
+          itemId=*) item_id="${{2#itemId=}}" ;;
+          fieldId=*) field_id="${{2#fieldId=}}" ;;
+          optionId=*) option_id="${{2#optionId=}}" ;;
+          query=*) query_text="${{2#query=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  [[ "$saw_graphql" == "1" ]]
+  [[ "$project_id" == "PVT_project" ]]
+  [[ "$item_id" == "PVTI_target" ]]
+  [[ "$field_id" == "PVTSSF_status" ]]
+  [[ "$option_id" == "opt_ready" ]]
+  [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]
+}}
+set_issue_project_status 1732 "Ready for Review"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROJECT_OWNER=scidsg
+PROJECT_COLUMN="Agent Eligible"
+PROJECT_STATUS_FIELD_NAME=Status
+PROJECT_ITEM_LIMIT=200
+REPO_SLUG=scidsg/hushline
+gh() {{
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1558,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1558",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Done"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1559,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1559",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1560,
+                "state": "CLOSED",
+                "url": "https://github.com/scidsg/hushline/issues/1560",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 2001,
+                "state": "OPEN",
+                "url": "https://github.com/other/repo/issues/2001",
+                "repository": {{"owner": {{"login": "other"}}, "name": "repo"}}
+              }}
+            }}
+          ]
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+collect_issue_candidates_from_project 12
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1558\n"
+
+
+def test_collect_issue_candidates_from_project_paginates_before_filtering() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROJECT_OWNER=scidsg
+PROJECT_COLUMN="Agent Eligible"
+PROJECT_STATUS_FIELD_NAME=Status
+PROJECT_ITEM_LIMIT=5
+REPO_SLUG=scidsg/hushline
+gh() {{
+  local cursor=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          cursor=*) cursor="${{2#cursor=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ -z "$cursor" ]]; then
+    cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Done"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1559,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1559",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }}
+          ],
+          "pageInfo": {{
+            "hasNextPage": true,
+            "endCursor": "cursor-2"
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+    return 0
+  fi
+
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1558,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1558",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }}
+          ],
+          "pageInfo": {{
+            "hasNextPage": false,
+            "endCursor": null
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+collect_issue_candidates_from_project 12
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1558\n"
+
+
 def test_main_allows_existing_epic_pr_before_runtime_bootstrap(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
