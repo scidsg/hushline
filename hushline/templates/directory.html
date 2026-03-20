@@ -322,7 +322,7 @@
     >
       <p class="meta dirMeta">
         🧪 Beta: This tab includes self-reported attorneys and automated listings pulled from public records.
-        Message the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
       {% if attorney_usernames or public_record_all_listings %}
@@ -379,8 +379,8 @@
   {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
-        🧪 Beta: This list contains manual and automated entries.
-        Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        🧪 Beta: This list contains manual and automated entries and should not be considered exhaustive or authoritative.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
       {% if globaleaks_listings %}
@@ -409,8 +409,9 @@
   {% if directory_verified_tab_enabled %}
     <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated.
-        Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        🧪 Beta: These listings are automated from the Freedom of the Press Foundation's public
+        <a href="https://securedrop.org/api/v1/directory/?format=json">SecureDrop API</a>.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
       {% if securedrop_listings %}
