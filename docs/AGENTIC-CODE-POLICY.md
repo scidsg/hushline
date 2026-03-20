@@ -1,6 +1,6 @@
 # Agentic Code Policy for Hush Line
 
-Have thoughts? Read this document first, then contribute to the conversation here: https://github.com/orgs/scidsg/discussions/1313
+All work in the `scidsg/hushline` repository includes human review. No code will be merged automatically by an agent. Ever. Hush Line agents operate only with human direction and approval, not as autonomous crawlers or unattended scraping bots. For that reason, `robots.txt` is not treated as a controlling policy constraint for incidental, human-directed access during engineering or research work.
 
 This policy defines when Hush Line work can be agent-first versus human-first, based on risk and operational impact. Use it as a gating checklist before implementation: if a task touches funding, production infrastructure, authentication, payments, or other high-risk surfaces, human ownership is required; low-risk work can be AI-led with a qualified human operator. For example, an engineer should lead engineering tasks, and a designer should lead design tasks. The target operating mix is roughly 70% human-first and 30% AI-first, measured quarterly from merged PRs using an `ownership-mode` classification (`human-first` or `agent-first`).
 
