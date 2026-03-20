@@ -78,19 +78,6 @@
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
   },
   {
-    "id": "globaleaks-mexicoleaks-mx",
-    "slug": "globaleaks~mexicoleaks-mx",
-    "name": "MexicoLeaks",
-    "website": "https://mexicoleaks.mx/",
-    "description": "GlobaLeaks instance listed on the GlobaLeaks use case pages.",
-    "submission_url": "https://mexicoleaks.mx/",
-    "host": "mexicoleaks.mx",
-    "countries": [],
-    "languages": [],
-    "source_label": "GlobaLeaks investigative journalism use case page",
-    "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
-  },
-  {
     "id": "globaleaks-whistleblowing-anticorruzione-it",
     "slug": "globaleaks~whistleblowing-anticorruzione-it",
     "name": "National Anticorruption Authority (ANAC)",
@@ -141,19 +128,6 @@
     "languages": ["Dutch"],
     "source_label": "GlobaLeaks investigative journalism use case page",
     "source_url": "https://www.globaleaks.org/usecases/investigative-journalism/"
-  },
-  {
-    "id": "globaleaks-slack-globaleaks-org",
-    "slug": "globaleaks~slack-globaleaks-org",
-    "name": "slack.globaleaks.org",
-    "website": "https://slack.globaleaks.org",
-    "description": "GlobaLeaks instance listed on the GlobaLeaks use case pages.",
-    "submission_url": "https://slack.globaleaks.org",
-    "host": "slack.globaleaks.org",
-    "countries": [],
-    "languages": [],
-    "source_label": "GlobaLeaks anti-corruption use case page",
-    "source_url": "https://www.globaleaks.org/usecases/anti-corruption/"
   },
   {
     "id": "globaleaks-ensecurite-sourcesure-eu",
