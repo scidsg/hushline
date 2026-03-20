@@ -410,7 +410,7 @@ const fields = [
   data.number,
   String(data.title || "").replace(/\t/g, " ").replace(/\n/g, " ").trim(),
   String(data.url || ""),
-  String(data.body || "").replace(/\t/g, "    "),
+  String(data.body || "").replace(/\t/g, "    ").replace(/\r?\n/g, " ").trim(),
   String(data.headRefName || ""),
   String(data.baseRefName || ""),
 ];
@@ -821,6 +821,7 @@ write_pr_comment_body() {
 
 main() {
   trap cleanup EXIT
+  local branch_has_follow_up_changes=0
 
   parse_args "$@"
   initialize_run_state
@@ -872,9 +873,13 @@ main() {
     return 1
   fi
 
+  if has_changes; then
+    branch_has_follow_up_changes=1
+  fi
+
   persist_run_log "$PR_NUMBER"
 
-  if has_changes; then
+  if (( branch_has_follow_up_changes == 1 )); then
     run_step "Stage follow-up changes" git add -A
     run_step "Commit follow-up changes" git commit -m "chore: follow up dependabot PR #$PR_NUMBER"
     push_branch_for_pr "$PR_HEAD_REF_NAME"

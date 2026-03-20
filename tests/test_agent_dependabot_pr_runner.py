@@ -241,3 +241,138 @@ main
     assert "push:dependabot/pip/cryptography-43.0.3" in calls
     assert "Comment on PR #201" in calls
     assert "commented" in calls
+
+
+def test_load_pr_context_flattens_multiline_pr_body() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+DEPENDABOT_PR_JSON_FILE="$(mktemp)"
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr view 201" ]]; then
+    cat <<'EOF'
+{{
+  "number": 201,
+  "title": "Bump cryptography",
+  "body": "Line one\\nLine two\\n\\nLine four",
+  "url": "https://github.com/scidsg/hushline/pull/201",
+  "headRefName": "dependabot/pip/cryptography-43.0.3",
+  "baseRefName": "main"
+}}
+EOF
+    return 0
+  fi
+
+  return 1
+}}
+load_pr_context 201
+printf '%s\\n%s\\n%s\\n' "$PR_BODY" "$PR_HEAD_REF_NAME" "$PR_BASE_REF_NAME"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "Line one Line two  Line four\n"
+        "dependabot/pip/cryptography-43.0.3\n"
+        "main\n"
+    )
+
+
+def test_main_noop_path_ignores_persisted_run_log_when_deciding_changes(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+    comment_body = tmp_path / "comment.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{
+  CHECK_LOG_FILE={shlex.quote(str(tmp_path / "check.log"))}
+  PROMPT_FILE={shlex.quote(str(tmp_path / "prompt.txt"))}
+  COMMENT_BODY_FILE={shlex.quote(str(comment_body))}
+  CODEX_OUTPUT_FILE={shlex.quote(str(tmp_path / "codex-output.txt"))}
+  CODEX_TRANSCRIPT_FILE={shlex.quote(str(tmp_path / "codex-transcript.txt"))}
+  RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+  DEPENDABOT_PR_JSON_FILE={shlex.quote(str(tmp_path / "pr.json"))}
+  RUN_LOG_TIMESTAMP=20260320T000000Z
+}}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+select_dependabot_pr() {{
+  PR_NUMBER=201
+  PR_TITLE="Bump cryptography"
+  PR_URL="https://github.com/scidsg/hushline/pull/201"
+  PR_BODY="Dependabot body"
+  PR_HEAD_REF_NAME="dependabot/pip/cryptography-43.0.3"
+  PR_BASE_REF_NAME="main"
+  cat > "$DEPENDABOT_PR_JSON_FILE" <<'EOF'
+{{"files":[{{"path":"pyproject.toml","additions":1,"deletions":1}}]}}
+EOF
+}}
+configure_bot_git_identity() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+remote_branch_exists() {{ return 0; }}
+build_dependabot_prompt() {{ :; }}
+run_codex_from_prompt() {{
+  cat > "$CODEX_OUTPUT_FILE" <<'EOF'
+No app-side follow-up changes are required.
+EOF
+}}
+run_fix_attempt_loop() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-20260320T000000Z-dependabot-pr-$1.txt"
+  mkdir -p "$REPO_DIR/docs/agent-logs"
+  printf 'runner log\\n' > "$REPO_DIR/$RUN_LOG_GIT_PATH"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+has_changes() {{ return 1; }}
+docker() {{ :; }}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "fetch origin") return 0 ;;
+    "checkout main") return 0 ;;
+    "reset --hard origin/main") return 0 ;;
+    "clean -fd") return 0 ;;
+    "fetch origin dependabot/pip/cryptography-43.0.3:refs/remotes/origin/dependabot/pip/cryptography-43.0.3") return 0 ;;
+    "checkout -B dependabot/pip/cryptography-43.0.3") return 0 ;;
+    "add -A ") printf 'git-add\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
+    "commit -m chore:") printf 'git-commit\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
+    *) return 0 ;;
+  esac
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr comment 201" ]]; then
+    printf 'commented\\n' >> {shlex.quote(str(call_log))}
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "persist:201" in calls
+    assert "Stage follow-up changes" not in calls
+    assert "Commit follow-up changes" not in calls
+    assert "git-add" not in calls
+    assert "git-commit" not in calls
+    assert "push:dependabot/pip/cryptography-43.0.3" not in calls
+    assert "Comment on PR #201" in calls
+    assert "commented" in calls
+    assert "did not find any required app-side follow-up changes" in comment_body.read_text(encoding="utf-8")
