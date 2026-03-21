@@ -2,6 +2,8 @@
 
 Script: `scripts/agent_dependabot_pr_runner.sh`
 
+Queue wrapper: `scripts/run_dependabot_pr_queue.sh`
+
 This runner reviews one open Dependabot PR, checks what that dependency update means for the rest of the app, and applies only the follow-up codebase changes needed to support the update.
 
 ## Execution Flow
@@ -41,10 +43,29 @@ This runner reviews one open Dependabot PR, checks what that dependency update m
 12. Comment on the PR with the outcome and the run log path.
 13. Return to `main` on exit.
 
+## Queue Strategy
+
+This runner should remain single-PR-at-a-time.
+
+- It exits early if a human-authored PR is open.
+- It exits early if any unrelated bot-authored PR is open.
+- It always selects the oldest eligible open Dependabot PR first.
+
+That means backlog handling should come from safe repeated polling, not from trying to process multiple Dependabot PRs in one run.
+
+Recommended operation:
+
+1. Schedule `./scripts/run_dependabot_pr_queue.sh` at least once per day as a baseline check.
+2. Prefer a frequent poll cadence, such as every `15` minutes.
+3. Let the queue wrapper exit quickly when a human PR or bot PR is already open.
+4. Once the current Dependabot PR merges, the next scheduled poll picks up the next oldest open Dependabot PR automatically.
+
+`run_dependabot_pr_queue.sh` adds a local lock directory under `.tmp/` so frequent polling does not start overlapping runs on the same host.
+
 ## Manual Run
 
 ```bash
-./scripts/agent_dependabot_pr_runner.sh
+./scripts/run_dependabot_pr_queue.sh
 ```
 
 Optional forced PR:
@@ -69,9 +90,12 @@ Useful environment variables:
 - `HUSHLINE_DEPENDABOT_PR_LIMIT`
 - `HUSHLINE_DEPENDABOT_MAX_FIX_ATTEMPTS`
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION`
+- `HUSHLINE_DEPENDABOT_QUEUE_LOCK_DIR`
+- `HUSHLINE_DEPENDABOT_RUNNER_SCRIPT`
 
 ## Notes
 
 - This runner does not open a new PR; it updates the existing Dependabot PR branch when follow-up changes are required.
 - If no app-side changes are needed, the runner still validates the branch locally and leaves a PR comment stating that no follow-up code changes were required.
 - The runner expects to work only with Dependabot PRs that maintainers can modify.
+- The queue wrapper is safe to schedule frequently because it takes a local lock and then delegates a single run to `scripts/agent_dependabot_pr_runner.sh`.
