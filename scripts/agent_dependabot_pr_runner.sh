@@ -273,7 +273,7 @@ start_runtime_stack_and_seed_dev_data() {
 
     echo "==> Start Docker stack"
     set +e
-    docker compose up -d "${compose_up_args[@]}" 2>&1 | tee "$attempt_log"
+    docker compose up -d --build "${compose_up_args[@]}" 2>&1 | tee "$attempt_log"
     compose_up_rc=${PIPESTATUS[0]}
     set -e
 
@@ -317,11 +317,38 @@ kill_processes_on_ports() {
   local ports="$1"
   local port pids
   for port in $ports; do
-    pids="$(lsof -ti tcp:"$port" || true)"
+    pids="$(lsof -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
     if [[ -n "$pids" ]]; then
       kill $pids >/dev/null 2>&1 || true
     fi
   done
+}
+
+count_open_bot_prs() {
+  gh pr list \
+    --repo "$REPO_SLUG" \
+    --state open \
+    --author "$BOT_LOGIN" \
+    --limit 100 \
+    --json number \
+    --jq 'length'
+}
+
+count_open_human_prs() {
+  gh pr list \
+    --repo "$REPO_SLUG" \
+    --state open \
+    --limit 200 \
+    --json author \
+    --jq '
+      [
+        .[]
+        | (.author.login // "")
+        | select(length > 0)
+        | select(. != "'"$BOT_LOGIN"'")
+        | select(test("\\[bot\\]$") | not)
+      ] | length
+    '
 }
 
 run_dependency_audits() {
@@ -844,6 +871,22 @@ main() {
   run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
   run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
   run_step "Clean untracked files" git clean -fd
+
+  local open_human_prs
+  local open_bot_prs
+  open_human_prs="$(count_open_human_prs)"
+  echo "Open human-authored PR count: ${open_human_prs}"
+  if [[ "$open_human_prs" != "0" ]]; then
+    echo "Skipped: found ${open_human_prs} open human-authored PR(s)."
+    return 0
+  fi
+
+  open_bot_prs="$(count_open_bot_prs)"
+  echo "Open bot PR count: ${open_bot_prs}"
+  if [[ "$open_bot_prs" != "0" ]]; then
+    echo "Skipped: found ${open_bot_prs} open PR(s) by ${BOT_LOGIN}."
+    return 0
+  fi
 
   if ! select_dependabot_pr; then
     echo "Skipped: no eligible open Dependabot PRs were found."

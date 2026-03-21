@@ -140,6 +140,8 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
@@ -159,6 +161,80 @@ main
     assert "Skipped: no eligible open Dependabot PRs were found." in result.stdout
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "select-dependabot-pr" in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_exits_early_when_human_pr_is_open(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+count_open_human_prs() {{ printf '2\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+select_dependabot_pr() {{
+  printf 'select-dependabot-pr\\n' >> {shlex.quote(str(call_log))}
+  return 0
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "select-dependabot-pr" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_exits_early_when_unrelated_bot_pr_is_open(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '1\\n'; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+select_dependabot_pr() {{
+  printf 'select-dependabot-pr\\n' >> {shlex.quote(str(call_log))}
+  return 0
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "select-dependabot-pr" not in calls
     assert "runtime-bootstrap" not in calls
 
 
@@ -184,6 +260,8 @@ initialize_run_state() {{
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
   shift
@@ -262,6 +340,34 @@ main
     assert "commented" in calls
 
 
+def test_start_runtime_stack_and_seed_dev_data_builds_images() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+docker() {{
+  printf '%s\\n' "$*"
+}}
+start_runtime_stack_and_seed_dev_data postgres blob-storage app
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "compose up -d --build postgres blob-storage app" in result.stdout
+    assert "compose run --rm dev_data" in result.stdout
+
+
+def test_kill_processes_on_ports_targets_only_listeners() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+declare -f kill_processes_on_ports
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert '-nP -t -iTCP:"$port" -sTCP:LISTEN' in result.stdout
+
+
 def test_load_pr_context_flattens_multiline_pr_body() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -318,6 +424,8 @@ initialize_run_state() {{
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
   shift
