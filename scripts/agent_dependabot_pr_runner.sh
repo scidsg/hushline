@@ -638,7 +638,9 @@ EOF2
     cat <<EOF2
 
 Current dependency PR diff stat against origin/$PR_BASE_REF_NAME:
-$(current_pr_diff_stat)
+EOF2
+    current_pr_diff_stat
+    cat <<'EOF2'
 
 Task:
 - Review what this dependency update means for the rest of the app.

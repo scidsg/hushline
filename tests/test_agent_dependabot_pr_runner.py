@@ -113,6 +113,10 @@ EOF
 current_pr_diff_stat() {{
   printf ' pyproject.toml | 2 +-\\n poetry.lock | 12 ++++++------\\n'
 }}
+make() {{
+  printf 'unexpected make invocation\\n' >&2
+  return 99
+}}
 build_dependabot_prompt
 cat "$PROMPT_FILE"
 """
