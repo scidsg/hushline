@@ -38,9 +38,24 @@ gh() {{
   if [[ "${{1-}} ${{2-}}" == "pr list" ]]; then
     cat <<'EOF'
 [
-  {{"number": 202, "createdAt": "2026-03-20T08:00:00Z", "maintainerCanModify": true, "title": "Bump urllib3"}},
-  {{"number": 201, "createdAt": "2026-03-19T08:00:00Z", "maintainerCanModify": true, "title": "Bump cryptography"}},
-  {{"number": 200, "createdAt": "2026-03-18T08:00:00Z", "maintainerCanModify": false, "title": "Bump flask"}}
+  {{
+    "number": 202,
+    "createdAt": "2026-03-20T08:00:00Z",
+    "maintainerCanModify": true,
+    "title": "Bump urllib3"
+  }},
+  {{
+    "number": 201,
+    "createdAt": "2026-03-19T08:00:00Z",
+    "maintainerCanModify": true,
+    "title": "Bump cryptography"
+  }},
+  {{
+    "number": 200,
+    "createdAt": "2026-03-18T08:00:00Z",
+    "maintainerCanModify": false,
+    "title": "Bump flask"
+  }}
 ]
 EOF
     return 0
@@ -72,9 +87,7 @@ printf '%s\\n%s\\n%s\\n' "$PR_NUMBER" "$PR_TITLE" "$PR_HEAD_REF_NAME"
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
-        "201\n"
-        "Bump cryptography from 43.0.1 to 43.0.3\n"
-        "dependabot/pip/cryptography-43.0.3\n"
+        "201\n" "Bump cryptography from 43.0.1 to 43.0.3\n" "dependabot/pip/cryptography-43.0.3\n"
     )
 
 
@@ -209,12 +222,18 @@ push_branch_for_pr() {{
   printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
 git() {{
+  local fetch_branch_ref
+  fetch_branch_ref=$(
+    printf '%s' \
+      "fetch origin dependabot/pip/cryptography-43.0.3:refs/remotes/origin/" \
+      "dependabot/pip/cryptography-43.0.3"
+  )
   case "${{1-}} ${{2-}} ${{3-}}" in
     "fetch origin") return 0 ;;
     "checkout main") return 0 ;;
     "reset --hard origin/main") return 0 ;;
     "clean -fd") return 0 ;;
-    "fetch origin dependabot/pip/cryptography-43.0.3:refs/remotes/origin/dependabot/pip/cryptography-43.0.3") return 0 ;;
+    "$fetch_branch_ref") return 0 ;;
     "checkout -B dependabot/pip/cryptography-43.0.3") return 0 ;;
     "add -A ") printf 'git-add\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
     "commit -m chore:") printf 'git-commit\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
@@ -272,9 +291,7 @@ printf '%s\\n%s\\n%s\\n' "$PR_BODY" "$PR_HEAD_REF_NAME" "$PR_BASE_REF_NAME"
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
-        "Line one Line two  Line four\n"
-        "dependabot/pip/cryptography-43.0.3\n"
-        "main\n"
+        "Line one Line two  Line four\n" "dependabot/pip/cryptography-43.0.3\n" "main\n"
     )
 
 
@@ -341,12 +358,18 @@ push_branch_for_pr() {{
   printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
 git() {{
+  local fetch_branch_ref
+  fetch_branch_ref=$(
+    printf '%s' \
+      "fetch origin dependabot/pip/cryptography-43.0.3:refs/remotes/origin/" \
+      "dependabot/pip/cryptography-43.0.3"
+  )
   case "${{1-}} ${{2-}} ${{3-}}" in
     "fetch origin") return 0 ;;
     "checkout main") return 0 ;;
     "reset --hard origin/main") return 0 ;;
     "clean -fd") return 0 ;;
-    "fetch origin dependabot/pip/cryptography-43.0.3:refs/remotes/origin/dependabot/pip/cryptography-43.0.3") return 0 ;;
+    "$fetch_branch_ref") return 0 ;;
     "checkout -B dependabot/pip/cryptography-43.0.3") return 0 ;;
     "add -A ") printf 'git-add\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
     "commit -m chore:") printf 'git-commit\\n' >> {shlex.quote(str(call_log))}; return 0 ;;
@@ -375,4 +398,6 @@ main
     assert "push:dependabot/pip/cryptography-43.0.3" not in calls
     assert "Comment on PR #201" in calls
     assert "commented" in calls
-    assert "did not find any required app-side follow-up changes" in comment_body.read_text(encoding="utf-8")
+    assert "did not find any required app-side follow-up changes" in comment_body.read_text(
+        encoding="utf-8"
+    )

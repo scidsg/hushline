@@ -34,8 +34,10 @@ This runner reviews one open Dependabot PR, checks what that dependency update m
    - `make audit-node-runtime` and `make audit-node-full` when Node dependency files changed
 10. Persist a sanitized run log to `docs/agent-logs/run-<timestamp>-dependabot-pr-<n>.txt`.
 11. If the branch changed:
-   - commit the follow-up changes
-   - push back to the same Dependabot PR branch with `--force-with-lease`
+
+- commit the follow-up changes
+- push back to the same Dependabot PR branch with `--force-with-lease`
+
 12. Comment on the PR with the outcome and the run log path.
 13. Return to `main` on exit.
 
