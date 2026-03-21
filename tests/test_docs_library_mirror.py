@@ -5,6 +5,7 @@ DOCS_ROOT = REPO_ROOT / "docs"
 LIBRARY_ROOT = DOCS_ROOT / "library"
 REQUIRED_DOCS = [
     DOCS_ROOT / "README.md",
+    DOCS_ROOT / "WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md",
     LIBRARY_ROOT / "README.md",
     LIBRARY_ROOT / "welcome" / "README.md",
     LIBRARY_ROOT / "welcome" / "welcome-to-hush-line.md",
@@ -31,7 +32,11 @@ REQUIRED_DOCS = [
 
 
 def _iter_markdown_files() -> list[Path]:
-    return [DOCS_ROOT / "README.md", *sorted(LIBRARY_ROOT.rglob("*.md"))]
+    return [
+        DOCS_ROOT / "README.md",
+        DOCS_ROOT / "WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md",
+        *sorted(LIBRARY_ROOT.rglob("*.md")),
+    ]
 
 
 def _iter_local_targets(markdown_path: Path) -> list[Path]:
