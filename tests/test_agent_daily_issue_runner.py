@@ -33,10 +33,13 @@ printf '%s\\n' "$REPO_DIR"
 def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
     tmp_path: Path,
 ) -> None:
+    runner_script = shlex.quote(str(RUNNER_SCRIPT))
+
     shell_script = f"""
-source {shlex.quote(str(RUNNER_SCRIPT))}
+source {runner_script}
 TMPDIR={shlex.quote(str(tmp_path))}
-snapshot_metadata="$(prepare_runner_exec_snapshot {shlex.quote(str(RUNNER_SCRIPT))} {shlex.quote(str(RUNNER_SCRIPT))})"
+runner_script={runner_script}
+snapshot_metadata="$(prepare_runner_exec_snapshot "$runner_script" "$runner_script")"
 printf '%s\\n' "$snapshot_metadata"
 """
 
