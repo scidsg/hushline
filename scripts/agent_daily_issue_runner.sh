@@ -2065,6 +2065,7 @@ main() {
 
   BRANCH_NAME="$(build_branch_name "$ISSUE_NUMBER")"
   PR_BASE_BRANCH="$BASE_BRANCH"
+  PR_BASE_REF="$BASE_BRANCH"
   EXISTING_EPIC_PR_JSON=""
   EXISTING_CHILD_PR_JSON=""
 
@@ -2129,6 +2130,7 @@ main() {
       push_branch_for_pr "$EPIC_BRANCH_NAME"
       EPIC_BRANCH_START_REF="$EPIC_BRANCH_NAME"
     fi
+    PR_BASE_REF="$EPIC_BRANCH_START_REF"
   fi
 
   if remote_branch_exists "$BRANCH_NAME"; then
@@ -2158,12 +2160,12 @@ main() {
   git commit -m "$COMMIT_MESSAGE"
 
   ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
-  require_branch_has_unique_commits "$PR_BASE_BRANCH" "$BRANCH_NAME"
+  require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
   # Keep branch update simple while preventing blind overwrite.
   push_branch_for_pr "$BRANCH_NAME"
 
   ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
-  require_branch_has_unique_commits "$PR_BASE_BRANCH" "$BRANCH_NAME"
+  require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
   write_pr_body \
     "$ISSUE_NUMBER" \
     "$ISSUE_TITLE" \

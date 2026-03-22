@@ -792,6 +792,110 @@ main
     assert calls.index("Mark issue #1558 as In Progress") < calls.index("runtime-bootstrap")
 
 
+def test_main_uses_fetched_origin_epic_ref_for_child_pr_uniqueness_check(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1732.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "fetch origin codex/epic-1735:refs/remotes/origin/codex/epic-1735  ")
+      return 0
+      ;;
+    "checkout -B codex/daily-issue-1732 origin/codex/epic-1735 ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1732\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+    "rev-list --count origin/codex/epic-1735..codex/daily-issue-1732  ")
+      printf '1\\n'
+      printf 'rev-list:%s\\n' \
+        "origin/codex/epic-1735..codex/daily-issue-1732" \
+        >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1732\\n'; }}
+resolve_issue_parent_epic() {{
+  printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+find_open_pr_for_head_branch() {{ :; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{
+  [[ "$1" == "codex/epic-1735" ]]
+}}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1732 Title\\n'
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1732" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1732\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2001\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "rev-list:origin/codex/epic-1735..codex/daily-issue-1732" in calls
+    assert "push:codex/daily-issue-1732" in calls
+
+
 def test_write_pr_body_for_child_issue_references_epic_and_closes_child_issue(
     tmp_path: Path,
 ) -> None:
