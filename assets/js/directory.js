@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (user.show_caution_badge) {
       badgeContainer +=
-        '<span class="badge" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
+        '<span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
     }
 
     return `
