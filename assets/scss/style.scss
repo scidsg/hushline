@@ -18,6 +18,8 @@
   --color-brand-modal-dark: color-mix(in oklch,
       var(--color-brand-dark-min-saturation) 75%,
       transparent);
+  --color-error: darkred;
+  --color-error-dark: pink;
   --color-text: #333;
   --color-text-dark-alt-2: #e6e6e6;
   --color-text-dark-alt: #c4c4c4;
@@ -125,6 +127,15 @@
 @media (prefers-color-scheme: light) {
   ::selection {
     background: var(--color-brand);
+    color: white;
+  }
+
+  .badgeHelpTrigger {
+    color: var(--color-error) !important;
+  }
+
+  .badgeHelpTooltip {
+    background-color: var(--color-error);
     color: white;
   }
 
@@ -675,6 +686,15 @@
   ::selection {
     background: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
+  }
+
+  .badgeHelpTrigger {
+    color: var(--color-error-dark) !important;
+  }
+
+  .badgeHelpTooltip {
+    background-color: var(--color-error-dark) !important;
+    color: var(--color-text) !important;
   }
 
   .flash-dismiss img {
@@ -1502,13 +1522,13 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
 
 .badgeHelpTrigger {
   border: 0;
-  padding: 0;
+  padding: 0 0.25rem;
   background: none;
-  color: inherit;
   font: inherit;
   text-decoration: underline;
   text-underline-offset: 0.125rem;
   cursor: help;
+  box-shadow: none;
 }
 
 .badgeHelpTrigger:focus-visible {
@@ -1525,11 +1545,8 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
   width: min(18rem, 80vw);
   padding: 0.625rem 0.75rem;
   border: var(--border);
-  border-radius: 0.5rem;
-  background-color: white;
-  box-shadow: var(--shadow-dynamic);
-  color: var(--color-brand-min-contrast);
-  line-height: 1.4;
+  border-radius: 0.25rem;
+  line-height: 1.3;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
