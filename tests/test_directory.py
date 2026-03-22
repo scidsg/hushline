@@ -376,6 +376,28 @@ def test_directory_users_json_does_not_flag_verified_or_admin_suspicious_display
     assert admin_row["show_caution_badge"] is False
 
 
+def test_directory_users_json_flags_suspicious_username_when_display_name_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.username = "admin"
+    user.primary_username.display_name = None
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["display_name"] == "admin"
+    assert row["show_caution_badge"] is True
+
+
 def test_directory_users_json_includes_unverified_info_only_korean_account(
     client: FlaskClient, user: User
 ) -> None:

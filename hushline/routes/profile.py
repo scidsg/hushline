@@ -115,7 +115,7 @@ def register_profile_routes(app: Flask) -> None:
                 field_data=dynamic_form.field_data(),
                 display_name_or_username=uname.display_name or uname.username,
                 show_caution_badge=show_directory_caution_badge(
-                    uname.display_name,
+                    uname.display_name or uname.username,
                     is_admin=uname.user.is_admin,
                     is_verified=uname.is_verified,
                 ),

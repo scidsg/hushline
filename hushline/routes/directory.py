@@ -247,7 +247,7 @@ def _is_self_reported_attorney(username: Username) -> bool:
 
 def _show_directory_caution_badge(username: Username) -> bool:
     return show_directory_caution_badge(
-        username.display_name,
+        username.display_name or username.username,
         is_admin=username.user.is_admin,
         is_verified=username.is_verified,
     )
