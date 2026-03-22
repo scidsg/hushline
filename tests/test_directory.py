@@ -209,12 +209,12 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
     assert banner is not None
     banner_link = banner.select_one("a")
     assert banner_link is not None
-    assert banner_link.text.strip() == "Hush Line admin"
+    assert banner_link.text.strip() == "Request a correction"
     assert banner_link.get("href") == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "This list contains automated entries." in banner_text
-    assert "Contact the Hush Line admin for any corrections." in banner_text
+    assert "Request a correction" in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
