@@ -374,11 +374,12 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
     }
 
 
-def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[str, str]:
+def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[bool, str, str]:
+    is_admin = bool(entry.get("is_admin"))
     display_name = str(entry.get("display_name") or "")
     normalized_name = unicodedata.normalize("NFKC", display_name).strip()
     transliterated_name = unidecode(normalized_name).casefold()
-    return transliterated_name, normalized_name.casefold()
+    return not is_admin, transliterated_name, normalized_name.casefold()
 
 
 def register_directory_routes(app: Flask) -> None:

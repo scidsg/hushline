@@ -1514,10 +1514,17 @@ def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_co
     assert listing.location == "All countries, United States"
 
 
-def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
+def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Zulu Admin",
+            bio="admin bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
         SimpleNamespace(
             username="zulu",
             display_name="Zulu User",
@@ -1640,6 +1647,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
         heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
     ]
     assert all_titles == [
+        "Zulu Admin",
         "Alpha Public Listing",
         "Bravo Info",
         "Charlie SecureDrop",
@@ -1653,7 +1661,70 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
         if card.select_one("h3") and card.select_one("h3").get_text(" ", strip=True) == "Bravo Info"
     )
     assert info_only_card.select_one('span.badge[aria-label="Info-only account"]') is not None
+    admin_card = _find_directory_card(all_panel, "Zulu Admin")
+    assert admin_card.select_one('span.badge[aria-label="Administrator account"]') is not None
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
+
+
+def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="user-zulu",
+            display_name="Zulu User",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="admin",
+            display_name="Zulu Admin",
+            bio="admin bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+    )
+    mocked_public_records = (
+        SimpleNamespace(
+            id="public-alpha",
+            slug="public-alpha",
+            name="Alpha Public Listing",
+            website="https://alpha.example",
+            description="alpha description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision="California",
+                subdivision_code="CA",
+                countries=("United States",),
+                location="Global",
+            ),
+            location="Global",
+            practice_tags=("Law",),
+            source_label="Public records",
+            source_url="https://records.example/alpha",
+            directory_section="public_record",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: mocked_public_records,
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    display_names = [row["display_name"] for row in response.json or []]
+    assert display_names == ["Zulu User", "Zulu Admin", "Alpha Public Listing"]
 
 
 def test_public_record_seed_regions_have_coverage() -> None:
