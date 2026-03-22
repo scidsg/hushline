@@ -273,6 +273,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": False,
+            "onboarding_complete": True,
             "display_name": "조지 코스탄자",
             "bio": (
                 "부모님 집에 살고 있지만 늘 큰 계획을 세우는 조지 코스탄자입니다. "

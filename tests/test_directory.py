@@ -314,6 +314,30 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["directory_section"] is None
 
 
+def test_directory_users_json_includes_unverified_info_only_korean_account(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = "조지 코스탄자"
+    user.primary_username.bio = "수축 현상 제보를 보내 주세요."
+    user.primary_username.is_verified = False
+    user.pgp_key = None
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["display_name"] == "조지 코스탄자"
+    assert row["is_verified"] is False
+    assert row["has_pgp_key"] is False
+    assert row["message_capable"] is False
+
+
 def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
     user.account_category = AccountCategory.ACTIVIST.value
     user.primary_username.show_in_directory = True
