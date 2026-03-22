@@ -1818,6 +1818,41 @@ printf 'rc=%s\\n' "$rc"
     assert calls.count("prompt") == 1
 
 
+def test_has_non_log_changes_ignores_preexisting_branch_commits() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BASE_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "diff --name-only main...HEAD ")
+      printf 'hushline/routes/directory.py\\n'
+      return 0
+      ;;
+    "diff --name-only  ")
+      return 0
+      ;;
+    "diff --cached --name-only ")
+      return 0
+      ;;
+    "ls-files --others --exclude-standard")
+      return 0
+      ;;
+  esac
+  return 0
+}}
+set +e
+has_non_log_changes
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+
+
 def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"

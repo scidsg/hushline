@@ -1661,8 +1661,16 @@ has_changes() {
   [[ -n "$(git status --porcelain)" ]]
 }
 
+list_non_log_worktree_files() {
+  {
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | awk 'NF && !seen[$0]++'
+}
+
 list_non_log_changed_files() {
-  list_changed_files \
+  list_non_log_worktree_files \
     | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/'
 }
 
