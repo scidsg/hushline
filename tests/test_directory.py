@@ -1666,6 +1666,65 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
 
 
+def test_directory_all_tab_does_not_promote_non_admin_named_admin(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="pippo321",
+            display_name="admin",
+            bio="info only",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key=""),
+        ),
+        SimpleNamespace(
+            username="4allmn",
+            display_name="4allmn",
+            bio="four all",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="5a8er",
+            display_name="5a8er",
+            bio="five a8er",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "4allmn",
+        "5a8er",
+        "admin",
+    ]
+
+
 def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
