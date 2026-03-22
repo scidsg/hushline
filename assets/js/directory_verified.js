@@ -204,14 +204,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return userSearch.highlightQuery(text || "", query);
   }
 
-  function sortedByDisplayName(entries) {
-    return [...entries].sort((a, b) =>
-      (a.display_name || "").localeCompare(b.display_name || "", undefined, {
-        sensitivity: "base",
-      }),
-    );
-  }
-
   function buildBadges(user, tab) {
     let badgeContainer = "";
 
@@ -376,7 +368,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "all") {
-      appendSection(panel, "", sortedByDisplayName(users), query, tab);
+      appendSection(panel, "", users, query, tab);
       return;
     }
 

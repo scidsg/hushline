@@ -374,11 +374,12 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
     }
 
 
-def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[str, str]:
+def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[bool, str, str]:
+    is_admin = bool(entry.get("is_admin"))
     display_name = str(entry.get("display_name") or "")
     normalized_name = unicodedata.normalize("NFKC", display_name).strip()
     transliterated_name = unidecode(normalized_name).casefold()
-    return transliterated_name, normalized_name.casefold()
+    return not is_admin, transliterated_name, normalized_name.casefold()
 
 
 def register_directory_routes(app: Flask) -> None:
@@ -552,9 +553,11 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        return [
+        all_directory_entries = [
             *[_directory_user_row(username) for username in get_directory_usernames()],
             *public_record_rows,
             *globaleaks_rows,
             *securedrop_rows,
         ]
+        all_directory_entries.sort(key=_all_directory_entry_sort_key)
+        return all_directory_entries
