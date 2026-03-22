@@ -204,17 +204,47 @@ document.addEventListener("DOMContentLoaded", function () {
     return user.display_name || user.primary_username || "";
   }
 
+  function compareAllTabSortStrings(a, b) {
+    if (a < b) {
+      return -1;
+    }
+
+    if (a > b) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  function allTabTransliteratedSortValue(user) {
+    return (
+      user.all_tab_sort_transliterated || allTabSortValue(user).normalize("NFKC").toLowerCase()
+    );
+  }
+
+  function allTabNormalizedSortValue(user) {
+    return (
+      user.all_tab_sort_normalized || allTabSortValue(user).normalize("NFKC").toLowerCase()
+    );
+  }
+
   function compareAllTabUsers(a, b) {
     if (a.is_admin !== b.is_admin) {
       return a.is_admin ? -1 : 1;
     }
 
-    const aValue = allTabSortValue(a).normalize("NFKC");
-    const bValue = allTabSortValue(b).normalize("NFKC");
-    return aValue.localeCompare(bValue, undefined, {
-      sensitivity: "base",
-      numeric: true,
-    });
+    const transliteratedResult = compareAllTabSortStrings(
+      allTabTransliteratedSortValue(a),
+      allTabTransliteratedSortValue(b),
+    );
+    if (transliteratedResult !== 0) {
+      return transliteratedResult;
+    }
+
+    return compareAllTabSortStrings(
+      allTabNormalizedSortValue(a),
+      allTabNormalizedSortValue(b),
+    );
   }
 
   function sortAllTabUsers(users) {
