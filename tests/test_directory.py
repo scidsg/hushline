@@ -1991,6 +1991,35 @@ def test_directory_users_json_exposes_all_tab_sort_fields_for_transliterated_ord
     ]
 
 
+def test_directory_users_json_preserves_empty_transliterated_sort_keys(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="emoji-only",
+            display_name="😀😀",
+            bio="emoji bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    rows = response.json or []
+    assert len(rows) == 1
+    assert rows[0]["display_name"] == "😀😀"
+    assert rows[0]["all_tab_sort_transliterated"] == ""
+
+
 def test_public_record_seed_regions_have_coverage() -> None:
     listings = _strict_public_record_listings()
 

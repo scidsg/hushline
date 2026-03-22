@@ -252,7 +252,7 @@
 
     function allTabTransliteratedSortValue(user) {
       return (
-        user.all_tab_sort_transliterated ||
+        user.all_tab_sort_transliterated ??
         allTabSortValue(user).normalize("NFKC").toLowerCase()
       );
     }
