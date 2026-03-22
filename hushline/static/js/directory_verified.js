@@ -235,13 +235,6 @@
     }
 
     function allTabSortValue(user) {
-      const isUserEntry =
-        !user.is_public_record && !user.is_globaleaks && !user.is_securedrop;
-
-      if (isUserEntry) {
-        return user.primary_username || user.display_name || "";
-      }
-
       return user.display_name || user.primary_username || "";
     }
 

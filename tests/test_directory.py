@@ -1725,6 +1725,85 @@ def test_directory_all_tab_does_not_promote_non_admin_named_admin(
     ]
 
 
+def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="zz-top",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+    mocked_public_records = (
+        SimpleNamespace(
+            id="public-bravo",
+            slug="public-bravo",
+            name="Bravo Listing",
+            website="https://bravo.example",
+            description="bravo description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision=None,
+                subdivision_code=None,
+                countries=("United States",),
+                location="Global",
+            ),
+            location="Global",
+            practice_tags=("Law",),
+            source_label="Public records",
+            source_url="https://records.example/bravo",
+            directory_section="public_record",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: mocked_public_records,
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "Bravo Listing",
+        "Zulu Witness",
+    ]
+
+
 def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

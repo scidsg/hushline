@@ -375,9 +375,6 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
 
 
 def _all_directory_entry_identity(entry: dict[str, object | None]) -> str:
-    if str(entry.get("entry_type") or "") == "user":
-        return str(entry.get("primary_username") or entry.get("display_name") or "")
-
     return str(entry.get("display_name") or entry.get("primary_username") or "")
 
 
