@@ -60,6 +60,24 @@ def test_profile_accepts_case_insensitive_username(
     assert user_alias.username in response.text
 
 
+def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert (
+        soup.select_one('span.badge[aria-label="Caution: display name may be mistaken for admin"]')
+        is not None
+    )
+
+
 def test_profile_404_for_unknown_username(client: FlaskClient) -> None:
     response = client.get(url_for("profile", username="does-not-exist"), follow_redirects=True)
     assert response.status_code == 404

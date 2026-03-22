@@ -457,7 +457,7 @@
             <p class="meta">@{{ entry.primary_username }}</p>
           {% endif %}
 
-          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key %}
+          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key or entry.show_caution_badge %}
             <div class="badgeContainer">
               {% if entry.entry_type == "public_record" %}
                 <span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>
@@ -480,6 +480,9 @@
                 {% endif %}
                 {% if entry.is_verified %}
                   <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                {% endif %}
+                {% if entry.show_caution_badge %}
+                  <span class="badge" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>
                 {% endif %}
                 {% if not entry.has_pgp_key %}
                   <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>

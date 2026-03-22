@@ -156,12 +156,18 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "webpack://" not in directory_verified_static_js
     assert "all_tab_sort_transliterated" in directory_verified_js
     assert "all_tab_sort_normalized" in directory_verified_js
+    assert "show_caution_badge" in directory_js
+    assert "show_caution_badge" in directory_verified_js
     assert "all_tab_sort_transliterated" in directory_verified_static_js
     assert "all_tab_sort_normalized" in directory_verified_static_js
+    assert "show_caution_badge" in directory_verified_static_js
     assert "all_tab_sort_transliterated ??" in directory_verified_js
     assert "all_tab_sort_transliterated ??" in directory_verified_static_js
     assert "localeCompare" not in directory_verified_js
     assert "localeCompare" not in directory_verified_static_js
+    assert "Caution: display name may be mistaken for admin" in directory_js
+    assert "Caution: display name may be mistaken for admin" in directory_verified_js
+    assert "Caution: display name may be mistaken for admin" in directory_verified_static_js
     assert "const safeDisplayName = userSearch.escapeHtml(" in directory_js
     assert "const safeDisplayName = userSearch.escapeHtml(" in directory_verified_js
     assert 'const safeBio = userSearch.escapeHtml(user.bio || "No bio");' in directory_js

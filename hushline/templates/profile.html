@@ -26,7 +26,7 @@
     {% endif %}
   </h2>
 
-  {% if user.is_admin or username.is_verified %}
+  {% if user.is_admin or username.is_verified or show_caution_badge %}
     <div class="badgeContainer">
       {% if user.is_admin %}
         <span class="badge" role="img" aria-label="Administrator account">⚙️&nbsp;Admin</span>
@@ -41,6 +41,9 @@
           aria-label="Learn more about verified accounts."
           >Learn more</a
         >
+      {% endif %}
+      {% if show_caution_badge %}
+        <span class="badge" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️&nbsp;Caution</span>
       {% endif %}
     </div>
   {% endif %}

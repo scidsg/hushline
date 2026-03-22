@@ -76,6 +76,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (user.is_verified) {
       badgeContainer += '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
     }
+    if (user.show_caution_badge) {
+      badgeContainer +=
+        '<span class="badge" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
+    }
 
     return `
       <article class="user" aria-label="${safeUserType}, Display name:${safeDisplayName}, Username: ${safeUsername}, Bio: ${safeBio}">
