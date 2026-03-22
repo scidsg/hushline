@@ -200,6 +200,32 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function allTabSortValue(user) {
+    const isUserEntry = !user.is_public_record && !user.is_globaleaks && !user.is_securedrop;
+    if (isUserEntry) {
+      return user.primary_username || user.display_name || "";
+    }
+
+    return user.display_name || user.primary_username || "";
+  }
+
+  function compareAllTabUsers(a, b) {
+    if (a.is_admin !== b.is_admin) {
+      return a.is_admin ? -1 : 1;
+    }
+
+    const aValue = allTabSortValue(a).normalize("NFKC");
+    const bValue = allTabSortValue(b).normalize("NFKC");
+    return aValue.localeCompare(bValue, undefined, {
+      sensitivity: "base",
+      numeric: true,
+    });
+  }
+
+  function sortAllTabUsers(users) {
+    return [...users].sort(compareAllTabUsers);
+  }
+
   function highlightMatch(text, query) {
     return userSearch.highlightQuery(text || "", query);
   }
@@ -368,7 +394,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "all") {
-      appendSection(panel, "", users, query, tab);
+      appendSection(panel, "", sortAllTabUsers(users), query, tab);
       return;
     }
 
