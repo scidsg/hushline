@@ -386,6 +386,16 @@ def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[bool
     return not is_admin, transliterated_identity, normalized_identity.casefold()
 
 
+def _all_directory_entry_client_sort_fields(
+    entry: dict[str, object | None],
+) -> dict[str, str]:
+    _, transliterated_identity, normalized_identity = _all_directory_entry_sort_key(entry)
+    return {
+        "all_tab_sort_transliterated": transliterated_identity,
+        "all_tab_sort_normalized": normalized_identity,
+    }
+
+
 def register_directory_routes(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
@@ -558,8 +568,14 @@ def register_directory_routes(app: Flask) -> None:
             else []
         )
         return [
-            *[_directory_user_row(username) for username in get_directory_usernames()],
-            *public_record_rows,
-            *globaleaks_rows,
-            *securedrop_rows,
+            {
+                **entry,
+                **_all_directory_entry_client_sort_fields(entry),
+            }
+            for entry in [
+                *[_directory_user_row(username) for username in get_directory_usernames()],
+                *public_record_rows,
+                *globaleaks_rows,
+                *securedrop_rows,
+            ]
         ]
