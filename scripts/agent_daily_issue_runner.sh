@@ -1661,6 +1661,15 @@ has_changes() {
   [[ -n "$(git status --porcelain)" ]]
 }
 
+list_non_log_changed_files() {
+  list_changed_files \
+    | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/'
+}
+
+has_non_log_changes() {
+  [[ -n "$(list_non_log_changed_files)" ]]
+}
+
 current_change_summary() {
   {
     echo "Current git status:"
@@ -1979,8 +1988,8 @@ run_issue_attempt_loop() {
     echo "==> Codex issue attempt $issue_attempt"
     run_codex_from_prompt
 
-    if ! has_changes; then
-      echo "Codex produced no changes for issue #$issue_number; retrying."
+    if ! has_non_log_changes; then
+      echo "Codex produced no usable non-log changes for issue #$issue_number; retrying."
       issue_attempt=$((issue_attempt + 1))
       continue
     fi
@@ -1989,7 +1998,7 @@ run_issue_attempt_loop() {
       return 1
     fi
 
-    if has_changes; then
+    if has_non_log_changes; then
       return 0
     fi
 
@@ -2143,6 +2152,11 @@ main() {
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
+
+  if ! has_non_log_changes; then
+    echo "Blocked: no usable non-log changes remain for issue #$ISSUE_NUMBER after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+    exit 1
+  fi
 
   persist_run_log "$ISSUE_NUMBER"
 
