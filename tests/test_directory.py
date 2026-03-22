@@ -1666,7 +1666,7 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
 
 
-def test_directory_users_json_sorts_admin_first_in_all_directory_order(
+def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     mocked_usernames = (
@@ -1724,7 +1724,7 @@ def test_directory_users_json_sorts_admin_first_in_all_directory_order(
     assert response.status_code == 200
 
     display_names = [row["display_name"] for row in response.json or []]
-    assert display_names == ["Zulu Admin", "Alpha Public Listing", "Zulu User"]
+    assert display_names == ["Zulu User", "Zulu Admin", "Alpha Public Listing"]
 
 
 def test_public_record_seed_regions_have_coverage() -> None:

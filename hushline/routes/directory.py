@@ -553,11 +553,9 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        all_directory_entries = [
+        return [
             *[_directory_user_row(username) for username in get_directory_usernames()],
             *public_record_rows,
             *globaleaks_rows,
             *securedrop_rows,
         ]
-        all_directory_entries.sort(key=_all_directory_entry_sort_key)
-        return all_directory_entries
