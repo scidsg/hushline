@@ -410,6 +410,94 @@ remote_branch_exists() {
   git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1
 }
 
+current_branch_name() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null
+}
+
+ensure_worktree_on_branch() {
+  local expected_branch="$1"
+  local current_branch=""
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  if [[ -z "$current_branch" ]]; then
+    current_branch="DETACHED"
+  fi
+
+  echo "Self-heal: current branch is '$current_branch'; checking out '$expected_branch' before committing."
+  if git checkout "$expected_branch"; then
+    current_branch="$(current_branch_name || true)"
+    [[ "$current_branch" == "$expected_branch" ]] && return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: expected to commit on branch '$expected_branch', but recovery from '$current_branch' failed." >&2
+  return 1
+}
+
+ensure_head_commit_on_branch() {
+  local expected_branch="$1"
+  local base_branch="$2"
+  local current_branch=""
+  local head_commit=""
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  head_commit="$(git rev-parse HEAD)"
+  if [[ -z "$current_branch" ]]; then
+    current_branch="DETACHED"
+  fi
+
+  echo "Self-heal: HEAD is on '$current_branch'; moving '$expected_branch' to commit $head_commit."
+  git branch -f "$expected_branch" "$head_commit"
+  git checkout "$expected_branch"
+
+  if [[ "$current_branch" == "$base_branch" ]]; then
+    if git show-ref --verify --quiet "refs/remotes/origin/$base_branch"; then
+      echo "Self-heal: restoring '$base_branch' to origin/$base_branch after branch drift."
+      git branch -f "$base_branch" "origin/$base_branch"
+    fi
+  fi
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: expected committed work on branch '$expected_branch', but recovery from '$current_branch' failed." >&2
+  return 1
+}
+
+branch_has_unique_commits() {
+  local base_ref="$1"
+  local branch_ref="$2"
+  local ahead_count=""
+
+  ahead_count="$(git rev-list --count "${base_ref}..${branch_ref}")"
+  [[ "$ahead_count" =~ ^[0-9]+$ ]] || return 1
+  (( ahead_count > 0 ))
+}
+
+require_branch_has_unique_commits() {
+  local base_ref="$1"
+  local branch_ref="$2"
+
+  if branch_has_unique_commits "$base_ref" "$branch_ref"; then
+    return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: branch '$branch_ref' has no commits ahead of '$base_ref'; refusing to create or update a PR." >&2
+  return 1
+}
+
 push_branch_for_pr() {
   local branch="$1"
 
@@ -2056,6 +2144,7 @@ main() {
 
   persist_run_log "$ISSUE_NUMBER"
 
+  ensure_worktree_on_branch "$BRANCH_NAME"
   git add -A
   if git diff --cached --quiet; then
     echo "Blocked: no changes staged for issue #$ISSUE_NUMBER." >&2
@@ -2068,9 +2157,13 @@ main() {
   fi
   git commit -m "$COMMIT_MESSAGE"
 
+  ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
+  require_branch_has_unique_commits "$PR_BASE_BRANCH" "$BRANCH_NAME"
   # Keep branch update simple while preventing blind overwrite.
   push_branch_for_pr "$BRANCH_NAME"
 
+  ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
+  require_branch_has_unique_commits "$PR_BASE_BRANCH" "$BRANCH_NAME"
   write_pr_body \
     "$ISSUE_NUMBER" \
     "$ISSUE_TITLE" \

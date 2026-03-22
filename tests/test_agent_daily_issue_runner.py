@@ -267,6 +267,105 @@ build_epic_branch_name 1735
     assert result.stdout == "codex/epic-1735\n"
 
 
+def test_ensure_worktree_on_branch_checks_out_expected_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "symbolic-ref --quiet --short HEAD")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732  ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_worktree_on_branch codex/daily-issue-1732
+printf 'branch=%s\\n' "$CURRENT_BRANCH"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "branch=codex/daily-issue-1732" in result.stdout
+
+
+def test_ensure_head_commit_on_branch_moves_issue_branch_and_repairs_main() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+ISSUE_BRANCH_REF=old-issue-ref
+MAIN_BRANCH_REF=old-main-ref
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "rev-parse HEAD   ")
+      printf 'deadbeef\\n'
+      return 0
+      ;;
+    "branch -f codex/daily-issue-1732 deadbeef ")
+      ISSUE_BRANCH_REF=deadbeef
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732   ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+    "show-ref --verify --quiet refs/remotes/origin/main ")
+      return 0
+      ;;
+    "branch -f main origin/main ")
+      MAIN_BRANCH_REF=origin/main
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_head_commit_on_branch codex/daily-issue-1732 main
+printf 'current=%s\\nissue=%s\\nmain=%s\\n' "$CURRENT_BRANCH" "$ISSUE_BRANCH_REF" "$MAIN_BRANCH_REF"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "current=codex/daily-issue-1732" in result.stdout
+    assert "issue=deadbeef" in result.stdout
+    assert "main=origin/main" in result.stdout
+
+
+def test_require_branch_has_unique_commits_blocks_empty_pr_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "rev-list --count main..codex/daily-issue-1732" ]]; then
+    printf '0\\n'
+    return 0
+  fi
+  return 1
+}}
+set +e
+require_branch_has_unique_commits main codex/daily-issue-1732
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert (
+        "Blocked: branch 'codex/daily-issue-1732' has no commits ahead of 'main';" in result.stderr
+    )
+
+
 def test_resolve_issue_parent_epic_outputs_parent_metadata() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -760,14 +859,25 @@ run_step() {{
   shift
   "$@"
 }}
-git() {{
-  case "${{1-}} ${{2-}} ${{3-}}" in
-    "diff --cached --quiet")
-      return 1
-      ;;
-  esac
-  return 0
-}}
+    git() {{
+      case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+        "symbolic-ref --quiet --short HEAD ")
+          printf 'codex/daily-issue-1558\\n'
+          return 0
+          ;;
+        "rev-list --count main..codex/daily-issue-1558  ")
+          printf '1\\n'
+          return 0
+          ;;
+        "diff --cached --quiet  ")
+          return 1
+          ;;
+        "checkout codex/daily-issue-1558   ")
+          return 0
+          ;;
+      esac
+      return 0
+    }}
 docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
