@@ -445,6 +445,11 @@
     border: 1px solid var(--color-brand-min-contrast);
   }
 
+  .badgeCaution {
+    border: 1px solid darkred;
+    color: darkred;
+  }
+
   .search-highlight {
     background-color: var(--color-highlight);
   }
@@ -1026,6 +1031,11 @@
     background-color: var(--color-dark-bg-alt-1);
     color: var(--color-brand-dark-min-saturation);
     border: 1px solid var(--color-brand-dark-min-saturation);
+  }
+
+  .badgeCaution {
+    border: 1px solid pink;
+    color: pink;
   }
 
   h2.submit+.badgeContainer .badge {
@@ -4708,6 +4718,6 @@ button .badge {
   padding: 0.25rem 0.4125rem;
 }
 
-  .directory-filter-toggle {
-    font-family: var(--font-sans); 
-  }
+.directory-filter-toggle {
+  font-family: var(--font-sans); 
+}

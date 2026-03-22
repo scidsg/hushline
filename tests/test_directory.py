@@ -303,6 +303,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
+    assert admin_row["show_caution_badge"] is False
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False
     assert admin_row["is_securedrop"] is False
@@ -312,6 +313,89 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["subdivision_code"] is None
     assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
+
+
+@pytest.mark.parametrize(
+    "display_name",
+    [
+        "admin",
+        "Admin",
+        "hushline",
+        "Hush Line",
+        "hush line admin",
+        "admin of hush line",
+        "The Hush-Line Admin",
+    ],
+)
+def test_directory_users_json_flags_suspicious_non_verified_non_admin_display_names_for_caution(
+    client: FlaskClient, user: User, display_name: str
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = display_name
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["show_caution_badge"] is True
+
+
+def test_directory_users_json_does_not_flag_verified_or_admin_suspicious_display_names(
+    client: FlaskClient, user: User, admin_user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.is_verified = True
+
+    admin_user.primary_username.show_in_directory = True
+    admin_user.primary_username.display_name = "admin"
+    admin_user.primary_username.is_verified = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    verified_row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    admin_row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == admin_user.primary_username.username
+    )
+    assert verified_row["show_caution_badge"] is False
+    assert admin_row["show_caution_badge"] is False
+
+
+def test_directory_users_json_flags_suspicious_username_when_display_name_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.username = "admin"
+    user.primary_username.display_name = None
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["display_name"] == "admin"
+    assert row["show_caution_badge"] is True
 
 
 def test_directory_users_json_includes_unverified_info_only_korean_account(
@@ -334,6 +418,7 @@ def test_directory_users_json_includes_unverified_info_only_korean_account(
     )
     assert row["display_name"] == "조지 코스탄자"
     assert row["is_verified"] is False
+    assert row["show_caution_badge"] is False
     assert row["has_pgp_key"] is False
     assert row["message_capable"] is False
 
@@ -1748,6 +1833,80 @@ def test_directory_all_tab_does_not_promote_non_admin_named_admin(
         "admin",
     ]
 
+    spoof_card = _find_directory_card(all_panel, "admin")
+    assert (
+        spoof_card.select_one(
+            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is not None
+    )
+    official_admin_card = _find_directory_card(all_panel, "Hush Line Admin")
+    assert (
+        official_admin_card.select_one(
+            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is None
+    )
+
+
+def test_directory_all_tab_moves_caution_accounts_to_bottom(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="spoof",
+            display_name="Admin of Hush Line",
+            bio="spoof bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="zulu",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "Zulu Witness",
+        "Admin of Hush Line",
+    ]
+
 
 def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
@@ -1995,6 +2154,7 @@ def test_directory_users_json_exposes_all_tab_sort_fields_for_transliterated_ord
     rows = response.json or []
     assert all("all_tab_sort_transliterated" in row for row in rows)
     assert all("all_tab_sort_normalized" in row for row in rows)
+    assert all("show_caution_badge" in row for row in rows)
 
     sorted_display_names = [
         row["display_name"]
@@ -2002,6 +2162,7 @@ def test_directory_users_json_exposes_all_tab_sort_fields_for_transliterated_ord
             rows,
             key=lambda row: (
                 not bool(row["is_admin"]),
+                bool(row["show_caution_badge"]),
                 cast(str, row["all_tab_sort_transliterated"]),
                 cast(str, row["all_tab_sort_normalized"]),
             ),

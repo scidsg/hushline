@@ -234,6 +234,10 @@ document.addEventListener("DOMContentLoaded", function () {
       return a.is_admin ? -1 : 1;
     }
 
+    if (a.show_caution_badge !== b.show_caution_badge) {
+      return a.show_caution_badge ? 1 : -1;
+    }
+
     const transliteratedResult = compareAllTabSortStrings(
       allTabTransliteratedSortValue(a),
       allTabTransliteratedSortValue(b),
@@ -303,6 +307,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (user.is_verified) {
       badgeContainer +=
         '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+    }
+
+    if (user.show_caution_badge) {
+      badgeContainer +=
+        '<span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
     }
 
     if (tab === "all" && !user.has_pgp_key) {
