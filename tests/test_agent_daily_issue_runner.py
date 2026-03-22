@@ -30,6 +30,30 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
+    tmp_path: Path,
+) -> None:
+    runner_script = shlex.quote(str(RUNNER_SCRIPT))
+
+    shell_script = f"""
+source {runner_script}
+TMPDIR={shlex.quote(str(tmp_path))}
+runner_script={runner_script}
+snapshot_metadata="$(prepare_runner_exec_snapshot "$runner_script" "$runner_script")"
+printf '%s\\n' "$snapshot_metadata"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    original_dir, snapshot_path = result.stdout.strip().split("\t")
+    snapshot_file = Path(snapshot_path)
+    assert Path(original_dir) == RUNNER_SCRIPT.parent
+    assert snapshot_file.exists()
+    assert snapshot_file.parent == tmp_path
+    assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
+
+
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
