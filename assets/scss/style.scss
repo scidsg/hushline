@@ -1038,6 +1038,12 @@
     color: pink;
   }
 
+  .badgeHelpTooltip {
+    border: var(--border-dark);
+    background-color: var(--color-dark-bg-alt);
+    color: var(--color-brand-dark-min-saturation);
+  }
+
   h2.submit+.badgeContainer .badge {
     background-color: var(--color-dark-bg-alt);
   }
@@ -1486,6 +1492,59 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
 
 .badge:last-of-type {
   margin-right: 0.25rem;
+}
+
+.badgeHelpTooltipGroup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.badgeHelpTrigger {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+  cursor: help;
+}
+
+.badgeHelpTrigger:focus-visible {
+  outline: var(--border);
+  outline-offset: 0.1875rem;
+  border-radius: 0.25rem;
+}
+
+.badgeHelpTooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.375rem);
+  z-index: 10;
+  width: min(18rem, 80vw);
+  padding: 0.625rem 0.75rem;
+  border: var(--border);
+  border-radius: 0.5rem;
+  background-color: white;
+  box-shadow: var(--shadow-dynamic);
+  color: var(--color-brand-min-contrast);
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-0.125rem);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.badgeHelpTooltipGroup:hover .badgeHelpTooltip,
+.badgeHelpTooltipGroup:focus-within .badgeHelpTooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .meta {
