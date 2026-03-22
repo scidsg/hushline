@@ -39,9 +39,16 @@ def test_client_side_encryption_has_platform_guards() -> None:
 
 def test_profile_template_avoids_inline_submit_handlers() -> None:
     template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert 'id="messageForm"' in template
     assert 'onsubmit="' not in template
+    assert "What's this?" in template
+    assert 'class="badge badgeCaution"' in template
+    assert 'role="tooltip"' in template
+    assert ".badgeHelpTooltipGroup" in scss
+    assert ".badgeHelpTrigger" in scss
+    assert ".badgeHelpTooltip" in scss
 
 
 def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:

@@ -43,7 +43,23 @@
         >
       {% endif %}
       {% if show_caution_badge %}
-        <span class="badge" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️&nbsp;Caution</span>
+        <span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️&nbsp;Caution</span>
+        <span class="badgeHelpTooltipGroup">
+          <button
+            type="button"
+            class="meta badgeHelpTrigger"
+            aria-describedby="caution-badge-info"
+          >
+            What's this?
+          </button>
+          <span
+            id="caution-badge-info"
+            class="badgeHelpTooltip"
+            role="tooltip"
+          >
+            This display name may be mistaken for an official Hush Line admin account.
+          </span>
+        </span>
       {% endif %}
     </div>
   {% endif %}

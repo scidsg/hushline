@@ -72,9 +72,18 @@ def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.data, "html.parser")
+    caution_badge = soup.select_one(
+        'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+    )
+    assert caution_badge is not None
+    trigger = soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
+    assert trigger is not None
+    assert trigger.get_text(strip=True) == "What's this?"
+    tooltip = soup.select_one("span#caution-badge-info[role='tooltip']")
+    assert tooltip is not None
     assert (
-        soup.select_one('span.badge[aria-label="Caution: display name may be mistaken for admin"]')
-        is not None
+        tooltip.get_text(strip=True)
+        == "This display name may be mistaken for an official Hush Line admin account."
     )
 
 
@@ -92,7 +101,13 @@ def test_profile_shows_caution_badge_for_suspicious_username_when_display_name_m
 
     soup = BeautifulSoup(response.data, "html.parser")
     assert (
-        soup.select_one('span.badge[aria-label="Caution: display name may be mistaken for admin"]')
+        soup.select_one(
+            'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is not None
+    )
+    assert (
+        soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
         is not None
     )
 
