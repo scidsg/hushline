@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+prepare_runner_exec_snapshot() {
+  local runner_script_path="${1:-${BASH_SOURCE[0]}}"
+  local runner_argv0="${2:-$0}"
+  local original_script_dir original_script_path snapshot_file
+
+  if [[ "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_ACTIVE:-0}" == "1" ]]; then
+    return 1
+  fi
+
+  if [[ "$runner_script_path" != "$runner_argv0" ]]; then
+    return 1
+  fi
+
+  original_script_dir="$(CDPATH= cd -- "$(dirname -- "$runner_script_path")" && pwd)"
+  original_script_path="$original_script_dir/$(basename -- "$runner_script_path")"
+  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX.sh")"
+  cp "$original_script_path" "$snapshot_file"
+  chmod 700 "$snapshot_file"
+  printf '%s\t%s\n' "$original_script_dir" "$snapshot_file"
+}
+
+if SNAPSHOT_METADATA="$(prepare_runner_exec_snapshot "${BASH_SOURCE[0]}" "$0")"; then
+  IFS=$'\t' read -r HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH <<< "$SNAPSHOT_METADATA"
+  export HUSHLINE_DAILY_RUNNER_SNAPSHOT_ACTIVE=1
+  export HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR
+  export HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH
+  exec bash "$HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH" "$@"
+fi
+
 FORCE_ISSUE_NUMBER=""
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR:-$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
 DEFAULT_REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 
 REPO_DIR="${HUSHLINE_REPO_DIR:-$DEFAULT_REPO_DIR}"
@@ -86,6 +115,7 @@ initialize_run_state() {
 
 cleanup() {
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
+  rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
   if [[ -d "$REPO_DIR/.git" ]]; then
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
