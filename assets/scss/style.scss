@@ -3471,6 +3471,14 @@ p.bio+.extra-fields {
   margin-bottom: 0;
 }
 
+.tools-content .tool-tab-content form:first-of-type {
+  margin-bottom: 0;
+}
+
+.tools-content .tool-tab-content form:last-of-type:not(form:only-of-type) {
+  margin-top: 0;
+}
+
 .tools-main .tool-tab-content {
   width: 100%;
 }
