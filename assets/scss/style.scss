@@ -679,6 +679,11 @@
   .directory-filter-group select {
     color: var(--color-text);
   }
+
+  .dropbtn:focus-within {
+    outline: none;
+    border: 1px solid var(--color-brand);
+  }
 }
 
 /* Dark Mode */
@@ -837,7 +842,7 @@
 
   code,
   pre {
-    border: var(--border);
+    border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
   }
 
@@ -949,6 +954,7 @@
     border: 1px solid var(--color-brand-dark-min-saturation);
     background-color: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand-dark-min-saturation) min(l, 0.95) c h / 0.25) !important;
   }
 
   .formBody input[type="submit"],
@@ -1086,15 +1092,13 @@
   }
 
   .dropbtn {
-    background: none;
-    box-shadow: none;
     color: var(--color-text-dark);
     border: 1px solid transparent;
   }
 
   .dropbtn:focus-within {
     outline: none;
-    border: 1px solid var(--color-brand-light);
+    border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
   .dropdown-content {
@@ -1667,7 +1671,7 @@ img.empty {
   margin: 0;
   min-height: fit-content;
   min-width: fit-content;
-  box-shadow: none;
+  box-shadow: none !important;
   display: flex;
   border-radius: 0.25rem;
 }
@@ -2365,6 +2369,9 @@ img.alert {
   margin: 0;
   font-family: var(--font-sans);
   max-width: 120px;
+  background: none;
+  box-shadow: none !important;
+  border: 1px solid transparent;
 }
 
 .dropdown ul a {
@@ -2871,7 +2878,7 @@ p.section-intro:not(:first-of-type) {
 }
 
 .fileContainer {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
 input[type="file"] {
@@ -3146,7 +3153,7 @@ button[name="update_directory_visibility"] {
 .input-pair input+.icon.verifiedURL {
   position: absolute;
   right: 0%;
-  top: 41px;
+  top: 38px;
   left: calc(100% - 20px - 8px);
 }
 
@@ -3469,6 +3476,15 @@ p.bio+.extra-fields {
   display: flex;
   margin-top: 0;
   margin-bottom: 0;
+}
+
+.tools-content .tool-tab-content form:first-of-type {
+  margin-bottom: 0;
+  margin-top: 1rem;
+}
+
+.tools-content .tool-tab-content form:last-of-type:not(form:only-of-type) {
+  margin-top: 0;
 }
 
 .tools-main .tool-tab-content {
@@ -4124,7 +4140,7 @@ strong {
 
 .modal-buttons .page-bullets button {
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: none !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
