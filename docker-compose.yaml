@@ -68,7 +68,8 @@ services:
       retries: 10
 
   blob-storage:
-    image: localstack/localstack:latest
+    # Keep a stable LocalStack release pinned; :latest pulled a nightly build that broke CI bootstrap.
+    image: localstack/localstack:4.11.1
     environment:
       ACTIVATE_PRO: "0"
       SERVICES: s3
