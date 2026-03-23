@@ -837,7 +837,7 @@
 
   code,
   pre {
-    border: var(--border);
+    border: var(--border-dark);
     background-color: var(--color-dark-bg-alt);
   }
 
@@ -949,6 +949,7 @@
     border: 1px solid var(--color-brand-dark-min-saturation);
     background-color: var(--color-brand-dark-min-saturation);
     color: var(--color-text);
+    box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand-dark-min-saturation) min(l, 0.95) c h / 0.25) !important;
   }
 
   .formBody input[type="submit"],
@@ -2871,7 +2872,7 @@ p.section-intro:not(:first-of-type) {
 }
 
 .fileContainer {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
 input[type="file"] {
@@ -3469,6 +3470,15 @@ p.bio+.extra-fields {
   display: flex;
   margin-top: 0;
   margin-bottom: 0;
+}
+
+.tools-content .tool-tab-content form:first-of-type {
+  margin-bottom: 0;
+  margin-top: 1rem;
+}
+
+.tools-content .tool-tab-content form:last-of-type:not(form:only-of-type) {
+  margin-top: 0;
 }
 
 .tools-main .tool-tab-content {
