@@ -70,6 +70,7 @@ services:
   blob-storage:
     image: localstack/localstack:latest
     environment:
+      ACTIVATE_PRO: "0"
       SERVICES: s3
       HOSTNAME: blob-storage
       GATEWAY_LISTEN: "0.0.0.0:4566"
