@@ -37,7 +37,30 @@ jobs:
       - name: Start app
         run: |
           docker compose up -d postgres blob-storage
-          docker compose run --rm dev_data
+          attempt=0
+          until curl -fsS http://localhost:4566/_localstack/health | grep -Eq 'running|available'; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              echo "blob-storage did not become ready."
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for i in 1 2 3; do
+            if docker compose run --rm dev_data; then
+              break
+            fi
+
+            if [ "$i" -eq 3 ]; then
+              echo "dev_data failed after ${i} attempts."
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep $((i * 5))
+          done
+
           docker compose up -d app
           attempt=0
           until curl -fsS http://localhost:8080/ > /dev/null; do

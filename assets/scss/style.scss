@@ -679,6 +679,11 @@
   .directory-filter-group select {
     color: var(--color-text);
   }
+
+  .dropbtn:focus-within {
+    outline: none;
+    border: 1px solid var(--color-brand);
+  }
 }
 
 /* Dark Mode */
@@ -1087,15 +1092,13 @@
   }
 
   .dropbtn {
-    background: none;
-    box-shadow: none;
     color: var(--color-text-dark);
     border: 1px solid transparent;
   }
 
   .dropbtn:focus-within {
     outline: none;
-    border: 1px solid var(--color-brand-light);
+    border: 1px solid var(--color-brand-dark-min-saturation);
   }
 
   .dropdown-content {
@@ -1668,7 +1671,7 @@ img.empty {
   margin: 0;
   min-height: fit-content;
   min-width: fit-content;
-  box-shadow: none;
+  box-shadow: none !important;
   display: flex;
   border-radius: 0.25rem;
 }
@@ -2366,6 +2369,9 @@ img.alert {
   margin: 0;
   font-family: var(--font-sans);
   max-width: 120px;
+  background: none;
+  box-shadow: none !important;
+  border: 1px solid transparent;
 }
 
 .dropdown ul a {
@@ -3147,7 +3153,7 @@ button[name="update_directory_visibility"] {
 .input-pair input+.icon.verifiedURL {
   position: absolute;
   right: 0%;
-  top: 41px;
+  top: 38px;
   left: calc(100% - 20px - 8px);
 }
 
@@ -4134,7 +4140,7 @@ strong {
 
 .modal-buttons .page-bullets button {
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: none !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
