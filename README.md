@@ -55,6 +55,8 @@ docker compose up
 
 Open <http://localhost:8080>.
 
+If you want a slower, guided setup for a brand-new machine, use the AI-ready prompt in [`docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md`](./docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md). It walks a new contributor through installing Git, Make, Docker, cloning the repo, starting the stack, and trying the first three local flows.
+
 ### 2) Common commands
 
 | Command                                   | Purpose                                  |
@@ -122,6 +124,7 @@ If local audit commands are blocked by network/tooling availability, document th
 ## Documentation Map
 
 - Docs index: [`docs/README.md`](./docs/README.md)
+- Local contributor onboarding prompt: [`docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md`](./docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md)
 - Developer notes: [`docs/DEV.md`](./docs/DEV.md)
 - Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 - Runner automation: [`docs/AGENT_RUNNER.md`](./docs/AGENT_RUNNER.md)

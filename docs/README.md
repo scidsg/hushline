@@ -12,6 +12,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 
 ## Repository Docs
 
+- [Local contributor onboarding prompt](./LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md)
 - [Developer docs](./DEV.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Privacy](./PRIVACY.md)
