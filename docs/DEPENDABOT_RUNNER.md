@@ -25,7 +25,7 @@ This runner reviews one open Dependabot PR, checks what that dependency update m
    - `docker compose up -d postgres blob-storage app`
    - `docker compose run --rm dev_data`
 6. Check out the Dependabot PR branch from origin.
-7. Build a Codex prompt with PR metadata, changed files, and dependency diff summary.
+7. Build a Codex prompt with PR metadata, changed files, and dependency diff summary, while excluding untrusted PR body text from the model prompt.
 8. Let Codex determine whether app-side changes are needed:
    - if compatibility changes are needed, Codex applies them on the PR branch
    - if no follow-up changes are needed, Codex leaves the branch unchanged.
