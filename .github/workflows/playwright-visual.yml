@@ -1,0 +1,100 @@
+name: Playwright Visual Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hushline/**"
+      - "assets/**"
+      - "migrations/**"
+      - "docker-compose*.yaml"
+      - "Dockerfile*"
+      - "package.json"
+      - "package-lock.json"
+      - "webpack.config.js"
+      - "docs/screenshots/scenes.json"
+      - "playwright.visual.config.js"
+      - "tests/playwright/**"
+      - ".github/workflows/playwright-visual.yml"
+  pull_request:
+    paths:
+      - "hushline/**"
+      - "assets/**"
+      - "migrations/**"
+      - "docker-compose*.yaml"
+      - "Dockerfile*"
+      - "package.json"
+      - "package-lock.json"
+      - "webpack.config.js"
+      - "docs/screenshots/scenes.json"
+      - "playwright.visual.config.js"
+      - "tests/playwright/**"
+      - ".github/workflows/playwright-visual.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Start app
+        run: |
+          docker compose up -d postgres blob-storage
+          attempt=0
+          until curl -fsS http://localhost:4566/_localstack/health | grep -Eq 'running|available'; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              echo "blob-storage did not become ready."
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for i in 1 2 3; do
+            if docker compose run --rm dev_data; then
+              break
+            fi
+
+            if [ "$i" -eq 3 ]; then
+              echo "dev_data failed after ${i} attempts."
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep $((i * 5))
+          done
+
+          docker compose up -d app
+          attempt=0
+          until curl -fsS http://localhost:8080/ > /dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              echo "app did not become ready."
+              docker compose logs app
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Run Playwright visual regression
+        run: make playwright-visual
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results/playwright-visual
