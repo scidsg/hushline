@@ -21,6 +21,8 @@ const THEMES = [
 
 const scenesBySlug = new Map(manifest.scenes.map((scene) => [scene.slug, scene]));
 const viewportProjectNames = new Set(manifest.viewports.map((viewport) => viewport.id));
+const GOTO_RETRY_ATTEMPTS = 15;
+const GOTO_RETRY_DELAY_MS = 2000;
 
 function getScene(slug) {
   const scene = scenesBySlug.get(slug);
@@ -55,6 +57,33 @@ async function addStabilityHooks(page, iso) {
 
     localStorage.setItem("hasFinishedGuidance", "true");
   }, { isoString: iso });
+}
+
+function isRetryableNavigationError(error) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|ERR_TIMED_OUT/.test(error.message);
+}
+
+async function gotoWithRetries(page, target) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= GOTO_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await page.goto(target, { waitUntil: "networkidle" });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableNavigationError(error) || attempt === GOTO_RETRY_ATTEMPTS) {
+        throw error;
+      }
+      await page.waitForTimeout(GOTO_RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError;
 }
 
 async function runAction(page, action) {
@@ -130,7 +159,7 @@ async function runAction(page, action) {
 async function prepareScene(page, scene, theme) {
   await addStabilityHooks(page, theme.iso);
   await page.emulateMedia({ colorScheme: theme.name });
-  await page.goto(scene.path, { waitUntil: "networkidle" });
+  await gotoWithRetries(page, scene.path);
 
   if (scene.waitForSelector) {
     await page.waitForSelector(scene.waitForSelector);

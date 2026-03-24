@@ -9,7 +9,7 @@ PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
 PLAYWRIGHT_BASE_URL ?= http://host.docker.internal:8080
-PLAYWRIGHT_DOCKER_IMAGE ?= mcr.microsoft.com/playwright:v1.54.2-noble
+PLAYWRIGHT_DOCKER_IMAGE ?= mcr.microsoft.com/playwright:v1.55.1-noble
 REFRESH_PUBLIC_RECORD_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-quarterly-refresh.md
@@ -324,7 +324,7 @@ playwright-visual-update: runner-wait-for-app ## Update Playwright visual regres
 .PHONY: docs-screenshots
 docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<release>
 	docker compose run --rm dev_data && \
-	npm install --no-save playwright@1.54.2 && \
+	npm install --no-save playwright@1.55.1 && \
 	npx playwright install chromium && \
 	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
 	SCREENSHOT_ARTVANDELAY_PASSWORD="$${SCREENSHOT_ARTVANDELAY_PASSWORD:-Test-testtesttesttest-1}" \
@@ -336,7 +336,7 @@ docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<re
 
 .PHONY: docs-screenshots-first-user
 docs-screenshots-first-user: migrate-dev ## Capture first-user admin-creation screenshot (brand-new instance) into admin session dir
-	npm install --no-save playwright@1.54.2 && \
+	npm install --no-save playwright@1.55.1 && \
 	npx playwright install chromium && \
 	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
 	node scripts/capture-doc-screenshots.mjs \
