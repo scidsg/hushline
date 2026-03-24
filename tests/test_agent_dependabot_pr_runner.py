@@ -126,6 +126,8 @@ cat "$PROMPT_FILE"
     assert result.returncode == 0, result.stderr
     assert "PR number: #201" in result.stdout
     assert "Bump cryptography from 43.0.1 to 43.0.3" in result.stdout
+    assert "Dependabot body" not in result.stdout
+    assert "Do not include PR body text in this prompt." in result.stdout
     assert "pyproject.toml (+1 / -1)" in result.stdout
     assert "poetry.lock (+6 / -6)" in result.stdout
     assert "If no follow-up changes are needed, leave the branch unchanged." in result.stdout
