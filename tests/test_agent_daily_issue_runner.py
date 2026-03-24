@@ -199,6 +199,7 @@ main
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
+    assert "[20" in result.stdout
     assert "Skipped: no open issues found in project" in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
@@ -207,6 +208,19 @@ main
     assert "count-open-human-prs" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
+
+
+def test_runner_status_prefixes_lines_with_local_timestamp() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+runner_status "Skipped: no open issues found."
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: no open issues found." in result.stdout
+    assert result.stdout.startswith("[20")
 
 
 def test_main_bootstrap_does_not_prune_docker_system(tmp_path: Path) -> None:

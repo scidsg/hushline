@@ -98,6 +98,10 @@ parse_args() {
   done
 }
 
+runner_status() {
+  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$*"
+}
+
 initialize_run_state() {
   CHECK_LOG_FILE="$(mktemp)"
   PROMPT_FILE="$(mktemp)"
@@ -110,6 +114,7 @@ initialize_run_state() {
   # Preserve the original stdout for optional console-only transcript streaming.
   exec 3>&1
   exec > >(tee -a "$RUN_LOG_TMP_FILE") 2>&1
+  runner_status "Starting daily issue runner check."
   echo "Runner Codex config: model=$CODEX_MODEL reasoning_effort=$CODEX_REASONING_EFFORT verbose_codex_output=$VERBOSE_CODEX_OUTPUT"
 }
 
@@ -2095,7 +2100,7 @@ main() {
   fi
 
   if [[ -z "$ISSUE_NUMBER" ]]; then
-    echo "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
+    runner_status "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
     exit 0
   fi
 
@@ -2119,7 +2124,7 @@ main() {
   OPEN_HUMAN_PRS="$(count_open_human_prs)"
   echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
   if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-    echo "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+    runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
     exit 0
   fi
 
@@ -2129,7 +2134,7 @@ main() {
     OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-      echo "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
+      runner_status "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
       exit 0
     fi
     PR_BASE_BRANCH="$EPIC_BRANCH_NAME"
@@ -2143,7 +2148,7 @@ main() {
     OPEN_BOT_PRS="$(count_open_bot_prs)"
     echo "Open bot PR count: ${OPEN_BOT_PRS}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
-      echo "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
+      runner_status "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
       exit 0
     fi
   fi
