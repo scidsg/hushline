@@ -1,5 +1,5 @@
 const { defineConfig } = require("@playwright/test");
-const manifest = require("./docs/screenshots/scenes.json");
+const manifest = require("./tests/playwright/visual-scenes.json");
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://host.docker.internal:8080";
 const secureOrigin = new URL(baseURL).origin;
