@@ -200,16 +200,64 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function highlightMatch(text, query) {
-    return userSearch.highlightQuery(text || "", query);
+  function allTabSortValue(user) {
+    return user.display_name || user.primary_username || "";
   }
 
-  function sortedByDisplayName(entries) {
-    return [...entries].sort((a, b) =>
-      (a.display_name || "").localeCompare(b.display_name || "", undefined, {
-        sensitivity: "base",
-      }),
+  function compareAllTabSortStrings(a, b) {
+    if (a < b) {
+      return -1;
+    }
+
+    if (a > b) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  function allTabTransliteratedSortValue(user) {
+    return (
+      user.all_tab_sort_transliterated ??
+      allTabSortValue(user).normalize("NFKC").toLowerCase()
     );
+  }
+
+  function allTabNormalizedSortValue(user) {
+    return (
+      user.all_tab_sort_normalized || allTabSortValue(user).normalize("NFKC").toLowerCase()
+    );
+  }
+
+  function compareAllTabUsers(a, b) {
+    if (a.is_admin !== b.is_admin) {
+      return a.is_admin ? -1 : 1;
+    }
+
+    if (a.show_caution_badge !== b.show_caution_badge) {
+      return a.show_caution_badge ? 1 : -1;
+    }
+
+    const transliteratedResult = compareAllTabSortStrings(
+      allTabTransliteratedSortValue(a),
+      allTabTransliteratedSortValue(b),
+    );
+    if (transliteratedResult !== 0) {
+      return transliteratedResult;
+    }
+
+    return compareAllTabSortStrings(
+      allTabNormalizedSortValue(a),
+      allTabNormalizedSortValue(b),
+    );
+  }
+
+  function sortAllTabUsers(users) {
+    return [...users].sort(compareAllTabUsers);
+  }
+
+  function highlightMatch(text, query) {
+    return userSearch.highlightQuery(text || "", query);
   }
 
   function buildBadges(user, tab) {
@@ -259,6 +307,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (user.is_verified) {
       badgeContainer +=
         '<span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>';
+    }
+
+    if (user.show_caution_badge) {
+      badgeContainer +=
+        '<span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
     }
 
     if (tab === "all" && !user.has_pgp_key) {
@@ -376,7 +429,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
 
     if (tab === "all") {
-      appendSection(panel, "", sortedByDisplayName(users), query, tab);
+      appendSection(panel, "", sortAllTabUsers(users), query, tab);
       return;
     }
 

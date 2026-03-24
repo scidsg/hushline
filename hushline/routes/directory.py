@@ -30,7 +30,7 @@ from hushline.model.directory_listing_geography import (
     DirectoryListingGeography,
     build_directory_geography,
 )
-from hushline.routes.common import get_directory_usernames
+from hushline.routes.common import get_directory_usernames, show_directory_caution_badge
 
 _LEGACY_COUNTRY_NAME_BY_CODE = {
     "AU": "Australia",
@@ -245,6 +245,14 @@ def _is_self_reported_attorney(username: Username) -> bool:
     return getattr(username.user, "account_category", None) == AccountCategory.LAWYER.value
 
 
+def _show_directory_caution_badge(username: Username) -> bool:
+    return show_directory_caution_badge(
+        username.display_name or username.username,
+        is_admin=username.user.is_admin,
+        is_verified=username.is_verified,
+    )
+
+
 def _directory_user_row(username: Username) -> dict[str, object | None]:
     user = username.user
     geography = _username_geography(username)
@@ -257,6 +265,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "account_category_label": getattr(user, "account_category_label", None),
         "is_admin": user.is_admin,
         "is_verified": username.is_verified,
+        "show_caution_badge": _show_directory_caution_badge(username),
         "has_pgp_key": bool(user.pgp_key),
         "is_public_record": False,
         "is_globaleaks": False,
@@ -289,6 +298,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": True,
         "is_globaleaks": False,
@@ -321,6 +331,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
         "is_globaleaks": True,
@@ -353,6 +364,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
         "is_globaleaks": False,
@@ -374,11 +386,27 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
     }
 
 
-def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[str, str]:
-    display_name = str(entry.get("display_name") or "")
-    normalized_name = unicodedata.normalize("NFKC", display_name).strip()
-    transliterated_name = unidecode(normalized_name).casefold()
-    return transliterated_name, normalized_name.casefold()
+def _all_directory_entry_identity(entry: dict[str, object | None]) -> str:
+    return str(entry.get("display_name") or entry.get("primary_username") or "")
+
+
+def _all_directory_entry_sort_key(entry: dict[str, object | None]) -> tuple[bool, bool, str, str]:
+    is_admin = bool(entry.get("is_admin"))
+    show_caution_badge = bool(entry.get("show_caution_badge"))
+    sort_identity = _all_directory_entry_identity(entry)
+    normalized_identity = unicodedata.normalize("NFKC", sort_identity).strip()
+    transliterated_identity = unidecode(normalized_identity).casefold()
+    return not is_admin, show_caution_badge, transliterated_identity, normalized_identity.casefold()
+
+
+def _all_directory_entry_client_sort_fields(
+    entry: dict[str, object | None],
+) -> dict[str, str]:
+    _, _, transliterated_identity, normalized_identity = _all_directory_entry_sort_key(entry)
+    return {
+        "all_tab_sort_transliterated": transliterated_identity,
+        "all_tab_sort_normalized": normalized_identity,
+    }
 
 
 def register_directory_routes(app: Flask) -> None:
@@ -553,8 +581,14 @@ def register_directory_routes(app: Flask) -> None:
             else []
         )
         return [
-            *[_directory_user_row(username) for username in get_directory_usernames()],
-            *public_record_rows,
-            *globaleaks_rows,
-            *securedrop_rows,
+            {
+                **entry,
+                **_all_directory_entry_client_sort_fields(entry),
+            }
+            for entry in [
+                *[_directory_user_row(username) for username in get_directory_usernames()],
+                *public_record_rows,
+                *globaleaks_rows,
+                *securedrop_rows,
+            ]
         ]

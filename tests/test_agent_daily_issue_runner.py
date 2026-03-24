@@ -30,6 +30,30 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
+    tmp_path: Path,
+) -> None:
+    runner_script = shlex.quote(str(RUNNER_SCRIPT))
+
+    shell_script = f"""
+source {runner_script}
+TMPDIR={shlex.quote(str(tmp_path))}
+runner_script={runner_script}
+snapshot_metadata="$(prepare_runner_exec_snapshot "$runner_script" "$runner_script")"
+printf '%s\\n' "$snapshot_metadata"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    original_dir, snapshot_path = result.stdout.strip().split("\t")
+    snapshot_file = Path(snapshot_path)
+    assert Path(original_dir) == RUNNER_SCRIPT.parent
+    assert snapshot_file.exists()
+    assert snapshot_file.parent == tmp_path
+    assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
+
+
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -37,6 +61,7 @@ def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
 mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
@@ -88,6 +113,7 @@ def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
 mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
@@ -139,6 +165,7 @@ def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
 mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
@@ -265,6 +292,105 @@ build_epic_branch_name 1735
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "codex/epic-1735\n"
+
+
+def test_ensure_worktree_on_branch_checks_out_expected_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "symbolic-ref --quiet --short HEAD")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732  ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_worktree_on_branch codex/daily-issue-1732
+printf 'branch=%s\\n' "$CURRENT_BRANCH"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "branch=codex/daily-issue-1732" in result.stdout
+
+
+def test_ensure_head_commit_on_branch_moves_issue_branch_and_repairs_main() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+ISSUE_BRANCH_REF=old-issue-ref
+MAIN_BRANCH_REF=old-main-ref
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "rev-parse HEAD   ")
+      printf 'deadbeef\\n'
+      return 0
+      ;;
+    "branch -f codex/daily-issue-1732 deadbeef ")
+      ISSUE_BRANCH_REF=deadbeef
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732   ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+    "show-ref --verify --quiet refs/remotes/origin/main ")
+      return 0
+      ;;
+    "branch -f main origin/main ")
+      MAIN_BRANCH_REF=origin/main
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_head_commit_on_branch codex/daily-issue-1732 main
+printf 'current=%s\\nissue=%s\\nmain=%s\\n' "$CURRENT_BRANCH" "$ISSUE_BRANCH_REF" "$MAIN_BRANCH_REF"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "current=codex/daily-issue-1732" in result.stdout
+    assert "issue=deadbeef" in result.stdout
+    assert "main=origin/main" in result.stdout
+
+
+def test_require_branch_has_unique_commits_blocks_empty_pr_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "rev-list --count main..codex/daily-issue-1732" ]]; then
+    printf '0\\n'
+    return 0
+  fi
+  return 1
+}}
+set +e
+require_branch_has_unique_commits main codex/daily-issue-1732
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert (
+        "Blocked: branch 'codex/daily-issue-1732' has no commits ahead of 'main';" in result.stderr
+    )
 
 
 def test_resolve_issue_parent_epic_outputs_parent_metadata() -> None:
@@ -693,6 +819,111 @@ main
     assert calls.index("Mark issue #1558 as In Progress") < calls.index("runtime-bootstrap")
 
 
+def test_main_uses_fetched_origin_epic_ref_for_child_pr_uniqueness_check(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1732.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "fetch origin codex/epic-1735:refs/remotes/origin/codex/epic-1735  ")
+      return 0
+      ;;
+    "checkout -B codex/daily-issue-1732 origin/codex/epic-1735 ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1732\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+    "rev-list --count origin/codex/epic-1735..codex/daily-issue-1732  ")
+      printf '1\\n'
+      printf 'rev-list:%s\\n' \
+        "origin/codex/epic-1735..codex/daily-issue-1732" \
+        >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1732\\n'; }}
+resolve_issue_parent_epic() {{
+  printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+find_open_pr_for_head_branch() {{ :; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{
+  [[ "$1" == "codex/epic-1735" ]]
+}}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1732 Title\\n'
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1732" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1732\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2001\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "rev-list:origin/codex/epic-1735..codex/daily-issue-1732" in calls
+    assert "push:codex/daily-issue-1732" in calls
+
+
 def test_write_pr_body_for_child_issue_references_epic_and_closes_child_issue(
     tmp_path: Path,
 ) -> None:
@@ -760,14 +991,25 @@ run_step() {{
   shift
   "$@"
 }}
-git() {{
-  case "${{1-}} ${{2-}} ${{3-}}" in
-    "diff --cached --quiet")
-      return 1
-      ;;
-  esac
-  return 0
-}}
+    git() {{
+      case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+        "symbolic-ref --quiet --short HEAD ")
+          printf 'codex/daily-issue-1558\\n'
+          return 0
+          ;;
+        "rev-list --count main..codex/daily-issue-1558  ")
+          printf '1\\n'
+          return 0
+          ;;
+        "diff --cached --quiet  ")
+          return 1
+          ;;
+        "checkout codex/daily-issue-1558   ")
+          return 0
+          ;;
+      esac
+      return 0
+    }}
 docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
@@ -783,6 +1025,7 @@ kill_processes_on_ports() {{ :; }}
 remote_branch_exists() {{ return 1; }}
 build_issue_prompt() {{ :; }}
 run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
 persist_run_log() {{
   RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
   printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
@@ -1537,7 +1780,7 @@ source {shlex.quote(str(RUNNER_SCRIPT))}
 MAX_ISSUE_ATTEMPTS=3
 build_issue_prompt() {{ :; }}
 run_codex_from_prompt() {{ :; }}
-has_changes() {{ return 1; }}
+has_non_log_changes() {{ return 1; }}
 run_fix_attempt_loop() {{ return 0; }}
 set +e
 run_issue_attempt_loop 1558 "Title" "Body" "" "branch"
@@ -1551,6 +1794,163 @@ printf 'rc=%s\\n' "$rc"
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
     assert "Codex produced no usable changes for issue #1558 after 3 attempt(s)." in result.stderr
+
+
+def test_issue_attempt_loop_retries_when_post_fix_changes_collapse_to_log_only(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_ISSUE_ATTEMPTS=3
+build_issue_prompt() {{
+  printf 'prompt\\n' >> {shlex.quote(str(call_log))}
+}}
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+}}
+has_non_log_changes() {{
+  HAS_NON_LOG_CALL_COUNT="${{HAS_NON_LOG_CALL_COUNT:-0}}"
+  HAS_NON_LOG_CALL_COUNT=$((HAS_NON_LOG_CALL_COUNT + 1))
+  printf 'has:%s\\n' "$HAS_NON_LOG_CALL_COUNT" >> {shlex.quote(str(call_log))}
+  case "$HAS_NON_LOG_CALL_COUNT" in
+    1|3|4) return 0 ;;
+    *) return 1 ;;
+  esac
+}}
+run_fix_attempt_loop() {{
+  printf 'fix\\n' >> {shlex.quote(str(call_log))}
+  return 0
+}}
+set +e
+run_issue_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "==> Codex issue attempt 1" in result.stdout
+    assert "==> Codex issue attempt 2" in result.stdout
+    assert "rc=0" in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls.count("codex") == 2
+    assert calls.count("fix") == 2
+    assert calls.count("prompt") == 1
+
+
+def test_has_non_log_changes_ignores_preexisting_branch_commits() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BASE_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "diff --name-only main...HEAD ")
+      printf 'hushline/routes/directory.py\\n'
+      return 0
+      ;;
+    "diff --name-only  ")
+      return 0
+      ;;
+    "diff --cached --name-only ")
+      return 0
+      ;;
+    "ls-files --others --exclude-standard")
+      return 0
+      ;;
+  esac
+  return 0
+}}
+set +e
+has_non_log_changes
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+
+
+def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  shift
+  "$@"
+}}
+git() {{ return 0; }}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 1; }}
+persist_run_log() {{
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'pr-create\\n' >> {shlex.quote(str(call_log))}
+    return 0
+  fi
+  return 0
+}}
+set +e
+( main )
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "Blocked: no usable non-log changes remain for issue #1558 after" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
+    assert not any(line == "pr-create" for line in calls)
+    assert not any(line.startswith("persist:") for line in calls)
 
 
 def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:

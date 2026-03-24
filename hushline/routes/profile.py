@@ -32,6 +32,7 @@ from hushline.routes.common import (
     do_send_email,
     format_full_message_email_body,
     format_message_email_fields,
+    show_directory_caution_badge,
     validate_captcha,
 )
 from hushline.routes.forms import DynamicMessageForm
@@ -113,6 +114,11 @@ def register_profile_routes(app: Flask) -> None:
                 username=uname,
                 field_data=dynamic_form.field_data(),
                 display_name_or_username=uname.display_name or uname.username,
+                show_caution_badge=show_directory_caution_badge(
+                    uname.display_name or uname.username,
+                    is_admin=uname.user.is_admin,
+                    is_verified=uname.is_verified,
+                ),
                 current_user_id=session.get("user_id"),
                 public_key=uname.user.pgp_key,
                 math_problem=math_problem,

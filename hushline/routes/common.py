@@ -35,6 +35,23 @@ def _dir_sort_key(u: Username) -> str:
     return s.casefold()
 
 
+def normalized_directory_display_name(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (value or "").casefold())
+
+
+def show_directory_caution_badge(
+    display_name: str | None, *, is_admin: bool, is_verified: bool
+) -> bool:
+    if is_admin or is_verified:
+        return False
+
+    normalized_display_name = normalized_directory_display_name(display_name)
+    if not normalized_display_name:
+        return False
+
+    return normalized_display_name == "admin" or "hushline" in normalized_display_name
+
+
 def get_directory_usernames() -> Sequence[Username]:
     rows = list(
         db.session.scalars(

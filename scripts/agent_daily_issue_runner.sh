@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+prepare_runner_exec_snapshot() {
+  local runner_script_path="${1:-${BASH_SOURCE[0]}}"
+  local runner_argv0="${2:-$0}"
+  local original_script_dir original_script_path snapshot_file
+
+  if [[ "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_ACTIVE:-0}" == "1" ]]; then
+    return 1
+  fi
+
+  if [[ "$runner_script_path" != "$runner_argv0" ]]; then
+    return 1
+  fi
+
+  original_script_dir="$(CDPATH= cd -- "$(dirname -- "$runner_script_path")" && pwd)"
+  original_script_path="$original_script_dir/$(basename -- "$runner_script_path")"
+  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX.sh")"
+  cp "$original_script_path" "$snapshot_file"
+  chmod 700 "$snapshot_file"
+  printf '%s\t%s\n' "$original_script_dir" "$snapshot_file"
+}
+
+if SNAPSHOT_METADATA="$(prepare_runner_exec_snapshot "${BASH_SOURCE[0]}" "$0")"; then
+  IFS=$'\t' read -r HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH <<< "$SNAPSHOT_METADATA"
+  export HUSHLINE_DAILY_RUNNER_SNAPSHOT_ACTIVE=1
+  export HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR
+  export HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH
+  exec bash "$HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH" "$@"
+fi
+
 FORCE_ISSUE_NUMBER=""
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${HUSHLINE_DAILY_RUNNER_ORIGINAL_SCRIPT_DIR:-$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
 DEFAULT_REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 
 REPO_DIR="${HUSHLINE_REPO_DIR:-$DEFAULT_REPO_DIR}"
@@ -86,6 +115,7 @@ initialize_run_state() {
 
 cleanup() {
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
+  rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
   if [[ -d "$REPO_DIR/.git" ]]; then
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
@@ -408,6 +438,94 @@ lint_failure_looks_auto_fixable() {
 remote_branch_exists() {
   local branch="$1"
   git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1
+}
+
+current_branch_name() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null
+}
+
+ensure_worktree_on_branch() {
+  local expected_branch="$1"
+  local current_branch=""
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  if [[ -z "$current_branch" ]]; then
+    current_branch="DETACHED"
+  fi
+
+  echo "Self-heal: current branch is '$current_branch'; checking out '$expected_branch' before committing."
+  if git checkout "$expected_branch"; then
+    current_branch="$(current_branch_name || true)"
+    [[ "$current_branch" == "$expected_branch" ]] && return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: expected to commit on branch '$expected_branch', but recovery from '$current_branch' failed." >&2
+  return 1
+}
+
+ensure_head_commit_on_branch() {
+  local expected_branch="$1"
+  local base_branch="$2"
+  local current_branch=""
+  local head_commit=""
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  head_commit="$(git rev-parse HEAD)"
+  if [[ -z "$current_branch" ]]; then
+    current_branch="DETACHED"
+  fi
+
+  echo "Self-heal: HEAD is on '$current_branch'; moving '$expected_branch' to commit $head_commit."
+  git branch -f "$expected_branch" "$head_commit"
+  git checkout "$expected_branch"
+
+  if [[ "$current_branch" == "$base_branch" ]]; then
+    if git show-ref --verify --quiet "refs/remotes/origin/$base_branch"; then
+      echo "Self-heal: restoring '$base_branch' to origin/$base_branch after branch drift."
+      git branch -f "$base_branch" "origin/$base_branch"
+    fi
+  fi
+
+  current_branch="$(current_branch_name || true)"
+  if [[ "$current_branch" == "$expected_branch" ]]; then
+    return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: expected committed work on branch '$expected_branch', but recovery from '$current_branch' failed." >&2
+  return 1
+}
+
+branch_has_unique_commits() {
+  local base_ref="$1"
+  local branch_ref="$2"
+  local ahead_count=""
+
+  ahead_count="$(git rev-list --count "${base_ref}..${branch_ref}")"
+  [[ "$ahead_count" =~ ^[0-9]+$ ]] || return 1
+  (( ahead_count > 0 ))
+}
+
+require_branch_has_unique_commits() {
+  local base_ref="$1"
+  local branch_ref="$2"
+
+  if branch_has_unique_commits "$base_ref" "$branch_ref"; then
+    return 0
+  fi
+
+  printf '%s\n' \
+    "Blocked: branch '$branch_ref' has no commits ahead of '$base_ref'; refusing to create or update a PR." >&2
+  return 1
 }
 
 push_branch_for_pr() {
@@ -1573,6 +1691,23 @@ has_changes() {
   [[ -n "$(git status --porcelain)" ]]
 }
 
+list_non_log_worktree_files() {
+  {
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | awk 'NF && !seen[$0]++'
+}
+
+list_non_log_changed_files() {
+  list_non_log_worktree_files \
+    | awk '!/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/'
+}
+
+has_non_log_changes() {
+  [[ -n "$(list_non_log_changed_files)" ]]
+}
+
 current_change_summary() {
   {
     echo "Current git status:"
@@ -1891,8 +2026,8 @@ run_issue_attempt_loop() {
     echo "==> Codex issue attempt $issue_attempt"
     run_codex_from_prompt
 
-    if ! has_changes; then
-      echo "Codex produced no changes for issue #$issue_number; retrying."
+    if ! has_non_log_changes; then
+      echo "Codex produced no usable non-log changes for issue #$issue_number; retrying."
       issue_attempt=$((issue_attempt + 1))
       continue
     fi
@@ -1901,7 +2036,7 @@ run_issue_attempt_loop() {
       return 1
     fi
 
-    if has_changes; then
+    if has_non_log_changes; then
       return 0
     fi
 
@@ -1977,6 +2112,7 @@ main() {
 
   BRANCH_NAME="$(build_branch_name "$ISSUE_NUMBER")"
   PR_BASE_BRANCH="$BASE_BRANCH"
+  PR_BASE_REF="$BASE_BRANCH"
   EXISTING_EPIC_PR_JSON=""
   EXISTING_CHILD_PR_JSON=""
 
@@ -2041,6 +2177,7 @@ main() {
       push_branch_for_pr "$EPIC_BRANCH_NAME"
       EPIC_BRANCH_START_REF="$EPIC_BRANCH_NAME"
     fi
+    PR_BASE_REF="$EPIC_BRANCH_START_REF"
   fi
 
   if remote_branch_exists "$BRANCH_NAME"; then
@@ -2054,8 +2191,14 @@ main() {
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
 
+  if ! has_non_log_changes; then
+    echo "Blocked: no usable non-log changes remain for issue #$ISSUE_NUMBER after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+    exit 1
+  fi
+
   persist_run_log "$ISSUE_NUMBER"
 
+  ensure_worktree_on_branch "$BRANCH_NAME"
   git add -A
   if git diff --cached --quiet; then
     echo "Blocked: no changes staged for issue #$ISSUE_NUMBER." >&2
@@ -2068,9 +2211,13 @@ main() {
   fi
   git commit -m "$COMMIT_MESSAGE"
 
+  ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
+  require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
   # Keep branch update simple while preventing blind overwrite.
   push_branch_for_pr "$BRANCH_NAME"
 
+  ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
+  require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
   write_pr_body \
     "$ISSUE_NUMBER" \
     "$ISSUE_TITLE" \

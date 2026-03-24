@@ -60,6 +60,58 @@ def test_profile_accepts_case_insensitive_username(
     assert user_alias.username in response.text
 
 
+def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    caution_badge = soup.select_one(
+        'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+    )
+    assert caution_badge is not None
+    trigger = soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
+    assert trigger is not None
+    assert trigger.get_text(strip=True) == "What's this?"
+    tooltip = soup.select_one("span#caution-badge-info[role='tooltip']")
+    assert tooltip is not None
+    assert (
+        tooltip.get_text(strip=True)
+        == "This display name may be mistaken for an official Hush Line admin account."
+    )
+
+
+def test_profile_shows_caution_badge_for_suspicious_username_when_display_name_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.username = "admin"
+    user.primary_username.display_name = None
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert (
+        soup.select_one(
+            'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is not None
+    )
+    assert (
+        soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
+        is not None
+    )
+
+
 def test_profile_404_for_unknown_username(client: FlaskClient) -> None:
     response = client.get(url_for("profile", username="does-not-exist"), follow_redirects=True)
     assert response.status_code == 404

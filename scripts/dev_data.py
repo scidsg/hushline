@@ -27,8 +27,8 @@ def main() -> None:
         create_localstack_buckets()
 
 
-def create_users() -> None:
-    users = [
+def default_users() -> list[dict[str, object]]:
+    return [
         {
             "username": "admin",
             "password": "Test-testtesttesttest-1",
@@ -268,7 +268,23 @@ def create_users() -> None:
             ),
             "pgp_key": PGP_KEY,
         },
+        {
+            "username": "georgecostanzakr",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": False,
+            "onboarding_complete": True,
+            "display_name": "조지 코스탄자",
+            "bio": (
+                "부모님 집에 살고 있지만 늘 큰 계획을 세우는 조지 코스탄자입니다. "
+                "수축 현상, 밀수된 초콜릿 바, 그리고 수상한 거래에 대한 제보를 보내 주세요."
+            ),
+        },
     ]
+
+
+def create_users() -> None:
+    users = default_users()
     users = apply_user_overrides(users)
 
     MAX_EXTRA_FIELDS = 4

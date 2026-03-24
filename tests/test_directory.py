@@ -209,12 +209,12 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
     assert banner is not None
     banner_link = banner.select_one("a")
     assert banner_link is not None
-    assert banner_link.text.strip() == "Hush Line admin"
+    assert banner_link.text.strip() == "Request a correction"
     assert banner_link.get("href") == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "This list contains automated entries." in banner_text
-    assert "Contact the Hush Line admin for any corrections." in banner_text
+    assert "Request a correction" in banner_text
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
@@ -303,6 +303,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
+    assert admin_row["show_caution_badge"] is False
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False
     assert admin_row["is_securedrop"] is False
@@ -312,6 +313,114 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["subdivision_code"] is None
     assert admin_row["countries"] == []
     assert admin_row["directory_section"] is None
+
+
+@pytest.mark.parametrize(
+    "display_name",
+    [
+        "admin",
+        "Admin",
+        "hushline",
+        "Hush Line",
+        "hush line admin",
+        "admin of hush line",
+        "The Hush-Line Admin",
+    ],
+)
+def test_directory_users_json_flags_suspicious_non_verified_non_admin_display_names_for_caution(
+    client: FlaskClient, user: User, display_name: str
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = display_name
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["show_caution_badge"] is True
+
+
+def test_directory_users_json_does_not_flag_verified_or_admin_suspicious_display_names(
+    client: FlaskClient, user: User, admin_user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.is_verified = True
+
+    admin_user.primary_username.show_in_directory = True
+    admin_user.primary_username.display_name = "admin"
+    admin_user.primary_username.is_verified = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    verified_row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    admin_row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == admin_user.primary_username.username
+    )
+    assert verified_row["show_caution_badge"] is False
+    assert admin_row["show_caution_badge"] is False
+
+
+def test_directory_users_json_flags_suspicious_username_when_display_name_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.username = "admin"
+    user.primary_username.display_name = None
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["display_name"] == "admin"
+    assert row["show_caution_badge"] is True
+
+
+def test_directory_users_json_includes_unverified_info_only_korean_account(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = "조지 코스탄자"
+    user.primary_username.bio = "수축 현상 제보를 보내 주세요."
+    user.primary_username.is_verified = False
+    user.pgp_key = None
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["display_name"] == "조지 코스탄자"
+    assert row["is_verified"] is False
+    assert row["show_caution_badge"] is False
+    assert row["has_pgp_key"] is False
+    assert row["message_capable"] is False
 
 
 def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:
@@ -1514,10 +1623,17 @@ def test_securedrop_listing_keeps_multi_country_scope_without_forcing_primary_co
     assert listing.location == "All countries, United States"
 
 
-def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
+def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Zulu Admin",
+            bio="admin bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
         SimpleNamespace(
             username="zulu",
             display_name="Zulu User",
@@ -1640,6 +1756,7 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
         heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
     ]
     assert all_titles == [
+        "Zulu Admin",
         "Alpha Public Listing",
         "Bravo Info",
         "Charlie SecureDrop",
@@ -1653,7 +1770,439 @@ def test_directory_all_tab_is_homogeneous_alpha_order_with_info_only_badge(
         if card.select_one("h3") and card.select_one("h3").get_text(" ", strip=True) == "Bravo Info"
     )
     assert info_only_card.select_one('span.badge[aria-label="Info-only account"]') is not None
+    admin_card = _find_directory_card(all_panel, "Zulu Admin")
+    assert admin_card.select_one('span.badge[aria-label="Administrator account"]') is not None
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
+
+
+def test_directory_all_tab_does_not_promote_non_admin_named_admin(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="pippo321",
+            display_name="admin",
+            bio="info only",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key=""),
+        ),
+        SimpleNamespace(
+            username="4allmn",
+            display_name="4allmn",
+            bio="four all",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="5a8er",
+            display_name="5a8er",
+            bio="five a8er",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "4allmn",
+        "5a8er",
+        "admin",
+    ]
+
+    spoof_card = _find_directory_card(all_panel, "admin")
+    assert (
+        spoof_card.select_one(
+            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is not None
+    )
+    official_admin_card = _find_directory_card(all_panel, "Hush Line Admin")
+    assert (
+        official_admin_card.select_one(
+            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is None
+    )
+
+
+def test_directory_all_tab_moves_caution_accounts_to_bottom(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="spoof",
+            display_name="Admin of Hush Line",
+            bio="spoof bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="zulu",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "Zulu Witness",
+        "Admin of Hush Line",
+    ]
+
+
+def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="zz-top",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+    mocked_public_records = (
+        SimpleNamespace(
+            id="public-bravo",
+            slug="public-bravo",
+            name="Bravo Listing",
+            website="https://bravo.example",
+            description="bravo description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision=None,
+                subdivision_code=None,
+                countries=("United States",),
+                location="Global",
+            ),
+            location="Global",
+            practice_tags=("Law",),
+            source_label="Public records",
+            source_url="https://records.example/bravo",
+            directory_section="public_record",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: mocked_public_records,
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "Bravo Listing",
+        "Zulu Witness",
+    ]
+
+
+def test_directory_all_tab_preserves_transliterated_display_name_order(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="official admin",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="piecepeace",
+            display_name="피스피스스튜디오 주식회사",
+            bio="hangul bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="zulu",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_panel = soup.find(id="all")
+    assert all_panel is not None
+
+    all_titles = [
+        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
+    ]
+    assert all_titles == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "피스피스스튜디오 주식회사",
+        "Zulu Witness",
+    ]
+
+
+def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="user-zulu",
+            display_name="Zulu User",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="admin",
+            display_name="Zulu Admin",
+            bio="admin bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+    )
+    mocked_public_records = (
+        SimpleNamespace(
+            id="public-alpha",
+            slug="public-alpha",
+            name="Alpha Public Listing",
+            website="https://alpha.example",
+            description="alpha description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision="California",
+                subdivision_code="CA",
+                countries=("United States",),
+                location="Global",
+            ),
+            location="Global",
+            practice_tags=("Law",),
+            source_label="Public records",
+            source_url="https://records.example/alpha",
+            directory_section="public_record",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: mocked_public_records,
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    display_names = [row["display_name"] for row in response.json or []]
+    assert display_names == ["Zulu User", "Zulu Admin", "Alpha Public Listing"]
+
+
+def test_directory_users_json_exposes_all_tab_sort_fields_for_transliterated_order(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="zulu",
+            display_name="Zulu Witness",
+            bio="zulu bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="piecepeace",
+            display_name="피스피스스튜디오 주식회사",
+            bio="hangul bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="alpha",
+            display_name="Alpha Witness",
+            bio="alpha bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+        SimpleNamespace(
+            username="admin",
+            display_name="Hush Line Admin",
+            bio="admin bio",
+            is_verified=True,
+            user=SimpleNamespace(is_admin=True, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    rows = response.json or []
+    assert all("all_tab_sort_transliterated" in row for row in rows)
+    assert all("all_tab_sort_normalized" in row for row in rows)
+    assert all("show_caution_badge" in row for row in rows)
+
+    sorted_display_names = [
+        row["display_name"]
+        for row in sorted(
+            rows,
+            key=lambda row: (
+                not bool(row["is_admin"]),
+                bool(row["show_caution_badge"]),
+                cast(str, row["all_tab_sort_transliterated"]),
+                cast(str, row["all_tab_sort_normalized"]),
+            ),
+        )
+    ]
+    assert sorted_display_names == [
+        "Hush Line Admin",
+        "Alpha Witness",
+        "피스피스스튜디오 주식회사",
+        "Zulu Witness",
+    ]
+
+
+def test_directory_users_json_preserves_empty_transliterated_sort_keys(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        SimpleNamespace(
+            username="emoji-only",
+            display_name="😀😀",
+            bio="emoji bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    rows = response.json or []
+    assert len(rows) == 1
+    assert rows[0]["display_name"] == "😀😀"
+    assert rows[0]["all_tab_sort_transliterated"] == ""
 
 
 def test_public_record_seed_regions_have_coverage() -> None:
