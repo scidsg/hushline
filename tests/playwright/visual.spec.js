@@ -185,6 +185,20 @@ async function renderInboxState(page, messageCount) {
   }, messageCount);
 }
 
+async function stabilizeDynamicScreenshotContent(page) {
+  await page.evaluate(() => {
+    const captchaLabel = document.querySelector("label[for='captcha_answer']");
+    if (captchaLabel instanceof HTMLElement) {
+      captchaLabel.textContent = "4 + 2 =";
+    }
+
+    const captchaInput = document.querySelector("#captcha_answer");
+    if (captchaInput instanceof HTMLElement) {
+      captchaInput.setAttribute("aria-label", "Solve 4 + 2 = to submit your message");
+    }
+  });
+}
+
 async function runAction(page, action) {
   switch (action.type) {
     case "wait_for":
@@ -277,6 +291,8 @@ async function prepareScene(page, scene, theme, baseURL) {
   for (const action of scene.actions || []) {
     await runAction(page, action);
   }
+
+  await stabilizeDynamicScreenshotContent(page);
 
   await page.addStyleTag({
     content: `
