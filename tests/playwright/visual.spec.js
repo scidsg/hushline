@@ -4,22 +4,16 @@ const path = require("node:path");
 const { test, expect } = require("@playwright/test");
 
 const manifest = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "..", "..", "docs", "screenshots", "scenes.json"), "utf8"),
+  fs.readFileSync(path.join(__dirname, "visual-scenes.json"), "utf8"),
 );
 
-const VISUAL_SCENE_SLUGS = [
-  "guest-directory-verified",
-  "guest-directory-securedrop",
-  "guest-directory-globaleaks",
-  "guest-profile-artvandelay",
-];
-
-const THEMES = [
-  { name: "light", iso: "2026-03-23T10:00:00Z" },
-  { name: "dark", iso: "2026-03-23T22:00:00Z" },
-];
+const THEMES = (manifest.themes || ["light", "dark"]).map((name) => ({
+  name,
+  iso: name === "dark" ? "2026-03-23T22:00:00Z" : "2026-03-23T10:00:00Z",
+}));
 
 const scenesBySlug = new Map(manifest.scenes.map((scene) => [scene.slug, scene]));
+const sessions = manifest.sessions || {};
 const viewportProjectNames = new Set(manifest.viewports.map((viewport) => viewport.id));
 const GOTO_RETRY_ATTEMPTS = 15;
 const GOTO_RETRY_DELAY_MS = 2000;
@@ -33,30 +27,33 @@ function getScene(slug) {
 }
 
 async function addStabilityHooks(page, iso) {
-  await page.addInitScript(({ isoString }) => {
-    const fixedDate = new Date(isoString);
-    const RealDate = Date;
+  await page.addInitScript(
+    ({ isoString }) => {
+      const fixedDate = new Date(isoString);
+      const RealDate = Date;
 
-    class MockDate extends RealDate {
-      constructor(...args) {
-        if (args.length === 0) {
-          super(fixedDate.getTime());
-          return;
+      class MockDate extends RealDate {
+        constructor(...args) {
+          if (args.length === 0) {
+            super(fixedDate.getTime());
+            return;
+          }
+          super(...args);
         }
-        super(...args);
+
+        static now() {
+          return fixedDate.getTime();
+        }
       }
 
-      static now() {
-        return fixedDate.getTime();
-      }
-    }
+      MockDate.parse = RealDate.parse;
+      MockDate.UTC = RealDate.UTC;
+      window.Date = MockDate;
 
-    MockDate.parse = RealDate.parse;
-    MockDate.UTC = RealDate.UTC;
-    window.Date = MockDate;
-
-    localStorage.setItem("hasFinishedGuidance", "true");
-  }, { isoString: iso });
+      localStorage.setItem("hasFinishedGuidance", "true");
+    },
+    { isoString: iso },
+  );
 }
 
 function isRetryableNavigationError(error) {
@@ -86,21 +83,138 @@ async function gotoWithRetries(page, target) {
   throw lastError;
 }
 
+async function login(context, baseURL, sessionConfig) {
+  if (!sessionConfig || !sessionConfig.username) {
+    throw new Error("Authenticated visual scene is missing a valid session config.");
+  }
+
+  const password =
+    (sessionConfig.passwordEnv ? process.env[sessionConfig.passwordEnv] : "") ||
+    sessionConfig.password ||
+    "";
+  if (!password) {
+    throw new Error(`No password configured for visual session ${sessionConfig.username}.`);
+  }
+
+  await context.clearCookies();
+  const loginPage = await context.newPage();
+  await gotoWithRetries(loginPage, baseURL);
+  await loginPage.evaluate(() => {
+    localStorage.setItem("hasFinishedGuidance", "true");
+  });
+  await gotoWithRetries(loginPage, "/login");
+  await loginPage.fill("#username", sessionConfig.username);
+  await loginPage.fill("#password", password);
+  await Promise.all([
+    loginPage.waitForLoadState("networkidle"),
+    loginPage.click("button[type='submit']"),
+  ]);
+
+  if (loginPage.url().includes("/login")) {
+    throw new Error(`Login failed for user ${sessionConfig.username}.`);
+  }
+
+  await loginPage.close();
+}
+
+async function submitForm(page, selector) {
+  const form = page.locator(selector).first();
+  const submitter = form.locator("button[type='submit'], input[type='submit']").first();
+  if ((await submitter.count()) > 0 && (await submitter.isVisible())) {
+    await submitter.click();
+    return;
+  }
+
+  await form.evaluate((element) => {
+    if (element instanceof HTMLFormElement && typeof element.requestSubmit === "function") {
+      element.requestSubmit();
+      return;
+    }
+    HTMLFormElement.prototype.submit.call(element);
+  });
+}
+
+async function renderInboxState(page, messageCount) {
+  await page.evaluate((targetCount) => {
+    const messageList = document.querySelector(".message-list");
+    if (!(messageList instanceof HTMLElement)) {
+      throw new Error("Inbox message list not found.");
+    }
+
+    const badgeEls = Array.from(document.querySelectorAll(".inbox-tabs .badge"));
+    const cards = Array.from(messageList.querySelectorAll("article.message"));
+
+    if (targetCount <= 0) {
+      badgeEls.forEach((badge) => {
+        badge.textContent = "0";
+      });
+      messageList.innerHTML = `
+        <div class="emptyState">
+          <img class="empty" src="/static/img/empty.png" alt="Empty Inbox" />
+          <h1>Nothing to see here...</h1>
+          <p>No messages yet.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (cards.length === 0) {
+      throw new Error("Cannot synthesize inbox message cards from an empty inbox.");
+    }
+
+    while (cards.length > targetCount) {
+      const card = cards.pop();
+      card?.remove();
+    }
+
+    const templates = Array.from(messageList.querySelectorAll("article.message"));
+    let cloneIndex = 0;
+    while (messageList.querySelectorAll("article.message").length < targetCount) {
+      const template = templates[cloneIndex % templates.length];
+      const clone = template.cloneNode(true);
+      if (!(clone instanceof HTMLElement)) {
+        throw new Error("Inbox card clone failed.");
+      }
+      messageList.appendChild(clone);
+      cloneIndex += 1;
+    }
+
+    if (badgeEls.length > 0) {
+      badgeEls[0].textContent = String(targetCount);
+    }
+  }, messageCount);
+}
+
 async function runAction(page, action) {
   switch (action.type) {
     case "wait_for":
       await page.waitForSelector(action.selector);
       return;
-    case "click":
+    case "click": {
+      let dialogPromise = null;
+      if (action.acceptDialog === true) {
+        dialogPromise = page.waitForEvent("dialog").then((dialog) => dialog.accept());
+      }
       await page.click(action.selector);
+      if (dialogPromise) {
+        await dialogPromise;
+      }
       if (action.waitForNetworkIdle) {
         await page.waitForLoadState("networkidle");
       }
       return;
+    }
     case "click_if_exists": {
       const locator = page.locator(action.selector).first();
       if ((await locator.count()) > 0 && (await locator.isVisible())) {
+        let dialogPromise = null;
+        if (action.acceptDialog === true) {
+          dialogPromise = page.waitForEvent("dialog").then((dialog) => dialog.accept());
+        }
         await locator.click();
+        if (dialogPromise) {
+          await dialogPromise;
+        }
         if (action.waitForNetworkIdle) {
           await page.waitForLoadState("networkidle");
         }
@@ -117,6 +231,9 @@ async function runAction(page, action) {
       }
       return;
     }
+    case "select_option":
+      await page.selectOption(action.selector, action.value || "");
+      return;
     case "sleep":
       await page.waitForTimeout(action.ms || 200);
       return;
@@ -130,35 +247,27 @@ async function runAction(page, action) {
       return;
     }
     case "submit_form":
-      {
-        const form = page.locator(action.selector);
-        const submitter = form
-          .locator("button[type='submit'], input[type='submit']")
-          .first();
-        if ((await submitter.count()) > 0 && (await submitter.isVisible())) {
-          await submitter.click();
-        } else {
-          await form.evaluate((element) => {
-            if (element instanceof HTMLFormElement && typeof element.requestSubmit === "function") {
-              element.requestSubmit();
-              return;
-            }
-            HTMLFormElement.prototype.submit.call(element);
-          });
-        }
-      }
+      await submitForm(page, action.selector);
       if (action.waitForNetworkIdle) {
         await page.waitForLoadState("networkidle");
       }
+      return;
+    case "render_inbox_state":
+      await renderInboxState(page, Number(action.messageCount || 0));
       return;
     default:
       throw new Error(`Unsupported manifest action type in Playwright visual test: ${action.type}`);
   }
 }
 
-async function prepareScene(page, scene, theme) {
+async function prepareScene(page, scene, theme, baseURL) {
   await addStabilityHooks(page, theme.iso);
   await page.emulateMedia({ colorScheme: theme.name });
+
+  if (scene.session && scene.session !== "guest") {
+    await login(page.context(), baseURL, sessions[scene.session]);
+  }
+
   await gotoWithRetries(page, scene.path);
 
   if (scene.waitForSelector) {
@@ -188,20 +297,21 @@ async function prepareScene(page, scene, theme) {
   await page.waitForLoadState("networkidle");
 }
 
-for (const slug of VISUAL_SCENE_SLUGS) {
-  const scene = getScene(slug);
+for (const sceneConfig of manifest.scenes) {
+  const scene = getScene(sceneConfig.slug);
 
   for (const theme of THEMES) {
-    test(`${scene.slug} (${theme.name}) matches the visual baseline`, async ({ page }, testInfo) => {
+    test(`${scene.slug} (${theme.name}) matches the visual baseline`, async ({ page, baseURL }, testInfo) => {
       if (!viewportProjectNames.has(testInfo.project.name)) {
         test.skip(true, `Unexpected viewport project: ${testInfo.project.name}`);
       }
 
-      await prepareScene(page, scene, theme);
+      await prepareScene(page, scene, theme, baseURL);
 
       await expect(page).toHaveScreenshot(`${scene.slug}-${theme.name}.png`, {
         animations: "disabled",
         caret: "hide",
+        fullPage: scene.fullPage === true,
         mask: [page.locator("footer")],
       });
     });
