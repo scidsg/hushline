@@ -199,6 +199,16 @@ async function stabilizeDynamicScreenshotContent(page) {
   });
 }
 
+async function removeFooterFromScreenshot(page) {
+  await page.evaluate(() => {
+    for (const footer of document.querySelectorAll("footer")) {
+      if (footer instanceof HTMLElement) {
+        footer.remove();
+      }
+    }
+  });
+}
+
 async function runAction(page, action) {
   switch (action.type) {
     case "wait_for":
@@ -293,6 +303,7 @@ async function prepareScene(page, scene, theme, baseURL) {
   }
 
   await stabilizeDynamicScreenshotContent(page);
+  await removeFooterFromScreenshot(page);
 
   await page.addStyleTag({
     content: `
@@ -328,7 +339,6 @@ for (const sceneConfig of manifest.scenes) {
         animations: "disabled",
         caret: "hide",
         fullPage: scene.fullPage === true,
-        mask: [page.locator("footer")],
       });
     });
   }
