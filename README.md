@@ -85,8 +85,6 @@ Quick summary:
 - Ownership mode is tracked (`human-first` vs `ai-first`) with a quarterly operating target of roughly 70/30.
 - Approved coding model policy is defined in [`AGENTS.md`](./AGENTS.md). As of 2026-02-13, the minimum approved coding model is `gpt-5.4 high`.
 
-Policy discussion thread: <https://github.com/orgs/scidsg/discussions/1313>
-
 ## Contributor Checklist
 
 Before opening a PR:
