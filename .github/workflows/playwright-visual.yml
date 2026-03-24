@@ -88,6 +88,9 @@ jobs:
           done
 
       - name: Run Playwright visual regression
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
+          PLAYWRIGHT_DOCKER_ARGS: --network host --ipc=host
         run: make playwright-visual
 
       - name: Upload Playwright report

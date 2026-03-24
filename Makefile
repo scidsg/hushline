@@ -10,6 +10,7 @@ RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
 PLAYWRIGHT_BASE_URL ?= http://host.docker.internal:8080
 PLAYWRIGHT_DOCKER_IMAGE ?= mcr.microsoft.com/playwright:v1.55.1-noble
+PLAYWRIGHT_DOCKER_ARGS ?= --add-host=host.docker.internal:host-gateway --ipc=host
 REFRESH_PUBLIC_RECORD_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_ARGS ?=
 REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-quarterly-refresh.md
@@ -298,8 +299,7 @@ lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check 
 .PHONY: playwright-visual
 playwright-visual: runner-wait-for-app ## Run Playwright visual regression checks (CI-equivalent)
 	docker run --rm \
-		--add-host=host.docker.internal:host-gateway \
-		--ipc=host \
+		$(PLAYWRIGHT_DOCKER_ARGS) \
 		-u "$$(id -u):$$(id -g)" \
 		-e CI=1 \
 		-e PLAYWRIGHT_BASE_URL="$(PLAYWRIGHT_BASE_URL)" \
@@ -311,8 +311,7 @@ playwright-visual: runner-wait-for-app ## Run Playwright visual regression check
 .PHONY: playwright-visual-update
 playwright-visual-update: runner-wait-for-app ## Update Playwright visual regression baselines
 	docker run --rm \
-		--add-host=host.docker.internal:host-gateway \
-		--ipc=host \
+		$(PLAYWRIGHT_DOCKER_ARGS) \
 		-u "$$(id -u):$$(id -g)" \
 		-e CI=1 \
 		-e PLAYWRIGHT_BASE_URL="$(PLAYWRIGHT_BASE_URL)" \
