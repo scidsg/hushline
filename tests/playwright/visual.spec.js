@@ -196,6 +196,12 @@ async function stabilizeDynamicScreenshotContent(page) {
     if (captchaInput instanceof HTMLElement) {
       captchaInput.setAttribute("aria-label", "Solve 4 + 2 = to submit your message");
     }
+
+    for (const directoryTabBadge of document.querySelectorAll(".directory-tabs .tab .badge")) {
+      if (directoryTabBadge instanceof HTMLElement) {
+        directoryTabBadge.remove();
+      }
+    }
   });
 }
 
