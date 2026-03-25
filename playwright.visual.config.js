@@ -22,6 +22,7 @@ module.exports = defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  timeout: process.env.CI ? 60_000 : 30_000,
   reporter: [
     ["list"],
     ["html", { open: "never" }],

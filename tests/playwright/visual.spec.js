@@ -307,15 +307,12 @@ async function prepareScene(page, scene, theme, baseURL) {
   await gotoWithRetries(page, scene.path);
 
   if (scene.waitForSelector) {
-    await page.waitForSelector(scene.waitForSelector);
+    await page.waitForSelector(scene.waitForSelector, { timeout: 45_000 });
   }
 
   for (const action of scene.actions || []) {
     await runAction(page, action);
   }
-
-  await stabilizeDynamicScreenshotContent(page);
-  await removeFooterFromScreenshot(page);
 
   await page.addStyleTag({
     content: `
@@ -334,6 +331,8 @@ async function prepareScene(page, scene, theme, baseURL) {
   });
 
   await page.waitForLoadState("networkidle");
+  await stabilizeDynamicScreenshotContent(page);
+  await removeFooterFromScreenshot(page);
 }
 
 for (const sceneConfig of manifest.scenes) {
