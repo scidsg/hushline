@@ -196,6 +196,24 @@ async function stabilizeDynamicScreenshotContent(page) {
     if (captchaInput instanceof HTMLElement) {
       captchaInput.setAttribute("aria-label", "Solve 4 + 2 = to submit your message");
     }
+
+    for (const directoryTabBadge of document.querySelectorAll(".directory-tabs .tab .badge")) {
+      if (directoryTabBadge instanceof HTMLElement) {
+        directoryTabBadge.remove();
+      }
+    }
+
+    for (const inboxTabBadge of document.querySelectorAll(".inbox-tabs .tab .badge")) {
+      if (inboxTabBadge instanceof HTMLElement) {
+        inboxTabBadge.remove();
+      }
+    }
+
+    for (const inboxDate of document.querySelectorAll(".message-list article.message p:nth-of-type(2)")) {
+      if (inboxDate instanceof HTMLElement) {
+        inboxDate.textContent = "2026-03-24";
+      }
+    }
   });
 }
 
@@ -295,15 +313,12 @@ async function prepareScene(page, scene, theme, baseURL) {
   await gotoWithRetries(page, scene.path);
 
   if (scene.waitForSelector) {
-    await page.waitForSelector(scene.waitForSelector);
+    await page.waitForSelector(scene.waitForSelector, { timeout: 45_000 });
   }
 
   for (const action of scene.actions || []) {
     await runAction(page, action);
   }
-
-  await stabilizeDynamicScreenshotContent(page);
-  await removeFooterFromScreenshot(page);
 
   await page.addStyleTag({
     content: `
@@ -322,6 +337,8 @@ async function prepareScene(page, scene, theme, baseURL) {
   });
 
   await page.waitForLoadState("networkidle");
+  await stabilizeDynamicScreenshotContent(page);
+  await removeFooterFromScreenshot(page);
 }
 
 for (const sceneConfig of manifest.scenes) {
