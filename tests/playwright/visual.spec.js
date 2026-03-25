@@ -208,6 +208,12 @@ async function stabilizeDynamicScreenshotContent(page) {
         inboxTabBadge.remove();
       }
     }
+
+    for (const inboxDate of document.querySelectorAll(".message-list article.message p:nth-of-type(2)")) {
+      if (inboxDate instanceof HTMLElement) {
+        inboxDate.textContent = "2026-03-24";
+      }
+    }
   });
 }
 
