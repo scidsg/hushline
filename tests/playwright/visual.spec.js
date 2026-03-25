@@ -202,6 +202,12 @@ async function stabilizeDynamicScreenshotContent(page) {
         directoryTabBadge.remove();
       }
     }
+
+    for (const inboxTabBadge of document.querySelectorAll(".inbox-tabs .tab .badge")) {
+      if (inboxTabBadge instanceof HTMLElement) {
+        inboxTabBadge.remove();
+      }
+    }
   });
 }
 
