@@ -2003,7 +2003,8 @@ summarize_pr_feedback "$feedback_json"
     assert result.returncode == 0, result.stderr
     assert (
         "Post-PR feedback summary: unresolved_review_threads=1 "
-        "changes_requested_reviews=1 discussion_comments=1" in result.stdout
+        "changes_requested_reviews=1 discussion_comments=1 "
+        "failing_checks=0 pending_checks=0" in result.stdout
     )
     assert "unresolved review thread by @reviewer3 on tests/test_profile.py" in result.stdout
     assert "changes requested by @reviewer2 :: Please add migration coverage." in result.stdout
@@ -2011,6 +2012,75 @@ summarize_pr_feedback "$feedback_json"
         "Feedback comment 1: @reviewer1 :: Can you cover the verified-directory case too?"
         in result.stdout
     )
+
+
+def test_summarize_pr_feedback_reports_failing_and_pending_checks() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+                "link": "https://example.test/checks/1",
+            },
+            {
+                "bucket": "pending",
+                "name": "lint",
+                "state": "IN_PROGRESS",
+                "workflow": "Run Linter and Tests",
+                "link": "https://example.test/checks/2",
+            },
+            {
+                "bucket": "pass",
+                "name": "workflow-security",
+                "state": "SUCCESS",
+                "workflow": "Workflow Security Checks",
+                "link": "https://example.test/checks/3",
+            },
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+checks_json={shlex.quote(checks_json)}
+summarize_pr_feedback "$feedback_json" "$checks_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 "
+        "failing_checks=1 pending_checks=1" in result.stdout
+    )
+    assert (
+        "Feedback check 1: failing PR check Run Linter and Tests / test (FAILURE)" in result.stdout
+    )
+    assert (
+        "Feedback pending check 1: pending PR check Run Linter and Tests / lint (IN_PROGRESS)"
+        in result.stdout
+    )
+    assert "no external comments" not in result.stdout
 
 
 def test_check_pr_feedback_after_delay_skips_when_delay_disabled() -> None:
@@ -2039,6 +2109,90 @@ check_pr_feedback_after_delay ""
 
     assert result.returncode == 0, result.stderr
     assert "Post-PR feedback check skipped: PR number unavailable." in result.stdout
+
+
+def test_fetch_pr_checks_json_accepts_pending_exit_code() -> None:
+    pending_checks_json = json.dumps(
+        [
+            {
+                "bucket": "pending",
+                "name": "test",
+                "state": "IN_PROGRESS",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "checks" && "$3" == "2000" ]]; then
+    printf '%s\\n' {shlex.quote(pending_checks_json)}
+    return 8
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+fetch_pr_checks_json 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == json.loads(pending_checks_json)
+    assert "unexpected gh invocation" not in result.stderr
+
+
+def test_check_pr_feedback_after_delay_reports_pr_checks() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=1
+sleep() {{ :; }}
+fetch_pr_feedback_json() {{
+  printf '%s\\n' {shlex.quote(feedback_json)}
+}}
+fetch_pr_checks_json() {{
+  printf '%s\\n' {shlex.quote(checks_json)}
+}}
+check_pr_feedback_after_delay 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Waiting 1s before checking PR #2000 for review feedback." in result.stdout
+    assert "==> Check PR #2000 feedback and checks" in result.stdout
+    assert "failing_checks=1 pending_checks=0" in result.stdout
+    assert (
+        "Feedback check 1: failing PR check Run Linter and Tests / test (FAILURE)" in result.stdout
+    )
 
 
 def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
