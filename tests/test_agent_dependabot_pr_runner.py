@@ -217,6 +217,7 @@ gh() {{
   {{"author": {{"login": "app/dependabot"}}}},
   {{"author": {{"login": "dependabot[bot]"}}}},
   {{"author": {{"login": "hushline-dev"}}}},
+  {{"author": {{"login": "team-dependabot-maintainer"}}}},
   {{"author": {{"login": "Alice"}}}}
 ]
 EOF
@@ -231,7 +232,7 @@ count_open_human_prs
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "1"
+    assert result.stdout.strip() == "2"
 
 
 def test_main_exits_early_when_unrelated_bot_pr_is_open(tmp_path: Path) -> None:

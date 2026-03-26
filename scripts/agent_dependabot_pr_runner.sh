@@ -341,6 +341,12 @@ count_open_human_prs() {
     --limit 200 \
     --json author \
     | node -e '
+function isKnownDependabotLogin(login, dependabotSlug) {
+  return login === dependabotSlug ||
+    login === `app/${dependabotSlug}` ||
+    login === `${dependabotSlug}[bot]`;
+}
+
 let data = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => {
@@ -358,7 +364,7 @@ process.stdin.on("end", () => {
     if (login === botLogin) {
       return false;
     }
-    if (login.includes(dependabotSlug)) {
+    if (isKnownDependabotLogin(login, dependabotSlug)) {
       return false;
     }
     if (login.endsWith("[bot]")) {
@@ -469,11 +475,17 @@ NODE
 dependabot_pr_is_eligible() {
   node - "$DEPENDABOT_PR_JSON_FILE" <<'NODE'
 const fs = require("fs");
+function isKnownDependabotLogin(login, dependabotSlug) {
+  return login === dependabotSlug ||
+    login === `app/${dependabotSlug}` ||
+    login === `${dependabotSlug}[bot]`;
+}
 const pr = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const authorLogin = String((pr.author && pr.author.login) || "").toLowerCase();
 const maintainerCanModify = Boolean(pr.maintainerCanModify);
+const dependabotSlug = String(process.env.HUSHLINE_DEPENDABOT_APP_SLUG || "dependabot").toLowerCase();
 const isOpenDependabot =
-  authorLogin.includes("dependabot") &&
+  isKnownDependabotLogin(authorLogin, dependabotSlug) &&
   String(pr.baseRefName || "") !== "" &&
   String(pr.headRefName || "") !== "";
 if (isOpenDependabot && maintainerCanModify) {
