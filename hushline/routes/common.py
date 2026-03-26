@@ -40,8 +40,15 @@ def normalized_directory_display_name(value: str | None) -> str:
 
 
 def show_directory_caution_badge(
-    display_name: str | None, *, is_admin: bool, is_verified: bool
+    display_name: str | None,
+    *,
+    is_admin: bool,
+    is_verified: bool,
+    is_cautious: bool = False,
 ) -> bool:
+    if is_cautious:
+        return True
+
     if is_admin or is_verified:
         return False
 

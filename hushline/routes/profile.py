@@ -118,6 +118,7 @@ def register_profile_routes(app: Flask) -> None:
                     uname.display_name or uname.username,
                     is_admin=uname.user.is_admin,
                     is_verified=uname.is_verified,
+                    is_cautious=bool(getattr(uname.user, "is_cautious", False)),
                 ),
                 current_user_id=session.get("user_id"),
                 public_key=uname.user.pgp_key,
