@@ -848,7 +848,8 @@ fetch_pr_checks_json() {
   checks_status=$?
   set -e
 
-  if (( checks_status != 0 && checks_status != 8 )); then
+  # `gh pr checks` uses exit 8 for pending checks and exits nonzero for failing checks.
+  if (( checks_status != 0 && checks_status != 1 && checks_status != 8 )); then
     return "$checks_status"
   fi
 

@@ -2143,6 +2143,38 @@ fetch_pr_checks_json 2000
     assert "unexpected gh invocation" not in result.stderr
 
 
+def test_fetch_pr_checks_json_accepts_failing_exit_code() -> None:
+    failing_checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "checks" && "$3" == "2000" ]]; then
+    printf '%s\\n' {shlex.quote(failing_checks_json)}
+    return 1
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+fetch_pr_checks_json 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == json.loads(failing_checks_json)
+    assert "unexpected gh invocation" not in result.stderr
+
+
 def test_check_pr_feedback_after_delay_reports_pr_checks() -> None:
     feedback_json = json.dumps(
         {
