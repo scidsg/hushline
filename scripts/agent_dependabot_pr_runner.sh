@@ -340,15 +340,41 @@ count_open_human_prs() {
     --state open \
     --limit 200 \
     --json author \
-    --jq '
-      [
-        .[]
-        | (.author.login // "")
-        | select(length > 0)
-        | select(. != "'"$BOT_LOGIN"'")
-        | select(test("\\[bot\\]$") | not)
-      ] | length
-    '
+    | node -e '
+function isKnownDependabotLogin(login, dependabotSlug) {
+  return login === dependabotSlug ||
+    login === `app/${dependabotSlug}` ||
+    login === `${dependabotSlug}[bot]`;
+}
+
+let data = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  data += chunk;
+});
+process.stdin.on("end", () => {
+  const botLogin = String(process.argv[1] || "").toLowerCase();
+  const dependabotSlug = String(process.argv[2] || "dependabot").toLowerCase();
+  const prs = JSON.parse(data || "[]");
+  const count = prs.filter((pr) => {
+    const login = String((pr && pr.author && pr.author.login) || "").toLowerCase();
+    if (!login) {
+      return false;
+    }
+    if (login === botLogin) {
+      return false;
+    }
+    if (isKnownDependabotLogin(login, dependabotSlug)) {
+      return false;
+    }
+    if (login.endsWith("[bot]")) {
+      return false;
+    }
+    return true;
+  }).length;
+  process.stdout.write(String(count));
+});
+' "$BOT_LOGIN" "$DEPENDABOT_APP_SLUG"
 }
 
 run_dependency_audits() {
@@ -449,11 +475,17 @@ NODE
 dependabot_pr_is_eligible() {
   node - "$DEPENDABOT_PR_JSON_FILE" <<'NODE'
 const fs = require("fs");
+function isKnownDependabotLogin(login, dependabotSlug) {
+  return login === dependabotSlug ||
+    login === `app/${dependabotSlug}` ||
+    login === `${dependabotSlug}[bot]`;
+}
 const pr = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const authorLogin = String((pr.author && pr.author.login) || "").toLowerCase();
 const maintainerCanModify = Boolean(pr.maintainerCanModify);
+const dependabotSlug = String(process.env.HUSHLINE_DEPENDABOT_APP_SLUG || "dependabot").toLowerCase();
 const isOpenDependabot =
-  authorLogin.includes("dependabot") &&
+  isKnownDependabotLogin(authorLogin, dependabotSlug) &&
   String(pr.baseRefName || "") !== "" &&
   String(pr.headRefName || "") !== "";
 if (isOpenDependabot && maintainerCanModify) {
