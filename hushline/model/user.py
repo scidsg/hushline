@@ -50,6 +50,9 @@ class User(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
+    is_cautious: Mapped[bool] = mapped_column(
+        server_default=text("false"), default=False, nullable=False
+    )
     session_id: Mapped[str] = mapped_column(
         db.String(SESSION_ID_MAX_LENGTH),
         nullable=False,

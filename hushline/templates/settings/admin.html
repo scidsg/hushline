@@ -67,6 +67,9 @@
         <p class="meta">
           Admin: {{ "✅ Yes" if username.user.is_admin else "👎 No" }}
         </p>
+        <p class="meta">
+          Cautious: {{ "✅ Yes" if username.user.is_cautious else "👎 No" }}
+        </p>
         <div class="tableActions">
             {% if user_verification_enabled %}
             <form
@@ -98,6 +101,21 @@
             />
             <button type="submit">
               {{ "Remove Admin" if username.user.is_admin else "Set Admin" }}
+            </button>
+          </form>
+          <form
+            action="{{ url_for('admin.toggle_cautious', user_id=username.user.id) }}"
+            method="POST"
+            class="formBody"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input
+              type="hidden"
+              name="is_cautious"
+              value="{{ 'false' if username.user.is_cautious else 'true' }}"
+            />
+            <button type="submit">
+              {{ "Remove Cautious" if username.user.is_cautious else "Set Cautious" }}
             </button>
           </form>
           <form

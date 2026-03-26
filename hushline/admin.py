@@ -99,6 +99,23 @@ def create_blueprint() -> Blueprint:
         flash(f"✅ User admin status set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
+    @bp.route("/toggle_cautious/<int:user_id>", methods=["POST"])
+    @admin_authentication_required
+    def toggle_cautious(user_id: int) -> Response:
+        _validate_csrf()
+
+        user = db.session.get(User, user_id)
+        if user is None:
+            abort(404)
+
+        desired_cautious = _parse_form_bool("is_cautious")
+        user.is_cautious = desired_cautious
+        db.session.commit()
+
+        status_label = "cautious" if desired_cautious else "not cautious"
+        flash(f"✅ User caution status set to {status_label}.", "success")
+        return redirect(url_for("settings.admin"))
+
     @bp.route("/update_tier/<int:tier_id>", methods=["POST"])
     @admin_authentication_required
     def update_tier(tier_id: int) -> Response:

@@ -31,6 +31,7 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert 'id="admin-users-list"' in response.text
     assert "/static/js/settings_admin.js" in response.text
     assert 'data-search="' in response.text
+    assert "Set Cautious" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -256,6 +257,31 @@ def test_toggle_admin_invalid_bool_field_returns_bad_request(
         data={"is_admin": "not-a-bool"},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_cautious_updates_user(client: FlaskClient, user: User) -> None:
+    assert user.is_cautious is False
+
+    response = client.post(
+        url_for("admin.toggle_cautious", user_id=user.id),
+        data={"is_cautious": "true"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.is_cautious is True
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_cautious_user_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.toggle_cautious", user_id=999999),
+        data={"is_cautious": "true"},
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
