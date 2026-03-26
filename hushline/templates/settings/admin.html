@@ -70,6 +70,9 @@
         <p class="meta">
           Cautious: {{ "✅ Yes" if username.user.is_cautious else "👎 No" }}
         </p>
+        <p class="meta">
+          Suspended: {{ "✅ Yes" if username.user.is_suspended else "👎 No" }}
+        </p>
         <div class="tableActions">
             {% if user_verification_enabled %}
             <form
@@ -116,6 +119,21 @@
             />
             <button type="submit">
               {{ "Remove Cautious" if username.user.is_cautious else "Set Cautious" }}
+            </button>
+          </form>
+          <form
+            action="{{ url_for('admin.toggle_suspended', user_id=username.user.id) }}"
+            method="POST"
+            class="formBody"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input
+              type="hidden"
+              name="is_suspended"
+              value="{{ 'false' if username.user.is_suspended else 'true' }}"
+            />
+            <button type="submit">
+              {{ "Remove Suspended" if username.user.is_suspended else "Set Suspended" }}
             </button>
           </form>
           <form
