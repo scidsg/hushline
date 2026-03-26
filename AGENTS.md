@@ -75,15 +75,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 
 - Runner docs: `docs/AGENT_RUNNER.md`
 - Daily issue runner script: `scripts/agent_daily_issue_runner.sh`
-- Dependabot runner docs: `docs/DEPENDABOT_RUNNER.md`
-- Dependabot runner script: `scripts/agent_dependabot_pr_runner.sh`
-- Dependabot queue wrapper: `scripts/run_dependabot_pr_queue.sh`
 - Daily issue eligibility:
   - Runner processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
-- Dependabot runner eligibility:
-  - Runner processes one open Dependabot PR at a time and applies only the app-side follow-up changes needed for that dependency update.
-  - Queue advancement should come from frequent safe polling, not from batching multiple Dependabot PRs in one run.
-  - Recommended operation: schedule `scripts/run_dependabot_pr_queue.sh` at least daily and preferably every 15 minutes so the next eligible Dependabot PR starts shortly after the previous one merges.
 - Human-PR guard:
   - Runner exits early if any open human-authored PR exists.
 - One-bot-PR guard:
