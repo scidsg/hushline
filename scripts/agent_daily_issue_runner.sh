@@ -834,11 +834,34 @@ fetch_pr_feedback_json() {
     '
 }
 
+fetch_pr_checks_json() {
+  local pr_number="$1"
+  local checks_json=""
+  local checks_status=0
+
+  set +e
+  checks_json="$(
+    gh pr checks "$pr_number" \
+      --repo "$REPO_SLUG" \
+      --json bucket,link,name,state,workflow 2>/dev/null
+  )"
+  checks_status=$?
+  set -e
+
+  # `gh pr checks` uses exit 8 for pending checks and exits nonzero for failing checks.
+  if (( checks_status != 0 && checks_status != 1 && checks_status != 8 )); then
+    return "$checks_status"
+  fi
+
+  printf '%s\n' "$checks_json"
+}
+
 summarize_pr_feedback() {
   local feedback_json="$1"
+  local checks_json="${2:-[]}"
 
   printf '%s\n' "$feedback_json" \
-    | BOT_LOGIN="$BOT_LOGIN" node -e '
+    | BOT_LOGIN="$BOT_LOGIN" PR_CHECKS_JSON="$checks_json" node -e '
       const fs = require("fs");
 
       function cleanText(value) {
@@ -854,6 +877,15 @@ summarize_pr_feedback() {
 
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
       const botLogin = String(process.env.BOT_LOGIN || "");
+      let checks = [];
+      try {
+        const parsedChecks = JSON.parse(String(process.env.PR_CHECKS_JSON || "[]"));
+        if (Array.isArray(parsedChecks)) {
+          checks = parsedChecks;
+        }
+      } catch {
+        checks = [];
+      }
       const pr =
         payload &&
         payload.data &&
@@ -901,18 +933,26 @@ summarize_pr_feedback() {
       const unresolvedThreads = reviewThreads.filter(
         (thread) => thread && !thread.isResolved && !thread.isOutdated,
       );
+      const failingChecks = checks.filter(
+        (check) => String(check && check.bucket ? check.bucket : "") === "fail",
+      );
+      const pendingChecks = checks.filter(
+        (check) => String(check && check.bucket ? check.bucket : "") === "pending",
+      );
 
       const lines = [];
       lines.push(
-        `Post-PR feedback summary: unresolved_review_threads=${unresolvedThreads.length} changes_requested_reviews=${changeRequests.length} discussion_comments=${issueComments.length}`,
+        `Post-PR feedback summary: unresolved_review_threads=${unresolvedThreads.length} changes_requested_reviews=${changeRequests.length} discussion_comments=${issueComments.length} failing_checks=${failingChecks.length} pending_checks=${pendingChecks.length}`,
       );
 
       if (
         unresolvedThreads.length === 0 &&
         changeRequests.length === 0 &&
-        issueComments.length === 0
+        issueComments.length === 0 &&
+        failingChecks.length === 0 &&
+        pendingChecks.length === 0
       ) {
-        lines.push("Post-PR feedback check: no external comments or unresolved review threads found.");
+        lines.push("Post-PR feedback check: no external comments, unresolved review threads, or non-passing PR checks found.");
       }
 
       unresolvedThreads.slice(0, 5).forEach((thread, index) => {
@@ -953,6 +993,26 @@ summarize_pr_feedback() {
         );
       });
 
+      failingChecks.slice(0, 5).forEach((check, index) => {
+        const workflow = clip(cleanText(check && check.workflow ? check.workflow : ""));
+        const name = clip(cleanText(check && check.name ? check.name : "unnamed check"));
+        const state = cleanText(check && check.state ? check.state : "");
+        const label = workflow ? `${workflow} / ${name}` : name;
+        lines.push(
+          `Feedback check ${index + 1}: failing PR check ${label}${state ? ` (${state})` : ""}`,
+        );
+      });
+
+      pendingChecks.slice(0, 3).forEach((check, index) => {
+        const workflow = clip(cleanText(check && check.workflow ? check.workflow : ""));
+        const name = clip(cleanText(check && check.name ? check.name : "unnamed check"));
+        const state = cleanText(check && check.state ? check.state : "");
+        const label = workflow ? `${workflow} / ${name}` : name;
+        lines.push(
+          `Feedback pending check ${index + 1}: pending PR check ${label}${state ? ` (${state})` : ""}`,
+        );
+      });
+
       process.stdout.write(`${lines.join("\n")}\n`);
     '
 }
@@ -983,6 +1043,7 @@ resolve_pr_number_from_ref() {
 check_pr_feedback_after_delay() {
   local pr_number="$1"
   local feedback_json=""
+  local checks_json="[]"
   local feedback_summary=""
 
   if [[ -z "$pr_number" ]]; then
@@ -998,13 +1059,18 @@ check_pr_feedback_after_delay() {
   echo "Waiting ${POST_PR_FEEDBACK_DELAY_SECONDS}s before checking PR #${pr_number} for review feedback."
   sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
 
-  echo "==> Check PR #${pr_number} feedback"
+  echo "==> Check PR #${pr_number} feedback and checks"
   if ! feedback_json="$(fetch_pr_feedback_json "$pr_number" 2>/dev/null)"; then
     echo "Warning: failed to fetch post-PR feedback for PR #${pr_number}."
     return 0
   fi
 
-  feedback_summary="$(summarize_pr_feedback "$feedback_json")"
+  if ! checks_json="$(fetch_pr_checks_json "$pr_number" 2>/dev/null)"; then
+    echo "Warning: failed to fetch post-PR checks for PR #${pr_number}."
+    checks_json='[]'
+  fi
+
+  feedback_summary="$(summarize_pr_feedback "$feedback_json" "$checks_json")"
   printf '%s\n' "$feedback_summary"
 }
 
