@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shlex
 import subprocess
 from pathlib import Path
@@ -68,6 +69,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
@@ -120,6 +122,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
@@ -172,6 +175,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
@@ -236,6 +240,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 git() {{ :; }}
 docker() {{ :; }}
 run_step() {{
@@ -746,6 +751,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 git() {{ :; }}
 docker() {{ :; }}
 run_step() {{
@@ -800,6 +806,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 git() {{ :; }}
 docker() {{ :; }}
 run_step() {{
@@ -851,6 +858,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
   shift
@@ -910,6 +918,7 @@ write_pr_body() {{ :; }}
 build_pr_title() {{
   printf '#1732 Title\\n'
 }}
+check_pr_feedback_after_delay() {{ :; }}
 gh() {{
   if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1732" ]]; then
     local last_arg="${{@: -1}}"
@@ -923,6 +932,14 @@ gh() {{
   fi
   if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
     printf 'https://github.com/scidsg/hushline/pull/2001\\n'
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr view https://github.com/scidsg/hushline/pull/2001" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .number) printf '2001\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/pull/2001\\n' ;;
+    esac
     return 0
   fi
   return 0
@@ -1000,6 +1017,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
   shift
@@ -1053,6 +1071,9 @@ write_pr_body() {{
 build_pr_title() {{
   printf '#1558 Title\\n'
 }}
+check_pr_feedback_after_delay() {{
+  printf 'feedback:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
 gh() {{
   if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
     local last_arg="${{@: -1}}"
@@ -1068,6 +1089,14 @@ gh() {{
     printf 'https://github.com/scidsg/hushline/pull/2000\\n'
     return 0
   fi
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr view https://github.com/scidsg/hushline/pull/2000" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .number) printf '2000\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/pull/2000\\n' ;;
+    esac
+    return 0
+  fi
   return 0
 }}
 main
@@ -1080,6 +1109,8 @@ main
     assert "status:1558:In Progress" in calls
     assert "status:1558:Ready for Review" in calls
     assert calls.index("status:1558:Ready for Review") > calls.index("push:codex/daily-issue-1558")
+    assert "feedback:2000" in calls
+    assert calls.index("feedback:2000") > calls.index("status:1558:Ready for Review")
 
 
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:
@@ -1807,6 +1838,11 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
+    assert (
+        "Diagnostic: Codex left no non-log worktree changes for issue #1558 on attempt 1."
+        in result.stdout
+    )
+    assert "Prompt stats: bytes=0 lines=0 words=0" in result.stdout
     assert "Codex produced no usable changes for issue #1558 after 3 attempt(s)." in result.stderr
 
 
@@ -1891,6 +1927,137 @@ printf 'rc=%s\\n' "$rc"
     assert "rc=1" in result.stdout
 
 
+def test_summarize_pr_feedback_reports_unresolved_threads_and_comments() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": "CHANGES_REQUESTED",
+                        "comments": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer1"},
+                                    "body": "Can you cover the verified-directory case too?",
+                                    "createdAt": "2026-03-25T00:00:00Z",
+                                    "url": "https://example.test/comment/1",
+                                },
+                                {
+                                    "author": {"login": "hushline-dev"},
+                                    "body": "bot note",
+                                    "createdAt": "2026-03-25T00:01:00Z",
+                                    "url": "https://example.test/comment/2",
+                                },
+                            ]
+                        },
+                        "latestReviews": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer2"},
+                                    "state": "CHANGES_REQUESTED",
+                                    "body": "Please add migration coverage.",
+                                    "submittedAt": "2026-03-25T00:02:00Z",
+                                    "url": "https://example.test/review/1",
+                                }
+                            ]
+                        },
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "reviewer3"},
+                                                "body": (
+                                                    "This tooltip string needs to match the "
+                                                    "shared copy."
+                                                ),
+                                                "path": "tests/test_profile.py",
+                                                "createdAt": "2026-03-25T00:03:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+summarize_pr_feedback "$feedback_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback summary: unresolved_review_threads=1 "
+        "changes_requested_reviews=1 discussion_comments=1" in result.stdout
+    )
+    assert "unresolved review thread by @reviewer3 on tests/test_profile.py" in result.stdout
+    assert "changes requested by @reviewer2 :: Please add migration coverage." in result.stdout
+    assert (
+        "Feedback comment 1: @reviewer1 :: Can you cover the verified-directory case too?"
+        in result.stdout
+    )
+
+
+def test_check_pr_feedback_after_delay_skips_when_delay_disabled() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=0
+check_pr_feedback_after_delay 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
+        in result.stdout
+    )
+
+
+def test_check_pr_feedback_after_delay_skips_when_pr_number_unavailable() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+check_pr_feedback_after_delay ""
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-PR feedback check skipped: PR number unavailable." in result.stdout
+
+
+def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  printf 'unexpected gh invocation\\n' >&2
+  return 99
+}}
+resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "2000"
+    assert "unexpected gh invocation" not in result.stderr
+
+
 def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -1904,6 +2071,7 @@ initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
 run_step() {{
   shift
   "$@"
@@ -1933,6 +2101,7 @@ write_pr_body() {{ :; }}
 build_pr_title() {{
   printf '#1558 Title\\n'
 }}
+check_pr_feedback_after_delay() {{ :; }}
 gh() {{
   if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
     local last_arg="${{@: -1}}"
@@ -1965,6 +2134,110 @@ printf 'rc=%s\\n' "$rc"
     calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
     assert not any(line == "pr-create" for line in calls)
     assert not any(line.startswith("persist:") for line in calls)
+
+
+def test_main_continues_after_pr_create_when_pr_number_lookup_fails(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1558.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  shift
+  "$@"
+}}
+assert_gh_auth() {{ :; }}
+assert_ssh_signing_ready() {{ :; }}
+assert_docker_running() {{ :; }}
+fetch_origin() {{ :; }}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "rev-list --count main..codex/daily-issue-1558  ")
+      printf '1\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'pr-body:%s:%s\\n' "$1" "$5" >> {shlex.quote(str(call_log))}
+}}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{
+  printf 'feedback:%s\\n' "${{1-}}" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "status:1558:Ready for Review" in calls
+    assert "feedback:2000" in calls
+    assert "Warning: opened PR but failed to resolve its number" not in result.stdout
 
 
 def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:
