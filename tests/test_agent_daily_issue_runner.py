@@ -2029,6 +2029,35 @@ check_pr_feedback_after_delay 2000
     )
 
 
+def test_check_pr_feedback_after_delay_skips_when_pr_number_unavailable() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+check_pr_feedback_after_delay ""
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-PR feedback check skipped: PR number unavailable." in result.stdout
+
+
+def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  printf 'unexpected gh invocation\\n' >&2
+  return 99
+}}
+resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "2000"
+    assert "unexpected gh invocation" not in result.stderr
+
+
 def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -2105,6 +2134,110 @@ printf 'rc=%s\\n' "$rc"
     calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
     assert not any(line == "pr-create" for line in calls)
     assert not any(line.startswith("persist:") for line in calls)
+
+
+def test_main_continues_after_pr_create_when_pr_number_lookup_fails(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1558.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  shift
+  "$@"
+}}
+assert_gh_auth() {{ :; }}
+assert_ssh_signing_ready() {{ :; }}
+assert_docker_running() {{ :; }}
+fetch_origin() {{ :; }}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "rev-list --count main..codex/daily-issue-1558  ")
+      printf '1\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'pr-body:%s:%s\\n' "$1" "$5" >> {shlex.quote(str(call_log))}
+}}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{
+  printf 'feedback:%s\\n' "${{1-}}" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "status:1558:Ready for Review" in calls
+    assert "feedback:2000" in calls
+    assert "Warning: opened PR but failed to resolve its number" not in result.stdout
 
 
 def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:

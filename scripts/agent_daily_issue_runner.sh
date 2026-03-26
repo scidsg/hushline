@@ -957,10 +957,38 @@ summarize_pr_feedback() {
     '
 }
 
+pr_url_from_number() {
+  local pr_number="$1"
+  printf 'https://github.com/%s/pull/%s\n' "$REPO_SLUG" "$pr_number"
+}
+
+resolve_pr_number_from_ref() {
+  local pr_ref="$1"
+  local resolved=""
+
+  if [[ "$pr_ref" =~ /pull/([0-9]+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  resolved="$(gh pr view "$pr_ref" --repo "$REPO_SLUG" --json number --jq .number 2>/dev/null || true)"
+  if [[ "$resolved" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
+}
+
 check_pr_feedback_after_delay() {
   local pr_number="$1"
   local feedback_json=""
   local feedback_summary=""
+
+  if [[ -z "$pr_number" ]]; then
+    echo "Post-PR feedback check skipped: PR number unavailable."
+    return 0
+  fi
 
   if (( POST_PR_FEEDBACK_DELAY_SECONDS == 0 )); then
     echo "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
@@ -2545,7 +2573,7 @@ main() {
       --base "$PR_BASE_BRANCH" \
       --title "$PR_TITLE" \
       --body-file "$PR_BODY_FILE" >/dev/null
-    PR_URL="$(gh pr view "$EXISTING_PR_NUMBER" --repo "$REPO_SLUG" --json url --jq .url)"
+    PR_URL="$(pr_url_from_number "$EXISTING_PR_NUMBER")"
     echo "Updated PR: $PR_URL"
   else
     PR_URL="$({
@@ -2556,7 +2584,10 @@ main() {
         --title "$PR_TITLE" \
         --body-file "$PR_BODY_FILE"
     } )"
-    PR_NUMBER="$(gh pr view "$PR_URL" --repo "$REPO_SLUG" --json number --jq .number)"
+    if ! PR_NUMBER="$(resolve_pr_number_from_ref "$PR_URL")"; then
+      PR_NUMBER=""
+      echo "Warning: opened PR but failed to resolve its number from '$PR_URL'."
+    fi
     echo "Opened PR: $PR_URL"
   fi
 
