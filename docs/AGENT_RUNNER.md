@@ -44,6 +44,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - The fix prompt includes the current branch diff summary, the prior Codex summary, and an extracted failure signature so Codex can repair the current implementation instead of repeating a narrow patch against the same failing symptom.
     - Raw failed check output is intentionally withheld from Codex prompts because local check logs may contain sensitive operational data.
     - Codex transcript output is captured in a temporary file for the duration of the run and is excluded from the persisted runner log; only the final Codex summary is written into the run log.
+    - Each Codex attempt logs prompt size and pre/post worktree snapshots so clean-tree no-op runs are visible in the runner log.
 12. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
@@ -65,7 +66,8 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 17. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
 18. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
 19. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
-20. Return to `main` on exit (explicit checkout + cleanup trap fallback).
+20. Wait 15 minutes by default, then fetch a one-time PR feedback summary (discussion comments, change-request reviews, unresolved review threads) and append it to the run log.
+21. Return to `main` on exit (explicit checkout + cleanup trap fallback).
     - Exit cleanup force-resets the repo to `origin/main` and removes untracked files so interrupted runs do not leave bot work on `main`.
 
 ## ASCII Workflow (Current)
@@ -256,6 +258,7 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS` (default `10`; positive integer)
 - `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `8`; positive integer)
+- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `900`; non-negative integer; set `0` to skip the delayed PR feedback check)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.4`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
 - `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output to the live console only, without writing it into persisted runner logs)

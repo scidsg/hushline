@@ -59,6 +59,7 @@ MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
 MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
 RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
+POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-900}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -150,6 +151,16 @@ require_positive_integer() {
 
   if ! [[ "$value" =~ ^[0-9]+$ ]] || (( value < 1 )); then
     echo "${name} must be a positive integer (got '${value}')." >&2
+    return 1
+  fi
+}
+
+require_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+
+  if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "${name} must be a non-negative integer (got '${value}')." >&2
     return 1
   fi
 }
@@ -449,6 +460,83 @@ current_branch_name() {
   git symbolic-ref --quiet --short HEAD 2>/dev/null
 }
 
+prompt_file_metrics() {
+  local prompt_file="$1"
+  local prompt_bytes=""
+  local prompt_lines=""
+  local prompt_words=""
+
+  if [[ -z "$prompt_file" || ! -f "$prompt_file" ]]; then
+    echo "Prompt stats: bytes=0 lines=0 words=0"
+    return 0
+  fi
+
+  prompt_bytes="$(wc -c < "$prompt_file" | tr -d '[:space:]')"
+  prompt_lines="$(wc -l < "$prompt_file" | tr -d '[:space:]')"
+  prompt_words="$(wc -w < "$prompt_file" | tr -d '[:space:]')"
+
+  printf 'Prompt stats: bytes=%s lines=%s words=%s\n' \
+    "${prompt_bytes:-0}" \
+    "${prompt_lines:-0}" \
+    "${prompt_words:-0}"
+}
+
+log_worktree_snapshot() {
+  local label="$1"
+  local status_output=""
+  local non_log_output=""
+
+  status_output="$(git status --short 2>/dev/null || true)"
+  non_log_output="$(list_non_log_changed_files 2>/dev/null || true)"
+
+  printf '%s\n' "$label"
+  echo "git status --short:"
+  if [[ -n "$status_output" ]]; then
+    printf '%s\n' "$status_output"
+  else
+    echo "(clean)"
+  fi
+
+  echo "Non-log changed files:"
+  if [[ -n "$non_log_output" ]]; then
+    printf '%s\n' "$non_log_output"
+  else
+    echo "(none)"
+  fi
+}
+
+codex_output_mentions_repo_paths() {
+  local repo_dir_escaped=""
+
+  if [[ ! -s "$CODEX_OUTPUT_FILE" ]]; then
+    return 1
+  fi
+
+  repo_dir_escaped="$(printf '%s\n' "$REPO_DIR" | sed 's/[][(){}.^$+*?|\\/]/\\&/g')"
+  grep -Eq "(${repo_dir_escaped}/|\\]\\(${repo_dir_escaped}/)" "$CODEX_OUTPUT_FILE"
+}
+
+emit_codex_no_change_diagnostic() {
+  local issue_number="$1"
+  local issue_attempt="$2"
+  local codex_output_bytes=""
+
+  echo "Diagnostic: Codex left no non-log worktree changes for issue #$issue_number on attempt $issue_attempt."
+  prompt_file_metrics "$PROMPT_FILE"
+
+  if [[ -s "$CODEX_OUTPUT_FILE" ]]; then
+    codex_output_bytes="$(wc -c < "$CODEX_OUTPUT_FILE" | tr -d '[:space:]')"
+    printf 'Codex summary bytes: %s\n' "${codex_output_bytes:-0}"
+    if codex_output_mentions_repo_paths; then
+      echo "Diagnostic: Codex summary referenced repository paths, but the post-run worktree is clean."
+    fi
+  else
+    echo "Codex summary bytes: 0"
+  fi
+
+  log_worktree_snapshot "Post-Codex worktree snapshot:"
+}
+
 ensure_worktree_on_branch() {
   local expected_branch="$1"
   local current_branch=""
@@ -686,6 +774,210 @@ issue_is_open() {
     gh issue view "$issue_number" --repo "$REPO_SLUG" --json state --jq .state
   } || true)"
   [[ "$state" == "OPEN" ]]
+}
+
+fetch_pr_feedback_json() {
+  local pr_number="$1"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+
+  gh api graphql \
+    -F prNumber="$pr_number" \
+    -f query='
+      query($prNumber: Int!) {
+        repository(owner: "'"$owner"'", name: "'"$repo"'") {
+          pullRequest(number: $prNumber) {
+            number
+            url
+            reviewDecision
+            comments(last: 20) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                createdAt
+                url
+              }
+            }
+            latestReviews(last: 20) {
+              nodes {
+                author {
+                  login
+                }
+                state
+                body
+                submittedAt
+                url
+              }
+            }
+            reviewThreads(first: 50) {
+              nodes {
+                isResolved
+                isOutdated
+                comments(first: 10) {
+                  nodes {
+                    author {
+                      login
+                    }
+                    body
+                    path
+                    createdAt
+                    url
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    '
+}
+
+summarize_pr_feedback() {
+  local feedback_json="$1"
+
+  printf '%s\n' "$feedback_json" \
+    | BOT_LOGIN="$BOT_LOGIN" node -e '
+      const fs = require("fs");
+
+      function cleanText(value) {
+        return String(value || "").replace(/\s+/g, " ").trim();
+      }
+
+      function clip(value, maxLength = 240) {
+        if (value.length <= maxLength) {
+          return value;
+        }
+        return `${value.slice(0, maxLength - 1)}…`;
+      }
+
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const botLogin = String(process.env.BOT_LOGIN || "");
+      const pr =
+        payload &&
+        payload.data &&
+        payload.data.repository &&
+        payload.data.repository.pullRequest
+          ? payload.data.repository.pullRequest
+          : null;
+
+      if (!pr) {
+        process.stdout.write("Post-PR feedback check: PR payload was empty.\n");
+        process.exit(0);
+      }
+
+      const issueComments =
+        pr.comments && Array.isArray(pr.comments.nodes)
+          ? pr.comments.nodes.filter((comment) => {
+              const login =
+                comment && comment.author && comment.author.login
+                  ? String(comment.author.login)
+                  : "";
+              return login !== "" && login !== botLogin;
+            })
+          : [];
+
+      const latestReviews =
+        pr.latestReviews && Array.isArray(pr.latestReviews.nodes)
+          ? pr.latestReviews.nodes.filter((review) => {
+              const login =
+                review && review.author && review.author.login
+                  ? String(review.author.login)
+                  : "";
+              return login !== "" && login !== botLogin;
+            })
+          : [];
+
+      const changeRequests = latestReviews.filter(
+        (review) => String(review && review.state ? review.state : "") === "CHANGES_REQUESTED",
+      );
+
+      const reviewThreads =
+        pr.reviewThreads && Array.isArray(pr.reviewThreads.nodes)
+          ? pr.reviewThreads.nodes
+          : [];
+
+      const unresolvedThreads = reviewThreads.filter(
+        (thread) => thread && !thread.isResolved && !thread.isOutdated,
+      );
+
+      const lines = [];
+      lines.push(
+        `Post-PR feedback summary: unresolved_review_threads=${unresolvedThreads.length} changes_requested_reviews=${changeRequests.length} discussion_comments=${issueComments.length}`,
+      );
+
+      if (
+        unresolvedThreads.length === 0 &&
+        changeRequests.length === 0 &&
+        issueComments.length === 0
+      ) {
+        lines.push("Post-PR feedback check: no external comments or unresolved review threads found.");
+      }
+
+      unresolvedThreads.slice(0, 5).forEach((thread, index) => {
+        const comment =
+          thread.comments && Array.isArray(thread.comments.nodes) && thread.comments.nodes.length > 0
+            ? thread.comments.nodes[thread.comments.nodes.length - 1]
+            : null;
+        const login =
+          comment && comment.author && comment.author.login
+            ? String(comment.author.login)
+            : "unknown";
+        const path = comment && comment.path ? String(comment.path) : "general";
+        const body = clip(cleanText(comment && comment.body ? comment.body : ""));
+        lines.push(
+          `Feedback ${index + 1}: unresolved review thread by @${login} on ${path}${body ? ` :: ${body}` : ""}`,
+        );
+      });
+
+      changeRequests.slice(0, 3).forEach((review, index) => {
+        const login =
+          review && review.author && review.author.login
+            ? String(review.author.login)
+            : "unknown";
+        const body = clip(cleanText(review && review.body ? review.body : ""));
+        lines.push(
+          `Feedback review ${index + 1}: changes requested by @${login}${body ? ` :: ${body}` : ""}`,
+        );
+      });
+
+      issueComments.slice(-3).forEach((comment, index) => {
+        const login =
+          comment && comment.author && comment.author.login
+            ? String(comment.author.login)
+            : "unknown";
+        const body = clip(cleanText(comment && comment.body ? comment.body : ""));
+        lines.push(
+          `Feedback comment ${index + 1}: @${login}${body ? ` :: ${body}` : ""}`,
+        );
+      });
+
+      process.stdout.write(`${lines.join("\n")}\n`);
+    '
+}
+
+check_pr_feedback_after_delay() {
+  local pr_number="$1"
+  local feedback_json=""
+  local feedback_summary=""
+
+  if (( POST_PR_FEEDBACK_DELAY_SECONDS == 0 )); then
+    echo "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
+    return 0
+  fi
+
+  echo "Waiting ${POST_PR_FEEDBACK_DELAY_SECONDS}s before checking PR #${pr_number} for review feedback."
+  sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
+
+  echo "==> Check PR #${pr_number} feedback"
+  if ! feedback_json="$(fetch_pr_feedback_json "$pr_number" 2>/dev/null)"; then
+    echo "Warning: failed to fetch post-PR feedback for PR #${pr_number}."
+    return 0
+  fi
+
+  feedback_summary="$(summarize_pr_feedback "$feedback_json")"
+  printf '%s\n' "$feedback_summary"
 }
 
 resolve_issue_parent_epic() {
@@ -1661,6 +1953,8 @@ run_codex_from_prompt() {
   else
     echo "Codex execution started; transcript output is excluded from persisted run logs."
   fi
+  prompt_file_metrics "$PROMPT_FILE"
+  log_worktree_snapshot "Pre-Codex worktree snapshot:"
   set +e
   codex exec \
     --model "$CODEX_MODEL" \
@@ -1681,10 +1975,12 @@ run_codex_from_prompt() {
 
   if (( rc != 0 )); then
     echo "Codex execution failed (exit ${rc})."
+    log_worktree_snapshot "Post-Codex worktree snapshot:"
     return "$rc"
   fi
 
   echo "Codex execution completed."
+  log_worktree_snapshot "Post-Codex worktree snapshot:"
   if [[ -s "$CODEX_OUTPUT_FILE" ]]; then
     echo "Codex final message:"
     sed -n '1,60p' "$CODEX_OUTPUT_FILE"
@@ -2032,6 +2328,7 @@ run_issue_attempt_loop() {
     run_codex_from_prompt
 
     if ! has_non_log_changes; then
+      emit_codex_no_change_diagnostic "$issue_number" "$issue_attempt"
       echo "Codex produced no usable non-log changes for issue #$issue_number; retrying."
       issue_attempt=$((issue_attempt + 1))
       continue
@@ -2071,6 +2368,9 @@ main() {
   require_positive_integer \
     "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" \
     "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
+  require_non_negative_integer \
+    "HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS" \
+    "$POST_PR_FEEDBACK_DELAY_SECONDS"
 
   if [[ ! -d "$REPO_DIR/.git" ]]; then
     echo "Repository not found: $REPO_DIR" >&2
@@ -2239,6 +2539,7 @@ main() {
 
   if [[ -n "$EXISTING_CHILD_PR_JSON" ]]; then
     EXISTING_PR_NUMBER="$(printf '%s\n' "$EXISTING_CHILD_PR_JSON" | node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(0,"utf8")); process.stdout.write(String(data.number || ""));')"
+    PR_NUMBER="$EXISTING_PR_NUMBER"
     gh pr edit "$EXISTING_PR_NUMBER" \
       --repo "$REPO_SLUG" \
       --base "$PR_BASE_BRANCH" \
@@ -2255,6 +2556,7 @@ main() {
         --title "$PR_TITLE" \
         --body-file "$PR_BODY_FILE"
     } )"
+    PR_NUMBER="$(gh pr view "$PR_URL" --repo "$REPO_SLUG" --json number --jq .number)"
     echo "Opened PR: $PR_URL"
   fi
 
@@ -2263,6 +2565,8 @@ main() {
     set_issue_project_status \
     "$ISSUE_NUMBER" \
     "$PROJECT_STATUS_READY_FOR_REVIEW"
+
+  check_pr_feedback_after_delay "$PR_NUMBER"
 
   persist_run_log "$ISSUE_NUMBER"
 
