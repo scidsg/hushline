@@ -83,7 +83,7 @@ def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
     assert tooltip is not None
     assert (
         tooltip.get_text(strip=True)
-        == "This display name may be mistaken for an official Hush Line admin account."
+        == "Visitors should be cautious of interacting with this account."
     )
 
 

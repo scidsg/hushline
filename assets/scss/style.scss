@@ -1547,7 +1547,7 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
   left: 0;
   top: calc(100% + 0.375rem);
   z-index: 10;
-  width: min(18rem, 80vw);
+  width: 215px;
   padding: 0.625rem 0.75rem;
   border: var(--border);
   border-radius: 0.25rem;
