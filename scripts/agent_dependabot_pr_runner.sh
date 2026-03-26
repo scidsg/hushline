@@ -340,15 +340,35 @@ count_open_human_prs() {
     --state open \
     --limit 200 \
     --json author \
-    --jq '
-      [
-        .[]
-        | (.author.login // "")
-        | select(length > 0)
-        | select(. != "'"$BOT_LOGIN"'")
-        | select(test("\\[bot\\]$") | not)
-      ] | length
-    '
+    | node -e '
+let data = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  data += chunk;
+});
+process.stdin.on("end", () => {
+  const botLogin = String(process.argv[1] || "").toLowerCase();
+  const dependabotSlug = String(process.argv[2] || "dependabot").toLowerCase();
+  const prs = JSON.parse(data || "[]");
+  const count = prs.filter((pr) => {
+    const login = String((pr && pr.author && pr.author.login) || "").toLowerCase();
+    if (!login) {
+      return false;
+    }
+    if (login === botLogin) {
+      return false;
+    }
+    if (login.includes(dependabotSlug)) {
+      return false;
+    }
+    if (login.endsWith("[bot]")) {
+      return false;
+    }
+    return true;
+  }).length;
+  process.stdout.write(String(count));
+});
+' "$BOT_LOGIN" "$DEPENDABOT_APP_SLUG"
 }
 
 run_dependency_audits() {

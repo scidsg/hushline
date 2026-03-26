@@ -207,6 +207,33 @@ main
     assert "runtime-bootstrap" not in calls
 
 
+def test_count_open_human_prs_excludes_dependabot_and_bot_logins() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "${{1-}} ${{2-}}" == "pr list" ]]; then
+    cat <<'EOF'
+[
+  {{"author": {{"login": "app/dependabot"}}}},
+  {{"author": {{"login": "dependabot[bot]"}}}},
+  {{"author": {{"login": "hushline-dev"}}}},
+  {{"author": {{"login": "Alice"}}}}
+]
+EOF
+    return 0
+  fi
+
+  return 1
+}}
+count_open_human_prs
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "1"
+
+
 def test_main_exits_early_when_unrelated_bot_pr_is_open(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
