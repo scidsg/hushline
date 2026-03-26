@@ -53,6 +53,9 @@ class User(Model):
     is_cautious: Mapped[bool] = mapped_column(
         server_default=text("false"), default=False, nullable=False
     )
+    is_suspended: Mapped[bool] = mapped_column(
+        server_default=text("false"), default=False, nullable=False
+    )
     session_id: Mapped[str] = mapped_column(
         db.String(SESSION_ID_MAX_LENGTH),
         nullable=False,

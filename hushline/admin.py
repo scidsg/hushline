@@ -116,6 +116,23 @@ def create_blueprint() -> Blueprint:
         flash(f"✅ User caution status set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
+    @bp.route("/toggle_suspended/<int:user_id>", methods=["POST"])
+    @admin_authentication_required
+    def toggle_suspended(user_id: int) -> Response:
+        _validate_csrf()
+
+        user = db.session.get(User, user_id)
+        if user is None:
+            abort(404)
+
+        desired_suspended = _parse_form_bool("is_suspended")
+        user.is_suspended = desired_suspended
+        db.session.commit()
+
+        status_label = "suspended" if desired_suspended else "active"
+        flash(f"✅ User suspension status set to {status_label}.", "success")
+        return redirect(url_for("settings.admin"))
+
     @bp.route("/update_tier/<int:tier_id>", methods=["POST"])
     @admin_authentication_required
     def update_tier(tier_id: int) -> Response:

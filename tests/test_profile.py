@@ -14,6 +14,7 @@ from hushline.model import AccountCategory, Message, OrganizationSetting, User, 
 
 msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
+suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
 
@@ -266,6 +267,22 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_suspended_state_disables_message_form_with_pgp_key(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    assert suspended_message in response.text
+    assert 'id="submitBtn"' in response.text
+    assert 'disabled="disabled"' in response.text
+    assert "/static/js/submit-message.js" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, user: User) -> None:
     user.pgp_key = None
     db.session.commit()
@@ -281,6 +298,55 @@ def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, us
     )
     assert response.status_code == 400
     assert "cannot submit messages to users who have not set a PGP key" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_post_rejects_when_target_is_suspended(client: FlaskClient, user: User) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_post_rejects_alias_when_owner_is_suspended(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user_alias.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user_alias.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert (
+        db.session.scalars(db.select(Message).filter_by(username_id=user_alias.id)).first() is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")

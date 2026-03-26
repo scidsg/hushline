@@ -68,6 +68,13 @@ def register_profile_routes(app: Flask) -> None:
         session["math_problem"] = math_problem
         return math_problem
 
+    def _message_submission_block_reason(uname: Username) -> str | None:
+        if bool(getattr(uname.user, "is_suspended", False)):
+            return "suspended"
+        if not uname.user.pgp_key:
+            return "missing_pgp_key"
+        return None
+
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
         try:
@@ -100,6 +107,7 @@ def register_profile_routes(app: Flask) -> None:
         )
 
         def _render_profile(status_code: int | None = None) -> Response | str | tuple[str, int]:
+            message_submission_block_reason = _message_submission_block_reason(uname)
             owner_guard_nonce = secrets.token_urlsafe(16)
             owner_guard_signature = _owner_guard_signature(
                 uname.username,
@@ -123,6 +131,7 @@ def register_profile_routes(app: Flask) -> None:
                 current_user_id=session.get("user_id"),
                 public_key=uname.user.pgp_key,
                 math_problem=math_problem,
+                message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
                 owner_guard_signature=owner_guard_signature,
             )
@@ -147,8 +156,13 @@ def register_profile_routes(app: Flask) -> None:
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
                 return _render_profile(400)
 
+            block_reason = _message_submission_block_reason(uname)
+            if block_reason == "suspended":
+                flash("⛔️ This account is suspended. New messages cannot be sent at this time.")
+                return _render_profile(400)
+
             if form.validate_on_submit():
-                if not uname.user.pgp_key:
+                if block_reason == "missing_pgp_key":
                     flash(
                         "⛔️ You cannot submit messages to users who have not set a PGP key.",
                         "error",

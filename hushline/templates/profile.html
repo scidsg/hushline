@@ -132,7 +132,7 @@
             </label>
           </div>
           <div>
-            {% if not user.pgp_key %}
+            {% if message_submission_block_reason %}
               {{ form[data['name']](id=data['name'], disabled='disabled') }}
             {% else %}
               {% if data['field'].encrypted %}
@@ -154,7 +154,7 @@
 
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
 
-    {% if user.pgp_key %}
+    {% if not message_submission_block_reason %}
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>
         <div class="captcha_container">
@@ -174,17 +174,22 @@
       type="submit"
       id="submitBtn"
       aria-label="Send a message to {{ display_name_or_username }}"
-      {% if not user.pgp_key %}disabled="disabled"{% endif %}
+      {% if message_submission_block_reason %}disabled="disabled"{% endif %}
     >
       Send Message
     </button>
 
-    {% if not user.pgp_key %}
+    {% if message_submission_block_reason %}
       <div class="pgp-disabled-overlay">
         <p>
-          🔒<br />
-          Sending messages is disabled until {{ display_name_or_username }} adds
-          a PGP key.
+          {% if message_submission_block_reason == "suspended" %}
+            ⛔️<br />
+            This account is suspended. New messages cannot be sent at this time.
+          {% else %}
+            🔒<br />
+            Sending messages is disabled until {{ display_name_or_username }} adds
+            a PGP key.
+          {% endif %}
         </p>
       </div>
     {% endif %}
@@ -192,7 +197,7 @@
 {% endblock %}
 
 {% block scripts %}
-  {% if user.pgp_key %}
+  {% if not message_submission_block_reason %}
     <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/submit-message.js') }}"></script>
