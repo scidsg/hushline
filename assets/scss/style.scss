@@ -1533,6 +1533,7 @@ h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContai
   text-underline-offset: 0.125rem;
   cursor: help;
   box-shadow: none;
+  margin: 0;
 }
 
 .badgeHelpTrigger:focus-visible {
