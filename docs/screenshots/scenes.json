@@ -767,6 +767,22 @@
       ]
     },
     {
+      "slug": "guest-directory-newsrooms",
+      "title": "Directory - Newsrooms",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#newsrooms-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#newsrooms.tab-content.active"
+        }
+      ]
+    },
+    {
       "slug": "guest-directory-globaleaks",
       "title": "Directory - GlobaLeaks",
       "path": "/directory",

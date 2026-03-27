@@ -26,6 +26,7 @@ def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> 
         "guest-directory-attorney-adam-j-levitt": (
             "/directory/public-records/public-record~adam-j-levitt"
         ),
+        "guest-directory-newsrooms": "/directory",
         "guest-directory-securedrop": "/directory",
         "guest-directory-globaleaks": "/directory",
     }
@@ -72,6 +73,10 @@ def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> 
     assert scenes["guest-directory-securedrop"]["actions"] == [
         {"type": "click", "selector": "#securedrop-tab"},
         {"type": "wait_for", "selector": "#securedrop.tab-content.active"},
+    ]
+    assert scenes["guest-directory-newsrooms"]["actions"] == [
+        {"type": "click", "selector": "#newsrooms-tab"},
+        {"type": "wait_for", "selector": "#newsrooms.tab-content.active"},
     ]
     assert scenes["guest-directory-globaleaks"]["actions"] == [
         {"type": "click", "selector": "#globaleaks-tab"},
