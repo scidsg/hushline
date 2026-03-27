@@ -63,6 +63,30 @@ This file provides operating guidance for coding agents working in the Hush Line
 |                               | Add an image to Vision for OCR       |                                  |                                               |
 |                               | View Tools tab in nav                |                                  |                                               |
 
+## Example Use Cases (Non-Exhaustive)
+
+| As a...            | I need to...                                                          | So...                                                                                  |
+|-------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| Lawyer            | Make myself discoverable                                              | Whistleblowers can find me by location                                                 |
+| Lawyer            | Add a rich bio                                                        | Whistleblowers know how I can help them                                                |
+| Lawyer            | Add links to my website                                               | Sources can verify who I am                                                            |
+| Lawyer            | Have multiple aliases                                                 | I can have clean intake channels for different investigations                          |
+| Lawyer            | Add custom message statuses                                           | I can let the person who submitted a message know next steps for their tip             |
+| Whistleblower     | Easily find someone who can help                                      | I can work toward making a positive change                                             |
+| Whistleblower     | Contact someone without creating my own account                       | I can submit a tip without any friction or requirements                                |
+| Whistleblower     | Know the status of my tip                                             | I understand what my next steps are                                                    |
+| Whistleblower     | Find a verified tip line                                              | I have high confidence in the person or organization I intend to reach                 |
+| Journalist        | Make it easy for a source to contact me without requiring a new app   | I receive better tips from more people                                                 |
+| Journalist        | Add more info (Signal, email, contact page, social profiles, etc.)    | Sources have options for how to contact me                                             |
+| Journalist        | Add more info (Signal, email, contact page, social profiles, etc.)    | Sources have additional social proof before contacting me                              |
+| Journalist        | Add my Hush Line profile URL to websites and profiles                 | Sources have confidence that I really own that tip line                                |
+| Business          | Provide my employees a trusted tip line                               | I receive tips while maintaining confidentiality and source privacy                    |
+| Business (EU)     | Set up an external method of employee reporting                       | My company remains compliant with the Whistleblowing Directive of 2019                 |
+| Business          | Provide a public tip line                                             | My company can receive messages about fraud, waste, and abuse                          |
+| Business          | Offer employees a safe tip line                                       | I can help establish a culture of safe reporting                                       |
+| Software Engineer | Have a way of receiving vulnerability reports                         | I can quickly address risks to users or data                                           |
+| Manager           | Give my direct reports a way to share concerns privately              | I can reinforce a safe workplace and psychological safety                              |
+
 ## Local Commands
 
 - Start stack: `docker compose up`
