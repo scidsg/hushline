@@ -14,6 +14,7 @@ Message statuses help you organize tips internally and explain progress back to 
 ## What you can customize
 
 In `Settings` -> `Message Statuses`, you can edit the explanatory text attached to each status. Hush Line supports Markdown for that text.
+If you have not customized a status yet, the settings page shows the built-in default text in the textarea so you can edit from the current baseline.
 
 This is useful when you want to explain:
 
