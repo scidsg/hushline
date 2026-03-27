@@ -63,6 +63,9 @@ document.addEventListener("DOMContentLoaded", function () {
   function C(e) {
     return "lawyer" === e.account_category;
   }
+  function N(e) {
+    return "newsroom" === e.account_category;
+  }
   function B(t, n = k()) {
     const r = t.trim().toLowerCase();
     return y.filter((t) => {
@@ -94,7 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           return !(
             ("globaleaks" === t && !e.is_globaleaks) ||
-            ("newsrooms" === t && !e.is_newsroom) ||
+            ("newsrooms" === t && !e.is_newsroom && !N(e)) ||
             ("securedrop" === t && !e.is_securedrop)
           );
         })(t, n)
