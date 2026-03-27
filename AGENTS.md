@@ -2,6 +2,10 @@
 
 This file provides operating guidance for coding agents working in the Hush Line repository. We are a 501(c)(3) non-profit based in the United States, and consider this software safety-critical infrastructure protecting users’ operational, physical, and digital security.
 
+## Grounding Document
+
+- Primary grounding reference: `docs/ISO-37002.md` (`ISO 37002:2021 Whistleblowing management systems - Guidelines`)
+
 ## Principles
 
 - Usability of the Software
