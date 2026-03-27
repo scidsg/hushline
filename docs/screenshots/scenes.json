@@ -45,6 +45,7 @@
       "title": "Directory - All (admin)",
       "path": "/directory",
       "session": "admin",
+      "captureModes": ["fold", "scroll"],
       "actions": [
         {
           "type": "click",
@@ -771,6 +772,7 @@
       "title": "Directory - Newsrooms",
       "path": "/directory",
       "session": "guest",
+      "captureModes": ["fold", "scroll"],
       "actions": [
         {
           "type": "click",
@@ -803,6 +805,7 @@
       "title": "Directory - All",
       "path": "/directory",
       "session": "guest",
+      "captureModes": ["fold", "scroll"],
       "actions": [
         {
           "type": "click",

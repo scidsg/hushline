@@ -84,6 +84,14 @@ def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> 
     ]
 
 
+def test_docs_screenshots_manifest_disables_full_page_for_heavy_directory_scenes() -> None:
+    scenes = _scene_map()
+
+    assert scenes["auth-admin-directory-all"]["captureModes"] == ["fold", "scroll"]
+    assert scenes["guest-directory-newsrooms"]["captureModes"] == ["fold", "scroll"]
+    assert scenes["guest-directory-all"]["captureModes"] == ["fold", "scroll"]
+
+
 def test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fill() -> None:
     scenes = _scene_map()
 
