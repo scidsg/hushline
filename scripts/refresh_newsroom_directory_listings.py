@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -72,23 +71,7 @@ def _load_existing_rows(path: Path) -> list[dict[str, Any]]:
 
 
 def _serialize_rows(rows: Sequence[Mapping[str, object]]) -> str:
-    serialized = json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
-    prettier_path = _project_root() / "node_modules" / ".bin" / "prettier"
-    if not prettier_path.exists():
-        return serialized
-
-    try:
-        result = subprocess.run(
-            [str(prettier_path), "--parser", "json"],  # noqa: S603
-            input=serialized,
-            capture_output=True,
-            check=True,
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return serialized
-
-    return result.stdout
+    return json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
 
 
 def _count_updated_rows(
