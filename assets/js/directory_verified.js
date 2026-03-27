@@ -135,6 +135,10 @@ document.addEventListener("DOMContentLoaded", function () {
     return user.account_category === "lawyer";
   }
 
+  function isNewsroomUser(user) {
+    return user.account_category === "newsroom";
+  }
+
   function matchesAttorneyFilters(user) {
     const selectedCountry = attorneyCountryFilter?.value.trim() || "";
     const selectedRegion = attorneyRegionFilter?.value.trim() || "";
@@ -183,7 +187,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (tab === "newsrooms" && !user.is_newsroom) {
-      return false;
+      if (!isNewsroomUser(user)) {
+        return false;
+      }
     }
 
     if (tab === "securedrop" && !user.is_securedrop) {
