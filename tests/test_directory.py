@@ -241,6 +241,7 @@ def test_directory_newsrooms_banner_links_to_admin(client: FlaskClient) -> None:
     assert links_by_text["Request a correction"] == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
+    assert "self-reported newsrooms and automated listings" in banner_text
     assert "Institute for Nonprofit News" in banner_text
     assert "Find Your News directory" in banner_text
     assert "Request a correction" in banner_text
@@ -568,6 +569,43 @@ def test_directory_self_reported_attorneys_render_in_attorneys_tab(
     assert attorney_link.get_text(" ", strip=True) == "View Profile"
     assert public_record_count.get_text(" ", strip=True) == str(
         len(get_public_record_listings()) + 1
+    )
+
+
+def test_directory_self_reported_newsrooms_render_in_newsrooms_tab(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.NEWSROOM.value
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Self-Reported Newsroom"
+    user.primary_username.bio = "Newsroom profile."
+    user2.account_category = AccountCategory.ACTIVIST.value
+    user2.primary_username.show_in_directory = True
+    user2.primary_username._display_name = "Non-Newsroom"
+    db.session.commit()
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    newsroom_tab = soup.find(id="newsrooms-tab")
+
+    assert newsroom_panel is not None
+    assert newsroom_tab is not None
+    assert "Self-Reported Newsroom" in newsroom_panel.get_text(" ", strip=True)
+    assert "Non-Newsroom" not in newsroom_panel.get_text(" ", strip=True)
+
+    newsroom_card = _find_directory_card(newsroom_panel, "Self-Reported Newsroom")
+    newsroom_link = newsroom_card.select_one("a")
+    assert newsroom_link is not None
+    assert newsroom_link.get("href") == url_for("profile", username=user.primary_username.username)
+    assert newsroom_link.get_text(" ", strip=True) == "View Profile"
+
+    newsroom_count = newsroom_tab.select_one(".badge")
+    assert newsroom_count is not None
+    assert newsroom_count.get_text(" ", strip=True) == str(
+        len(get_newsroom_directory_listings()) + 1
     )
 
 

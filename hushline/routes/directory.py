@@ -248,6 +248,10 @@ def _is_self_reported_attorney(username: Username) -> bool:
     return getattr(username.user, "account_category", None) == AccountCategory.LAWYER.value
 
 
+def _is_self_reported_newsroom(username: Username) -> bool:
+    return getattr(username.user, "account_category", None) == AccountCategory.NEWSROOM.value
+
+
 def _show_directory_caution_badge(username: Username) -> bool:
     return show_directory_caution_badge(
         username.display_name or username.username,
@@ -459,6 +463,9 @@ def register_directory_routes(app: Flask) -> None:
         attorney_usernames = [
             username for username in usernames if _is_self_reported_attorney(username)
         ]
+        newsroom_usernames = [
+            username for username in usernames if _is_self_reported_newsroom(username)
+        ]
         all_public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
@@ -530,8 +537,9 @@ def register_directory_routes(app: Flask) -> None:
             attorney_filter_state=attorney_filter_state,
             globaleaks_listings=globaleaks_listings,
             globaleaks_total_count=len(globaleaks_listings),
+            newsroom_usernames=newsroom_usernames,
             newsroom_listings=newsroom_listings,
-            newsroom_total_count=len(newsroom_listings),
+            newsroom_total_count=len(newsroom_usernames) + len(newsroom_listings),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
             all_directory_entries=all_directory_entries,
