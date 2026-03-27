@@ -15,12 +15,15 @@ from werkzeug.wrappers.response import Response
 from hushline.model import (
     AccountCategory,
     GlobaLeaksDirectoryListing,
+    NewsroomDirectoryListing,
     OrganizationSetting,
     PublicRecordListing,
     SecureDropDirectoryListing,
     Username,
     get_globaleaks_directory_listing,
     get_globaleaks_directory_listings,
+    get_newsroom_directory_listing,
+    get_newsroom_directory_listings,
     get_public_record_listing,
     get_public_record_listings,
     get_securedrop_directory_listing,
@@ -270,6 +273,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "has_pgp_key": bool(user.pgp_key),
         "is_public_record": False,
         "is_globaleaks": False,
+        "is_newsroom": False,
         "is_securedrop": False,
         "is_automated": False,
         "message_capable": bool(user.pgp_key),
@@ -303,6 +307,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "has_pgp_key": False,
         "is_public_record": True,
         "is_globaleaks": False,
+        "is_newsroom": False,
         "is_securedrop": False,
         "is_automated": listing.is_automated,
         "message_capable": listing.message_capable,
@@ -336,6 +341,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
         "has_pgp_key": False,
         "is_public_record": False,
         "is_globaleaks": True,
+        "is_newsroom": False,
         "is_securedrop": False,
         "is_automated": listing.is_automated,
         "message_capable": listing.message_capable,
@@ -354,6 +360,40 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
     }
 
 
+def _newsroom_row(listing: NewsroomDirectoryListing) -> dict[str, object | None]:
+    geography = listing.geography
+    return {
+        "entry_type": "newsroom",
+        "primary_username": None,
+        "display_name": listing.name,
+        "bio": listing.description,
+        "account_category": None,
+        "account_category_label": None,
+        "is_admin": False,
+        "is_verified": False,
+        "show_caution_badge": False,
+        "has_pgp_key": False,
+        "is_public_record": False,
+        "is_globaleaks": False,
+        "is_newsroom": True,
+        "is_securedrop": False,
+        "is_automated": listing.is_automated,
+        "message_capable": listing.message_capable,
+        "meta": listing.website or listing.directory_url,
+        **_geography_fields(
+            geography.city,
+            geography.country,
+            geography.subdivision,
+            geography.subdivision_code,
+            geography.countries,
+        ),
+        "practice_tags": list(listing.topics),
+        "source_label": listing.source_label,
+        "directory_section": listing.directory_section,
+        "profile_url": url_for("newsroom_listing", slug=listing.slug),
+    }
+
+
 def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | None]:
     geography = listing.geography
     return {
@@ -369,6 +409,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
         "has_pgp_key": False,
         "is_public_record": False,
         "is_globaleaks": False,
+        "is_newsroom": False,
         "is_securedrop": True,
         "is_automated": listing.is_automated,
         "message_capable": listing.message_capable,
@@ -455,6 +496,11 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        newsroom_listings = (
+            list(get_newsroom_directory_listings())
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
@@ -463,6 +509,7 @@ def register_directory_routes(app: Flask) -> None:
             *[_directory_user_row(username) for username in usernames],
             *[_public_record_row(listing) for listing in filtered_public_record_listings],
             *[_globaleaks_row(listing) for listing in globaleaks_listings],
+            *[_newsroom_row(listing) for listing in newsroom_listings],
             *[_securedrop_row(listing) for listing in securedrop_listings],
         ]
         all_directory_entries.sort(key=_all_directory_entry_sort_key)
@@ -483,6 +530,8 @@ def register_directory_routes(app: Flask) -> None:
             attorney_filter_state=attorney_filter_state,
             globaleaks_listings=globaleaks_listings,
             globaleaks_total_count=len(globaleaks_listings),
+            newsroom_listings=newsroom_listings,
+            newsroom_total_count=len(newsroom_listings),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
             all_directory_entries=all_directory_entries,
@@ -510,6 +559,17 @@ def register_directory_routes(app: Flask) -> None:
             abort(404)
 
         return render_template("directory_globaleaks.html", listing=listing)
+
+    @app.route("/directory/newsrooms/<slug>")
+    def newsroom_listing(slug: str) -> Response | str:
+        if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            abort(404)
+
+        listing = get_newsroom_directory_listing(slug)
+        if listing is None:
+            abort(404)
+
+        return render_template("directory_newsroom.html", listing=listing)
 
     @app.route("/directory/securedrop/<slug>")
     def securedrop_listing(slug: str) -> Response | str:
@@ -576,6 +636,11 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
+        newsroom_rows = (
+            [_newsroom_row(listing) for listing in get_newsroom_directory_listings()]
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
         securedrop_rows = (
             [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
@@ -590,6 +655,7 @@ def register_directory_routes(app: Flask) -> None:
                 *[_directory_user_row(username) for username in get_directory_usernames()],
                 *public_record_rows,
                 *globaleaks_rows,
+                *newsroom_rows,
                 *securedrop_rows,
             ]
         ]

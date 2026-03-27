@@ -47,6 +47,22 @@
             <button
               type="button"
               class="tab"
+              data-tab="newsrooms"
+              role="tab"
+              aria-selected="false"
+              aria-controls="newsrooms"
+              id="newsrooms-tab"
+            >
+              Newsrooms
+              <span class="badge" role="img" aria-label="Newsroom listing count"
+                >{{ newsroom_total_count }}</span
+              >
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
               data-tab="securedrop"
               role="tab"
               aria-selected="false"
@@ -377,6 +393,37 @@
   {% endif %}
 
   {% if directory_verified_tab_enabled %}
+    <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
+      <p class="meta dirMeta">
+        🧪 Beta: These listings are automated from the Institute for Nonprofit News's public
+        <a href="https://findyournews.org/explore/">Find Your News directory</a>.
+        <a href="/to/admin">Request a correction</a>.
+      </p>
+
+      {% if newsroom_listings %}
+        <div class="user-list">
+          {% for listing in newsroom_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('newsroom_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
         🧪 Beta: This list contains manual and automated entries and should not be considered exhaustive or authoritative.
@@ -466,6 +513,11 @@
                 {% endif %}
               {% elif entry.entry_type == "globaleaks" %}
                 <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
+                {% if entry.is_automated %}
+                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+                {% endif %}
+              {% elif entry.entry_type == "newsroom" %}
+                <span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>
                 {% if entry.is_automated %}
                   <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
                 {% endif %}

@@ -15,10 +15,12 @@ from hushline.db import db
 from hushline.model import (
     AccountCategory,
     GlobaLeaksDirectoryListing,
+    NewsroomDirectoryListing,
     PublicRecordListing,
     SecureDropDirectoryListing,
     User,
     get_globaleaks_directory_listings,
+    get_newsroom_directory_listings,
     get_public_record_listings,
     get_securedrop_directory_listings,
 )
@@ -57,6 +59,31 @@ def _sample_globaleaks_listing() -> GlobaLeaksDirectoryListing:
         languages=("English", "Italian"),
         source_label="Automated GlobaLeaks discovery dataset",
         source_url="https://example.org/source/globaleaks-export",
+    )
+
+
+def _sample_newsroom_listing() -> NewsroomDirectoryListing:
+    return NewsroomDirectoryListing(
+        id="newsroom-sample-newsroom",
+        slug="newsroom~sample-newsroom",
+        name="Sample Nonprofit Newsroom",
+        website="https://example.org",
+        description="An example nonprofit newsroom listing for source outreach.",
+        directory_url="https://findyournews.org/organization/sample-newsroom/",
+        tagline="Investigative reporting for the public good.",
+        mission="Mission text",
+        about="About our journalism text",
+        countries=("United States",),
+        places_covered=("California",),
+        languages=("English", "Spanish"),
+        topics=("Accountability", "Education"),
+        reach="Regional",
+        year_founded="2019",
+        source_label="INN Find Your News directory",
+        source_url="https://findyournews.org/organization/sample-newsroom/",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
     )
 
 
@@ -115,6 +142,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
     assert "Attorneys" in response.text
+    assert "Newsrooms" in response.text
     assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
@@ -197,6 +225,27 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert "Onion addresses require" not in banner_text
 
 
+def test_directory_newsrooms_banner_links_to_admin(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    assert newsroom_panel is not None
+
+    banner = newsroom_panel.select_one(".dirMeta")
+    assert banner is not None
+    banner_links = newsroom_panel.select(".dirMeta a")
+    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    assert links_by_text["Find Your News directory"] == "https://findyournews.org/explore/"
+    assert links_by_text["Request a correction"] == "/to/admin"
+    banner_text = " ".join(banner.get_text(" ", strip=True).split())
+    assert banner_text.startswith("🧪 Beta:")
+    assert "Institute for Nonprofit News" in banner_text
+    assert "Find Your News directory" in banner_text
+    assert "Request a correction" in banner_text
+
+
 def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -229,6 +278,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
     soup = BeautifulSoup(response.text, "html.parser")
     assert soup.find(id="directory-tabs") is None
     assert soup.find(id="public-records") is None
+    assert soup.find(id="newsrooms") is None
     assert soup.find(id="globaleaks") is None
     assert soup.find(id="securedrop") is None
 
@@ -236,6 +286,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
     assert all_panel is not None
     assert all_panel.select_one(".dirMeta") is None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "📰 Newsroom Listings" not in all_panel.get_text(" ", strip=True)
     assert "🌐 GlobaLeaks" not in all_panel.get_text(" ", strip=True)
     assert "🛡️ SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
     assert "🏛️ Public Record" not in all_panel.get_text(" ", strip=True)
@@ -253,6 +304,7 @@ def test_directory_users_json_excludes_public_records_when_verified_tabs_disable
     assert response.status_code == 200
     assert all(not row["is_public_record"] for row in (response.json or []))
     assert all(not row["is_globaleaks"] for row in (response.json or []))
+    assert all(not row["is_newsroom"] for row in (response.json or []))
     assert all(not row["is_securedrop"] for row in (response.json or []))
 
 
@@ -306,6 +358,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["show_caution_badge"] is False
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False
+    assert admin_row["is_newsroom"] is False
     assert admin_row["is_securedrop"] is False
     assert admin_row["city"] is None
     assert admin_row["country"] is None
@@ -1350,6 +1403,7 @@ def test_directory_users_json_includes_globaleaks_rows(
     assert row["primary_username"] is None
     assert row["is_public_record"] is False
     assert row["is_globaleaks"] is True
+    assert row["is_newsroom"] is False
     assert row["is_securedrop"] is False
     assert row["is_automated"] is True
     assert row["message_capable"] is False
@@ -1388,6 +1442,70 @@ def test_directory_globaleaks_cards_do_not_show_location(
     assert listing.location not in all_card.get_text(" ", strip=True)
 
 
+def test_newsroom_seed_has_rows() -> None:
+    listings = get_newsroom_directory_listings()
+
+    assert listings
+    assert all(listing.directory_url for listing in listings)
+    assert all(listing.source_url for listing in listings)
+
+
+def test_directory_users_json_includes_newsroom_rows(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_newsroom_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(row for row in (response.json or []) if row["display_name"] == listing.name)
+    assert row["entry_type"] == "newsroom"
+    assert row["primary_username"] is None
+    assert row["is_public_record"] is False
+    assert row["is_globaleaks"] is False
+    assert row["is_newsroom"] is True
+    assert row["is_securedrop"] is False
+    assert row["is_automated"] is True
+    assert row["message_capable"] is False
+    assert row["bio"] == listing.description
+    assert "location" not in row
+    assert row["city"] == listing.geography.city
+    assert row["country"] == listing.geography.country
+    assert row["subdivision"] == listing.geography.subdivision
+    assert row["subdivision_code"] == listing.geography.subdivision_code
+    assert row["countries"] == list(listing.geography.countries)
+    assert row["practice_tags"] == list(listing.topics)
+    assert row["source_label"] == listing.source_label
+    assert row["directory_section"] == "newsroom_directory"
+
+
+def test_directory_newsroom_cards_do_not_show_location(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_newsroom_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    all_panel = soup.find(id="all")
+
+    newsroom_card = _find_directory_card(newsroom_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert listing.location not in newsroom_card.get_text(" ", strip=True)
+    assert listing.location not in all_card.get_text(" ", strip=True)
+
+
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
@@ -1398,6 +1516,7 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
     assert row["entry_type"] == "securedrop"
     assert row["primary_username"] is None
     assert row["is_public_record"] is False
+    assert row["is_newsroom"] is False
     assert row["is_securedrop"] is True
     assert row["is_automated"] is True
     assert row["message_capable"] is False
@@ -1720,6 +1839,31 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
             message_capable=False,
         ),
     )
+    mocked_newsroom_listings = (
+        SimpleNamespace(
+            id="newsroom-echo",
+            slug="newsroom-echo",
+            name="Echo Newsroom",
+            website="https://echo.example",
+            directory_url="https://findyournews.org/organization/echo-newsroom/",
+            description="echo description",
+            geography=SimpleNamespace(
+                city=None,
+                country="United States",
+                subdivision="Illinois",
+                subdivision_code="IL",
+                countries=("United States",),
+                location="Global",
+            ),
+            location="Global",
+            topics=("Investigations",),
+            source_label="INN Find Your News directory",
+            source_url="https://findyournews.org/organization/echo-newsroom/",
+            directory_section="newsroom_directory",
+            is_automated=True,
+            message_capable=False,
+        ),
+    )
 
     monkeypatch.setattr(
         "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
@@ -1736,6 +1880,10 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
         "hushline.routes.directory.get_globaleaks_directory_listings",
         lambda: mocked_globaleaks_listings,
     )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: mocked_newsroom_listings,
+    )
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -1749,6 +1897,7 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     assert all_panel.select("p.label") == []
     assert "Info-Only Accounts" not in all_panel.get_text(" ", strip=True)
     assert "Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
+    assert "Newsroom Listings" not in all_panel.get_text(" ", strip=True)
     assert "GlobaLeaks Instances" not in all_panel.get_text(" ", strip=True)
     assert "SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
 
@@ -1761,6 +1910,7 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
         "Bravo Info",
         "Charlie SecureDrop",
         "Delta GlobaLeaks",
+        "Echo Newsroom",
         "Zulu User",
     ]
 
@@ -1815,6 +1965,7 @@ def test_directory_all_tab_does_not_promote_non_admin_named_admin(
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -1889,6 +2040,7 @@ def test_directory_all_tab_moves_caution_accounts_to_bottom(
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -1968,6 +2120,7 @@ def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
     )
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -2027,6 +2180,7 @@ def test_directory_all_tab_preserves_transliterated_display_name_order(
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -2099,6 +2253,7 @@ def test_directory_users_json_preserves_grouped_feed_order_for_non_all_tabs(
     )
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory_users"))
     assert response.status_code == 200
@@ -2147,6 +2302,7 @@ def test_directory_users_json_exposes_all_tab_sort_fields_for_transliterated_ord
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory_users"))
     assert response.status_code == 200
@@ -2195,6 +2351,7 @@ def test_directory_users_json_preserves_empty_transliterated_sort_keys(
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
     response = client.get(url_for("directory_users"))
     assert response.status_code == 200
@@ -2320,6 +2477,7 @@ def test_public_record_listing_route_hidden_when_verified_tabs_disabled(
     [
         ("public_record_listing", "hushline.routes.directory.get_public_record_listing"),
         ("globaleaks_listing", "hushline.routes.directory.get_globaleaks_directory_listing"),
+        ("newsroom_listing", "hushline.routes.directory.get_newsroom_directory_listing"),
         ("securedrop_listing", "hushline.routes.directory.get_securedrop_directory_listing"),
     ],
 )
@@ -2440,6 +2598,53 @@ def test_globaleaks_listing_route_hidden_when_verified_tabs_disabled(
     assert response.status_code == 404
 
 
+def test_newsroom_listing_page_is_read_only(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_newsroom_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(url_for("newsroom_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    assert "📰 Newsroom" in page_text
+    assert "🤖 Automated" in page_text
+    assert listing.description in page_text
+    assert listing.directory_url in response.text
+    assert listing.source_url in response.text
+    assert "Location" not in page_text
+    assert 'id="messageForm"' not in response.text
+    assert "Send Message" not in response.text
+
+    dir_meta = soup.select_one(".dirMeta")
+    assert dir_meta is not None
+    dir_meta_text = dir_meta.get_text(" ", strip=True)
+    assert dir_meta_text.startswith("🧪 Beta:")
+    assert "Institute for Nonprofit News" in dir_meta_text
+    assert "Find Your News directory" in dir_meta_text
+
+
+def test_newsroom_listing_route_hidden_when_verified_tabs_disabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_newsroom_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listing",
+        lambda _slug: listing,
+    )
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("newsroom_listing", slug=listing.slug))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 404
+
+
 def test_securedrop_listing_page_omits_landing_page_link_when_missing(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2500,6 +2705,22 @@ def test_globaleaks_listing_slug_cannot_be_messaged(
     listing = _sample_globaleaks_listing()
     monkeypatch.setattr(
         "hushline.routes.directory.get_globaleaks_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(
+        url_for("redirect_submit_message", username=listing.slug),
+        follow_redirects=True,
+    )
+    assert response.status_code == 404
+
+
+def test_newsroom_listing_slug_cannot_be_messaged(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_newsroom_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listing",
         lambda _slug: listing,
     )
 

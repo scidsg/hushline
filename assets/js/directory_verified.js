@@ -88,6 +88,11 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (activeTab === "newsrooms") {
+      searchInput.placeholder = "Search newsrooms...";
+      return;
+    }
+
     if (activeTab === "globaleaks") {
       searchInput.placeholder = "Search GlobaLeaks instances...";
       return;
@@ -109,6 +114,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (activeTab === "public-records") {
       return "attorneys";
+    }
+
+    if (activeTab === "newsrooms") {
+      return "newsrooms";
     }
 
     if (activeTab === "globaleaks") {
@@ -148,7 +157,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function matchesTab(user, tab) {
     if (
       tab === "verified" &&
-      (!user.is_verified || user.is_public_record || user.is_globaleaks || user.is_securedrop)
+      (
+        !user.is_verified ||
+        user.is_public_record ||
+        user.is_globaleaks ||
+        user.is_newsroom ||
+        user.is_securedrop
+      )
     ) {
       return false;
     }
@@ -164,6 +179,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (tab === "globaleaks" && !user.is_globaleaks) {
+      return false;
+    }
+
+    if (tab === "newsrooms" && !user.is_newsroom) {
       return false;
     }
 
@@ -287,6 +306,18 @@ document.addEventListener("DOMContentLoaded", function () {
       return badgeContainer;
     }
 
+    if (user.is_newsroom) {
+      if (tab !== "newsrooms") {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>';
+      }
+      if (user.is_automated) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>';
+      }
+      return badgeContainer;
+    }
+
     if (user.is_globaleaks) {
       if (tab !== "globaleaks") {
         badgeContainer +=
@@ -331,6 +362,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let listingType = "SecureDrop listing";
     if (user.is_public_record) {
       listingType = "Public record listing";
+    } else if (user.is_newsroom) {
+      listingType = "Newsroom listing";
     } else if (user.is_globaleaks) {
       listingType = "GlobaLeaks listing";
     }
@@ -362,7 +395,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const usernameHighlighted = highlightMatch(user.primary_username, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (user.is_public_record || user.is_globaleaks || user.is_securedrop) {
+    if (user.is_public_record || user.is_globaleaks || user.is_newsroom || user.is_securedrop) {
       return buildAutomatedListingCard(user, query, tab);
     }
 
@@ -423,7 +456,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const realUsers = users.filter(
-      (user) => !user.is_public_record && !user.is_globaleaks && !user.is_securedrop,
+      (user) =>
+        !user.is_public_record &&
+        !user.is_globaleaks &&
+        !user.is_newsroom &&
+        !user.is_securedrop,
     );
     const withPgp = realUsers.filter((user) => user.has_pgp_key);
     const infoOnly = realUsers.filter((user) => !user.has_pgp_key);
