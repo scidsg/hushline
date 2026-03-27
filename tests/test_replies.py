@@ -1,3 +1,4 @@
+from html import unescape
 from uuid import uuid4
 
 import pytest
@@ -71,6 +72,53 @@ def test_set_custom_replies(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_settings_replies_prefills_default_status_text(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.replies"))
+
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    for status in MessageStatus:
+        heading = soup.find("h4", string=lambda text: bool(text) and status.display_str in text)
+        assert heading is not None
+        form = heading.find_next("form")
+        assert form is not None
+        textarea = form.find("textarea", attrs={"name": "markdown"})
+        assert textarea is not None
+        assert textarea.text.strip() == unescape(str(status.default_text)).strip()
+        assert "&#39;" not in textarea.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_replies_prefills_custom_status_text_when_present(
+    client: FlaskClient, user: User
+) -> None:
+    custom_text = "Custom accepted reply."
+    db.session.add(
+        MessageStatusText(
+            user_id=user.id,  # type: ignore[call-arg]
+            status=MessageStatus.ACCEPTED,  # type: ignore[call-arg]
+            markdown=custom_text,  # type: ignore[call-arg]
+        )
+    )
+    db.session.commit()
+
+    response = client.get(url_for("settings.replies"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    accepted_heading = soup.find(
+        "h4", string=lambda text: bool(text) and MessageStatus.ACCEPTED.display_str in text
+    )
+    assert accepted_heading is not None
+    accepted_form = accepted_heading.find_next("form")
+    assert accepted_form is not None
+    textarea = accepted_form.find("textarea", attrs={"name": "markdown"})
+    assert textarea is not None
+    assert textarea.text.strip() == custom_text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_set_custom_replies_redirects_back_with_success_flash(
     client: FlaskClient, user: User
 ) -> None:
@@ -94,6 +142,32 @@ def test_set_custom_replies_redirects_back_with_success_flash(
         db.select(MessageStatusText).filter_by(user_id=user.id, status=status)
     ).one()
     assert msg_status_text.markdown == text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_set_default_replies_keeps_builtin_default_without_persisting_override(
+    client: FlaskClient, user: User
+) -> None:
+    status = MessageStatus.ACCEPTED
+
+    response = client.post(
+        url_for("settings.replies"),
+        data=form_to_data(
+            SetMessageStatusTextForm(
+                data={"status": status.value, "markdown": unescape(str(status.default_text))}
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 Reply text set." in response.text
+    assert (
+        db.session.scalars(
+            db.select(MessageStatusText).filter_by(user_id=user.id, status=status)
+        ).one_or_none()
+        is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")

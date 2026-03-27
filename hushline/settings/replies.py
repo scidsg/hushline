@@ -1,3 +1,4 @@
+from html import unescape
 from typing import Tuple
 
 from flask import (
@@ -19,6 +20,10 @@ from hushline.settings.forms import (
 from hushline.utils import redirect_to_self
 
 
+def _default_status_markdown(status: MessageStatus) -> str:
+    return unescape(str(status.default_text)).strip()
+
+
 def _status_text_forms(
     user_id: int, submitted_form: SetMessageStatusTextForm | None = None
 ) -> list[tuple[MessageStatus, SetMessageStatusTextForm]]:
@@ -32,7 +37,7 @@ def _status_text_forms(
                 status=status.value,
                 markdown=msg_status_text.markdown
                 if msg_status_text and msg_status_text.markdown
-                else "",
+                else _default_status_markdown(status),
             )
         status_forms.append((status, form))
     return status_forms
@@ -46,9 +51,11 @@ def register_replies_routes(bp: Blueprint) -> None:
         status_code = 200
         if request.method == "POST":
             if form.validate():
-                MessageStatusText.upsert(
-                    session["user_id"], MessageStatus[form.status.data.upper()], form.markdown.data
-                )
+                status = MessageStatus[form.status.data.upper()]
+                markdown = form.markdown.data
+                if markdown is not None and markdown.strip() == _default_status_markdown(status):
+                    markdown = ""
+                MessageStatusText.upsert(session["user_id"], status, markdown or "")
                 db.session.commit()
                 flash("👍 Reply text set.")
                 return redirect_to_self()
