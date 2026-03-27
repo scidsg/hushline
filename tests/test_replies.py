@@ -1,3 +1,4 @@
+from html import unescape
 from uuid import uuid4
 
 import pytest
@@ -84,7 +85,8 @@ def test_settings_replies_prefills_default_status_text(client: FlaskClient) -> N
         assert form is not None
         textarea = form.find("textarea", attrs={"name": "markdown"})
         assert textarea is not None
-        assert textarea.text.strip() == str(status.default_text).strip()
+        assert textarea.text.strip() == unescape(str(status.default_text)).strip()
+        assert "&#39;" not in textarea.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -146,13 +148,13 @@ def test_set_custom_replies_redirects_back_with_success_flash(
 def test_set_default_replies_keeps_builtin_default_without_persisting_override(
     client: FlaskClient, user: User
 ) -> None:
-    status = MessageStatus.PENDING
+    status = MessageStatus.ACCEPTED
 
     response = client.post(
         url_for("settings.replies"),
         data=form_to_data(
             SetMessageStatusTextForm(
-                data={"status": status.value, "markdown": str(status.default_text)}
+                data={"status": status.value, "markdown": unescape(str(status.default_text))}
             )
         ),
         follow_redirects=True,

@@ -1,3 +1,4 @@
+from html import unescape
 from typing import Tuple
 
 from flask import (
@@ -20,7 +21,7 @@ from hushline.utils import redirect_to_self
 
 
 def _default_status_markdown(status: MessageStatus) -> str:
-    return str(status.default_text).strip()
+    return unescape(str(status.default_text)).strip()
 
 
 def _status_text_forms(
