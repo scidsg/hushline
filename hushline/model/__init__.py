@@ -20,6 +20,11 @@ from hushline.model.globaleaks_directory_listing import (
 from hushline.model.invite_code import InviteCode
 from hushline.model.message import Message
 from hushline.model.message_status_text import MessageStatusText
+from hushline.model.newsroom_directory_listing import (
+    NewsroomDirectoryListing,
+    get_newsroom_directory_listing,
+    get_newsroom_directory_listings,
+)
 from hushline.model.organization_setting import OrganizationSetting
 from hushline.model.public_record_listing import (
     PublicRecordListing,

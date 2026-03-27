@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Newsroom: {{ listing.name }}{% endblock %}
+
+{% block content %}
+  <h2 class="submit">{{ listing.name }}</h2>
+
+  <div class="badgeContainer">
+    <span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>
+    <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+  </div>
+
+  <p class="bio">{{ listing.description }}</p>
+
+  <p class="meta dirMeta">
+    🧪 Beta: This listing is automated from the Institute for Nonprofit News's public Find Your News directory.
+  </p>
+
+  <div class="extra-fields">
+    {% if listing.website %}
+      <p class="extra-field">
+        <span class="extra-field-label">Website</span>
+        <span class="extra-field-value">
+          <a href="{{ listing.website }}" target="_blank" rel="noopener noreferrer">
+            {{ listing.website }}
+          </a>
+        </span>
+      </p>
+    {% endif %}
+
+    <p class="extra-field">
+      <span class="extra-field-label">Find Your News Listing</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.directory_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.directory_url }}
+        </a>
+      </span>
+    </p>
+
+    {% if listing.tagline %}
+      <p class="extra-field">
+        <span class="extra-field-label">Tagline</span>
+        <span class="extra-field-value">{{ listing.tagline }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.mission %}
+      <p class="extra-field">
+        <span class="extra-field-label">Mission</span>
+        <span class="extra-field-value">{{ listing.mission }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.about %}
+      <p class="extra-field">
+        <span class="extra-field-label">About Our Journalism</span>
+        <span class="extra-field-value">{{ listing.about }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.city %}
+      <p class="extra-field">
+        <span class="extra-field-label">City</span>
+        <span class="extra-field-value">{{ listing.geography.city }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.subdivision %}
+      <p class="extra-field">
+        <span class="extra-field-label">State / Region</span>
+        <span class="extra-field-value">{{ listing.geography.subdivision }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.geography.country %}
+      <p class="extra-field">
+        <span class="extra-field-label">Country</span>
+        <span class="extra-field-value">{{ listing.geography.country }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.countries and (listing.countries | length > 1 or not listing.geography.country) %}
+      <p class="extra-field">
+        <span class="extra-field-label">Countries</span>
+        <span class="extra-field-value">{{ listing.countries | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.places_covered %}
+      <p class="extra-field">
+        <span class="extra-field-label">Places Covered</span>
+        <span class="extra-field-value">{{ listing.places_covered | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.languages %}
+      <p class="extra-field">
+        <span class="extra-field-label">Languages</span>
+        <span class="extra-field-value">{{ listing.languages | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.topics %}
+      <p class="extra-field">
+        <span class="extra-field-label">Topics</span>
+        <span class="extra-field-value">{{ listing.topics | join(", ") }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.reach %}
+      <p class="extra-field">
+        <span class="extra-field-label">Reach</span>
+        <span class="extra-field-value">{{ listing.reach }}</span>
+      </p>
+    {% endif %}
+
+    {% if listing.year_founded %}
+      <p class="extra-field">
+        <span class="extra-field-label">Year Founded</span>
+        <span class="extra-field-value">{{ listing.year_founded }}</span>
+      </p>
+    {% endif %}
+
+    <p class="extra-field">
+      <span class="extra-field-label">Source</span>
+      <span class="extra-field-value">
+        <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
+          {{ listing.source_url }}
+        </a>
+      </span>
+    </p>
+  </div>
+{% endblock %}
