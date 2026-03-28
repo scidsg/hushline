@@ -1967,9 +1967,9 @@ select {
   font-family: var(--font-sans);
 }
 
-input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not(type="search"),
 select {
-  height: 36px;
+  height: 44px;
 }
 
 select {
@@ -3076,7 +3076,7 @@ input#captcha_answer {
     display: flex;
     flex-direction: row;
     cursor: pointer;
-    min-height: 36px;
+    min-height: 44px;
   }
 
   header .btn {
@@ -4253,10 +4253,10 @@ strong {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44x;
   padding: 0;
   line-height: 1;
   box-sizing: border-box;
@@ -4377,11 +4377,11 @@ strong {
 }
 
 .lastSkip {
-  bottom: 52px
+  bottom: 52px;
 }
 
 .firstSkip {
-  bottom: 36px
+  bottom: 36px;
 }
 
 .backBtn {
