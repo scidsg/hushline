@@ -1968,7 +1968,7 @@ select {
 
 input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
 select {
-  height: 44px;
+  height: 36px;
 }
 
 select {
@@ -2687,14 +2687,14 @@ textarea#bio {
 
   .horizontal-scroll {
     position: absolute;
-    top: 50%;
+    top: 48%;
     transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    max-width: 44px;
-    max-height: 44px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
     border-radius: 999px;
     align-items: center;
     justify-content: center;
@@ -3075,7 +3075,7 @@ input#captcha_answer {
     display: flex;
     flex-direction: row;
     cursor: pointer;
-    min-height: 44px;
+    min-height: 36px;
   }
 
   header .btn {
@@ -4252,10 +4252,10 @@ strong {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
   line-height: 1;
   box-sizing: border-box;
