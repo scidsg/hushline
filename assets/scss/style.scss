@@ -698,7 +698,17 @@
   .horizontal-scroll:focus-visible {
     background-color: rgb(245, 245, 245);
   }
+
+  .scroll-arrow-right {
+    background-image: url("../img/icon-chevron-right.png");
+  }
+
+  .scroll-arrow-left {
+    background-image: url("../img/icon-chevron-left.png");
+  }
 }
+
+
 
 
 /* Dark Mode */
@@ -1310,6 +1320,14 @@
   .horizontal-scroll:hover,
   .horizontal-scroll:focus-visible {
     background-color: var(--color-dark-bg-alt-transparent);
+  }
+
+  .scroll-arrow-right {
+    background-image: url("../img/icon-chevron-right-dm.png");
+  }
+
+  .scroll-arrow-left {
+    background-image: url("../img/icon-chevron-left-dm.png");
   }
 }
 
@@ -2656,6 +2674,10 @@ textarea#bio {
 
 .horizontal-scroll {
   display: none;
+}
+
+.scroll-arrow-left {
+
 }
 
 @media (min-width: 641px) {
@@ -4234,7 +4256,7 @@ strong {
   width: 44px;
   height: 44px;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 44x;
   padding: 0;
   line-height: 1;
   box-sizing: border-box;
@@ -4355,11 +4377,11 @@ strong {
 }
 
 .lastSkip {
-  bottom: 52px
+  bottom: 52px;
 }
 
 .firstSkip {
-  bottom: 36px
+  bottom: 36px;
 }
 
 .backBtn {
@@ -4901,4 +4923,14 @@ button .badge {
 
 .directory-filter-toggle {
   font-family: var(--font-sans);
+}
+
+.scroll-arrow-right,
+.scroll-arrow-left {
+  width: 1.25rem;
+  height: 1.25rem;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position-x: center;
+  background-position-y: center;
 }
