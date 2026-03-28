@@ -1,6 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
   const userSearch = window.HushlineUserSearch;
   const directoryPath = window.location.pathname.replace(/\/$/, "");
+  const directoryTabs = document.getElementById("directory-tabs");
+  const directoryTabList = document.getElementById("directory-tab-list");
+  const scrollLeftButton = directoryTabs?.querySelector(".scroll-left");
+  const scrollRightButton = directoryTabs?.querySelector(".scroll-right");
+  const desktopTabScrollMediaQuery = window.matchMedia("(min-width: 641px)");
   const tabs = document.querySelectorAll(".tab[data-tab]");
   const tabPanels = document.querySelectorAll(".tab-content");
   const searchInput = document.getElementById("searchInput");
@@ -70,6 +75,36 @@ document.addEventListener("DOMContentLoaded", function () {
     if (publicRecordCountBadge) {
       publicRecordCountBadge.textContent = attorneyResultsCount().toString();
     }
+  }
+
+  function updateTabScrollControls() {
+    if (!directoryTabs || !directoryTabList || !scrollLeftButton || !scrollRightButton) {
+      return;
+    }
+
+    const overflowWidth = directoryTabList.scrollWidth - directoryTabList.clientWidth;
+    const hasOverflow = desktopTabScrollMediaQuery.matches && overflowWidth > 1;
+    const canScrollLeft = hasOverflow && directoryTabList.scrollLeft > 1;
+    const canScrollRight = hasOverflow && directoryTabList.scrollLeft < overflowWidth - 1;
+
+    directoryTabs.classList.toggle("directory-tabs-overflowing", hasOverflow);
+    scrollLeftButton.hidden = !canScrollLeft;
+    scrollRightButton.hidden = !canScrollRight;
+  }
+
+  function scrollDirectoryTabs(direction) {
+    if (!directoryTabList) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+      .matches;
+    const scrollDistance = Math.max(directoryTabList.clientWidth * 0.75, 200);
+
+    directoryTabList.scrollBy({
+      left: direction * scrollDistance,
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
   }
 
   function updatePlaceholder() {
@@ -1036,10 +1071,12 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.hidden = false;
     targetPanel.style.display = "block";
     targetPanel.classList.add("active");
+    selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
 
     updateAttorneyFilterVisibility();
     updatePlaceholder();
     handleSearchInput();
+    requestAnimationFrame(updateTabScrollControls);
   };
 
   tabs.forEach((tab) => {
@@ -1084,7 +1121,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const stickyShell = document.querySelector(".directory-sticky-shell");
-  const directoryTabs = document.querySelector(".directory-tabs");
   const searchBox = document.querySelector(".directory-search");
   if (directoryTabs || stickyShell) {
     const updateStickyState = () => {
@@ -1111,6 +1147,27 @@ document.addEventListener("DOMContentLoaded", function () {
       requestAnimationFrame(updateStickyState);
     });
     window.addEventListener("resize", updateStickyState);
+  }
+
+  if (directoryTabList && scrollLeftButton && scrollRightButton) {
+    scrollLeftButton.addEventListener("click", function () {
+      scrollDirectoryTabs(-1);
+    });
+
+    scrollRightButton.addEventListener("click", function () {
+      scrollDirectoryTabs(1);
+    });
+
+    directoryTabList.addEventListener("scroll", updateTabScrollControls, { passive: true });
+    window.addEventListener("resize", updateTabScrollControls);
+
+    if (typeof desktopTabScrollMediaQuery.addEventListener === "function") {
+      desktopTabScrollMediaQuery.addEventListener("change", updateTabScrollControls);
+    } else if (typeof desktopTabScrollMediaQuery.addListener === "function") {
+      desktopTabScrollMediaQuery.addListener(updateTabScrollControls);
+    }
+
+    updateTabScrollControls();
   }
 
   updatePlaceholder();

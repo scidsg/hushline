@@ -13,7 +13,16 @@
   <div class="directory-sticky-shell">
     {% if directory_verified_tab_enabled %}
       <div class="directory-tabs" id="directory-tabs">
-        <ul class="tab-list" role="tablist">
+        <button
+          type="button"
+          class="horizontal-scroll scroll-left"
+          aria-controls="directory-tab-list"
+          aria-label="Scroll directory tabs left"
+          hidden
+        >
+          <span aria-hidden="true">👈</span>
+        </button>
+        <ul class="tab-list" id="directory-tab-list" role="tablist">
           <li role="presentation">
             <button
               type="button"
@@ -105,6 +114,15 @@
             </button>
           </li>
         </ul>
+        <button
+          type="button"
+          class="horizontal-scroll scroll-right"
+          aria-controls="directory-tab-list"
+          aria-label="Scroll directory tabs right"
+          hidden
+        >
+          <span aria-hidden="true">👉</span>
+        </button>
       </div>
     {% endif %}
 
