@@ -1967,7 +1967,7 @@ select {
   font-family: var(--font-sans);
 }
 
-input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not(type="search"),
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
 select {
   height: 44px;
 }
