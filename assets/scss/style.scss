@@ -32,6 +32,7 @@
   --color-dark-bg-alt: #272727;
   --color-dark-bg-alt-1: #353535;
   --color-dark-bg-alt-transparent: rgba(39, 39, 39, 0.75);
+  --color-dark-bg-alt-transparent-1: rgba(53, 53, 53, 0.8);
   --color-white-transparent: rgba(255, 255, 255, 0.8);
 
   --border: 1px solid var(--color-border);
@@ -1301,14 +1302,14 @@
 
   .horizontal-scroll {
     border: var(--border-dark-1);
-    background-color: var(--color-dark-bg-alt-transparent);
+    background-color: var(--color-dark-bg-alt-transparent-1);
     color: var(--color-text);
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
   }
 
   .horizontal-scroll:hover,
   .horizontal-scroll:focus-visible {
-    background-color: rgb(245, 245, 245);
+    background-color: var(--color-dark-bg-alt-transparent);
   }
 }
 
@@ -2665,14 +2666,14 @@ textarea#bio {
 
   .horizontal-scroll {
     position: absolute;
-    top: 50%;
+    top: 48%;
     transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    max-width: 44px;
-    max-height: 44px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
     border-radius: 999px;
     align-items: center;
     justify-content: center;
@@ -2695,7 +2696,7 @@ textarea#bio {
   }
 
   .horizontal-scroll span {
-    font-size: 1.125rem;
+    font-size: var(--font-size-small);
     line-height: 1;
   }
 }
