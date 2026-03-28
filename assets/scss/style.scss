@@ -32,7 +32,6 @@
   --color-dark-bg-alt: #272727;
   --color-dark-bg-alt-1: #353535;
   --color-dark-bg-alt-transparent: rgba(39, 39, 39, 0.75);
-  --color-dark-bg-alt-transparent-1: rgba(53, 53, 53, 0.8);
   --color-white-transparent: rgba(255, 255, 255, 0.8);
 
   --border: 1px solid var(--color-border);
@@ -169,6 +168,7 @@
     background: var(--color-brand-bg);
     box-shadow: 0 -3px 0 inset var(--color-brand);
   }
+
   .directory-tabs .tab:not(.active):hover::before,
   .settings-tabs .tab:not(.active):hover::before,
   .inbox-tabs .tab:not(.active):hover::before,
@@ -181,7 +181,7 @@
     background: var(--color-brand-max-contrast);
     color: white;
   }
-  
+
   body {
     background-color: var(--color-brand-bg);
   }
@@ -233,7 +233,7 @@
     color: var(--color-text-light);
   }
 
-  .directory-search.is-sticky + .tab-content .dirMeta {
+  .directory-search.is-sticky+.tab-content .dirMeta {
     margin-top: 0.125rem;
   }
 
@@ -387,7 +387,7 @@
   }
 
   .directory-filter-toggle {
-    color: var(--color-brand); 
+    color: var(--color-brand);
   }
 
   .formBody input[type="submit"],
@@ -427,18 +427,18 @@
     background-color: var(--color-white-transparent);
   }
 
-.modal-buttons .page-bullets button {
-  color: var(--color-text-dark);
-  background: none;
-  border: 0;
-  padding: 0 0.25rem;
-  font: inherit;
-  cursor: pointer;
-}
+  .modal-buttons .page-bullets button {
+    color: var(--color-text-dark);
+    background: none;
+    border: 0;
+    padding: 0 0.25rem;
+    font: inherit;
+    cursor: pointer;
+  }
 
-.modal-buttons .page-bullets button.active {
-  color: var(--color-brand);
-}
+  .modal-buttons .page-bullets button.active {
+    color: var(--color-brand);
+  }
 
   .btn-danger,
   .formBody .btn-danger {
@@ -661,7 +661,7 @@
 
   .onboarding-main .container {
     background: var(--color-brand-bd);
-    background: linear-gradient(-245deg,var(--color-brand-bg) 0%, var(--color-brand-dark-min-saturation) 100%);
+    background: linear-gradient(-245deg, var(--color-brand-bg) 0%, var(--color-brand-dark-min-saturation) 100%);
   }
 
   .onboarding-wizard .formBody:first-of-type {
@@ -685,7 +685,20 @@
     outline: none;
     border: 1px solid var(--color-brand);
   }
+
+  .horizontal-scroll {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-white-transparent);
+    color: var(--color-text);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+  }
+
+  .horizontal-scroll:hover,
+  .horizontal-scroll:focus-visible {
+    background-color: rgb(245, 245, 245);
+  }
 }
+
 
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
@@ -736,6 +749,7 @@
     background: var(--color-dark-bg-alt-1);
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
+
   .directory-tabs .tab:not(.active):hover::before,
   .settings-tabs .tab:not(.active):hover::before,
   .inbox-tabs .tab:not(.active):hover::before,
@@ -748,7 +762,7 @@
     background: var(--color-brand-dark-max-saturation);
     color: white;
   }
-  
+
   body {
     background-color: var(--color-dark-bg);
     color: var(--color-text-dark);
@@ -870,29 +884,36 @@
   .tab {
     background-color: transparent;
   }
+
   .tab:focus-within {
     outline: none;
   }
+
   .tab:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 3px var(--color-brand-dark-min-saturation);
     text-decoration: underline;
   }
+
   .tab.active:focus-visible {
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
   }
+
   .settings-main .settings-content .tab.active:focus-visible,
   .inbox-main .inbox-content .tab.active:focus-visible {
     box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
   }
+
   .tab:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 3px var(--color-brand-dark-min-saturation);
     text-decoration: underline;
   }
+
   .tab.active:focus-visible {
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
   }
+
   .settings-main .settings-content .tab.active:focus-visible,
   .inbox-main .inbox-content .tab.active:focus-visible {
     box-shadow: 3px 0 0 inset var(--color-brand-dark-min-saturation), inset 0 0 0 3px var(--color-brand-dark-min-saturation);
@@ -940,7 +961,7 @@
   }
 
   .directory-filter-toggle {
-    color: var(--color-brand-dark-min-saturation); 
+    color: var(--color-brand-dark-min-saturation);
   }
 
   input[type="submit"],
@@ -955,7 +976,7 @@
     box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand-dark-min-saturation) min(l, 0.95) c h / 0.25);
   }
 
-   .tab.active {
+  .tab.active {
     box-shadow: 0 -3px 0 inset var(--color-brand-dark-min-saturation);
   }
 
@@ -1071,6 +1092,7 @@
     background-color: var(--color-dark-bg-alt);
     color: var(--color-brand-dark-min-saturation);
   }
+
   h2.submit+.badgeContainer .badge {
     background-color: var(--color-dark-bg-alt);
   }
@@ -1258,7 +1280,7 @@
 
   .onboarding-main .container {
     background: var(--color-dark-bg);
-    background: linear-gradient(-245deg,var(--color-dark-bg-alt-1) 0%, var(--color-dark-bg) 100%);
+    background: linear-gradient(-245deg, var(--color-dark-bg-alt-1) 0%, var(--color-dark-bg) 100%);
   }
 
   .onboarding-wizard .formBody:first-of-type {
@@ -1279,14 +1301,14 @@
 
   .horizontal-scroll {
     border: var(--border-dark-1);
-    background-color: var(--color-dark-bg-alt-transparent-1);
+    background-color: var(--color-dark-bg-alt-transparent);
     color: var(--color-text);
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
   }
 
   .horizontal-scroll:hover,
   .horizontal-scroll:focus-visible {
-    background-color: var(--color-dark-bg-alt-transparent);
+    background-color: rgb(245, 245, 245);
   }
 }
 
@@ -1409,16 +1431,16 @@ p {
 }
 
 input[type=checkbox],
-input[type=radio]{
-    min-width: 1.25rem;
-    min-height: 1.25rem;
-    margin-right: 0.5rem;
-    margin-top: 0;
+input[type=radio] {
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  margin-right: 0.5rem;
+  margin-top: 0;
 }
 
 input[type=checkbox]:checked,
 input[type=radio]:checked {
-    margin: 0 0.5rem 0 0;
+  margin: 0 0.5rem 0 0;
 }
 
 .field-checkbox {
@@ -1484,7 +1506,7 @@ p b {
   margin-bottom: 1rem;
 }
 
-.user h3 + .badgeContainer {
+.user h3+.badgeContainer {
   margin-top: 0.625rem !important;
 }
 
@@ -1904,7 +1926,7 @@ h2.submit+p.instr {
   margin: 0.75rem 0 0.5rem 0;
 }
 
-h2.submit + p.dirMeta {
+h2.submit+p.dirMeta {
   margin: 0.75rem 0 0.5rem 0;
 }
 
@@ -2311,7 +2333,7 @@ img.alert {
 .inbox-tabs-nav .tab,
 .tools-tabs .tab {
   isolation: isolate;
-  transform: translateZ(0); 
+  transform: translateZ(0);
   -webkit-font-smoothing: antialiased;
   backface-visibility: hidden;
 }
@@ -2613,8 +2635,8 @@ textarea#bio {
   margin-top: 0.25rem;
 }
 
-.directory-sticky-shell > .directory-tabs,
-.directory-sticky-shell > .directory-search {
+.directory-sticky-shell>.directory-tabs,
+.directory-sticky-shell>.directory-search {
   padding-left: var(--container-padding, 2rem);
   padding-right: var(--container-padding, 2rem);
   box-sizing: border-box;
@@ -2623,6 +2645,7 @@ textarea#bio {
 .directory-tabs {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .directory-tabs .tab-list {
@@ -2642,14 +2665,14 @@ textarea#bio {
 
   .horizontal-scroll {
     position: absolute;
-    top: 48%;
+    top: 50%;
     transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    max-width: 36px;
-    max-height: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 44px;
+    max-height: 44px;
     border-radius: 999px;
     align-items: center;
     justify-content: center;
@@ -2672,11 +2695,11 @@ textarea#bio {
   }
 
   .horizontal-scroll span {
-    font-size: var(--font-size-small);
+    font-size: 1.125rem;
     line-height: 1;
   }
 }
-s
+
 .directory-search {
   margin-top: 0;
   padding-top: 1rem;
@@ -2766,12 +2789,12 @@ input:focus {
   position: relative;
 }
 
-.select-shell > select {
+.select-shell>select {
   background-image: none;
   padding-right: 2.5rem;
 }
 
-.directory-filter-group .select-shell > select {
+.directory-filter-group .select-shell>select {
   margin-bottom: 0;
   line-height: 1.75;
 }
@@ -3582,6 +3605,7 @@ p.bio+.extra-fields {
 
 /* Desktop vertical tabs (Settings/Inbox) use underline-only hover */
 @media (min-width: 641px) {
+
   .settings-main .settings-content .settings-tabs .tab::before,
   .inbox-main .inbox-content .inbox-tabs-nav .tab::before {
     content: none;
@@ -4217,7 +4241,7 @@ strong {
 }
 
 .page-bullets {
-    zoom: 0.75;
+  zoom: 0.75;
 }
 
 .modal-buttons .page-bullets.hide {
@@ -4311,7 +4335,7 @@ strong {
   text-align: center;
 }
 
-.onboarding-wizard h3 + p {
+.onboarding-wizard h3+p {
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -4344,7 +4368,7 @@ strong {
   left: 116px;
 }
 
-.formBody:has(.finishBtn) + .backBtn {
+.formBody:has(.finishBtn)+.backBtn {
   width: fit-content;
   position: relative;
   top: -34px;
@@ -4655,23 +4679,23 @@ li.tab .badge {
   padding: 1rem;
 }
 
-.user-list + .label,
+.user-list+.label,
 .searchLabel {
   margin-top: 1.5rem;
   font-family: var(--font-sans-bold);
 }
 
 .onboarding-footer {
-  display: none;  
+  display: none;
 }
 
-.onboarding-wizard h2 + .meta {
+.onboarding-wizard h2+.meta {
   text-align: center;
   margin: 1rem 0 0.5rem 0;
 }
 
-.meta + h3 {
-  margin-top: 0; 
+.meta+h3 {
+  margin-top: 0;
 }
 
 .onboarding-main .container {
@@ -4718,13 +4742,14 @@ li.tab .badge {
   right: 1rem;
   width: auto;
 }
+
 .onboarding-footer {
   display: inherit;
   position: fixed;
   bottom: 0;
   height: 72px !important;
   left: 0;
-  right: 0;  
+  right: 0;
   z-index: 1;
 }
 
@@ -4753,18 +4778,18 @@ li.tab .badge {
   font-family: var(--font-sans-bold);
 }
 
-.settings-content h4 + p {
+.settings-content h4+p {
   margin-top: 0;
   margin-bottom: 0;
 }
 
 input[type=checkbox],
 .checkbox-group input[type=checkbox],
-.field-checkbox input[type=checkbox]{
+.field-checkbox input[type=checkbox] {
   margin: 0 0.5rem 0 0 !important;
 }
 
-.checkbox-group input[type="checkbox"] + label {
+.checkbox-group input[type="checkbox"]+label {
   margin: 0;
 }
 
@@ -4789,7 +4814,7 @@ header nav ul li.dropdown ul {
   margin-top: 1rem;
 }
 
-.field + .field {
+.field+.field {
   margin-top: 0;
 }
 
@@ -4797,21 +4822,22 @@ header nav ul li.dropdown ul {
   margin-top: 2rem;
 }
 
-.form-group + h5 {
+.form-group+h5 {
   margin-top: 2rem;
 }
 
-.directory-search.is-sticky ~ #all .user:first-of-type,
-.directory-search.is-sticky + .tab-content .user-list .user:first-of-type {
+.directory-search.is-sticky~#all .user:first-of-type,
+.directory-search.is-sticky+.tab-content .user-list .user:first-of-type {
   margin-top: 0 !important;
 }
 
-.directory-search.is-sticky + .tab-content .dirMeta {
+.directory-search.is-sticky+.tab-content .dirMeta {
   margin-top: 0;
 }
 
 /* Final desktop vertical tab hover rules: hover affects text decoration only */
 @media (min-width: 641px) {
+
   .settings-main .settings-content .settings-tabs .tab::before,
   .inbox-main .inbox-content .inbox-tabs-nav .tab::before,
   .inbox-main .inbox-content .inbox-tabs .tab::before {
@@ -4820,14 +4846,14 @@ header nav ul li.dropdown ul {
 
   .settings-main .settings-content .settings-tabs .tab:hover:not(.active),
   .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active),
-  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active) > a {
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active)>a {
     text-decoration: underline !important;
     background: none !important;
     box-shadow: none !important;
   }
 
   .settings-main .settings-content .settings-tabs .tab.active:hover,
-  .inbox-main .inbox-content .inbox-tabs .tab.active:hover > a {
+  .inbox-main .inbox-content .inbox-tabs .tab.active:hover>a {
     text-decoration: underline !important;
     background: none !important;
   }
@@ -4841,6 +4867,7 @@ header nav ul li.dropdown ul {
 
 /* Hard override: legacy inbox vertical tabs must never show hover shadow on non-active tabs */
 @media (min-width: 641px) {
+
   .inbox-main .inbox-content .inbox-tabs .tab::before,
   .inbox-main .inbox-content .inbox-tabs .tab:hover::before {
     content: none !important;
@@ -4855,7 +4882,7 @@ header nav ul li.dropdown ul {
     box-shadow: none !important;
   }
 
-  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active) > a {
+  .inbox-main .inbox-content .inbox-tabs .tab:hover:not(.active)>a {
     text-decoration: underline !important;
   }
 }
@@ -4872,5 +4899,5 @@ button .badge {
 }
 
 .directory-filter-toggle {
-  font-family: var(--font-sans); 
+  font-family: var(--font-sans);
 }
