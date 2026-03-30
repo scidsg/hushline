@@ -1,4 +1,5 @@
 import re
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -84,6 +85,33 @@ def _sample_newsroom_listing() -> NewsroomDirectoryListing:
         city="Los Angeles",
         country="United States",
         subdivision="California",
+    )
+
+
+def _newsroom_listing_with_geography(
+    *,
+    suffix: str,
+    name: str,
+    city: str | None,
+    country: str | None,
+    subdivision: str | None,
+) -> NewsroomDirectoryListing:
+    countries = (country,) if country else ()
+    places_covered = (subdivision,) if subdivision else ()
+    return replace(
+        _sample_newsroom_listing(),
+        id=f"newsroom-{suffix}",
+        slug=f"newsroom~{suffix}",
+        name=name,
+        website=f"https://{suffix}.example.org",
+        description=f"{name} directory listing.",
+        directory_url=f"https://findyournews.org/organization/{suffix}/",
+        source_url=f"https://findyournews.org/organization/{suffix}/",
+        countries=countries,
+        places_covered=places_covered,
+        city=city,
+        country=country,
+        subdivision=subdivision,
     )
 
 
@@ -609,6 +637,86 @@ def test_directory_self_reported_newsrooms_render_in_newsrooms_tab(
     )
 
 
+def test_directory_filters_newsrooms_by_country_and_region_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.NEWSROOM.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Illinois Newsroom User"
+    user2.account_category = AccountCategory.NEWSROOM.value
+    user2.country = "US"
+    user2.subdivision = "CA"
+    user2.primary_username.show_in_directory = True
+    user2.primary_username._display_name = "California Newsroom User"
+    db.session.commit()
+
+    illinois_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom Listing",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom Listing",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    public_record_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (illinois_listing, california_listing),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (public_record_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?newsroom_country=US&newsroom_region=IL")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    all_panel = soup.find(id="all")
+    newsroom_count = soup.find(id="newsroom-count")
+
+    assert newsroom_panel is not None
+    assert all_panel is not None
+    assert newsroom_count is not None
+
+    newsroom_text = newsroom_panel.get_text(" ", strip=True)
+    all_text = all_panel.get_text(" ", strip=True)
+
+    assert "Illinois Newsroom User" in newsroom_text
+    assert "Illinois Newsroom Listing" in newsroom_text
+    assert "California Newsroom User" not in newsroom_text
+    assert "California Newsroom Listing" not in newsroom_text
+
+    assert "Illinois Newsroom User" in all_text
+    assert "Illinois Newsroom Listing" in all_text
+    assert "California Newsroom User" not in all_text
+    assert "California Newsroom Listing" not in all_text
+    assert "California Attorney" in all_text
+    assert newsroom_count.get_text(" ", strip=True) == "2"
+
+
 def test_directory_filters_self_reported_attorneys_by_country_and_region_query_params(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
 ) -> None:
@@ -877,6 +985,72 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert not clear_filters_link.has_attr("hidden")
 
 
+def test_directory_newsroom_filter_panel_hidden_by_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    australia_listing = _newsroom_listing_with_geography(
+        suffix="australia",
+        name="Australia Newsroom",
+        city="Sydney",
+        country="Australia",
+        subdivision=None,
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_listing, australia_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="newsroom-filters-toggle-shell")
+    panel_shell = soup.find(id="newsroom-filters-panel-shell")
+    toggle = soup.find(id="newsroom-filters-toggle")
+    panel = soup.find(id="newsroom-filters-panel")
+    clear_filters_actions = soup.find(id="newsroom-filters-actions")
+    country_select = soup.find(id="newsroom-country-filter")
+    region_select = soup.find(id="newsroom-region-filter")
+    region_label = soup.find("label", {"for": "newsroom-region-filter"})
+    clear_filters_link = soup.find(id="newsroom-filters-clear")
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle.get("aria-expanded") == "false"
+    assert panel is not None
+    assert panel.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert region_label is not None
+    assert region_label.get_text(" ", strip=True) == "State / Province / Region"
+    assert not region_select.has_attr("disabled")
+    assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
+    region_optgroups = region_select.find_all("optgroup")
+    assert [optgroup.get("label") for optgroup in region_optgroups] == ["United States"]
+    assert region_select.find("option", value="CA").get_text(" ", strip=True) == ("California (1)")
+    assert country_select.get_text(" ", strip=True) == "All Australia (1) United States (1)"
+    assert clear_filters_actions is not None
+    assert clear_filters_actions.has_attr("hidden")
+    assert clear_filters_link is not None
+    assert not clear_filters_link.has_attr("hidden")
+
+
 def test_directory_attorney_filter_panel_shows_selected_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -924,6 +1098,72 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     region_select = soup.find(id="attorney-region-filter")
     clear_filters_link = (
         panel.find("a", id="attorney-filters-clear", href=url_for("directory"))
+        if isinstance(panel, Tag)
+        else None
+    )
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle.get("aria-expanded") == "true"
+    assert panel is not None
+    assert not panel.has_attr("hidden")
+    assert clear_filters_actions is not None
+    assert not clear_filters_actions.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert clear_filters_link is not None
+    assert clear_filters_link.get_text(" ", strip=True) == "Clear Filters"
+    assert country_select.find("option", selected=True)["value"] == "United States"
+    assert country_select.find("option", selected=True).get_text(" ", strip=True) == "United States"
+    assert region_select.find("option", selected=True).get_text(" ", strip=True) == "California"
+    assert region_select.find("option", selected=True)["value"] == "CA"
+    assert not region_select.has_attr("disabled")
+
+
+def test_directory_newsroom_filter_panel_shows_selected_filters(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    new_york_listing = _newsroom_listing_with_geography(
+        suffix="new-york",
+        name="New York Newsroom",
+        city="New York",
+        country="United States",
+        subdivision="New York",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_listing, new_york_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?newsroom_country=US&newsroom_region=CA")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="newsroom-filters-toggle-shell")
+    panel_shell = soup.find(id="newsroom-filters-panel-shell")
+    toggle = soup.find(id="newsroom-filters-toggle")
+    panel = soup.find(id="newsroom-filters-panel")
+    clear_filters_actions = soup.find(id="newsroom-filters-actions")
+    country_select = soup.find(id="newsroom-country-filter")
+    region_select = soup.find(id="newsroom-region-filter")
+    clear_filters_link = (
+        panel.find("a", id="newsroom-filters-clear", href=url_for("directory"))
         if isinstance(panel, Tag)
         else None
     )
@@ -1016,6 +1256,75 @@ def test_directory_users_json_filters_only_public_record_rows_by_query_params(
     assert securedrop_names == {"Sample SecureDrop"}
 
 
+def test_directory_users_json_filters_only_newsroom_rows_by_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.NEWSROOM.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Illinois Newsroom User"
+    user2.primary_username.show_in_directory = True
+    user2.primary_username._display_name = "General User"
+    db.session.commit()
+
+    illinois_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom Listing",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom Listing",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    public_record_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (illinois_listing, california_listing),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (public_record_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_users')}?newsroom_country=US&newsroom_region=IL")
+    assert response.status_code == 200
+
+    rows = response.json or []
+    newsroom_names = {
+        row["display_name"]
+        for row in rows
+        if row["is_newsroom"] or row["account_category"] == AccountCategory.NEWSROOM.value
+    }
+    non_newsroom_names = {
+        row["display_name"]
+        for row in rows
+        if not row["is_newsroom"] and row["account_category"] != AccountCategory.NEWSROOM.value
+    }
+
+    assert newsroom_names == {"Illinois Newsroom Listing", "Illinois Newsroom User"}
+    assert "California Attorney" in non_newsroom_names
+    assert "General User" in non_newsroom_names
+
+
 def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1097,6 +1406,64 @@ def test_directory_attorney_filters_json_includes_self_reported_attorneys(
     }
 
 
+def test_directory_newsroom_filters_json_includes_self_reported_newsrooms(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
+) -> None:
+    user.account_category = AccountCategory.NEWSROOM.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user2.account_category = AccountCategory.ACTIVIST.value
+    user2.country = "US"
+    user2.subdivision = "CA"
+    user2.primary_username.show_in_directory = True
+    db.session.commit()
+
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_newsroom_filters"))
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "IL", "label": "Illinois", "count": 1}]},
+    }
+
+
+def test_directory_newsroom_filters_json_includes_automated_newsroom_listings(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    australia_listing = _newsroom_listing_with_geography(
+        suffix="australia",
+        name="Australia Newsroom",
+        city="Sydney",
+        country="Australia",
+        subdivision=None,
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_listing, australia_listing),
+    )
+
+    response = client.get(url_for("directory_newsroom_filters"))
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
+        ],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
 def test_normalized_attorney_filter_country_returns_none_for_blank_values() -> None:
     assert directory_routes._normalized_attorney_filter_country("   ") is None
 
@@ -1137,6 +1504,26 @@ def test_attorney_filter_state_clears_invalid_region_code(app: Flask) -> None:
             "country": "United States",
             "region": None,
             "region_code": None,
+        }
+
+
+def test_newsroom_filter_state_infers_country_from_region_selection(app: Flask) -> None:
+    newsroom_filter_metadata: dict[str, object] = {
+        "countries": [
+            {"code": "United States", "label": "United States", "count": 1},
+            {"code": "Australia", "label": "Australia", "count": 1},
+        ],
+        "regions": {
+            "Australia": [{"code": "New South Wales", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
+        },
+    }
+
+    with app.test_request_context("/directory?newsroom_region=ca"):
+        assert directory_routes._newsroom_filter_state(newsroom_filter_metadata) == {
+            "country": "United States",
+            "region": "California",
+            "region_code": "CA",
         }
 
 
@@ -1247,6 +1634,58 @@ def test_directory_attorney_filters_include_normalized_country_values_outside_le
     assert "California Attorney" not in public_records_text
 
 
+def test_directory_newsroom_filters_include_normalized_country_values_outside_legacy_code_map(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    madagascar_listing = _newsroom_listing_with_geography(
+        suffix="madagascar",
+        name="Madagascar Newsroom",
+        city="Antananarivo",
+        country="Madagascar",
+        subdivision=None,
+    )
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (madagascar_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_newsroom_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Madagascar", "label": "Madagascar", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
+        ],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+    page_response = client.get(f"{url_for('directory')}?newsroom_country=Madagascar")
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    country_select = soup.find(id="newsroom-country-filter")
+
+    assert newsroom_panel is not None
+    assert country_select is not None
+    assert country_select.find("option", selected=True)["value"] == "Madagascar"
+    newsroom_text = newsroom_panel.get_text(" ", strip=True)
+    assert "Madagascar Newsroom" in newsroom_text
+    assert "California Newsroom" not in newsroom_text
+
+
 def test_directory_attorney_filters_support_non_us_subdivisions(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1313,6 +1752,63 @@ def test_directory_attorney_filters_support_non_us_subdivisions(
     assert "California Attorney" not in public_records_text
 
 
+def test_directory_newsroom_filters_support_non_us_subdivisions(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_south_wales_listing = _newsroom_listing_with_geography(
+        suffix="new-south-wales",
+        name="New South Wales Newsroom",
+        city="Sydney",
+        country="Australia",
+        subdivision="New South Wales",
+    )
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (new_south_wales_listing, california_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    metadata_response = client.get(url_for("directory_newsroom_filters"))
+    assert metadata_response.status_code == 200
+    assert metadata_response.json == {
+        "countries": [
+            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "United States", "label": "United States", "count": 1},
+        ],
+        "regions": {
+            "Australia": [{"code": "New South Wales", "label": "New South Wales", "count": 1}],
+            "United States": [{"code": "CA", "label": "California", "count": 1}],
+        },
+    }
+
+    page_response = client.get(
+        f"{url_for('directory')}?newsroom_country=Australia&newsroom_region=New%20South%20Wales"
+    )
+    assert page_response.status_code == 200
+
+    soup = BeautifulSoup(page_response.text, "html.parser")
+    newsroom_panel = soup.find(id="newsrooms")
+    region_select = soup.find(id="newsroom-region-filter")
+
+    assert newsroom_panel is not None
+    assert region_select is not None
+    assert region_select.find("option", selected=True)["value"] == "New South Wales"
+    newsroom_text = newsroom_panel.get_text(" ", strip=True)
+    assert "New South Wales Newsroom" in newsroom_text
+    assert "California Newsroom" not in newsroom_text
+
+
 def test_directory_attorney_filters_json_ignores_untrusted_query_values(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1344,12 +1840,52 @@ def test_directory_attorney_filters_json_ignores_untrusted_query_values(
     }
 
 
+def test_directory_newsroom_filters_json_ignores_untrusted_query_values(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_listing,),
+    )
+
+    response = client.get(
+        f"{url_for('directory_newsroom_filters')}?newsroom_country=%3Cscript%3E&newsroom_region=%3Cimg%3E"
+    )
+
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
 def test_directory_attorney_filters_json_returns_empty_metadata_when_verified_tabs_disabled(
     client: FlaskClient,
 ) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
         response = client.get(url_for("directory_attorney_filters"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {"countries": [], "regions": {}}
+
+
+def test_directory_newsroom_filters_json_returns_empty_metadata_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_newsroom_filters"))
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
 
