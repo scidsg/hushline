@@ -78,8 +78,11 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'class="directory-sticky-shell"' in directory_template
     assert 'id="directory-search-status"' in directory_template
     assert 'id="public-record-count"' in directory_template
+    assert 'id="newsroom-count"' in directory_template
     assert 'id="attorney-filters-toggle"' in directory_template
     assert 'id="attorney-filters-panel"' in directory_template
+    assert 'id="newsroom-filters-toggle"' in directory_template
+    assert 'id="newsroom-filters-panel"' in directory_template
     assert "Clear Filters" in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
@@ -121,40 +124,47 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "function escapeHtml(value)" in user_search_js
     assert "return escapeHtml(sourceText);" in user_search_js
     assert '<mark class="search-highlight">${escapeHtml(match[0])}</mark>' in user_search_js
-    assert "updatePublicRecordCountBadge();" in directory_verified_js
+    assert "function createLocationFilterController(config)" in directory_verified_js
+    assert "controller.updateCountBadge = function () {" in directory_verified_js
+    assert "updateLocationFilterCountBadges();" in directory_verified_js
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
         directory_verified_js
     )
     assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
-    assert "fetch(`${directoryPath}/attorney-filters.json`)" in directory_verified_js
+    assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
+    assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
+    assert "fetch(`${directoryPath}/${controller.metadataPath}`)" in directory_verified_js
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (directory_js)
     assert "fetch(`${directoryPath}/users.json`)" in directory_js
     assert "window.history.replaceState" in directory_verified_js
     assert "new AbortController();" in directory_verified_js
-    assert 'attorneyFiltersPanel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
+    assert 'controller.panel.setAttribute("aria-busy", isLoading ? "true" : "false");' in (
         directory_verified_js
     )
-    assert "function inferredCountryForRegionCode(regionCode)" in directory_verified_js
-    assert "function updateAttorneySelectExpandedLabels(isExpanded)" in directory_verified_js
-    assert 'attorneyCountryFilter.addEventListener("change", async function () {' in (
+    assert "controller.inferredCountryForRegionCode = function (regionCode) {" in (
         directory_verified_js
     )
-    assert 'attorneyRegionFilter.addEventListener("change", function () {' in directory_verified_js
-    assert 'attorneyCountryFilter.addEventListener("focus", syncExpandedLabelsOnOpen);' in (
+    assert "controller.updateSelectExpandedLabels = function (isExpanded) {" in (
         directory_verified_js
     )
-    assert 'attorneyRegionFilter.addEventListener("blur", syncExpandedLabelsOnClose);' in (
+    assert 'controller.countryFilter.addEventListener("change", async function () {' in (
         directory_verified_js
     )
-    assert (
-        "attorneyCountryFilter.value = inferredCountryForRegionCode(attorneyRegionFilter.value);"
-        in (directory_verified_js)
+    assert 'controller.regionFilter.addEventListener("change", function () {' in (
+        directory_verified_js
     )
-    assert "updateAttorneyFiltersClearVisibility();" in directory_verified_js
+    assert 'select.addEventListener("focus", syncExpandedLabelsOnOpen);' in directory_verified_js
+    assert 'select.addEventListener("blur", syncExpandedLabelsOnClose);' in directory_verified_js
+    assert "controller.countryFilter.value = controller.inferredCountryForRegionCode(" in (
+        directory_verified_js
+    )
+    assert "controller.updateClearVisibility();" in directory_verified_js
     assert 'button[type="submit"]' not in directory_template
-    assert 'setSearchStatus("Updating attorney results.");' in directory_verified_js
-    assert "attorneyFiltersPanel.hidden = !attorneyFiltersPanel.hidden;" in directory_verified_js
-    assert 'attorneyFiltersToggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
+    assert "setSearchStatus(`Updating ${controller.resultsLabelPlural} results.`);" in (
+        directory_verified_js
+    )
+    assert "controller.panel.hidden = !controller.panel.hidden;" in directory_verified_js
+    assert 'controller.toggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
         directory_verified_js
     )
     assert "Hide Filters" in directory_verified_static_js

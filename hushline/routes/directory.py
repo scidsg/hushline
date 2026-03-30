@@ -1,5 +1,6 @@
 import unicodedata
-from typing import cast
+from typing import Sequence, cast
+from urllib.parse import urlencode
 
 from flask import (
     Flask,
@@ -63,7 +64,7 @@ def _normalized_filter_value(value: str | None) -> str | None:
     return normalized or None
 
 
-def _normalized_attorney_filter_country(value: str | None) -> str | None:
+def _normalized_location_filter_country(value: str | None) -> str | None:
     if value is None:
         return None
 
@@ -78,14 +79,23 @@ def _normalized_attorney_filter_country(value: str | None) -> str | None:
     return build_directory_geography(country=normalized).country
 
 
-def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[str, str | None]:
-    country = _normalized_attorney_filter_country(request.args.get("country"))
-    region_code = _normalized_filter_value(request.args.get("region"))
+def _normalized_attorney_filter_country(value: str | None) -> str | None:
+    return _normalized_location_filter_country(value)
+
+
+def _location_filter_state(
+    location_filter_metadata: dict[str, object],
+    *,
+    country_arg_name: str,
+    region_arg_name: str,
+) -> dict[str, str | None]:
+    country = _normalized_location_filter_country(request.args.get(country_arg_name))
+    region_code = _normalized_filter_value(request.args.get(region_arg_name))
     subdivision = None
     raw_regions = cast(
-        dict[str, list[dict[str, str]]], attorney_filter_metadata.get("regions") or {}
+        dict[str, list[dict[str, str]]], location_filter_metadata.get("regions") or {}
     )
-    raw_countries = cast(list[dict[str, str]], attorney_filter_metadata.get("countries") or [])
+    raw_countries = cast(list[dict[str, str]], location_filter_metadata.get("countries") or [])
     regions_by_country = {
         country_name: {str(region["code"]): str(region["label"]) for region in country_regions}
         for country_name, country_regions in raw_regions.items()
@@ -125,11 +135,25 @@ def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[
     }
 
 
-def _listing_matches_attorney_filters(
-    listing: PublicRecordListing, filter_state: dict[str, str | None]
-) -> bool:
-    geography = listing.geography
+def _attorney_filter_state(attorney_filter_metadata: dict[str, object]) -> dict[str, str | None]:
+    return _location_filter_state(
+        attorney_filter_metadata,
+        country_arg_name="country",
+        region_arg_name="region",
+    )
 
+
+def _newsroom_filter_state(newsroom_filter_metadata: dict[str, object]) -> dict[str, str | None]:
+    return _location_filter_state(
+        newsroom_filter_metadata,
+        country_arg_name="newsroom_country",
+        region_arg_name="newsroom_region",
+    )
+
+
+def _geography_matches_location_filters(
+    geography: DirectoryListingGeography, filter_state: dict[str, str | None]
+) -> bool:
     if filter_state["country"] and geography.country != filter_state["country"]:
         return False
 
@@ -137,34 +161,71 @@ def _listing_matches_attorney_filters(
         return False
 
     return True
+
+
+def _listing_matches_location_filters(
+    listing: PublicRecordListing | NewsroomDirectoryListing,
+    filter_state: dict[str, str | None],
+) -> bool:
+    return _geography_matches_location_filters(listing.geography, filter_state)
+
+
+def _listing_matches_attorney_filters(
+    listing: PublicRecordListing, filter_state: dict[str, str | None]
+) -> bool:
+    return _listing_matches_location_filters(listing, filter_state)
+
+
+def _newsroom_listing_matches_filters(
+    listing: NewsroomDirectoryListing, filter_state: dict[str, str | None]
+) -> bool:
+    return _listing_matches_location_filters(listing, filter_state)
+
+
+def _username_matches_location_filters(
+    username: Username, filter_state: dict[str, str | None]
+) -> bool:
+    return _geography_matches_location_filters(_username_geography(username), filter_state)
 
 
 def _username_matches_attorney_filters(
     username: Username, filter_state: dict[str, str | None]
 ) -> bool:
-    geography = _username_geography(username)
+    return _username_matches_location_filters(username, filter_state)
 
-    if filter_state["country"] and geography.country != filter_state["country"]:
-        return False
 
-    if filter_state["region"] and geography.subdivision != filter_state["region"]:
-        return False
+def _username_matches_newsroom_filters(
+    username: Username, filter_state: dict[str, str | None]
+) -> bool:
+    return _username_matches_location_filters(username, filter_state)
 
-    return True
+
+def _filter_directory_listings(
+    listings: Sequence[PublicRecordListing | NewsroomDirectoryListing],
+    filter_state: dict[str, str | None],
+) -> list[PublicRecordListing | NewsroomDirectoryListing]:
+    return [
+        listing for listing in listings if _listing_matches_location_filters(listing, filter_state)
+    ]
 
 
 def _filter_public_record_listings(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
     filter_state: dict[str, str | None],
 ) -> list[PublicRecordListing]:
-    return [
-        listing for listing in listings if _listing_matches_attorney_filters(listing, filter_state)
-    ]
+    return cast(list[PublicRecordListing], _filter_directory_listings(listings, filter_state))
 
 
-def _attorney_filter_metadata(
-    listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
-    attorney_usernames: list[Username] | tuple[Username, ...] = (),
+def _filter_newsroom_listings(
+    listings: list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...],
+    filter_state: dict[str, str | None],
+) -> list[NewsroomDirectoryListing]:
+    return cast(list[NewsroomDirectoryListing], _filter_directory_listings(listings, filter_state))
+
+
+def _location_filter_metadata(
+    listings: Sequence[PublicRecordListing | NewsroomDirectoryListing],
+    usernames: Sequence[Username] = (),
 ) -> dict[str, object]:
     countries: dict[str, int] = {}
     regions: dict[str, dict[str, dict[str, object]]] = {}
@@ -195,7 +256,7 @@ def _attorney_filter_metadata(
     for listing in listings:
         add_geography(listing.geography)
 
-    for username in attorney_usernames:
+    for username in usernames:
         add_geography(_username_geography(username))
 
     return {
@@ -217,6 +278,20 @@ def _attorney_filter_metadata(
             for country_name, country_regions in sorted(regions.items())
         },
     }
+
+
+def _attorney_filter_metadata(
+    listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
+    attorney_usernames: list[Username] | tuple[Username, ...] = (),
+) -> dict[str, object]:
+    return _location_filter_metadata(listings, attorney_usernames)
+
+
+def _newsroom_filter_metadata(
+    listings: list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...],
+    newsroom_usernames: list[Username] | tuple[Username, ...] = (),
+) -> dict[str, object]:
+    return _location_filter_metadata(listings, newsroom_usernames)
 
 
 def _geography_fields(
@@ -455,6 +530,16 @@ def _all_directory_entry_client_sort_fields(
     }
 
 
+def _directory_filter_clear_url(*param_names: str) -> str:
+    query_items = [
+        (key, value) for key, value in request.args.items(multi=True) if key not in param_names
+    ]
+    if not query_items:
+        return url_for("directory")
+
+    return f"{url_for('directory')}?{urlencode(query_items, doseq=True)}"
+
+
 def register_directory_routes(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
@@ -503,17 +588,36 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        newsroom_listings = (
-            list(get_newsroom_directory_listings())
-            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
-            else []
-        )
+        if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            all_newsroom_listings = list(get_newsroom_directory_listings())
+            newsroom_filter_metadata = _newsroom_filter_metadata(
+                all_newsroom_listings, newsroom_usernames
+            )
+            newsroom_filter_state = _newsroom_filter_state(newsroom_filter_metadata)
+            filtered_newsroom_usernames = [
+                username
+                for username in newsroom_usernames
+                if _username_matches_newsroom_filters(username, newsroom_filter_state)
+            ]
+            newsroom_listings = _filter_newsroom_listings(
+                all_newsroom_listings, newsroom_filter_state
+            )
+        else:
+            newsroom_filter_metadata = {"countries": [], "regions": {}}
+            newsroom_filter_state = {"country": None, "region": None, "region_code": None}
+            filtered_newsroom_usernames = newsroom_usernames
+            newsroom_listings = []
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
         all_directory_entries = [
-            *[_directory_user_row(username) for username in usernames],
+            *[
+                _directory_user_row(username)
+                for username in usernames
+                if not _is_self_reported_newsroom(username)
+                or _username_matches_newsroom_filters(username, newsroom_filter_state)
+            ],
             *[_public_record_row(listing) for listing in filtered_public_record_listings],
             *[_globaleaks_row(listing) for listing in globaleaks_listings],
             *[_newsroom_row(listing) for listing in newsroom_listings],
@@ -535,11 +639,17 @@ def register_directory_routes(app: Flask) -> None:
             + len(filtered_public_record_listings),
             attorney_filter_metadata=attorney_filter_metadata,
             attorney_filter_state=attorney_filter_state,
+            attorney_filter_clear_url=_directory_filter_clear_url("country", "region"),
             globaleaks_listings=globaleaks_listings,
             globaleaks_total_count=len(globaleaks_listings),
-            newsroom_usernames=newsroom_usernames,
+            newsroom_usernames=filtered_newsroom_usernames,
             newsroom_listings=newsroom_listings,
-            newsroom_total_count=len(newsroom_usernames) + len(newsroom_listings),
+            newsroom_total_count=len(filtered_newsroom_usernames) + len(newsroom_listings),
+            newsroom_filter_metadata=newsroom_filter_metadata,
+            newsroom_filter_state=newsroom_filter_state,
+            newsroom_filter_clear_url=_directory_filter_clear_url(
+                "newsroom_country", "newsroom_region"
+            ),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
             all_directory_entries=all_directory_entries,
@@ -612,8 +722,26 @@ def register_directory_routes(app: Flask) -> None:
             ),
         )
 
+    @app.route("/directory/newsroom-filters.json")
+    def directory_newsroom_filters() -> dict[str, object]:
+        if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            return {
+                "countries": [],
+                "regions": {},
+            }
+
+        return _newsroom_filter_metadata(
+            get_newsroom_directory_listings(),
+            tuple(
+                username
+                for username in get_directory_usernames()
+                if _is_self_reported_newsroom(username)
+            ),
+        )
+
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
+        directory_usernames = list(get_directory_usernames())
         public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
@@ -629,6 +757,21 @@ def register_directory_routes(app: Flask) -> None:
                 ),
             )
         )
+        if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            newsroom_listings = list(get_newsroom_directory_listings())
+            newsroom_filter_state = _newsroom_filter_state(
+                _newsroom_filter_metadata(
+                    newsroom_listings,
+                    tuple(
+                        username
+                        for username in directory_usernames
+                        if _is_self_reported_newsroom(username)
+                    ),
+                )
+            )
+        else:
+            newsroom_listings = []
+            newsroom_filter_state = {"country": None, "region": None, "region_code": None}
         public_record_rows = (
             [
                 _public_record_row(listing)
@@ -645,7 +788,10 @@ def register_directory_routes(app: Flask) -> None:
             else []
         )
         newsroom_rows = (
-            [_newsroom_row(listing) for listing in get_newsroom_directory_listings()]
+            [
+                _newsroom_row(listing)
+                for listing in _filter_newsroom_listings(newsroom_listings, newsroom_filter_state)
+            ]
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
@@ -660,7 +806,12 @@ def register_directory_routes(app: Flask) -> None:
                 **_all_directory_entry_client_sort_fields(entry),
             }
             for entry in [
-                *[_directory_user_row(username) for username in get_directory_usernames()],
+                *[
+                    _directory_user_row(username)
+                    for username in directory_usernames
+                    if not _is_self_reported_newsroom(username)
+                    or _username_matches_newsroom_filters(username, newsroom_filter_state)
+                ],
                 *public_record_rows,
                 *globaleaks_rows,
                 *newsroom_rows,

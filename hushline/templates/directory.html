@@ -63,7 +63,7 @@
               id="newsrooms-tab"
             >
               Newsrooms
-              <span class="badge" role="img" aria-label="Newsroom listing count"
+              <span id="newsroom-count" class="badge" role="img" aria-label="Newsroom listing count"
                 >{{ newsroom_total_count }}</span
               >
             </button>
@@ -165,6 +165,17 @@
               {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
             </button>
           </div>
+          <div id="newsroom-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="newsroom-filters-toggle"
+              aria-controls="newsroom-filters-panel"
+              aria-expanded="{{ 'true' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'false' }}"
+            >
+              {{ 'Hide Filters' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'Show Filters' }}
+            </button>
+          </div>
         {% endif %}
       </div>
       {% if directory_verified_tab_enabled %}
@@ -242,9 +253,92 @@
               {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
             >
               <a
-                href="{{ url_for('directory') }}"
+                href="{{ attorney_filter_clear_url }}"
                 class="meta"
                 id="attorney-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
+        <div id="newsroom-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="newsroom-filters-panel"
+            {% if not newsroom_filter_state.country and not newsroom_filter_state.region_code %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="newsroom-country-filter">Country</label>
+                <select id="newsroom-country-filter" name="newsroom_country">
+                  <option value="">All</option>
+                  {% for country in newsroom_filter_metadata.countries %}
+                    <option
+                      value="{{ country.code }}"
+                      {% if newsroom_filter_state.country == country.code %}selected{% endif %}
+                    >
+                      {% if newsroom_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="newsroom-region-filter">State / Province / Region</label>
+                <select
+                  id="newsroom-region-filter"
+                  name="newsroom_region"
+                  {% if not newsroom_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if newsroom_filter_state.country and newsroom_filter_state.country in newsroom_filter_metadata.regions %}
+                    {% for region in newsroom_filter_metadata.regions[newsroom_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if newsroom_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if newsroom_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in newsroom_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if newsroom_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if newsroom_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+            </div>
+            <div
+              class="directory-filter-actions"
+              id="newsroom-filters-actions"
+              {% if not newsroom_filter_state.country and not newsroom_filter_state.region_code %}hidden{% endif %}
+            >
+              <a
+                href="{{ newsroom_filter_clear_url }}"
+                class="meta"
+                id="newsroom-filters-clear"
               >
                 Clear Filters
               </a>
