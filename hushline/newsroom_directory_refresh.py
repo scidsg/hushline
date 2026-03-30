@@ -3,21 +3,25 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
+from dataclasses import dataclass
 from html import unescape
 from typing import Mapping, Protocol, Sequence, cast
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, NavigableString, Tag
 from unidecode import unidecode
 
 NEWSROOM_DIRECTORY_SOURCE_LABEL = "INN Find Your News directory"
 NEWSROOM_DIRECTORY_SOURCE_URL = "https://findyournews.org/explore/"
+EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_LABEL = "Directory of European Journalism Networks"
+EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL = "https://journalismdirectory.org/search-networks/"
 
 _NEWSROOM_USER_AGENT = (
     "Mozilla/5.0 (compatible; HushlineNewsroomSync/1.0; +https://github.com/scidsg/hushline)"
 )
 _FIND_YOUR_NEWS_HOSTS = frozenset({"findyournews.org", "www.findyournews.org"})
+_EUROPEAN_DIRECTORY_HOSTS = frozenset({"journalismdirectory.org", "www.journalismdirectory.org"})
 _USA = "United States"
 _LOCATION_CITY_COUNTRY_PARTS = 2
 _LOCATION_CITY_STATE_COUNTRY_PARTS = 3
@@ -87,6 +91,30 @@ _US_SUBDIVISION_NAMES = {
 _US_SUBDIVISION_NAMES_BY_CASEFOLD = {
     subdivision.casefold(): subdivision for subdivision in _US_SUBDIVISION_NAMES.values()
 }
+
+
+@dataclass(frozen=True)
+class NewsroomDirectorySource:
+    label: str
+    browse_url: str
+    listing_hosts: frozenset[str]
+    listing_path_prefix: str
+
+
+NEWSROOM_DIRECTORY_SOURCES = (
+    NewsroomDirectorySource(
+        label=NEWSROOM_DIRECTORY_SOURCE_LABEL,
+        browse_url=NEWSROOM_DIRECTORY_SOURCE_URL,
+        listing_hosts=_FIND_YOUR_NEWS_HOSTS,
+        listing_path_prefix="/organization/",
+    ),
+    NewsroomDirectorySource(
+        label=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_LABEL,
+        browse_url=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL,
+        listing_hosts=_EUROPEAN_DIRECTORY_HOSTS,
+        listing_path_prefix="/network/",
+    ),
+)
 
 
 class NewsroomDirectoryRefreshError(Exception):
@@ -244,7 +272,13 @@ def _listing_path_slug(url: str) -> str:
     return path.split("/")[-1]
 
 
-def _extract_organization_urls(html: str, *, source_url: str) -> list[str]:
+def _extract_listing_urls(
+    html: str,
+    *,
+    source_url: str,
+    allowed_hosts: frozenset[str],
+    listing_path_prefix: str,
+) -> list[str]:
     soup = BeautifulSoup(html, "html.parser")
     urls: list[str] = []
     seen: set[str] = set()
@@ -258,7 +292,7 @@ def _extract_organization_urls(html: str, *, source_url: str) -> list[str]:
         parsed = urlparse(normalized_href)
         host = (parsed.hostname or "").casefold()
         path = parsed.path.rstrip("/")
-        if host not in _FIND_YOUR_NEWS_HOSTS or not path.startswith("/organization/"):
+        if host not in allowed_hosts or not path.startswith(listing_path_prefix):
             continue
 
         canonical_url = f"{parsed.scheme}://{parsed.netloc}{path}/"
@@ -269,6 +303,24 @@ def _extract_organization_urls(html: str, *, source_url: str) -> list[str]:
         urls.append(canonical_url)
 
     return urls
+
+
+def _extract_organization_urls(html: str, *, source_url: str) -> list[str]:
+    return _extract_listing_urls(
+        html,
+        source_url=source_url,
+        allowed_hosts=_FIND_YOUR_NEWS_HOSTS,
+        listing_path_prefix="/organization/",
+    )
+
+
+def _extract_european_network_urls(html: str, *, source_url: str) -> list[str]:
+    return _extract_listing_urls(
+        html,
+        source_url=source_url,
+        allowed_hosts=_EUROPEAN_DIRECTORY_HOSTS,
+        listing_path_prefix="/network/",
+    )
 
 
 def _extract_text_blocks(soup: BeautifulSoup) -> dict[str, str]:
@@ -379,11 +431,14 @@ def _first_non_empty_text(*values: object) -> str:
     return ""
 
 
-def _description_for_listing(*, tagline: str, mission: str, about: str) -> str:
-    return (
-        _first_non_empty_text(tagline, mission, about)
-        or "Nonprofit newsroom listed in the INN Find Your News directory."
-    )
+def _description_for_listing(
+    *,
+    tagline: str,
+    mission: str,
+    about: str,
+    fallback_description: str,
+) -> str:
+    return _first_non_empty_text(tagline, mission, about) or fallback_description
 
 
 def _parse_newsroom_detail_html(
@@ -423,7 +478,12 @@ def _parse_newsroom_detail_html(
         "slug": f"newsroom~{slug_base}",
         "name": name,
         "website": website,
-        "description": _description_for_listing(tagline=tagline, mission=mission, about=about),
+        "description": _description_for_listing(
+            tagline=tagline,
+            mission=mission,
+            about=about,
+            fallback_description="Newsroom listing imported from a public journalism directory.",
+        ),
         "directory_url": detail_url,
         "tagline": tagline,
         "mission": mission,
@@ -438,6 +498,187 @@ def _parse_newsroom_detail_html(
         "topics": _normalize_string_list(core_details.get("topics", [])),
         "reach": _normalize_text(core_details.get("reach")),
         "year_founded": _normalize_text(core_details.get("year founded")),
+        "source_label": source_label,
+        "source_url": source_url,
+    }
+
+
+def _find_heading(
+    soup: BeautifulSoup,
+    heading_text: str,
+    *,
+    tag_names: tuple[str, ...] = ("h2", "h3"),
+) -> Tag | None:
+    target = heading_text.casefold()
+    for heading in soup.find_all(tag_names):
+        if _normalize_text(heading.get_text(" ", strip=True)).casefold() == target:
+            return heading
+    return None
+
+
+def _extract_section_paragraph_text(soup: BeautifulSoup, heading_text: str) -> str:
+    heading = _find_heading(soup, heading_text)
+    if heading is None:
+        return ""
+
+    paragraphs: list[str] = []
+    for sibling in heading.next_siblings:
+        if isinstance(sibling, Tag) and sibling.name in {"h1", "h2", "h3"}:
+            break
+        if isinstance(sibling, Tag) and sibling.name == "p":
+            text = _normalize_text(sibling.get_text(" ", strip=True))
+            if text:
+                paragraphs.append(text)
+
+    return "\n\n".join(paragraphs)
+
+
+def _extract_heading_list(soup: BeautifulSoup, heading_text: str) -> list[str]:
+    heading = _find_heading(soup, heading_text)
+    if heading is None:
+        return []
+
+    list_element = heading.find_next_sibling("ul")
+    if list_element is None:
+        return []
+
+    return _normalize_string_list(
+        [
+            _normalize_text(item.get_text(" ", strip=True))
+            for item in list_element.find_all("li")
+            if _normalize_text(item.get_text(" ", strip=True))
+        ]
+    )
+
+
+def _extract_colon_details(container: Tag) -> dict[str, str]:
+    details: dict[str, str] = {}
+    current_key = ""
+    current_value_parts: list[str] = []
+
+    def commit_current_key() -> None:
+        nonlocal current_key, current_value_parts
+        if current_key:
+            value = _normalize_text(" ".join(current_value_parts))
+            if value:
+                details[current_key] = value
+        current_key = ""
+        current_value_parts = []
+
+    for child in container.children:
+        if isinstance(child, NavigableString):
+            text = _normalize_text(str(child))
+            if text:
+                current_value_parts.append(text)
+            continue
+
+        if not isinstance(child, Tag):
+            continue
+
+        if child.name == "strong":
+            commit_current_key()
+            current_key = (
+                _normalize_text(child.get_text(" ", strip=True)).removesuffix(":").casefold()
+            )
+            continue
+
+        if child.name == "br":
+            continue
+
+        text = _normalize_text(child.get_text(" ", strip=True))
+        if text:
+            current_value_parts.append(text)
+
+    commit_current_key()
+    return details
+
+
+def _extract_contact_website(soup: BeautifulSoup) -> str:
+    contact_heading = _find_heading(soup, "Contact", tag_names=("h2",))
+    if contact_heading is None:
+        return ""
+
+    for sibling in contact_heading.next_siblings:
+        if isinstance(sibling, Tag) and sibling.name in {"h1", "h2", "h3"}:
+            break
+        if not isinstance(sibling, Tag):
+            continue
+
+        website_anchor = sibling.find("a", href=True)
+        if website_anchor is None:
+            continue
+
+        return _normalize_http_url(website_anchor.get("href"), field="website", required=False)
+
+    return ""
+
+
+def _parse_european_network_detail_html(
+    html: str,
+    *,
+    detail_url: str,
+    source_label: str,
+    source_url: str,
+) -> dict[str, object]:
+    soup = BeautifulSoup(html, "html.parser")
+    name = _normalize_text(
+        soup.find("h1").get_text(" ", strip=True) if soup.find("h1") is not None else ""
+    )
+    if not name:
+        raise NewsroomDirectoryRefreshError(f"Missing newsroom name for {detail_url}")
+
+    description = ""
+    heading = soup.find("h1")
+    if isinstance(heading, Tag):
+        summary_paragraph = heading.find_next_sibling("p")
+        if summary_paragraph is not None:
+            description = _normalize_text(summary_paragraph.get_text(" ", strip=True))
+
+    about = _extract_section_paragraph_text(soup, "About the network")
+    mission = _extract_section_paragraph_text(soup, "Projects")
+    website = _extract_contact_website(soup)
+
+    network_details_heading = _find_heading(soup, "Network details")
+    network_detail_values = (
+        _extract_colon_details(network_details_heading.find_next_sibling("p"))
+        if network_details_heading is not None
+        and network_details_heading.find_next_sibling("p") is not None
+        else {}
+    )
+    countries = _normalize_string_list(_extract_heading_list(soup, "Countries"))
+    country = countries[0] if len(countries) == 1 else None
+
+    slug_base = _slugify(_listing_path_slug(detail_url) or name)
+    if not slug_base:
+        raise NewsroomDirectoryRefreshError(
+            f"Newsroom slug normalized to an empty value: {detail_url}"
+        )
+
+    return {
+        "id": f"newsroom-{slug_base}",
+        "slug": f"newsroom~{slug_base}",
+        "name": name,
+        "website": website,
+        "description": _description_for_listing(
+            tagline="",
+            mission=description,
+            about=about,
+            fallback_description="Journalism network listing imported from a public directory.",
+        ),
+        "directory_url": detail_url,
+        "tagline": "",
+        "mission": mission,
+        "about": about,
+        "location": "",
+        "city": None,
+        "country": country,
+        "subdivision": None,
+        "countries": countries,
+        "places_covered": [],
+        "languages": [],
+        "topics": _extract_heading_list(soup, "Subjects"),
+        "reach": _normalize_text(network_detail_values.get("geographical focus")),
+        "year_founded": _normalize_text(network_detail_values.get("founded")),
         "source_label": source_label,
         "source_url": source_url,
     }
@@ -479,6 +720,7 @@ def _normalize_newsroom_row(
             tagline=_first_non_empty_text(row.get("tagline")),
             mission=_first_non_empty_text(row.get("mission")),
             about=_first_non_empty_text(row.get("about")),
+            fallback_description="Newsroom listing imported from a public journalism directory.",
         )
         if not _first_non_empty_text(row.get("description"))
         else _first_non_empty_text(row.get("description")),
@@ -510,24 +752,53 @@ def _normalize_newsroom_row(
     }
 
 
-def fetch_newsroom_directory_rows(
+def _parse_source_detail_html(
+    source: NewsroomDirectorySource,
+    html: str,
     *,
-    source_url: str = NEWSROOM_DIRECTORY_SOURCE_URL,
-    timeout_seconds: float = 30.0,
-    session: _SessionLike | None = None,
-) -> list[dict[str, object]]:
-    client = session or cast(_SessionLike, requests.Session())
+    detail_url: str,
+) -> dict[str, object]:
+    if source.browse_url == EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL:
+        return _parse_european_network_detail_html(
+            html,
+            detail_url=detail_url,
+            source_label=source.label,
+            source_url=source.browse_url,
+        )
 
+    return _parse_newsroom_detail_html(
+        html,
+        detail_url=detail_url,
+        source_label=source.label,
+        source_url=source.browse_url,
+    )
+
+
+def _extract_source_listing_urls(source: NewsroomDirectorySource, html: str) -> list[str]:
+    return _extract_listing_urls(
+        html,
+        source_url=source.browse_url,
+        allowed_hosts=source.listing_hosts,
+        listing_path_prefix=source.listing_path_prefix,
+    )
+
+
+def _fetch_rows_for_source(
+    source: NewsroomDirectorySource,
+    *,
+    client: _SessionLike,
+    timeout_seconds: float,
+) -> list[dict[str, object]]:
     try:
         response = _get_with_retries(
             client,
-            url=source_url,
+            url=source.browse_url,
             timeout_seconds=timeout_seconds,
         )
-        detail_urls = _extract_organization_urls(response.text, source_url=source_url)
+        detail_urls = _extract_source_listing_urls(source, response.text)
         if not detail_urls:
             raise NewsroomDirectoryRefreshError(
-                "No newsroom listings were discovered from the public Explore page"
+                f"No newsroom listings were discovered from {source.label}"
             )
 
         rows: list[dict[str, object]] = []
@@ -538,18 +809,31 @@ def fetch_newsroom_directory_rows(
                 timeout_seconds=timeout_seconds,
             )
             rows.append(
-                _parse_newsroom_detail_html(
+                _parse_source_detail_html(
+                    source,
                     detail_response.text,
                     detail_url=detail_url,
-                    source_label=NEWSROOM_DIRECTORY_SOURCE_LABEL,
-                    source_url=detail_url,
                 )
             )
+
+        if not rows:
+            raise NewsroomDirectoryRefreshError(f"No newsroom rows were parsed from {source.label}")
+        return rows
     except requests.RequestException as exc:
         raise NewsroomDirectoryRefreshError(
-            f"Failed to fetch INN Find Your News listings: {exc}"
+            f"Failed to fetch {source.label} listings: {exc}"
         ) from exc
 
+
+def fetch_newsroom_directory_rows(
+    *,
+    timeout_seconds: float = 30.0,
+    session: _SessionLike | None = None,
+) -> list[dict[str, object]]:
+    client = session or cast(_SessionLike, requests.Session())
+    rows: list[dict[str, object]] = []
+    for source in NEWSROOM_DIRECTORY_SOURCES:
+        rows.extend(_fetch_rows_for_source(source, client=client, timeout_seconds=timeout_seconds))
     return rows
 
 
@@ -586,7 +870,7 @@ def refresh_newsroom_directory_rows(
 
 def render_newsroom_refresh_summary(
     *,
-    source_url: str,
+    source_urls: Sequence[str],
     total_count: int,
     added_count: int,
     removed_count: int,
@@ -595,7 +879,7 @@ def render_newsroom_refresh_summary(
     lines = [
         "## Newsroom Directory Refresh Summary",
         "",
-        f"- Source: {source_url}",
+        f"- Sources: {', '.join(source_urls)}",
         f"- Total newsrooms: {total_count}",
         f"- Added newsrooms: {added_count}",
         f"- Removed newsrooms: {removed_count}",

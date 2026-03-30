@@ -507,8 +507,11 @@
   {% if directory_verified_tab_enabled %}
     <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
       <p class="meta dirMeta">
-        🧪 Beta: This tab includes self-reported newsrooms and automated listings from the Institute for Nonprofit News's public
-        <a href="https://findyournews.org/explore/">Find Your News directory</a>.
+        🧪 Beta: This tab includes self-reported newsrooms and automated listings from public journalism directories{% if newsroom_automated_sources %}, including
+        {% for source in newsroom_automated_sources %}
+          <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}
+        {% endfor %}
+        {% endif %}.
         <a href="/to/admin">Request a correction</a>.
       </p>
 

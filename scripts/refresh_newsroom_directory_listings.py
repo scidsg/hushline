@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from hushline.newsroom_directory_refresh import (
-    NEWSROOM_DIRECTORY_SOURCE_URL,
+    NEWSROOM_DIRECTORY_SOURCES,
     NewsroomDirectoryRefreshError,
     fetch_newsroom_directory_rows,
     refresh_newsroom_directory_rows,
@@ -28,7 +28,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Refresh the local newsroom directory artifact from the public "
-            "INN Find Your News Explore page."
+            "journalism directory source pages."
         ),
     )
     parser.add_argument(
@@ -111,7 +111,7 @@ def main() -> int:
     updated_count = _count_updated_rows(existing_rows, refreshed_rows)
 
     summary = render_newsroom_refresh_summary(
-        source_url=NEWSROOM_DIRECTORY_SOURCE_URL,
+        source_urls=[source.browse_url for source in NEWSROOM_DIRECTORY_SOURCES],
         total_count=len(refreshed_rows),
         added_count=added_count,
         removed_count=removed_count,

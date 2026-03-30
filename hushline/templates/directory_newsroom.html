@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 
-{% block title %}Newsroom: {{ listing.name }}{% endblock %}
+{% block title %}Newsroom / Network: {{ listing.name }}{% endblock %}
 
 {% block content %}
   <h2 class="submit">{{ listing.name }}</h2>
 
   <div class="badgeContainer">
-    <span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>
+    <span class="badge" role="img" aria-label="Newsroom or network listing">📰 Newsroom / Network</span>
     <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
   </div>
 
   <p class="bio">{{ listing.description }}</p>
 
   <p class="meta dirMeta">
-    🧪 Beta: This listing is automated from the Institute for Nonprofit News's public Find Your News directory.
+    🧪 Beta: This listing is automated from the public
+    <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
+      {{ listing.source_label }}
+    </a>.
   </p>
 
   <div class="extra-fields">
@@ -29,7 +32,7 @@
     {% endif %}
 
     <p class="extra-field">
-      <span class="extra-field-label">Find Your News Listing</span>
+      <span class="extra-field-label">Directory Profile</span>
       <span class="extra-field-value">
         <a href="{{ listing.directory_url }}" target="_blank" rel="noopener noreferrer">
           {{ listing.directory_url }}
@@ -53,7 +56,7 @@
 
     {% if listing.about %}
       <p class="extra-field">
-        <span class="extra-field-label">About Our Journalism</span>
+        <span class="extra-field-label">About</span>
         <span class="extra-field-value">{{ listing.about }}</span>
       </p>
     {% endif %}
@@ -125,7 +128,7 @@
       <span class="extra-field-label">Source</span>
       <span class="extra-field-value">
         <a href="{{ listing.source_url }}" target="_blank" rel="noopener noreferrer">
-          {{ listing.source_url }}
+          {{ listing.source_label }}
         </a>
       </span>
     </p>
