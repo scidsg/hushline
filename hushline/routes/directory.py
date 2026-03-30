@@ -154,7 +154,10 @@ def _newsroom_filter_state(newsroom_filter_metadata: dict[str, object]) -> dict[
 def _geography_matches_location_filters(
     geography: DirectoryListingGeography, filter_state: dict[str, str | None]
 ) -> bool:
-    if filter_state["country"] and geography.country != filter_state["country"]:
+    countries = getattr(geography, "countries", ()) or (
+        (geography.country,) if geography.country is not None else ()
+    )
+    if filter_state["country"] and filter_state["country"] not in countries:
         return False
 
     if filter_state["region"] and geography.subdivision != filter_state["region"]:
@@ -234,13 +237,17 @@ def _location_filter_metadata(
         country = geography.country
         subdivision = geography.subdivision
         subdivision_code = geography.subdivision_code
+        countries_for_listing = getattr(geography, "countries", ()) or (
+            (country,) if country is not None else ()
+        )
 
-        if country is None:
+        if not countries_for_listing:
             return
 
-        countries[country] = countries.get(country, 0) + 1
+        for listed_country in countries_for_listing:
+            countries[listed_country] = countries.get(listed_country, 0) + 1
 
-        if subdivision is None or subdivision_code is None:
+        if country is None or subdivision is None or subdivision_code is None:
             return
 
         country_regions = regions.setdefault(country, {})
@@ -540,6 +547,21 @@ def _directory_filter_clear_url(*param_names: str) -> str:
     return f"{url_for('directory')}?{urlencode(query_items, doseq=True)}"
 
 
+def _newsroom_automated_sources(
+    listings: Sequence[NewsroomDirectoryListing],
+) -> list[dict[str, str]]:
+    sources_by_label: dict[str, str] = {}
+    for listing in listings:
+        if not listing.source_label or not listing.source_url:
+            continue
+        sources_by_label.setdefault(listing.source_label, listing.source_url)
+
+    return [
+        {"label": label, "url": sources_by_label[label]}
+        for label in sorted(sources_by_label, key=str.casefold)
+    ]
+
+
 def register_directory_routes(app: Flask) -> None:
     @app.route("/directory")
     def directory() -> Response | str:
@@ -590,6 +612,7 @@ def register_directory_routes(app: Flask) -> None:
         )
         if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
             all_newsroom_listings = list(get_newsroom_directory_listings())
+            newsroom_automated_sources = _newsroom_automated_sources(all_newsroom_listings)
             newsroom_filter_metadata = _newsroom_filter_metadata(
                 all_newsroom_listings, newsroom_usernames
             )
@@ -603,6 +626,7 @@ def register_directory_routes(app: Flask) -> None:
                 all_newsroom_listings, newsroom_filter_state
             )
         else:
+            newsroom_automated_sources = []
             newsroom_filter_metadata = {"countries": [], "regions": {}}
             newsroom_filter_state = {"country": None, "region": None, "region_code": None}
             filtered_newsroom_usernames = newsroom_usernames
@@ -644,6 +668,7 @@ def register_directory_routes(app: Flask) -> None:
             globaleaks_total_count=len(globaleaks_listings),
             newsroom_usernames=filtered_newsroom_usernames,
             newsroom_listings=newsroom_listings,
+            newsroom_automated_sources=newsroom_automated_sources,
             newsroom_total_count=len(filtered_newsroom_usernames) + len(newsroom_listings),
             newsroom_filter_metadata=newsroom_filter_metadata,
             newsroom_filter_state=newsroom_filter_state,

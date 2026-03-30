@@ -81,10 +81,32 @@ def _sample_newsroom_listing() -> NewsroomDirectoryListing:
         reach="Regional",
         year_founded="2019",
         source_label="INN Find Your News directory",
-        source_url="https://findyournews.org/organization/sample-newsroom/",
+        source_url="https://findyournews.org/explore/",
         city="Los Angeles",
         country="United States",
         subdivision="California",
+    )
+
+
+def _sample_european_network_listing() -> NewsroomDirectoryListing:
+    return NewsroomDirectoryListing(
+        id="newsroom-the-circle",
+        slug="newsroom~the-circle",
+        name="The Circle",
+        website="https://www.thecirclehubs.org",
+        description="A network of cross-border, collaborative media hubs across Europe.",
+        directory_url="https://journalismdirectory.org/network/the-circle/",
+        tagline="",
+        mission="Projects text",
+        about="About the network",
+        countries=("France", "Germany"),
+        places_covered=(),
+        languages=(),
+        topics=("Climate", "Migration"),
+        reach="European",
+        year_founded="2022",
+        source_label="Directory of European Journalism Networks",
+        source_url="https://journalismdirectory.org/search-networks/",
     )
 
 
@@ -106,7 +128,7 @@ def _newsroom_listing_with_geography(
         website=f"https://{suffix}.example.org",
         description=f"{name} directory listing.",
         directory_url=f"https://findyournews.org/organization/{suffix}/",
-        source_url=f"https://findyournews.org/organization/{suffix}/",
+        source_url="https://findyournews.org/explore/",
         countries=countries,
         places_covered=places_covered,
         city=city,
@@ -253,7 +275,14 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     assert "Onion addresses require" not in banner_text
 
 
-def test_directory_newsrooms_banner_links_to_admin(client: FlaskClient) -> None:
+def test_directory_newsrooms_banner_links_to_admin(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (_sample_newsroom_listing(), _sample_european_network_listing()),
+    )
+
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -265,13 +294,18 @@ def test_directory_newsrooms_banner_links_to_admin(client: FlaskClient) -> None:
     assert banner is not None
     banner_links = newsroom_panel.select(".dirMeta a")
     links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
-    assert links_by_text["Find Your News directory"] == "https://findyournews.org/explore/"
+    assert links_by_text["INN Find Your News directory"] == "https://findyournews.org/explore/"
+    assert (
+        links_by_text["Directory of European Journalism Networks"]
+        == "https://journalismdirectory.org/search-networks/"
+    )
     assert links_by_text["Request a correction"] == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "self-reported newsrooms and automated listings" in banner_text
-    assert "Institute for Nonprofit News" in banner_text
-    assert "Find Your News directory" in banner_text
+    assert "public journalism directories" in banner_text
+    assert "INN Find Your News directory" in banner_text
+    assert "Directory of European Journalism Networks" in banner_text
     assert "Request a correction" in banner_text
 
 
@@ -715,6 +749,29 @@ def test_directory_filters_newsrooms_by_country_and_region_query_params(
     assert "California Newsroom Listing" not in all_text
     assert "California Attorney" in all_text
     assert newsroom_count.get_text(" ", strip=True) == "2"
+
+
+def test_directory_filters_multi_country_newsrooms_by_each_country_query_param(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    network_listing = _sample_european_network_listing()
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (network_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    france_response = client.get(f"{url_for('directory')}?newsroom_country=France")
+    germany_response = client.get(f"{url_for('directory')}?newsroom_country=Germany")
+
+    assert france_response.status_code == 200
+    assert germany_response.status_code == 200
+    assert "The Circle" in france_response.text
+    assert "The Circle" in germany_response.text
 
 
 def test_directory_filters_self_reported_attorneys_by_country_and_region_query_params(
@@ -1439,25 +1496,20 @@ def test_directory_newsroom_filters_json_includes_automated_newsroom_listings(
         country="United States",
         subdivision="California",
     )
-    australia_listing = _newsroom_listing_with_geography(
-        suffix="australia",
-        name="Australia Newsroom",
-        city="Sydney",
-        country="Australia",
-        subdivision=None,
-    )
+    network_listing = _sample_european_network_listing()
 
     monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
     monkeypatch.setattr(
         "hushline.routes.directory.get_newsroom_directory_listings",
-        lambda: (california_listing, australia_listing),
+        lambda: (california_listing, network_listing),
     )
 
     response = client.get(url_for("directory_newsroom_filters"))
     assert response.status_code == 200
     assert response.json == {
         "countries": [
-            {"code": "Australia", "label": "Australia", "count": 1},
+            {"code": "France", "label": "France", "count": 1},
+            {"code": "Germany", "label": "Germany", "count": 1},
             {"code": "United States", "label": "United States", "count": 1},
         ],
         "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
@@ -2022,6 +2074,10 @@ def test_newsroom_seed_has_rows() -> None:
     assert listings
     assert all(listing.directory_url for listing in listings)
     assert all(listing.source_url for listing in listings)
+    assert any(listing.source_label == "INN Find Your News directory" for listing in listings)
+    assert any(
+        listing.source_label == "Directory of European Journalism Networks" for listing in listings
+    )
 
 
 def test_directory_users_json_includes_newsroom_rows(
@@ -2055,6 +2111,25 @@ def test_directory_users_json_includes_newsroom_rows(
     assert row["practice_tags"] == list(listing.topics)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "newsroom_directory"
+
+
+def test_directory_users_json_preserves_multi_country_newsroom_rows(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_european_network_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (listing,),
+    )
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(row for row in (response.json or []) if row["display_name"] == listing.name)
+    assert row["country"] is None
+    assert row["subdivision"] is None
+    assert row["countries"] == ["France", "Germany"]
+    assert row["source_label"] == listing.source_label
 
 
 def test_directory_newsroom_cards_do_not_show_location(
@@ -3185,7 +3260,7 @@ def test_newsroom_listing_page_is_read_only(
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, "html.parser")
     page_text = soup.get_text(" ", strip=True)
-    assert "📰 Newsroom" in page_text
+    assert "📰 Newsroom / Network" in page_text
     assert "🤖 Automated" in page_text
     assert listing.description in page_text
     assert listing.directory_url in response.text
@@ -3198,8 +3273,37 @@ def test_newsroom_listing_page_is_read_only(
     assert dir_meta is not None
     dir_meta_text = dir_meta.get_text(" ", strip=True)
     assert dir_meta_text.startswith("🧪 Beta:")
-    assert "Institute for Nonprofit News" in dir_meta_text
-    assert "Find Your News directory" in dir_meta_text
+    assert "INN Find Your News directory" in dir_meta_text
+    assert "Directory Profile" in page_text
+    assert "Source" in page_text
+
+
+def test_newsroom_listing_page_renders_source_aware_copy_for_network_entries(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_european_network_listing()
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listing",
+        lambda _slug: listing,
+    )
+
+    response = client.get(url_for("newsroom_listing", slug=listing.slug))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+
+    assert "📰 Newsroom / Network" in page_text
+    assert listing.description in page_text
+    assert "Directory Profile" in page_text
+    assert "About" in page_text
+    assert "Countries" in page_text
+    assert "France, Germany" in page_text
+    assert "State / Region" not in page_text
+
+    dir_meta = soup.select_one(".dirMeta")
+    assert dir_meta is not None
+    dir_meta_text = dir_meta.get_text(" ", strip=True)
+    assert "Directory of European Journalism Networks" in dir_meta_text
 
 
 def test_newsroom_listing_route_hidden_when_verified_tabs_disabled(

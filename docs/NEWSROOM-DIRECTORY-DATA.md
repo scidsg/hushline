@@ -1,13 +1,16 @@
 # Newsroom Directory Sync
 
-- Source index: `https://findyournews.org/explore/`
+- Source indexes:
+  - `https://findyournews.org/explore/`
+  - `https://journalismdirectory.org/search-networks/`
 - Local artifact: `hushline/data/newsroom_directory_listings.json`
 - Refresh script: `scripts/refresh_newsroom_directory_listings.py`
 
 ## Notes
 
-- The artifact is intentionally derived only from organization detail pages linked from the public Explore page.
+- The artifact is intentionally derived only from public detail pages linked from the public browse pages above.
 - The broader WordPress organization API includes records that are not visible in the public Explore experience and should not be treated as the user-facing newsroom directory.
+- The European journalism source is limited to public network detail pages linked from `search-networks`; non-public submission/contact fields must not be ingested.
 
 ## Commands
 
