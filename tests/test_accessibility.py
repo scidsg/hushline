@@ -108,6 +108,37 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert search_status.get("aria-atomic") == "true"
 
 
+def test_guided_directory_flow_has_labeled_controls_and_results_sections(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+
+    first_step_response = client.get(url_for("directory_guided"))
+    assert first_step_response.status_code == 200
+
+    first_step_soup = BeautifulSoup(first_step_response.text, "html.parser")
+    industry_label = first_step_soup.find("label", {"for": "guided-industry"})
+    industry_select = first_step_soup.find("select", {"id": "guided-industry"})
+
+    assert industry_label is not None
+    assert industry_label.get_text(" ", strip=True) == "Industry"
+    assert industry_select is not None
+
+    results_response = client.get(
+        f"{url_for('directory_guided')}?industry=workplace&country=United+States&area=workplace-rights"
+    )
+    assert results_response.status_code == 200
+
+    results_soup = BeautifulSoup(results_response.text, "html.parser")
+    result_sections = results_soup.select(".directory-guide-result")
+
+    assert len(result_sections) == 2
+    assert all(section.get("aria-labelledby") for section in result_sections)
+    assert results_soup.find(class_="directory-guide-summary") is not None
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_settings_nav_marks_current_page(client: FlaskClient) -> None:
     response = client.get(url_for("settings.profile"), follow_redirects=True)

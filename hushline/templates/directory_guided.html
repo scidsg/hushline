@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Guided Directory{% endblock %}
+{% block body_class %}onboarding-body{% endblock %}
+{% block main_class %}onboarding-main{% endblock %}
+
+{% block content %}
+  <div class="onboarding-wizard directory-guide">
+    <p class="meta">Public guided directory flow</p>
+    <h2 id="guided-directory-title">Find two likely starting points</h2>
+    <p>
+      Answer a few short questions and we will suggest one attorney or law-firm contact and one newsroom starting point from the public directory.
+      These are recommended starting points, not legal or editorial advice.
+    </p>
+    <p class="meta directory-guide-note">
+      This first version recommends from the attorneys and newsroom tabs only.
+      It does not yet include self-reported journalist accounts.
+    </p>
+    <p class="meta">No account is required. Answers stay in the URL while you use the guide.</p>
+
+    {% if current_step == "results" %}
+      <p class="meta">Recommended starting points</p>
+      <h3>Two places to start</h3>
+
+      <dl class="directory-guide-summary">
+        {% for answer in selected_answers %}
+          <div class="directory-guide-summary-item">
+            <dt>{{ answer.label }}</dt>
+            <dd>
+              <span>{{ answer.value }}</span>
+              <a href="{{ answer.change_url }}">Change</a>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+
+      <div class="directory-guide-results">
+        {% for recommendation in (attorney_recommendation, newsroom_recommendation) %}
+          <section
+            class="directory-guide-result"
+            aria-labelledby="directory-guide-result-{{ loop.index }}"
+          >
+            <p class="label" id="directory-guide-result-{{ loop.index }}">
+              {{ recommendation.heading }}
+            </p>
+            <article class="user">
+              <h3>{{ recommendation.display_name }}</h3>
+              {% if recommendation.result_type_label or recommendation.contactability_label %}
+                <p class="meta">
+                  {{ recommendation.result_type_label }}
+                  {% if recommendation.contactability_label %}
+                    · {{ recommendation.contactability_label }}
+                  {% endif %}
+                </p>
+              {% endif %}
+              {% if recommendation.bio %}
+                <p class="bio">{{ recommendation.bio }}</p>
+              {% endif %}
+              <p class="meta">{{ recommendation.why_selected }}</p>
+              {% if recommendation.profile_url and recommendation.view_label %}
+                <div class="user-actions">
+                  <a href="{{ recommendation.profile_url }}">{{ recommendation.view_label }}</a>
+                </div>
+              {% endif %}
+            </article>
+          </section>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="meta">Step {{ step_number }} of {{ total_steps }}</p>
+
+      {% if current_step == "industry" %}
+        <h3>What kind of situation are you dealing with?</h3>
+        <p>
+          Pick the closest industry or context. This is only used as a soft
+          ranking signal when it maps to structured directory data.
+        </p>
+        <form method="get" class="formBody">
+          <label for="guided-industry">Industry</label>
+          <select id="guided-industry" name="industry" required>
+            <option value="">Select one</option>
+            {% for choice in industry_choices %}
+              <option value="{{ choice.value }}">{{ choice.label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Continue</button>
+        </form>
+      {% elif current_step == "country" %}
+        <h3>Which country is most relevant?</h3>
+        <p>
+          We prefer a country match where possible, then narrow to a region if
+          the directory supports it.
+        </p>
+        <form method="get" class="formBody">
+          <input type="hidden" name="industry" value="{{ selected_industry.value }}" />
+          <label for="guided-country">Country</label>
+          <select id="guided-country" name="country" required>
+            <option value="">Select one</option>
+            {% for option in country_options %}
+              <option
+                value="{{ option.code }}"
+                {% if selected_country == option.code %}selected{% endif %}
+              >
+                {{ option.label }}
+              </option>
+            {% endfor %}
+          </select>
+          <button type="submit">Continue</button>
+        </form>
+      {% elif current_step == "area" %}
+        <h3>What area of interest best fits?</h3>
+        <p>
+          We use only the structured topic data the directory already exposes.
+          If that data is sparse on one side, the guide falls back to location.
+        </p>
+        <form method="get" class="formBody">
+          <input type="hidden" name="industry" value="{{ selected_industry.value }}" />
+          <input type="hidden" name="country" value="{{ selected_country }}" />
+          <label for="guided-area">Area of interest</label>
+          <select id="guided-area" name="area" required>
+            <option value="">Select one</option>
+            {% for choice in area_choices %}
+              <option value="{{ choice.value }}">{{ choice.label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Continue</button>
+        </form>
+      {% elif current_step == "region" %}
+        <h3>Do you want to narrow by state, province, or region?</h3>
+        <p>
+          This is used as a secondary hard filter when the selected country has
+          supported region data.
+        </p>
+        <form method="get" class="formBody">
+          <input type="hidden" name="industry" value="{{ selected_industry.value }}" />
+          <input type="hidden" name="country" value="{{ selected_country }}" />
+          <input type="hidden" name="area" value="{{ selected_area.value }}" />
+          <label for="guided-region">State / Province / Region</label>
+          <select id="guided-region" name="region">
+            <option
+              value="__any__"
+              {% if selected_region_state["value"] in [None, "__any__"] %}selected{% endif %}
+            >
+              No region preference
+            </option>
+            {% for option in region_options %}
+              <option
+                value="{{ option.code }}"
+                {% if selected_region_state["value"] == option.code %}selected{% endif %}
+              >
+                {{ option.label }}
+              </option>
+            {% endfor %}
+          </select>
+          <button type="submit">Show recommendations</button>
+        </form>
+      {% endif %}
+    {% endif %}
+
+    <div class="directory-guide-actions">
+      {% if back_url %}
+        <a href="{{ back_url }}">Back</a>
+      {% endif %}
+      <a href="{{ restart_url }}">Restart guide</a>
+      <a href="{{ directory_url }}">Browse full directory</a>
+    </div>
+  </div>
+{% endblock %}

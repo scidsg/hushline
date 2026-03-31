@@ -3409,6 +3409,228 @@ def test_newsroom_listing_slug_cannot_be_messaged(
     assert response.status_code == 404
 
 
+def test_directory_shows_guided_flow_entrypoint(client: FlaskClient) -> None:
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    entrypoint = soup.find(class_="directory-guide-entrypoint")
+    assert entrypoint is not None
+    assert "Try the guided directory flow" in entrypoint.get_text(" ", strip=True)
+    assert entrypoint.find("a", href=url_for("directory_guided")) is not None
+
+
+def test_directory_guided_flow_renders_first_step(client: FlaskClient) -> None:
+    response = client.get(url_for("directory_guided"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="guided-directory-title") is not None
+    assert soup.find("select", {"id": "guided-industry"}) is not None
+    assert soup.find("select", {"id": "guided-country"}) is None
+    assert "It does not yet include self-reported journalist accounts." in response.text
+
+
+def test_guided_directory_candidate_score_maps_structured_terms() -> None:
+    area_choice = directory_routes._GUIDED_DIRECTORY_AREA_BY_VALUE["workplace-rights"]
+    industry_choice = directory_routes._GUIDED_DIRECTORY_INDUSTRY_BY_VALUE[
+        "government-public-services"
+    ]
+    attorney_query = directory_routes.GuidedDirectoryRecommendationQuery(
+        country="United States",
+        region="Illinois",
+        area_choice=area_choice,
+        industry_choice=industry_choice,
+        side="attorney",
+    )
+    newsroom_query = directory_routes.GuidedDirectoryRecommendationQuery(
+        country="United States",
+        region="Illinois",
+        area_choice=area_choice,
+        industry_choice=industry_choice,
+        side="newsroom",
+    )
+    attorney_row = {
+        "display_name": "Attorney Candidate",
+        "countries": ["United States"],
+        "subdivision": "Illinois",
+        "practice_tags": ["Employment", "Retaliation", "Investigations"],
+        "message_capable": True,
+    }
+    newsroom_row = {
+        "display_name": "Newsroom Candidate",
+        "countries": ["United States"],
+        "subdivision": "Illinois",
+        "practice_tags": ["Worker's Rights", "Equity"],
+        "message_capable": False,
+    }
+
+    attorney_score = directory_routes._guided_directory_candidate_score(
+        attorney_row,
+        query=attorney_query,
+    )
+    newsroom_score = directory_routes._guided_directory_candidate_score(
+        newsroom_row,
+        query=newsroom_query,
+    )
+
+    assert attorney_score.country_match is True
+    assert attorney_score.region_match is True
+    assert attorney_score.area_match_count == 2
+    assert attorney_score.industry_match_count == 0
+    assert newsroom_score.country_match is True
+    assert newsroom_score.region_match is True
+    assert newsroom_score.area_match_count == 2
+    assert newsroom_score.industry_match_count == 0
+
+
+def test_guided_directory_recommendation_falls_back_to_location_when_topic_match_is_weak() -> None:
+    rows = [
+        {
+            "display_name": "Illinois Newsroom",
+            "countries": ["United States"],
+            "subdivision": "Illinois",
+            "practice_tags": [],
+            "message_capable": False,
+        },
+        {
+            "display_name": "Canada Topic Match",
+            "countries": ["Canada"],
+            "subdivision": "Ontario",
+            "practice_tags": ["Worker's Rights"],
+            "message_capable": False,
+        },
+    ]
+    newsroom_query = directory_routes.GuidedDirectoryRecommendationQuery(
+        country="United States",
+        region="Illinois",
+        area_choice=directory_routes._GUIDED_DIRECTORY_AREA_BY_VALUE["workplace-rights"],
+        industry_choice=directory_routes._GUIDED_DIRECTORY_INDUSTRY_BY_VALUE["workplace"],
+        side="newsroom",
+    )
+    selected_row, selected_score = directory_routes._guided_directory_select_recommendation(
+        rows,
+        query=newsroom_query,
+    )
+
+    assert selected_row is not None
+    assert selected_score is not None
+    assert selected_row["display_name"] == "Illinois Newsroom"
+    assert selected_score.country_match is True
+    assert selected_score.area_match_count == 0
+
+
+def test_directory_guided_flow_prompts_for_region_when_supported(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_attorney = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California attorney listing.",
+        city="Los Angeles",
+        state="CA",
+        practice_tags=("Employment", "Retaliation"),
+        source_label="Official source",
+    )
+    california_newsroom = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_attorney,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_newsroom,),
+    )
+
+    response = client.get(
+        f"{url_for('directory_guided')}?industry=workplace&country=US&area=workplace-rights"
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    region_select = soup.find("select", {"id": "guided-region"})
+
+    assert region_select is not None
+    assert region_select.find("option", value="__any__") is not None
+    assert region_select.find("option", value="CA") is not None
+    assert "Do you want to narrow by state, province, or region?" in response.text
+
+
+def test_directory_guided_flow_returns_profile_and_listing_recommendations(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    user: User,
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.country = "US"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = True
+    user.primary_username._display_name = "Illinois Attorney Profile"
+    user.primary_username.bio = "Whistleblower and employment counsel."
+    user.pgp_key = Path("tests/test_pgp_key.txt").read_text(encoding="utf-8")
+    db.session.commit()
+
+    france_newsroom = replace(
+        _sample_newsroom_listing(),
+        id="newsroom-france",
+        slug="newsroom~france",
+        name="Alpha French Newsroom",
+        topics=("Worker's Rights",),
+        countries=("France",),
+        city="Paris",
+        country="France",
+        subdivision=None,
+    )
+    germany_newsroom = replace(
+        _sample_newsroom_listing(),
+        id="newsroom-germany",
+        slug="newsroom~germany",
+        name="Beta German Newsroom",
+        topics=("Worker's Rights",),
+        countries=("Germany",),
+        city="Berlin",
+        country="Germany",
+        subdivision=None,
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (france_newsroom, germany_newsroom),
+    )
+
+    response = client.get(
+        f"{url_for('directory_guided')}?industry=workplace&country=US&area=workplace-rights&region=IL"
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    results = soup.select(".directory-guide-result article.user")
+
+    assert len(results) == 2
+    assert "Illinois Attorney Profile" in page_text
+    assert "Profile" in page_text
+    assert "Message-capable profile" in page_text
+    assert url_for("profile", username=user.primary_username.username) in response.text
+    assert "Alpha French Newsroom" in page_text
+    assert "Automated listing" in page_text
+    assert "Read-only listing" in page_text
+    assert url_for("newsroom_listing", slug=france_newsroom.slug) in response.text
+    assert "No country match was available in this candidate pool." in page_text
+    assert "Change" in page_text
+
+
 @pytest.mark.local_only()
 @pytest.mark.external_network()
 def test_public_record_external_links_resolve() -> None:

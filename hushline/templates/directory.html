@@ -10,6 +10,20 @@
     {{ intro_text | markdown }}
   {% endif %}
 
+  {% if directory_verified_tab_enabled %}
+    <section class="directory-guide-entrypoint" aria-labelledby="directory-guide-entrypoint-title">
+      <p class="meta">Need help deciding where to start?</p>
+      <h3 id="directory-guide-entrypoint-title">Try the guided directory flow</h3>
+      <p>
+        Answer a few short questions and get one attorney or law-firm recommendation plus one newsroom starting point from the public directory.
+      </p>
+      <p class="meta">
+        No account required.
+        <a href="{{ url_for('directory_guided') }}">Open the guide</a>.
+      </p>
+    </section>
+  {% endif %}
+
   <div class="directory-sticky-shell">
     {% if directory_verified_tab_enabled %}
       <div class="directory-tabs" id="directory-tabs">
