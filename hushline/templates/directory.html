@@ -154,6 +154,17 @@
           </button>
         </div>
         {% if directory_verified_tab_enabled %}
+          <div id="all-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="all-filters-toggle"
+              aria-controls="all-filters-panel"
+              aria-expanded="{{ 'true' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'false' }}"
+            >
+              {{ 'Hide Filters' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'Show Filters' }}
+            </button>
+          </div>
           <div id="attorney-filters-toggle-shell" hidden>
             <button
               type="button"
@@ -179,6 +190,107 @@
         {% endif %}
       </div>
       {% if directory_verified_tab_enabled %}
+        <div id="all-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="all-filters-panel"
+            {% if not all_filter_state.country and not all_filter_state.region_code and not all_filter_state.listing_type %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="all-country-filter">Country</label>
+                <select id="all-country-filter" name="all_country">
+                  <option value="">All</option>
+                  {% for country in all_filter_metadata.countries %}
+                    <option
+                      value="{{ country.code }}"
+                      {% if all_filter_state.country == country.code %}selected{% endif %}
+                    >
+                      {% if all_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="all-region-filter">State / Province / Region</label>
+                <select
+                  id="all-region-filter"
+                  name="all_region"
+                  {% if not all_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if all_filter_state.country and all_filter_state.country in all_filter_metadata.regions %}
+                    {% for region in all_filter_metadata.regions[all_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if all_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if all_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in all_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if all_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if all_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="all-listing-type-filter">Listing Type</label>
+                <select id="all-listing-type-filter" name="all_listing_type">
+                  <option value="">All</option>
+                  {% for listing_type in all_filter_metadata.listing_types %}
+                    <option
+                      value="{{ listing_type.code }}"
+                      {% if all_filter_state.listing_type == listing_type.code %}selected{% endif %}
+                    >
+                      {% if all_filter_state.listing_type == listing_type.code %}
+                        {{ listing_type.label }}
+                      {% else %}
+                        {{ listing_type.label }} ({{ listing_type.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div
+              class="directory-filter-actions"
+              id="all-filters-actions"
+              {% if not all_filter_state.country and not all_filter_state.region_code and not all_filter_state.listing_type %}hidden{% endif %}
+            >
+              <a
+                href="{{ all_filter_clear_url }}"
+                class="meta"
+                id="all-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
         <div id="attorney-filters-panel-shell" hidden>
           <form
             method="get"

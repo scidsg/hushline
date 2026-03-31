@@ -54,6 +54,13 @@ _LEGACY_COUNTRY_NAME_BY_CODE = {
     "SE": "Sweden",
     "US": "United States",
 }
+_ALL_LISTING_TYPE_LABELS = (
+    ("verified", "Verified"),
+    ("attorneys", "Attorneys"),
+    ("newsrooms", "Newsrooms"),
+    ("securedrop", "SecureDrop"),
+    ("globaleaks", "GlobaLeaks"),
+)
 
 
 def _normalized_filter_value(value: str | None) -> str | None:
@@ -151,6 +158,27 @@ def _newsroom_filter_state(newsroom_filter_metadata: dict[str, object]) -> dict[
     )
 
 
+def _all_filter_state(all_filter_metadata: dict[str, object]) -> dict[str, str | None]:
+    filter_state = _location_filter_state(
+        all_filter_metadata,
+        country_arg_name="all_country",
+        region_arg_name="all_region",
+    )
+    raw_listing_types = cast(list[dict[str, str]], all_filter_metadata.get("listing_types") or [])
+    available_listing_types = {str(option["code"]) for option in raw_listing_types}
+    available_listing_types_by_casefold = {
+        listing_type.casefold(): listing_type for listing_type in available_listing_types
+    }
+    listing_type = _normalized_filter_value(request.args.get("all_listing_type"))
+    if listing_type is not None:
+        listing_type = available_listing_types_by_casefold.get(listing_type.casefold())
+
+    return {
+        **filter_state,
+        "listing_type": listing_type,
+    }
+
+
 def _geography_matches_location_filters(
     geography: DirectoryListingGeography, filter_state: dict[str, str | None]
 ) -> bool:
@@ -226,9 +254,8 @@ def _filter_newsroom_listings(
     return cast(list[NewsroomDirectoryListing], _filter_directory_listings(listings, filter_state))
 
 
-def _location_filter_metadata(
-    listings: Sequence[PublicRecordListing | NewsroomDirectoryListing],
-    usernames: Sequence[Username] = (),
+def _location_filter_metadata_for_geographies(
+    geographies: Sequence[DirectoryListingGeography],
 ) -> dict[str, object]:
     countries: dict[str, int] = {}
     regions: dict[str, dict[str, dict[str, object]]] = {}
@@ -260,11 +287,8 @@ def _location_filter_metadata(
         )
         region_entry["count"] = cast(int, region_entry["count"]) + 1
 
-    for listing in listings:
-        add_geography(listing.geography)
-
-    for username in usernames:
-        add_geography(_username_geography(username))
+    for geography in geographies:
+        add_geography(geography)
 
     return {
         "countries": [
@@ -287,6 +311,18 @@ def _location_filter_metadata(
     }
 
 
+def _location_filter_metadata(
+    listings: Sequence[PublicRecordListing | NewsroomDirectoryListing],
+    usernames: Sequence[Username] = (),
+) -> dict[str, object]:
+    return _location_filter_metadata_for_geographies(
+        [
+            *(listing.geography for listing in listings),
+            *(_username_geography(username) for username in usernames),
+        ]
+    )
+
+
 def _attorney_filter_metadata(
     listings: list[PublicRecordListing] | tuple[PublicRecordListing, ...],
     attorney_usernames: list[Username] | tuple[Username, ...] = (),
@@ -299,6 +335,16 @@ def _newsroom_filter_metadata(
     newsroom_usernames: list[Username] | tuple[Username, ...] = (),
 ) -> dict[str, object]:
     return _location_filter_metadata(listings, newsroom_usernames)
+
+
+def _empty_all_filter_metadata() -> dict[str, object]:
+    return {
+        "countries": [],
+        "regions": {},
+        "listing_types": [
+            {"code": code, "label": label, "count": 0} for code, label in _ALL_LISTING_TYPE_LABELS
+        ],
+    }
 
 
 def _geography_fields(
@@ -514,6 +560,97 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
     }
 
 
+def _build_all_directory_entries(
+    usernames: Sequence[Username],
+    public_record_listings: Sequence[PublicRecordListing],
+    globaleaks_listings: Sequence[GlobaLeaksDirectoryListing],
+    newsroom_listings: Sequence[NewsroomDirectoryListing],
+    securedrop_listings: Sequence[SecureDropDirectoryListing],
+) -> list[dict[str, object | None]]:
+    return [
+        *[_directory_user_row(username) for username in usernames],
+        *[_public_record_row(listing) for listing in public_record_listings],
+        *[_globaleaks_row(listing) for listing in globaleaks_listings],
+        *[_newsroom_row(listing) for listing in newsroom_listings],
+        *[_securedrop_row(listing) for listing in securedrop_listings],
+    ]
+
+
+def _all_directory_entry_geography(
+    entry: dict[str, object | None],
+) -> DirectoryListingGeography:
+    return build_directory_geography(
+        countries=cast(list[str] | tuple[str, ...], entry.get("countries") or ()),
+        city=cast(str | None, entry.get("city")),
+        country=cast(str | None, entry.get("country")),
+        subdivision=cast(str | None, entry.get("subdivision")),
+    )
+
+
+def _all_directory_entry_matches_listing_type(
+    entry: dict[str, object | None], listing_type: str
+) -> bool:
+    if listing_type == "verified":
+        return entry.get("entry_type") == "user" and bool(entry.get("is_verified"))
+
+    if listing_type == "attorneys":
+        return bool(entry.get("is_public_record")) or (
+            entry.get("entry_type") == "user"
+            and entry.get("account_category") == AccountCategory.LAWYER.value
+        )
+
+    if listing_type == "newsrooms":
+        return bool(entry.get("is_newsroom")) or (
+            entry.get("entry_type") == "user"
+            and entry.get("account_category") == AccountCategory.NEWSROOM.value
+        )
+
+    if listing_type == "securedrop":
+        return bool(entry.get("is_securedrop"))
+
+    if listing_type == "globaleaks":
+        return bool(entry.get("is_globaleaks"))
+
+    return False
+
+
+def _all_filter_metadata(
+    entries: Sequence[dict[str, object | None]],
+) -> dict[str, object]:
+    metadata = _location_filter_metadata_for_geographies(
+        [_all_directory_entry_geography(entry) for entry in entries]
+    )
+    listing_type_counts = {
+        code: sum(1 for entry in entries if _all_directory_entry_matches_listing_type(entry, code))
+        for code, _label in _ALL_LISTING_TYPE_LABELS
+    }
+
+    return {
+        **metadata,
+        "listing_types": [
+            {"code": code, "label": label, "count": listing_type_counts[code]}
+            for code, label in _ALL_LISTING_TYPE_LABELS
+        ],
+    }
+
+
+def _all_directory_entry_matches_filters(
+    entry: dict[str, object | None], filter_state: dict[str, str | None]
+) -> bool:
+    listing_type = filter_state.get("listing_type")
+    if listing_type and not _all_directory_entry_matches_listing_type(entry, listing_type):
+        return False
+
+    return _geography_matches_location_filters(_all_directory_entry_geography(entry), filter_state)
+
+
+def _filter_all_directory_entries(
+    entries: Sequence[dict[str, object | None]],
+    filter_state: dict[str, str | None],
+) -> list[dict[str, object | None]]:
+    return [entry for entry in entries if _all_directory_entry_matches_filters(entry, filter_state)]
+
+
 def _all_directory_entry_identity(entry: dict[str, object | None]) -> str:
     return str(entry.get("display_name") or entry.get("primary_username") or "")
 
@@ -630,12 +767,20 @@ def register_directory_routes(app: Flask) -> None:
             newsroom_filter_metadata = {"countries": [], "regions": {}}
             newsroom_filter_state = {"country": None, "region": None, "region_code": None}
             filtered_newsroom_usernames = newsroom_usernames
+            all_newsroom_listings = []
             newsroom_listings = []
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
         info_usernames = [username for username in usernames if not username.user.pgp_key]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
-        all_directory_entries = [
+        all_directory_entries = _build_all_directory_entries(
+            usernames,
+            all_public_record_listings,
+            globaleaks_listings,
+            all_newsroom_listings,
+            securedrop_listings,
+        )
+        legacy_filtered_all_directory_entries = [
             *[
                 _directory_user_row(username)
                 for username in usernames
@@ -647,7 +792,29 @@ def register_directory_routes(app: Flask) -> None:
             *[_newsroom_row(listing) for listing in newsroom_listings],
             *[_securedrop_row(listing) for listing in securedrop_listings],
         ]
-        all_directory_entries.sort(key=_all_directory_entry_sort_key)
+        if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            all_filter_metadata = _all_filter_metadata(all_directory_entries)
+            all_filter_state = _all_filter_state(all_filter_metadata)
+            has_active_all_filters = bool(
+                all_filter_state["country"]
+                or all_filter_state["region_code"]
+                or all_filter_state["listing_type"]
+            )
+            filtered_all_directory_entries = (
+                _filter_all_directory_entries(all_directory_entries, all_filter_state)
+                if has_active_all_filters
+                else legacy_filtered_all_directory_entries
+            )
+        else:
+            all_filter_metadata = _empty_all_filter_metadata()
+            all_filter_state = {
+                "country": None,
+                "region": None,
+                "region_code": None,
+                "listing_type": None,
+            }
+            filtered_all_directory_entries = legacy_filtered_all_directory_entries
+        filtered_all_directory_entries.sort(key=_all_directory_entry_sort_key)
         return render_template(
             "directory.html",
             intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
@@ -675,9 +842,14 @@ def register_directory_routes(app: Flask) -> None:
             newsroom_filter_clear_url=_directory_filter_clear_url(
                 "newsroom_country", "newsroom_region"
             ),
+            all_filter_metadata=all_filter_metadata,
+            all_filter_state=all_filter_state,
+            all_filter_clear_url=_directory_filter_clear_url(
+                "all_country", "all_region", "all_listing_type"
+            ),
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
-            all_directory_entries=all_directory_entries,
+            all_directory_entries=filtered_all_directory_entries,
             logged_in=logged_in,
         )
 
@@ -764,6 +936,21 @@ def register_directory_routes(app: Flask) -> None:
             ),
         )
 
+    @app.route("/directory/all-filters.json")
+    def directory_all_filters() -> dict[str, object]:
+        if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+            return _empty_all_filter_metadata()
+
+        return _all_filter_metadata(
+            _build_all_directory_entries(
+                list(get_directory_usernames()),
+                list(get_public_record_listings()),
+                list(get_globaleaks_directory_listings()),
+                list(get_newsroom_directory_listings()),
+                list(get_securedrop_directory_listings()),
+            )
+        )
+
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
         directory_usernames = list(get_directory_usernames())
@@ -825,12 +1012,35 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        return [
-            {
-                **entry,
-                **_all_directory_entry_client_sort_fields(entry),
-            }
-            for entry in [
+        all_directory_entries = (
+            _build_all_directory_entries(
+                directory_usernames,
+                public_record_listings,
+                list(get_globaleaks_directory_listings())
+                if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                else [],
+                newsroom_listings,
+                list(get_securedrop_directory_listings())
+                if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                else [],
+            )
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
+        all_filter_state = (
+            _all_filter_state(_all_filter_metadata(all_directory_entries))
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else {"country": None, "region": None, "region_code": None, "listing_type": None}
+        )
+        has_active_all_filters = bool(
+            all_filter_state["country"]
+            or all_filter_state["region_code"]
+            or all_filter_state["listing_type"]
+        )
+        entries = (
+            _filter_all_directory_entries(all_directory_entries, all_filter_state)
+            if has_active_all_filters
+            else [
                 *[
                     _directory_user_row(username)
                     for username in directory_usernames
@@ -842,4 +1052,11 @@ def register_directory_routes(app: Flask) -> None:
                 *newsroom_rows,
                 *securedrop_rows,
             ]
+        )
+        return [
+            {
+                **entry,
+                **_all_directory_entry_client_sort_fields(entry),
+            }
+            for entry in entries
         ]

@@ -38,6 +38,19 @@
       "public-record-count",
     );
     const newsroomCountBadge = document.getElementById("newsroom-count");
+    const allFiltersToggleShell = document.getElementById(
+      "all-filters-toggle-shell",
+    );
+    const allFiltersPanelShell = document.getElementById(
+      "all-filters-panel-shell",
+    );
+    const allFiltersToggle = document.getElementById("all-filters-toggle");
+    const allFiltersPanel = document.getElementById("all-filters-panel");
+    const allCountryFilter = document.getElementById("all-country-filter");
+    const allRegionFilter = document.getElementById("all-region-filter");
+    const allListingTypeFilter = document.getElementById(
+      "all-listing-type-filter",
+    );
     const attorneyFiltersToggleShell = document.getElementById(
       "attorney-filters-toggle-shell",
     );
@@ -76,6 +89,7 @@
     );
     const initialMarkup = new Map();
     let userData = [];
+    let allTabUserData = [];
     let hasRenderedSearch = false;
     let directoryDataRequestController = null;
     let directoryDataLoadingController = null;
@@ -114,6 +128,10 @@
         document.querySelector(".tab-content.active") ||
         document.getElementById("all")
       );
+    }
+
+    function usersForTab(tab = activeTabName()) {
+      return tab === "all" ? allTabUserData : userData;
     }
 
     function updateTabScrollControls() {
@@ -283,7 +301,7 @@
     function filterUsers(query, tab = activeTabName()) {
       const normalizedQuery = query.trim().toLowerCase();
 
-      return userData.filter((user) => {
+      return usersForTab(tab).filter((user) => {
         if (!matchesTab(user, tab)) {
           return false;
         }
@@ -647,6 +665,32 @@
       hasRenderedSearch = true;
     }
 
+    function removeSearchParams(search, paramNames) {
+      const params = new URLSearchParams(search);
+      paramNames.forEach((paramName) => {
+        params.delete(paramName);
+      });
+      const nextSearch = params.toString();
+      return nextSearch ? `?${nextSearch}` : "";
+    }
+
+    function sharedDirectorySearch(search) {
+      return removeSearchParams(search, [
+        "all_country",
+        "all_region",
+        "all_listing_type",
+      ]);
+    }
+
+    function allTabDirectorySearch(search) {
+      return removeSearchParams(search, [
+        "country",
+        "region",
+        "newsroom_country",
+        "newsroom_region",
+      ]);
+    }
+
     function createLocationFilterController(config) {
       const controller = {
         ...config,
@@ -658,6 +702,14 @@
       if (!controller.countryFilter || !controller.regionFilter) {
         return null;
       }
+
+      controller.hasActiveFilters = function () {
+        return Boolean(
+          controller.countryFilter.value.trim() ||
+            controller.regionFilter.value.trim() ||
+            controller.listingTypeFilter?.value.trim(),
+        );
+      };
 
       controller.updateToggle = function () {
         if (!controller.toggle || !controller.panel) {
@@ -715,6 +767,15 @@
           params.delete(controller.regionParam);
         }
 
+        if (controller.listingTypeParam) {
+          const listingType = controller.listingTypeFilter?.value.trim() || "";
+          if (listingType) {
+            params.set(controller.listingTypeParam, listingType);
+          } else {
+            params.delete(controller.listingTypeParam);
+          }
+        }
+
         const nextSearch = params.toString();
         return nextSearch ? `?${nextSearch}` : "";
       };
@@ -747,10 +808,7 @@
           return;
         }
 
-        resetActions.hidden = !(
-          controller.countryFilter.value.trim() ||
-          controller.regionFilter.value.trim()
-        );
+        resetActions.hidden = !controller.hasActiveFilters();
       };
 
       controller.updateCountryLabels = function () {
@@ -776,6 +834,36 @@
             option.value === selectedCountry && !showSelectedCount
               ? country.label
               : `${country.label} (${country.count})`;
+        });
+      };
+
+      controller.updateListingTypeLabels = function () {
+        if (!controller.listingTypeFilter) {
+          return;
+        }
+
+        const selectedListingType = controller.listingTypeFilter.value;
+        const showSelectedCount =
+          controller.listingTypeFilter.dataset.showSelectedCount === "true";
+
+        Array.from(controller.listingTypeFilter.options).forEach((option) => {
+          if (!option.value) {
+            return;
+          }
+
+          const listingType = Array.isArray(controller.metadata.listing_types)
+            ? controller.metadata.listing_types.find(
+                (item) => item.code === option.value,
+              )
+            : null;
+          if (!listingType) {
+            return;
+          }
+
+          option.textContent =
+            option.value === selectedListingType && !showSelectedCount
+              ? listingType.label
+              : `${listingType.label} (${listingType.count})`;
         });
       };
 
@@ -889,8 +977,13 @@
       controller.updateSelectExpandedLabels = function (isExpanded) {
         controller.setSelectExpandedState(controller.countryFilter, isExpanded);
         controller.setSelectExpandedState(controller.regionFilter, isExpanded);
+        controller.setSelectExpandedState(
+          controller.listingTypeFilter,
+          isExpanded,
+        );
         controller.updateCountryLabels();
         controller.updateRegionOptions();
+        controller.updateListingTypeLabels();
       };
 
       controller.applyFromSearch = function (search) {
@@ -900,6 +993,10 @@
         );
         controller.regionFilter.value =
           params.get(controller.regionParam) || "";
+        if (controller.listingTypeFilter && controller.listingTypeParam) {
+          controller.listingTypeFilter.value =
+            params.get(controller.listingTypeParam) || "";
+        }
         if (!controller.countryFilter.value && controller.regionFilter.value) {
           controller.countryFilter.value =
             controller.inferredCountryForRegionCode(
@@ -908,12 +1005,10 @@
         }
         controller.updateCountryLabels();
         controller.updateRegionOptions();
+        controller.updateListingTypeLabels();
 
         if (controller.panel) {
-          controller.panel.hidden = !(
-            controller.countryFilter.value.trim() ||
-            controller.regionFilter.value.trim()
-          );
+          controller.panel.hidden = !controller.hasActiveFilters();
           controller.updateToggle();
           controller.updateClearVisibility();
         }
@@ -934,6 +1029,9 @@
         const disabledByCountry =
           controller.regionFilter.dataset.disabledByCountry === "true";
         controller.regionFilter.disabled = isLoading || disabledByCountry;
+        if (controller.listingTypeFilter) {
+          controller.listingTypeFilter.disabled = isLoading;
+        }
 
         const resetLink = controller.panel.querySelector("a");
         if (resetLink) {
@@ -1088,8 +1186,30 @@
           void controller.refreshResults();
         });
 
-        [controller.countryFilter, controller.regionFilter].forEach(
-          (select) => {
+        if (controller.listingTypeFilter) {
+          controller.listingTypeFilter.addEventListener(
+            "change",
+            async function () {
+              await controller.ensureMetadata();
+              controller.updateListingTypeLabels();
+              controller.updateClearVisibility();
+              syncExpandedLabelsOnClose();
+              controller.setSelectOpenState(
+                controller.listingTypeFilter,
+                false,
+              );
+              void controller.refreshResults();
+            },
+          );
+        }
+
+        [
+          controller.countryFilter,
+          controller.regionFilter,
+          controller.listingTypeFilter,
+        ]
+          .filter(Boolean)
+          .forEach((select) => {
             select.addEventListener("focus", syncExpandedLabelsOnOpen);
             select.addEventListener("pointerdown", syncExpandedLabelsOnOpen);
             select.addEventListener("keydown", syncExpandedLabelsOnOpen);
@@ -1097,8 +1217,7 @@
             select.addEventListener("pointerdown", syncChevronOnOpen);
             select.addEventListener("keydown", syncChevronOnOpen);
             select.addEventListener("blur", syncChevronOnClose);
-          },
-        );
+          });
 
         if (resetLink) {
           resetLink.addEventListener("click", function (event) {
@@ -1109,8 +1228,12 @@
 
             controller.countryFilter.value = "";
             controller.regionFilter.value = "";
+            if (controller.listingTypeFilter) {
+              controller.listingTypeFilter.value = "";
+            }
             controller.updateCountryLabels();
             controller.updateRegionOptions();
+            controller.updateListingTypeLabels();
             syncExpandedLabelsOnClose();
             void controller.refreshResults();
           });
@@ -1121,6 +1244,23 @@
     }
 
     const locationFilterControllers = [
+      createLocationFilterController({
+        tabName: "all",
+        toggleShell: allFiltersToggleShell,
+        panelShell: allFiltersPanelShell,
+        toggle: allFiltersToggle,
+        panel: allFiltersPanel,
+        countryFilter: allCountryFilter,
+        regionFilter: allRegionFilter,
+        listingTypeFilter: allListingTypeFilter,
+        actionsId: "all-filters-actions",
+        metadataPath: "all-filters.json",
+        countryParam: "all_country",
+        regionParam: "all_region",
+        listingTypeParam: "all_listing_type",
+        resultsLabelSingular: "directory entry",
+        resultsLabelPlural: "directory entries",
+      }),
       createLocationFilterController({
         tabName: "public-records",
         countBadge: publicRecordCountBadge,
@@ -1181,20 +1321,27 @@
         requestOptions.signal = options.signal;
       }
 
-      return fetch(`${directoryPath}/users.json${search}`, requestOptions)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          userData = data;
-          loadedDirectorySearch = search;
-          updateLocationFilterCountBadges();
-          refreshInitialMarkup();
-          handleSearchInput();
-        });
+      const fetchUsers = (search) =>
+        fetch(`${directoryPath}/users.json${search}`, requestOptions).then(
+          (response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          },
+        );
+
+      return Promise.all([
+        fetchUsers(sharedDirectorySearch(search)),
+        fetchUsers(allTabDirectorySearch(search)),
+      ]).then(([directoryData, nextAllTabUserData]) => {
+        userData = directoryData;
+        allTabUserData = nextAllTabUserData;
+        loadedDirectorySearch = search;
+        updateLocationFilterCountBadges();
+        refreshInitialMarkup();
+        handleSearchInput();
+      });
     }
 
     function requestDirectoryData(
