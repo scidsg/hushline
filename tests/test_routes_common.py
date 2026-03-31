@@ -67,6 +67,18 @@ def test_get_ip_address_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     sock.close.assert_called_once()
 
 
+def test_show_directory_caution_badge_honors_explicit_cautious_override() -> None:
+    assert (
+        routes_common.show_directory_caution_badge(
+            "Admin",
+            is_admin=True,
+            is_verified=True,
+            is_cautious=True,
+        )
+        is True
+    )
+
+
 def test_do_send_email_returns_early_without_enabled_notifications(
     user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:

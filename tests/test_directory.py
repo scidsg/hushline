@@ -1529,6 +1529,74 @@ def test_directory_newsroom_filters_json_includes_automated_newsroom_listings(
     }
 
 
+def test_listing_matches_attorney_filters_wrapper_uses_listing_geography() -> None:
+    listing = cast(
+        PublicRecordListing,
+        SimpleNamespace(
+            geography=SimpleNamespace(
+                country="United States",
+                subdivision="California",
+                countries=("United States",),
+            )
+        ),
+    )
+
+    assert (
+        directory_routes._listing_matches_attorney_filters(
+            listing,
+            {"country": "United States", "region": "California"},
+        )
+        is True
+    )
+    assert (
+        directory_routes._listing_matches_attorney_filters(
+            listing,
+            {"country": "Australia", "region": None},
+        )
+        is False
+    )
+
+
+def test_newsroom_listing_matches_filters_wrapper_uses_listing_geography() -> None:
+    listing = _newsroom_listing_with_geography(
+        suffix="wrapper-match",
+        name="Wrapper Match",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+
+    assert (
+        directory_routes._newsroom_listing_matches_filters(
+            listing,
+            {"country": "United States", "region": "California"},
+        )
+        is True
+    )
+    assert (
+        directory_routes._newsroom_listing_matches_filters(
+            listing,
+            {"country": "United States", "region": "Illinois"},
+        )
+        is False
+    )
+
+
+def test_newsroom_automated_sources_skips_missing_source_metadata() -> None:
+    listings = (
+        _sample_newsroom_listing(),
+        replace(_sample_european_network_listing(), source_label=""),
+        replace(_sample_european_network_listing(), source_url=""),
+    )
+
+    assert directory_routes._newsroom_automated_sources(listings) == [
+        {
+            "label": "INN Find Your News directory",
+            "url": "https://findyournews.org/explore/",
+        }
+    ]
+
+
 def test_normalized_attorney_filter_country_returns_none_for_blank_values() -> None:
     assert directory_routes._normalized_attorney_filter_country("   ") is None
 
