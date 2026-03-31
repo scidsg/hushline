@@ -234,7 +234,7 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
     banner = securedrop_panel.select_one(".dirMeta")
     assert banner is not None
     banner_links = banner.select("a")
-    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    links_by_text = {link.text.strip().rstrip("."): link.get("href") for link in banner_links}
     assert links_by_text["SecureDrop API"] == "https://securedrop.org/api/v1/directory/?format=json"
     assert links_by_text["Request a correction"] == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
@@ -262,7 +262,10 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     banner = globaleaks_panel.select_one(".dirMeta")
     assert banner is not None
     banner_links = globaleaks_panel.select(".dirMeta a")
-    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    links_by_text = {
+        link.text.replace("\u2060", "").strip().rstrip("."): link.get("href")
+        for link in banner_links
+    }
     assert links_by_text["Request a correction"] == "/to/admin"
     assert "Tor Browser" not in links_by_text
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
@@ -293,7 +296,10 @@ def test_directory_newsrooms_banner_links_to_admin(
     banner = newsroom_panel.select_one(".dirMeta")
     assert banner is not None
     banner_links = newsroom_panel.select(".dirMeta a")
-    links_by_text = {link.text.strip(): link.get("href") for link in banner_links}
+    links_by_text = {
+        link.text.replace("\u2060", "").strip().rstrip("."): link.get("href")
+        for link in banner_links
+    }
     assert links_by_text["INN Find Your News directory"] == "https://findyournews.org/explore/"
     assert (
         links_by_text["Directory of European Journalism Networks"]
@@ -307,6 +313,13 @@ def test_directory_newsrooms_banner_links_to_admin(
     assert "INN Find Your News directory" in banner_text
     assert "Directory of European Journalism Networks" in banner_text
     assert "Request a correction" in banner_text
+    rendered_banner_text = " ".join(banner.text.split())
+    assert rendered_banner_text.endswith("Request a correction.")
+    assert " . Request a correction." not in rendered_banner_text
+    assert "Need a correction?" not in rendered_banner_text
+    assert "Find Your News directory. Request a correction." in rendered_banner_text
+    assert "as public sources" not in rendered_banner_text
+    assert "Find Your News directory . Request a correction." not in rendered_banner_text
 
 
 def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
@@ -3274,6 +3287,7 @@ def test_newsroom_listing_page_is_read_only(
     dir_meta_text = dir_meta.get_text(" ", strip=True)
     assert dir_meta_text.startswith("🧪 Beta:")
     assert "INN Find Your News directory" in dir_meta_text
+    assert "Find Your News directory.</a>" in response.text
     assert "Directory Profile" in page_text
     assert "Source" in page_text
 
