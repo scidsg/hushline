@@ -31,25 +31,55 @@ document.addEventListener("DOMContentLoaded", function () {
   const searchStatus = document.getElementById("directory-search-status");
   const publicRecordCountBadge = document.getElementById("public-record-count");
   const newsroomCountBadge = document.getElementById("newsroom-count");
-  const allFiltersToggleShell = document.getElementById("all-filters-toggle-shell");
-  const allFiltersPanelShell = document.getElementById("all-filters-panel-shell");
+  const allFiltersToggleShell = document.getElementById(
+    "all-filters-toggle-shell",
+  );
+  const allFiltersPanelShell = document.getElementById(
+    "all-filters-panel-shell",
+  );
   const allFiltersToggle = document.getElementById("all-filters-toggle");
   const allFiltersPanel = document.getElementById("all-filters-panel");
   const allCountryFilter = document.getElementById("all-country-filter");
   const allRegionFilter = document.getElementById("all-region-filter");
-  const allListingTypeFilter = document.getElementById("all-listing-type-filter");
-  const attorneyFiltersToggleShell = document.getElementById("attorney-filters-toggle-shell");
-  const attorneyFiltersPanelShell = document.getElementById("attorney-filters-panel-shell");
-  const attorneyFiltersToggle = document.getElementById("attorney-filters-toggle");
-  const attorneyFiltersPanel = document.getElementById("attorney-filters-panel");
-  const attorneyCountryFilter = document.getElementById("attorney-country-filter");
-  const attorneyRegionFilter = document.getElementById("attorney-region-filter");
-  const newsroomFiltersToggleShell = document.getElementById("newsroom-filters-toggle-shell");
-  const newsroomFiltersPanelShell = document.getElementById("newsroom-filters-panel-shell");
-  const newsroomFiltersToggle = document.getElementById("newsroom-filters-toggle");
-  const newsroomFiltersPanel = document.getElementById("newsroom-filters-panel");
-  const newsroomCountryFilter = document.getElementById("newsroom-country-filter");
-  const newsroomRegionFilter = document.getElementById("newsroom-region-filter");
+  const allListingTypeFilter = document.getElementById(
+    "all-listing-type-filter",
+  );
+  const attorneyFiltersToggleShell = document.getElementById(
+    "attorney-filters-toggle-shell",
+  );
+  const attorneyFiltersPanelShell = document.getElementById(
+    "attorney-filters-panel-shell",
+  );
+  const attorneyFiltersToggle = document.getElementById(
+    "attorney-filters-toggle",
+  );
+  const attorneyFiltersPanel = document.getElementById(
+    "attorney-filters-panel",
+  );
+  const attorneyCountryFilter = document.getElementById(
+    "attorney-country-filter",
+  );
+  const attorneyRegionFilter = document.getElementById(
+    "attorney-region-filter",
+  );
+  const newsroomFiltersToggleShell = document.getElementById(
+    "newsroom-filters-toggle-shell",
+  );
+  const newsroomFiltersPanelShell = document.getElementById(
+    "newsroom-filters-panel-shell",
+  );
+  const newsroomFiltersToggle = document.getElementById(
+    "newsroom-filters-toggle",
+  );
+  const newsroomFiltersPanel = document.getElementById(
+    "newsroom-filters-panel",
+  );
+  const newsroomCountryFilter = document.getElementById(
+    "newsroom-country-filter",
+  );
+  const newsroomRegionFilter = document.getElementById(
+    "newsroom-region-filter",
+  );
   const initialMarkup = new Map();
   let userData = [];
   let allTabUserData = [];
@@ -74,15 +104,22 @@ document.addEventListener("DOMContentLoaded", function () {
       return "";
     }
 
-    return legacyCountryNameByCode[normalizedValue.toLowerCase()] || normalizedValue;
+    return (
+      legacyCountryNameByCode[normalizedValue.toLowerCase()] || normalizedValue
+    );
   }
 
   function activeTabName() {
-    return document.querySelector(".tab.active")?.getAttribute("data-tab") || "all";
+    return (
+      document.querySelector(".tab.active")?.getAttribute("data-tab") || "all"
+    );
   }
 
   function activePanel() {
-    return document.querySelector(".tab-content.active") || document.getElementById("all");
+    return (
+      document.querySelector(".tab-content.active") ||
+      document.getElementById("all")
+    );
   }
 
   function usersForTab(tab = activeTabName()) {
@@ -90,14 +127,21 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateTabScrollControls() {
-    if (!directoryTabs || !directoryTabList || !scrollLeftButton || !scrollRightButton) {
+    if (
+      !directoryTabs ||
+      !directoryTabList ||
+      !scrollLeftButton ||
+      !scrollRightButton
+    ) {
       return;
     }
 
-    const overflowWidth = directoryTabList.scrollWidth - directoryTabList.clientWidth;
+    const overflowWidth =
+      directoryTabList.scrollWidth - directoryTabList.clientWidth;
     const hasOverflow = desktopTabScrollMediaQuery.matches && overflowWidth > 1;
     const canScrollLeft = hasOverflow && directoryTabList.scrollLeft > 1;
-    const canScrollRight = hasOverflow && directoryTabList.scrollLeft < overflowWidth - 1;
+    const canScrollRight =
+      hasOverflow && directoryTabList.scrollLeft < overflowWidth - 1;
 
     directoryTabs.classList.toggle("directory-tabs-overflowing", hasOverflow);
     scrollLeftButton.hidden = !canScrollLeft;
@@ -109,8 +153,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
-      .matches;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const scrollDistance = Math.max(directoryTabList.clientWidth * 0.75, 200);
 
     directoryTabList.scrollBy({
@@ -208,13 +253,11 @@ document.addEventListener("DOMContentLoaded", function () {
   function matchesTab(user, tab) {
     if (
       tab === "verified" &&
-      (
-        !user.is_verified ||
+      (!user.is_verified ||
         user.is_public_record ||
         user.is_globaleaks ||
         user.is_newsroom ||
-        user.is_securedrop
-      )
+        user.is_securedrop)
     ) {
       return false;
     }
@@ -258,7 +301,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return true;
       }
 
-      const countries = Array.isArray(user.countries) ? user.countries.join(" ") : "";
+      const countries = Array.isArray(user.countries)
+        ? user.countries.join(" ")
+        : "";
       const searchText = userSearch.normalizeSearchText([
         user.primary_username,
         user.display_name,
@@ -297,7 +342,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function allTabNormalizedSortValue(user) {
     return (
-      user.all_tab_sort_normalized || allTabSortValue(user).normalize("NFKC").toLowerCase()
+      user.all_tab_sort_normalized ||
+      allTabSortValue(user).normalize("NFKC").toLowerCase()
     );
   }
 
@@ -448,7 +494,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const usernameHighlighted = highlightMatch(user.primary_username, query);
     const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
 
-    if (user.is_public_record || user.is_globaleaks || user.is_newsroom || user.is_securedrop) {
+    if (
+      user.is_public_record ||
+      user.is_globaleaks ||
+      user.is_newsroom ||
+      user.is_securedrop
+    ) {
       return buildAutomatedListingCard(user, query, tab);
     }
 
@@ -485,7 +536,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const userListContainer = document.createElement("div");
     userListContainer.className = "user-list";
-    userListContainer.innerHTML = users.map((user) => buildUserCard(user, query, tab)).join("");
+    userListContainer.innerHTML = users
+      .map((user) => buildUserCard(user, query, tab))
+      .join("");
     panel.appendChild(userListContainer);
   }
 
@@ -543,7 +596,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function panelIntroMarkup(panelId) {
-    return document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML || "";
+    return (
+      document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML ||
+      ""
+    );
   }
 
   function buildDefaultPanelMarkup(tab) {
@@ -610,7 +666,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function sharedDirectorySearch(search) {
-    return removeSearchParams(search, ["all_country", "all_region", "all_listing_type"]);
+    return removeSearchParams(search, [
+      "all_country",
+      "all_region",
+      "all_listing_type",
+    ]);
   }
 
   function allTabDirectorySearch(search) {
@@ -648,8 +708,13 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const isExpanded = !controller.panel.hidden;
-      controller.toggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
-      controller.toggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
+      controller.toggle.setAttribute(
+        "aria-expanded",
+        isExpanded ? "true" : "false",
+      );
+      controller.toggle.textContent = isExpanded
+        ? "Hide Filters"
+        : "Show Filters";
     };
 
     controller.updateVisibility = function () {
@@ -670,7 +735,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     controller.updateCountBadge = function () {
       if (controller.countBadge) {
-        controller.countBadge.textContent = controller.resultsCount().toString();
+        controller.countBadge.textContent = controller
+          .resultsCount()
+          .toString();
       }
     };
 
@@ -725,7 +792,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      const resetActions = controller.panel.querySelector(`#${controller.actionsId}`);
+      const resetActions = controller.panel.querySelector(
+        `#${controller.actionsId}`,
+      );
       if (!resetActions) {
         return;
       }
@@ -745,9 +814,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return country.label;
       }
 
-      const selectedCountryOption = Array.from(controller.countryFilter.options).find(
-        (option) => option.value === value,
-      );
+      const selectedCountryOption = Array.from(
+        controller.countryFilter.options,
+      ).find((option) => option.value === value);
       if (selectedCountryOption?.textContent) {
         return selectedCountryOption.textContent.replace(/\s+\(\d+\)$/, "");
       }
@@ -757,12 +826,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     controller.updateCountryLabels = function () {
       const selectedCountry = controller.countryFilter.value;
-      const showSelectedCount = controller.countryFilter.dataset.showSelectedCount === "true";
+      const showSelectedCount =
+        controller.countryFilter.dataset.showSelectedCount === "true";
       const countries = Array.isArray(controller.metadata.countries)
         ? [...controller.metadata.countries]
         : [];
 
-      if (selectedCountry && !countries.some((country) => country.code === selectedCountry)) {
+      if (
+        selectedCountry &&
+        !countries.some((country) => country.code === selectedCountry)
+      ) {
         countries.unshift({
           code: selectedCountry,
           label: controller.countryLabelForValue(selectedCountry),
@@ -796,23 +869,28 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const selectedListingType = controller.listingTypeFilter.value;
-      const showSelectedCount = controller.listingTypeFilter.dataset.showSelectedCount === "true";
+      const showSelectedCount =
+        controller.listingTypeFilter.dataset.showSelectedCount === "true";
       const listingTypes = Array.isArray(controller.metadata.listing_types)
         ? [...controller.metadata.listing_types]
         : [];
-      const selectedListingTypeOption = Array.from(controller.listingTypeFilter.options).find(
-        (option) => option.value === selectedListingType,
-      );
+      const selectedListingTypeOption = Array.from(
+        controller.listingTypeFilter.options,
+      ).find((option) => option.value === selectedListingType);
 
       if (
         selectedListingType &&
-        !listingTypes.some((listingType) => listingType.code === selectedListingType)
+        !listingTypes.some(
+          (listingType) => listingType.code === selectedListingType,
+        )
       ) {
         listingTypes.unshift({
           code: selectedListingType,
           label:
-            selectedListingTypeOption?.textContent?.replace(/\s+\(\d+\)$/, "") ||
-            selectedListingType,
+            selectedListingTypeOption?.textContent?.replace(
+              /\s+\(\d+\)$/,
+              "",
+            ) || selectedListingType,
           count: 0,
         });
       }
@@ -832,7 +910,11 @@ document.addEventListener("DOMContentLoaded", function () {
         controller.listingTypeFilter.appendChild(option);
       });
 
-      if (!listingTypes.some((listingType) => listingType.code === selectedListingType)) {
+      if (
+        !listingTypes.some(
+          (listingType) => listingType.code === selectedListingType,
+        )
+      ) {
         controller.listingTypeFilter.value = "";
       }
     };
@@ -844,17 +926,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const normalizedRegionCode = regionCode.trim().toLowerCase();
       const regionsByCountry =
-        controller.metadata.regions && typeof controller.metadata.regions === "object"
+        controller.metadata.regions &&
+        typeof controller.metadata.regions === "object"
           ? controller.metadata.regions
           : {};
 
-      for (const [countryName, countryRegions] of Object.entries(regionsByCountry)) {
+      for (const [countryName, countryRegions] of Object.entries(
+        regionsByCountry,
+      )) {
         if (!Array.isArray(countryRegions)) {
           continue;
         }
 
         const matchingRegion = countryRegions.find(
-          (region) => String(region.code).trim().toLowerCase() === normalizedRegionCode,
+          (region) =>
+            String(region.code).trim().toLowerCase() === normalizedRegionCode,
         );
         if (matchingRegion) {
           return countryName;
@@ -867,9 +953,11 @@ document.addEventListener("DOMContentLoaded", function () {
     controller.updateRegionOptions = function () {
       const selectedCountry = controller.countryFilter.value;
       const selectedRegion = controller.regionFilter.value;
-      const showSelectedCount = controller.regionFilter.dataset.showSelectedCount === "true";
+      const showSelectedCount =
+        controller.regionFilter.dataset.showSelectedCount === "true";
       const regionsByCountry =
-        controller.metadata.regions && typeof controller.metadata.regions === "object"
+        controller.metadata.regions &&
+        typeof controller.metadata.regions === "object"
           ? controller.metadata.regions
           : {};
       const availableRegions = selectedCountry
@@ -896,29 +984,31 @@ document.addEventListener("DOMContentLoaded", function () {
           controller.regionFilter.appendChild(option);
         });
       } else {
-        Object.entries(regionsByCountry).forEach(([countryName, countryRegions]) => {
-          if (!Array.isArray(countryRegions) || !countryRegions.length) {
-            return;
-          }
-
-          const optgroup = document.createElement("optgroup");
-          optgroup.label = countryName;
-
-          countryRegions.forEach((region) => {
-            const option = document.createElement("option");
-            option.value = region.code;
-            option.textContent =
-              region.code === selectedRegion && !showSelectedCount
-                ? region.label
-                : `${region.label} (${region.count})`;
-            if (region.code === selectedRegion) {
-              option.selected = true;
+        Object.entries(regionsByCountry).forEach(
+          ([countryName, countryRegions]) => {
+            if (!Array.isArray(countryRegions) || !countryRegions.length) {
+              return;
             }
-            optgroup.appendChild(option);
-          });
 
-          controller.regionFilter.appendChild(optgroup);
-        });
+            const optgroup = document.createElement("optgroup");
+            optgroup.label = countryName;
+
+            countryRegions.forEach((region) => {
+              const option = document.createElement("option");
+              option.value = region.code;
+              option.textContent =
+                region.code === selectedRegion && !showSelectedCount
+                  ? region.label
+                  : `${region.label} (${region.count})`;
+              if (region.code === selectedRegion) {
+                option.selected = true;
+              }
+              optgroup.appendChild(option);
+            });
+
+            controller.regionFilter.appendChild(optgroup);
+          },
+        );
       }
 
       if (!availableRegions.some((region) => region.code === selectedRegion)) {
@@ -926,15 +1016,21 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const disabledByCountry = !availableRegions.length;
-      controller.regionFilter.dataset.disabledByCountry = disabledByCountry ? "true" : "false";
-      controller.regionFilter.disabled = controller.loading || disabledByCountry;
+      controller.regionFilter.dataset.disabledByCountry = disabledByCountry
+        ? "true"
+        : "false";
+      controller.regionFilter.disabled =
+        controller.loading || disabledByCountry;
       controller.updateClearVisibility();
     };
 
     controller.updateSelectExpandedLabels = function (isExpanded) {
       controller.setSelectExpandedState(controller.countryFilter, isExpanded);
       controller.setSelectExpandedState(controller.regionFilter, isExpanded);
-      controller.setSelectExpandedState(controller.listingTypeFilter, isExpanded);
+      controller.setSelectExpandedState(
+        controller.listingTypeFilter,
+        isExpanded,
+      );
       controller.updateCountryLabels();
       controller.updateRegionOptions();
       controller.updateListingTypeLabels();
@@ -947,12 +1043,14 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       controller.regionFilter.value = params.get(controller.regionParam) || "";
       if (controller.listingTypeFilter && controller.listingTypeParam) {
-        controller.listingTypeFilter.value = params.get(controller.listingTypeParam) || "";
+        controller.listingTypeFilter.value =
+          params.get(controller.listingTypeParam) || "";
       }
       if (!controller.countryFilter.value && controller.regionFilter.value) {
-        controller.countryFilter.value = controller.inferredCountryForRegionCode(
-          controller.regionFilter.value,
-        );
+        controller.countryFilter.value =
+          controller.inferredCountryForRegionCode(
+            controller.regionFilter.value,
+          );
       }
       controller.updateCountryLabels();
       controller.updateRegionOptions();
@@ -973,7 +1071,8 @@ document.addEventListener("DOMContentLoaded", function () {
       controller.panel.setAttribute("aria-busy", isLoading ? "true" : "false");
       controller.countryFilter.disabled = isLoading;
 
-      const disabledByCountry = controller.regionFilter.dataset.disabledByCountry === "true";
+      const disabledByCountry =
+        controller.regionFilter.dataset.disabledByCountry === "true";
       controller.regionFilter.disabled = isLoading || disabledByCountry;
       if (controller.listingTypeFilter) {
         controller.listingTypeFilter.disabled = isLoading;
@@ -992,7 +1091,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       controller.metadataSearch = search;
-      const metadataRequest = fetch(`${directoryPath}/${controller.metadataPath}${search}`)
+      const metadataRequest = fetch(
+        `${directoryPath}/${controller.metadataPath}${search}`,
+      )
         .then((response) => {
           if (!response.ok) {
             throw new Error("Network response was not ok");
@@ -1012,7 +1113,10 @@ document.addEventListener("DOMContentLoaded", function () {
           if (controller.metadataSearch === search) {
             controller.metadataRequest = null;
           }
-          console.error(`Failed to load ${controller.resultsLabelPlural} filter metadata:`, error);
+          console.error(
+            `Failed to load ${controller.resultsLabelPlural} filter metadata:`,
+            error,
+          );
           return null;
         });
 
@@ -1033,7 +1137,9 @@ document.addEventListener("DOMContentLoaded", function () {
       setDirectoryUrl(nextSearch);
 
       try {
-        await requestDirectoryData(nextSearch, { loadingController: controller });
+        await requestDirectoryData(nextSearch, {
+          loadingController: controller,
+        });
         if (!searchInput.value.trim()) {
           const count = controller.resultsCount();
           setSearchStatus(
@@ -1049,8 +1155,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         setDirectoryUrl(loadedDirectorySearch);
         controller.applyFromSearch(loadedDirectorySearch);
-        setSearchStatus(`Unable to update ${controller.resultsLabelPlural} results.`);
-        console.error(`Failed to update ${controller.resultsLabelPlural} results:`, error);
+        setSearchStatus(
+          `Unable to update ${controller.resultsLabelPlural} results.`,
+        );
+        console.error(
+          `Failed to update ${controller.resultsLabelPlural} results:`,
+          error,
+        );
       }
     };
 
@@ -1111,9 +1222,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
       controller.regionFilter.addEventListener("change", function () {
         if (!controller.countryFilter.value && controller.regionFilter.value) {
-          controller.countryFilter.value = controller.inferredCountryForRegionCode(
-            controller.regionFilter.value,
-          );
+          controller.countryFilter.value =
+            controller.inferredCountryForRegionCode(
+              controller.regionFilter.value,
+            );
           controller.updateRegionOptions();
         }
         controller.updateCountryLabels();
@@ -1133,7 +1245,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      [controller.countryFilter, controller.regionFilter, controller.listingTypeFilter]
+      [
+        controller.countryFilter,
+        controller.regionFilter,
+        controller.listingTypeFilter,
+      ]
         .filter(Boolean)
         .forEach((select) => {
           select.addEventListener("focus", syncExpandedLabelsOnOpen);
@@ -1235,7 +1351,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshLocationFilterMetadata(search = window.location.search) {
     return Promise.all(
-      locationFilterControllers.map((controller) => controller.ensureMetadata(search)),
+      locationFilterControllers.map((controller) =>
+        controller.ensureMetadata(search),
+      ),
     );
   }
 
@@ -1254,12 +1372,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const fetchUsers = (search) =>
-      fetch(`${directoryPath}/users.json${search}`, requestOptions).then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      });
+      fetch(`${directoryPath}/users.json${search}`, requestOptions).then(
+        (response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        },
+      );
 
     return Promise.all([
       fetchUsers(sharedDirectorySearch(search)),
@@ -1282,7 +1402,10 @@ document.addEventListener("DOMContentLoaded", function () {
       directoryDataRequestController.abort();
     }
 
-    if (directoryDataLoadingController && directoryDataLoadingController !== loadingController) {
+    if (
+      directoryDataLoadingController &&
+      directoryDataLoadingController !== loadingController
+    ) {
       directoryDataLoadingController.setLoadingState(false);
     }
 
@@ -1330,7 +1453,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   window.activateTab = function (selectedTab) {
-    const targetPanel = document.getElementById(selectedTab.getAttribute("aria-controls"));
+    const targetPanel = document.getElementById(
+      selectedTab.getAttribute("aria-controls"),
+    );
     if (!targetPanel) {
       return;
     }
@@ -1370,9 +1495,13 @@ document.addEventListener("DOMContentLoaded", function () {
           (directoryTabs && directoryTabs.classList.contains("is-sticky")));
 
       if (isStickyActiveTabClick) {
-        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
-          .matches;
-        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+        const prefersReducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        window.scrollTo({
+          top: 0,
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
         return;
       }
 
@@ -1386,7 +1515,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const tabArray = Array.from(tabs);
       const currentIndex = tabArray.indexOf(event.currentTarget);
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextIndex = (currentIndex + direction + tabArray.length) % tabArray.length;
+      const nextIndex =
+        (currentIndex + direction + tabArray.length) % tabArray.length;
       const nextTab = tabArray[nextIndex];
       if (nextTab) {
         window.activateTab(nextTab);
@@ -1412,9 +1542,13 @@ document.addEventListener("DOMContentLoaded", function () {
       const stickyAnchor = stickyShell || directoryTabs;
 
       if (stickyAnchor) {
-        stickyAnchor.style.setProperty("--directory-sticky-top", `${stickyTop}px`);
+        stickyAnchor.style.setProperty(
+          "--directory-sticky-top",
+          `${stickyTop}px`,
+        );
         const stickyAnchorTop = stickyAnchor.getBoundingClientRect().top;
-        const isSticky = window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
+        const isSticky =
+          window.scrollY > stickyTop + 1 && stickyAnchorTop <= stickyTop;
         stickyShell?.classList.toggle("is-sticky", isSticky);
         directoryTabs?.classList.toggle("is-sticky", isSticky);
         searchBox?.classList.toggle("is-sticky", isSticky);
@@ -1438,11 +1572,16 @@ document.addEventListener("DOMContentLoaded", function () {
       scrollDirectoryTabs(1);
     });
 
-    directoryTabList.addEventListener("scroll", updateTabScrollControls, { passive: true });
+    directoryTabList.addEventListener("scroll", updateTabScrollControls, {
+      passive: true,
+    });
     window.addEventListener("resize", updateTabScrollControls);
 
     if (typeof desktopTabScrollMediaQuery.addEventListener === "function") {
-      desktopTabScrollMediaQuery.addEventListener("change", updateTabScrollControls);
+      desktopTabScrollMediaQuery.addEventListener(
+        "change",
+        updateTabScrollControls,
+      );
     } else if (typeof desktopTabScrollMediaQuery.addListener === "function") {
       desktopTabScrollMediaQuery.addListener(updateTabScrollControls);
     }
