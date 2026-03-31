@@ -137,6 +137,58 @@ def _newsroom_listing_with_geography(
     )
 
 
+def _directory_username(  # noqa: PLR0913
+    *,
+    username: str,
+    display_name: str,
+    bio: str = "",
+    is_verified: bool = False,
+    is_admin: bool = False,
+    pgp_key: str = "pgp-key",
+    account_category: str | None = None,
+    country: str | None = None,
+    subdivision: str | None = None,
+    city: str | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        username=username,
+        display_name=display_name,
+        bio=bio,
+        is_verified=is_verified,
+        user=SimpleNamespace(
+            is_admin=is_admin,
+            is_cautious=False,
+            pgp_key=pgp_key,
+            account_category=account_category,
+            account_category_label=None,
+            country=country,
+            subdivision=subdivision,
+            city=city,
+        ),
+    )
+
+
+def _securedrop_listing_with_country(
+    *, suffix: str, name: str, country: str
+) -> SecureDropDirectoryListing:
+    return SecureDropDirectoryListing(
+        id=f"securedrop-{suffix}",
+        slug=f"securedrop~{suffix}",
+        name=name,
+        website=f"https://{suffix}.example",
+        description=f"{name} directory listing.",
+        directory_url=f"https://{suffix}.example/directory",
+        landing_page_url=f"https://{suffix}.example/landing",
+        onion_address=("sample1234567890sample1234567890sample1234567890sample12.onion"),
+        onion_name=name,
+        countries=(country,),
+        languages=("English",),
+        topics=("Investigations",),
+        source_label="SecureDrop directory",
+        source_url="https://securedrop.example/source",
+    )
+
+
 def _sample_onion_globaleaks_listing() -> GlobaLeaksDirectoryListing:
     return GlobaLeaksDirectoryListing(
         id="globaleaks-sample-onion-newsroom",
@@ -1121,6 +1173,120 @@ def test_directory_newsroom_filter_panel_hidden_by_default(
     assert not clear_filters_link.has_attr("hidden")
 
 
+def test_directory_all_filter_panel_hidden_by_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="San Francisco",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+    securedrop_listing = _securedrop_listing_with_country(
+        suffix="sample",
+        name="Sample SecureDrop",
+        country="United States",
+    )
+    globaleaks_listing = replace(
+        _sample_globaleaks_listing(),
+        id="globaleaks-italy",
+        slug="globaleaks~italy",
+        name="Italy GlobaLeaks",
+        countries=("Italy",),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: (verified_user,)
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (newsroom_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: (securedrop_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (globaleaks_listing,),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="all-filters-toggle-shell")
+    panel_shell = soup.find(id="all-filters-panel-shell")
+    toggle = soup.find(id="all-filters-toggle")
+    panel = soup.find(id="all-filters-panel")
+    clear_filters_actions = soup.find(id="all-filters-actions")
+    country_select = soup.find(id="all-country-filter")
+    region_select = soup.find(id="all-region-filter")
+    region_label = soup.find("label", {"for": "all-region-filter"})
+    listing_type_select = soup.find(id="all-listing-type-filter")
+    listing_type_label = soup.find("label", {"for": "all-listing-type-filter"})
+    clear_filters_link = soup.find(id="all-filters-clear")
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle.get("aria-controls") == "all-filters-panel"
+    assert toggle.get("aria-expanded") == "false"
+    assert panel is not None
+    assert panel.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert region_label is not None
+    assert region_label.get_text(" ", strip=True) == "State / Province / Region"
+    assert not region_select.has_attr("disabled")
+    assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
+    assert [optgroup.get("label") for optgroup in region_select.find_all("optgroup")] == [
+        "United States"
+    ]
+    assert listing_type_select is not None
+    assert listing_type_label is not None
+    assert listing_type_label.get_text(" ", strip=True) == "Listing Type"
+    assert [option.get("value") for option in listing_type_select.find_all("option")] == [
+        "",
+        "verified",
+        "attorneys",
+        "newsrooms",
+        "securedrop",
+        "globaleaks",
+    ]
+    assert clear_filters_actions is not None
+    assert clear_filters_actions.has_attr("hidden")
+    assert clear_filters_link is not None
+    assert not clear_filters_link.has_attr("hidden")
+
+
 def test_directory_attorney_filter_panel_shows_selected_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1260,6 +1426,167 @@ def test_directory_newsroom_filter_panel_shows_selected_filters(
     assert not region_select.has_attr("disabled")
 
 
+def test_directory_all_filter_panel_shows_selected_filters(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    new_york_listing = PublicRecordListing(
+        id="public-record-new-york",
+        slug="public-record~new-york",
+        name="New York Attorney",
+        website="https://newyork.example",
+        description="New York whistleblower attorney.",
+        city="New York",
+        state="NY",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    general_user = _directory_username(
+        username="general-user",
+        display_name="General User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="Los Angeles",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: (general_user,)
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing, new_york_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(
+        f"{url_for('directory')}?all_country=US&all_region=CA&all_listing_type=attorneys"
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    toggle_shell = soup.find(id="all-filters-toggle-shell")
+    panel_shell = soup.find(id="all-filters-panel-shell")
+    toggle = soup.find(id="all-filters-toggle")
+    panel = soup.find(id="all-filters-panel")
+    clear_filters_actions = soup.find(id="all-filters-actions")
+    country_select = soup.find(id="all-country-filter")
+    region_select = soup.find(id="all-region-filter")
+    listing_type_select = soup.find(id="all-listing-type-filter")
+    clear_filters_link = (
+        panel.find("a", id="all-filters-clear", href=url_for("directory"))
+        if isinstance(panel, Tag)
+        else None
+    )
+    all_panel = soup.find(id="all")
+
+    assert toggle_shell is not None
+    assert toggle_shell.has_attr("hidden")
+    assert panel_shell is not None
+    assert panel_shell.has_attr("hidden")
+    assert toggle is not None
+    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle.get("aria-expanded") == "true"
+    assert panel is not None
+    assert not panel.has_attr("hidden")
+    assert clear_filters_actions is not None
+    assert not clear_filters_actions.has_attr("hidden")
+    assert country_select is not None
+    assert region_select is not None
+    assert listing_type_select is not None
+    assert clear_filters_link is not None
+    assert country_select.find("option", selected=True)["value"] == "United States"
+    assert country_select.find("option", selected=True).get_text(" ", strip=True) == (
+        "United States"
+    )
+    assert region_select.find("option", selected=True).get_text(" ", strip=True) == ("California")
+    assert region_select.find("option", selected=True)["value"] == "CA"
+    assert listing_type_select.find("option", selected=True)["value"] == "attorneys"
+    assert listing_type_select.find("option", selected=True).get_text(" ", strip=True) == (
+        "Attorneys"
+    )
+    assert all_panel is not None
+    all_panel_text = all_panel.get_text(" ", strip=True)
+    assert "California Attorney" in all_panel_text
+    assert "New York Attorney" not in all_panel_text
+    assert "General User" not in all_panel_text
+
+
+def test_directory_all_filters_do_not_change_attorney_or_newsroom_panels(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_attorney = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    california_newsroom = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    italy_globaleaks = replace(
+        _sample_globaleaks_listing(),
+        id="globaleaks-italy",
+        slug="globaleaks~italy",
+        name="Italy GlobaLeaks",
+        countries=("Italy",),
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_attorney,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_newsroom,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (italy_globaleaks,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory')}?all_country=Italy&all_listing_type=globaleaks")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    newsroom_panel = soup.find(id="newsrooms")
+    all_panel = soup.find(id="all")
+
+    assert public_records_panel is not None
+    assert newsroom_panel is not None
+    assert all_panel is not None
+    assert "California Attorney" in public_records_panel.get_text(" ", strip=True)
+    assert "California Newsroom" in newsroom_panel.get_text(" ", strip=True)
+    all_panel_text = all_panel.get_text(" ", strip=True)
+    assert "Italy GlobaLeaks" in all_panel_text
+    assert "California Attorney" not in all_panel_text
+    assert "California Newsroom" not in all_panel_text
+
+
 def test_directory_users_json_filters_only_public_record_rows_by_query_params(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1395,7 +1722,150 @@ def test_directory_users_json_filters_only_newsroom_rows_by_query_params(
     assert "General User" in non_newsroom_names
 
 
-def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters(
+def test_directory_users_json_filters_all_rows_by_country_and_region_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    california_user = _directory_username(
+        username="california-user",
+        display_name="California User",
+        country="US",
+        subdivision="CA",
+        city="Los Angeles",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    illinois_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: (california_user,)
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (illinois_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_users')}?all_country=US&all_region=CA")
+    assert response.status_code == 200
+
+    display_names = {row["display_name"] for row in response.json or []}
+    assert display_names == {"California Attorney", "California User"}
+
+
+def test_directory_users_json_filters_all_rows_by_listing_type_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    newsroom_user = _directory_username(
+        username="newsroom-user",
+        display_name="Newsroom User",
+        account_category=AccountCategory.NEWSROOM.value,
+        country="US",
+        subdivision="IL",
+        city="Chicago",
+    )
+    general_user = _directory_username(
+        username="general-user",
+        display_name="General User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="Los Angeles",
+    )
+    newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (newsroom_user, general_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (newsroom_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_users')}?all_listing_type=newsrooms")
+    assert response.status_code == 200
+
+    display_names = {row["display_name"] for row in response.json or []}
+    assert display_names == {"Illinois Newsroom", "Newsroom User"}
+
+
+def test_directory_users_json_filters_all_rows_by_combined_geography_and_listing_type_query_params(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    illinois_newsroom_user = _directory_username(
+        username="illinois-newsroom",
+        display_name="Illinois Newsroom User",
+        account_category=AccountCategory.NEWSROOM.value,
+        country="US",
+        subdivision="IL",
+        city="Chicago",
+    )
+    california_newsroom_listing = _newsroom_listing_with_geography(
+        suffix="california",
+        name="California Newsroom",
+        city="Los Angeles",
+        country="United States",
+        subdivision="California",
+    )
+    illinois_newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (illinois_newsroom_user,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (california_newsroom_listing, illinois_newsroom_listing),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(
+        f"{url_for('directory_users')}?all_country=US&all_region=IL&all_listing_type=newsrooms"
+    )
+    assert response.status_code == 200
+
+    display_names = {row["display_name"] for row in response.json or []}
+    assert display_names == {"Illinois Newsroom", "Illinois Newsroom User"}
+
+
+def test_directory_attorney_filters_json_reflects_active_query_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     california_listing = PublicRecordListing(
@@ -1440,16 +1910,8 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
     response = client.get(f"{url_for('directory_attorney_filters')}?country=US&region=CA")
     assert response.status_code == 200
     assert response.json == {
-        "countries": [
-            {"code": "Australia", "label": "Australia", "count": 1},
-            {"code": "United States", "label": "United States", "count": 2},
-        ],
-        "regions": {
-            "United States": [
-                {"code": "CA", "label": "California", "count": 1},
-                {"code": "NY", "label": "New York", "count": 1},
-            ]
-        },
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
     }
 
 
@@ -1526,6 +1988,116 @@ def test_directory_newsroom_filters_json_includes_automated_newsroom_listings(
             {"code": "United States", "label": "United States", "count": 1},
         ],
         "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+    }
+
+
+def test_directory_all_filters_json_reflects_active_query_filters(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="San Francisco",
+    )
+    california_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+    securedrop_listing = _securedrop_listing_with_country(
+        suffix="sample",
+        name="Sample SecureDrop",
+        country="United States",
+    )
+    globaleaks_listing = replace(
+        _sample_globaleaks_listing(),
+        id="globaleaks-italy",
+        slug="globaleaks~italy",
+        name="Italy GlobaLeaks",
+        countries=("Italy",),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: (verified_user,)
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (california_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (newsroom_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: (securedrop_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (globaleaks_listing,),
+    )
+
+    response = client.get(
+        f"{url_for('directory_all_filters')}?all_country=US&all_region=CA&all_listing_type=attorneys"
+    )
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+        "listing_types": [{"code": "attorneys", "label": "Attorneys", "count": 1}],
+    }
+
+
+def test_directory_all_filters_json_updates_country_counts_for_verified_listing_type(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="San Francisco",
+    )
+    newsroom_user = _directory_username(
+        username="belgium-newsroom-user",
+        display_name="Belgium Newsroom User",
+        account_category=AccountCategory.NEWSROOM.value,
+        country="Belgium",
+        city="Brussels",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (verified_user, newsroom_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_all_filters')}?all_listing_type=verified")
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+        "listing_types": [{"code": "verified", "label": "Verified", "count": 1}],
     }
 
 

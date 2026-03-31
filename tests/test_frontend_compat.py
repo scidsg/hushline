@@ -79,6 +79,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'id="directory-search-status"' in directory_template
     assert 'id="public-record-count"' in directory_template
     assert 'id="newsroom-count"' in directory_template
+    assert 'id="all-filters-toggle"' in directory_template
+    assert 'id="all-filters-panel"' in directory_template
     assert 'id="attorney-filters-toggle"' in directory_template
     assert 'id="attorney-filters-panel"' in directory_template
     assert 'id="newsroom-filters-toggle"' in directory_template
@@ -95,6 +97,15 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         in directory_verified_js
     )
     assert 'const publicRecordCountBadge = document.getElementById("public-record-count");' in (
+        directory_verified_js
+    )
+    assert 'const allFiltersToggle = document.getElementById("all-filters-toggle");' in (
+        directory_verified_js
+    )
+    assert 'const allFiltersPanel = document.getElementById("all-filters-panel");' in (
+        directory_verified_js
+    )
+    assert 'const allListingTypeFilter = document.getElementById("all-listing-type-filter");' in (
         directory_verified_js
     )
     assert (
@@ -131,9 +142,14 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         directory_verified_js
     )
     assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
+    assert 'metadataPath: "all-filters.json"' in directory_verified_js
     assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
     assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
-    assert "fetch(`${directoryPath}/${controller.metadataPath}`)" in directory_verified_js
+    assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in directory_verified_js
+    assert "controller.countryLabelForValue = function (value) {" in directory_verified_js
+    assert "controller.countryFilter.innerHTML = '<option value=\"\">All</option>';" in (
+        directory_verified_js
+    )
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (directory_js)
     assert "fetch(`${directoryPath}/users.json`)" in directory_js
     assert "window.history.replaceState" in directory_verified_js
@@ -147,7 +163,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "controller.updateSelectExpandedLabels = function (isExpanded) {" in (
         directory_verified_js
     )
-    assert 'controller.countryFilter.addEventListener("change", async function () {' in (
+    assert 'controller.countryFilter.addEventListener("change", function () {' in (
         directory_verified_js
     )
     assert 'controller.regionFilter.addEventListener("change", function () {' in (
@@ -215,7 +231,12 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
     assert "users.json" in directory_verified_static_js
+    assert "all-filters.json" in directory_verified_static_js
     assert "attorney-filters.json" in directory_verified_static_js
+    assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in (
+        directory_verified_static_js
+    )
+    assert "controller.countryLabelForValue = function (value) {" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
     assert ".directory-filter-panel" in scss
