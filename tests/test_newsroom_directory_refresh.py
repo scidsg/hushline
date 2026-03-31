@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import cast
+
 import pytest
 import requests
+from bs4 import BeautifulSoup, Tag
 
 import hushline.newsroom_directory_refresh as refresh_module
 from hushline.newsroom_directory_refresh import (
@@ -13,6 +17,7 @@ from hushline.newsroom_directory_refresh import (
     _extract_european_network_urls,
     _extract_organization_urls,
     _extract_source_browse_page_urls,
+    _get_with_retries,
     _normalize_http_url,
     _normalize_string_list,
     _parse_european_network_detail_html,
@@ -50,6 +55,70 @@ class _ErrorSession:
         raise requests.Timeout(f"timed out fetching {url}")
 
 
+def test_get_with_retries_raises_non_retryable_http_error_immediately() -> None:
+    not_found = requests.HTTPError("not found")
+    not_found.response = requests.Response()
+    not_found.response.status_code = 404
+
+    class _NonRetrySession:
+        def __init__(self) -> None:
+            self.attempts = 0
+
+        def get(self, url: str, *, timeout: float, headers: dict[str, str]) -> _FakeResponse:
+            self.attempts += 1
+            return _FakeResponse("", error=not_found)
+
+    session = _NonRetrySession()
+    with pytest.raises(requests.HTTPError, match="not found"):
+        _get_with_retries(
+            session,
+            url=NEWSROOM_DIRECTORY_SOURCE_URL,
+            timeout_seconds=30.0,
+        )
+
+    assert session.attempts == 1
+
+
+def test_get_with_retries_reraises_last_error_from_post_loop_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _RetryControl:
+        def __sub__(self, other: int) -> int:
+            return 99
+
+    class _TimeoutSession:
+        def get(self, url: str, *, timeout: float, headers: dict[str, str]) -> _FakeResponse:
+            raise requests.Timeout("timed out")
+
+    monkeypatch.setattr(refresh_module, "range", lambda max_attempts: [0], raising=False)
+    monkeypatch.setattr(refresh_module.time, "sleep", lambda seconds: None)
+
+    with pytest.raises(requests.Timeout, match="timed out"):
+        _get_with_retries(
+            _TimeoutSession(),
+            url=NEWSROOM_DIRECTORY_SOURCE_URL,
+            timeout_seconds=30.0,
+            max_attempts=cast(int, _RetryControl()),
+        )
+
+
+def test_get_with_retries_raises_fallback_error_when_no_attempts_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(refresh_module, "range", lambda max_attempts: [], raising=False)
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match="Failed to fetch newsroom source URL: https://findyournews.org/explore/",
+    ):
+        _get_with_retries(
+            _FakeSession({}),
+            url=NEWSROOM_DIRECTORY_SOURCE_URL,
+            timeout_seconds=30.0,
+            max_attempts=0,
+        )
+
+
 def test_normalize_string_list_handles_split_deduping_and_invalid_inputs() -> None:
     assert _normalize_string_list(" English | Spanish ; english ,, ") == ["English", "Spanish"]
     assert _normalize_string_list(["Investigations", 1, " investigations ", "", "Local"]) == [
@@ -77,12 +146,43 @@ def test_normalize_http_url_validates_required_and_optional_fields() -> None:
         _normalize_http_url(None, field="directory_url", required=True)
 
 
+def test_normalize_http_url_covers_optional_and_required_error_edges() -> None:
+    assert (
+        _normalize_http_url(
+            {"url": "https://example.org"},
+            field="website",
+            required=False,
+        )
+        == ""
+    )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError, match="Missing required URL field: directory_url"
+    ):
+        _normalize_http_url("   ", field="directory_url", required=True)
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match="Invalid URL for field source_url: expected absolute http/https URL",
+    ):
+        _normalize_http_url("ftp://example.org/export", field="source_url", required=True)
+
+
+def test_normalize_country_subdivision_and_listing_slug_handle_blank_and_fallback_values() -> None:
+    assert refresh_module._normalize_country("   ") is None
+    assert refresh_module._normalize_country("France") == "France"
+    assert refresh_module._normalize_us_subdivision("   ") is None
+    assert refresh_module._normalize_us_subdivision("Queensland") == "Queensland"
+    assert refresh_module._listing_path_slug("https://example.org/") == ""
+
+
 def test_extract_organization_urls_filters_duplicates_and_non_listing_links() -> None:
     urls = _extract_organization_urls(
         """
         <html>
           <body>
             <a href="/explore/">Explore</a>
+            <a href="mailto:tips@example.org">Email</a>
             <a href="https://findyournews.org/organization/sample-one/">Sample One</a>
             <a href="https://findyournews.org/organization/sample-two/">Sample Two</a>
             <a href="https://findyournews.org/organization/sample-two/">Sample Two Again</a>
@@ -135,7 +235,9 @@ def test_extract_source_browse_page_urls_for_european_networks_follows_public_pa
           <body>
             <a href="/search-networks/">Search networks</a>
             <a href="/search-networks/page/2/">Page 2</a>
+            <a href="https://journalismdirectory.org/search-networks/page/2/">Page 2 Again</a>
             <a href="/search-networks/?sf_paged=3">Page 3</a>
+            <a href="mailto:editor@example.org">Email</a>
             <a href="/network-focus/cross-border/">Cross-border</a>
             <a href="/network-size/11-20-members/">11-20 members</a>
             <a href="/network/the-circle/">The Circle</a>
@@ -153,6 +255,45 @@ def test_extract_source_browse_page_urls_for_european_networks_follows_public_pa
         "https://journalismdirectory.org/network-focus/cross-border/",
         "https://journalismdirectory.org/network-size/11-20-members/",
     ]
+
+
+def test_text_and_core_detail_extractors_skip_incomplete_nodes_and_plain_text_lists() -> None:
+    soup = BeautifulSoup(
+        """
+        <div class="text-block"><p>Ignored without a heading.</p></div>
+        <div class="text-block"><h6>Mission</h6><p>Mission paragraph.</p></div>
+        <div class="panel-content core-details">
+          <h6> </h6><hr><p class="small">Ignored blank label</p>
+          <h6>Topics</h6><hr><div>Ignored non-paragraph value</div>
+          <h6>Languages</h6><hr><p class="small">English, Spanish</p>
+        </div>
+        """,
+        "html.parser",
+    )
+
+    assert refresh_module._extract_text_blocks(soup) == {"mission": "Mission paragraph."}
+    assert refresh_module._extract_core_details(soup) == {"languages": ["English", "Spanish"]}
+
+
+def test_parse_location_handles_blank_city_country_and_single_part_inputs() -> None:
+    assert _parse_location(None) == {
+        "location": "",
+        "city": None,
+        "country": None,
+        "subdivision": None,
+        "countries": [],
+    }
+
+    city_country = _parse_location("Paris, France")
+    assert city_country["city"] == "Paris"
+    assert city_country["country"] == "France"
+    assert city_country["subdivision"] is None
+    assert city_country["countries"] == ["France"]
+
+    single_part = _parse_location("Germany")
+    assert single_part["city"] is None
+    assert single_part["country"] == "Germany"
+    assert single_part["countries"] == ["Germany"]
 
 
 def test_parse_location_normalizes_united_states_and_state_abbreviations() -> None:
@@ -216,6 +357,93 @@ def test_parse_european_network_detail_html_normalizes_baseline_fields() -> None
     assert row["source_url"] == EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL
 
 
+def test_parse_newsroom_detail_html_raises_for_missing_name_and_empty_slug() -> None:
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match="Missing newsroom name for https://findyournews.org/organization/sample/",
+    ):
+        refresh_module._parse_newsroom_detail_html(
+            "<div class='hero-organization'><h4>Tagline</h4></div>",
+            detail_url="https://findyournews.org/organization/sample/",
+            source_label=refresh_module.NEWSROOM_DIRECTORY_SOURCE_LABEL,
+            source_url=NEWSROOM_DIRECTORY_SOURCE_URL,
+        )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match=(
+            "Newsroom slug normalized to an empty value: "
+            "https://findyournews.org/organization/---/"
+        ),
+    ):
+        refresh_module._parse_newsroom_detail_html(
+            "<div class='hero-organization'><h1>Valid Name</h1></div>",
+            detail_url="https://findyournews.org/organization/---/",
+            source_label=refresh_module.NEWSROOM_DIRECTORY_SOURCE_LABEL,
+            source_url=NEWSROOM_DIRECTORY_SOURCE_URL,
+        )
+
+
+def test_european_network_helper_extractors_cover_missing_sections_and_mixed_children() -> None:
+    soup = BeautifulSoup(
+        """
+        <h2>Countries</h2>
+        <p>No list here</p>
+        <h2>Contact</h2>
+        <p>No website in this paragraph.</p>
+        <h3>Subjects</h3>
+        <p><a href="https://ignored.example.org">Ignored after section break</a></p>
+        """,
+        "html.parser",
+    )
+    mixed_children = BeautifulSoup(
+        (
+            "<strong>Founded:</strong><span>2022</span><br/>"
+            "<strong>Geographical focus:</strong>European"
+        ),
+        "html.parser",
+    )
+
+    assert refresh_module._extract_heading_list(soup, "Countries") == []
+    assert refresh_module._extract_contact_website(soup) == ""
+    assert refresh_module._extract_colon_details(
+        cast(
+            Tag,
+            SimpleNamespace(children=[object(), *mixed_children.contents]),
+        )
+    ) == {
+        "founded": "2022",
+        "geographical focus": "European",
+    }
+
+
+def test_parse_european_network_detail_html_raises_for_missing_name_and_empty_slug() -> None:
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match="Missing newsroom name for https://journalismdirectory.org/network/sample/",
+    ):
+        _parse_european_network_detail_html(
+            "<p>Missing title</p>",
+            detail_url="https://journalismdirectory.org/network/sample/",
+            source_label=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_LABEL,
+            source_url=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL,
+        )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match=(
+            "Newsroom slug normalized to an empty value: "
+            "https://journalismdirectory.org/network/---/"
+        ),
+    ):
+        _parse_european_network_detail_html(
+            "<h1>The Circle</h1>",
+            detail_url="https://journalismdirectory.org/network/---/",
+            source_label=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_LABEL,
+            source_url=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL,
+        )
+
+
 def test_refresh_newsroom_directory_rows_validates_normalized_row_shapes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -238,6 +466,80 @@ def test_refresh_newsroom_directory_rows_validates_normalized_row_shapes(
 
     with pytest.raises(NewsroomDirectoryRefreshError, match="Normalized row id must be a string"):
         refresh_newsroom_directory_rows([{}, {}])
+
+
+@pytest.mark.parametrize(
+    ("row", "message"),
+    [
+        ({}, "Missing required newsroom id"),
+        ({"id": "newsroom-one"}, "Missing required newsroom slug"),
+        ({"id": "newsroom-one", "slug": "newsroom~one"}, "Missing required newsroom name"),
+    ],
+)
+def test_normalize_newsroom_row_validates_required_fields(
+    row: dict[str, object], message: str
+) -> None:
+    with pytest.raises(NewsroomDirectoryRefreshError, match=message):
+        refresh_module._normalize_newsroom_row(
+            row,
+            source_label=refresh_module.NEWSROOM_DIRECTORY_SOURCE_LABEL,
+            source_url=NEWSROOM_DIRECTORY_SOURCE_URL,
+        )
+
+
+def test_refresh_newsroom_directory_rows_validates_non_string_and_duplicate_slugs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        refresh_module,
+        "_normalize_newsroom_row",
+        lambda row, *, source_label, source_url: {"id": "newsroom-one", "slug": 1, "name": "One"},
+    )
+
+    with pytest.raises(NewsroomDirectoryRefreshError, match="Normalized row slug must be a string"):
+        refresh_newsroom_directory_rows([{}])
+
+
+def test_refresh_newsroom_directory_rows_rejects_duplicate_ids_and_slugs() -> None:
+    with pytest.raises(
+        NewsroomDirectoryRefreshError, match="Duplicate newsroom listing id: newsroom-duplicate"
+    ):
+        refresh_newsroom_directory_rows(
+            [
+                {
+                    "id": "newsroom-duplicate",
+                    "slug": "newsroom~one",
+                    "name": "One",
+                    "directory_url": "https://findyournews.org/organization/one/",
+                },
+                {
+                    "id": "newsroom-duplicate",
+                    "slug": "newsroom~two",
+                    "name": "Two",
+                    "directory_url": "https://findyournews.org/organization/two/",
+                },
+            ]
+        )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError, match="Duplicate newsroom listing slug: newsroom~shared"
+    ):
+        refresh_newsroom_directory_rows(
+            [
+                {
+                    "id": "newsroom-one",
+                    "slug": "newsroom~shared",
+                    "name": "One",
+                    "directory_url": "https://findyournews.org/organization/one/",
+                },
+                {
+                    "id": "newsroom-two",
+                    "slug": "newsroom~shared",
+                    "name": "Two",
+                    "directory_url": "https://findyournews.org/organization/two/",
+                },
+            ]
+        )
 
 
 def test_refresh_newsroom_directory_rows_is_deterministic_and_schema_compatible() -> None:
@@ -300,6 +602,116 @@ def test_refresh_newsroom_directory_rows_is_deterministic_and_schema_compatible(
     assert result_a[1]["places_covered"] == ["Chicago", "Illinois"]
     assert result_a[1]["languages"] == ["English"]
     assert result_a[1]["topics"] == ["Accountability", "Education"]
+
+
+def test_fetch_rows_for_source_skips_seen_browse_and_detail_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = next(
+        source
+        for source in NEWSROOM_DIRECTORY_SOURCES
+        if source.browse_url == NEWSROOM_DIRECTORY_SOURCE_URL
+    )
+    detail_url = "https://findyournews.org/organization/sample-one/"
+    session = _FakeSession(
+        {
+            source.browse_url: _FakeResponse("<html></html>"),
+            detail_url: _FakeResponse("<div>detail</div>"),
+        }
+    )
+
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_listing_urls",
+        lambda source, html: [detail_url, detail_url],
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_browse_page_urls",
+        lambda source, html, source_url: [source.browse_url, source.browse_url],
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "_parse_source_detail_html",
+        lambda source, html, *, detail_url: {
+            "id": "newsroom-sample-one",
+            "slug": "newsroom~sample-one",
+            "name": "Sample One",
+        },
+    )
+
+    rows = refresh_module._fetch_rows_for_source(source, client=session, timeout_seconds=30.0)
+
+    assert rows == [
+        {
+            "id": "newsroom-sample-one",
+            "slug": "newsroom~sample-one",
+            "name": "Sample One",
+        }
+    ]
+    assert session.requested_urls.count(source.browse_url) == 1
+    assert session.requested_urls.count(detail_url) == 1
+
+
+def test_fetch_rows_for_source_raises_when_no_listings_are_discovered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = next(
+        source
+        for source in NEWSROOM_DIRECTORY_SOURCES
+        if source.browse_url == NEWSROOM_DIRECTORY_SOURCE_URL
+    )
+    session = _FakeSession({source.browse_url: _FakeResponse("<html></html>")})
+
+    monkeypatch.setattr(refresh_module, "_extract_source_listing_urls", lambda source, html: [])
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_browse_page_urls",
+        lambda source, html, source_url: [],
+    )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match="No newsroom listings were discovered from INN Find Your News directory",
+    ):
+        refresh_module._fetch_rows_for_source(source, client=session, timeout_seconds=30.0)
+
+
+def test_fetch_rows_for_source_wraps_detail_request_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = next(
+        source
+        for source in NEWSROOM_DIRECTORY_SOURCES
+        if source.browse_url == NEWSROOM_DIRECTORY_SOURCE_URL
+    )
+    detail_url = "https://findyournews.org/organization/sample-one/"
+
+    def fake_get_with_retries(client: object, *, url: str, timeout_seconds: float) -> _FakeResponse:
+        if url == source.browse_url:
+            return _FakeResponse("<html></html>")
+        raise requests.Timeout(f"timed out fetching {url}")
+
+    monkeypatch.setattr(refresh_module, "_get_with_retries", fake_get_with_retries)
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_listing_urls",
+        lambda source, html: [detail_url],
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_browse_page_urls",
+        lambda source, html, source_url: [],
+    )
+
+    with pytest.raises(
+        NewsroomDirectoryRefreshError,
+        match=(
+            "Failed to fetch INN Find Your News directory listings: "
+            "timed out fetching https://findyournews.org/organization/sample-one/"
+        ),
+    ):
+        refresh_module._fetch_rows_for_source(source, client=_FakeSession({}), timeout_seconds=30.0)
 
 
 def test_fetch_newsroom_directory_rows_uses_public_explore_urls_only() -> None:
