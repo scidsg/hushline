@@ -146,6 +146,10 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
     assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
     assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in directory_verified_js
+    assert "controller.countryLabelForValue = function (value) {" in directory_verified_js
+    assert "controller.countryFilter.innerHTML = '<option value=\"\">All</option>';" in (
+        directory_verified_js
+    )
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (directory_js)
     assert "fetch(`${directoryPath}/users.json`)" in directory_js
     assert "window.history.replaceState" in directory_verified_js
@@ -229,6 +233,10 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "users.json" in directory_verified_static_js
     assert "all-filters.json" in directory_verified_static_js
     assert "attorney-filters.json" in directory_verified_static_js
+    assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in (
+        directory_verified_static_js
+    )
+    assert "controller.countryLabelForValue = function (value) {" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
     assert ".directory-filter-panel" in scss

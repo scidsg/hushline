@@ -733,27 +733,61 @@ document.addEventListener("DOMContentLoaded", function () {
       resetActions.hidden = !controller.hasActiveFilters();
     };
 
+    controller.countryLabelForValue = function (value) {
+      if (!value) {
+        return "";
+      }
+
+      const country = Array.isArray(controller.metadata.countries)
+        ? controller.metadata.countries.find((item) => item.code === value)
+        : null;
+      if (country?.label) {
+        return country.label;
+      }
+
+      const selectedCountryOption = Array.from(controller.countryFilter.options).find(
+        (option) => option.value === value,
+      );
+      if (selectedCountryOption?.textContent) {
+        return selectedCountryOption.textContent.replace(/\s+\(\d+\)$/, "");
+      }
+
+      return normalizedCountryFilterValue(value);
+    };
+
     controller.updateCountryLabels = function () {
       const selectedCountry = controller.countryFilter.value;
       const showSelectedCount = controller.countryFilter.dataset.showSelectedCount === "true";
+      const countries = Array.isArray(controller.metadata.countries)
+        ? [...controller.metadata.countries]
+        : [];
 
-      Array.from(controller.countryFilter.options).forEach((option) => {
-        if (!option.value) {
-          return;
-        }
+      if (selectedCountry && !countries.some((country) => country.code === selectedCountry)) {
+        countries.unshift({
+          code: selectedCountry,
+          label: controller.countryLabelForValue(selectedCountry),
+          count: 0,
+        });
+      }
 
-        const country = Array.isArray(controller.metadata.countries)
-          ? controller.metadata.countries.find((item) => item.code === option.value)
-          : null;
-        if (!country) {
-          return;
-        }
+      controller.countryFilter.innerHTML = '<option value="">All</option>';
 
+      countries.forEach((country) => {
+        const option = document.createElement("option");
+        option.value = country.code;
         option.textContent =
-          option.value === selectedCountry && !showSelectedCount
+          country.code === selectedCountry && !showSelectedCount
             ? country.label
             : `${country.label} (${country.count})`;
+        if (country.code === selectedCountry) {
+          option.selected = true;
+        }
+        controller.countryFilter.appendChild(option);
       });
+
+      if (!countries.some((country) => country.code === selectedCountry)) {
+        controller.countryFilter.value = "";
+      }
     };
 
     controller.updateListingTypeLabels = function () {
@@ -763,24 +797,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const selectedListingType = controller.listingTypeFilter.value;
       const showSelectedCount = controller.listingTypeFilter.dataset.showSelectedCount === "true";
+      const listingTypes = Array.isArray(controller.metadata.listing_types)
+        ? [...controller.metadata.listing_types]
+        : [];
+      const selectedListingTypeOption = Array.from(controller.listingTypeFilter.options).find(
+        (option) => option.value === selectedListingType,
+      );
 
-      Array.from(controller.listingTypeFilter.options).forEach((option) => {
-        if (!option.value) {
-          return;
-        }
+      if (
+        selectedListingType &&
+        !listingTypes.some((listingType) => listingType.code === selectedListingType)
+      ) {
+        listingTypes.unshift({
+          code: selectedListingType,
+          label:
+            selectedListingTypeOption?.textContent?.replace(/\s+\(\d+\)$/, "") ||
+            selectedListingType,
+          count: 0,
+        });
+      }
 
-        const listingType = Array.isArray(controller.metadata.listing_types)
-          ? controller.metadata.listing_types.find((item) => item.code === option.value)
-          : null;
-        if (!listingType) {
-          return;
-        }
+      controller.listingTypeFilter.innerHTML = '<option value="">All</option>';
 
+      listingTypes.forEach((listingType) => {
+        const option = document.createElement("option");
+        option.value = listingType.code;
         option.textContent =
-          option.value === selectedListingType && !showSelectedCount
+          listingType.code === selectedListingType && !showSelectedCount
             ? listingType.label
             : `${listingType.label} (${listingType.count})`;
+        if (listingType.code === selectedListingType) {
+          option.selected = true;
+        }
+        controller.listingTypeFilter.appendChild(option);
       });
+
+      if (!listingTypes.some((listingType) => listingType.code === selectedListingType)) {
+        controller.listingTypeFilter.value = "";
+      }
     };
 
     controller.inferredCountryForRegionCode = function (regionCode) {
