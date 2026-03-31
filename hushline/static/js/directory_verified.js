@@ -1091,9 +1091,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       controller.metadataSearch = search;
-      const metadataRequest = fetch(
-        `${directoryPath}/${controller.metadataPath}${search}`,
-      )
+      let request;
+      request = fetch(`${directoryPath}/${controller.metadataPath}${search}`);
+      const metadataRequest = request
         .then((response) => {
           if (!response.ok) {
             throw new Error("Network response was not ok");
