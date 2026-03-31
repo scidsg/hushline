@@ -513,11 +513,15 @@ def _parse_newsroom_detail_html(
 ) -> dict[str, object]:
     soup = BeautifulSoup(html, "html.parser")
     hero = soup.select_one("div.hero-organization")
-    name = _normalize_text(hero.find("h1").get_text(" ", strip=True) if hero else "")
+    heading = hero.find("h1") if hero else None
+    name = _normalize_text(heading.get_text(" ", strip=True) if heading is not None else "")
     if not name:
         raise NewsroomDirectoryRefreshError(f"Missing newsroom name for {detail_url}")
 
-    tagline = _normalize_text(hero.find("h4").get_text(" ", strip=True) if hero else "")
+    tagline_element = hero.find("h4") if hero else None
+    tagline = _normalize_text(
+        tagline_element.get_text(" ", strip=True) if tagline_element is not None else ""
+    )
     text_blocks = _extract_text_blocks(soup)
     core_details = _extract_core_details(soup)
     mission = _normalize_text(text_blocks.get("mission"))
