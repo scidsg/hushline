@@ -12,6 +12,7 @@ from hushline.newsroom_directory_refresh import (
     NewsroomDirectoryRefreshError,
     _extract_european_network_urls,
     _extract_organization_urls,
+    _extract_source_browse_page_urls,
     _normalize_http_url,
     _normalize_string_list,
     _parse_european_network_detail_html,
@@ -117,6 +118,40 @@ def test_extract_european_network_urls_filters_duplicates_and_non_listing_links(
     assert urls == [
         "https://journalismdirectory.org/network/the-circle/",
         "https://journalismdirectory.org/network/hostwriter-network/",
+    ]
+
+
+def test_extract_source_browse_page_urls_for_european_networks_follows_public_pages() -> None:
+    european_source = next(
+        source
+        for source in NEWSROOM_DIRECTORY_SOURCES
+        if source.browse_url == EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL
+    )
+
+    urls = _extract_source_browse_page_urls(
+        european_source,
+        """
+        <html>
+          <body>
+            <a href="/search-networks/">Search networks</a>
+            <a href="/search-networks/page/2/">Page 2</a>
+            <a href="/search-networks/?sf_paged=3">Page 3</a>
+            <a href="/network-focus/cross-border/">Cross-border</a>
+            <a href="/network-size/11-20-members/">11-20 members</a>
+            <a href="/network/the-circle/">The Circle</a>
+            <a href="/about/">About</a>
+          </body>
+        </html>
+        """,
+        source_url=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL,
+    )
+
+    assert urls == [
+        "https://journalismdirectory.org/search-networks/",
+        "https://journalismdirectory.org/search-networks/page/2/",
+        "https://journalismdirectory.org/search-networks/?sf_paged=3",
+        "https://journalismdirectory.org/network-focus/cross-border/",
+        "https://journalismdirectory.org/network-size/11-20-members/",
     ]
 
 
@@ -340,6 +375,119 @@ def test_fetch_newsroom_directory_rows_uses_public_explore_urls_only() -> None:
     assert rows[2]["id"] == "newsroom-the-circle"
     assert rows[2]["countries"] == ["France", "Germany"]
     assert rows[2]["source_url"] == EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL
+
+
+def test_fetch_newsroom_directory_rows_discovers_european_networks_across_public_browse_pages() -> (
+    None
+):
+    explore_html = """
+    <html>
+      <body>
+        <a href="https://findyournews.org/organization/sample-one/">Sample One</a>
+      </body>
+    </html>
+    """
+    networks_html = """
+    <html>
+      <body>
+        <a href="/network/the-circle/">The Circle</a>
+        <a href="/search-networks/page/2/">Page 2</a>
+        <a href="/network-focus/cross-border/">Cross-border</a>
+        <a href="/about/">About</a>
+      </body>
+    </html>
+    """
+    page_two_html = """
+    <html>
+      <body>
+        <a href="/network/hostwriter-network/">Hostwriter</a>
+      </body>
+    </html>
+    """
+    focus_html = """
+    <html>
+      <body>
+        <a href="/network/solomon/">Solomon</a>
+        <a href="/search-networks/page/2/">Page 2 again</a>
+      </body>
+    </html>
+    """
+    detail_html = """
+    <div class="hero-organization">
+      <h1>Sample One</h1>
+      <h4>Investigative nonprofit newsroom</h4>
+    </div>
+    <div class="panel-content core-details">
+      <h6>Location</h6><hr><p class="small">Chicago, IL, UNITED STATES</p>
+      <h6>Places Covered</h6><hr><p class="small"><a>Chicago</a>, <a>Illinois</a></p>
+      <h6>Topics</h6><hr><p class="small"><a>Corruption</a></p>
+      <h6>Languages</h6><hr><p class="small"><a>English</a></p>
+      <h6>Reach</h6><hr><p class="small">Local</p>
+      <h6>Year Founded</h6><hr><p class="small">2018</p>
+    </div>
+    <div class="text-block"><h6>Mission</h6><p>Mission text</p></div>
+    <div class="text-block"><h6>About our journalism</h6><p>About text</p></div>
+    <a href="https://example.org" id="button-website">Website</a>
+    """
+    the_circle_detail_html = """
+    <h1>The Circle</h1>
+    <p>The Circle is a network of cross-border, collaborative media hubs across Europe.</p>
+    <h2>About the network</h2>
+    <p>About the network.</p>
+    <h2>Contact</h2>
+    <p><strong>Website:</strong><a href="https://www.thecirclehubs.org">Website</a></p>
+    <h3>Network details</h3>
+    <p><strong>Founded:</strong> 2022<br><strong>Geographical focus:</strong> European</p>
+    <h3>Countries</h3>
+    <ul><li>France</li><li>Germany</li></ul>
+    """
+    hostwriter_detail_html = """
+    <h1>Hostwriter Network</h1>
+    <p>Cross-border collaboration network.</p>
+    <h2>About the network</h2>
+    <p>Hostwriter about text.</p>
+    <h3>Network details</h3>
+    <p><strong>Founded:</strong> 2013<br><strong>Geographical focus:</strong> International</p>
+    <h3>Countries</h3>
+    <ul><li>Germany</li></ul>
+    """
+    solomon_detail_html = """
+    <h1>Solomon</h1>
+    <p>Greek nonprofit newsroom network profile.</p>
+    <h2>About the network</h2>
+    <p>Solomon about text.</p>
+    <h3>Network details</h3>
+    <p><strong>Founded:</strong> 2018<br><strong>Geographical focus:</strong> European</p>
+    <h3>Countries</h3>
+    <ul><li>Greece</li></ul>
+    """
+    responses = {
+        NEWSROOM_DIRECTORY_SOURCE_URL: _FakeResponse(explore_html),
+        EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL: _FakeResponse(networks_html),
+        "https://findyournews.org/organization/sample-one/": _FakeResponse(detail_html),
+        "https://journalismdirectory.org/search-networks/page/2/": _FakeResponse(page_two_html),
+        "https://journalismdirectory.org/network-focus/cross-border/": _FakeResponse(focus_html),
+        "https://journalismdirectory.org/network/the-circle/": _FakeResponse(
+            the_circle_detail_html
+        ),
+        "https://journalismdirectory.org/network/hostwriter-network/": _FakeResponse(
+            hostwriter_detail_html
+        ),
+        "https://journalismdirectory.org/network/solomon/": _FakeResponse(solomon_detail_html),
+    }
+
+    session = _FakeSession(responses)
+    rows = fetch_newsroom_directory_rows(session=session)
+
+    assert [row["id"] for row in rows] == [
+        "newsroom-sample-one",
+        "newsroom-the-circle",
+        "newsroom-hostwriter-network",
+        "newsroom-solomon",
+    ]
+    assert "https://journalismdirectory.org/search-networks/page/2/" in session.requested_urls
+    assert "https://journalismdirectory.org/network-focus/cross-border/" in session.requested_urls
+    assert "https://journalismdirectory.org/about/" not in session.requested_urls
 
 
 def test_fetch_newsroom_directory_rows_wraps_request_errors() -> None:

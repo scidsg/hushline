@@ -10,7 +10,7 @@
 
 - The artifact is intentionally derived only from public detail pages linked from the public browse pages above.
 - The broader WordPress organization API includes records that are not visible in the public Explore experience and should not be treated as the user-facing newsroom directory.
-- The European journalism source is limited to public network detail pages linked from `search-networks`; non-public submission/contact fields must not be ingested.
+- The European journalism source is limited to public network detail pages discoverable from `search-networks` and its public pagination/archive browse pages; non-public submission/contact fields must not be ingested.
 
 ## Commands
 
