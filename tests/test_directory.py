@@ -1865,7 +1865,7 @@ def test_directory_users_json_filters_all_rows_by_combined_geography_and_listing
     assert display_names == {"Illinois Newsroom", "Illinois Newsroom User"}
 
 
-def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_filters(
+def test_directory_attorney_filters_json_reflects_active_query_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     california_listing = PublicRecordListing(
@@ -1910,16 +1910,8 @@ def test_directory_attorney_filters_json_exposes_metadata_without_reflecting_fil
     response = client.get(f"{url_for('directory_attorney_filters')}?country=US&region=CA")
     assert response.status_code == 200
     assert response.json == {
-        "countries": [
-            {"code": "Australia", "label": "Australia", "count": 1},
-            {"code": "United States", "label": "United States", "count": 2},
-        ],
-        "regions": {
-            "United States": [
-                {"code": "CA", "label": "California", "count": 1},
-                {"code": "NY", "label": "New York", "count": 1},
-            ]
-        },
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
     }
 
 
@@ -1999,7 +1991,7 @@ def test_directory_newsroom_filters_json_includes_automated_newsroom_listings(
     }
 
 
-def test_directory_all_filters_json_exposes_metadata_without_reflecting_filters(
+def test_directory_all_filters_json_reflects_active_query_filters(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     verified_user = _directory_username(
@@ -2066,23 +2058,46 @@ def test_directory_all_filters_json_exposes_metadata_without_reflecting_filters(
     )
     assert response.status_code == 200
     assert response.json == {
-        "countries": [
-            {"code": "Italy", "label": "Italy", "count": 1},
-            {"code": "United States", "label": "United States", "count": 4},
-        ],
-        "regions": {
-            "United States": [
-                {"code": "CA", "label": "California", "count": 2},
-                {"code": "IL", "label": "Illinois", "count": 1},
-            ]
-        },
-        "listing_types": [
-            {"code": "verified", "label": "Verified", "count": 1},
-            {"code": "attorneys", "label": "Attorneys", "count": 1},
-            {"code": "newsrooms", "label": "Newsrooms", "count": 1},
-            {"code": "securedrop", "label": "SecureDrop", "count": 1},
-            {"code": "globaleaks", "label": "GlobaLeaks", "count": 1},
-        ],
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+        "listing_types": [{"code": "attorneys", "label": "Attorneys", "count": 1}],
+    }
+
+
+def test_directory_all_filters_json_updates_country_counts_for_verified_listing_type(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="San Francisco",
+    )
+    newsroom_user = _directory_username(
+        username="belgium-newsroom-user",
+        display_name="Belgium Newsroom User",
+        account_category=AccountCategory.NEWSROOM.value,
+        country="Belgium",
+        city="Brussels",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (verified_user, newsroom_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_all_filters')}?all_listing_type=verified")
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 1}],
+        "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
+        "listing_types": [{"code": "verified", "label": "Verified", "count": 1}],
     }
 
 

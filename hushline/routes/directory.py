@@ -910,12 +910,20 @@ def register_directory_routes(app: Flask) -> None:
                 "regions": {},
             }
 
+        public_record_listings = get_public_record_listings()
+        attorney_usernames = tuple(
+            username for username in get_directory_usernames() if _is_self_reported_attorney(username)
+        )
+        attorney_filter_state = _attorney_filter_state(
+            _attorney_filter_metadata(public_record_listings, attorney_usernames)
+        )
+
         return _attorney_filter_metadata(
-            get_public_record_listings(),
+            _filter_public_record_listings(public_record_listings, attorney_filter_state),
             tuple(
                 username
-                for username in get_directory_usernames()
-                if _is_self_reported_attorney(username)
+                for username in attorney_usernames
+                if _username_matches_attorney_filters(username, attorney_filter_state)
             ),
         )
 
@@ -927,12 +935,20 @@ def register_directory_routes(app: Flask) -> None:
                 "regions": {},
             }
 
+        newsroom_listings = get_newsroom_directory_listings()
+        newsroom_usernames = tuple(
+            username for username in get_directory_usernames() if _is_self_reported_newsroom(username)
+        )
+        newsroom_filter_state = _newsroom_filter_state(
+            _newsroom_filter_metadata(newsroom_listings, newsroom_usernames)
+        )
+
         return _newsroom_filter_metadata(
-            get_newsroom_directory_listings(),
+            _filter_newsroom_listings(newsroom_listings, newsroom_filter_state),
             tuple(
                 username
-                for username in get_directory_usernames()
-                if _is_self_reported_newsroom(username)
+                for username in newsroom_usernames
+                if _username_matches_newsroom_filters(username, newsroom_filter_state)
             ),
         )
 
@@ -941,14 +957,16 @@ def register_directory_routes(app: Flask) -> None:
         if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
             return _empty_all_filter_metadata()
 
+        all_directory_entries = _build_all_directory_entries(
+            list(get_directory_usernames()),
+            list(get_public_record_listings()),
+            list(get_globaleaks_directory_listings()),
+            list(get_newsroom_directory_listings()),
+            list(get_securedrop_directory_listings()),
+        )
+        all_filter_state = _all_filter_state(_all_filter_metadata(all_directory_entries))
         return _all_filter_metadata(
-            _build_all_directory_entries(
-                list(get_directory_usernames()),
-                list(get_public_record_listings()),
-                list(get_globaleaks_directory_listings()),
-                list(get_newsroom_directory_listings()),
-                list(get_securedrop_directory_listings()),
-            )
+            _filter_all_directory_entries(all_directory_entries, all_filter_state)
         )
 
     @app.route("/directory/users.json")

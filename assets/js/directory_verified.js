@@ -905,7 +905,6 @@ document.addEventListener("DOMContentLoaded", function () {
       controller.updateListingTypeLabels();
 
       if (controller.panel) {
-        controller.panel.hidden = !controller.hasActiveFilters();
         controller.updateToggle();
         controller.updateClearVisibility();
       }
@@ -933,12 +932,13 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     };
 
-    controller.ensureMetadata = function () {
-      if (controller.metadataRequest) {
+    controller.ensureMetadata = function (search = window.location.search) {
+      if (controller.metadataRequest && controller.metadataSearch === search) {
         return controller.metadataRequest;
       }
 
-      controller.metadataRequest = fetch(`${directoryPath}/${controller.metadataPath}`)
+      controller.metadataSearch = search;
+      const metadataRequest = fetch(`${directoryPath}/${controller.metadataPath}${search}`)
         .then((response) => {
           if (!response.ok) {
             throw new Error("Network response was not ok");
@@ -946,17 +946,24 @@ document.addEventListener("DOMContentLoaded", function () {
           return response.json();
         })
         .then((data) => {
+          if (controller.metadataSearch !== search) {
+            return data;
+          }
+
           controller.metadata = data;
-          controller.applyFromSearch(window.location.search);
+          controller.applyFromSearch(search);
           return data;
         })
         .catch((error) => {
-          controller.metadataRequest = null;
+          if (controller.metadataSearch === search) {
+            controller.metadataRequest = null;
+          }
           console.error(`Failed to load ${controller.resultsLabelPlural} filter metadata:`, error);
           return null;
         });
 
-      return controller.metadataRequest;
+      controller.metadataRequest = metadataRequest;
+      return metadataRequest;
     };
 
     controller.refreshResults = async function () {
@@ -1040,8 +1047,7 @@ document.addEventListener("DOMContentLoaded", function () {
         controller.setSelectOpenState(event.currentTarget, false);
       };
 
-      controller.countryFilter.addEventListener("change", async function () {
-        await controller.ensureMetadata();
+      controller.countryFilter.addEventListener("change", function () {
         controller.updateCountryLabels();
         controller.updateRegionOptions();
         syncExpandedLabelsOnClose();
@@ -1064,8 +1070,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       if (controller.listingTypeFilter) {
-        controller.listingTypeFilter.addEventListener("change", async function () {
-          await controller.ensureMetadata();
+        controller.listingTypeFilter.addEventListener("change", function () {
           controller.updateListingTypeLabels();
           controller.updateClearVisibility();
           syncExpandedLabelsOnClose();
@@ -1174,6 +1179,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function refreshLocationFilterMetadata(search = window.location.search) {
+    return Promise.all(
+      locationFilterControllers.map((controller) => controller.ensureMetadata(search)),
+    );
+  }
+
   function setDirectoryUrl(search) {
     window.history.replaceState(
       {},
@@ -1199,6 +1210,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return Promise.all([
       fetchUsers(sharedDirectorySearch(search)),
       fetchUsers(allTabDirectorySearch(search)),
+      refreshLocationFilterMetadata(search),
     ]).then(([directoryData, nextAllTabUserData]) => {
       userData = directoryData;
       allTabUserData = nextAllTabUserData;
