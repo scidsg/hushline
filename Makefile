@@ -33,11 +33,12 @@ run: ## Run the app in a limited mode
 	docker compose up --build
 
 .PHONY: serve
-serve: ## Remove all local Docker containers/images/volumes, reseed, and rebuild the local Docker stack
+serve: ## Remove local Docker containers/images/volumes/build cache, reseed, and rebuild the local Docker stack
 	docker compose down --volumes --remove-orphans --rmi all || true
 	@if [ -n "$$(docker ps -aq)" ]; then docker rm -f $$(docker ps -aq); fi
 	@if [ -n "$$(docker image ls -aq)" ]; then docker image rm -f $$(docker image ls -aq); fi
 	@if [ -n "$$(docker volume ls -q)" ]; then docker volume rm $$(docker volume ls -q); fi
+	docker builder prune -af
 	docker compose up -d --build postgres blob-storage
 	docker compose run --rm dev_data
 	docker compose up --build

@@ -60,7 +60,7 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 
 | Command                                   | Purpose                                  |
 | ----------------------------------------- | ---------------------------------------- |
-| `make serve`                              | Remove all local Docker containers/images/volumes, reseed, and rebuild dev |
+| `make serve`                              | Remove local Docker containers/images/volumes/build cache, reseed, and rebuild dev |
 | `make lint`                               | Run formatting/lint/type checks          |
 | `make test`                               | Run full test suite with coverage output |
 | `make fix`                                | Apply formatting/lint autofixes          |
