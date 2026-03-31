@@ -3287,7 +3287,9 @@ def test_newsroom_listing_page_is_read_only(
     dir_meta_text = dir_meta.get_text(" ", strip=True)
     assert dir_meta_text.startswith("🧪 Beta:")
     assert "INN Find Your News directory" in dir_meta_text
-    assert "Find Your News directory.</a>" in response.text
+    source_link = dir_meta.select_one("a")
+    assert source_link is not None
+    assert source_link.get_text(" ", strip=True) == "INN Find Your News directory."
     assert "Directory Profile" in page_text
     assert "Source" in page_text
 
