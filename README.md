@@ -60,6 +60,7 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 
 | Command                                   | Purpose                                  |
 | ----------------------------------------- | ---------------------------------------- |
+| `make serve`                              | Fully tear down, reseed, and rebuild dev |
 | `make lint`                               | Run formatting/lint/type checks          |
 | `make test`                               | Run full test suite with coverage output |
 | `make fix`                                | Apply formatting/lint autofixes          |

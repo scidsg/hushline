@@ -33,8 +33,10 @@ run: ## Run the app in a limited mode
 	docker compose up --build
 
 .PHONY: serve
-serve: ## Tear down and rebuild the local Docker stack
-	docker compose down --remove-orphans
+serve: ## Fully tear down, reseed, and rebuild the local Docker stack
+	docker compose down --volumes --remove-orphans
+	docker compose up -d --build postgres blob-storage
+	docker compose run --rm dev_data
 	docker compose up --build
 
 .PHONY: run-full
