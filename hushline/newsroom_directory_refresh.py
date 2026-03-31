@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
+from collections import deque
 from dataclasses import dataclass
 from html import unescape
 from typing import Mapping, Protocol, Sequence, cast
@@ -99,6 +100,7 @@ class NewsroomDirectorySource:
     browse_url: str
     listing_hosts: frozenset[str]
     listing_path_prefix: str
+    browse_path_prefixes: tuple[str, ...] = ()
 
 
 NEWSROOM_DIRECTORY_SOURCES = (
@@ -107,12 +109,18 @@ NEWSROOM_DIRECTORY_SOURCES = (
         browse_url=NEWSROOM_DIRECTORY_SOURCE_URL,
         listing_hosts=_FIND_YOUR_NEWS_HOSTS,
         listing_path_prefix="/organization/",
+        browse_path_prefixes=("/explore/",),
     ),
     NewsroomDirectorySource(
         label=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_LABEL,
         browse_url=EUROPEAN_NEWSROOM_DIRECTORY_SOURCE_URL,
         listing_hosts=_EUROPEAN_DIRECTORY_HOSTS,
         listing_path_prefix="/network/",
+        browse_path_prefixes=(
+            "/search-networks/",
+            "/network-focus/",
+            "/network-size/",
+        ),
     ),
 )
 
@@ -272,6 +280,26 @@ def _listing_path_slug(url: str) -> str:
     return path.split("/")[-1]
 
 
+def _canonicalize_public_url(url: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/") or "/"
+    if path != "/":
+        path = f"{path}/"
+    query = f"?{parsed.query}" if parsed.query else ""
+    return f"{parsed.scheme}://{parsed.netloc}{path}{query}"
+
+
+def _path_matches_public_prefixes(path: str, prefixes: Sequence[str]) -> bool:
+    normalized_path = path.rstrip("/") or "/"
+    for prefix in prefixes:
+        normalized_prefix = prefix.rstrip("/") or "/"
+        if normalized_path == normalized_prefix or normalized_path.startswith(
+            f"{normalized_prefix}/"
+        ):
+            return True
+    return False
+
+
 def _extract_listing_urls(
     html: str,
     *,
@@ -321,6 +349,41 @@ def _extract_european_network_urls(html: str, *, source_url: str) -> list[str]:
         allowed_hosts=_EUROPEAN_DIRECTORY_HOSTS,
         listing_path_prefix="/network/",
     )
+
+
+def _extract_source_browse_page_urls(
+    source: NewsroomDirectorySource,
+    html: str,
+    *,
+    source_url: str,
+) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+    urls: list[str] = []
+    seen: set[str] = set()
+
+    for anchor in soup.find_all("a", href=True):
+        href = urljoin(source_url, str(anchor.get("href")))
+        normalized_href = _normalize_http_url(href, field="href", required=False)
+        if not normalized_href:
+            continue
+
+        parsed = urlparse(normalized_href)
+        host = (parsed.hostname or "").casefold()
+        path = parsed.path.rstrip("/") or "/"
+        if host not in source.listing_hosts or path.startswith(source.listing_path_prefix):
+            continue
+
+        if not _path_matches_public_prefixes(path, source.browse_path_prefixes):
+            continue
+
+        canonical_url = _canonicalize_public_url(normalized_href)
+        if canonical_url in seen:
+            continue
+
+        seen.add(canonical_url)
+        urls.append(canonical_url)
+
+    return urls
 
 
 def _extract_text_blocks(soup: BeautifulSoup) -> dict[str, str]:
@@ -790,12 +853,38 @@ def _fetch_rows_for_source(
     timeout_seconds: float,
 ) -> list[dict[str, object]]:
     try:
-        response = _get_with_retries(
-            client,
-            url=source.browse_url,
-            timeout_seconds=timeout_seconds,
-        )
-        detail_urls = _extract_source_listing_urls(source, response.text)
+        detail_urls: list[str] = []
+        seen_detail_urls: set[str] = set()
+        pending_browse_urls = deque([_canonicalize_public_url(source.browse_url)])
+        seen_browse_urls: set[str] = set()
+
+        while pending_browse_urls:
+            browse_url = pending_browse_urls.popleft()
+            if browse_url in seen_browse_urls:
+                continue
+
+            seen_browse_urls.add(browse_url)
+            response = _get_with_retries(
+                client,
+                url=browse_url,
+                timeout_seconds=timeout_seconds,
+            )
+
+            for detail_url in _extract_source_listing_urls(source, response.text):
+                if detail_url in seen_detail_urls:
+                    continue
+                seen_detail_urls.add(detail_url)
+                detail_urls.append(detail_url)
+
+            for discovered_browse_url in _extract_source_browse_page_urls(
+                source,
+                response.text,
+                source_url=browse_url,
+            ):
+                if discovered_browse_url in seen_browse_urls:
+                    continue
+                pending_browse_urls.append(discovered_browse_url)
+
         if not detail_urls:
             raise NewsroomDirectoryRefreshError(
                 f"No newsroom listings were discovered from {source.label}"
