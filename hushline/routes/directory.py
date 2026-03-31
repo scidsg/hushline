@@ -912,7 +912,9 @@ def register_directory_routes(app: Flask) -> None:
 
         public_record_listings = get_public_record_listings()
         attorney_usernames = tuple(
-            username for username in get_directory_usernames() if _is_self_reported_attorney(username)
+            username
+            for username in get_directory_usernames()
+            if _is_self_reported_attorney(username)
         )
         attorney_filter_state = _attorney_filter_state(
             _attorney_filter_metadata(public_record_listings, attorney_usernames)
@@ -937,7 +939,9 @@ def register_directory_routes(app: Flask) -> None:
 
         newsroom_listings = get_newsroom_directory_listings()
         newsroom_usernames = tuple(
-            username for username in get_directory_usernames() if _is_self_reported_newsroom(username)
+            username
+            for username in get_directory_usernames()
+            if _is_self_reported_newsroom(username)
         )
         newsroom_filter_state = _newsroom_filter_state(
             _newsroom_filter_metadata(newsroom_listings, newsroom_usernames)
