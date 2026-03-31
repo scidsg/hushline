@@ -58,13 +58,14 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 
 ### 2) Common commands
 
-| Command                                   | Purpose                                  |
-| ----------------------------------------- | ---------------------------------------- |
-| `make lint`                               | Run formatting/lint/type checks          |
-| `make test`                               | Run full test suite with coverage output |
-| `make fix`                                | Apply formatting/lint autofixes          |
-| `make run-full`                           | Run Stripe-enabled development stack     |
-| `docker compose down -v --remove-orphans` | Reset local Docker state                 |
+| Command                                   | Purpose                                                                             |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| `make serve`                              | Remove local Docker containers/images/volumes/build caches, reseed, and rebuild dev |
+| `make lint`                               | Run formatting/lint/type checks                                                     |
+| `make test`                               | Run full test suite with coverage output                                            |
+| `make fix`                                | Apply formatting/lint autofixes                                                     |
+| `make run-full`                           | Run Stripe-enabled development stack                                                |
+| `docker compose down -v --remove-orphans` | Reset local Docker state                                                            |
 
 ## Security and Privacy
 
