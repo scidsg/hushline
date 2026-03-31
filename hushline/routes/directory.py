@@ -341,9 +341,7 @@ def _empty_all_filter_metadata() -> dict[str, object]:
     return {
         "countries": [],
         "regions": {},
-        "listing_types": [
-            {"code": code, "label": label, "count": 0} for code, label in _ALL_LISTING_TYPE_LABELS
-        ],
+        "listing_types": [],
     }
 
 
@@ -630,6 +628,7 @@ def _all_filter_metadata(
         "listing_types": [
             {"code": code, "label": label, "count": listing_type_counts[code]}
             for code, label in _ALL_LISTING_TYPE_LABELS
+            if listing_type_counts[code] > 0
         ],
     }
 
