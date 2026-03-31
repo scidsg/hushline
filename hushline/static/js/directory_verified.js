@@ -1008,7 +1008,6 @@
         controller.updateListingTypeLabels();
 
         if (controller.panel) {
-          controller.panel.hidden = !controller.hasActiveFilters();
           controller.updateToggle();
           controller.updateClearVisibility();
         }
