@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass, field
 from typing import Mapping, Sequence
 from urllib.parse import urlparse
 
@@ -19,6 +20,28 @@ _SECUREDROP_USER_AGENT = (
 
 class SecureDropDirectoryRefreshError(Exception):
     pass
+
+
+@dataclass(slots=True)
+class SecureDropRefreshSummary:
+    total_count: int
+    added_rows: tuple[Mapping[str, object], ...] = field(default_factory=tuple)
+    removed_rows: tuple[Mapping[str, object], ...] = field(default_factory=tuple)
+    updated_rows: tuple[tuple[Mapping[str, object], Mapping[str, object]], ...] = field(
+        default_factory=tuple
+    )
+
+    @property
+    def added_count(self) -> int:
+        return len(self.added_rows)
+
+    @property
+    def removed_count(self) -> int:
+        return len(self.removed_rows)
+
+    @property
+    def updated_count(self) -> int:
+        return len(self.updated_rows)
 
 
 def _sort_key(value: str) -> str:
@@ -87,8 +110,12 @@ def _normalize_http_url(
 
 
 def _choose_website(row: Mapping[str, object]) -> str:
-    for field in ("organization_url", "landing_page_url", "directory_url"):
-        normalized = _normalize_http_url(row.get(field), field=field, required=False)
+    for field_name in ("organization_url", "landing_page_url", "directory_url"):
+        normalized = _normalize_http_url(
+            row.get(field_name),
+            field=field_name,
+            required=False,
+        )
         if normalized:
             return normalized
     raise SecureDropDirectoryRefreshError(
@@ -193,21 +220,79 @@ def fetch_securedrop_directory_rows(
     return [dict(item) for item in payload]
 
 
+def _summary_row_label(row: Mapping[str, object]) -> str:
+    row_id = str(row.get("id", "")).strip()
+    name = str(row.get("name", "")).strip()
+    if name and row_id:
+        return f"{name} (`{row_id}`)"
+    if name:
+        return name
+    return f"`{row_id}`" if row_id else "Unnamed SecureDrop listing"
+
+
+def _summary_row_sort_key(row: Mapping[str, object]) -> tuple[str, str]:
+    name = str(row.get("name", "")).strip()
+    row_id = str(row.get("id", "")).strip()
+    return (_sort_key(name or row_id), row_id)
+
+
+def _changed_field_names(
+    old_row: Mapping[str, object],
+    new_row: Mapping[str, object],
+) -> list[str]:
+    field_order = list(dict.fromkeys([*old_row.keys(), *new_row.keys()]))
+    return [
+        field_name
+        for field_name in field_order
+        if old_row.get(field_name) != new_row.get(field_name)
+    ]
+
+
+def _append_summary_section(lines: list[str], heading: str, entries: Sequence[str]) -> None:
+    if not entries:
+        return
+    lines.extend(["", f"### {heading}", *[f"- {entry}" for entry in entries]])
+
+
 def render_securedrop_refresh_summary(
     *,
     source_url: str,
-    total_count: int,
-    added_count: int,
-    removed_count: int,
-    updated_count: int,
+    summary: SecureDropRefreshSummary,
 ) -> str:
     lines = [
         "## SecureDrop Directory Refresh Summary",
         "",
         f"- Source: {source_url}",
-        f"- Total instances: {total_count}",
-        f"- Added instances: {added_count}",
-        f"- Removed instances: {removed_count}",
-        f"- Updated instances: {updated_count}",
+        f"- Total instances: {summary.total_count}",
+        f"- Added instances: {summary.added_count}",
+        f"- Removed instances: {summary.removed_count}",
+        f"- Updated instances: {summary.updated_count}",
     ]
+    _append_summary_section(
+        lines,
+        "Added Instances",
+        [_summary_row_label(row) for row in sorted(summary.added_rows, key=_summary_row_sort_key)],
+    )
+    _append_summary_section(
+        lines,
+        "Removed Instances",
+        [
+            _summary_row_label(row)
+            for row in sorted(summary.removed_rows, key=_summary_row_sort_key)
+        ],
+    )
+    _append_summary_section(
+        lines,
+        "Updated Instances",
+        [
+            (
+                f"{_summary_row_label(new_row)}: "
+                + ", ".join(f"`{field}`" for field in _changed_field_names(old_row, new_row))
+            )
+            for old_row, new_row in sorted(
+                summary.updated_rows,
+                key=lambda pair: _summary_row_sort_key(pair[1]),
+            )
+        ],
+    )
     return "\n".join(lines) + "\n"

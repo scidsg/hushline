@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 from hushline.securedrop_directory_refresh import (
     SECUREDROP_DIRECTORY_API_URL,
     SecureDropDirectoryRefreshError,
+    SecureDropRefreshSummary,
     fetch_securedrop_directory_rows,
     refresh_securedrop_directory_rows,
     render_securedrop_refresh_summary,
@@ -79,23 +80,31 @@ def _serialize_rows(rows: Sequence[Mapping[str, object]]) -> str:
     return json.dumps(rows, indent=2, ensure_ascii=False) + "\n"
 
 
-def _count_updated_rows(
+def _rows_by_id(
     old_rows: Sequence[Mapping[str, object]],
-    new_rows: Sequence[Mapping[str, object]],
-) -> int:
-    old_by_id = {
+) -> dict[str, dict[str, object]]:
+    return {
         str(row["id"]): dict(row)
         for row in old_rows
         if isinstance(row.get("id"), str) and row.get("id")
     }
-    updated_count = 0
+
+
+def _updated_rows(
+    old_rows: Sequence[Mapping[str, object]],
+    new_rows: Sequence[Mapping[str, object]],
+) -> list[tuple[dict[str, object], dict[str, object]]]:
+    old_by_id = _rows_by_id(old_rows)
+    updated_rows: list[tuple[dict[str, object], dict[str, object]]] = []
     for row in new_rows:
         row_id = row.get("id")
         if not isinstance(row_id, str) or not row_id:
             continue
-        if row_id in old_by_id and old_by_id[row_id] != dict(row):
-            updated_count += 1
-    return updated_count
+        new_row = dict(row)
+        old_row = old_by_id.get(row_id)
+        if old_row is not None and old_row != new_row:
+            updated_rows.append((old_row, new_row))
+    return updated_rows
 
 
 def main() -> int:
@@ -108,22 +117,28 @@ def main() -> int:
     )
     refreshed_rows = refresh_securedrop_directory_rows(fetched_rows)
 
-    old_ids = {
-        str(row["id"]) for row in existing_rows if isinstance(row.get("id"), str) and row.get("id")
-    }
-    new_ids = {
-        str(row["id"]) for row in refreshed_rows if isinstance(row.get("id"), str) and row.get("id")
-    }
-    added_count = len(new_ids - old_ids)
-    removed_count = len(old_ids - new_ids)
-    updated_count = _count_updated_rows(existing_rows, refreshed_rows)
+    existing_by_id = _rows_by_id(existing_rows)
+    refreshed_by_id = _rows_by_id(refreshed_rows)
+    added_rows = [
+        dict(row)
+        for row in refreshed_rows
+        if isinstance(row.get("id"), str) and row["id"] not in existing_by_id
+    ]
+    removed_rows = [
+        dict(row)
+        for row in existing_rows
+        if isinstance(row.get("id"), str) and row["id"] not in refreshed_by_id
+    ]
+    updated_rows = _updated_rows(existing_rows, refreshed_rows)
 
     summary = render_securedrop_refresh_summary(
         source_url=args.api_url,
-        total_count=len(refreshed_rows),
-        added_count=added_count,
-        removed_count=removed_count,
-        updated_count=updated_count,
+        summary=SecureDropRefreshSummary(
+            total_count=len(refreshed_rows),
+            added_rows=tuple(added_rows),
+            removed_rows=tuple(removed_rows),
+            updated_rows=tuple(updated_rows),
+        ),
     )
     print(summary, end="")
 

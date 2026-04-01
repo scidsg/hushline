@@ -9,6 +9,7 @@ from hushline import securedrop_directory_refresh as refresh_module
 from hushline.securedrop_directory_refresh import (
     SECUREDROP_DIRECTORY_API_URL,
     SecureDropDirectoryRefreshError,
+    SecureDropRefreshSummary,
     _choose_website,
     _normalize_http_url,
     _normalize_string_list,
@@ -323,14 +324,49 @@ def test_fetch_securedrop_directory_rows_rejects_non_object_payload_items() -> N
 def test_render_securedrop_refresh_summary() -> None:
     summary = render_securedrop_refresh_summary(
         source_url=SECUREDROP_DIRECTORY_API_URL,
-        total_count=24,
-        added_count=2,
-        removed_count=1,
-        updated_count=4,
+        summary=SecureDropRefreshSummary(
+            total_count=24,
+            added_rows=(
+                {
+                    "id": "securedrop-new-desk",
+                    "name": "New Desk",
+                },
+            ),
+            removed_rows=(
+                {
+                    "id": "securedrop-old-desk",
+                    "name": "Old Desk",
+                },
+            ),
+            updated_rows=(
+                (
+                    {
+                        "id": "securedrop-existing-desk",
+                        "name": "Existing Desk",
+                        "landing_page_url": "https://old.example.test/tips",
+                        "countries": ["United States"],
+                    },
+                    {
+                        "id": "securedrop-existing-desk",
+                        "name": "Existing Desk",
+                        "landing_page_url": "https://new.example.test/tips",
+                        "countries": ["United States", "Canada"],
+                    },
+                ),
+            ),
+        ),
     )
 
     assert "SecureDrop Directory Refresh Summary" in summary
     assert "Total instances: 24" in summary
-    assert "Added instances: 2" in summary
+    assert "Added instances: 1" in summary
     assert "Removed instances: 1" in summary
-    assert "Updated instances: 4" in summary
+    assert "Updated instances: 1" in summary
+    assert "### Added Instances" in summary
+    assert "- New Desk (`securedrop-new-desk`)" in summary
+    assert "### Removed Instances" in summary
+    assert "- Old Desk (`securedrop-old-desk`)" in summary
+    assert "### Updated Instances" in summary
+    assert (
+        "- Existing Desk (`securedrop-existing-desk`): `landing_page_url`, `countries`" in summary
+    )
