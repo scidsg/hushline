@@ -81,6 +81,16 @@ jobs:
                      }'
           fi
 
+      - name: Generate session fernet key
+        id: session-fernet-key
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import base64
+          import os
+
+          print(f"session_fernet_key={base64.urlsafe_b64encode(os.urandom(32)).decode()}")
+          PY
+
       - name: Plan test infrastrucutre
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         with:
@@ -90,6 +100,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
+            SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"
 
       - name: Apply test infrastrucutre
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
@@ -99,6 +110,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
+            SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"
 
       - name: terraform output
         uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
@@ -130,6 +142,16 @@ jobs:
           ref: ${{ env.HUSHLINE_INFRA_REF }}
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
 
+      - name: Generate session fernet key
+        id: session-fernet-key
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import base64
+          import os
+
+          print(f"session_fernet_key={base64.urlsafe_b64encode(os.urandom(32)).decode()}")
+          PY
+
       - name: destroy worspace
         uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
         if: contains(github.event.pull_request.labels.*.name, 'deploy')
@@ -141,6 +163,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
+            SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"
 
       - name: retry destroy worspace
         uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
@@ -151,6 +174,7 @@ jobs:
           variables: |
             branch = "${{ github.head_ref }}"
             name = "${{ env.DO_APP_NAME }}"
+            SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"
 
       - name: remove deploy label
         uses: actions-ecosystem/action-remove-labels@2ce5d41b4b6aa8503e285553f75ed56e0a40bae0

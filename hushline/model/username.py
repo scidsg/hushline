@@ -114,7 +114,13 @@ class Username(Model):
 
     @property
     def valid_fields(self) -> Sequence[ExtraField]:
-        return [x for x in self.extra_fields if x.label and x.value]
+        valid_fields = [x for x in self.extra_fields if x.label and x.value]
+        profile_fields: list[ExtraField] = []
+        if account_category := self.user.account_category_label:
+            profile_fields.append(ExtraField("Category", account_category, False))
+        if profile_location := self.user.profile_location:
+            profile_fields.append(ExtraField("Location", profile_location, False))
+        return [*profile_fields, *valid_fields]
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id} username={self.username}>"

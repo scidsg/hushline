@@ -16,6 +16,7 @@ from hushline import create_app as create_hushline_app
 from hushline import crypto, register_error_handlers
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     FieldType,
     FieldValue,
     InviteCode,
@@ -60,6 +61,29 @@ def test_enums_defensive_paths() -> None:
     )
     with pytest.raises(Exception, match="Programming error"):
         EnumFieldType.label(fake_field_type)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Invalid AccountCategory"):
+        AccountCategory.parse_str("not-a-real-category")
+
+    fake_account_category = SimpleNamespace(
+        JOURNALIST=object(),
+        NEWSROOM=object(),
+        LAWYER=object(),
+        LAW_FIRM=object(),
+        BUSINESS=object(),
+        NONPROFIT=object(),
+        EDUCATOR=object(),
+        SCHOOL=object(),
+        ACTIVIST=object(),
+        ORGANIZER=object(),
+        DEVELOPER=object(),
+        SECURITY_RESEARCHER=object(),
+        OTHER=object(),
+    )
+    account_category_label_prop = cast(property, AccountCategory.__dict__["label"])
+    assert account_category_label_prop.fget is not None
+    with pytest.raises(Exception, match="Programming error"):
+        _ = account_category_label_prop.fget(fake_account_category)
 
 
 def test_model_repr_and_field_definition_move_up_noop(user: User) -> None:

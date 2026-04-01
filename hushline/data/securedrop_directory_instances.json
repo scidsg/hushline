@@ -9,8 +9,13 @@
     "landing_page_url": "https://www.aftenposten.no/securedrop",
     "onion_address": "tiykfvhb562gheutfnedysnhrxpxoztyszkqyroloyepwzxmxien77id.onion",
     "onion_name": "aftenposten.securedrop.tor.onion",
-    "countries": ["Norway"],
-    "languages": ["English", "Norwegian"],
+    "countries": [
+      "Norway"
+    ],
+    "languages": [
+      "English",
+      "Norwegian"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -38,8 +43,13 @@
     "landing_page_url": "https://www.aftonbladet.se/securedrop/",
     "onion_address": "xm33ge4kupk5o66eqxcd2r4fqcplpqb2sbdduf5z2nw4g2jrxe57luid.onion",
     "onion_name": "aftonbladet.securedrop.tor.onion",
-    "countries": ["Sweden"],
-    "languages": ["English", "Swedish"],
+    "countries": [
+      "Sweden"
+    ],
+    "languages": [
+      "English",
+      "Swedish"
+    ],
     "topics": [
       "business",
       "corruption",
@@ -62,10 +72,14 @@
     "description": "A platform with a news outlet focused on government, regulatory, legal and business news.",
     "directory_url": "https://securedrop.org/directory/bloomberg-industry-group/",
     "landing_page_url": "https://news.bloomberglaw.com/tips",
-    "onion_address": "33buewrpzrfpttl7kerqvtvzyo3ivumilwwmeqjryzajusltibaqc6ad.onion",
+    "onion_address": "3qqupamfznjrai6p4td7epa6pvidpumas2xjsihat73z23f37l2y52id.onion",
     "onion_name": "bloombergindustrygroup.securedrop.tor.onion",
-    "countries": ["USA"],
-    "languages": ["English"],
+    "countries": [
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -92,9 +106,18 @@
     "landing_page_url": "https://www.bloomberg.com/tips/",
     "onion_address": "ogdwaroarq4p6rnfn2hl4crvldyruyc2g24435qtxmd3twhevg7dsqid.onion",
     "onion_name": "bloomberg.securedrop.tor.onion",
-    "countries": ["All countries", "USA"],
-    "languages": ["English"],
-    "topics": ["business", "government", "technology"],
+    "countries": [
+      "All countries",
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
+    "topics": [
+      "business",
+      "government",
+      "technology"
+    ],
     "source_label": "SecureDrop directory",
     "source_url": "https://securedrop.org/api/v1/directory/"
   },
@@ -108,8 +131,14 @@
     "landing_page_url": "https://www.cbc.ca/securedrop",
     "onion_address": "gppg43zz5d2yfuom3yfmxnnokn3zj4mekt55onlng3zs653ty4fio6qd.onion",
     "onion_name": "cbcrc.securedrop.tor.onion",
-    "countries": ["All countries", "Canada"],
-    "languages": ["English", "French"],
+    "countries": [
+      "All countries",
+      "Canada"
+    ],
+    "languages": [
+      "English",
+      "French"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -141,8 +170,16 @@
     "landing_page_url": "https://www.dagbladet.no/securedrop/",
     "onion_address": "ydbpz5knb6ji3bdtahhm3wo7sed6lsy5vqnwfpnhpez4bquvoexbz7qd.onion",
     "onion_name": "dagbladet.securedrop.tor.onion",
-    "countries": ["All countries", "Norway"],
-    "languages": ["Danish", "English", "Norwegian", "Swedish"],
+    "countries": [
+      "All countries",
+      "Norway"
+    ],
+    "languages": [
+      "Danish",
+      "English",
+      "Norwegian",
+      "Swedish"
+    ],
     "topics": [
       "corruption",
       "crime",
@@ -168,8 +205,14 @@
     "landing_page_url": "https://www.spiegel.de/extra/so-nehmen-informanten-sicheren-kontakt-zum-spiegel-auf-a-1030502.html",
     "onion_address": "q6vdlj2ukulrqk37piqgxucpcwtxzdjhvjzqrfbevuhrzimsgjltmpqd.onion",
     "onion_name": "spiegel.securedrop.tor.onion",
-    "countries": ["Germany"],
-    "languages": ["All languages", "English", "German"],
+    "countries": [
+      "Germany"
+    ],
+    "languages": [
+      "All languages",
+      "English",
+      "German"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -195,8 +238,15 @@
     "landing_page_url": "https://www.ft.com/news-tips/",
     "onion_address": "nqu6crmtnzs2hs5abo2uqni53yqsnnwqnerdxuzyz5yxairxlzjzt6yd.onion",
     "onion_name": "ft.securedrop.tor.onion",
-    "countries": ["Asia", "Europe", "UK", "USA"],
-    "languages": ["English"],
+    "countries": [
+      "Asia",
+      "Europe",
+      "UK",
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -227,8 +277,13 @@
     "landing_page_url": "https://www.forbes.com/fdc/securedrop.html",
     "onion_address": "6zonlfhh7aqtfwoyvdlad3nxn6ljecx2k6tyyy3spt43nn54q6lvncid.onion",
     "onion_name": "forbes.securedrop.tor.onion",
-    "countries": ["All countries", "USA"],
-    "languages": ["English"],
+    "countries": [
+      "All countries",
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "cybersecurity",
@@ -254,8 +309,14 @@
     "landing_page_url": "https://forbiddenstories.org/safebox-network-tutorial/",
     "onion_address": "fg25fqpu2dnxp24xs3jlcley4hp2inshpzek44q3czkhq3zffoqk26id.onion",
     "onion_name": "forbiddenstories.securedrop.tor.onion",
-    "countries": ["All countries"],
-    "languages": ["English", "French", "Spanish"],
+    "countries": [
+      "All countries"
+    ],
+    "languages": [
+      "English",
+      "French",
+      "Spanish"
+    ],
     "topics": [
       "civil liberties",
       "corruption",
@@ -279,8 +340,17 @@
     "landing_page_url": "https://reportersunited.gr/greekleaks/",
     "onion_address": "jatasaqcoe7lqdpcyxo7vl3e5tdvl5jgmtadfat77i25qdj6z6a4ulad.onion",
     "onion_name": "greekleaks.securedrop.tor.onion",
-    "countries": ["Europe", "Greece"],
-    "languages": ["Arabic", "English", "French", "German", "Greek"],
+    "countries": [
+      "Europe",
+      "Greece"
+    ],
+    "languages": [
+      "Arabic",
+      "English",
+      "French",
+      "German",
+      "Greek"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -308,7 +378,10 @@
     "onion_address": "dpsw5tvlh2pccviydqw2cz5tjszd34zcdj322oikydqvgsqwitxup7yd.onion",
     "onion_name": "kennethrrosen.securedrop.tor.onion",
     "countries": [],
-    "languages": ["English", "Italian"],
+    "languages": [
+      "English",
+      "Italian"
+    ],
     "topics": [
       "arctic",
       "civil liberties",
@@ -330,8 +403,15 @@
     "landing_page_url": "https://www.nytimes.com/tips",
     "onion_address": "ej3kv4ebuugcmuwxctx5ic7zxh73rnxt42soi3tdneu2c2em55thufqd.onion",
     "onion_name": "nytimes.securedrop.tor.onion",
-    "countries": ["All countries", "USA"],
-    "languages": ["Chinese", "English", "Spanish"],
+    "countries": [
+      "All countries",
+      "USA"
+    ],
+    "languages": [
+      "Chinese",
+      "English",
+      "Spanish"
+    ],
     "topics": [
       "arts",
       "business",
@@ -357,8 +437,12 @@
     "landing_page_url": "https://www.news24.com/tips",
     "onion_address": "uhmj4j5pnwbpmkebfze3qgjmkum465fvok376nxtpku5yvyv5takz6qd.onion",
     "onion_name": "news24.securedrop.tor.onion",
-    "countries": ["South Africa"],
-    "languages": ["English"],
+    "countries": [
+      "South Africa"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "corruption",
@@ -383,8 +467,17 @@
     "landing_page_url": "https://www.nrk.no/varsle/",
     "onion_address": "537ztcntpbmspja4mkpxldpsoc46mqlssnsaklqnfw3gnlpj5glcjgid.onion",
     "onion_name": "nrk.securedrop.tor.onion",
-    "countries": ["All countries", "Norway"],
-    "languages": ["English", "French", "German", "Norwegian", "Spanish"],
+    "countries": [
+      "All countries",
+      "Norway"
+    ],
+    "languages": [
+      "English",
+      "French",
+      "German",
+      "Norwegian",
+      "Spanish"
+    ],
     "topics": [
       "business",
       "corruption",
@@ -405,8 +498,13 @@
     "landing_page_url": "https://propublica.org/tips",
     "onion_address": "33xu4yhum2eiisxm6fntaslayop76fvaqgt3ak5dakdm3t7cub25cead.onion",
     "onion_name": "propublica.securedrop.tor.onion",
-    "countries": ["USA"],
-    "languages": ["English", "Spanish"],
+    "countries": [
+      "USA"
+    ],
+    "languages": [
+      "English",
+      "Spanish"
+    ],
     "topics": [
       "business",
       "celebrities",
@@ -441,9 +539,19 @@
     "landing_page_url": "https://publicintelligence.net/contribute/",
     "onion_address": "z4gd5t2g6u6kqeqjeddvmvlhhjtjgslg4elh4ztnct7snskcd7phbiyd.onion",
     "onion_name": "",
-    "countries": ["All countries"],
-    "languages": ["English"],
-    "topics": ["business", "environment", "government", "health", "war"],
+    "countries": [
+      "All countries"
+    ],
+    "languages": [
+      "English"
+    ],
+    "topics": [
+      "business",
+      "environment",
+      "government",
+      "health",
+      "war"
+    ],
     "source_label": "SecureDrop directory",
     "source_url": "https://securedrop.org/api/v1/directory/"
   },
@@ -457,8 +565,18 @@
     "landing_page_url": "https://stefaniamaurizi.it/en-contactme.html",
     "onion_address": "jxsb4ovmavjy3r64bak4ha63xwggf3nzf3vikvs23r2avm5rhzmaqtqd.onion",
     "onion_name": "maurizi.securedrop.tor.onion",
-    "countries": ["Europe", "Italy", "UK", "USA"],
-    "languages": ["All languages", "English", "French", "Italian"],
+    "countries": [
+      "Europe",
+      "Italy",
+      "UK",
+      "USA"
+    ],
+    "languages": [
+      "All languages",
+      "English",
+      "French",
+      "Italian"
+    ],
     "topics": [
       "civil liberties",
       "corruption",
@@ -487,8 +605,13 @@
     "landing_page_url": "https://www.sueddeutsche.de/projekte/kontakt/",
     "onion_address": "udhauo3m3fh7v6yfiuornjzxn3fh6vlp4ooo3wogvghcnv5xik6mnayd.onion",
     "onion_name": "",
-    "countries": ["Germany"],
-    "languages": ["English", "German"],
+    "countries": [
+      "Germany"
+    ],
+    "languages": [
+      "English",
+      "German"
+    ],
     "topics": [
       "business",
       "corruption",
@@ -516,7 +639,9 @@
     "onion_address": "mxmddqsh4jnr4gjan37ayin3fu5ecnejxge4wjhj4i45qq5djbxdjtad.onion",
     "onion_name": "theeconomist.securedrop.tor.onion",
     "countries": [],
-    "languages": ["All languages"],
+    "languages": [
+      "All languages"
+    ],
     "topics": [
       "business",
       "corruption",
@@ -542,8 +667,13 @@
     "landing_page_url": "https://sec.theglobeandmail.com/securedrop/",
     "onion_address": "a4zum5ydurvljrohxqp2rjjal5kro4ge2q2qizuonf2jubkhcr627gad.onion",
     "onion_name": "theglobeandmail.securedrop.tor.onion",
-    "countries": ["All countries", "Canada"],
-    "languages": ["English"],
+    "countries": [
+      "All countries",
+      "Canada"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "criminal justice",
@@ -570,8 +700,15 @@
     "landing_page_url": "https://www.theguardian.com/securedrop",
     "onion_address": "xp44cagis447k3lpb4wwhcqukix6cgqokbuys24vmxmbzmaq2gjvc2yd.onion",
     "onion_name": "theguardian.securedrop.tor.onion",
-    "countries": ["All countries", "UK", "USA"],
-    "languages": ["All languages", "English"],
+    "countries": [
+      "All countries",
+      "UK",
+      "USA"
+    ],
+    "languages": [
+      "All languages",
+      "English"
+    ],
     "topics": [
       "business",
       "civil liberties",
@@ -594,8 +731,13 @@
     "landing_page_url": "https://www.washingtonpost.com/securedrop",
     "onion_address": "vfnmxpa6fo4jdpyq3yneqhglluweax2uclvxkytfpmpkp5rsl75ir5qd.onion",
     "onion_name": "washingtonpost.securedrop.tor.onion",
-    "countries": ["All countries", "USA"],
-    "languages": ["English"],
+    "countries": [
+      "All countries",
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "environment",
@@ -617,8 +759,12 @@
     "landing_page_url": "https://whistlebloweraid.org/become-a-whistleblower/securedrop/",
     "onion_address": "kogbxf4ysay2qzozmg7ar45ijqmj2vxrwqa4upzqq2i7sqj7wv7wcdqd.onion",
     "onion_name": "whistlebloweraid.securedrop.tor.onion",
-    "countries": ["USA"],
-    "languages": ["English"],
+    "countries": [
+      "USA"
+    ],
+    "languages": [
+      "English"
+    ],
     "topics": [
       "business",
       "civil liberties",

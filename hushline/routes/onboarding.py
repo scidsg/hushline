@@ -24,6 +24,41 @@ from hushline.routes.forms import (
 from hushline.settings.forms import PGPKeyForm, PGPProtonForm
 
 HTTP_OK = 200
+ONBOARDING_STEPS = {"profile", "encryption", "notifications", "directory"}
+OnboardingStepForm = (
+    OnboardingProfileForm
+    | PGPProtonForm
+    | PGPKeyForm
+    | OnboardingNotificationsForm
+    | OnboardingDirectoryForm
+)
+
+
+def _normalize_onboarding_step(step: str | None) -> str:
+    if step in ONBOARDING_STEPS:
+        return step
+    return "profile"
+
+
+def _submitted_onboarding_form(
+    *,
+    step: str,
+    method: str | None,
+    forms: dict[str, OnboardingStepForm],
+) -> OnboardingStepForm | None:
+    if step == "profile":
+        return forms["profile"]
+    if step == "encryption":
+        if method == "proton":
+            return forms["proton"]
+        if method == "manual":
+            return forms["manual"]
+        return None
+    if step == "notifications":
+        return forms["notifications"]
+    if step == "directory":
+        return forms["directory"]
+    return None
 
 
 def register_onboarding_routes(app: Flask) -> None:
@@ -48,7 +83,9 @@ def register_onboarding_routes(app: Flask) -> None:
             or not username.show_in_directory
         )
 
-        step = request.form.get("step", request.args.get("step", "profile"))
+        step = _normalize_onboarding_step(
+            request.form.get("step", request.args.get("step", "profile"))
+        )
         if user.onboarding_complete and not setup_incomplete and step == "profile":
             return redirect(url_for("inbox"))
 
@@ -56,38 +93,49 @@ def register_onboarding_routes(app: Flask) -> None:
             flash("⛔️ Unable to load your profile.")
             return redirect(url_for("inbox"))
 
-        if step not in {"profile", "encryption", "notifications", "directory"}:
-            step = "profile"
-        profile_form = OnboardingProfileForm(
-            data={
-                "display_name": username.display_name or "",
-                "bio": username.bio or "",
-            }
-        )
+        profile_form = OnboardingProfileForm()
         pgp_proton_form = PGPProtonForm()
-        pgp_key_form = PGPKeyForm(pgp_key=user.pgp_key)
-        notifications_form = OnboardingNotificationsForm(data={"email_address": user.email or ""})
-        directory_form = OnboardingDirectoryForm(data={"show_in_directory": True})
+        pgp_key_form = PGPKeyForm()
+        notifications_form = OnboardingNotificationsForm()
+        directory_form = OnboardingDirectoryForm()
         skip_form = OnboardingSkipForm()
+        step_forms: dict[str, OnboardingStepForm] = {
+            "profile": profile_form,
+            "proton": pgp_proton_form,
+            "manual": pgp_key_form,
+            "notifications": notifications_form,
+            "directory": directory_form,
+        }
+        submitted_form = None
+        if request.method == "POST":
+            submitted_form = _submitted_onboarding_form(
+                step=step,
+                method=request.form.get("method"),
+                forms=step_forms,
+            )
+
+        if submitted_form is not profile_form:
+            profile_form.display_name.data = username.display_name or ""
+            profile_form.bio.data = username.bio or ""
+        if submitted_form is not pgp_key_form:
+            pgp_key_form.pgp_key.data = user.pgp_key
+        if submitted_form is not notifications_form:
+            notifications_form.email_address.data = user.email or ""
+        if submitted_form is not directory_form:
+            directory_form.show_in_directory.data = True
 
         status_code = 200
         if request.method == "POST":
-            step = request.form.get("step", step)
-            if step not in {"profile", "encryption", "notifications", "directory"}:
-                step = "profile"
             if step == "profile":
-                if profile_form.validate_on_submit():
+                if profile_form.validate():
                     username.display_name = profile_form.display_name.data.strip() or None
                     username.bio = profile_form.bio.data.strip()
                     db.session.commit()
                     return redirect(url_for("onboarding", step="encryption"))
                 status_code = 400
             elif step == "encryption":
-                method = request.form.get("method")
-                if method == "proton":
-                    if not pgp_proton_form.validate_on_submit():
-                        status_code = 400
-                    else:
+                if submitted_form is pgp_proton_form:
+                    if pgp_proton_form.validate():
                         email = pgp_proton_form.email.data
                         try:
                             resp = requests.get(
@@ -115,10 +163,10 @@ def register_onboarding_routes(app: Flask) -> None:
                             else:
                                 flash("⛔️ No PGP key found for that email address.")
                                 status_code = 400
-                elif method == "manual":
-                    if not pgp_key_form.validate_on_submit():
-                        status_code = 400
                     else:
+                        status_code = 400
+                elif submitted_form is pgp_key_form:
+                    if pgp_key_form.validate():
                         pgp_key = (pgp_key_form.pgp_key.data or "").strip()
                         if not pgp_key:
                             pgp_key_form.pgp_key.errors.append("PGP key is required.")
@@ -139,13 +187,15 @@ def register_onboarding_routes(app: Flask) -> None:
                                 "Invalid PGP key format or import failed."
                             )
                             status_code = 400
+                    else:
+                        status_code = 400
                 else:
                     status_code = 400
             elif step == "notifications":
                 if not user.pgp_key:
                     flash("⛔️ Add a PGP key before enabling notifications.")
                     status_code = 400
-                elif notifications_form.validate_on_submit():
+                elif notifications_form.validate():
                     user.enable_email_notifications = True
                     user.email_include_message_content = True
                     user.email_encrypt_entire_body = True
@@ -155,7 +205,7 @@ def register_onboarding_routes(app: Flask) -> None:
                 else:
                     status_code = 400
             elif step == "directory":
-                if directory_form.validate_on_submit():
+                if directory_form.validate():
                     username.show_in_directory = directory_form.show_in_directory.data
                     user.onboarding_complete = True
                     db.session.commit()

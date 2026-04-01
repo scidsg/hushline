@@ -48,18 +48,6 @@
     "source_url": "https://www.azbar.org/for-legal-professionals/practice-tools-management/member-directory/?m=Anthony-Cali-177781"
   },
   {
-    "id": "seed-andrew-clarke-weeks",
-    "slug": "public-record~andrew-clarke-weeks",
-    "name": "Andrew Clarke Weeks",
-    "website": "https://legaljusticeatwork.com/",
-    "description": "Whistleblower attorney listing sourced from Kentucky Bar Association public directory.",
-    "city": "Louisville",
-    "state": "KY",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "Kentucky Bar Association public directory",
-    "source_url": "https://www.kybar.org/members/?id=42347567"
-  },
-  {
     "id": "seed-barbara-mahoney",
     "slug": "public-record~barbara-mahoney",
     "name": "Barbara Mahoney",
@@ -120,6 +108,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/330468"
   },
   {
+    "id": "seed-daniel-b-eccher",
+    "slug": "public-record~daniel-b-eccher",
+    "name": "Daniel B. Eccher",
+    "website": "https://www.ehclaw.com/",
+    "description": "Whistleblower attorney listing sourced from Maine Board of Overseers of the Bar public directory.",
+    "city": "Portland",
+    "state": "ME",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Maine Board of Overseers of the Bar public directory",
+    "source_url": "https://mebarconnect.mainebar.org/people/daniel-eccher"
+  },
+  {
     "id": "seed-daniel-noel",
     "slug": "public-record~daniel-noel",
     "name": "Daniel Noel",
@@ -168,6 +168,18 @@
     "source_url": "https://www.iardc.org/Lawyer/PrintableDetails/00034ffd-aa64-eb11-b810-000d3a9f4eeb?includeFormerNames=False"
   },
   {
+    "id": "seed-elizabeth-a-heaphy",
+    "slug": "public-record~elizabeth-a-heaphy",
+    "name": "Elizabeth A. Heaphy",
+    "website": "https://www.cuddymccarthy.com/",
+    "description": "Whistleblower attorney listing sourced from the State Bar of New Mexico public directory.",
+    "city": "Albuquerque",
+    "state": "NM",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "State Bar of New Mexico public directory",
+    "source_url": "https://www.sbnm.org/cvweb/cgi-bin/Utilities.dll?View=INMEMBERDETAILS&RECORDNO=1&CUSTOMERNO=11321"
+  },
+  {
     "id": "seed-elizabeth-aida-acevedo",
     "slug": "public-record~elizabeth-aida-acevedo",
     "name": "Elizabeth Aida Acevedo",
@@ -204,16 +216,28 @@
     "source_url": "https://members.ctbar.org/member/thelaborlawyer"
   },
   {
-    "id": "seed-eric-seitz",
-    "slug": "public-record~eric-seitz",
-    "name": "Eric Seitz",
-    "website": "https://www.ericseitz.com/",
-    "description": "Whistleblower attorney listing sourced from a Hawaii State Bar Association attorney recognition record.",
-    "city": "Honolulu",
-    "state": "HI",
-    "practice_tags": ["Whistleblowing", "Civil Rights", "Litigation"],
-    "source_label": "Hawaii State Bar Association attorney recognition record",
-    "source_url": "https://hsba.org/HSBA_2020/About_Us/Living_Legend_Lawyers_.aspx"
+    "id": "seed-frederick-h-schutt",
+    "slug": "public-record~frederick-h-schutt",
+    "name": "Frederick H. Schutt",
+    "website": "https://www.woodsrogers.com/team/fred-schutt",
+    "description": "Whistleblower attorney listing sourced from Virginia State Bar public directory.",
+    "city": "Richmond",
+    "state": "VA",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Virginia State Bar public directory",
+    "source_url": "https://virginialawyer.vsb.org/articles/professional-notices?article_id=5100257&i=859839"
+  },
+  {
+    "id": "seed-gerard-v-mantese",
+    "slug": "public-record~gerard-v-mantese",
+    "name": "Gerard V. Mantese",
+    "website": "https://manteselaw.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Michigan public directory.",
+    "city": "Southfield",
+    "state": "MI",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of Michigan public directory",
+    "source_url": "https://connect.michbar.org/laborlaw/home/council/section-members/-in-directory/directorysearchresults/?UserKey=7af6ed96-c3cf-4f2d-b5f6-8effee281468"
   },
   {
     "id": "seed-georgianna-quinn-tutwiler",
@@ -228,6 +252,42 @@
     "source_url": "https://www.inbar.org/members/?id=30400364"
   },
   {
+    "id": "seed-heather-m-burns",
+    "slug": "public-record~heather-m-burns",
+    "name": "Heather M. Burns",
+    "website": "https://www.uptonhatfield.com/",
+    "description": "Whistleblower attorney listing sourced from a New Hampshire Bar Association CLE speaker profile.",
+    "city": "Concord",
+    "state": "NH",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "New Hampshire Bar Association CLE speaker profile",
+    "source_url": "https://member.nhbar.org/calendar/event/34th-annual-labor-and-employment-law-update"
+  },
+  {
+    "id": "seed-heidi-a-guttau",
+    "slug": "public-record~heidi-a-guttau",
+    "name": "Heidi A. Guttau",
+    "website": "https://www.bairdholm.com/",
+    "description": "Whistleblower attorney listing sourced from a Nebraska Judicial Branch case record.",
+    "city": "Omaha",
+    "state": "NE",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Nebraska Judicial Branch case record",
+    "source_url": "https://supremecourt.nebraska.gov/courts/supreme-court/supreme-court-call/city-omaha-v-professional-firefighters-association-omaha"
+  },
+  {
+    "id": "seed-hillary-j-massey",
+    "slug": "public-record~hillary-j-massey",
+    "name": "Hillary J. Massey",
+    "website": "https://www.seyfarth.com/",
+    "description": "Whistleblower attorney listing sourced from Massachusetts BBO attorney records.",
+    "city": "Boston",
+    "state": "MA",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Massachusetts BBO attorney records",
+    "source_url": "https://bbopublic.massbbo.org/web/f/SJC_WellBeing_Cmte_Report.pdf"
+  },
+  {
     "id": "seed-jeffrey-farley-keller",
     "slug": "public-record~jeffrey-farley-keller",
     "name": "Jeffrey Farley Keller",
@@ -240,16 +300,64 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/148005"
   },
   {
-    "id": "seed-jerry-ray-poole-jr",
-    "slug": "public-record~jerry-ray-poole-jr",
-    "name": "Jerry Ray Poole, Jr.",
-    "website": "https://www.constangy.com/people-jerry-poole",
-    "description": "Whistleblower attorney listing sourced from The Florida Bar public directory.",
-    "city": "Tampa",
-    "state": "FL",
+    "id": "seed-j-hagood-tighe",
+    "slug": "public-record~j-hagood-tighe",
+    "name": "J. Hagood Tighe",
+    "website": "https://www.fisherphillips.com/en/people/j-hagood-tighe.html",
+    "description": "Whistleblower attorney listing sourced from South Carolina Bar public directory.",
+    "city": "Columbia",
+    "state": "SC",
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "The Florida Bar public directory",
-    "source_url": "https://www.floridabar.org/directories/find-mbr/profile/?num=123000"
+    "source_label": "South Carolina Bar public directory",
+    "source_url": "https://www.scbar.org/for-lawyers/networking/sections/employment-and-labor-law-section/"
+  },
+  {
+    "id": "seed-jennifer-s-mirus",
+    "slug": "public-record~jennifer-s-mirus",
+    "name": "Jennifer S. Mirus",
+    "website": "https://www.boardmanclark.com/our-people/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Wisconsin public directory.",
+    "city": "Madison",
+    "state": "WI",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "State Bar of Wisconsin public directory",
+    "source_url": "https://www.wisbar.org/NewsPublications/WisconsinLawyer/WisconsinLawyerPDFs/97/01/20_24.pdf"
+  },
+  {
+    "id": "seed-jeremy-s-grant",
+    "slug": "public-record~jeremy-s-grant",
+    "name": "Jeremy S. Grant",
+    "website": "https://www.drm.com/team/jeremy-grant/",
+    "description": "Whistleblower attorney listing sourced from Vermont Bar Association public directory.",
+    "city": "Burlington",
+    "state": "VT",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Vermont Bar Association public directory",
+    "source_url": "https://www.vtbar.org/2025-annual-meeting-in-review/"
+  },
+  {
+    "id": "seed-jerina-d-phillips",
+    "slug": "public-record~jerina-d-phillips",
+    "name": "Jerina D. Phillips",
+    "website": "https://www.lewisrice.com/jerina-d-phillips/",
+    "description": "Whistleblower attorney listing sourced from The Missouri Bar public directory.",
+    "city": "St. Louis",
+    "state": "MO",
+    "practice_tags": ["Employment", "Litigation", "Investigations"],
+    "source_label": "The Missouri Bar public directory",
+    "source_url": "https://news.mobar.org/jerina-d-phillips-receives-2025-diversity-champion-award/"
+  },
+  {
+    "id": "seed-joel-frank-dillard",
+    "slug": "public-record~joel-frank-dillard",
+    "name": "Joel Frank Dillard",
+    "website": "https://joeldillard.com/",
+    "description": "Whistleblower attorney listing sourced from The Mississippi Bar public directory.",
+    "city": "Jackson",
+    "state": "MS",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "The Mississippi Bar public directory",
+    "source_url": "https://www.msbar.org/inside-the-bar/sections/labor-employment-law/"
   },
   {
     "id": "seed-jon-marc-petersen",
@@ -300,6 +408,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/197529"
   },
   {
+    "id": "seed-kevin-g-williams",
+    "slug": "public-record~kevin-g-williams",
+    "name": "Kevin G. Williams",
+    "website": "https://www.belldavispitt.com/",
+    "description": "Whistleblower attorney listing sourced from North Carolina State Bar public directory.",
+    "city": "Winston-Salem",
+    "state": "NC",
+    "practice_tags": ["Employment", "Litigation", "Investigations"],
+    "source_label": "North Carolina State Bar public directory",
+    "source_url": "https://www.ncbar.gov/for-lawyers/directories/leadership/state-bar-officers/"
+  },
+  {
     "id": "seed-kevin-hunter-sharp",
     "slug": "public-record~kevin-hunter-sharp",
     "name": "Kevin Hunter Sharp",
@@ -310,6 +430,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "Tennessee Board of Professional Responsibility attorney records",
     "source_url": "https://www.tbpr.org/attorneys/016287"
+  },
+  {
+    "id": "seed-landon-j-ascheman",
+    "slug": "public-record~landon-j-ascheman",
+    "name": "Landon J. Ascheman",
+    "website": "https://aschemanlaw.com/",
+    "description": "Whistleblower attorney listing sourced from Minnesota Courts attorney records.",
+    "city": "Saint Paul",
+    "state": "MN",
+    "practice_tags": ["Investigations", "Litigation", "Appeals"],
+    "source_label": "Minnesota Courts attorney records",
+    "source_url": "https://mncourts.gov/help-topics/Legal-Paraprofessional-Program/standing-committee"
+  },
+  {
+    "id": "seed-lara-a-swensen",
+    "slug": "public-record~lara-a-swensen",
+    "name": "Lara A. Swensen",
+    "website": "https://www.jdrslaw.com/attorney/swensen-lara-a/",
+    "description": "Whistleblower attorney listing sourced from Utah Courts public legal directory.",
+    "city": "Salt Lake City",
+    "state": "UT",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Utah Courts public legal directory",
+    "source_url": "https://www.utcourts.gov/en/about/administration/committees/ethics-advisory-committee.html"
   },
   {
     "id": "seed-kristin-l-pawlik",
@@ -336,6 +480,30 @@
     "source_url": "https://members.alabar.org/Member_Portal/Member_Portal/Sections/AP.aspx"
   },
   {
+    "id": "seed-mark-anthony-sanchez",
+    "slug": "public-record~mark-anthony-sanchez",
+    "name": "Mark Anthony Sanchez",
+    "website": "https://www.sanchezwilson.com/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Texas public directory.",
+    "city": "San Antonio",
+    "state": "TX",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "State Bar of Texas public directory",
+    "source_url": "https://www.texasbar.com/AM/Template.cfm?ContactID=157597&template=%2FCustomsource%2FMemberDirectory%2FMemberDirectoryDetail.cfm"
+  },
+  {
+    "id": "seed-mark-b-decof",
+    "slug": "public-record~mark-b-decof",
+    "name": "Mark B. Decof",
+    "website": "https://www.decof.com/attorneys/mark-b-decof/",
+    "description": "Whistleblower attorney listing sourced from Rhode Island Judiciary attorney records.",
+    "city": "Providence",
+    "state": "RI",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Rhode Island Judiciary attorney records",
+    "source_url": "https://www.courts.ri.gov/attorney-resources/Pages/Board-of-Bar-Examiners-default.aspx"
+  },
+  {
     "id": "seed-marlene-koury",
     "slug": "public-record~marlene-koury",
     "name": "Marlene Koury",
@@ -358,6 +526,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/271380"
+  },
+  {
+    "id": "seed-nathan-c-severson",
+    "slug": "public-record~nathan-c-severson",
+    "name": "Nathan C. Severson",
+    "website": "https://www.swlattorneys.com/",
+    "description": "Whistleblower attorney listing sourced from the North Dakota Court System attorney directory.",
+    "city": "Fargo",
+    "state": "ND",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "North Dakota Court System attorney directory",
+    "source_url": "https://www.ndcourts.gov/lawyers/06402"
+  },
+  {
+    "id": "seed-patrick-g-goetzinger",
+    "slug": "public-record~patrick-g-goetzinger",
+    "name": "Patrick G. Goetzinger",
+    "website": "https://gpna.com/professionals/patrick-g-goetzinger",
+    "description": "Whistleblower attorney listing sourced from State Bar of South Dakota public directory.",
+    "city": "Rapid City",
+    "state": "SD",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "State Bar of South Dakota public directory",
+    "source_url": "https://www.statebarofsouthdakota.com/project-rural-practice/"
   },
   {
     "id": "seed-michael-f-brady",
@@ -408,30 +600,6 @@
     "source_url": "https://community.cobar.org/profile/contributions/contributions-achievements?UserKey=330f70ad-afc9-44f0-b8b1-6b55108bc275"
   },
   {
-    "id": "seed-richard-l-abbott",
-    "slug": "public-record~richard-l-abbott",
-    "name": "Richard L. Abbott",
-    "website": "https://richabbottlawfirm.com/",
-    "description": "Whistleblower attorney listing sourced from a Delaware Courts published opinion.",
-    "city": "Hockessin",
-    "state": "DE",
-    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
-    "source_label": "Delaware Courts published opinion",
-    "source_url": "https://courts.delaware.gov/Opinions/Download.aspx?id=342050"
-  },
-  {
-    "id": "seed-roxanne-barton-conlin",
-    "slug": "public-record~roxanne-barton-conlin",
-    "name": "Roxanne Barton Conlin",
-    "website": "https://www.roxanneconlinlaw.com/",
-    "description": "Whistleblower attorney listing sourced from an Iowa State Bar Association jury verdict record.",
-    "city": "Des Moines",
-    "state": "IA",
-    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
-    "source_label": "Iowa State Bar Association jury verdict record",
-    "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
-  },
-  {
     "id": "seed-robert-aram-jigarjian",
     "slug": "public-record~robert-aram-jigarjian",
     "name": "Robert Aram Jigarjian",
@@ -456,6 +624,42 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/238491"
   },
   {
+    "id": "seed-richard-l-abbott",
+    "slug": "public-record~richard-l-abbott",
+    "name": "Richard L. Abbott",
+    "website": "https://richabbottlawfirm.com/",
+    "description": "Whistleblower attorney listing sourced from a Delaware Courts published opinion.",
+    "city": "Hockessin",
+    "state": "DE",
+    "practice_tags": ["Whistleblowing", "Investigations", "Litigation"],
+    "source_label": "Delaware Courts published opinion",
+    "source_url": "https://courts.delaware.gov/Opinions/Download.aspx?id=342050"
+  },
+  {
+    "id": "seed-roxanne-barton-conlin",
+    "slug": "public-record~roxanne-barton-conlin",
+    "name": "Roxanne Barton Conlin",
+    "website": "https://www.roxanneconlinlaw.com/",
+    "description": "Whistleblower attorney listing sourced from an Iowa State Bar Association jury verdict record.",
+    "city": "Des Moines",
+    "state": "IA",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "Iowa State Bar Association jury verdict record",
+    "source_url": "https://services.iowabar.org/IB/JuryVerdicts.nsf/b96238336212630c85258ca1000240fd/e71fe5f6f6d3242d872589900011edc5!OpenDocument"
+  },
+  {
+    "id": "seed-rubin-m-sinins",
+    "slug": "public-record~rubin-m-sinins",
+    "name": "Rubin M. Sinins",
+    "website": "https://javerbaum.com/",
+    "description": "Whistleblower attorney listing sourced from NJ Courts attorney certification records.",
+    "city": "Newark",
+    "state": "NJ",
+    "practice_tags": ["Whistleblowing", "Investigations", "Employment"],
+    "source_label": "NJ Courts attorney certification records",
+    "source_url": "https://www.njcourts.gov/notices/order-board-attorney-certification-new-chair-and-vice-chair-designations-certification"
+  },
+  {
     "id": "seed-sarah-renee-holloway",
     "slug": "public-record~sarah-renee-holloway",
     "name": "Sarah Renee Holloway",
@@ -466,6 +670,30 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of California attorney profile",
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/254134"
+  },
+  {
+    "id": "seed-scott-e-kolpitcke",
+    "slug": "public-record~scott-e-kolpitcke",
+    "name": "Scott E. Kolpitcke",
+    "website": "https://www.ckattorneys.net/",
+    "description": "Whistleblower attorney listing sourced from Wyoming State Bar public directory.",
+    "city": "Powell",
+    "state": "WY",
+    "practice_tags": ["Employment", "Investigations", "Litigation"],
+    "source_label": "Wyoming State Bar public directory",
+    "source_url": "https://www.wyomingbar.org/about-us/bar-leadership/"
+  },
+  {
+    "id": "seed-sean-w-baker",
+    "slug": "public-record~sean-w-baker",
+    "name": "Sean W. Baker",
+    "website": "https://www.sbakerlaw.com/",
+    "description": "Whistleblower attorney listing sourced from Maryland Courts attorney discipline records.",
+    "city": "Timonium",
+    "state": "MD",
+    "practice_tags": ["Investigations", "Litigation", "Appeals"],
+    "source_label": "Maryland Courts attorney discipline records",
+    "source_url": "https://www.courts.state.md.us/attygrievance/sanctions07"
   },
   {
     "id": "seed-stephen-shinobu-hasegawa",
@@ -480,6 +708,18 @@
     "source_url": "https://apps.calbar.ca.gov/attorney/Licensee/Detail/198472"
   },
   {
+    "id": "seed-tanis-m-holm",
+    "slug": "public-record~tanis-m-holm",
+    "name": "Tanis M. Holm",
+    "website": "https://www.yellowstonelaw.com/attorney-profile/tanis-m-holm/",
+    "description": "Whistleblower attorney listing sourced from State Bar of Montana public directory.",
+    "city": "Billings",
+    "state": "MT",
+    "practice_tags": ["Investigations", "Litigation", "Employment"],
+    "source_label": "State Bar of Montana public directory",
+    "source_url": "https://www.montanabar.org/About-Us/Sections-and-Committees"
+  },
+  {
     "id": "seed-todd-h-stanton",
     "slug": "public-record~todd-h-stanton",
     "name": "Todd H. Stanton",
@@ -490,6 +730,18 @@
     "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
     "source_label": "State Bar of Georgia speaker profile",
     "source_url": "https://icle.gabar.org/speaker/todd-stanton-1261014"
+  },
+  {
+    "id": "seed-todd-bailess",
+    "slug": "public-record~todd-bailess",
+    "name": "Todd Bailess",
+    "website": "https://www.bailesslawfirm.com/meet-our-team/todd-bailess/",
+    "description": "Whistleblower attorney listing sourced from West Virginia State Bar public directory.",
+    "city": "Charleston",
+    "state": "WV",
+    "practice_tags": ["Whistleblowing", "Employment", "Litigation"],
+    "source_label": "West Virginia State Bar public directory",
+    "source_url": "https://wvbar.org/wp-content/uploads/2024/04/24-25-Active-List-UPDATED.pdf"
   },
   {
     "id": "seed-trudy-hanson-fouser",

@@ -8,8 +8,6 @@ on:
         required: true
         type: string
     secrets:
-      HUSHLINE_WEBSITE_SCREENSHOTS_PAT:
-        required: false
       SCREENSHOTS_PUSH_TOKEN:
         required: false
   workflow_dispatch:
@@ -51,112 +49,9 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
             -o /tmp/docs-screenshots-artifact/artifact.zip
           unzip -q /tmp/docs-screenshots-artifact/artifact.zip -d /tmp/docs-screenshots-artifact/unpacked
+          rm -f /tmp/docs-screenshots-artifact/artifact.zip
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=/tmp/docs-screenshots-artifact/unpacked" >> "$GITHUB_OUTPUT"
-
-      - name: Publish screenshots to hushline-website
-        if: steps.artifact.outputs.found == 'true'
-        env:
-          WEBSITE_REPOSITORY: scidsg/hushline-website
-          WEBSITE_DEFAULT_BRANCH: main
-          WEBSITE_BRANCH: automation/docs-screenshots
-          WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT }}
-          WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
-          ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
-        run: |
-          set -euo pipefail
-          if [ -z "${WEBSITE_PUSH_TOKEN:-}" ]; then
-            echo "Skipping publish: HUSHLINE_WEBSITE_SCREENSHOTS_PAT secret is missing."
-            exit 0
-          fi
-
-          RELEASE_KEY="$(tr -d '\r\n' < "${ARTIFACT_DIR}/release_key.txt")"
-          RELEASE_KEY="$RELEASE_KEY" python -c 'import os, re, sys; release_key = os.environ["RELEASE_KEY"].strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) or sys.exit(f"Unexpected docs screenshot release key: {release_key!r}")'
-
-          RELEASE_ROOT="${ARTIFACT_DIR}/screenshots/releases/${RELEASE_KEY}"
-          LATEST_ROOT="${ARTIFACT_DIR}/screenshots/releases/latest"
-          ROOT_README="${ARTIFACT_DIR}/screenshots/README.md"
-          if [ ! -d "$RELEASE_ROOT" ]; then
-            echo "Expected screenshot source directory not found: $RELEASE_ROOT"
-            exit 1
-          fi
-          if [ ! -d "$LATEST_ROOT" ]; then
-            echo "Expected latest screenshot directory not found: $LATEST_ROOT"
-            exit 1
-          fi
-          if [ ! -f "$ROOT_README" ]; then
-            echo "Expected screenshot README not found: $ROOT_README"
-            exit 1
-          fi
-
-          export GH_TOKEN="${WEBSITE_PUSH_TOKEN}"
-
-          git clone "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" /tmp/hushline-website
-          cd /tmp/hushline-website
-          git checkout -B "${WEBSITE_BRANCH}" "origin/${WEBSITE_DEFAULT_BRANCH}"
-
-          mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/releases/${RELEASE_KEY}" "${WEBSITE_SCREENSHOT_ROOT}/releases/latest"
-          rsync -a --delete --exclude 'releases/' "${LATEST_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/"
-          rsync -a --delete "${RELEASE_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/releases/${RELEASE_KEY}/"
-          rsync -a --delete "${LATEST_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/releases/latest/"
-          cp "${ROOT_README}" "${WEBSITE_SCREENSHOT_ROOT}/README.md"
-
-          cat > badge-docs-screenshots.json <<EOF
-          {"schemaVersion":1,"label":"docs screenshots","message":"${RELEASE_KEY}","color":"blue"}
-          EOF
-
-          git add "${WEBSITE_SCREENSHOT_ROOT}" badge-docs-screenshots.json
-          if git diff --cached --quiet; then
-            echo "No screenshot changes to publish."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update website screenshots for ${RELEASE_KEY}"
-          git push --force-with-lease origin "HEAD:${WEBSITE_BRANCH}"
-
-          pr_title="Update website screenshots for ${RELEASE_KEY}"
-          website_owner="${WEBSITE_REPOSITORY%%/*}"
-          pr_body="$(cat <<EOF
-          Automated docs screenshots sync from \`${GITHUB_REPOSITORY}\`.
-
-          - Release: \`${RELEASE_KEY}\`
-          - Source workflow run: \`${GITHUB_RUN_ID}\`
-          EOF
-          )"
-
-          pr_url="$(gh pr list \
-            --repo "${WEBSITE_REPOSITORY}" \
-            --head "${website_owner}:${WEBSITE_BRANCH}" \
-            --base "${WEBSITE_DEFAULT_BRANCH}" \
-            --state open \
-            --json url \
-            --jq '.[0].url // ""')"
-
-          if [ -n "$pr_url" ]; then
-            gh pr edit "$pr_url" \
-              --repo "${WEBSITE_REPOSITORY}" \
-              --title "$pr_title" \
-              --body "$pr_body"
-          else
-            pr_url="$(gh pr create \
-              --repo "${WEBSITE_REPOSITORY}" \
-              --base "${WEBSITE_DEFAULT_BRANCH}" \
-              --head "${website_owner}:${WEBSITE_BRANCH}" \
-              --title "$pr_title" \
-              --body "$pr_body")"
-          fi
-
-          if gh pr merge "$pr_url" \
-            --repo "${WEBSITE_REPOSITORY}" \
-            --squash \
-            --delete-branch
-          then
-            echo "Merged $pr_url"
-          else
-            echo "Created or updated $pr_url but it is not immediately mergeable."
-          fi
 
       - name: Publish screenshots to hushline-screenshots
         if: steps.artifact.outputs.found == 'true'
@@ -191,8 +86,16 @@ jobs:
             exit 1
           fi
 
-          git clone "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" /tmp/hushline-screenshots
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --single-branch \
+            --branch "${SCREENSHOTS_DEFAULT_BRANCH}" \
+            "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" \
+            /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
+          git sparse-checkout init --no-cone
+          git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "releases/${RELEASE_KEY}"
           git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
 
           mkdir -p "releases/${RELEASE_KEY}" "releases/latest"

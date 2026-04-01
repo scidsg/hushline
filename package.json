@@ -7,15 +7,18 @@
   },
   "scripts": {
     "build:dev": "webpack --config webpack.config.js --watch",
-    "build:prod": "webpack --config webpack.config.js"
+    "build:prod": "webpack --config webpack.config.js",
+    "playwright:visual": "playwright test --config=playwright.visual.config.js",
+    "playwright:visual:update": "playwright test --config=playwright.visual.config.js --update-snapshots"
   },
   "dependencies": {
     "openpgp": "^6.3.0"
   },
   "overrides": {
-    "serialize-javascript": "^7.0.3"
+    "serialize-javascript": "^7.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "css-loader": "^6.7.2",
     "mini-css-extract-plugin": "^2.7.2",
     "prettier": "^3.3.3",

@@ -45,6 +45,7 @@
       "title": "Directory - All (admin)",
       "path": "/directory",
       "session": "admin",
+      "captureModes": ["fold", "scroll"],
       "actions": [
         {
           "type": "click",
@@ -278,6 +279,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -287,6 +289,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -296,6 +299,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -665,10 +669,143 @@
       "waitForSelector": "#verified.tab-content.active"
     },
     {
+      "slug": "guest-directory-attorneys-closed-filters",
+      "title": "Directory - Attorneys (filters closed)",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#public-records-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#public-records.tab-content.active"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-filters-toggle-shell:not([hidden]) #attorney-filters-toggle"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-attorneys-open-filters",
+      "title": "Directory - Attorneys (filters open)",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#public-records-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#public-records.tab-content.active"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-filters-toggle-shell:not([hidden]) #attorney-filters-toggle"
+        },
+        {
+          "type": "click",
+          "selector": "#attorney-filters-toggle"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-filters-panel:not([hidden])"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-attorneys-applied-filters",
+      "title": "Directory - Attorneys (applied filters)",
+      "path": "/directory?country=US&region=CA",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#public-records-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#public-records.tab-content.active"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-filters-panel:not([hidden])"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-country-filter:has(option:checked[value='United States'])"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#attorney-region-filter:has(option:checked[value='CA'])"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-attorney-adam-j-levitt",
+      "title": "Directory - Attorney listing (Adam J. Levitt)",
+      "path": "/directory/public-records/public-record~adam-j-levitt",
+      "session": "guest",
+      "waitForSelector": "h2.submit"
+    },
+    {
+      "slug": "guest-directory-securedrop",
+      "title": "Directory - SecureDrop",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#securedrop-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#securedrop.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-newsrooms",
+      "title": "Directory - Newsrooms",
+      "path": "/directory",
+      "session": "guest",
+      "captureModes": ["fold", "scroll"],
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#newsrooms-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#newsrooms.tab-content.active"
+        }
+      ]
+    },
+    {
+      "slug": "guest-directory-globaleaks",
+      "title": "Directory - GlobaLeaks",
+      "path": "/directory",
+      "session": "guest",
+      "actions": [
+        {
+          "type": "click",
+          "selector": "#globaleaks-tab"
+        },
+        {
+          "type": "wait_for",
+          "selector": "#globaleaks.tab-content.active"
+        }
+      ]
+    },
+    {
       "slug": "guest-directory-all",
       "title": "Directory - All",
       "path": "/directory",
       "session": "guest",
+      "captureModes": ["fold", "scroll"],
       "actions": [
         {
           "type": "click",
@@ -703,6 +840,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -712,6 +850,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -721,6 +860,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         }
       ]
@@ -748,6 +888,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -757,6 +898,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -766,6 +908,7 @@
         {
           "type": "click_if_exists",
           "selector": ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry')) button[name='delete_field']",
+          "acceptDialog": true,
           "waitForNetworkIdle": true
         },
         {
@@ -923,11 +1066,6 @@
           "type": "fill_if_exists",
           "selector": "#field_2, [name='field_2']",
           "value": "Screenshot test value 2"
-        },
-        {
-          "type": "fill_if_exists",
-          "selector": "#field_3, [name='field_3']",
-          "value": "Screenshot test value 3"
         },
         {
           "type": "fill_if_exists",

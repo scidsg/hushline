@@ -68,8 +68,10 @@ services:
       retries: 10
 
   blob-storage:
-    image: localstack/localstack:latest
+    # Keep a stable LocalStack release pinned; :latest pulled a nightly build that broke CI bootstrap.
+    image: localstack/localstack:4.11.1
     environment:
+      ACTIVATE_PRO: "0"
       SERVICES: s3
       HOSTNAME: blob-storage
       GATEWAY_LISTEN: "0.0.0.0:4566"
@@ -94,7 +96,7 @@ services:
     command:
       - ash
       - -c
-      - 'rm -rf /app/node_modules/.playwright* && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
+      - 'mkdir -p /app/node_modules && find /app/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
     restart: on-failure
 
 volumes:

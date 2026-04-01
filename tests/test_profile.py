@@ -10,10 +10,11 @@ from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.exceptions import NotFound
 
 from hushline.db import db
-from hushline.model import Message, OrganizationSetting, User, Username
+from hushline.model import AccountCategory, Message, OrganizationSetting, User, Username
 
 msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
+suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
 
@@ -60,6 +61,58 @@ def test_profile_accepts_case_insensitive_username(
     assert user_alias.username in response.text
 
 
+def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    caution_badge = soup.select_one(
+        'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+    )
+    assert caution_badge is not None
+    trigger = soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
+    assert trigger is not None
+    assert trigger.get_text(strip=True) == "What's this?"
+    tooltip = soup.select_one("span#caution-badge-info[role='tooltip']")
+    assert tooltip is not None
+    assert (
+        tooltip.get_text(strip=True)
+        == "Visitors should be cautious of interacting with this account."
+    )
+
+
+def test_profile_shows_caution_badge_for_suspicious_username_when_display_name_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.username = "admin"
+    user.primary_username.display_name = None
+    user.primary_username.is_verified = False
+    user.is_admin = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert (
+        soup.select_one(
+            'span.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        is not None
+    )
+    assert (
+        soup.select_one('button.badgeHelpTrigger[aria-describedby="caution-badge-info"]')
+        is not None
+    )
+
+
 def test_profile_404_for_unknown_username(client: FlaskClient) -> None:
     response = client.get(url_for("profile", username="does-not-exist"), follow_redirects=True)
     assert response.status_code == 404
@@ -80,19 +133,24 @@ def test_profile_404s_when_case_insensitive_lookup_is_ambiguous(app: Flask) -> N
         app.view_functions["profile"]("CaseUser")
 
 
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_does_not_expose_owner_user_id(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("profile", username=user.primary_username.username))
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.data, "html.parser")
     assert soup.find("input", attrs={"name": "username_user_id"}) is None
+    assert soup.find("input", attrs={"name": "encrypted_email_body", "type": "hidden"}) is not None
 
     nonce_input = soup.find("input", attrs={"name": "owner_guard_nonce"})
     signature_input = soup.find("input", attrs={"name": "owner_guard_signature"})
+    captcha_input = soup.find("input", attrs={"name": "captcha_answer", "id": "captcha_answer"})
     assert nonce_input is not None
     assert signature_input is not None
+    assert captcha_input is not None
     assert nonce_input.get("value")
     assert signature_input.get("value")
+    assert captcha_input.get("value") in (None, "")
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -209,6 +267,22 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_suspended_state_disables_message_form_with_pgp_key(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    assert suspended_message in response.text
+    assert 'id="submitBtn"' in response.text
+    assert 'disabled="disabled"' in response.text
+    assert "/static/js/submit-message.js" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, user: User) -> None:
     user.pgp_key = None
     db.session.commit()
@@ -228,6 +302,55 @@ def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, us
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+def test_profile_post_rejects_when_target_is_suspended(client: FlaskClient, user: User) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_post_rejects_alias_when_owner_is_suspended(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user_alias.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user_alias.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert (
+        db.session.scalars(db.select(Message).filter_by(username_id=user_alias.id)).first() is None
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
 def test_profile_post_form_validation_errors_are_rendered(client: FlaskClient, user: User) -> None:
     response = client.post(
         url_for("profile", username=user.primary_username.username),
@@ -240,6 +363,33 @@ def test_profile_post_form_validation_errors_are_rendered(client: FlaskClient, u
     )
     assert response.status_code == 400
     assert "There was an error submitting your message" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
+    prior = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(
+            url_for("profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **get_profile_submission_data(client, user.primary_username.username),
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior
+
+    assert response.status_code == 400
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -347,6 +497,67 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
     assert "<script>alert('xss')</script>" not in html_str
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_account_category_renders_first_extra_field(
+    client: FlaskClient, user: User
+) -> None:
+    user.account_category = AccountCategory.LAWYER.value
+    user.primary_username.extra_field_label1 = "Signal username"
+    user.primary_username.extra_field_value1 = "singleusername.666"
+    user.primary_username.extra_field_label2 = "Website"
+    user.primary_username.extra_field_value2 = "https://scidsg.org/"
+    user.primary_username.extra_field_label3 = "Pronouns"
+    user.primary_username.extra_field_value3 = "they/them"
+    user.primary_username.extra_field_label4 = "Timezone"
+    user.primary_username.extra_field_value4 = "UTC"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Category", "Signal username", "Website", "Pronouns", "Timezone"]
+    assert values[0] == "Attorney"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_location_renders_as_single_extra_field(client: FlaskClient, user: User) -> None:
+    user.country = "US"
+    user.subdivision = "IL"
+    user.city = "Chicago"
+    user.primary_username.extra_field_label1 = "Signal username"
+    user.primary_username.extra_field_value1 = "singleusername.666"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Location", "Signal username"]
+    assert values[0] == "Chicago, IL, US"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_location_keeps_full_names_outside_us(client: FlaskClient, user: User) -> None:
+    user.country = "Australia"
+    user.subdivision = "New South Wales"
+    user.city = "Sydney"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    labels = [node.get_text(strip=True) for node in soup.select(".extra-field-label")]
+    values = [node.get_text(" ", strip=True) for node in soup.select(".extra-field-value")]
+    assert labels == ["Location"]
+    assert values[0] == "Sydney, New South Wales, Australia"
+
+
 def test_redirect_submit_message_route(client: FlaskClient, user: User) -> None:
     response = client.get(
         url_for("redirect_submit_message", username=user.primary_username.username),
@@ -371,3 +582,26 @@ def test_submission_success_404_when_message_missing(client: FlaskClient) -> Non
     response = client.get(url_for("submission_success"), follow_redirects=True)
     assert response.status_code == 404
     assert "404: Not Found" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_submission_success_uses_public_base_url_for_reply_link(app: Flask, user: User) -> None:
+    app.config["SERVER_NAME"] = None
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+    message = Message(username_id=user.primary_username.id)
+    db.session.add(message)
+    db.session.commit()
+
+    with app.test_request_context(
+        url_for("submission_success"),
+        base_url="http://evil.example",
+    ):
+        from flask import session
+
+        session["reply_slug"] = message.reply_slug
+        response = app.view_functions["submission_success"]()
+
+    assert isinstance(response, str)
+    assert f'href="https://safe.example/reply/{message.reply_slug}"' in response
+    assert "evil.example" not in response

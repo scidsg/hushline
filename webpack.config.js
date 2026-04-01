@@ -18,6 +18,7 @@ modules = [
   "premium-waiting",
   "service-worker",
   "settings-fields",
+  "settings-location",
   "settings",
   "settings_admin",
   "submit-message",
@@ -34,9 +35,10 @@ for (const mod_name of modules) {
 }
 
 module.exports = (env) => {
-  const isDev = env.WEBPACK_WATCH
+  const isDev = Boolean(env?.WEBPACK_WATCH);
   return {
     mode: isDev ? 'development' : 'production',
+    devtool: isDev ? "source-map" : false,
     entry: entries,
     output: {
       path: path.resolve(__dirname, 'hushline', 'static', 'js'),

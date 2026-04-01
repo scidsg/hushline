@@ -12,10 +12,11 @@
     method="POST"
     class="formBody"
   >
+    {% set username_field = change_username_form.new_username %}
     {{ change_username_form.hidden_tag() }}
-    {{ change_username_form.new_username.label }}
-    {{ change_username_form.new_username(id='new_username', value=session['username']) }}
-    {% for error in change_username_form.new_username.errors %}
+    {{ username_field.label }}
+    {{ username_field(id='new_username') }}
+    {% for error in username_field.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
     {{ change_username_form.submit }}
@@ -45,15 +46,17 @@
     method="POST"
     class="formBody"
   >
+    {% set old_password_field = change_password_form.old_password %}
+    {% set new_password_field = change_password_form.new_password %}
     {{ change_password_form.hidden_tag() }}
-    {{ change_password_form.old_password.label }}
-    {{ change_password_form.old_password(id='old_password') }}
-    {% for error in change_password_form.old_password.errors %}
+    {{ old_password_field.label }}
+    {{ old_password_field(id='old_password') }}
+    {% for error in old_password_field.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
-    {{ change_password_form.new_password.label }}
-    {{ change_password_form.new_password(id='new_password') }}
-    {% for error in change_password_form.new_password.errors %}
+    {{ new_password_field.label }}
+    {{ new_password_field(id='new_password') }}
+    {% for error in new_password_field.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
     {{ change_password_form.submit }}

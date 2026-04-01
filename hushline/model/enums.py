@@ -87,6 +87,84 @@ class SMTPEncryption(enum.Enum):
         return cls.StartTLS
 
 
+_ACCOUNT_CATEGORY_LEGACY_LABELS = {
+    "journalist_newsroom": "Journalist / Newsroom",
+    "lawyer_law_firm": "Lawyer / Law Firm",
+    "business_employer": "Business / Employer",
+    "educator_school": "Educator / School",
+    "activist_organizer": "Activist / Organizer",
+    "developer_security_researcher": "Developer / Security Researcher",
+}
+
+
+@enum.unique
+class AccountCategory(enum.Enum):
+    JOURNALIST = "journalist"
+    NEWSROOM = "newsroom"
+    LAWYER = "lawyer"
+    LAW_FIRM = "law_firm"
+    BUSINESS = "business"
+    NONPROFIT = "nonprofit"
+    EDUCATOR = "educator"
+    SCHOOL = "school"
+    ACTIVIST = "activist"
+    ORGANIZER = "organizer"
+    DEVELOPER = "developer"
+    SECURITY_RESEARCHER = "security_researcher"
+    OTHER = "other"
+
+    @classmethod
+    def values(cls) -> tuple[str, ...]:
+        return tuple(category.value for category in cls)
+
+    @classmethod
+    def choices(cls) -> list[tuple[str, str]]:
+        return [(category.value, category.label) for category in cls]
+
+    @classmethod
+    def parse_str(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ValueError(f"Invalid {cls.__name__}")
+
+    @classmethod
+    def legacy_label(cls, string: str) -> str | None:
+        return _ACCOUNT_CATEGORY_LEGACY_LABELS.get(string)
+
+    @property
+    def label(self) -> str:
+        match self:
+            case self.JOURNALIST:
+                return "Journalist"
+            case self.NEWSROOM:
+                return "Newsroom"
+            case self.LAWYER:
+                return "Attorney"
+            case self.LAW_FIRM:
+                return "Law Firm"
+            case self.BUSINESS:
+                return "Business"
+            case self.NONPROFIT:
+                return "Nonprofit"
+            case self.EDUCATOR:
+                return "Educator"
+            case self.SCHOOL:
+                return "School"
+            case self.ACTIVIST:
+                return "Activist"
+            case self.ORGANIZER:
+                return "Organizer"
+            case self.DEVELOPER:
+                return "Developer"
+            case self.SECURITY_RESEARCHER:
+                return "Security Researcher"
+            case self.OTHER:
+                return "Other"
+            case x:
+                raise Exception(f"Programming error. {self.__class__.__name__} {x!r} not handled")
+
+
 @enum.unique
 class StripeInvoiceStatusEnum(enum.Enum):
     DRAFT = "draft"

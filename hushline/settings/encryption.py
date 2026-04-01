@@ -21,6 +21,12 @@ from hushline.settings.forms import (
 )
 
 
+def _submitted_encryption_form(pgp_key_form: PGPKeyForm) -> PGPKeyForm | None:
+    if pgp_key_form.submit.name in request.form:
+        return pgp_key_form
+    return None
+
+
 def register_encryption_routes(bp: Blueprint) -> None:
     @bp.route("/encryption", methods=["GET", "POST"])
     @authentication_required
@@ -29,10 +35,11 @@ def register_encryption_routes(bp: Blueprint) -> None:
 
         pgp_proton_form = PGPProtonForm()
         pgp_key_form = PGPKeyForm(pgp_key=user.pgp_key)
+        submitted_form = _submitted_encryption_form(pgp_key_form)
 
         status_code = 200
         if request.method == "POST":
-            if pgp_key_form.submit.name in request.form and pgp_key_form.validate():
+            if submitted_form is pgp_key_form and pgp_key_form.validate():
                 return handle_pgp_key_form(user, pgp_key_form)
             else:
                 form_error()

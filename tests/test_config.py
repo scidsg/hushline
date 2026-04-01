@@ -6,6 +6,8 @@ import pytest
 from hushline.config import (
     _JSON_CFG_PREFIX,
     _STRING_CFG_PREFIX,
+    PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
+    PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
     AliasMode,
     ConfigParseError,
     load_config,
@@ -91,8 +93,58 @@ def test_preferred_url_scheme_invalid_value() -> None:
         load_config(env)
 
 
+def test_public_base_url_loads() -> None:
+    env = dict(**os.environ)
+    env["PUBLIC_BASE_URL"] = "https://example.com/"
+
+    cfg = load_config(env)
+
+    assert cfg["PUBLIC_BASE_URL"] == "https://example.com"
+
+
+@pytest.mark.parametrize(
+    ("value", "match"),
+    [
+        ("ftp://example.com", "PUBLIC_BASE_URL must use http or https"),
+        ("https://example.com/path", "PUBLIC_BASE_URL must not include a path"),
+        ("https://example.com/?q=1", "PUBLIC_BASE_URL must not include query or fragment"),
+        ("https://example.com/#frag", "PUBLIC_BASE_URL must not include query or fragment"),
+    ],
+)
+def test_public_base_url_invalid(value: str, match: str) -> None:
+    env = dict(**os.environ)
+    env["PUBLIC_BASE_URL"] = value
+
+    with pytest.raises(ConfigParseError, match=match):
+        load_config(env)
+
+
 def test_smtp_notification_reply_to_loads() -> None:
     env = dict(**os.environ)
     env["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
     cfg = load_config(env)
     assert cfg["NOTIFICATIONS_REPLY_TO"] == "reply@example.com"
+
+
+def test_password_hash_write_use_werkzeug_scrypt_flag_defaults_false_and_parses_true() -> None:
+    env = dict(**os.environ)
+    env.pop(PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, None)
+
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] is False
+
+    env[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = "true"
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] is True
+
+
+def test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true() -> None:
+    env = dict(**os.environ)
+    env.pop(PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, None)
+
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is False
+
+    env[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = "true"
+    cfg = load_config(env)
+    assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is True

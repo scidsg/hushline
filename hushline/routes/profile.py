@@ -20,6 +20,7 @@ from werkzeug.wrappers.response import Response
 
 from hushline.crypto import encrypt_message
 from hushline.db import db
+from hushline.external_urls import canonical_external_url
 from hushline.model import (
     FieldDefinition,
     FieldValue,
@@ -31,6 +32,7 @@ from hushline.routes.common import (
     do_send_email,
     format_full_message_email_body,
     format_message_email_fields,
+    show_directory_caution_badge,
     validate_captcha,
 )
 from hushline.routes.forms import DynamicMessageForm
@@ -66,6 +68,13 @@ def register_profile_routes(app: Flask) -> None:
         session["math_problem"] = math_problem
         return math_problem
 
+    def _message_submission_block_reason(uname: Username) -> str | None:
+        if bool(getattr(uname.user, "is_suspended", False)):
+            return "suspended"
+        if not uname.user.pgp_key:
+            return "missing_pgp_key"
+        return None
+
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
         try:
@@ -98,6 +107,7 @@ def register_profile_routes(app: Flask) -> None:
         )
 
         def _render_profile(status_code: int | None = None) -> Response | str | tuple[str, int]:
+            message_submission_block_reason = _message_submission_block_reason(uname)
             owner_guard_nonce = secrets.token_urlsafe(16)
             owner_guard_signature = _owner_guard_signature(
                 uname.username,
@@ -112,9 +122,16 @@ def register_profile_routes(app: Flask) -> None:
                 username=uname,
                 field_data=dynamic_form.field_data(),
                 display_name_or_username=uname.display_name or uname.username,
+                show_caution_badge=show_directory_caution_badge(
+                    uname.display_name or uname.username,
+                    is_admin=uname.user.is_admin,
+                    is_verified=uname.is_verified,
+                    is_cautious=bool(getattr(uname.user, "is_cautious", False)),
+                ),
                 current_user_id=session.get("user_id"),
                 public_key=uname.user.pgp_key,
                 math_problem=math_problem,
+                message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
                 owner_guard_signature=owner_guard_signature,
             )
@@ -124,8 +141,8 @@ def register_profile_routes(app: Flask) -> None:
 
         if request.method == "POST":
             current_app.logger.debug("Profile form submitted.")
-            owner_guard_nonce = (request.form.get("owner_guard_nonce") or "").strip()
-            owner_guard_signature = (request.form.get("owner_guard_signature") or "").strip()
+            owner_guard_nonce = (form.owner_guard_nonce.data or "").strip()
+            owner_guard_signature = (form.owner_guard_signature.data or "").strip()
             expected_signature = _owner_guard_signature(
                 uname.username,
                 uname.user_id,
@@ -139,15 +156,20 @@ def register_profile_routes(app: Flask) -> None:
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
                 return _render_profile(400)
 
+            block_reason = _message_submission_block_reason(uname)
+            if block_reason == "suspended":
+                flash("⛔️ This account is suspended. New messages cannot be sent at this time.")
+                return _render_profile(400)
+
             if form.validate_on_submit():
-                if not uname.user.pgp_key:
+                if block_reason == "missing_pgp_key":
                     flash(
                         "⛔️ You cannot submit messages to users who have not set a PGP key.",
                         "error",
                     )
                     return _render_profile(400)
 
-                captcha_answer = request.form.get("captcha_answer", "")
+                captcha_answer = form.captcha_answer.data or ""
                 if not validate_captcha(captcha_answer):
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
                     return _render_profile(400)
@@ -261,4 +283,5 @@ def register_profile_routes(app: Flask) -> None:
         if msg is None:
             abort(404)
 
-        return render_template("submission_success.html", message=msg)
+        reply_url = canonical_external_url("message_reply", slug=msg.reply_slug)
+        return render_template("submission_success.html", message=msg, reply_url=reply_url)

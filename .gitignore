@@ -2,14 +2,16 @@
 *.pyc
 __pycache__
 .mypy_cache
-.coverage
+.coverage*
 htmlcov
 
 # configs
 .env.stripe
 
 # generated
-hushline/static/js/
+hushline/static/js/*
+!hushline/static/js/directory_verified.js
+!hushline/static/js/settings-location.js
 hushline/static/css/
 hushline/static/fonts/
 hushline/static/img/
@@ -17,4 +19,7 @@ hushline/static/data/users_directory.json
 
 # node
 /node_modules
+/.tmp/
+/playwright-report
+/test-results
 .DS_Store

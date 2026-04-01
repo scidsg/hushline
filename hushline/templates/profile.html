@@ -26,7 +26,7 @@
     {% endif %}
   </h2>
 
-  {% if user.is_admin or username.is_verified %}
+  {% if user.is_admin or username.is_verified or show_caution_badge %}
     <div class="badgeContainer">
       {% if user.is_admin %}
         <span class="badge" role="img" aria-label="Administrator account">⚙️&nbsp;Admin</span>
@@ -41,6 +41,25 @@
           aria-label="Learn more about verified accounts."
           >Learn more</a
         >
+      {% endif %}
+      {% if show_caution_badge %}
+        <span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️&nbsp;Caution</span>
+        <span class="badgeHelpTooltipGroup">
+          <button
+            type="button"
+            class="meta badgeHelpTrigger"
+            aria-describedby="caution-badge-info"
+          >
+            What's this?
+          </button>
+          <span
+            id="caution-badge-info"
+            class="badgeHelpTooltip"
+            role="tooltip"
+          >
+            Visitors should be cautious of interacting with this account.
+          </span>
+        </span>
       {% endif %}
     </div>
   {% endif %}
@@ -98,12 +117,8 @@
     data-submit-spinner="true"
   >
     {{ form.hidden_tag() }}
-    <input type="hidden" name="owner_guard_nonce" value="{{ owner_guard_nonce }}" />
-    <input
-      type="hidden"
-      name="owner_guard_signature"
-      value="{{ owner_guard_signature }}"
-    />
+    {{ form.owner_guard_nonce(type="hidden", value=owner_guard_nonce) }}
+    {{ form.owner_guard_signature(type="hidden", value=owner_guard_signature) }}
 
     {% for data in field_data %}
       {% if data['field'].enabled %}
@@ -117,7 +132,7 @@
             </label>
           </div>
           <div>
-            {% if not user.pgp_key %}
+            {% if message_submission_block_reason %}
               {{ form[data['name']](id=data['name'], disabled='disabled') }}
             {% else %}
               {% if data['field'].encrypted %}
@@ -139,19 +154,18 @@
 
     <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
 
-    {% if user.pgp_key %}
+    {% if not message_submission_block_reason %}
       <div class="captcha">
         <p>🤖 Solve the math problem to submit your message.</p>
         <div class="captcha_container">
           <label for="captcha_answer">{{ math_problem }}</label>
-          <input
-            type="text"
-            id="captcha_answer"
-            name="captcha_answer"
-            required=""
-            autocomplete="off"
-            aria-label="Solve {{ math_problem }} to submit your message"
-          />
+          {{ form.captcha_answer(
+            id="captcha_answer",
+            value="",
+            required="",
+            autocomplete="off",
+            aria_label="Solve " ~ math_problem ~ " to submit your message",
+          ) }}
         </div>
       </div>
     {% endif %}
@@ -160,17 +174,22 @@
       type="submit"
       id="submitBtn"
       aria-label="Send a message to {{ display_name_or_username }}"
-      {% if not user.pgp_key %}disabled="disabled"{% endif %}
+      {% if message_submission_block_reason %}disabled="disabled"{% endif %}
     >
       Send Message
     </button>
 
-    {% if not user.pgp_key %}
+    {% if message_submission_block_reason %}
       <div class="pgp-disabled-overlay">
         <p>
-          🔒<br />
-          Sending messages is disabled until {{ display_name_or_username }} adds
-          a PGP key.
+          {% if message_submission_block_reason == "suspended" %}
+            ⛔️<br />
+            This account is suspended. New messages cannot be sent at this time.
+          {% else %}
+            🔒<br />
+            Sending messages is disabled until {{ display_name_or_username }} adds
+            a PGP key.
+          {% endif %}
         </p>
       </div>
     {% endif %}
@@ -178,7 +197,7 @@
 {% endblock %}
 
 {% block scripts %}
-  {% if user.pgp_key %}
+  {% if not message_submission_block_reason %}
     <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/submit-message.js') }}"></script>

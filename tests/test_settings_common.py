@@ -12,11 +12,30 @@ from werkzeug.datastructures import MultiDict
 from wtforms.validators import ValidationError
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
+from hushline.geo import (
+    city_choice_label,
+    city_choice_value,
+    city_options_for_state,
+    country_iso2,
+    normalize_city_name,
+    normalize_subdivision_name,
+    state_choice_value,
+    state_options,
+)
+from hushline.model import (
+    AccountCategory,
+    FieldDefinition,
+    FieldType,
+    FieldValue,
+    Message,
+    User,
+    Username,
+)
 from hushline.settings.common import (
     _is_blocked_ip,
     _is_safe_verification_url,
     build_field_forms,
+    create_profile_forms,
     handle_change_password_form,
     handle_change_username_form,
     handle_field_post,
@@ -112,6 +131,246 @@ def test_settings_forms_reject_disallowed_language(app: Flask) -> None:
             assert username_form.new_username.errors
 
 
+def test_profile_form_rejects_invalid_account_category(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict({"account_category": "invalid-category", "bio": "valid bio"})
+        )
+        assert not form.validate()
+        assert form.account_category.errors == ["Invalid account category."]
+
+        valid_form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "account_category": AccountCategory.BUSINESS.value,
+                    "country": "United States",
+                    "city": "Chicago",
+                    "subdivision": "Illinois",
+                    "bio": "valid bio",
+                }
+            )
+        )
+        assert valid_form.validate()
+
+
+def test_profile_form_rejects_invalid_country(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(formdata=MultiDict({"country": "Atlantis", "bio": "valid bio"}))
+
+    assert not form.validate()
+    assert form.country.errors == ["Invalid country."]
+
+
+def test_profile_form_rejects_invalid_subdivision_for_country(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict(
+                {"country": "United States", "subdivision": "Atlantis", "bio": "valid bio"}
+            )
+        )
+
+    assert not form.validate()
+    assert form.subdivision.errors == ["Invalid state / province / region."]
+
+
+def test_profile_form_rejects_invalid_city_for_subdivision(app: Flask) -> None:
+    with app.test_request_context():
+        form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "country": "United States",
+                    "subdivision": "Illinois",
+                    "city": "Atlantis",
+                    "bio": "valid bio",
+                }
+            )
+        )
+
+    assert not form.validate()
+    assert form.city.errors == ["Invalid city."]
+
+
+@pytest.mark.parametrize("country", ["", "   ", "Atlantis"])
+def test_country_iso2_returns_none_for_empty_or_unknown_country(country: str) -> None:
+    assert country_iso2(country) is None
+
+
+def test_state_options_returns_empty_for_unknown_country() -> None:
+    assert state_options("Atlantis") == []
+
+
+@pytest.mark.parametrize(
+    ("country", "subdivision"),
+    [
+        ("Atlantis", "Illinois"),
+        ("United States", "Atlantis"),
+    ],
+)
+def test_city_options_for_state_returns_empty_for_unresolved_inputs(
+    country: str, subdivision: str
+) -> None:
+    assert city_options_for_state(country, subdivision) == []
+
+
+def test_city_choice_value_returns_none_for_blank_or_unknown_city() -> None:
+    assert city_choice_value("   ", "United States", "Illinois") is None
+    assert city_choice_value("Atlantis", "United States", "Illinois") is None
+
+
+def test_city_choice_value_returns_first_match_when_multiple_cities_exist() -> None:
+    with patch(
+        "hushline.geo._city_options_by_name",
+        return_value={
+            "springfield": (
+                {"value": "first", "name": "Springfield", "subdivision": "Illinois"},
+                {"value": "second", "name": "Springfield", "subdivision": "Illinois"},
+            )
+        },
+    ):
+        assert city_choice_value("Springfield", "United States", "Illinois") == "first"
+
+
+@pytest.mark.parametrize(
+    ("value", "country", "subdivision"),
+    [
+        (None, "United States", "Illinois"),
+        ("   ", "United States", "Illinois"),
+        ("Chicago", "Atlantis", "Illinois"),
+        ("Chicago", "United States", "Atlantis"),
+    ],
+)
+def test_normalize_city_name_returns_none_for_unresolved_or_empty_inputs(
+    value: str | None, country: str, subdivision: str
+) -> None:
+    assert normalize_city_name(value, country, subdivision) is None
+
+
+def test_normalize_subdivision_name_returns_trimmed_value_for_unknown_country() -> None:
+    assert normalize_subdivision_name("  Atlantis Province  ", "Atlantis") == "Atlantis Province"
+
+
+def test_profile_form_allows_empty_city_without_normalizing(app: Flask) -> None:
+    with app.test_request_context(), patch(
+        "hushline.settings.forms.normalize_city_name",
+        side_effect=AssertionError("normalize_city_name should not be called"),
+    ):
+        form = ProfileForm(
+            formdata=MultiDict(
+                {
+                    "country": "United States",
+                    "subdivision": "Illinois",
+                    "city": "",
+                    "bio": "valid bio",
+                }
+            )
+        )
+
+        assert form.validate()
+        assert form.city.errors == []
+
+
+def test_profile_form_validate_city_returns_early_for_blank_field(app: Flask) -> None:
+    with app.test_request_context(), patch(
+        "hushline.settings.forms.normalize_city_name",
+        side_effect=AssertionError("normalize_city_name should not be called"),
+    ):
+        form = ProfileForm()
+        form.country.data = "United States"
+        form.subdivision.data = "Illinois"
+        form.city.data = ""
+
+        form.validate_city(form.city)
+
+        assert not form.city.errors
+
+
+def test_profile_form_preserves_unknown_saved_country_choice(app: Flask) -> None:
+    with app.app_context():
+        form = ProfileForm(data={"country": "Atlantis"})
+
+    assert form.country.data == "Atlantis"
+    assert form.country.choices[:2] == [("", "Select"), ("Atlantis", "Atlantis")]
+
+
+def test_profile_form_preserves_unknown_saved_subdivision_and_city_labels(
+    app: Flask,
+) -> None:
+    with app.app_context():
+        form = ProfileForm(
+            data={
+                "country": "United States",
+                "subdivision": "Unknown State",
+                "city": "Unknown City",
+            }
+        )
+
+    assert ("Unknown State", "Unknown State") in form.subdivision.choices
+    assert ("Unknown City", "Unknown City") in form.city.choices
+
+
+def test_city_choice_label_returns_raw_value_when_lookup_is_ambiguous() -> None:
+    with patch(
+        "hushline.geo._city_option_by_value",
+        return_value={},
+    ), patch(
+        "hushline.geo._city_options_by_name",
+        return_value={
+            "springfield": (
+                {"value": "first", "label": "Springfield"},
+                {"value": "second", "label": "Springfield"},
+            )
+        },
+    ):
+        assert city_choice_label("Springfield", "United States", "Illinois") == "Springfield"
+
+
+def test_profile_form_account_category_choices_are_split(app: Flask) -> None:
+    with app.app_context():
+        form = ProfileForm()
+
+    assert form.account_category.choices[0] == ("", "Select")
+
+    labels = [label for value, label in form.account_category.choices if value]
+
+    assert "Journalist" in labels
+    assert "Newsroom" in labels
+    assert "Attorney" in labels
+    assert "Law Firm" in labels
+    assert "Developer" in labels
+    assert "Security Researcher" in labels
+    assert "Journalist / Newsroom" not in labels
+    assert "Lawyer / Law Firm" not in labels
+    assert "Developer / Security Researcher" not in labels
+
+
+def test_create_profile_forms_disables_location_inputs_until_dependencies(user: User) -> None:
+    _, _, profile_form = create_profile_forms(user.primary_username)
+
+    assert profile_form.subdivision.render_kw is not None
+    assert profile_form.subdivision.render_kw.get("disabled") == "disabled"
+    assert profile_form.city.render_kw is not None
+    assert profile_form.city.render_kw.get("disabled") == "disabled"
+
+    user.country = "United States"
+    _, _, profile_form_with_country = create_profile_forms(user.primary_username)
+    assert profile_form_with_country.subdivision.render_kw is None or (
+        "disabled" not in profile_form_with_country.subdivision.render_kw
+    )
+    assert profile_form_with_country.city.render_kw is not None
+    assert profile_form_with_country.city.render_kw.get("disabled") == "disabled"
+
+
+def test_create_profile_forms_selects_saved_subdivision_and_city(user: User) -> None:
+    user.country = "United States"
+    user.subdivision = "Illinois"
+    user.city = "Chicago"
+
+    _, _, profile_form = create_profile_forms(user.primary_username)
+
+    assert profile_form.subdivision.data == state_choice_value("Illinois", "United States")
+    assert profile_form.city.data == city_choice_value("Chicago", "United States", "Illinois")
+
+
 def test_is_blocked_ip_classification() -> None:
     assert _is_blocked_ip(ipaddress.IPv4Address(0)) is True
     assert _is_blocked_ip(ipaddress.ip_address("127.0.0.1")) is True
@@ -177,6 +436,25 @@ async def test_is_safe_verification_url_resolved_public_allowed(app: Flask) -> N
 
 
 @pytest.mark.asyncio()
+async def test_is_safe_verification_url_direct_private_ip_rejected(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        assert await _is_safe_verification_url("https://10.0.0.1") is False
+
+
+@pytest.mark.asyncio()
+async def test_is_safe_verification_url_resolved_blocked_ip_rejected(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        with patch.object(
+            asyncio.get_running_loop(),
+            "getaddrinfo",
+            return_value=[(0, 0, 0, "", ("224.0.0.1", 0))],
+        ):
+            assert await _is_safe_verification_url("https://example.com") is False
+
+
+@pytest.mark.asyncio()
 async def test_verify_url_handles_client_error(user: User) -> None:
     username = user.primary_username
     profile_url = "https://example.com/profile"
@@ -204,6 +482,26 @@ async def test_verify_url_handles_client_error(user: User) -> None:
         await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
 
     db.session.refresh(username)
+    assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_returns_early_when_url_is_not_safe(user: User) -> None:
+    username = user.primary_username
+
+    class _Session:
+        def get(self, *_args: object, **_kwargs: object) -> object:
+            raise AssertionError("session.get should not be called for unsafe URLs")
+
+    with patch("hushline.settings.common._is_safe_verification_url", return_value=False):
+        await verify_url(
+            _Session(),  # type: ignore[arg-type]
+            username,
+            1,
+            "https://example.com",
+            "https://example.com/profile",
+        )
+
     assert username.extra_field_verified1 is False
 
 
@@ -325,6 +623,37 @@ async def test_handle_update_bio_logs_task_exceptions_when_not_testing(
         warning_log.assert_called()
 
 
+@pytest.mark.asyncio()
+async def test_handle_update_bio_uses_public_base_url_for_profile_verification(
+    app: Flask, user: User
+) -> None:
+    username = user.primary_username
+    app.config["SERVER_NAME"] = None
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+
+    with app.test_request_context(
+        "/settings/profile",
+        method="POST",
+        base_url="http://evil.example",
+    ):
+        form = ProfileForm()
+        form.bio.data = "bio"
+        form.extra_field_value1.data = "https://example.com"
+        form.extra_field_label1.data = "site"
+        for i in range(2, 5):
+            getattr(form, f"extra_field_value{i}").data = ""
+            getattr(form, f"extra_field_label{i}").data = ""
+
+        verify_url_mock = AsyncMock()
+        with patch("hushline.settings.common.verify_url", new=verify_url_mock):
+            response = await handle_update_bio(username, form)
+
+    assert response.status_code == 302
+    verify_url_mock.assert_awaited_once()
+    assert verify_url_mock.await_args is not None
+    assert verify_url_mock.await_args.args[4] == f"https://safe.example/to/{username.username}"
+
+
 def test_handle_new_alias_form_unique_violation_returns_none(
     app: Flask, user: User, user_alias: Username
 ) -> None:
@@ -396,6 +725,32 @@ def test_handle_change_username_form_unique_violation_flashes_taken(app: Flask, 
     assert result.status_code == 302
     assert ("message", "💔 This username is already taken.") in messages
     assert session_username == user.primary_username.username
+
+
+def test_handle_change_username_form_internal_error_flashes_generic_error(
+    app: Flask, user: User
+) -> None:
+    form = cast(
+        ChangeUsernameForm,
+        SimpleNamespace(new_username=SimpleNamespace(data="different-name", errors=[])),
+    )
+
+    with (
+        app.test_request_context("/settings/auth", method="POST"),
+        patch("hushline.settings.common.db.session.scalar", side_effect=[False, False]),
+        patch(
+            "hushline.settings.common.db.session.commit",
+            side_effect=IntegrityError("stmt", "params", Exception("boom")),
+        ),
+        patch("hushline.settings.common.current_app.logger.error") as logger_error,
+    ):
+        session["username"] = user.primary_username.username
+        result = handle_change_username_form(user.primary_username, form)
+        messages = session.get("_flashes", [])
+
+    assert result.status_code == 302
+    assert ("message", "⛔️ Internal server error. Username not changed.") in messages
+    logger_error.assert_called_once_with("Error updating username", exc_info=True)
 
 
 def test_handle_change_password_form_rejects_wrong_old_password(

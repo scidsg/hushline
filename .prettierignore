@@ -4,3 +4,4 @@ hushline/templates/*
 build
 coverage
 .pytest_cache
+hushline/data/newsroom_directory_listings.json

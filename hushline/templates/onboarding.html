@@ -48,6 +48,7 @@
       <h3>Now, let's set up encryption</h3>
       <p>We'll add your public encryption key so messages are secured and only you can read them. Proton Mail users can import their key below. If you need a Proton account, <a href="https://account.proton.me/signup?plan=free" target="_blank" rel="noopener noreferrer">sign up here</a>. Other users can paste their public PGP key manually. <a href="https://hushline.app/library/docs/getting-started/account-setup#option-21-use-with-proton-mail" target="_blank" rel="noopener noreferrer">Need more help?</a></p>
       <form method="POST" class="formBody">
+        {% set proton_email_field = pgp_proton_form.email %}
         <label for="searchInput">Proton Email Search</label>
         {{ pgp_proton_form.hidden_tag() }}
         <input type="hidden" name="step" value="encryption" />
@@ -60,7 +61,7 @@
               alt=""
             />
           </span>
-          <input id="searchInput" type="email" name="email" placeholder="Search Proton email..." required="">
+          {{ proton_email_field(id='searchInput', type='email') }}
         </div>
         {% for error in pgp_proton_form.email.errors %}
           <span class="error">{{ error }}</span>

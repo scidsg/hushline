@@ -31,7 +31,7 @@ make refresh-globaleaks-listings REFRESH_GLOBALEAKS_ARGS="--check"
 ## Scheduled refresh
 
 - Workflow: `.github/workflows/globaleaks-directory-refresh.yml`
-- Trigger: daily cron + manual dispatch.
+- Trigger: quarterly cron (`Jan/Apr/Jul/Oct`) + manual dispatch.
 - Behavior: refreshes the local artifact from the public GlobaLeaks source pages and opens or
   updates a PR when data changes.
 

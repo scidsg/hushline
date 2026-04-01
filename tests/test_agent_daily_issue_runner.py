@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shlex
 import subprocess
 from pathlib import Path
@@ -16,6 +17,1100 @@ def _run_bash(script: str) -> subprocess.CompletedProcess[str]:
         text=True,
         check=False,
     )
+
+
+def test_runner_defaults_repo_dir_to_checkout_root() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$REPO_DIR"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == ROOT
+
+
+def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
+    tmp_path: Path,
+) -> None:
+    runner_script = shlex.quote(str(RUNNER_SCRIPT))
+
+    shell_script = f"""
+source {runner_script}
+TMPDIR={shlex.quote(str(tmp_path))}
+runner_script={runner_script}
+snapshot_metadata="$(prepare_runner_exec_snapshot "$runner_script" "$runner_script")"
+printf '%s\\n' "$snapshot_metadata"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    original_dir, snapshot_path = result.stdout.strip().split("\t")
+    snapshot_file = Path(snapshot_path)
+    assert Path(original_dir) == RUNNER_SCRIPT.parent
+    assert snapshot_file.exists()
+    assert snapshot_file.parent == tmp_path
+    assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
+
+
+def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+resolve_issue_parent_epic() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '1\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "collect-issue-candidates" in calls
+    assert "count-open-human-prs" in calls
+    assert "count-open-bot-prs" in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+resolve_issue_parent_epic() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '2\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "collect-issue-candidates" in calls
+    assert "count-open-human-prs" in calls
+    assert "count-open-bot-prs" not in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+resolve_issue_parent_epic() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "[20" in result.stdout
+    assert "Skipped: no open issues found in project" in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "collect-issue-candidates" in calls
+    assert "count-open-bot-prs" not in calls
+    assert "count-open-human-prs" not in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_runner_status_prefixes_lines_with_local_timestamp() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+runner_status "Skipped: no open issues found."
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: no open issues found." in result.stdout
+    assert result.stdout.startswith("[20")
+
+
+def test_main_bootstrap_does_not_prune_docker_system(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+configure_bot_git_identity() {{ :; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Prune Docker system" not in calls
+    assert calls[-5:] == [
+        "Configure bot git identity",
+        "Stop and remove Docker resources",
+        "Kill all Docker containers",
+        "Kill processes on runner ports",
+        "runtime-bootstrap",
+    ]
+
+
+def test_build_pr_title_omits_codex_daily_prefix() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+build_pr_title 1622 $'Normalize geography\\nacross directory listing types'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "#1622 Normalize geography across directory listing types\n"
+    assert "Codex Daily:" not in result.stdout
+
+
+def test_build_branch_name_uses_issue_prefix() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+build_branch_name 1732
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "codex/daily-issue-1732\n"
+
+
+def test_build_epic_branch_name_uses_epic_prefix() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+build_epic_branch_name 1735
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "codex/epic-1735\n"
+
+
+def test_ensure_worktree_on_branch_checks_out_expected_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "symbolic-ref --quiet --short HEAD")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732  ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_worktree_on_branch codex/daily-issue-1732
+printf 'branch=%s\\n' "$CURRENT_BRANCH"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "branch=codex/daily-issue-1732" in result.stdout
+
+
+def test_ensure_head_commit_on_branch_moves_issue_branch_and_repairs_main() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CURRENT_BRANCH=main
+ISSUE_BRANCH_REF=old-issue-ref
+MAIN_BRANCH_REF=old-main-ref
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf '%s\\n' "$CURRENT_BRANCH"
+      return 0
+      ;;
+    "rev-parse HEAD   ")
+      printf 'deadbeef\\n'
+      return 0
+      ;;
+    "branch -f codex/daily-issue-1732 deadbeef ")
+      ISSUE_BRANCH_REF=deadbeef
+      return 0
+      ;;
+    "checkout codex/daily-issue-1732   ")
+      CURRENT_BRANCH=codex/daily-issue-1732
+      return 0
+      ;;
+    "show-ref --verify --quiet refs/remotes/origin/main ")
+      return 0
+      ;;
+    "branch -f main origin/main ")
+      MAIN_BRANCH_REF=origin/main
+      return 0
+      ;;
+  esac
+  return 1
+}}
+ensure_head_commit_on_branch codex/daily-issue-1732 main
+printf 'current=%s\\nissue=%s\\nmain=%s\\n' "$CURRENT_BRANCH" "$ISSUE_BRANCH_REF" "$MAIN_BRANCH_REF"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "current=codex/daily-issue-1732" in result.stdout
+    assert "issue=deadbeef" in result.stdout
+    assert "main=origin/main" in result.stdout
+
+
+def test_require_branch_has_unique_commits_blocks_empty_pr_branch() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "rev-list --count main..codex/daily-issue-1732" ]]; then
+    printf '0\\n'
+    return 0
+  fi
+  return 1
+}}
+set +e
+require_branch_has_unique_commits main codex/daily-issue-1732
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert (
+        "Blocked: branch 'codex/daily-issue-1732' has no commits ahead of 'main';" in result.stderr
+    )
+
+
+def test_resolve_issue_parent_epic_outputs_parent_metadata() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  cat <<'EOF'
+{{"data":{{"repository":{{"issue":{{"parent":{{"number":1735,"title":"Epic title","url":"https://github.com/scidsg/hushline/issues/1735"}}}}}}}}}}
+EOF
+}}
+resolve_issue_parent_epic 1732
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1735\tEpic title\thttps://github.com/scidsg/hushline/issues/1735\n"
+
+
+def test_resolve_issue_parent_epic_passes_issue_number_as_graphql_int() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  local saw_graphql=0
+  local saw_issue_number=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      graphql)
+        saw_graphql=1
+        ;;
+      -F)
+        shift
+        if [[ "${{1-}}" == "issueNumber=1732" ]]; then
+          saw_issue_number=1
+        fi
+        ;;
+    esac
+    shift || break
+  done
+
+  if (( saw_graphql == 1 && saw_issue_number == 1 )); then
+    cat <<'EOF'
+{{"data":{{"repository":{{"issue":{{"parent":{{"number":1735,"title":"Epic title","url":"https://github.com/scidsg/hushline/issues/1735"}}}}}}}}}}
+EOF
+    return 0
+  fi
+
+  return 1
+}}
+resolve_issue_parent_epic 1732
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1735\tEpic title\thttps://github.com/scidsg/hushline/issues/1735\n"
+
+
+def test_resolve_project_status_edit_args_outputs_project_field_and_option_ids() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "id": "PVT_project",
+        "fields": {{
+          "nodes": [
+            {{
+              "id": "PVTSSF_status",
+              "name": "Status",
+              "options": [
+                {{"id": "opt_todo", "name": "Todo"}},
+                {{"id": "opt_in_progress", "name": "In Progress"}},
+                {{"id": "opt_ready", "name": "Ready for Review"}}
+              ]
+            }}
+          ]
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+resolve_project_status_edit_args 7 "Ready for Review"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "PVT_project\tPVTSSF_status\topt_ready\n"
+
+
+def test_resolve_issue_project_item_id_outputs_matching_project_item() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  cat <<'EOF'
+{{"data":{{"repository":{{"issue":{{"projectItems":{{"nodes":[{{"id":"PVTI_other","project":{{"number":8}}}},{{"id":"PVTI_target","project":{{"number":7}}}}]}}}}}}}}}}
+EOF
+}}
+resolve_issue_project_item_id 1732 7
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "PVTI_target"
+
+
+def test_set_issue_project_status_uses_graphql_mutation() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_ready\\n'; }}
+resolve_issue_project_item_id() {{ printf 'PVTI_target\\n'; }}
+gh() {{
+  local saw_graphql=0
+  local project_id=""
+  local item_id=""
+  local field_id=""
+  local option_id=""
+  local query_text=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      api)
+        ;;
+      graphql)
+        saw_graphql=1
+        ;;
+      -f)
+        case "$2" in
+          projectId=*) project_id="${{2#projectId=}}" ;;
+          itemId=*) item_id="${{2#itemId=}}" ;;
+          fieldId=*) field_id="${{2#fieldId=}}" ;;
+          optionId=*) option_id="${{2#optionId=}}" ;;
+          query=*) query_text="${{2#query=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  [[ "$saw_graphql" == "1" ]]
+  [[ "$project_id" == "PVT_project" ]]
+  [[ "$item_id" == "PVTI_target" ]]
+  [[ "$field_id" == "PVTSSF_status" ]]
+  [[ "$option_id" == "opt_ready" ]]
+  [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]
+}}
+set_issue_project_status 1732 "Ready for Review"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROJECT_OWNER=scidsg
+PROJECT_COLUMN="Agent Eligible"
+PROJECT_STATUS_FIELD_NAME=Status
+PROJECT_ITEM_LIMIT=200
+REPO_SLUG=scidsg/hushline
+gh() {{
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1558,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1558",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Done"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1559,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1559",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1560,
+                "state": "CLOSED",
+                "url": "https://github.com/scidsg/hushline/issues/1560",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 2001,
+                "state": "OPEN",
+                "url": "https://github.com/other/repo/issues/2001",
+                "repository": {{"owner": {{"login": "other"}}, "name": "repo"}}
+              }}
+            }}
+          ]
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+collect_issue_candidates_from_project 12
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1558\n"
+
+
+def test_collect_issue_candidates_from_project_paginates_before_filtering() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROJECT_OWNER=scidsg
+PROJECT_COLUMN="Agent Eligible"
+PROJECT_STATUS_FIELD_NAME=Status
+PROJECT_ITEM_LIMIT=5
+REPO_SLUG=scidsg/hushline
+gh() {{
+  local cursor=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          cursor=*) cursor="${{2#cursor=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ -z "$cursor" ]]; then
+    cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Done"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1559,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1559",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }}
+          ],
+          "pageInfo": {{
+            "hasNextPage": true,
+            "endCursor": "cursor-2"
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+    return 0
+  fi
+
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1558,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1558",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }}
+          ],
+          "pageInfo": {{
+            "hasNextPage": false,
+            "endCursor": null
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+collect_issue_candidates_from_project 12
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1558\n"
+
+
+def test_main_allows_existing_epic_pr_before_runtime_bootstrap(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+collect_issue_candidates() {{ printf '1732\\n'; }}
+resolve_issue_parent_epic() {{
+  printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{
+  printf 'count-open-bot-prs-excluding-heads\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+find_open_pr_for_head_branch() {{
+  if [[ "$1" == "codex/epic-1735" ]]; then
+    printf '%s\\n' \
+      '{{"number":1742,"url":"https://github.com/scidsg/hushline/pull/1742","title":"#1735 Epic"}}'
+  fi
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Epic branch codex/epic-1735 already has an open PR to main" in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "count-open-bot-prs-excluding-heads" in calls
+    assert "runtime-bootstrap" in calls
+
+
+def test_main_marks_issue_in_progress_before_runtime_bootstrap(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+git() {{ :; }}
+docker() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+  exit 0
+}}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Mark issue #1558 as In Progress" in calls
+    assert "status:1558:In Progress" in calls
+    assert calls.index("Mark issue #1558 as In Progress") < calls.index("runtime-bootstrap")
+
+
+def test_main_uses_fetched_origin_epic_ref_for_child_pr_uniqueness_check(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1732.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "fetch origin codex/epic-1735:refs/remotes/origin/codex/epic-1735  ")
+      return 0
+      ;;
+    "checkout -B codex/daily-issue-1732 origin/codex/epic-1735 ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1732\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+    "rev-list --count origin/codex/epic-1735..codex/daily-issue-1732  ")
+      printf '1\\n'
+      printf 'rev-list:%s\\n' \
+        "origin/codex/epic-1735..codex/daily-issue-1732" \
+        >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1732\\n'; }}
+resolve_issue_parent_epic() {{
+  printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+find_open_pr_for_head_branch() {{ :; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{
+  [[ "$1" == "codex/epic-1735" ]]
+}}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1732 Title\\n'
+}}
+check_pr_feedback_after_delay() {{ :; }}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1732" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1732\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2001\\n'
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr view https://github.com/scidsg/hushline/pull/2001" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .number) printf '2001\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/pull/2001\\n' ;;
+    esac
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "rev-list:origin/codex/epic-1735..codex/daily-issue-1732" in calls
+    assert "push:codex/daily-issue-1732" in calls
+
+
+def test_write_pr_body_for_child_issue_references_epic_and_closes_child_issue(
+    tmp_path: Path,
+) -> None:
+    pr_body_file = tmp_path / "pr-body.md"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PR_BODY_FILE={shlex.quote(str(pr_body_file))}
+stream_changed_files() {{
+  printf 'scripts/agent_daily_issue_runner.sh\\n'
+}}
+count_non_log_changed_files() {{
+  printf '1\\n'
+}}
+summarize_non_log_changed_areas() {{
+  printf 'scripts\\n'
+}}
+summarize_non_log_changed_work() {{
+  printf 'runner orchestration\\n'
+}}
+write_pr_body \
+  1732 \
+  "Profile settings forms" \
+  "https://github.com/scidsg/hushline/issues/1732" \
+  "codex/daily-issue-1732" \
+  "codex/epic-1735" \
+  "" \
+  "docs/agent-logs/run-20260318T000000Z-issue-1732.txt" \
+  1735 \
+  "WTForms modernization" \
+  "https://github.com/scidsg/hushline/issues/1735"
+cat "$PR_BODY_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "This PR implements child issue #1732" in result.stdout
+    assert "Linked issue: #1732" in result.stdout
+    assert "Closes #1732" not in result.stdout
+    assert "Closes #1735" not in result.stdout
+    assert "- Epic: https://github.com/scidsg/hushline/issues/1735" in result.stdout
+    assert "- Child issue: https://github.com/scidsg/hushline/issues/1732" in result.stdout
+    assert "- Base branch: codex/epic-1735" in result.stdout
+
+
+def test_main_marks_issue_ready_for_review_after_opening_pr(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1558.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+    git() {{
+      case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+        "symbolic-ref --quiet --short HEAD ")
+          printf 'codex/daily-issue-1558\\n'
+          return 0
+          ;;
+        "rev-list --count main..codex/daily-issue-1558  ")
+          printf '1\\n'
+          return 0
+          ;;
+        "diff --cached --quiet  ")
+          return 1
+          ;;
+        "checkout codex/daily-issue-1558   ")
+          return 0
+          ;;
+      esac
+      return 0
+    }}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'pr-body:%s:%s\\n' "$1" "$5" >> {shlex.quote(str(call_log))}
+}}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{
+  printf 'feedback:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "pr view https://github.com/scidsg/hushline/pull/2000" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .number) printf '2000\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/pull/2000\\n' ;;
+    esac
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "status:1558:In Progress" in calls
+    assert "status:1558:Ready for Review" in calls
+    assert calls.index("status:1558:Ready for Review") > calls.index("push:codex/daily-issue-1558")
+    assert "feedback:2000" in calls
+    assert calls.index("feedback:2000") > calls.index("status:1558:Ready for Review")
 
 
 def test_persisted_runner_log_excludes_codex_transcript(tmp_path: Path) -> None:
@@ -179,6 +1274,59 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "Safe final summary" in run_log_text
 
 
+def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' \
+    'hushline/model/directory.py' \
+    'hushline/routes/directory.py' \
+    'tests/test_directory.py' \
+    'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead \
+  1622 \
+  "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        'This PR addresses the issue "Normalize geography across '
+        'directory listing types" by updating data and model code in `hushline/model`, '
+        "request-handling code in `hushline/routes`, and automated tests in "
+        "`tests/test_directory.py`."
+    ) in result.stdout
+    assert (
+        "The change includes both implementation work and automated tests, showing the "
+        "intended behavior and how it is verified."
+    ) in result.stdout
+    assert (
+        "It touches 3 non-log file(s) (4 total including runner artifacts), primarily "
+        "in hushline/model, hushline/routes, and tests/test_directory.py."
+    ) in result.stdout
+
+
+def test_write_pr_narrative_lead_explains_log_only_run() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+stream_changed_files() {{
+  printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "This run does not change the product itself; it only updates the runner log "
+        "artifact that records what the daily runner did."
+    ) in result.stdout
+    assert "This run only changes the runner log artifact." in result.stdout
+
+
 def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -212,6 +1360,280 @@ fi
     assert result.stdout == "non-environmental\n"
 
 
+def test_runtime_bootstrap_retries_retryable_registry_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    if [[ $(grep -c '^compose up -d --build$' {shlex.quote(str(calls_file))}) == "1" ]]; then
+      printf '%s%s%s%s%s\\n' \
+        'Error response from daemon: unknown: failed to resolve reference ' \
+        '"docker.io/library/postgres:16.4-alpine3.20": ' \
+        'unexpected status from HEAD request to ' \
+        'https://registry-1.docker.io/v2/library/postgres/manifests/' \
+        '16.4-alpine3.20: 500 Internal Server Error' \
+        >&2
+      return 1
+    fi
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=0" in result.stdout
+    assert "retryable network/bootstrap failure" in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 2
+    assert docker_calls.count("compose run --rm dev_data") == 1
+    assert "compose down -v --remove-orphans" in docker_calls
+
+
+def test_runtime_bootstrap_retries_retryable_pypi_dns_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    if [[ $(grep -c '^compose up -d --build$' {shlex.quote(str(calls_file))}) == "1" ]]; then
+      printf '%s\\n' \
+        '#13 54.81     | All attempts to connect to files.pythonhosted.org failed.' \
+        '#13 54.81     | Probable Causes:' \
+        '#13 54.81     |     - the hostname cannot be resolved by your DNS' \
+        '#13 54.81     |     - your network is not connected to the internet' \
+        'target app: failed to solve: process ' \
+        '\"/bin/sh -c poetry install --no-root\" ' \
+        'did not complete successfully: exit code: 1' \
+        >&2
+      return 1
+    fi
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=0" in result.stdout
+    assert "retryable network/bootstrap failure" in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 2
+    assert docker_calls.count("compose run --rm dev_data") == 1
+    assert "compose down -v --remove-orphans" in docker_calls
+
+
+def test_runtime_bootstrap_does_not_retry_non_retryable_failure(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    printf 'invalid compose project configuration\\n' >&2
+    return 1
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "retryable network/bootstrap failure" not in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 1
+    assert "compose down -v --remove-orphans" not in docker_calls
+    assert "compose run --rm dev_data" not in docker_calls
+
+
+def test_runtime_bootstrap_does_not_retry_seed_eoferror(tmp_path: Path) -> None:
+    calls_file = tmp_path / "docker-calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNTIME_BOOTSTRAP_ATTEMPTS=3
+RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS=1
+docker() {{
+  printf '%s\\n' "$*" >> {shlex.quote(str(calls_file))}
+  if [[ "$1" == "compose" && "$2" == "up" ]]; then
+    return 0
+  fi
+  if [[ "$1" == "compose" && "$2" == "run" && "$4" == "dev_data" ]]; then
+    printf 'Traceback (most recent call last):\\nEOFError: seed fixture truncated\\n' >&2
+    return 1
+  fi
+  if [[ "$1" == "compose" && "$2" == "down" ]]; then
+    return 0
+  fi
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  return 99
+}}
+sleep() {{ :; }}
+if start_runtime_stack_and_seed_dev_data --build; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "retryable network/bootstrap failure" not in result.stdout
+
+    docker_calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert docker_calls.count("compose up -d --build") == 1
+    assert docker_calls.count("compose run --rm dev_data") == 1
+    assert "compose down -v --remove-orphans" not in docker_calls
+
+
+def test_resolve_bot_git_signing_key_uses_existing_ssh_git_config(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+
+    shell_script = f"""
+repo_dir={shlex.quote(str(repo_dir))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+cd "$repo_dir"
+BOT_GIT_GPG_FORMAT=ssh
+BOT_GIT_SIGNING_KEY=""
+DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH=""
+git() {{
+  if [[ "$1" == "config" && "$2" == "--get" && "$3" == "user.signingkey" ]]; then
+    printf '%s\\n' "$repo_dir/.ssh/bot-signing.pub"
+    return 0
+  fi
+  if [[ "$1" == "config" && "$2" == "--get" && "$3" == "gpg.format" ]]; then
+    printf 'ssh\\n'
+    return 0
+  fi
+  printf 'unexpected git invocation: %s\\n' "$*" >&2
+  return 99
+}}
+resolve_bot_git_signing_key
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(repo_dir / ".ssh" / "bot-signing.pub")
+
+
+def test_resolve_bot_git_signing_key_ignores_non_ssh_git_config(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+
+    shell_script = f"""
+repo_dir={shlex.quote(str(repo_dir))}
+git -C "$repo_dir" init -q
+git -C "$repo_dir" config user.signingkey 102783C80AF9335A
+source {shlex.quote(str(RUNNER_SCRIPT))}
+cd "$repo_dir"
+BOT_GIT_GPG_FORMAT=ssh
+BOT_GIT_SIGNING_KEY=""
+DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH=""
+if resolve_bot_git_signing_key; then
+  printf 'resolved\\n'
+else
+  printf 'missing\\n'
+fi
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "missing\n"
+
+
+def test_assert_ssh_signing_ready_does_not_require_local_private_key_file(tmp_path: Path) -> None:
+    public_key_file = tmp_path / "bot-signing.pub"
+    public_key_file.write_text(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBotSigningKeyExample hushline-dev\n",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  if [[ "$1" == "init" || "$1" == "config" || "$1" == "commit" ]]; then
+    return 0
+  fi
+  printf 'unexpected git invocation: %s\\n' "$*" >&2
+  return 99
+}}
+assert_ssh_signing_ready {shlex.quote(str(public_key_file))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_require_positive_integer_rejects_zero() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -224,10 +1646,29 @@ require_positive_integer "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS" "0"
     assert "HUSHLINE_DAILY_MAX_FIX_ATTEMPTS must be a positive integer" in result.stderr
 
 
-def test_failure_signature_from_text_returns_structured_markers() -> None:
+def test_require_positive_integer_rejects_zero_for_runtime_bootstrap_retry_delay() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\nError: boom'
+require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" "0"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert (
+        "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS must be a positive integer"
+        in result.stderr
+    )
+
+
+def test_failure_signature_from_text_returns_structured_markers() -> None:
+    failure_text = (
+        "failure_text=$'FAILED tests/test_example.py\\nAssertionError:\\nTraceback\\n'\\\n"
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\nError: boom'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+{failure_text}
 failure_signature_from_text "$failure_text"
 """
 
@@ -238,6 +1679,7 @@ failure_signature_from_text "$failure_text"
         "pytest-test-failures",
         "assertion-error",
         "python-traceback",
+        "lint-diagnostics",
         "generic-error",
     ]
 
@@ -256,6 +1698,10 @@ failure_signature_from_text "totally unmatched output"
 
 def test_build_fix_prompt_withholds_raw_check_output(tmp_path: Path) -> None:
     prompt_file = tmp_path / "prompt.txt"
+    failure_context = (
+        "$'tests/test_module.py:12:34: F821 Undefined name `MissingName`\\n"
+        "FAILED tests/test_example.py::test_case'"
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 PROMPT_FILE={shlex.quote(str(prompt_file))}
@@ -265,6 +1711,7 @@ build_fix_prompt \
   "branch-name" \
   "status summary" \
   "prior codex output" \
+  {failure_context} \
   "generic-error" \
   "2"
 cat "$PROMPT_FILE"
@@ -275,7 +1722,101 @@ cat "$PROMPT_FILE"
     assert result.returncode == 0, result.stderr
     assert "Raw failed check output is intentionally withheld" in result.stdout
     assert "---BEGIN CHECK OUTPUT---" not in result.stdout
+    assert "---BEGIN FAILURE CONTEXT---" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
     assert "generic-error" in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert (
+        "Use the sanitized recent failure block above as the primary debugging context."
+        in result.stdout
+    )
+    assert "only `make lint` and `make test` locally before opening a PR" in result.stdout
+
+
+def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> None:
+    failure_text = (
+        "failure_text=$'Container hushline-dev_data-1 Exited\\n'\\\n"
+        "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
+        "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
+        "F821 Undefined name `MissingName`\\n'\\\n"
+        "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
+        "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR=/Users/scidsg/hushline
+{failure_text}
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Container hushline-dev_data-1 Exited" not in result.stdout
+    assert "PASSED" not in result.stdout
+    assert "/Users/scidsg/hushline" not in result.stdout
+    assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
+    assert "FAILED tests/test_example.py::test_case" in result.stdout
+    assert "Traceback" in result.stdout
+    assert "make: *** [fix] Error 1" in result.stdout
+
+
+def test_recent_failure_block_from_text_redacts_secret_like_values() -> None:
+    failure_text = (
+        "failure_text=$'TOKEN=supersecret123\\n'\\\n"
+        "$'authorization: Bearer abc/def+ghi~jkl\\n'\\\n"
+        "$'Bearer zyx/wvu+tsr~qpo\\n'\\\n"
+        "$'password = hunter2\\n'\\\n"
+        "$'FAILED tests/test_example.py::test_case\\n'"
+    )
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+{failure_text}
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "authorization: Bearer [redacted]" in result.stdout
+    assert "Bearer [redacted]" in result.stdout
+    assert "password = [redacted]" in result.stdout
+    assert "supersecret123" not in result.stdout
+    assert "abc/def+ghi~jkl" not in result.stdout
+    assert "zyx/wvu+tsr~qpo" not in result.stdout
+    assert "hunter2" not in result.stdout
+
+
+def test_failure_excerpt_from_text_redacts_sensitive_values() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'AssertionError: token=SECRET123\\n'\
+$'E TOKEN=UPPERSECRET456\\n'\
+$'E api_key:abcd1234\\n'\
+$'E CLIENT_SECRET=topsecret789\\n'\
+$'Error: contact security@example.org\\n'\
+$'Traceback Authorization: Bearer supersecrettoken\\n'\
+$'FAILED tests/test_example.py::test_case\\n'
+sanitize_failure_excerpt "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "AssertionError:" in result.stdout
+    assert "SECRET123" not in result.stdout
+    assert "UPPERSECRET456" not in result.stdout
+    assert "abcd1234" not in result.stdout
+    assert "topsecret789" not in result.stdout
+    assert "security@example.org" not in result.stdout
+    assert "supersecrettoken" not in result.stdout
+    assert "token=[redacted]" in result.stdout
+    assert "TOKEN=[redacted]" in result.stdout
+    assert "api_key:[redacted]" in result.stdout
+    assert "CLIENT_SECRET=[redacted]" in result.stdout
+    assert "[redacted-email]" in result.stdout
+    assert "Authorization: Bearer [redacted]" in result.stdout
 
 
 def test_issue_attempt_loop_stops_after_max_attempts() -> None:
@@ -284,7 +1825,7 @@ source {shlex.quote(str(RUNNER_SCRIPT))}
 MAX_ISSUE_ATTEMPTS=3
 build_issue_prompt() {{ :; }}
 run_codex_from_prompt() {{ :; }}
-has_changes() {{ return 1; }}
+has_non_log_changes() {{ return 1; }}
 run_fix_attempt_loop() {{ return 0; }}
 set +e
 run_issue_attempt_loop 1558 "Title" "Body" "" "branch"
@@ -297,7 +1838,592 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
+    assert (
+        "Diagnostic: Codex left no non-log worktree changes for issue #1558 on attempt 1."
+        in result.stdout
+    )
+    assert "Prompt stats: bytes=0 lines=0 words=0" in result.stdout
     assert "Codex produced no usable changes for issue #1558 after 3 attempt(s)." in result.stderr
+
+
+def test_issue_attempt_loop_retries_when_post_fix_changes_collapse_to_log_only(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_ISSUE_ATTEMPTS=3
+build_issue_prompt() {{
+  printf 'prompt\\n' >> {shlex.quote(str(call_log))}
+}}
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+}}
+has_non_log_changes() {{
+  HAS_NON_LOG_CALL_COUNT="${{HAS_NON_LOG_CALL_COUNT:-0}}"
+  HAS_NON_LOG_CALL_COUNT=$((HAS_NON_LOG_CALL_COUNT + 1))
+  printf 'has:%s\\n' "$HAS_NON_LOG_CALL_COUNT" >> {shlex.quote(str(call_log))}
+  case "$HAS_NON_LOG_CALL_COUNT" in
+    1|3|4) return 0 ;;
+    *) return 1 ;;
+  esac
+}}
+run_fix_attempt_loop() {{
+  printf 'fix\\n' >> {shlex.quote(str(call_log))}
+  return 0
+}}
+set +e
+run_issue_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "==> Codex issue attempt 1" in result.stdout
+    assert "==> Codex issue attempt 2" in result.stdout
+    assert "rc=0" in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls.count("codex") == 2
+    assert calls.count("fix") == 2
+    assert calls.count("prompt") == 1
+
+
+def test_has_non_log_changes_ignores_preexisting_branch_commits() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BASE_BRANCH=main
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "diff --name-only main...HEAD ")
+      printf 'hushline/routes/directory.py\\n'
+      return 0
+      ;;
+    "diff --name-only  ")
+      return 0
+      ;;
+    "diff --cached --name-only ")
+      return 0
+      ;;
+    "ls-files --others --exclude-standard")
+      return 0
+      ;;
+  esac
+  return 0
+}}
+set +e
+has_non_log_changes
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+
+
+def test_summarize_pr_feedback_reports_unresolved_threads_and_comments() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": "CHANGES_REQUESTED",
+                        "comments": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer1"},
+                                    "body": "Can you cover the verified-directory case too?",
+                                    "createdAt": "2026-03-25T00:00:00Z",
+                                    "url": "https://example.test/comment/1",
+                                },
+                                {
+                                    "author": {"login": "hushline-dev"},
+                                    "body": "bot note",
+                                    "createdAt": "2026-03-25T00:01:00Z",
+                                    "url": "https://example.test/comment/2",
+                                },
+                            ]
+                        },
+                        "latestReviews": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer2"},
+                                    "state": "CHANGES_REQUESTED",
+                                    "body": "Please add migration coverage.",
+                                    "submittedAt": "2026-03-25T00:02:00Z",
+                                    "url": "https://example.test/review/1",
+                                }
+                            ]
+                        },
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "reviewer3"},
+                                                "body": (
+                                                    "This tooltip string needs to match the "
+                                                    "shared copy."
+                                                ),
+                                                "path": "tests/test_profile.py",
+                                                "createdAt": "2026-03-25T00:03:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+summarize_pr_feedback "$feedback_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback summary: unresolved_review_threads=1 "
+        "changes_requested_reviews=1 discussion_comments=1 "
+        "failing_checks=0 pending_checks=0" in result.stdout
+    )
+    assert "unresolved review thread by @reviewer3 on tests/test_profile.py" in result.stdout
+    assert "changes requested by @reviewer2 :: Please add migration coverage." in result.stdout
+    assert (
+        "Feedback comment 1: @reviewer1 :: Can you cover the verified-directory case too?"
+        in result.stdout
+    )
+
+
+def test_summarize_pr_feedback_reports_failing_and_pending_checks() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+                "link": "https://example.test/checks/1",
+            },
+            {
+                "bucket": "pending",
+                "name": "lint",
+                "state": "IN_PROGRESS",
+                "workflow": "Run Linter and Tests",
+                "link": "https://example.test/checks/2",
+            },
+            {
+                "bucket": "pass",
+                "name": "workflow-security",
+                "state": "SUCCESS",
+                "workflow": "Workflow Security Checks",
+                "link": "https://example.test/checks/3",
+            },
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+checks_json={shlex.quote(checks_json)}
+summarize_pr_feedback "$feedback_json" "$checks_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 "
+        "failing_checks=1 pending_checks=1" in result.stdout
+    )
+    assert (
+        "Feedback check 1: failing PR check Run Linter and Tests / test (FAILURE)" in result.stdout
+    )
+    assert (
+        "Feedback pending check 1: pending PR check Run Linter and Tests / lint (IN_PROGRESS)"
+        in result.stdout
+    )
+    assert "no external comments" not in result.stdout
+
+
+def test_check_pr_feedback_after_delay_skips_when_delay_disabled() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=0
+check_pr_feedback_after_delay 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
+        in result.stdout
+    )
+
+
+def test_check_pr_feedback_after_delay_skips_when_pr_number_unavailable() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+check_pr_feedback_after_delay ""
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-PR feedback check skipped: PR number unavailable." in result.stdout
+
+
+def test_fetch_pr_checks_json_accepts_pending_exit_code() -> None:
+    pending_checks_json = json.dumps(
+        [
+            {
+                "bucket": "pending",
+                "name": "test",
+                "state": "IN_PROGRESS",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "checks" && "$3" == "2000" ]]; then
+    printf '%s\\n' {shlex.quote(pending_checks_json)}
+    return 8
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+fetch_pr_checks_json 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == json.loads(pending_checks_json)
+    assert "unexpected gh invocation" not in result.stderr
+
+
+def test_fetch_pr_checks_json_accepts_failing_exit_code() -> None:
+    failing_checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "checks" && "$3" == "2000" ]]; then
+    printf '%s\\n' {shlex.quote(failing_checks_json)}
+    return 1
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+fetch_pr_checks_json 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == json.loads(failing_checks_json)
+    assert "unexpected gh invocation" not in result.stderr
+
+
+def test_check_pr_feedback_after_delay_reports_pr_checks() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    checks_json = json.dumps(
+        [
+            {
+                "bucket": "fail",
+                "name": "test",
+                "state": "FAILURE",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=1
+sleep() {{ :; }}
+fetch_pr_feedback_json() {{
+  printf '%s\\n' {shlex.quote(feedback_json)}
+}}
+fetch_pr_checks_json() {{
+  printf '%s\\n' {shlex.quote(checks_json)}
+}}
+check_pr_feedback_after_delay 2000
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Waiting 1s before checking PR #2000 for review feedback." in result.stdout
+    assert "==> Check PR #2000 feedback and checks" in result.stdout
+    assert "failing_checks=1 pending_checks=0" in result.stdout
+    assert (
+        "Feedback check 1: failing PR check Run Linter and Tests / test (FAILURE)" in result.stdout
+    )
+
+
+def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  printf 'unexpected gh invocation\\n' >&2
+  return 99
+}}
+resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "2000"
+    assert "unexpected gh invocation" not in result.stderr
+
+
+def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  shift
+  "$@"
+}}
+git() {{ return 0; }}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 1; }}
+persist_run_log() {{
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{ :; }}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'pr-create\\n' >> {shlex.quote(str(call_log))}
+    return 0
+  fi
+  return 0
+}}
+set +e
+( main )
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "Blocked: no usable non-log changes remain for issue #1558 after" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
+    assert not any(line == "pr-create" for line in calls)
+    assert not any(line.startswith("persist:") for line in calls)
+
+
+def test_main_continues_after_pr_create_when_pr_number_lookup_fails(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-1558.txt"
+RUN_LOG_TMP_FILE={shlex.quote(str(tmp_path / "run.log"))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  shift
+  "$@"
+}}
+assert_gh_auth() {{ :; }}
+assert_ssh_signing_ready() {{ :; }}
+assert_docker_running() {{ :; }}
+fetch_origin() {{ :; }}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "rev-list --count main..codex/daily-issue-1558  ")
+      printf '1\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+  printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'pr-body:%s:%s\\n' "$1" "$5" >> {shlex.quote(str(call_log))}
+}}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{
+  printf 'feedback:%s\\n' "${{1-}}" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "status:1558:Ready for Review" in calls
+    assert "feedback:2000" in calls
+    assert "Warning: opened PR but failed to resolve its number" not in result.stdout
 
 
 def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:
@@ -315,7 +2441,6 @@ PREVIOUS_FAILURE_SIGNATURE=""
 FAILURE_SIGNATURE=""
 REPEATED_FAILURE_COUNT=0
 run_local_workflow_checks() {{ return 1; }}
-run_test_gap_gate() {{ return 0; }}
 failure_signature_from_text() {{ printf 'same-failure\\n'; }}
 current_change_summary() {{ printf 'summary\\n'; }}
 build_fix_prompt() {{ :; }}
@@ -335,3 +2460,93 @@ printf 'rc=%s\\n' "$rc"
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
         in result.stderr
     )
+
+
+def test_fix_attempt_loop_does_not_run_extra_post_test_gate(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+run_local_workflow_checks() {{
+  printf 'checks\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_test_gap_gate() {{
+  printf 'unexpected-test-gap\\n' >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+run_fix_attempt_loop 1558 "Title" "Body" "test-gap" "branch"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == ["checks"]
+
+
+def test_run_local_workflow_checks_runs_lint_then_test_only(tmp_path: Path) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_local_workflow_checks
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+        "runtime:Run test (full suite):make",
+    ]
+
+
+def test_run_local_workflow_checks_stops_after_non_fixable_lint_failure(
+    tmp_path: Path,
+) -> None:
+    calls_file = tmp_path / "calls.txt"
+    check_log_file = tmp_path / "check.log"
+    check_log_file.write_text("lint failure\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'capture:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 1
+}}
+lint_failure_looks_auto_fixable() {{ return 1; }}
+auto_fix_lint_with_containerized_tooling() {{
+  printf 'autofix\\n' >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(calls_file))}
+  return 0
+}}
+set +e
+run_local_workflow_checks
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "rc=1\n"
+    assert calls_file.read_text(encoding="utf-8").splitlines() == [
+        "capture:Run lint:make",
+    ]

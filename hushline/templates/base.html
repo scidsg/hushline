@@ -146,9 +146,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
-    <script>
-      document.documentElement.classList.remove("no-js");
-    </script>
+    <script src="{{ url_for('static', filename='no-js.js') }}"></script>
     {% block scripts %}{% endblock %}
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>

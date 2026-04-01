@@ -8,10 +8,13 @@ from typing import Any, Mapping, Optional, Self
 import bleach
 from markupsafe import Markup
 
+from hushline.external_urls import normalize_public_base_url
 from hushline.utils import if_not_none, parse_bool
 
 _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"
+PASSWORD_HASH_REHASH_ON_AUTH_ENABLED = "PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"  # noqa: S105
+PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT = "PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT"  # noqa: S105
 
 
 class ConfigParseError(Exception):
@@ -87,6 +90,11 @@ def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:
         data["PREFERRED_URL_SCHEME"] = preferred_scheme
     else:
         data["PREFERRED_URL_SCHEME"] = "https" if server_name else "http"
+    if public_base_url := env.get("PUBLIC_BASE_URL"):
+        try:
+            data["PUBLIC_BASE_URL"] = normalize_public_base_url(public_base_url)
+        except ValueError as exc:
+            raise ConfigParseError(str(exc)) from exc
 
     for key in ["FLASK_ENV", "SECRET_KEY"]:
         if val := env.get(key):
@@ -156,6 +164,8 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
         ("FILE_UPLOADS_ENABLED", False),
+        (PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, False),
+        (PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, False),
         ("REGISTRATION_SETTINGS_ENABLED", True),
         ("USER_VERIFICATION_ENABLED", False),
     ]

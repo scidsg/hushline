@@ -43,7 +43,7 @@ class OrganizationSetting(Model):
         GUIDANCE_PROMPTS: [{"heading_text": "", "prompt_text": "", "index": 0}],
         HIDE_DONATE_BUTTON: False,
         REGISTRATION_ENABLED: False,
-        REGISTRATION_CODES_REQUIRED: False,
+        REGISTRATION_CODES_REQUIRED: True,
     }
 
     key: Mapped[str] = mapped_column(primary_key=True)

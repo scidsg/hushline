@@ -31,6 +31,8 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert 'id="admin-users-list"' in response.text
     assert "/static/js/settings_admin.js" in response.text
     assert 'data-search="' in response.text
+    assert "Set Cautious" in response.text
+    assert "Set Suspended" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -191,6 +193,7 @@ def test_admin_actions_require_csrf_token(
 ) -> None:
     prior_setting = app.config.get("WTF_CSRF_ENABLED")
     app.config["WTF_CSRF_ENABLED"] = True
+    target_user_id = user_alias.user_id
 
     app.config["USER_VERIFICATION_ENABLED"] = True
     response = client.post(
@@ -201,6 +204,12 @@ def test_admin_actions_require_csrf_token(
 
     response = client.post(
         url_for("admin.delete_username", username_id=user_alias.id),
+    )
+    assert response.status_code == 400
+
+    response = client.post(
+        url_for("admin.toggle_suspended", user_id=target_user_id),
+        data={"is_suspended": "true"},
     )
     assert response.status_code == 400
 
@@ -256,6 +265,86 @@ def test_toggle_admin_invalid_bool_field_returns_bad_request(
         data={"is_admin": "not-a-bool"},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_cautious_updates_user(client: FlaskClient, user: User) -> None:
+    assert user.is_cautious is False
+
+    response = client.post(
+        url_for("admin.toggle_cautious", user_id=user.id),
+        data={"is_cautious": "true"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.is_cautious is True
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_suspended_updates_user(client: FlaskClient, user: User) -> None:
+    assert user.is_suspended is False
+
+    response = client.post(
+        url_for("admin.toggle_suspended", user_id=user.id),
+        data={"is_suspended": "true"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.is_suspended is True
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_suspended_clears_user_state(client: FlaskClient, user: User) -> None:
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("admin.toggle_suspended", user_id=user.id),
+        data={"is_suspended": "false"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.is_suspended is False
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_cautious_user_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.toggle_cautious", user_id=999999),
+        data={"is_cautious": "true"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_suspended_forbidden_for_non_admin(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("admin.toggle_suspended", user_id=user.id),
+        data={"is_suspended": "true"},
+    )
+    assert response.status_code == 403
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.is_suspended is False
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_suspended_user_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.toggle_suspended", user_id=999999),
+        data={"is_suspended": "true"},
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

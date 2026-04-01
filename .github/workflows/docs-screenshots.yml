@@ -95,7 +95,7 @@ jobs:
 
       - name: Install Playwright package
         if: steps.manifest.outputs.enabled == 'true'
-        run: npm install --no-save playwright@1.54.2
+        run: npm install --no-save playwright@1.55.1
 
       - name: Install Playwright browser
         if: steps.manifest.outputs.enabled == 'true'

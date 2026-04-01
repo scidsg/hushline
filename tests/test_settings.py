@@ -8,11 +8,15 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.security import generate_password_hash
 
-from hushline.config import AliasMode, FieldsMode
+from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     AuthenticationLog,
+    FieldDefinition,
+    FieldType,
     Message,
     OrganizationSetting,
     SMTPEncryption,
@@ -20,6 +24,7 @@ from hushline.model import (
     User,
     Username,
 )
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 from hushline.settings import (
     ChangePasswordForm,
     ChangeUsernameForm,
@@ -46,7 +51,33 @@ from hushline.settings.notifications import (
     ToggleIncludeContentForm,
     ToggleNotificationsForm,
 )
+from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
+
+
+def test_user_account_category_persists(user: User) -> None:
+    user.account_category = AccountCategory.NONPROFIT.value
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert updated_user.account_category == AccountCategory.NONPROFIT.value
+    assert updated_user.account_category_label == "Nonprofit"
+
+
+def test_user_location_persists(user: User) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert updated_user.country == "United States"
+    assert updated_user.city == "Chicago"
+    assert updated_user.subdivision == "Illinois"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -120,6 +151,120 @@ def test_change_username_rejects_case_insensitive_duplicate(
     )
     assert response.status_code == 200
     assert "This username is already taken." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_auth_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        original_password_hash = user.password_hash
+        original_username = user.primary_username.username
+
+        response = client.post(
+            url_for("settings.auth"),
+            data={ChangeUsernameForm.submit.name: ""},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 400
+        db.session.refresh(user)
+        assert user.password_hash == original_password_hash
+        assert user.primary_username.username == original_username
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_invalid_username_post_shows_only_username_errors_and_no_password_side_effect(
+    client: FlaskClient, user: User
+) -> None:
+    original_password_hash = user.password_hash
+    invalid_username = "x"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(ChangeUsernameForm(data={"new_username": invalid_username})),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field must be between" in response.text
+    assert "This field is required." not in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    username_input = soup.find("input", attrs={"id": "new_username"})
+    assert username_input is not None
+    assert username_input.get("value") == invalid_username
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_invalid_password_post_shows_only_password_errors_and_preserves_password_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    original_password_hash = user.password_hash
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(data={"old_password": user_password, "new_password": "short"})
+        ),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field must be between" in response.text
+    assert "This field is required." not in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_username_post_does_not_trigger_password_form_validation(
+    client: FlaskClient, user: User
+) -> None:
+    new_username = user.primary_username.username + "-iso"
+
+    def fail_password_validate(*args: object, **kwargs: object) -> bool:
+        raise AssertionError("password form validated")
+
+    with patch.object(ChangePasswordForm, "validate", new=fail_password_validate):
+        response = client.post(
+            url_for("settings.auth"),
+            data=form_to_data(ChangeUsernameForm(data={"new_username": new_username})),
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "Username changed successfully" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_password_post_does_not_trigger_username_form_validation(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    new_password = "ChangedPassword123!!"
+
+    def fail_username_validate(*args: object, **kwargs: object) -> bool:
+        raise AssertionError("username form validated")
+
+    with patch.object(ChangeUsernameForm, "validate", new=fail_username_validate):
+        response = client.post(
+            url_for("settings.auth"),
+            data=form_to_data(
+                ChangePasswordForm(
+                    data={"old_password": user_password, "new_password": new_password}
+                )
+            ),
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -198,6 +343,106 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_from_native_werkzeug_scrypt_hash(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    original_password_hash = generate_password_hash(user_password, method="scrypt")
+    new_password = "ChangedPassword123!!"
+
+    user._password_hash = original_password_hash
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash != original_password_hash
+    assert user.password_hash.startswith("$scrypt$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_writes_pinned_werkzeug_scrypt_hash_when_enabled(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT] = True
+    new_password = "ChangedPassword123!!"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    assert user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "⛔️ Invalid username or password." in response.text
+
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": new_password,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Empty Inbox" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_add_pgp_key(client: FlaskClient, user: User, user_password: str) -> None:
     with open("tests/test_pgp_key.txt") as file:
         new_pgp_key = file.read().strip()
@@ -232,6 +477,32 @@ def test_add_invalid_pgp_key(client: FlaskClient, user: User) -> None:
         db.select(Username).filter_by(_username=user.primary_username.username)
     ).one()
     assert updated_user.user.pgp_key != invalid_pgp_key
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_encryption_invalid_manual_key_form_shows_only_manual_key_errors(
+    client: FlaskClient, user: User
+) -> None:
+    oversized_pgp_key = "A" * 100001
+
+    response = client.post(
+        url_for("settings.encryption"),
+        data=form_to_data(PGPKeyForm(data={"pgp_key": oversized_pgp_key})),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 100000 characters." in response.text
+    assert "⛔️ Invalid email address." not in response.text
+
+    db.session.refresh(user)
+    assert user.pgp_key is None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    pgp_key_input = soup.find("textarea", attrs={"id": "pgp_key"})
+    assert pgp_key_input is not None
+    assert pgp_key_input.text.lstrip("\r\n") == oversized_pgp_key
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -284,6 +555,22 @@ def test_add_pgp_key_proton_invalid_form_redirects_index(client: FlaskClient) ->
     response = client.post(url_for("settings.update_pgp_key_proton"), data={"email": ""})
     assert response.status_code == 302
     assert response.location == url_for("settings.encryption")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.proton.requests.get")
+def test_add_pgp_key_proton_invalid_email_does_not_fetch_lookup(
+    requests_get: MagicMock, client: FlaskClient
+) -> None:
+    response = client.post(
+        url_for("settings.update_pgp_key_proton"),
+        data={"email": "not-an-email"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "⛔️ Invalid email address." in response.text
+    requests_get.assert_not_called()
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -383,6 +670,44 @@ def test_update_smtp_settings_reject_private_host(
     )
     assert response.status_code == 400
     assert "SMTP server must resolve to a public IP address" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_notifications_invalid_email_forwarding_post_shows_only_forwarding_errors(
+    client: FlaskClient, user: User
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            "forwarding_enabled": "y",
+            "email_address": "primary@example.com",
+            "custom_smtp_settings": "y",
+            "smtp_settings-smtp_encryption": "StartTLS",
+            EmailForwardingForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "SMTP Sender Address is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Username is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Server is required if custom SMTP settings are enabled." in response.text
+    assert "SMTP Port is required if custom SMTP settings are enabled." in response.text
+    assert "This field is required." not in response.text
+
+    db.session.refresh(user)
+    assert user.email is None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    email_input = soup.find("input", attrs={"name": "email_address"})
+    assert email_input is not None
+    assert email_input.get("value") == "primary@example.com"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -879,6 +1204,177 @@ def test_change_bio(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_bio_invalid_post_renders_error_and_preserves_submitted_bio(
+    client: FlaskClient, user: User
+) -> None:
+    oversized_bio = "x" * 251
+    original_bio = user.primary_username.bio
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={"bio": oversized_bio, "update_bio": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 250 characters." in response.text
+
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.bio == original_bio
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    bio_input = soup.find("textarea", attrs={"id": "bio"})
+    assert bio_input is not None
+    assert bio_input.text == oversized_bio
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": AccountCategory.DEVELOPER.value,
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.DEVELOPER.value
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_account_category_rejects_invalid_value(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "account_category": "not-a-real-category",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "Invalid account category." in response.text
+
+    db.session.refresh(user)
+    assert user.account_category is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location(client: FlaskClient, user: User) -> None:
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "US",
+            "city": "Chicago",
+            "subdivision": "IL",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.city == "Chicago"
+    assert user.subdivision == "Illinois"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location_clears_incomplete_dependency_chain(
+    client: FlaskClient, user: User
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country is None
+    assert user.city is None
+    assert user.subdivision is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_profile_location_clears_city_when_city_field_is_omitted(
+    client: FlaskClient, user: User
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.profile"),
+        data={
+            "country": "US",
+            "subdivision": "IL",
+            "bio": user.primary_username.bio or "",
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Bio and fields updated successfully" in response.text
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.subdivision == "Illinois"
+    assert user.city is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_states_endpoint_returns_country_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_states"),
+        query_string={"country": "US"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(
+        option["value"] == "IL" and option["label"] == "Illinois" for option in payload["states"]
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_cities_endpoint_returns_state_scoped_options(client: FlaskClient) -> None:
+    response = client.get(
+        url_for("settings.profile_cities"),
+        query_string={"country": "US", "subdivision": "IL"},
+    )
+    assert response.status_code == 200
+    assert response.is_json
+
+    payload = response.get_json()
+    assert payload is not None
+    assert any(option["label"] == "Chicago" for option in payload["cities"])
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username) -> None:
     data = {
         "bio": str(uuid4()),
@@ -907,6 +1403,78 @@ def test_alias_change_bio(client: FlaskClient, user: User, user_alias: Username)
         value = f"extra_field_value{i}"
         assert getattr(updated_user, label) == data[label]
         assert getattr(updated_user, value) == data[value]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_invalid_post_renders_error_and_preserves_submitted_bio(
+    client: FlaskClient, user_alias: Username
+) -> None:
+    oversized_bio = "x" * 251
+    original_bio = user_alias.bio
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={"bio": oversized_bio, "update_bio": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert "Field cannot be longer than 250 characters." in response.text
+
+    db.session.refresh(user_alias)
+    assert user_alias.bio == original_bio
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    bio_input = soup.find("textarea", attrs={"id": "bio"})
+    assert bio_input is not None
+    assert bio_input.text == oversized_bio
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_preserves_account_category(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.account_category = AccountCategory.JOURNALIST.value
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "bio": str(uuid4()),
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    db.session.refresh(user)
+    assert user.account_category == AccountCategory.JOURNALIST.value
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_change_bio_preserves_account_location(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.country = "United States"
+    user.city = "Chicago"
+    user.subdivision = "Illinois"
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data={
+            "bio": str(uuid4()),
+            "update_bio": "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    db.session.refresh(user)
+    assert user.country == "United States"
+    assert user.city == "Chicago"
+    assert user.subdivision == "Illinois"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1638,7 +2206,7 @@ def test_alias_fields_post_uses_handle_field_post_result(
     app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
     monkeypatch.setattr(
         "hushline.settings.aliases.handle_field_post",
-        lambda _alias: ("handled", 201),
+        lambda _alias, _field_form=None: ("handled", 201),
     )
     response = client.post(
         url_for("settings.alias_fields", username_id=user_alias.id),
@@ -1683,6 +2251,19 @@ def test_profile_renders_business_price_with_two_decimals(client: FlaskClient) -
     assert "$20.55/mo to unlock more features!" in response.text
 
 
+def test_business_tier_display_price_returns_empty_when_tier_missing() -> None:
+    with patch("hushline.settings.profile.Tier.business_tier", return_value=None):
+        assert _business_tier_display_price() == ""
+
+
+def test_business_tier_display_price_omits_decimal_for_whole_dollars() -> None:
+    with patch(
+        "hushline.settings.profile.Tier.business_tier",
+        return_value=type("TierStub", (), {"monthly_amount": 2000})(),
+    ):
+        assert _business_tier_display_price() == "20"
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_profile_fields_post_uses_handle_field_post_result(
     client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
@@ -1690,7 +2271,7 @@ def test_profile_fields_post_uses_handle_field_post_result(
     app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
     monkeypatch.setattr(
         "hushline.settings.profile.handle_field_post",
-        lambda _username: ("handled", 202),
+        lambda _username, _field_form=None: ("handled", 202),
     )
     response = client.post(
         url_for("settings.profile_fields"),
@@ -1698,3 +2279,124 @@ def test_profile_fields_post_uses_handle_field_post_result(
         follow_redirects=False,
     )
     assert response.status_code == 202
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_add_post_renders_errors_without_creating_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    original_count = len(user.primary_username.message_fields)
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={"label": "", "field_type": FieldType.TEXT.value, "add_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(user.primary_username)
+    assert len(user.primary_username.message_fields) == original_count
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    new_field_form = soup.select_one(".field-form-new form")
+    assert new_field_form is not None
+    assert "This field is required." in new_field_form.text
+
+    profile_action = url_for("settings.profile")
+    display_name_input = soup.select_one("input[name='display_name']")
+    assert display_name_input is not None
+    assert display_name_input.find_parent("form")["action"] == profile_action
+
+    directory_toggle = soup.select_one("input[name='show_in_directory']")
+    assert directory_toggle is not None
+    assert directory_toggle.find_parent("form")["action"] == profile_action
+
+    bio_input = soup.select_one("textarea[name='bio']")
+    assert bio_input is not None
+    assert bio_input.find_parent("form")["action"] == profile_action
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_update_post_renders_errors_without_updating_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    field = user.primary_username.message_fields[0]
+    original_label = field.label
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={
+            "id": str(field.id),
+            "label": "",
+            "field_type": field.field_type.value,
+            "update_field": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(field)
+    assert field.label == original_label
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    existing_field_form = soup.select_one(f".field-form-{field.id} form")
+    assert existing_field_form is not None
+    assert "This field is required." in existing_field_form.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_fields_invalid_delete_post_renders_errors_without_deleting_field(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user.primary_username.create_default_field_defs()
+    field = user.primary_username.message_fields[0]
+
+    response = client.post(
+        url_for("settings.profile_fields"),
+        data={"id": str(field.id), "delete_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    assert db.session.get(FieldDefinition, field.id) is not None
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    existing_field_form = soup.select_one(f".field-form-{field.id} form")
+    assert existing_field_form is not None
+    assert "This field is required." in existing_field_form.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_alias_fields_invalid_add_post_renders_errors_without_creating_field(
+    client: FlaskClient, app: Flask, user_alias: Username
+) -> None:
+    app.config["FIELDS_MODE"] = FieldsMode.ALWAYS
+    user_alias.create_default_field_defs()
+    original_count = len(user_alias.message_fields)
+
+    response = client.post(
+        url_for("settings.alias_fields", username_id=user_alias.id),
+        data={"label": "", "field_type": FieldType.TEXT.value, "add_field": ""},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+    db.session.refresh(user_alias)
+    assert len(user_alias.message_fields) == original_count
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    new_field_form = soup.select_one(".field-form-new form")
+    assert new_field_form is not None
+    assert "This field is required." in new_field_form.text

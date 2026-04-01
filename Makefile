@@ -8,7 +8,13 @@ endif
 PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
+PLAYWRIGHT_BASE_URL ?= http://host.docker.internal:8080
+PLAYWRIGHT_DOCKER_IMAGE ?= mcr.microsoft.com/playwright:v1.55.1-noble
+PLAYWRIGHT_DOCKER_ARGS ?= --add-host=host.docker.internal:host-gateway --ipc=host
 REFRESH_PUBLIC_RECORD_ARGS ?=
+REFRESH_PUBLIC_RECORD_CORRECTION_ARGS ?=
+REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-quarterly-refresh.md
+REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT ?= /tmp/public-record-quarterly-refresh.json
 REFRESH_SECUREDROP_ARGS ?=
 REFRESH_GLOBALEAKS_ARGS ?=
 
@@ -24,6 +30,11 @@ install:
 
 .PHONY: run
 run: ## Run the app in a limited mode
+	docker compose up --build
+
+.PHONY: serve
+serve: ## Tear down and rebuild the local Docker stack
+	docker compose down --remove-orphans
 	docker compose up --build
 
 .PHONY: run-full
@@ -80,7 +91,7 @@ fix: ## Format the code
 
 .PHONY: new-database-migration
 new-database-migration: ## Create a new migration
-ifndef message
+ifndef MESSAGE
 	$(error Env var 'MESSAGE' must be set, e.g., `MESSAGE=foo make new-database-migration`)
 endif
 ifdef IS_DOCKER
@@ -97,12 +108,34 @@ test: ## Run the test suite
 	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
 
 .PHONY: test-public-record-links
-test-public-record-links: ## Validate live public-record external links
-	$(CMD) poetry run pytest -vv tests/test_directory.py -k public_record_external_links_resolve
+test-public-record-links: ## Audit live public-record external links without failing on actionable removals
+	$(CMD) bash -lc '\
+		set -euo pipefail; \
+		tmp_output="/tmp/public-record-link-check.json"; \
+		tmp_summary="/tmp/public-record-link-check.md"; \
+		poetry run ./scripts/refresh_public_record_law_firms.py \
+			--input hushline/data/public_record_law_firms.json \
+			--output "$$tmp_output" \
+			--summary-output "$$tmp_summary" \
+			--drop-failing-records \
+			--allow-link-failures; \
+		cat "$$tmp_summary"; \
+		if ! grep -Fq -- "- Records dropped: 0" "$$tmp_summary"; then \
+			printf "\n### Actionable cleanup\n\n- Definitive public-record removals were detected. Open or update a cleanup PR with the generated output.\n"; \
+		fi'
 
 .PHONY: refresh-public-record-listings
 refresh-public-record-listings: ## Refresh public-record listing artifact deterministically
 	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py $(REFRESH_PUBLIC_RECORD_ARGS)
+
+.PHONY: refresh-public-record-corrections
+refresh-public-record-corrections: ## Refresh public-record listings for correction PR creation
+	$(CMD) poetry run ./scripts/refresh_public_record_law_firms.py \
+		--summary-output "$(REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT)" \
+		--report-json-output "$(REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT)" \
+		--drop-failing-records \
+		--allow-link-failures \
+		$(REFRESH_PUBLIC_RECORD_CORRECTION_ARGS)
 
 .PHONY: public-record-provenance-report
 public-record-provenance-report: ## Audit strict provenance coverage for public-record listings
@@ -115,6 +148,10 @@ refresh-securedrop-listings: ## Refresh SecureDrop directory instance artifact
 .PHONY: refresh-globaleaks-listings
 refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public source pages
 	$(CMD) poetry run python ./scripts/refresh_globaleaks_directory_instances.py $(REFRESH_GLOBALEAKS_ARGS)
+
+.PHONY: refresh-newsroom-listings
+refresh-newsroom-listings: ## Refresh newsroom directory artifact from public source pages
+	$(CMD) poetry run python ./scripts/refresh_newsroom_directory_listings.py $(REFRESH_NEWSROOM_ARGS)
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
@@ -263,10 +300,34 @@ lighthouse-performance: runner-wait-for-app ## Run Lighthouse performance check 
 	  exit 1; \
 	fi
 
+.PHONY: playwright-visual
+playwright-visual: runner-wait-for-app ## Run Playwright visual regression checks (CI-equivalent)
+	docker run --rm \
+		$(PLAYWRIGHT_DOCKER_ARGS) \
+		-u "$$(id -u):$$(id -g)" \
+		-e CI=1 \
+		-e PLAYWRIGHT_BASE_URL="$(PLAYWRIGHT_BASE_URL)" \
+		-v "$(PWD):/work" \
+		-w /work \
+		$(PLAYWRIGHT_DOCKER_IMAGE) \
+		npx playwright test --config=playwright.visual.config.js
+
+.PHONY: playwright-visual-update
+playwright-visual-update: runner-wait-for-app ## Update Playwright visual regression baselines
+	docker run --rm \
+		$(PLAYWRIGHT_DOCKER_ARGS) \
+		-u "$$(id -u):$$(id -g)" \
+		-e CI=1 \
+		-e PLAYWRIGHT_BASE_URL="$(PLAYWRIGHT_BASE_URL)" \
+		-v "$(PWD):/work" \
+		-w /work \
+		$(PLAYWRIGHT_DOCKER_IMAGE) \
+		npx playwright test --config=playwright.visual.config.js --update-snapshots
+
 .PHONY: docs-screenshots
 docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<release>
 	docker compose run --rm dev_data && \
-	npm install --no-save playwright@1.54.2 && \
+	npm install --no-save playwright@1.55.1 && \
 	npx playwright install chromium && \
 	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
 	SCREENSHOT_ARTVANDELAY_PASSWORD="$${SCREENSHOT_ARTVANDELAY_PASSWORD:-Test-testtesttesttest-1}" \
@@ -278,7 +339,7 @@ docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<re
 
 .PHONY: docs-screenshots-first-user
 docs-screenshots-first-user: migrate-dev ## Capture first-user admin-creation screenshot (brand-new instance) into admin session dir
-	npm install --no-save playwright@1.54.2 && \
+	npm install --no-save playwright@1.55.1 && \
 	npx playwright install chromium && \
 	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
 	node scripts/capture-doc-screenshots.mjs \

@@ -13,7 +13,16 @@
   <div class="directory-sticky-shell">
     {% if directory_verified_tab_enabled %}
       <div class="directory-tabs" id="directory-tabs">
-        <ul class="tab-list" role="tablist">
+        <button
+          type="button"
+          class="horizontal-scroll scroll-left"
+          aria-controls="directory-tab-list"
+          aria-label="Scroll directory tabs left"
+          hidden
+        >
+          <span class="scroll-arrow-left" aria-hidden="true"></span>
+        </button>
+        <ul class="tab-list" id="directory-tab-list" role="tablist">
           <li role="presentation">
             <button
               type="button"
@@ -38,8 +47,24 @@
               id="public-records-tab"
             >
               Attorneys
-              <span class="badge" role="img" aria-label="Public record count"
+              <span id="public-record-count" class="badge" role="img" aria-label="Attorney count"
                 >{{ public_record_total_count }}</span
+              >
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              type="button"
+              class="tab"
+              data-tab="newsrooms"
+              role="tab"
+              aria-selected="false"
+              aria-controls="newsrooms"
+              id="newsrooms-tab"
+            >
+              Newsrooms
+              <span id="newsroom-count" class="badge" role="img" aria-label="Newsroom listing count"
+                >{{ newsroom_total_count }}</span
               >
             </button>
           </li>
@@ -89,35 +114,350 @@
             </button>
           </li>
         </ul>
+        <button
+          type="button"
+          class="horizontal-scroll scroll-right"
+          aria-controls="directory-tab-list"
+          aria-label="Scroll directory tabs right"
+          hidden
+        >
+          <span class="scroll-arrow-right" aria-hidden="true"></span>
+        </button>
       </div>
     {% endif %}
 
     <div class="directory-search">
-      <div class="search-box">
-        <label id="searchIcon" for="searchInput">
-          <img
-            src="{{ url_for('static', filename='img/icon-search.png') }}"
-            alt=""
+      <div class="directory-search-row">
+        <div class="search-box">
+          <label id="searchIcon" for="searchInput">
+            <img
+              src="{{ url_for('static', filename='img/icon-search.png') }}"
+              alt=""
+            />
+          </label>
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search directory..."
+            aria-label="Search directory"
           />
-        </label>
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Search directory..."
-          aria-label="Search directory"
-        />
-        <button
-          id="clearIcon"
-          type="button"
-          aria-label="Clear search field"
-          style="cursor: pointer; background: none; border: none; padding: 0"
-        >
-          <img
-            src="{{ url_for('static', filename='img/icon-clear.png') }}"
-            alt=""
-          />
-        </button>
+          <button
+            id="clearIcon"
+            type="button"
+            aria-label="Clear search field"
+            style="cursor: pointer; background: none; border: none; padding: 0"
+          >
+            <img
+              src="{{ url_for('static', filename='img/icon-clear.png') }}"
+              alt=""
+            />
+          </button>
+        </div>
+        {% if directory_verified_tab_enabled %}
+          <div id="all-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="all-filters-toggle"
+              aria-controls="all-filters-panel"
+              aria-expanded="{{ 'true' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'false' }}"
+            >
+              {{ 'Hide Filters' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'Show Filters' }}
+            </button>
+          </div>
+          <div id="attorney-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="attorney-filters-toggle"
+              aria-controls="attorney-filters-panel"
+              aria-expanded="{{ 'true' if attorney_filter_state.country or attorney_filter_state.region_code else 'false' }}"
+            >
+              {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
+            </button>
+          </div>
+          <div id="newsroom-filters-toggle-shell" hidden>
+            <button
+              type="button"
+              class="directory-filter-toggle meta"
+              id="newsroom-filters-toggle"
+              aria-controls="newsroom-filters-panel"
+              aria-expanded="{{ 'true' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'false' }}"
+            >
+              {{ 'Hide Filters' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'Show Filters' }}
+            </button>
+          </div>
+        {% endif %}
       </div>
+      {% if directory_verified_tab_enabled %}
+        <div id="all-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="all-filters-panel"
+            {% if not all_filter_state.country and not all_filter_state.region_code and not all_filter_state.listing_type %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="all-country-filter">Country</label>
+                <select id="all-country-filter" name="all_country">
+                  <option value="">All</option>
+                  {% for country in all_filter_metadata.countries %}
+                    <option
+                      value="{{ country.code }}"
+                      {% if all_filter_state.country == country.code %}selected{% endif %}
+                    >
+                      {% if all_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="all-region-filter">State / Province / Region</label>
+                <select
+                  id="all-region-filter"
+                  name="all_region"
+                  {% if not all_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if all_filter_state.country and all_filter_state.country in all_filter_metadata.regions %}
+                    {% for region in all_filter_metadata.regions[all_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if all_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if all_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in all_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if all_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if all_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="all-listing-type-filter">Listing Type</label>
+                <select id="all-listing-type-filter" name="all_listing_type">
+                  <option value="">All</option>
+                  {% for listing_type in all_filter_metadata.listing_types %}
+                    <option
+                      value="{{ listing_type.code }}"
+                      {% if all_filter_state.listing_type == listing_type.code %}selected{% endif %}
+                    >
+                      {% if all_filter_state.listing_type == listing_type.code %}
+                        {{ listing_type.label }}
+                      {% else %}
+                        {{ listing_type.label }} ({{ listing_type.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div
+              class="directory-filter-actions"
+              id="all-filters-actions"
+              {% if not all_filter_state.country and not all_filter_state.region_code and not all_filter_state.listing_type %}hidden{% endif %}
+            >
+              <a
+                href="{{ all_filter_clear_url }}"
+                class="meta"
+                id="all-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
+        <div id="attorney-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="attorney-filters-panel"
+            {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="attorney-country-filter">Country</label>
+                <select id="attorney-country-filter" name="country">
+                  <option value="">All</option>
+                  {% for country in attorney_filter_metadata.countries %}
+                    <option
+                      value="{{ country.code }}"
+                      {% if attorney_filter_state.country == country.code %}selected{% endif %}
+                    >
+                      {% if attorney_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="attorney-region-filter">State / Province / Region</label>
+                <select
+                  id="attorney-region-filter"
+                  name="region"
+                  {% if not attorney_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if attorney_filter_state.country and attorney_filter_state.country in attorney_filter_metadata.regions %}
+                    {% for region in attorney_filter_metadata.regions[attorney_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if attorney_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in attorney_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if attorney_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if attorney_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+            </div>
+            <div
+              class="directory-filter-actions"
+              id="attorney-filters-actions"
+              {% if not attorney_filter_state.country and not attorney_filter_state.region_code %}hidden{% endif %}
+            >
+              <a
+                href="{{ attorney_filter_clear_url }}"
+                class="meta"
+                id="attorney-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
+        <div id="newsroom-filters-panel-shell" hidden>
+          <form
+            method="get"
+            class="directory-filter-panel"
+            id="newsroom-filters-panel"
+            {% if not newsroom_filter_state.country and not newsroom_filter_state.region_code %}hidden{% endif %}
+          >
+            <div class="directory-filter-fields">
+              <div class="directory-filter-group">
+                <label for="newsroom-country-filter">Country</label>
+                <select id="newsroom-country-filter" name="newsroom_country">
+                  <option value="">All</option>
+                  {% for country in newsroom_filter_metadata.countries %}
+                    <option
+                      value="{{ country.code }}"
+                      {% if newsroom_filter_state.country == country.code %}selected{% endif %}
+                    >
+                      {% if newsroom_filter_state.country == country.code %}
+                        {{ country.label }}
+                      {% else %}
+                        {{ country.label }} ({{ country.count }})
+                      {% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="directory-filter-group">
+                <label for="newsroom-region-filter">State / Province / Region</label>
+                <select
+                  id="newsroom-region-filter"
+                  name="newsroom_region"
+                  {% if not newsroom_filter_metadata.regions %}disabled{% endif %}
+                >
+                  <option value="">All</option>
+                  {% if newsroom_filter_state.country and newsroom_filter_state.country in newsroom_filter_metadata.regions %}
+                    {% for region in newsroom_filter_metadata.regions[newsroom_filter_state.country] %}
+                      <option
+                        value="{{ region.code }}"
+                        {% if newsroom_filter_state.region_code == region.code %}selected{% endif %}
+                      >
+                        {% if newsroom_filter_state.region_code == region.code %}
+                          {{ region.label }}
+                        {% else %}
+                          {{ region.label }} ({{ region.count }})
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    {% for country_name, country_regions in newsroom_filter_metadata.regions.items() %}
+                      <optgroup label="{{ country_name }}">
+                        {% for region in country_regions %}
+                          <option
+                            value="{{ region.code }}"
+                            {% if newsroom_filter_state.region_code == region.code %}selected{% endif %}
+                          >
+                            {% if newsroom_filter_state.region_code == region.code %}
+                              {{ region.label }}
+                            {% else %}
+                              {{ region.label }} ({{ region.count }})
+                            {% endif %}
+                          </option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+            </div>
+            <div
+              class="directory-filter-actions"
+              id="newsroom-filters-actions"
+              {% if not newsroom_filter_state.country and not newsroom_filter_state.region_code %}hidden{% endif %}
+            >
+              <a
+                href="{{ newsroom_filter_clear_url }}"
+                class="meta"
+                id="newsroom-filters-clear"
+              >
+                Clear Filters
+              </a>
+            </div>
+          </form>
+        </div>
+      {% endif %}
       <p
         id="directory-search-status"
         class="visually-hidden"
@@ -221,12 +561,40 @@
       aria-labelledby="public-records-tab"
     >
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated and pulled from public records.
-        Message the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        🧪 Beta: This tab includes self-reported attorneys and automated listings pulled from public records.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
-      {% if public_record_all_listings %}
+      {% if attorney_usernames or public_record_all_listings %}
         <div class="user-list">
+          {% for username in attorney_usernames %}
+            <article class="user">
+              <h3>{{ username.display_name or username.username }}</h3>
+              {% if username.username %}
+                <p class="meta">@{{ username.username }}</p>
+              {% endif %}
+              {% if username.is_verified or username.user.is_admin %}
+                <div class="badgeContainer">
+                  {% if username.user.is_admin %}
+                    <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                  {% endif %}
+                  {% if username.is_verified %}
+                    <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if username.bio %}
+                <p class="bio">{{ username.bio }}</p>
+              {% endif %}
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('profile', username=username.username) }}"
+                  aria-label="{{ (username.display_name or username.username) }}'s profile"
+                  >View Profile</a
+                >
+              </div>
+            </article>
+          {% endfor %}
           {% for listing in public_record_all_listings %}
             <article class="user">
               <h3>{{ listing.name }}</h3>
@@ -249,10 +617,67 @@
   {% endif %}
 
   {% if directory_verified_tab_enabled %}
+    <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
+      <p class="meta dirMeta">
+        🧪 Beta: This tab includes self-reported newsrooms and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. <a href="/to/admin">Request a correction</a>.
+      </p>
+
+      {% if newsroom_usernames or newsroom_listings %}
+        <div class="user-list">
+          {% for username in newsroom_usernames %}
+            <article class="user">
+              <h3>{{ username.display_name or username.username }}</h3>
+              {% if username.username %}
+                <p class="meta">@{{ username.username }}</p>
+              {% endif %}
+              {% if username.is_verified or username.user.is_admin %}
+                <div class="badgeContainer">
+                  {% if username.user.is_admin %}
+                    <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+                  {% endif %}
+                  {% if username.is_verified %}
+                    <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% if username.bio %}
+                <p class="bio">{{ username.bio }}</p>
+              {% endif %}
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('profile', username=username.username) }}"
+                  aria-label="{{ (username.display_name or username.username) }}'s profile"
+                  >View Profile</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+          {% for listing in newsroom_listings %}
+            <article class="user">
+              <h3>{{ listing.name }}</h3>
+              <div class="badgeContainer">
+                <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+              </div>
+              <p class="bio">{{ listing.description }}</p>
+              <div class="user-actions">
+                <a
+                  href="{{ url_for('newsroom_listing', slug=listing.slug) }}"
+                  aria-label="View read-only listing for {{ listing.name }}"
+                  >View Listing</a
+                >
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated.
-        Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        🧪 Beta: This list contains manual and automated entries and should not be considered exhaustive or authoritative.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
       {% if globaleaks_listings %}
@@ -281,8 +706,9 @@
   {% if directory_verified_tab_enabled %}
     <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
       <p class="meta dirMeta">
-        🧪 Beta: These listings are automated.
-        Contact the <a href="/to/admin">Hush Line admin</a> for any corrections.
+        🧪 Beta: These listings are automated from the Freedom of the Press Foundation's public
+        <a href="https://securedrop.org/api/v1/directory/?format=json">SecureDrop API</a>.
+        <a href="/to/admin">Request a correction</a>.
       </p>
 
       {% if securedrop_listings %}
@@ -314,6 +740,12 @@
     role="tabpanel"
     {% if directory_verified_tab_enabled %}aria-labelledby="all-tab"{% endif %}
   >
+    {% if directory_verified_tab_enabled %}
+      <p class="meta dirMeta">
+        🧪 Beta: This list contains automated entries.
+        <a href="/to/admin">Request a correction</a>.
+      </p>
+    {% endif %}
     <div class="user-list">
       {% for entry in all_directory_entries %}
         <article class="user">
@@ -322,7 +754,7 @@
             <p class="meta">@{{ entry.primary_username }}</p>
           {% endif %}
 
-          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key %}
+          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key or entry.show_caution_badge %}
             <div class="badgeContainer">
               {% if entry.entry_type == "public_record" %}
                 <span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>
@@ -331,6 +763,11 @@
                 {% endif %}
               {% elif entry.entry_type == "globaleaks" %}
                 <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
+                {% if entry.is_automated %}
+                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
+                {% endif %}
+              {% elif entry.entry_type == "newsroom" %}
+                <span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>
                 {% if entry.is_automated %}
                   <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
                 {% endif %}
@@ -346,6 +783,9 @@
                 {% if entry.is_verified %}
                   <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
                 {% endif %}
+                {% if entry.show_caution_badge %}
+                  <span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>
+                {% endif %}
                 {% if not entry.has_pgp_key %}
                   <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>
                 {% endif %}
@@ -356,7 +796,6 @@
           {% if entry.bio %}
             <p class="bio">{{ entry.bio }}</p>
           {% endif %}
-
           <div class="user-actions">
             {% if entry.entry_type == "user" %}
               <a

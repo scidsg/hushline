@@ -1,6 +1,6 @@
 # Agentic Code Policy for Hush Line
 
-Have thoughts? Read this document first, then contribute to the conversation here: https://github.com/orgs/scidsg/discussions/1313
+All work in the `scidsg/hushline` repository includes human review. No code will be merged automatically by an agent. Ever. Hush Line agents operate only with human direction and approval, not as autonomous crawlers or unattended scraping bots. For that reason, `robots.txt` is not treated as a controlling policy constraint for incidental, human-directed access during engineering or research work.
 
 This policy defines when Hush Line work can be agent-first versus human-first, based on risk and operational impact. Use it as a gating checklist before implementation: if a task touches funding, production infrastructure, authentication, payments, or other high-risk surfaces, human ownership is required; low-risk work can be AI-led with a qualified human operator. For example, an engineer should lead engineering tasks, and a designer should lead design tasks. The target operating mix is roughly 70% human-first and 30% AI-first, measured quarterly from merged PRs using an `ownership-mode` classification (`human-first` or `agent-first`).
 
@@ -40,19 +40,3 @@ All funding-related work is human-owned end-to-end. Agents may be used only for 
 3. Escalate from low-risk to high-risk immediately if scope starts touching DB, auth, env vars, or payments.
 4. Keep auditability: document who approved risk classification, deployment path, and `ownership-mode`.
 5. Review ownership mix quarterly from merged PRs and explain deviations from the 70/30 target.
-
-## A Note from Our Executive Director
-
-> Coding models are improving fast, and Codex 5.3 CLI has genuinely impressed me. For a small tech non-profit like ours, the question is: do we
-> use AI to ship high-quality iterations people need now, or build a backlog, apply for grants, wait six months, and maybe still not get
-> funded? In that case, product gaps remain, and that isn’t responsible product development.
->
-> It’s also outside our control and we’ve even been told by funders not to apply because we haven’t managed millions of dollars in the prior fiscal
-> year. Chicken or the egg? Even if we do get funded, expecting users to wait half a year for improvements isn’t responsible product stewardship.
->
-> Practically, this is also about quality. At what point does it become product malpractice to ignore a technology that can improve output
-> quality and speed when used responsibly, in turn helping journalists and lawyers in the field, even when we can hire a team of humans?
->
-> It’s also one reason we are monetizing: to stay financially independent and keep hiring real humans.
->
-> If you’d like to donate to Hush Line, go here: https://opencollective.com/hushline/contribute/hush-line-supporter-55786

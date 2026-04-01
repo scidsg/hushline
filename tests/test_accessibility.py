@@ -25,6 +25,12 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     all_panel = soup.find(id="all")
     clear_button = soup.find("button", {"id": "clearIcon"})
     search_status = soup.find(id="directory-search-status")
+    all_filters_toggle = soup.find("button", {"id": "all-filters-toggle"})
+    all_filters_panel = soup.find(id="all-filters-panel")
+    all_listing_type_label = soup.find("label", {"for": "all-listing-type-filter"})
+    all_listing_type_filter = soup.find("select", {"id": "all-listing-type-filter"})
+    region_filter_label = soup.find("label", {"for": "attorney-region-filter"})
+    region_filter = soup.find("select", {"id": "attorney-region-filter"})
 
     assert primary_nav is not None
     assert verified_tab is not None
@@ -35,7 +41,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     badge = public_records_tab.select_one("span.badge")
     assert badge is not None
     assert badge.get("role") == "img"
-    assert badge.get("aria-label") == "Public record count"
+    assert badge.get("aria-label") == "Attorney count"
     assert badge.get_text(strip=True).isdigit()
 
     # Button label text excluding the badge
@@ -95,6 +101,21 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert all_panel.get("aria-labelledby") == "all-tab"
     assert clear_button is not None
     assert clear_button.get("aria-label") == "Clear search field"
+    assert all_filters_toggle is not None
+    assert all_filters_toggle.get("aria-controls") == "all-filters-panel"
+    assert all_filters_toggle.get("aria-expanded") in {"true", "false"}
+    assert all_filters_panel is not None
+    assert all_filters_panel.find("a", {"id": "all-filters-clear"}) is not None
+    assert all_listing_type_label is not None
+    assert all_listing_type_label.get_text(" ", strip=True) == "Listing Type"
+    assert all_listing_type_filter is not None
+    assert all_listing_type_filter.find("option") is not None
+    assert all_listing_type_filter.find("option").get_text(" ", strip=True) == "All"
+    assert region_filter_label is not None
+    assert region_filter_label.get_text(" ", strip=True) == "State / Province / Region"
+    assert region_filter is not None
+    assert region_filter.find("option") is not None
+    assert region_filter.find("option").get_text(" ", strip=True) == "All"
     assert search_status is not None
     assert search_status.get("role") == "status"
     assert search_status.get("aria-live") == "polite"

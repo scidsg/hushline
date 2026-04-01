@@ -1,13 +1,17 @@
 import secrets
 from datetime import datetime, timedelta, tzinfo
+from unittest.mock import patch
 
 import pyotp
 import pytest
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.security import generate_password_hash
 
+from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
 from hushline.model import User
+from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 
 TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
 
@@ -70,6 +74,36 @@ def test_valid_2fa_should_login(client: FlaskClient, user: User, user_password: 
 
 
 @pytest.mark.usefixtures("_2fa_user")
+def test_valid_2fa_should_login_with_native_werkzeug_scrypt_first_factor(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    native_hash = generate_password_hash(user_password, method="scrypt")
+    user._password_hash = native_hash
+    db.session.commit()
+
+    login_response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert login_response.status_code == 200
+    assert "Enter your 2FA Code" in login_response.text
+
+    valid_2fa_response = client.post(
+        url_for("verify_2fa_login"),
+        data={"verification_code": pyotp.TOTP(TOTP_SECRET).now()},
+        follow_redirects=True,
+    )
+
+    db.session.refresh(user)
+    assert valid_2fa_response.status_code == 200
+    assert user.password_hash == native_hash
+
+
+@pytest.mark.usefixtures("_2fa_user")
 def test_invalid_2fa_should_not_login(client: FlaskClient, user: User, user_password: str) -> None:
     login_response = client.post(
         "/login",
@@ -98,6 +132,57 @@ def test_invalid_2fa_should_not_login(client: FlaskClient, user: User, user_pass
     )
     assert invalid_2fa_response.status_code == 401
     assert "Invalid 2FA code" in invalid_2fa_response.text
+
+
+@pytest.mark.usefixtures("_2fa_user")
+def test_legacy_password_rehash_waits_for_successful_2fa(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    app.config[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = True
+    original_hash = user.password_hash
+
+    with patch("hushline.routes.auth.emit_password_rehash_on_auth_telemetry") as telemetry_mock:
+        login_response = client.post(
+            url_for("login"),
+            data={
+                "username": user.primary_username.username,
+                "password": user_password,
+            },
+            follow_redirects=True,
+        )
+
+        db.session.refresh(user)
+        assert login_response.status_code == 200
+        assert "Enter your 2FA Code" in login_response.text
+        assert user.password_hash == original_hash
+        telemetry_mock.assert_not_called()
+
+        totp = pyotp.TOTP(TOTP_SECRET)
+        valid_verification_code = totp.now()
+        invalid_verification_code = (
+            str((int(valid_verification_code[0]) + 1) % 10) + valid_verification_code[1:]
+        )
+        invalid_2fa_response = client.post(
+            url_for("verify_2fa_login"),
+            data={"verification_code": invalid_verification_code},
+            follow_redirects=True,
+        )
+
+        db.session.refresh(user)
+        assert invalid_2fa_response.status_code == 401
+        assert user.password_hash == original_hash
+        telemetry_mock.assert_not_called()
+
+        valid_2fa_response = client.post(
+            url_for("verify_2fa_login"),
+            data={"verification_code": valid_verification_code},
+            follow_redirects=True,
+        )
+
+    db.session.refresh(user)
+    assert valid_2fa_response.status_code == 200
+    assert user.password_hash.startswith(f"{PINNED_WERKZEUG_SCRYPT_METHOD}$")
+    telemetry_mock.assert_called_once_with(original_hash, success=True)
 
 
 @pytest.mark.usefixtures("_2fa_user")

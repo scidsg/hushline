@@ -63,6 +63,10 @@ def test_dynamic_message_form_skips_disabled_fields_and_maps_names(app: Flask) -
 
     assert hasattr(form, "field_0")
     assert not hasattr(form, "field_1")
+    assert hasattr(form, "encrypted_email_body")
+    assert hasattr(form, "owner_guard_nonce")
+    assert hasattr(form, "owner_guard_signature")
+    assert hasattr(form, "captcha_answer")
     assert dynamic.field_from_name("field_0") is fields[0]
     assert dynamic.field_from_name("missing") is None
     assert dynamic.field_data()[1]["field"] is fields[1]
