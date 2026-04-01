@@ -25,7 +25,7 @@ This artifact tracks the active U.S. implementation roadmap and the policy-only 
 ## State Adapter Strategy
 
 - Discovery/additions must come from explicit state adapters only.
-- All 50 states now have explicit adapter entries in discovery code.
+- Explicit state adapter entries in discovery code: 50 / 50.
 - Each adapter must:
   - query the official state authority source
   - resolve an exact per-record URL
