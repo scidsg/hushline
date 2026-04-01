@@ -7,7 +7,7 @@ license = "AGPL 3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-aiohttp = "^3.13.3"
+aiohttp = "^3.13.4"
 beautifulsoup4 = "^4.12.3"
 better-profanity = "^0.7.0"
 bleach = "^6.2.0"
