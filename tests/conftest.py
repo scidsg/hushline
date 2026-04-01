@@ -59,6 +59,10 @@ def random_name(size: int) -> str:
     return "".join([random.choice(string.ascii_lowercase) for _ in range(size)])
 
 
+def drop_database_if_exists(session: Session, database_name: str) -> None:
+    session.execute(text(f"DROP DATABASE IF EXISTS {database_name} WITH (FORCE)"))
+
+
 @contextmanager
 def temp_session(conn_str: str) -> Generator[Session, None, None]:
     engine = create_engine(conn_str)
@@ -84,6 +88,7 @@ def _db_template(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     while True:
         try:
             with temp_session(conn_str) as session:
+                drop_database_if_exists(session, TEMPLATE_DB_NAME)
                 session.execute(text(f"CREATE DATABASE {TEMPLATE_DB_NAME} WITH TEMPLATE template1"))
             break
         except OperationalError:
@@ -103,7 +108,7 @@ def _db_template(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     yield
 
     with temp_session(conn_str) as session:
-        session.execute(text(f"DROP DATABASE {TEMPLATE_DB_NAME}"))
+        drop_database_if_exists(session, TEMPLATE_DB_NAME)
 
 
 def init_db_via_create_all(db_uri: str) -> None:
