@@ -498,6 +498,31 @@ def test_profile_extra_fields(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_field_encryption_labels(client: FlaskClient, user: User) -> None:
+    user.primary_username.message_fields[0].encrypted = False
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    meta_labels = [node.get_text(" ", strip=True) for node in soup.select(".field-group p.meta")]
+    assert "⚠️ Not Encrypted. Learn why." in meta_labels
+    assert "🔒 Encrypted" in meta_labels
+
+    learn_why_link = soup.find(
+        "a",
+        string="Learn why.",
+        href="https://hushline.app/library/docs/getting-started/account-setup/",
+    )
+    assert learn_why_link is not None
+    assert learn_why_link.get("target") == "_blank"
+    assert "noopener" in learn_why_link.get("rel", [])
+    assert "noreferrer" in learn_why_link.get("rel", [])
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_account_category_renders_first_extra_field(
     client: FlaskClient, user: User
 ) -> None:
