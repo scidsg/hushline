@@ -137,14 +137,13 @@
             {% else %}
               {% if data['field'].encrypted %}
                 {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
-                {% if data['field'].encrypted %}
-                  <p class="meta">🔒 Encrypted</p>
-                {% endif %}
+                <p class="meta">🔒 Encrypted</p>
               {% else %}
                 {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
-                {% if data['field'].encrypted %}
-                  <p class="meta">🔒 Encrypted</p>
-                {% endif %}
+                <p class="meta">
+                  ⚠️ Not Encrypted.
+                  <a href="https://hushline.app/library/docs/getting-started/account-setup/" target="_blank" rel="noopener noreferrer">Learn why.</a>
+                </p>
               {% endif %}
             {% endif %}
           </div>
