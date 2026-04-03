@@ -1833,6 +1833,89 @@ def test_update_guidance_prompts(client: FlaskClient, admin: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_prompt_accepts_expanded_length(client: FlaskClient, admin: User) -> None:
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    prompt_text = "x" * 1280
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 1",
+            "prompt_text": prompt_text,
+            "index": 0,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert prompts[0]["prompt_text"] == prompt_text
+
+    resp = client.get(url_for("settings.guidance"))
+    assert resp.status_code == 200
+
+    soup = BeautifulSoup(resp.data, "html.parser")
+    prompt_field = soup.find("textarea", attrs={"name": "prompt_text"})
+    assert prompt_field is not None
+    assert prompt_field.get("maxlength") == "1280"
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_guidance_prompt_rejects_text_over_expanded_length(
+    client: FlaskClient, admin: User
+) -> None:
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "show_user_guidance": True,
+            UserGuidanceForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    original_prompt_text = "safe prompt"
+    client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 1",
+            "prompt_text": original_prompt_text,
+            "index": 0,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    resp = client.post(
+        url_for("settings.guidance"),
+        data={
+            "heading_text": "prompt 1",
+            "prompt_text": "x" * 1281,
+            "index": 0,
+            UserGuidancePromptContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in resp.text
+
+    prompts = OrganizationSetting.fetch_one(OrganizationSetting.GUIDANCE_PROMPTS)
+    assert prompts[0]["prompt_text"] == original_prompt_text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
 def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
     alert = "<script>alert(1)</stript>"
     uuid = str(uuid4())

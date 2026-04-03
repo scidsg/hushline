@@ -407,7 +407,11 @@ class UserGuidanceEmergencyExitForm(FlaskForm):
 
 class UserGuidancePromptContentForm(FlaskForm):
     heading_text = StringField("Prompt Heading", validators=[Length(min=0, max=50)])
-    prompt_text = TextAreaField("Prompt Text", validators=[Length(min=0, max=1024)])
+    prompt_text = TextAreaField(
+        "Prompt Text",
+        validators=[Length(min=0, max=1280)],
+        render_kw={"maxlength": 1280},
+    )
     submit = SubmitField("Update", name="update_prompt", widget=Button())
     delete_submit = SubmitField("Delete This Prompt", name="delete_prompt", widget=Button())
 
