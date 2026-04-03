@@ -423,9 +423,9 @@ def create_org_settings() -> None:
     OrganizationSetting.upsert(
         OrganizationSetting.DIRECTORY_INTRO_TEXT,
         (
-            "👋 Find lawyers, journalists, and others who support whistleblowers using the "
-            "Hush Line Whistleblower Support Directory. "
-            "An account is not required to send a message."
+            "👋 Find lawyers, journalists, and others who support whistleblowers using "
+            "the Hush Line directory. An account is not required to send a message. "
+            "[Learn more](https://hushline.app)."
         ),
     )
     OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_ENABLED, True)

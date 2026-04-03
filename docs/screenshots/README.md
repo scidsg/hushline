@@ -2,14 +2,16 @@
 
 This folder stores generated screenshot sets for docs.
 Captures are generated from local app state using scripted scenes.
-Screenshots are above-the-fold only (viewport capture, no full-page images).
+Each scene captures both light and dark mode by default.
+Each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.
+Full-page capture is skipped when unsupported.
 Each release stores images by session under `releases/<version>/<session>/`.
 
 ## Latest run
 
-- Release key: `v0.5.53`
+- Release key: `one-off-directory`
 - Base URL: `http://localhost:8080`
-- Path: [releases/v0.5.53/README.md](./releases/v0.5.53/README.md)
+- Path: [releases/one-off-directory/README.md](./releases/one-off-directory/README.md)
 - Latest alias: [releases/latest/README.md](./releases/latest/README.md)
 
 ## Required accounts
@@ -17,15 +19,11 @@ Each release stores images by session under `releases/<version>/<session>/`.
 - admin (admin and org settings scenes)
 - artvandelay (authenticated user settings scenes)
 - newman (authenticated and onboarding-state settings scenes)
+- first-user admin creation scene (captured via a separate manifest on a brand-new instance)
 
 ## Regenerate
 
 ```sh
-make docs-screenshots RELEASE=v0.5.53
+make docs-screenshots RELEASE=one-off-directory
+make docs-screenshots-first-user RELEASE=one-off-directory
 ```
-
-Release automation note:
-
-- `.github/workflows/docs-screenshots.yml` is the release and manual entrypoint. On published releases it waits for the released GHCR image to exist, captures screenshots from the requested release ref, uploads both `releases/<version>/` and `releases/latest/` in an artifact, and then calls the publish workflow below. Manual `workflow_dispatch` runs use the same capture-and-publish path.
-- Manual `Docs Screenshots` runs now treat `release_key` as the checkout ref when `release_ref` is omitted, so backfills follow the requested release tag instead of `main`.
-- `.github/workflows/publish-docs-screenshots.yml` uses `HUSHLINE_WEBSITE_SCREENSHOTS_PAT` for `scidsg/hushline-website` and `SCREENSHOTS_PUSH_TOKEN` for `scidsg/hushline-screenshots`. It syncs the latest screenshots plus the `releases/latest/` and `releases/<version>/` archives into both destinations. Both destinations use dedicated automation branches, open or update PRs, and then attempt to merge them immediately.
