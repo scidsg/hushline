@@ -49,6 +49,7 @@
   --font-sans-bold: "Atkinson Bold", Helvetica, Arial, sans-serif;
 
   --font-size-base: 1rem;
+  --font-size-menu: 0.9125rem;
   --font-size-logo: 1.3125rem;
   --font-size-small: 0.875rem;
   --font-size-smaller: 0.8125rem;
@@ -1875,7 +1876,7 @@ header nav ul {
 
 header nav li {
   list-style: none;
-  font-size: 0.875rem;
+  font-size: var(--font-size-small);
 }
 
 header nav a,
@@ -2070,10 +2071,10 @@ input[type="file"]::file-selector-button:active {
   background-repeat: no-repeat;
   padding-left: 2.3rem;
   align-items: center;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-menu);
   font-family: var(--font-sans-bold);
   background-color: transparent;
-  padding-right: 0.5rem;
+  padding-right: 0.6125rem;
 }
 
 .btn .emoji {
@@ -3111,6 +3112,10 @@ input#captcha_answer {
     box-shadow: none;
     border: none;
   }
+
+  header nav li {
+    font-size: var(--font-size-menu);
+}
 
   .dropdown-content ul {
     display: flex;

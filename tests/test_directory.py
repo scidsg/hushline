@@ -928,6 +928,95 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["directory_section"] == "public_record"
 
 
+def test_directory_card_bio_uses_bio_length_limit_with_ascii_ellipsis() -> None:
+    short_bio = "Short automated listing bio."
+    long_bio = "A" * (directory_routes.Username.BIO_MAX_LENGTH + 10)
+
+    assert directory_routes._directory_card_bio(short_bio) == short_bio
+
+    truncated_bio = directory_routes._directory_card_bio(long_bio)
+    assert truncated_bio is not None
+    assert len(truncated_bio) == directory_routes.Username.BIO_MAX_LENGTH
+    assert truncated_bio.endswith("...")
+    assert truncated_bio == ("A" * (directory_routes.Username.BIO_MAX_LENGTH - 3)) + "..."
+
+
+def test_directory_users_json_truncates_long_automated_listing_bios(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    long_description = "A" * (directory_routes.Username.BIO_MAX_LENGTH + 10)
+    listing = PublicRecordListing(
+        id="public-record-long-bio",
+        slug="public-record~long-bio",
+        name="Long Bio Attorney",
+        website="https://example.org",
+        description=long_description,
+        city="Chicago",
+        state="IL",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(row for row in (response.json or []) if row["display_name"] == listing.name)
+    assert row["bio"] == directory_routes._directory_card_bio(long_description)
+    assert row["bio"] != long_description
+
+
+def test_directory_public_record_cards_truncate_long_automated_listing_bios(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    long_description = "A" * (directory_routes.Username.BIO_MAX_LENGTH + 10)
+    listing = PublicRecordListing(
+        id="public-record-long-bio",
+        slug="public-record~long-bio",
+        name="Long Bio Attorney",
+        website="https://example.org",
+        description=long_description,
+        city="Chicago",
+        state="IL",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    expected_bio = directory_routes._directory_card_bio(long_description)
+
+    monkeypatch.setattr("hushline.routes.directory.get_directory_usernames", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    public_records_panel = soup.find(id="public-records")
+    all_panel = soup.find(id="all")
+
+    public_record_card = _find_directory_card(public_records_panel, listing.name)
+    all_card = _find_directory_card(all_panel, listing.name)
+
+    assert expected_bio is not None
+    assert public_record_card.get_text(" ", strip=True).count(expected_bio) == 1
+    assert all_card.get_text(" ", strip=True).count(expected_bio) == 1
+    assert long_description not in public_record_card.get_text(" ", strip=True)
+    assert long_description not in all_card.get_text(" ", strip=True)
+
+
 def test_directory_public_record_cards_do_not_show_location(client: FlaskClient) -> None:
     listing = _first_public_record_listing_or_skip()
 
