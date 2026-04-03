@@ -601,7 +601,7 @@
               <div class="badgeContainer">
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
-              <p class="bio">{{ listing.description }}</p>
+              <p class="bio">{{ truncate_directory_bio(listing.description) }}</p>
               <div class="user-actions">
                 <a
                   href="{{ url_for('public_record_listing', slug=listing.slug) }}"
@@ -658,7 +658,7 @@
               <div class="badgeContainer">
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
-              <p class="bio">{{ listing.description }}</p>
+              <p class="bio">{{ truncate_directory_bio(listing.description) }}</p>
               <div class="user-actions">
                 <a
                   href="{{ url_for('newsroom_listing', slug=listing.slug) }}"
@@ -688,7 +688,7 @@
               <div class="badgeContainer">
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
-              <p class="bio">{{ listing.description }}</p>
+              <p class="bio">{{ truncate_directory_bio(listing.description) }}</p>
               <div class="user-actions">
                 <a
                   href="{{ url_for('globaleaks_listing', slug=listing.slug) }}"
@@ -719,7 +719,7 @@
               <div class="badgeContainer">
                 <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
               </div>
-              <p class="bio">{{ listing.description }}</p>
+              <p class="bio">{{ truncate_directory_bio(listing.description) }}</p>
               <div class="user-actions">
                 <a
                   href="{{ url_for('securedrop_listing', slug=listing.slug) }}"

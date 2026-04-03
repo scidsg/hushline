@@ -61,6 +61,7 @@ _ALL_LISTING_TYPE_LABELS = (
     ("securedrop", "SecureDrop"),
     ("globaleaks", "GlobaLeaks"),
 )
+_DIRECTORY_CARD_BIO_ELLIPSIS = "..."
 
 
 def _normalized_filter_value(value: str | None) -> str | None:
@@ -69,6 +70,14 @@ def _normalized_filter_value(value: str | None) -> str | None:
 
     normalized = value.strip()
     return normalized or None
+
+
+def _directory_card_bio(text: str | None) -> str | None:
+    if text is None or len(text) <= Username.BIO_MAX_LENGTH:
+        return text
+
+    truncated_length = Username.BIO_MAX_LENGTH - len(_DIRECTORY_CARD_BIO_ELLIPSIS)
+    return f"{text[:truncated_length]}{_DIRECTORY_CARD_BIO_ELLIPSIS}"
 
 
 def _normalized_location_filter_country(value: str | None) -> str | None:
@@ -428,7 +437,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "entry_type": "public_record",
         "primary_username": None,
         "display_name": listing.name,
-        "bio": listing.description,
+        "bio": _directory_card_bio(listing.description),
         "account_category": None,
         "account_category_label": None,
         "is_admin": False,
@@ -462,7 +471,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
         "entry_type": "globaleaks",
         "primary_username": None,
         "display_name": listing.name,
-        "bio": listing.description,
+        "bio": _directory_card_bio(listing.description),
         "account_category": None,
         "account_category_label": None,
         "is_admin": False,
@@ -496,7 +505,7 @@ def _newsroom_row(listing: NewsroomDirectoryListing) -> dict[str, object | None]
         "entry_type": "newsroom",
         "primary_username": None,
         "display_name": listing.name,
-        "bio": listing.description,
+        "bio": _directory_card_bio(listing.description),
         "account_category": None,
         "account_category_label": None,
         "is_admin": False,
@@ -530,7 +539,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
         "entry_type": "securedrop",
         "primary_username": None,
         "display_name": listing.name,
-        "bio": listing.description,
+        "bio": _directory_card_bio(listing.description),
         "account_category": None,
         "account_category_label": None,
         "is_admin": False,
@@ -849,6 +858,7 @@ def register_directory_routes(app: Flask) -> None:
             securedrop_listings=securedrop_listings,
             securedrop_total_count=len(securedrop_listings),
             all_directory_entries=filtered_all_directory_entries,
+            truncate_directory_bio=_directory_card_bio,
             logged_in=logged_in,
         )
 
