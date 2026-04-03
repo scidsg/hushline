@@ -9,9 +9,7 @@
       "height": 800
     }
   ],
-  "themes": [
-    "light"
-  ],
+  "themes": ["light"],
   "sessions": {
     "admin": {
       "username": "admin"

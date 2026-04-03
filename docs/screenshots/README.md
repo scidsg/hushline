@@ -27,4 +27,3 @@ Each release stores images by session under `releases/<version>/<session>/`.
 make docs-screenshots RELEASE=one-off-directory
 make docs-screenshots-first-user RELEASE=one-off-directory
 ```
-
