@@ -736,15 +736,15 @@ def test_directory_self_reported_journalists_and_newsrooms_render_in_newsrooms_t
     journalist_card = _find_directory_card(newsroom_panel, "Self-Reported Journalist")
     journalist_link = journalist_card.select_one("a")
     assert journalist_link is not None
-    assert journalist_link.get("href") == url_for("profile", username=user.primary_username.username)
+    assert journalist_link.get("href") == url_for(
+        "profile", username=user.primary_username.username
+    )
     assert journalist_link.get_text(" ", strip=True) == "View Profile"
 
     newsroom_card = _find_directory_card(newsroom_panel, "Self-Reported Newsroom")
     newsroom_link = newsroom_card.select_one("a")
     assert newsroom_link is not None
-    assert newsroom_link.get("href") == url_for(
-        "profile", username=user2.primary_username.username
-    )
+    assert newsroom_link.get("href") == url_for("profile", username=user2.primary_username.username)
     assert newsroom_link.get_text(" ", strip=True) == "View Profile"
 
     newsroom_count = newsroom_tab.select_one(".badge")
@@ -1388,7 +1388,9 @@ def test_directory_all_filter_panel_hidden_by_default(
         "securedrop",
         "globaleaks",
     ]
-    assert [option.get_text(" ", strip=True) for option in listing_type_select.find_all("option")] == [
+    assert [
+        option.get_text(" ", strip=True) for option in listing_type_select.find_all("option")
+    ] == [
         "All",
         "Verified",
         "Attorneys",
