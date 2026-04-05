@@ -57,11 +57,18 @@ _LEGACY_COUNTRY_NAME_BY_CODE = {
 _ALL_LISTING_TYPE_LABELS = (
     ("verified", "Verified"),
     ("attorneys", "Attorneys"),
-    ("newsrooms", "Newsrooms"),
+    ("newsrooms", "Journalists"),
     ("securedrop", "SecureDrop"),
     ("globaleaks", "GlobaLeaks"),
 )
 _DIRECTORY_CARD_BIO_ELLIPSIS = "..."
+_SELF_REPORTED_JOURNALISM_ACCOUNT_CATEGORIES = frozenset(
+    {
+        AccountCategory.JOURNALIST.value,
+        AccountCategory.NEWSROOM.value,
+        "journalist_newsroom",
+    }
+)
 
 
 def _normalized_filter_value(value: str | None) -> str | None:
@@ -383,8 +390,11 @@ def _is_self_reported_attorney(username: Username) -> bool:
     return getattr(username.user, "account_category", None) == AccountCategory.LAWYER.value
 
 
-def _is_self_reported_newsroom(username: Username) -> bool:
-    return getattr(username.user, "account_category", None) == AccountCategory.NEWSROOM.value
+def _is_self_reported_journalism_account(username: Username) -> bool:
+    return (
+        getattr(username.user, "account_category", None)
+        in _SELF_REPORTED_JOURNALISM_ACCOUNT_CATEGORIES
+    )
 
 
 def _show_directory_caution_badge(username: Username) -> bool:
@@ -609,7 +619,7 @@ def _all_directory_entry_matches_listing_type(
     if listing_type == "newsrooms":
         return bool(entry.get("is_newsroom")) or (
             entry.get("entry_type") == "user"
-            and entry.get("account_category") == AccountCategory.NEWSROOM.value
+            and entry.get("account_category") in _SELF_REPORTED_JOURNALISM_ACCOUNT_CATEGORIES
         )
 
     if listing_type == "securedrop":
@@ -715,8 +725,8 @@ def register_directory_routes(app: Flask) -> None:
         attorney_usernames = [
             username for username in usernames if _is_self_reported_attorney(username)
         ]
-        newsroom_usernames = [
-            username for username in usernames if _is_self_reported_newsroom(username)
+        journalism_usernames = [
+            username for username in usernames if _is_self_reported_journalism_account(username)
         ]
         all_public_record_listings = (
             list(get_public_record_listings())
@@ -759,12 +769,12 @@ def register_directory_routes(app: Flask) -> None:
             all_newsroom_listings = list(get_newsroom_directory_listings())
             newsroom_automated_sources = _newsroom_automated_sources(all_newsroom_listings)
             newsroom_filter_metadata = _newsroom_filter_metadata(
-                all_newsroom_listings, newsroom_usernames
+                all_newsroom_listings, journalism_usernames
             )
             newsroom_filter_state = _newsroom_filter_state(newsroom_filter_metadata)
-            filtered_newsroom_usernames = [
+            filtered_journalism_usernames = [
                 username
-                for username in newsroom_usernames
+                for username in journalism_usernames
                 if _username_matches_newsroom_filters(username, newsroom_filter_state)
             ]
             newsroom_listings = _filter_newsroom_listings(
@@ -774,7 +784,7 @@ def register_directory_routes(app: Flask) -> None:
             newsroom_automated_sources = []
             newsroom_filter_metadata = {"countries": [], "regions": {}}
             newsroom_filter_state = {"country": None, "region": None, "region_code": None}
-            filtered_newsroom_usernames = newsroom_usernames
+            filtered_journalism_usernames = journalism_usernames
             all_newsroom_listings = []
             newsroom_listings = []
         pgp_usernames = [username for username in usernames if username.user.pgp_key]
@@ -792,7 +802,7 @@ def register_directory_routes(app: Flask) -> None:
             *[
                 _directory_user_row(username)
                 for username in usernames
-                if not _is_self_reported_newsroom(username)
+                if not _is_self_reported_journalism_account(username)
                 or _username_matches_newsroom_filters(username, newsroom_filter_state)
             ],
             *[_public_record_row(listing) for listing in filtered_public_record_listings],
@@ -841,10 +851,10 @@ def register_directory_routes(app: Flask) -> None:
             attorney_filter_clear_url=_directory_filter_clear_url("country", "region"),
             globaleaks_listings=globaleaks_listings,
             globaleaks_total_count=len(globaleaks_listings),
-            newsroom_usernames=filtered_newsroom_usernames,
+            journalism_usernames=filtered_journalism_usernames,
             newsroom_listings=newsroom_listings,
             newsroom_automated_sources=newsroom_automated_sources,
-            newsroom_total_count=len(filtered_newsroom_usernames) + len(newsroom_listings),
+            newsroom_total_count=len(filtered_journalism_usernames) + len(newsroom_listings),
             newsroom_filter_metadata=newsroom_filter_metadata,
             newsroom_filter_state=newsroom_filter_state,
             newsroom_filter_clear_url=_directory_filter_clear_url(
@@ -947,20 +957,20 @@ def register_directory_routes(app: Flask) -> None:
             }
 
         newsroom_listings = get_newsroom_directory_listings()
-        newsroom_usernames = tuple(
+        journalism_usernames = tuple(
             username
             for username in get_directory_usernames()
-            if _is_self_reported_newsroom(username)
+            if _is_self_reported_journalism_account(username)
         )
         newsroom_filter_state = _newsroom_filter_state(
-            _newsroom_filter_metadata(newsroom_listings, newsroom_usernames)
+            _newsroom_filter_metadata(newsroom_listings, journalism_usernames)
         )
 
         return _newsroom_filter_metadata(
             _filter_newsroom_listings(newsroom_listings, newsroom_filter_state),
             tuple(
                 username
-                for username in newsroom_usernames
+                for username in journalism_usernames
                 if _username_matches_newsroom_filters(username, newsroom_filter_state)
             ),
         )
@@ -1008,7 +1018,7 @@ def register_directory_routes(app: Flask) -> None:
                     tuple(
                         username
                         for username in directory_usernames
-                        if _is_self_reported_newsroom(username)
+                        if _is_self_reported_journalism_account(username)
                     ),
                 )
             )
@@ -1075,7 +1085,7 @@ def register_directory_routes(app: Flask) -> None:
                 *[
                     _directory_user_row(username)
                     for username in directory_usernames
-                    if not _is_self_reported_newsroom(username)
+                    if not _is_self_reported_journalism_account(username)
                     or _username_matches_newsroom_filters(username, newsroom_filter_state)
                 ],
                 *public_record_rows,

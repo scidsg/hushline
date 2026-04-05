@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "newsrooms") {
-      searchInput.placeholder = "Search newsrooms...";
+      searchInput.placeholder = "Search journalists and newsrooms...";
       return;
     }
 
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (activeTab === "newsrooms") {
-      return "newsrooms";
+      return "journalists and newsrooms";
     }
 
     if (activeTab === "globaleaks") {
@@ -182,8 +182,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return user.account_category === "lawyer";
   }
 
-  function isNewsroomUser(user) {
-    return user.account_category === "newsroom";
+  function isJournalismUser(user) {
+    return (
+      user.account_category === "journalist" ||
+      user.account_category === "newsroom" ||
+      user.account_category === "journalist_newsroom"
+    );
   }
 
   function matchesAttorneyFilters(user) {
@@ -234,7 +238,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (tab === "newsrooms" && !user.is_newsroom) {
-      if (!isNewsroomUser(user)) {
+      if (!isJournalismUser(user)) {
         return false;
       }
     }
@@ -1218,8 +1222,8 @@ document.addEventListener("DOMContentLoaded", function () {
       metadataPath: "newsroom-filters.json",
       countryParam: "newsroom_country",
       regionParam: "newsroom_region",
-      resultsLabelSingular: "newsroom",
-      resultsLabelPlural: "newsrooms",
+      resultsLabelSingular: "journalist or newsroom",
+      resultsLabelPlural: "journalists and newsrooms",
     }),
   ].filter(Boolean);
 

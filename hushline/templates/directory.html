@@ -62,8 +62,12 @@
               aria-controls="newsrooms"
               id="newsrooms-tab"
             >
-              Newsrooms
-              <span id="newsroom-count" class="badge" role="img" aria-label="Newsroom listing count"
+              Journalists
+              <span
+                id="newsroom-count"
+                class="badge"
+                role="img"
+                aria-label="Journalist and newsroom listing count"
                 >{{ newsroom_total_count }}</span
               >
             </button>
@@ -619,12 +623,12 @@
   {% if directory_verified_tab_enabled %}
     <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
       <p class="meta dirMeta">
-        🧪 Beta: This tab includes self-reported newsrooms and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. <a href="/to/admin">Request a correction</a>.
+        🧪 Beta: This tab includes self-reported journalists, self-reported newsrooms, and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. <a href="/to/admin">Request a correction</a>.
       </p>
 
-      {% if newsroom_usernames or newsroom_listings %}
+      {% if journalism_usernames or newsroom_listings %}
         <div class="user-list">
-          {% for username in newsroom_usernames %}
+          {% for username in journalism_usernames %}
             <article class="user">
               <h3>{{ username.display_name or username.username }}</h3>
               {% if username.username %}

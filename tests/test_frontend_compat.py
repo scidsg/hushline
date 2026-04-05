@@ -127,8 +127,12 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "Showing all users." in directory_js
     assert "Showing all" in directory_verified_js
     assert 'searchInput.placeholder = "Search attorneys...";' in directory_verified_js
+    assert 'searchInput.placeholder = "Search journalists and newsrooms...";' in (
+        directory_verified_js
+    )
     assert 'searchInput.placeholder = "Search GlobaLeaks instances...";' in directory_verified_js
     assert 'return "attorneys";' in directory_verified_js
+    assert 'return "journalists and newsrooms";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
@@ -145,6 +149,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'metadataPath: "all-filters.json"' in directory_verified_js
     assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
     assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
+    assert 'resultsLabelPlural: "journalists and newsrooms"' in directory_verified_js
     assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in directory_verified_js
     assert "controller.countryLabelForValue = function (value) {" in directory_verified_js
     assert "controller.countryFilter.innerHTML = '<option value=\"\">All</option>';" in (

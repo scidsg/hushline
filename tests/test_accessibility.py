@@ -15,11 +15,13 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     primary_nav = soup.find("nav", {"aria-label": "Primary navigation"})
     verified_tab = soup.find("button", {"id": "verified-tab"})
     public_records_tab = soup.find("button", {"id": "public-records-tab"})
+    journalists_tab = soup.find("button", {"id": "newsrooms-tab"})
     globaleaks_tab = soup.find("button", {"id": "globaleaks-tab"})
     securedrop_tab = soup.find("button", {"id": "securedrop-tab"})
     all_tab = soup.find("button", {"id": "all-tab"})
     verified_panel = soup.find(id="verified")
     public_records_panel = soup.find(id="public-records")
+    journalists_panel = soup.find(id="newsrooms")
     globaleaks_panel = soup.find(id="globaleaks")
     securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
@@ -53,6 +55,20 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert label_text == "Attorneys"
     assert public_records_tab.get("aria-controls") == "public-records"
     assert public_records_tab.get("aria-selected") in {"true", "false"}
+    assert journalists_tab is not None
+    journalists_badge = journalists_tab.select_one("span.badge")
+    assert journalists_badge is not None
+    assert journalists_badge.get("role") == "img"
+    assert journalists_badge.get("aria-label") == "Journalist and newsroom listing count"
+    assert journalists_badge.get_text(strip=True).isdigit()
+    journalists_label_text = (
+        journalists_tab.get_text(" ", strip=True)
+        .replace(journalists_badge.get_text(" ", strip=True), "")
+        .strip()
+    )
+    assert journalists_label_text == "Journalists"
+    assert journalists_tab.get("aria-controls") == "newsrooms"
+    assert journalists_tab.get("aria-selected") in {"true", "false"}
     assert globaleaks_tab is not None
     globaleaks_badge = globaleaks_tab.select_one("span.badge")
     assert globaleaks_badge is not None
@@ -90,6 +106,9 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert public_records_panel is not None
     assert public_records_panel.get("role") == "tabpanel"
     assert public_records_panel.get("aria-labelledby") == "public-records-tab"
+    assert journalists_panel is not None
+    assert journalists_panel.get("role") == "tabpanel"
+    assert journalists_panel.get("aria-labelledby") == "newsrooms-tab"
     assert globaleaks_panel is not None
     assert globaleaks_panel.get("role") == "tabpanel"
     assert globaleaks_panel.get("aria-labelledby") == "globaleaks-tab"
