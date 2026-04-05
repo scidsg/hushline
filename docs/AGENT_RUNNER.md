@@ -18,6 +18,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
 5. Check cheap GitHub exit conditions before bootstrapping runtime:
    - exit if any open human-authored PR exists
+   - exit if any open issue is already in project status `In Progress`
    - for non-epic issues, exit if any open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
@@ -106,6 +107,13 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 +------------------------+
 | Open human PRs > 0 ?   |--yes--> [Skip + Exit]
 +------------------------+
+      |
+      no
+      |
+      v
++-------------------------------------+
+| Any issue already In Progress ?     |--yes--> [Skip + Exit]
++-------------------------------------+
       |
       no
       |
