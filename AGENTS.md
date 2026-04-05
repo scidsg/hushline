@@ -5,6 +5,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Grounding Document
 
 - Primary grounding reference: `docs/ISO-37002.md` (`ISO 37002:2021 Whistleblowing management systems - Guidelines`)
+- Use-case reference: `docs/USE-CASES.md` (canonical product and workflow use cases for agents)
 
 ## Principles
 
@@ -25,17 +26,6 @@ This file provides operating guidance for coding agents working in the Hush Line
 | Activists          | Educators and Administrators |                         |
 | Students           | Organizers and Activists     |                         |
 | Bug bounty hunters | Software developers          |                         |
-
-The live public website and verified directory also show recurring recipient patterns that agents should keep in mind when writing copy, shaping features, or evaluating regressions:
-
-- Investigative reporters, editors, documentary teams, and nonprofit newsrooms using public profiles to receive source outreach.
-- Whistleblower counsel, public-interest law firms, and legal intake teams handling fraud, corruption, retaliation, and misconduct reports.
-- Corporate, nonprofit, and project governance contacts such as boards, ethics offices, and public accountability channels.
-- Security researchers, bug bounty teams, software maintainers, and platform security contacts receiving vulnerability reports.
-- Privacy, anti-censorship, digital rights, and open-source infrastructure organizations receiving sensitive tips from the public.
-- Educators, school administrators, and campus-adjacent trusted adults offering safer reporting channels to students and families.
-- Organizers, advocacy groups, and issue-specific nonprofits coordinating protected first contact around harms, retaliation, detention, or abuse.
-- Organizations that need shared or role-based intake points in addition to individual profiles, such as board inboxes or security-reporting addresses.
 
 ## Geographic Location
 
@@ -78,61 +68,11 @@ The live public website and verified directory also show recurring recipient pat
 |                               | Add an image to Vision for OCR       |                                  |                                               |
 |                               | View Tools tab in nav                |                                  |                                               |
 
-## Example Use Cases (Non-Exhaustive)
+## Use Cases
 
-| As a...           | I need to...                                                        | So...                                                                      |
-| ----------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Lawyer            | Make myself discoverable                                            | Whistleblowers can find me by location                                     |
-| Lawyer            | Add a rich bio                                                      | Whistleblowers know how I can help them                                    |
-| Lawyer            | Add links to my website                                             | Sources can verify who I am                                                |
-| Lawyer            | Have multiple aliases                                               | I can have clean intake channels for different investigations              |
-| Lawyer            | Add custom message statuses                                         | I can let the person who submitted a message know next steps for their tip |
-| Whistleblower     | Easily find someone who can help                                    | I can work toward making a positive change                                 |
-| Whistleblower     | Contact someone without creating my own account                     | I can submit a tip without any friction or requirements                    |
-| Whistleblower     | Know the status of my tip                                           | I understand what my next steps are                                        |
-| Whistleblower     | Find a verified tip line                                            | I have high confidence in the person or organization I intend to reach     |
-| Journalist        | Make it easy for a source to contact me without requiring a new app | I receive better tips from more people                                     |
-| Journalist        | Add more info (Signal, email, contact page, social profiles, etc.)  | Sources have options for how to contact me                                 |
-| Journalist        | Add more info (Signal, email, contact page, social profiles, etc.)  | Sources have additional social proof before contacting me                  |
-| Journalist        | Add my Hush Line profile URL to websites and profiles               | Sources have confidence that I really own that tip line                    |
-| Business          | Provide my employees a trusted tip line                             | I receive tips while maintaining confidentiality and source privacy        |
-| Business (EU)     | Set up an external method of employee reporting                     | My company remains compliant with the Whistleblowing Directive of 2019     |
-| Business          | Provide a public tip line                                           | My company can receive messages about fraud, waste, and abuse              |
-| Business          | Offer employees a safe tip line                                     | I can help establish a culture of safe reporting                           |
-| Software Engineer | Have a way of receiving vulnerability reports                       | I can quickly address risks to users or data                               |
-| Manager           | Give my direct reports a way to share concerns privately            | I can reinforce a safe workplace and psychological safety                  |
-
-Additional public-directory-grounded use cases agents should recognize:
-
-| As a...                        | I need to...                                                       | So...                                                                  |
-| ------------------------------ | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Investigative newsroom         | Publish a verified tip line and profile URL                        | Sources can confirm they are contacting the real newsroom              |
-| Investigative reporter         | Add clear beats and contact context to my profile                  | Sources know whether I cover their issue before they reach out         |
-| Documentary project            | Offer a private intake channel to participants and witnesses       | People can share sensitive experiences without a public backchannel    |
-| Whistleblower law firm         | Separate intake by matter, practice area, or campaign              | Potential clients reach the right reporting address faster             |
-| Security team                  | Publish a verified security-reporting address                      | Researchers know where to send vulnerability disclosures               |
-| Open-source or privacy project | Offer a public reporting endpoint without requiring a new app      | Community members can report risks with less friction                  |
-| Board or ethics contact        | Maintain a shared governance inbox                                 | People can report concerns to the correct oversight body               |
-| School or university contact   | Publish distinct reporting addresses for different campus concerns | Students, staff, and families do not have to guess where to report     |
-| Advocacy nonprofit             | Receive sensitive reports from affected communities                | People can ask for help without exposing themselves unnecessarily      |
-| Support organization           | Provide a safe first-contact channel for retaliation or detention  | People can share time-sensitive information with less operational risk |
-
-Additional ISO 37002-grounded use cases agents should recognize:
-
-| As a...                           | I need to...                                                            | So...                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Employee or volunteer             | Report wrongdoing outside my management chain                           | I still have a credible path to raise concerns if my manager is conflicted     |
-| Contractor, supplier, or partner  | Report misconduct linked to an organization I work with                 | Serious issues are not missed just because I am not a direct employee          |
-| Whistleblower                     | Use a reporting channel that is visible, accessible, and secure         | I can raise a concern without procedural friction or unsafe workarounds        |
-| Whistleblower                     | Receive acknowledgement, follow-up, and timely feedback                 | I understand that my report is moving and what to expect next                  |
-| Whistleblower                     | Report confidentially or anonymously where allowed                      | I can reduce the risk of exposure while still sharing what I know              |
-| Organization                      | Offer at least one reporting path distinct from normal management lines | People can report concerns even when local leadership is implicated            |
-| Organization                      | Triage reports by urgency, severity, and risk of detriment              | High-risk cases and whistleblower safety needs are handled first               |
-| Organization                      | Protect whistleblowers and other involved parties from retaliation      | Speaking up does not create preventable personal or workplace harm             |
-| Organization                      | Give reporters a way to continue communication after the initial report | The case can progress without forcing unsafe or ad hoc follow-up methods       |
-| Organization                      | Support vulnerable reporters with appropriate communication and process | Children, migrants, and others at higher risk are not excluded by the workflow |
-| Investigation team                | Preserve confidentiality on a strict need-to-know basis                 | Evidence can be handled without unnecessarily exposing identities              |
-| Governing body or compliance lead | Measure response times, case outcomes, and trust in the system          | The reporting program can be improved based on actual performance              |
+- Use `docs/USE-CASES.md` as the canonical use-case reference when evaluating product fit, copy, UX tradeoffs, regressions, directory/discovery behavior, deployment models, or role-specific workflows.
+- Treat the roles, scenarios, and product-surface mappings in `docs/USE-CASES.md` as the detailed extension of the higher-level `Core Users` and `Core Flows` summarized here.
+- If a change adds, removes, or materially changes a workflow, update `docs/USE-CASES.md` instead of duplicating that detail in this file.
 
 ## Local Commands
 
