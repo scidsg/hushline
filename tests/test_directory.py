@@ -1392,11 +1392,11 @@ def test_directory_all_filter_panel_hidden_by_default(
         option.get_text(" ", strip=True) for option in listing_type_select.find_all("option")
     ] == [
         "All",
-        "Verified",
-        "Attorneys",
-        "Journalists",
-        "SecureDrop",
-        "GlobaLeaks",
+        "Verified (1)",
+        "Attorneys (1)",
+        "Journalists (1)",
+        "SecureDrop (1)",
+        "GlobaLeaks (1)",
     ]
     assert clear_filters_actions is not None
     assert clear_filters_actions.has_attr("hidden")
