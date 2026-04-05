@@ -2299,9 +2299,8 @@ def test_newsroom_automated_sources_skips_missing_source_metadata() -> None:
     ]
 
 
-def test_all_directory_entry_matches_journalists_listing_type_for_self_reported_journalism_accounts() -> (
-    None
-):
+def test_all_directory_entry_matches_journalists_listing_type_for_self_reported_journalism_accounts(
+) -> None:
     assert (
         directory_routes._all_directory_entry_matches_listing_type(
             {"entry_type": "user", "account_category": AccountCategory.JOURNALIST.value},
