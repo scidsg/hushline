@@ -32,6 +32,12 @@ from hushline.public_record_refresh import (
     build_requests_link_checker,
 )
 
+_JOURNALISM_ACCOUNT_CATEGORIES = {
+    AccountCategory.JOURNALIST.value,
+    AccountCategory.NEWSROOM.value,
+    "journalist_newsroom",
+}
+
 
 def _first_public_record_listing_or_skip() -> PublicRecordListing:
     listings = _strict_public_record_listings()
@@ -244,7 +250,7 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert response.status_code == 200
     assert "Whistleblower Support Directory" in response.text
     assert "Attorneys" in response.text
-    assert "Newsrooms" in response.text
+    assert "Journalists" in response.text
     assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
@@ -360,7 +366,9 @@ def test_directory_newsrooms_banner_links_to_admin(
     assert links_by_text["Request a correction"] == "/to/admin"
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
-    assert "self-reported newsrooms and automated listings" in banner_text
+    assert "self-reported journalists, self-reported newsrooms, and automated listings" in (
+        banner_text
+    )
     assert "public journalism directories" in banner_text
     assert "INN Find Your News directory" in banner_text
     assert "Directory of European Journalism Networks" in banner_text
@@ -699,16 +707,17 @@ def test_directory_self_reported_attorneys_render_in_attorneys_tab(
     )
 
 
-def test_directory_self_reported_newsrooms_render_in_newsrooms_tab(
+def test_directory_self_reported_journalists_and_newsrooms_render_in_newsrooms_tab(
     client: FlaskClient, user: User, user2: User
 ) -> None:
-    user.account_category = AccountCategory.NEWSROOM.value
+    user.account_category = AccountCategory.JOURNALIST.value
     user.primary_username.show_in_directory = True
-    user.primary_username._display_name = "Self-Reported Newsroom"
-    user.primary_username.bio = "Newsroom profile."
-    user2.account_category = AccountCategory.ACTIVIST.value
+    user.primary_username._display_name = "Self-Reported Journalist"
+    user.primary_username.bio = "Journalist profile."
+    user2.account_category = AccountCategory.NEWSROOM.value
     user2.primary_username.show_in_directory = True
-    user2.primary_username._display_name = "Non-Newsroom"
+    user2.primary_username._display_name = "Self-Reported Newsroom"
+    user2.primary_username.bio = "Newsroom profile."
     db.session.commit()
 
     response = client.get(url_for("directory"))
@@ -720,19 +729,28 @@ def test_directory_self_reported_newsrooms_render_in_newsrooms_tab(
 
     assert newsroom_panel is not None
     assert newsroom_tab is not None
+    assert "Journalists" in newsroom_tab.get_text(" ", strip=True)
+    assert "Self-Reported Journalist" in newsroom_panel.get_text(" ", strip=True)
     assert "Self-Reported Newsroom" in newsroom_panel.get_text(" ", strip=True)
-    assert "Non-Newsroom" not in newsroom_panel.get_text(" ", strip=True)
+
+    journalist_card = _find_directory_card(newsroom_panel, "Self-Reported Journalist")
+    journalist_link = journalist_card.select_one("a")
+    assert journalist_link is not None
+    assert journalist_link.get("href") == url_for(
+        "profile", username=user.primary_username.username
+    )
+    assert journalist_link.get_text(" ", strip=True) == "View Profile"
 
     newsroom_card = _find_directory_card(newsroom_panel, "Self-Reported Newsroom")
     newsroom_link = newsroom_card.select_one("a")
     assert newsroom_link is not None
-    assert newsroom_link.get("href") == url_for("profile", username=user.primary_username.username)
+    assert newsroom_link.get("href") == url_for("profile", username=user2.primary_username.username)
     assert newsroom_link.get_text(" ", strip=True) == "View Profile"
 
     newsroom_count = newsroom_tab.select_one(".badge")
     assert newsroom_count is not None
     assert newsroom_count.get_text(" ", strip=True) == str(
-        len(get_newsroom_directory_listings()) + 1
+        len(get_newsroom_directory_listings()) + 2
     )
 
 
@@ -1370,6 +1388,16 @@ def test_directory_all_filter_panel_hidden_by_default(
         "securedrop",
         "globaleaks",
     ]
+    assert [
+        option.get_text(" ", strip=True) for option in listing_type_select.find_all("option")
+    ] == [
+        "All",
+        "Verified (1)",
+        "Attorneys (1)",
+        "Journalists (1)",
+        "SecureDrop (1)",
+        "GlobaLeaks (1)",
+    ]
     assert clear_filters_actions is not None
     assert clear_filters_actions.has_attr("hidden")
     assert clear_filters_link is not None
@@ -1745,11 +1773,11 @@ def test_directory_users_json_filters_only_public_record_rows_by_query_params(
 def test_directory_users_json_filters_only_newsroom_rows_by_query_params(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
 ) -> None:
-    user.account_category = AccountCategory.NEWSROOM.value
+    user.account_category = AccountCategory.JOURNALIST.value
     user.country = "US"
     user.subdivision = "IL"
     user.primary_username.show_in_directory = True
-    user.primary_username._display_name = "Illinois Newsroom User"
+    user.primary_username._display_name = "Illinois Journalist User"
     user2.primary_username.show_in_directory = True
     user2.primary_username._display_name = "General User"
     db.session.commit()
@@ -1798,15 +1826,15 @@ def test_directory_users_json_filters_only_newsroom_rows_by_query_params(
     newsroom_names = {
         row["display_name"]
         for row in rows
-        if row["is_newsroom"] or row["account_category"] == AccountCategory.NEWSROOM.value
+        if row["is_newsroom"] or row["account_category"] in _JOURNALISM_ACCOUNT_CATEGORIES
     }
     non_newsroom_names = {
         row["display_name"]
         for row in rows
-        if not row["is_newsroom"] and row["account_category"] != AccountCategory.NEWSROOM.value
+        if not row["is_newsroom"] and row["account_category"] not in _JOURNALISM_ACCOUNT_CATEGORIES
     }
 
-    assert newsroom_names == {"Illinois Newsroom Listing", "Illinois Newsroom User"}
+    assert newsroom_names == {"Illinois Newsroom Listing", "Illinois Journalist User"}
     assert "California Attorney" in non_newsroom_names
     assert "General User" in non_newsroom_names
 
@@ -1864,6 +1892,14 @@ def test_directory_users_json_filters_all_rows_by_country_and_region_query_param
 def test_directory_users_json_filters_all_rows_by_listing_type_query_params(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    journalist_user = _directory_username(
+        username="journalist-user",
+        display_name="Journalist User",
+        account_category=AccountCategory.JOURNALIST.value,
+        country="US",
+        subdivision="IL",
+        city="Chicago",
+    )
     newsroom_user = _directory_username(
         username="newsroom-user",
         display_name="Newsroom User",
@@ -1890,7 +1926,7 @@ def test_directory_users_json_filters_all_rows_by_listing_type_query_params(
 
     monkeypatch.setattr(
         "hushline.routes.directory.get_directory_usernames",
-        lambda: (newsroom_user, general_user),
+        lambda: (journalist_user, newsroom_user, general_user),
     )
     monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
     monkeypatch.setattr(
@@ -1904,7 +1940,7 @@ def test_directory_users_json_filters_all_rows_by_listing_type_query_params(
     assert response.status_code == 200
 
     display_names = {row["display_name"] for row in response.json or []}
-    assert display_names == {"Illinois Newsroom", "Newsroom User"}
+    assert display_names == {"Illinois Newsroom", "Journalist User", "Newsroom User"}
 
 
 def test_directory_users_json_filters_all_rows_by_combined_geography_and_listing_type_query_params(
@@ -2030,11 +2066,11 @@ def test_directory_attorney_filters_json_includes_self_reported_attorneys(
 def test_directory_newsroom_filters_json_includes_self_reported_newsrooms(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch, user: User, user2: User
 ) -> None:
-    user.account_category = AccountCategory.NEWSROOM.value
+    user.account_category = AccountCategory.JOURNALIST.value
     user.country = "US"
     user.subdivision = "IL"
     user.primary_username.show_in_directory = True
-    user2.account_category = AccountCategory.ACTIVIST.value
+    user2.account_category = AccountCategory.NEWSROOM.value
     user2.country = "US"
     user2.subdivision = "CA"
     user2.primary_username.show_in_directory = True
@@ -2045,8 +2081,13 @@ def test_directory_newsroom_filters_json_includes_self_reported_newsrooms(
     response = client.get(url_for("directory_newsroom_filters"))
     assert response.status_code == 200
     assert response.json == {
-        "countries": [{"code": "United States", "label": "United States", "count": 1}],
-        "regions": {"United States": [{"code": "IL", "label": "Illinois", "count": 1}]},
+        "countries": [{"code": "United States", "label": "United States", "count": 2}],
+        "regions": {
+            "United States": [
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "IL", "label": "Illinois", "count": 1},
+            ]
+        },
     }
 
 
@@ -2256,6 +2297,37 @@ def test_newsroom_automated_sources_skips_missing_source_metadata() -> None:
             "url": "https://findyournews.org/explore/",
         }
     ]
+
+
+def test_newsrooms_listing_includes_self_reported_journalism_accounts() -> None:
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "account_category": AccountCategory.JOURNALIST.value},
+            "newsrooms",
+        )
+        is True
+    )
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "account_category": AccountCategory.NEWSROOM.value},
+            "newsrooms",
+        )
+        is True
+    )
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "account_category": "journalist_newsroom"},
+            "newsrooms",
+        )
+        is True
+    )
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "account_category": AccountCategory.ACTIVIST.value},
+            "newsrooms",
+        )
+        is False
+    )
 
 
 def test_normalized_attorney_filter_country_returns_none_for_blank_values() -> None:

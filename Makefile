@@ -85,9 +85,11 @@ lint: ## Lint the code
 
 .PHONY: fix
 fix: ## Auto-fix supported lint and format issues
-	$(CMD) poetry run ruff check --fix && \
-	$(CMD) poetry run ruff format && \
-	$(CMD) sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --write $(PRETTIER_TARGETS); elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --write $(PRETTIER_TARGETS); else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+	$(CMD) sh -lc 'set -e; \
+		poetry run ruff check --fix || true; \
+		poetry run ruff format; \
+		if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --write $(PRETTIER_TARGETS); elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --write $(PRETTIER_TARGETS); else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+	$(MAKE) lint
 
 .PHONY: new-database-migration
 new-database-migration: ## Create a new migration
