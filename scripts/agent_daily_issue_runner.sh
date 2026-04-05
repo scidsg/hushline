@@ -1350,6 +1350,7 @@ set_issue_project_status() {
 
 collect_issue_candidates_from_project() {
   local project_number="$1"
+  local target_status_name="${2:-$PROJECT_COLUMN}"
   local cursor=""
   local has_next_page="1"
   local next_cursor=""
@@ -1515,7 +1516,7 @@ collect_issue_candidates_from_project() {
       break
     fi
 
-    page_output="$(printf '%s' "$response" | REPO_SLUG="$REPO_SLUG" PROJECT_COLUMN="$PROJECT_COLUMN" node -e '
+    page_output="$(printf '%s' "$response" | REPO_SLUG="$REPO_SLUG" TARGET_PROJECT_STATUS_NAME="$target_status_name" node -e '
       const fs = require("fs");
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
       const data = payload && payload.data ? payload.data : {};
@@ -1533,7 +1534,7 @@ collect_issue_candidates_from_project() {
           ? itemsConnection.pageInfo
           : {};
       const expectedRepo = String(process.env.REPO_SLUG || "").trim().toLowerCase();
-      const expectedStatus = String(process.env.PROJECT_COLUMN || "").trim().toLowerCase();
+      const expectedStatus = String(process.env.TARGET_PROJECT_STATUS_NAME || "").trim().toLowerCase();
 
       function getRepositorySlug(content) {
         const repo = content && content.repository;
@@ -1625,6 +1626,24 @@ collect_issue_candidates() {
   fi
 
   collect_issue_candidates_from_project "$project_number"
+}
+
+count_open_project_issues_in_status() {
+  local target_status_name="$1"
+  local project_number issue_number count=0
+
+  project_number="$(resolve_project_number)"
+  if [[ -z "$project_number" ]]; then
+    printf '0\n'
+    return 0
+  fi
+
+  while IFS= read -r issue_number; do
+    [[ -n "$issue_number" ]] || continue
+    count=$((count + 1))
+  done < <(collect_issue_candidates_from_project "$project_number" "$target_status_name")
+
+  printf '%s\n' "$count"
 }
 
 configure_bot_git_identity() {
@@ -2519,6 +2538,13 @@ main() {
   echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
   if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
     runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+    exit 0
+  fi
+
+  OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
+  echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
+  if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
+    runner_status "Skipped: found ${OPEN_IN_PROGRESS_ISSUES} open issue(s) in project status '${PROJECT_STATUS_IN_PROGRESS}'."
     exit 0
   fi
 
