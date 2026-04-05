@@ -90,6 +90,8 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Runner processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
 - Human-PR guard:
   - Runner exits early if any open human-authored PR exists.
+- In-progress issue guard:
+  - Runner exits early if any issue is already in project status `In Progress`.
 - One-bot-PR guard:
   - Runner exits early if any unrelated open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
   - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.

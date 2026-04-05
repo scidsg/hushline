@@ -161,6 +161,66 @@ main
     assert "runtime-bootstrap" not in calls
 
 
+def test_main_exits_before_runtime_bootstrap_when_issue_is_already_in_progress(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+MAX_ISSUE_ATTEMPTS=3
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+resolve_issue_parent_epic() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+count_open_bot_prs() {{
+  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_human_prs() {{
+  printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_project_issues_in_status() {{
+  printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '1\\n'
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Skipped: found 1 open issue(s) in project status 'In Progress'." in result.stdout
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "collect-issue-candidates" in calls
+    assert "count-open-human-prs" in calls
+    assert "count-open-project-issues-in-status:In Progress" in calls
+    assert "count-open-bot-prs" not in calls
+    assert "configure-bot-git" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
 def test_main_exits_before_runtime_bootstrap_when_no_issue_is_available(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -736,6 +796,59 @@ collect_issue_candidates_from_project 12
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "1558\n"
+
+
+def test_collect_issue_candidates_from_project_supports_custom_status_name() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROJECT_OWNER=scidsg
+PROJECT_COLUMN="Agent Eligible"
+PROJECT_STATUS_FIELD_NAME=Status
+PROJECT_ITEM_LIMIT=200
+REPO_SLUG=scidsg/hushline
+gh() {{
+  cat <<'EOF'
+{{
+  "data": {{
+    "organization": {{
+      "projectV2": {{
+        "items": {{
+          "nodes": [
+            {{
+              "fieldValueByName": {{"name": "Agent Eligible"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1558,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1558",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }},
+            {{
+              "fieldValueByName": {{"name": "In Progress"}},
+              "content": {{
+                "type": "Issue",
+                "number": 1559,
+                "state": "OPEN",
+                "url": "https://github.com/scidsg/hushline/issues/1559",
+                "repository": {{"owner": {{"login": "scidsg"}}, "name": "hushline"}}
+              }}
+            }}
+          ]
+        }}
+      }}
+    }}
+  }}
+}}
+EOF
+}}
+collect_issue_candidates_from_project 12 "In Progress"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "1559\n"
 
 
 def test_main_allows_existing_epic_pr_before_runtime_bootstrap(tmp_path: Path) -> None:
