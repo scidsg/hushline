@@ -328,6 +328,27 @@ def test_profile_location_settings_use_country_select_and_dependency_script() ->
     assert '#city:has(option:checked[value=""])' in scss
 
 
+def test_profile_settings_template_contains_updated_ui_copy() -> None:
+    profile_forms_template = (ROOT / "hushline/templates/settings/profile-forms.html").read_text(
+        encoding="utf-8"
+    )
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert "<h4>Profile Information</h4>" in profile_forms_template
+    assert "Add your account category to help people find you easier." in profile_forms_template
+    assert "add you to the Journalists tab in the Directory, if you opt-in." in (
+        profile_forms_template
+    )
+    assert "The same logic applies to Attorneys and Law Offices." in profile_forms_template
+    assert "<h5>Custom Fields</h5>" in profile_forms_template
+    assert "<h4>Custom Your Tip Line Form</h4>" in profile_forms_template
+    assert "<h4>Add Your Bio</h4>" not in profile_forms_template
+    assert "<h5>Profile Details</h5>" not in profile_forms_template
+    assert "<h4>Message Fields</h4>" not in profile_forms_template
+    assert "h4+form p {" in scss
+    assert "margin-bottom: 1rem;" in scss
+
+
 def test_settings_field_builder_select_hooks_are_wrapper_safe() -> None:
     settings_fields_js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
 
