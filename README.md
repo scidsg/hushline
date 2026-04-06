@@ -49,10 +49,12 @@ Hush Line is built for safety-critical reporting workflows where trust, anonymit
 ```sh
 git clone https://github.com/scidsg/hushline.git
 cd hushline
-docker compose up
+make serve
 ```
 
 Open <http://localhost:8080>.
+
+If you only want to start the current stack without first tearing it down, you can still use `docker compose up` or `make run`.
 
 If you want a slower, guided setup for a brand-new machine, use the AI-ready prompt in [`docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md`](./docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md). It walks a new contributor through installing Git, Make, Docker, cloning the repo, starting the stack, and trying the first three local flows.
 
@@ -60,9 +62,11 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 
 | Command                                   | Purpose                                  |
 | ----------------------------------------- | ---------------------------------------- |
+| `make serve`                              | Tear down and rebuild the local stack    |
 | `make lint`                               | Run formatting/lint/type checks          |
 | `make test`                               | Run full test suite with coverage output |
 | `make fix`                                | Apply formatting/lint autofixes          |
+| `make run`                                | Start the current local stack            |
 | `make run-full`                           | Run Stripe-enabled development stack     |
 | `docker compose down -v --remove-orphans` | Reset local Docker state                 |
 
