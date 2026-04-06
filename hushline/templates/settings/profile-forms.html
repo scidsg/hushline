@@ -65,8 +65,11 @@
   {% endfor %}
   {% if not is_alias %}
     <div class="form-group">
-      <p>Add your account category to help people find you easier. Self-selecting as a journalist or newsroom will automatically
-        add you to the Journalists tab in the Directory, if you opt-in. The same logic applies to Attorneys and Law Offices.
+      <p>
+        Add your account category to help people find you more easily. Selecting
+        Journalist or Newsroom will automatically add you to the Journalists tab
+        in the Directory if you opt in. The same logic applies to Attorneys and
+        Law Offices.
       </p>
       {{ profile_form.account_category.label }}
       {{ profile_form.account_category(id='account_category') }}
@@ -74,6 +77,12 @@
         <span class="error">{{ error }}</span>
       {% endfor %}
     </div>
+    <h5>Location Information</h5>
+    <p>
+      Including location information makes your account more relevant to
+      whistleblowers and helps people discover your profile when they search
+      with filters.
+    </p>
     <div class="form-group">
       {{ profile_form.country.label }}
       {{ profile_form.country(id='country', autocomplete='country-name', data_states_url=url_for('.profile_states')) }}
@@ -96,6 +105,10 @@
       {% endfor %}
     </div>
   {% endif %}
+  <h5>Add Your Bio</h5>
+  <p>
+    Include information about who you are and how you can help potential whistleblowers.
+  </p>
   <div class="form-group">
     <div class="label-with-wordcount">
       {{ profile_form.bio.label(for='bio') }}
@@ -150,7 +163,7 @@
 
 {% if user.fields_enabled %}
   <div class="fields">
-    <h4>Custom Your Tip Line Form</h4>
+    <h4>Customize Your Tip Line Form</h4>
       <p>
         By default, when someone visits your profile they will see a form with two fields, an optional contact
         method field and a message field.

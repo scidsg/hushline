@@ -333,16 +333,31 @@ def test_profile_settings_template_contains_updated_ui_copy() -> None:
         encoding="utf-8"
     )
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+    normalized_template = " ".join(profile_forms_template.split())
 
     assert "<h4>Profile Information</h4>" in profile_forms_template
-    assert "Add your account category to help people find you easier." in profile_forms_template
-    assert "add you to the Journalists tab in the Directory, if you opt-in." in (
-        profile_forms_template
+    assert "Add your account category to help people find you more easily." in normalized_template
+    assert (
+        "Selecting Journalist or Newsroom will automatically add you to the Journalists tab"
+        in normalized_template
     )
-    assert "The same logic applies to Attorneys and Law Offices." in profile_forms_template
+    assert "in the Directory if you opt in." in normalized_template
+    assert "The same logic applies to Attorneys and Law Offices." in normalized_template
+    assert "<h5>Location Information</h5>" in profile_forms_template
+    assert "Including location information makes your account more relevant to" in (
+        normalized_template
+    )
+    assert "whistleblowers and helps people discover your profile when they search" in (
+        normalized_template
+    )
+    assert "with filters." in normalized_template
+    assert "<h5>Add Your Bio</h5>" in profile_forms_template
+    assert "Include information about who you are and how you can help potential" in (
+        normalized_template
+    )
+    assert "whistleblowers." in normalized_template
     assert "<h5>Custom Fields</h5>" in profile_forms_template
-    assert "<h4>Custom Your Tip Line Form</h4>" in profile_forms_template
-    assert "<h4>Add Your Bio</h4>" not in profile_forms_template
+    assert "<h4>Customize Your Tip Line Form</h4>" in profile_forms_template
     assert "<h5>Profile Details</h5>" not in profile_forms_template
     assert "<h4>Message Fields</h4>" not in profile_forms_template
     assert "h4+form p {" in scss
