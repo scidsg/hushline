@@ -60,15 +60,15 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 
 ### 2) Common commands
 
-| Command                                   | Purpose                                  | When to use                                      |
-| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| `make serve`                              | Tear down and rebuild the local stack    | Starting fresh or recovering from Docker drift   |
-| `make lint`                               | Run formatting/lint/type checks          | Before opening a PR or after code changes        |
-| `make test`                               | Run full test suite with coverage output | Before opening a PR and after behavior changes   |
+| Command                                   | Purpose                                  | When to use                                       |
+| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `make serve`                              | Tear down and rebuild the local stack    | Starting fresh or recovering from Docker drift    |
+| `make lint`                               | Run formatting/lint/type checks          | Before opening a PR or after code changes         |
+| `make test`                               | Run full test suite with coverage output | Before opening a PR and after behavior changes    |
 | `make fix`                                | Apply formatting/lint autofixes          | When lint reports fixable formatting/style issues |
-| `make run`                                | Start the current local stack            | Quick restarts when you do not need a full reset |
-| `make run-full`                           | Run Stripe-enabled development stack     | Testing paid-tier or Stripe-related flows        |
-| `docker compose down -v --remove-orphans` | Reset local Docker state                 | Clearing containers, volumes, and orphaned state |
+| `make run`                                | Start the current local stack            | Quick restarts when you do not need a full reset  |
+| `make run-full`                           | Run Stripe-enabled development stack     | Testing paid-tier or Stripe-related flows         |
+| `docker compose down -v --remove-orphans` | Reset local Docker state                 | Clearing containers, volumes, and orphaned state  |
 
 ## Security and Privacy
 
