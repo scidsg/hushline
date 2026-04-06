@@ -97,12 +97,10 @@ def test_settings_profile_page_renders_updated_profile_copy(
     page_text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
 
     assert "Profile Information" in page_text
-    assert "Add your account category to help people find you easier." in page_text
-    assert "add you to the Journalists tab in the Directory, if you opt-in." in page_text
-    assert "The same logic applies to Attorneys and Law Offices." in page_text
+    assert "Location Information" in page_text
+    assert "Add Your Bio" in page_text
     assert "Custom Fields" in page_text
-    assert "Custom Your Tip Line Form" in page_text
-    assert "Add Your Bio" not in page_text
+    assert "Customize Your Tip Line Form" in page_text
     assert "Profile Details" not in page_text
     assert "Message Fields" not in page_text
 
