@@ -88,6 +88,26 @@ def test_settings_page_loads(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_settings_profile_page_renders_updated_profile_copy(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.get(url_for("settings.profile"), follow_redirects=True)
+    assert response.status_code == 200
+
+    page_text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
+
+    assert "Profile Information" in page_text
+    assert "Add your account category to help people find you easier." in page_text
+    assert "add you to the Journalists tab in the Directory, if you opt-in." in page_text
+    assert "The same logic applies to Attorneys and Law Offices." in page_text
+    assert "Custom Fields" in page_text
+    assert "Custom Your Tip Line Form" in page_text
+    assert "Add Your Bio" not in page_text
+    assert "Profile Details" not in page_text
+    assert "Message Fields" not in page_text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_change_display_name(client: FlaskClient, user: User) -> None:
     new_display_name = (user.primary_username.display_name or "") + "_NEW"
 

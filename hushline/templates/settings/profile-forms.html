@@ -53,7 +53,7 @@
   {{ directory_visibility_form.submit }}
 </form>
 
-<h4>Add Your Bio</h4>
+<h4>Profile Information</h4>
 <form
   method="POST"
   class="formBody"
@@ -65,6 +65,9 @@
   {% endfor %}
   {% if not is_alias %}
     <div class="form-group">
+      <p>Add your account category to help people find you easier. Self-selecting as a journalist or newsroom will automatically
+        add you to the Journalists tab in the Directory, if you opt-in. The same logic applies to Attorneys and Law Offices.
+      </p>
       {{ profile_form.account_category.label }}
       {{ profile_form.account_category(id='account_category') }}
       {% for error in profile_form.account_category.errors %}
@@ -104,7 +107,7 @@
     {% endfor %}
   </div>
 
-  <h5>Profile Details</h5>
+  <h5>Custom Fields</h5>
   <p class="info">
     Add links to social media, your Signal username, your pronouns, or
     anything else you want on your profile.
@@ -147,7 +150,7 @@
 
 {% if user.fields_enabled %}
   <div class="fields">
-    <h4>Message Fields</h4>
+    <h4>Custom Your Tip Line Form</h4>
       <p>
         By default, when someone visits your profile they will see a form with two fields, an optional contact
         method field and a message field.
