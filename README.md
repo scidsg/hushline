@@ -158,10 +158,25 @@ More screenshots: <https://github.com/scidsg/hushline-screenshots/tree/main/rele
 
 ## In the Media
 
-- Privacy Guides: <https://www.privacyguides.org/posts/2026/01/09/hush-line-review-an-accessible-whistleblowing-platform-for-journalists-and-lawyers-alike/>
-- Newsweek: <https://www.newsweek.com/protecting-free-speech-about-more-letting-content-run-wild-opinion-2012746>
-- TIME: <https://time.com/7208911/psst-whistleblower-collective/>
-- Around the Bend podcast: <https://www.youtube.com/watch?v=pO6q_t0wGGA&t=38m17s>
+### Privacy Guides
+> “After using their platform for the past few weeks, I can comfortably write that Hush Line accomplishes its mission astoundingly well. Not only is customer support excellent for enterprise users, but its integration with PGP encrypted email makes it a lifesaver for a Thunderbird user like me. The ability to receive encrypted notifications via email is honestly an underrated feature.”  
+> — [Privacy Guides](https://www.privacyguides.org/posts/2026/01/09/hush-line-review-an-accessible-whistleblowing-platform-for-journalists-and-lawyers-alike/) ([archive](https://web.archive.org/web/20260110024015/https://www.privacyguides.org/posts/2026/01/09/hush-line-review-an-accessible-whistleblowing-platform-for-journalists-and-lawyers-alike/))
+
+### Newsweek
+> “Investing in technology that protects privacy—such as Hush Line and Signal—is also important in sharing information that is anonymous, and can't be subpoenaed.”  
+> — [Newsweek](https://www.newsweek.com/protecting-free-speech-about-more-letting-content-run-wild-opinion-2012746) ([archive](https://web.archive.org/web/20250111062609/https://www.newsweek.com/protecting-free-speech-about-more-letting-content-run-wild-opinion-2012746))
+
+### TIME
+> “Psst’s safe is based on Hush Line... a simpler way for sources to reach out to journalists and lawyers... Micah Lee, an engineer on Hush Line, says that the tool fills a gap in the market for an encrypted yet accessible central clearinghouse for sensitive information.”  
+> — [TIME](https://time.com/7208911/psst-whistleblower-collective/) ([archive](https://web.archive.org/web/20250122105330/https://time.com/7208911/psst-whistleblower-collective/))
+
+### Substack
+> “New systems in development, such as Hush Line, are the brave new frontier in reporting. Hush Line is a software application that offers a more secure ability to report anonymously.”  
+> — [Substack](https://zacharyellison.substack.com/p/part-151-playing-the-whistleblower)
+
+### Podcasts
+> “I'm working with a non-profit software company called Hush Line, which is a one-way encrypted anonymizing platform so that whistleblowers can reach out to individual journalists while remaining anonymous...”  
+> — [YouTube](https://www.youtube.com/watch?v=pO6q_t0wGGA&t=38m17s)
 
 ## Contributing and Conduct
 
