@@ -1,6 +1,18 @@
 # Agent Runners
 
-## Active Runners
+This document tracks the current state of the repo-managed agent automation used around Hush Line.
+
+## Repo-Managed Agent State
+
+| Script                                   | Role                           | Current State                                           | PR / Output Surface              |
+| ---------------------------------------- | ------------------------------ | ------------------------------------------------------- | -------------------------------- |
+| `scripts/agent_daily_issue_runner.sh`    | GitHub issue implementation    | Active, branch/PR automation in place                   | issue-specific branches and PRs  |
+| `scripts/agent_daily_coverage_runner.sh` | Coverage remediation           | Active, branch/PR automation in place                   | `codex/daily-coverage` style PRs |
+| `scripts/agent_issue_bootstrap.sh`       | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows | local Docker/bootstrap only      |
+
+The repository does not currently include runner scripts for the social or docs launch agents listed below. Those host jobs exist outside this repository and should be documented here only as installed host context, not as repo-managed automation.
+
+## Installed Host Jobs
 
 | Label                                             | Scope                                | Schedule                        | Source                                                  |
 | ------------------------------------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------- |
@@ -288,7 +300,14 @@ The runner now performs an SSH signing preflight immediately after configuring g
 
 Script: `scripts/agent_daily_coverage_runner.sh`
 
-This is a net-new runner dedicated to coverage work. It does not select GitHub issues or update project status fields. Instead, it checks current branch coverage once per run, and if total coverage is below target, it drives Codex from the uncovered-line report until lint, tests, and the coverage target pass or the configured attempt budget is exhausted.
+This is the current dedicated coverage agent. It does not select GitHub issues or update project status fields. Instead, it checks current branch coverage once per run, and if total coverage is below target, it drives Codex from the uncovered-line report until lint, tests, and the coverage target pass or the configured attempt budget is exhausted.
+
+Current operational state:
+
+- dedicated branch/PR workflow exists
+- local validation path is `make lint`, `make test`, then a machine-readable coverage scan
+- target remains `100%` total coverage by default
+- scheduling is expected to happen on a dedicated host job, not in GitHub Actions
 
 ### Execution Flow
 
