@@ -259,6 +259,26 @@ def test_directory_sticky_active_tab_scroll_to_top_hook_exists() -> None:
     )
 
 
+def test_directory_tab_scroll_buttons_clamp_to_valid_bounds() -> None:
+    directory_verified_js = (ROOT / "assets/js/directory_verified.js").read_text(encoding="utf-8")
+    directory_verified_static_js = (ROOT / "hushline/static/js/directory_verified.js").read_text(
+        encoding="utf-8"
+    )
+    max_scroll_left_line = (
+        "const maxScrollLeft = Math.max("
+        "directoryTabList.scrollWidth - directoryTabList.clientWidth, 0);"
+    )
+
+    assert max_scroll_left_line in directory_verified_js
+    assert "const nextScrollLeft = Math.min(" in directory_verified_js
+    assert "directoryTabList.scrollTo({" in directory_verified_js
+    assert "directoryTabList.scrollBy({" not in directory_verified_js
+    assert max_scroll_left_line in directory_verified_static_js
+    assert "const nextScrollLeft = Math.min(" in directory_verified_static_js
+    assert "directoryTabList.scrollTo({" in directory_verified_static_js
+    assert "directoryTabList.scrollBy({" not in directory_verified_static_js
+
+
 def test_inbox_sticky_nav_hooks_exist() -> None:
     inbox_template = (ROOT / "hushline/templates/inbox.html").read_text(encoding="utf-8")
     inbox_js = (ROOT / "assets/js/inbox.js").read_text(encoding="utf-8")
