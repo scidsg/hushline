@@ -1,4 +1,6 @@
-# Daily Agent Runner
+# Agent Runners
+
+## Daily Issue Runner
 
 Script: `scripts/agent_daily_issue_runner.sh`
 
@@ -261,7 +263,6 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_PROJECT_ITEM_LIMIT` (default `200`)
 - `HUSHLINE_DAILY_BRANCH_PREFIX` (default `codex/daily-issue-`)
 - `HUSHLINE_DAILY_EPIC_BRANCH_PREFIX` (default `codex/epic-`)
-  - used for the shared epic integration branch that child PRs target
 - `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS` (default `10`; positive integer)
@@ -270,6 +271,74 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.4`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
 - `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output to the live console only, without writing it into persisted runner logs)
+
+## Daily Coverage Runner
+
+Script: `scripts/agent_daily_coverage_runner.sh`
+
+This is a net-new runner dedicated to coverage work. It does not select GitHub issues or update project status fields. Instead, it checks current branch coverage once per run, and if total coverage is below target, it drives Codex from the uncovered-line report until lint, tests, and the coverage target pass or the configured attempt budget is exhausted.
+
+### Execution Flow
+
+1. Parse runtime configuration and change into the repo.
+2. Hard-refresh local state to `origin/main`.
+3. Exit early if any open human-authored PR exists.
+4. Exit early if any unrelated open bot PR exists.
+5. Configure bot git identity and SSH signing.
+6. Create or reuse the dedicated coverage branch (`codex/daily-coverage` by default).
+7. Reset local Docker/runtime state and bootstrap the stack.
+8. Run a machine-readable coverage scan:
+   - `docker compose run --rm app poetry run pytest --cov hushline --cov-report json:/app/.coverage-runner/coverage.json --cov-report term-missing -q --skip-local-only`
+9. Exit early when coverage already meets target (`100%` by default).
+10. Build a Codex prompt from the uncovered-line summary and run a bounded implementation loop.
+11. After each Codex attempt, run:
+
+- `make lint`
+- `make test`
+- the coverage scan command above
+
+12. Persist a sanitized run log to `docs/agent-logs/run-<timestamp>-coverage.txt`.
+13. Commit, push the coverage branch, and open or update its PR.
+14. Refresh the log with PR context and push the log update when changed.
+15. Return to `main` on exit.
+
+### Manual Run
+
+```bash
+./scripts/agent_daily_coverage_runner.sh
+```
+
+### Daily Scheduling
+
+This runner is designed for a dedicated runner host, not GitHub-hosted Actions. A minimal daily cron entry looks like this:
+
+```bash
+0 9 * * * cd /path/to/hushline && ./scripts/agent_daily_coverage_runner.sh
+```
+
+If the host reuses the same SSH signing setup as the issue runner, no additional signing configuration is required.
+
+### Environment Variables
+
+- `HUSHLINE_COVERAGE_BRANCH_NAME` (default `codex/daily-coverage`)
+- `HUSHLINE_COVERAGE_TARGET_PERCENT` (default `100`)
+- `HUSHLINE_COVERAGE_MAX_ATTEMPTS` (default `10`)
+- `HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS` (default `8`)
+- `HUSHLINE_COVERAGE_SUMMARY_LIMIT` (default `15`)
+- `HUSHLINE_REPO_DIR` (default the repository checkout containing `scripts/agent_daily_coverage_runner.sh`)
+- `HUSHLINE_REPO_SLUG` (default `scidsg/hushline`)
+- `HUSHLINE_BASE_BRANCH` (default `main`)
+- `HUSHLINE_BOT_LOGIN` (default `hushline-dev`)
+- `HUSHLINE_BOT_GIT_NAME` (default `HUSHLINE_BOT_LOGIN`)
+- `HUSHLINE_BOT_GIT_EMAIL` (default `git-dev@scidsg.org`)
+- `HUSHLINE_BOT_GIT_GPG_FORMAT` (default `ssh`)
+- `HUSHLINE_BOT_GIT_SIGNING_KEY` (optional)
+- `HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH` (optional)
+- `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` (default `3`)
+- `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS` (default `10`)
+- `HUSHLINE_DAILY_KILL_PORTS` (default `4566 4571 5432 8080`)
+- `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
+- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `900`)
 
 ## Issue Bootstrap Script
 
