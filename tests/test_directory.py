@@ -2231,6 +2231,23 @@ def test_directory_all_filters_json_updates_country_counts_for_verified_listing_
     }
 
 
+def test_directory_all_filters_json_is_empty_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_all_filters"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [],
+        "regions": {},
+        "listing_types": [],
+    }
+
+
 def test_listing_matches_attorney_filters_wrapper_uses_listing_geography() -> None:
     listing = cast(
         PublicRecordListing,
@@ -2325,6 +2342,16 @@ def test_newsrooms_listing_includes_self_reported_journalism_accounts() -> None:
         directory_routes._all_directory_entry_matches_listing_type(
             {"entry_type": "user", "account_category": AccountCategory.ACTIVIST.value},
             "newsrooms",
+        )
+        is False
+    )
+
+
+def test_all_directory_entry_matches_unknown_listing_type_returns_false() -> None:
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "globaleaks", "is_globaleaks": True},
+            "unsupported",
         )
         is False
     )
