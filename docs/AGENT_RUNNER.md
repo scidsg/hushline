@@ -1,5 +1,17 @@
 # Agent Runners
 
+## Active Runners
+
+| Label                                             | Scope                                | Schedule                        | Source                                                  |
+| ------------------------------------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------- |
+| org.scidsg.hushline-agent-runner                  | Hush Line issue runner               | Every hour (StartInterval=3600) | org.scidsg.hushline-agent-runner.plist                  |
+| com.hushline.coverage.daily                       | Hush Line coverage runner            | Daily at 10:00 AM               | com.hushline.coverage.daily.plist                       |
+| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM              | com.hushline.social.daily-planner.plist                 |
+| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM              | com.hushline.social.linkedin.daily.plist                |
+| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM              | com.hushline.social.verified-user.weekly.plist          |
+| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM              | com.hushline.social.linkedin.verified-user.weekly.plist |
+| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM           | com.hushline.docs.weekly-article.plist                  |
+
 ## Daily Issue Runner
 
 Script: `scripts/agent_daily_issue_runner.sh`
