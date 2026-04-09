@@ -119,6 +119,13 @@ def test_get_with_retries_raises_fallback_error_when_no_attempts_run(
         )
 
 
+def test_should_retry_request_error_returns_false_for_non_retryable_errors() -> None:
+    assert refresh_module._should_retry_request_error(requests.RequestException("boom")) is False
+
+    http_error = requests.HTTPError("http error")
+    assert refresh_module._should_retry_request_error(http_error) is False
+
+
 def test_normalize_string_list_handles_split_deduping_and_invalid_inputs() -> None:
     assert _normalize_string_list(" English | Spanish ; english ,, ") == ["English", "Spanish"]
     assert _normalize_string_list(["Investigations", 1, " investigations ", "", "Local"]) == [
@@ -303,6 +310,12 @@ def test_parse_location_normalizes_united_states_and_state_abbreviations() -> No
     assert normalized["country"] == "United States"
     assert normalized["subdivision"] == "Illinois"
     assert normalized["countries"] == ["United States"]
+
+    state_name_only = _parse_location("Chicago, california")
+    assert state_name_only["city"] == "Chicago"
+    assert state_name_only["country"] == "United States"
+    assert state_name_only["subdivision"] == "California"
+    assert state_name_only["countries"] == ["United States"]
 
 
 def test_parse_european_network_detail_html_normalizes_baseline_fields() -> None:
@@ -712,6 +725,56 @@ def test_fetch_rows_for_source_wraps_detail_request_failures(
         ),
     ):
         refresh_module._fetch_rows_for_source(source, client=_FakeSession({}), timeout_seconds=30.0)
+
+
+def test_fetch_rows_for_source_skips_browse_urls_seen_after_queueing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = next(
+        source
+        for source in NEWSROOM_DIRECTORY_SOURCES
+        if source.browse_url == NEWSROOM_DIRECTORY_SOURCE_URL
+    )
+    page_two_url = "https://findyournews.org/explore/page/2/"
+    detail_url = "https://findyournews.org/organization/sample-one/"
+    session = _FakeSession(
+        {
+            source.browse_url: _FakeResponse("<html>page-1</html>"),
+            page_two_url: _FakeResponse("<html>page-2</html>"),
+            detail_url: _FakeResponse("<div>detail</div>"),
+        }
+    )
+
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_listing_urls",
+        lambda source, html: [detail_url] if "page-2" in html else [],
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "_extract_source_browse_page_urls",
+        lambda source, html, source_url: [page_two_url, page_two_url] if "page-1" in html else [],
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "_parse_source_detail_html",
+        lambda source, html, *, detail_url: {
+            "id": "newsroom-sample-one",
+            "slug": "newsroom~sample-one",
+            "name": "Sample One",
+        },
+    )
+
+    rows = refresh_module._fetch_rows_for_source(source, client=session, timeout_seconds=30.0)
+
+    assert rows == [
+        {
+            "id": "newsroom-sample-one",
+            "slug": "newsroom~sample-one",
+            "name": "Sample One",
+        }
+    ]
+    assert session.requested_urls.count(page_two_url) == 1
 
 
 def test_fetch_newsroom_directory_rows_uses_public_explore_urls_only() -> None:

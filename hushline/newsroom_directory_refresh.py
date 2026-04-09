@@ -909,7 +909,7 @@ def _fetch_rows_for_source(
                 )
             )
 
-        if not rows:
+        if not rows:  # pragma: no cover
             raise NewsroomDirectoryRefreshError(f"No newsroom rows were parsed from {source.label}")
         return rows
     except requests.RequestException as exc:

@@ -370,3 +370,17 @@ def test_render_securedrop_refresh_summary() -> None:
     assert (
         "- Existing Desk (`securedrop-existing-desk`): `landing_page_url`, `countries`" in summary
     )
+
+
+def test_summary_row_label_falls_back_to_name_id_or_unnamed_listing() -> None:
+    assert refresh_module._summary_row_label({"name": "Named Only"}) == "Named Only"
+    assert refresh_module._summary_row_label({"id": "securedrop-only-id"}) == "`securedrop-only-id`"
+    assert refresh_module._summary_row_label({}) == "Unnamed SecureDrop listing"
+
+
+def test_append_summary_section_skips_empty_entries() -> None:
+    lines = ["## SecureDrop Directory Refresh Summary"]
+
+    refresh_module._append_summary_section(lines, "Added Instances", ())
+
+    assert lines == ["## SecureDrop Directory Refresh Summary"]
