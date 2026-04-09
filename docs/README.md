@@ -18,7 +18,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Privacy](./PRIVACY.md)
 - [Threat model](./THREAT-MODEL.md)
 - [Terms](./TERMS.md)
-- [Agent runner](./AGENT_RUNNER.md)
+- [Agent runner](./AGENT-RUNNER.md)
 - [Agentic code policy](./AGENTIC-CODE-POLICY.md)
 - [Security audit hitlist](./SECURITY-AUDIT-HITLIST.md)
 - [Flask-WTF/WTForms modernization strategy](./FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md)

@@ -112,9 +112,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
       .matches;
     const scrollDistance = Math.max(directoryTabList.clientWidth * 0.75, 200);
+    const maxScrollLeft = Math.max(directoryTabList.scrollWidth - directoryTabList.clientWidth, 0);
+    const nextScrollLeft = Math.min(
+      Math.max(directoryTabList.scrollLeft + direction * scrollDistance, 0),
+      maxScrollLeft,
+    );
 
-    directoryTabList.scrollBy({
-      left: direction * scrollDistance,
+    directoryTabList.scrollTo({
+      left: nextScrollLeft,
       behavior: prefersReducedMotion ? "auto" : "smooth",
     });
   }
