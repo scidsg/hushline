@@ -1182,6 +1182,16 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     toggle_shell = soup.find(id="attorney-filters-toggle-shell")
     panel_shell = soup.find(id="attorney-filters-panel-shell")
     toggle = soup.find(id="attorney-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="attorney-filters-panel")
     clear_filters_actions = soup.find(id="attorney-filters-actions")
     country_select = soup.find(id="attorney-country-filter")
@@ -1194,8 +1204,13 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Show Filters"
     assert toggle.get("aria-expanded") == "false"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "0"
+    assert toggle_badge.get("aria-label") == "0 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert panel.has_attr("hidden")
     assert country_select is not None
@@ -1248,6 +1263,16 @@ def test_directory_newsroom_filter_panel_hidden_by_default(
     toggle_shell = soup.find(id="newsroom-filters-toggle-shell")
     panel_shell = soup.find(id="newsroom-filters-panel-shell")
     toggle = soup.find(id="newsroom-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="newsroom-filters-panel")
     clear_filters_actions = soup.find(id="newsroom-filters-actions")
     country_select = soup.find(id="newsroom-country-filter")
@@ -1260,8 +1285,13 @@ def test_directory_newsroom_filter_panel_hidden_by_default(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Show Filters"
     assert toggle.get("aria-expanded") == "false"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "0"
+    assert toggle_badge.get("aria-label") == "0 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert panel.has_attr("hidden")
     assert country_select is not None
@@ -1349,6 +1379,16 @@ def test_directory_all_filter_panel_hidden_by_default(
     toggle_shell = soup.find(id="all-filters-toggle-shell")
     panel_shell = soup.find(id="all-filters-panel-shell")
     toggle = soup.find(id="all-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="all-filters-panel")
     clear_filters_actions = soup.find(id="all-filters-actions")
     country_select = soup.find(id="all-country-filter")
@@ -1363,9 +1403,14 @@ def test_directory_all_filter_panel_hidden_by_default(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Show Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Show Filters"
     assert toggle.get("aria-controls") == "all-filters-panel"
     assert toggle.get("aria-expanded") == "false"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "0"
+    assert toggle_badge.get("aria-label") == "0 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert panel.has_attr("hidden")
     assert country_select is not None
@@ -1445,6 +1490,16 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     toggle_shell = soup.find(id="attorney-filters-toggle-shell")
     panel_shell = soup.find(id="attorney-filters-panel-shell")
     toggle = soup.find(id="attorney-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="attorney-filters-panel")
     clear_filters_actions = soup.find(id="attorney-filters-actions")
     country_select = soup.find(id="attorney-country-filter")
@@ -1460,8 +1515,13 @@ def test_directory_attorney_filter_panel_shows_selected_filters(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Hide Filters"
     assert toggle.get("aria-expanded") == "true"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "2"
+    assert toggle_badge.get("aria-label") == "2 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert not panel.has_attr("hidden")
     assert clear_filters_actions is not None
@@ -1511,6 +1571,16 @@ def test_directory_newsroom_filter_panel_shows_selected_filters(
     toggle_shell = soup.find(id="newsroom-filters-toggle-shell")
     panel_shell = soup.find(id="newsroom-filters-panel-shell")
     toggle = soup.find(id="newsroom-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="newsroom-filters-panel")
     clear_filters_actions = soup.find(id="newsroom-filters-actions")
     country_select = soup.find(id="newsroom-country-filter")
@@ -1526,8 +1596,13 @@ def test_directory_newsroom_filter_panel_shows_selected_filters(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Hide Filters"
     assert toggle.get("aria-expanded") == "true"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "2"
+    assert toggle_badge.get("aria-label") == "2 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert not panel.has_attr("hidden")
     assert clear_filters_actions is not None
@@ -1597,6 +1672,16 @@ def test_directory_all_filter_panel_shows_selected_filters(
     toggle_shell = soup.find(id="all-filters-toggle-shell")
     panel_shell = soup.find(id="all-filters-panel-shell")
     toggle = soup.find(id="all-filters-toggle")
+    toggle_label = (
+        toggle.find("span", attrs={"data-filter-toggle-label": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
+    toggle_badge = (
+        toggle.find("span", attrs={"data-filter-toggle-badge": "true"})
+        if isinstance(toggle, Tag)
+        else None
+    )
     panel = soup.find(id="all-filters-panel")
     clear_filters_actions = soup.find(id="all-filters-actions")
     country_select = soup.find(id="all-country-filter")
@@ -1614,8 +1699,13 @@ def test_directory_all_filter_panel_shows_selected_filters(
     assert panel_shell is not None
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
-    assert toggle.get_text(" ", strip=True) == "Hide Filters"
+    assert toggle_label is not None
+    assert toggle_label.get_text(" ", strip=True) == "Hide Filters"
     assert toggle.get("aria-expanded") == "true"
+    assert toggle_badge is not None
+    assert toggle_badge.get_text(" ", strip=True) == "3"
+    assert toggle_badge.get("aria-label") == "3 active filters"
+    assert toggle_badge.has_attr("hidden")
     assert panel is not None
     assert not panel.has_attr("hidden")
     assert clear_filters_actions is not None

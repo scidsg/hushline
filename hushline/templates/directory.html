@@ -158,37 +158,76 @@
           </button>
         </div>
         {% if directory_verified_tab_enabled %}
+          {% set all_filters_expanded = all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type %}
+          {% set all_active_filter_count = (1 if all_filter_state.country else 0) + (1 if all_filter_state.region_code else 0) + (1 if all_filter_state.listing_type else 0) %}
           <div id="all-filters-toggle-shell" hidden>
             <button
               type="button"
               class="directory-filter-toggle meta"
               id="all-filters-toggle"
               aria-controls="all-filters-panel"
-              aria-expanded="{{ 'true' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'false' }}"
+              aria-expanded="{{ 'true' if all_filters_expanded else 'false' }}"
             >
-              {{ 'Hide Filters' if all_filter_state.country or all_filter_state.region_code or all_filter_state.listing_type else 'Show Filters' }}
+              <span data-filter-toggle-label="true">
+                {{ 'Hide Filters' if all_filters_expanded else 'Show Filters' }}
+              </span>
+              <span
+                class="badge"
+                data-filter-toggle-badge="true"
+                role="img"
+                aria-label="{{ all_active_filter_count }} active filters"
+                {% if not all_active_filter_count or all_filters_expanded %}hidden{% endif %}
+              >
+                {{ all_active_filter_count }}
+              </span>
             </button>
           </div>
+          {% set attorney_filters_expanded = attorney_filter_state.country or attorney_filter_state.region_code %}
+          {% set attorney_active_filter_count = (1 if attorney_filter_state.country else 0) + (1 if attorney_filter_state.region_code else 0) %}
           <div id="attorney-filters-toggle-shell" hidden>
             <button
               type="button"
               class="directory-filter-toggle meta"
               id="attorney-filters-toggle"
               aria-controls="attorney-filters-panel"
-              aria-expanded="{{ 'true' if attorney_filter_state.country or attorney_filter_state.region_code else 'false' }}"
+              aria-expanded="{{ 'true' if attorney_filters_expanded else 'false' }}"
             >
-              {{ 'Hide Filters' if attorney_filter_state.country or attorney_filter_state.region_code else 'Show Filters' }}
+              <span data-filter-toggle-label="true">
+                {{ 'Hide Filters' if attorney_filters_expanded else 'Show Filters' }}
+              </span>
+              <span
+                class="badge"
+                data-filter-toggle-badge="true"
+                role="img"
+                aria-label="{{ attorney_active_filter_count }} active filters"
+                {% if not attorney_active_filter_count or attorney_filters_expanded %}hidden{% endif %}
+              >
+                {{ attorney_active_filter_count }}
+              </span>
             </button>
           </div>
+          {% set newsroom_filters_expanded = newsroom_filter_state.country or newsroom_filter_state.region_code %}
+          {% set newsroom_active_filter_count = (1 if newsroom_filter_state.country else 0) + (1 if newsroom_filter_state.region_code else 0) %}
           <div id="newsroom-filters-toggle-shell" hidden>
             <button
               type="button"
               class="directory-filter-toggle meta"
               id="newsroom-filters-toggle"
               aria-controls="newsroom-filters-panel"
-              aria-expanded="{{ 'true' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'false' }}"
+              aria-expanded="{{ 'true' if newsroom_filters_expanded else 'false' }}"
             >
-              {{ 'Hide Filters' if newsroom_filter_state.country or newsroom_filter_state.region_code else 'Show Filters' }}
+              <span data-filter-toggle-label="true">
+                {{ 'Hide Filters' if newsroom_filters_expanded else 'Show Filters' }}
+              </span>
+              <span
+                class="badge"
+                data-filter-toggle-badge="true"
+                role="img"
+                aria-label="{{ newsroom_active_filter_count }} active filters"
+                {% if not newsroom_active_filter_count or newsroom_filters_expanded %}hidden{% endif %}
+              >
+                {{ newsroom_active_filter_count }}
+              </span>
             </button>
           </div>
         {% endif %}
