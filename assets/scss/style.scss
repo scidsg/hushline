@@ -2781,8 +2781,13 @@ input:focus {
   border: 0;
   background: transparent;
   box-shadow: none;
-  text-decoration: underline;
+  text-decoration: none;
   margin: 0;
+  min-height: 22px;
+}
+
+.directory-filter-toggle [data-filter-toggle-label="true"] {
+  text-decoration: underline;
 }
 
 .directory-filter-panel {
@@ -3219,7 +3224,7 @@ button[name="update_directory_visibility"] {
   }
 }
 
-@media only screen and (max-width: 492px) {
+@media only screen and (max-width: 534px) {
   #searchInput {
     min-width: 100%;
   }
@@ -4928,6 +4933,10 @@ button:has(.badge) {
 button .badge {
   font-size: var(--font-size-smallest);
   padding: 0.25rem 0.4125rem;
+  min-height: 8px;
+  min-width: 8px;
+  text-decoration: none;
+  margin-right: 0 !important;
 }
 
 .directory-filter-toggle {
