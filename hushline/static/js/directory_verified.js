@@ -655,14 +655,37 @@ document.addEventListener("DOMContentLoaded", function () {
       );
     };
 
+    controller.activeFilterCount = function () {
+      return [
+        controller.countryFilter.value.trim(),
+        controller.regionFilter.value.trim(),
+        controller.listingTypeFilter?.value.trim() || "",
+      ].filter(Boolean).length;
+    };
+
     controller.updateToggle = function () {
       if (!controller.toggle || !controller.panel) {
         return;
       }
 
       const isExpanded = !controller.panel.hidden;
+      const activeFilterCount = controller.activeFilterCount();
+      const toggleLabel = controller.toggle.querySelector("[data-filter-toggle-label]");
+      const toggleBadge = controller.toggle.querySelector("[data-filter-toggle-badge]");
+      const toggleText = isExpanded ? "Hide Filters" : "Show Filters";
+
       controller.toggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
-      controller.toggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";
+      if (toggleLabel) {
+        toggleLabel.textContent = toggleText;
+      } else {
+        controller.toggle.textContent = toggleText;
+      }
+
+      if (toggleBadge) {
+        toggleBadge.hidden = isExpanded || activeFilterCount === 0;
+        toggleBadge.textContent = activeFilterCount.toString();
+        toggleBadge.setAttribute("aria-label", `${activeFilterCount} active filters`);
+      }
     };
 
     controller.updateVisibility = function () {

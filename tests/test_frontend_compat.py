@@ -85,6 +85,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'id="attorney-filters-panel"' in directory_template
     assert 'id="newsroom-filters-toggle"' in directory_template
     assert 'id="newsroom-filters-panel"' in directory_template
+    assert 'data-filter-toggle-label="true"' in directory_template
+    assert 'data-filter-toggle-badge="true"' in directory_template
     assert "Clear Filters" in directory_template
     assert 'class="visually-hidden"' in directory_template
     assert 'role="status"' in directory_template
@@ -140,6 +142,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "return escapeHtml(sourceText);" in user_search_js
     assert '<mark class="search-highlight">${escapeHtml(match[0])}</mark>' in user_search_js
     assert "function createLocationFilterController(config)" in directory_verified_js
+    assert "controller.activeFilterCount = function () {" in directory_verified_js
     assert "controller.updateCountBadge = function () {" in directory_verified_js
     assert "updateLocationFilterCountBadges();" in directory_verified_js
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
@@ -185,9 +188,18 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         directory_verified_js
     )
     assert "controller.panel.hidden = !controller.panel.hidden;" in directory_verified_js
-    assert 'controller.toggle.textContent = isExpanded ? "Hide Filters" : "Show Filters";' in (
+    assert 'const toggleLabel = controller.toggle.querySelector("[data-filter-toggle-label]");' in (
         directory_verified_js
     )
+    assert 'const toggleBadge = controller.toggle.querySelector("[data-filter-toggle-badge]");' in (
+        directory_verified_js
+    )
+    assert "toggleBadge.hidden = isExpanded || activeFilterCount === 0;" in directory_verified_js
+    assert 'toggleBadge.setAttribute("aria-label", `${activeFilterCount} active filters`);' in (
+        directory_verified_js
+    )
+    assert "active filters" in directory_verified_static_js
+    assert "data-filter-toggle-badge" in directory_verified_static_js
     assert "Hide Filters" in directory_verified_static_js
     assert "Show Filters" in directory_verified_static_js
     assert "eval(" not in directory_verified_static_js
