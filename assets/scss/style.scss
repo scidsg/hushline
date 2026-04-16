@@ -3913,6 +3913,25 @@ h3 {
   margin-bottom: 0;
 }
 
+.drill-in .recipient-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1rem;
+}
+
+.drill-in .recipient-enabled-toggle {
+  margin-bottom: 0 !important;
+}
+
+.add-recipient-cta {
+  margin-top: 1.5rem;
+}
+
+.drill-in .formBody:has(.checkbox-group.toggle-ui:only-of-type) {
+  margin-bottom: 0;
+}
+
 #invoice-wrapper {
   margin-top: 1rem;
   padding: 1.25rem;

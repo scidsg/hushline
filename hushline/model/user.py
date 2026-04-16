@@ -367,7 +367,9 @@ class User(Model):
     def sync_legacy_notification_email(self) -> None:
         recipient = self.preferred_notification_recipient
         email = recipient.email if recipient is not None else None
+        pgp_key = recipient.pgp_key if recipient is not None else None
         self._email = encrypt_field(email) if email is not None else None
+        self._pgp_key = encrypt_field(pgp_key) if pgp_key is not None else None
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

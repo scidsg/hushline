@@ -138,13 +138,18 @@ def do_send_email(user: User, body: str) -> None:
             recipient_email = recipient.email
             if recipient_email is None:
                 continue
-            send_email(
-                recipient_email,
-                "New Hush Line Message Received",
-                body,
-                smtp_config,
-                reply_to,
-            )
+            try:
+                send_email(
+                    recipient_email,
+                    "New Hush Line Message Received",
+                    body,
+                    smtp_config,
+                    reply_to,
+                )
+            except (OSError, TypeError, ValueError, smtplib.SMTPException) as e:
+                current_app.logger.error(
+                    "Error sending email to %s: %s", recipient_email, str(e), exc_info=True
+                )
     except (KeyError, OSError, TypeError, ValueError, smtplib.SMTPException) as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
 

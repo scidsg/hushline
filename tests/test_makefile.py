@@ -17,7 +17,7 @@ def test_fix_target_runs_ruff_fix_before_formatting() -> None:
     assert "poetry run ruff check --fix || true;" in target_section
     assert "poetry run ruff format;" in target_section
     assert target_section.index("ruff check --fix") < target_section.index("ruff format")
-    assert "prettier --write" in target_section
+    assert "prettier $(PRETTIER_FLAGS) --write" in target_section
     assert "$(MAKE) lint" in target_section
 
 

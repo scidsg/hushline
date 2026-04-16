@@ -160,6 +160,14 @@ class NotificationRecipientForm(FlaskForm):
     )
 
 
+class DeleteNotificationRecipientForm(FlaskForm):
+    submit = SubmitField(
+        "Delete Recipient",
+        name="delete_notification_recipient",
+        widget=Button(),
+    )
+
+
 class PGPProtonForm(FlaskForm):
     email = StringField(
         "",

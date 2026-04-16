@@ -19,126 +19,45 @@
     {{ toggle_notifications_form.submit }}
   </form>
 
-  {% if not user.pgp_key %}
-    <p class="info">
-      <a href="{{ url_for('.encryption') }}">Add a public PGP key</a> to keep your tip line message-capable.
-    </p>
-  {% endif %}
-
-  <h4>Recipients</h4>
-  <p class="meta">Notification recipient addresses stay private and are never shown on your public tip line.</p>
-
-  {% if recipient_forms %}
-    {% for recipient, recipient_form in recipient_forms %}
-      <form method="POST" class="formBody">
-        {{ recipient_form.hidden_tag() }}
-        {{ recipient_form.recipient_email.label }}
-        {{ recipient_form.recipient_email }}
-        {% for error in recipient_form.recipient_email.errors %}
-          <span class="error">{{ error }}</span>
-        {% endfor %}
-
-        {{ recipient_form.recipient_pgp_key.label }}
-        {{ recipient_form.recipient_pgp_key }}
-        {% for error in recipient_form.recipient_pgp_key.errors %}
-          <span class="error">{{ error }}</span>
-        {% endfor %}
-
-        <div class="checkbox-group toggle-ui">
-          {{ recipient_form.recipient_enabled() }}
-          <label for="{{ recipient_form.recipient_enabled.id }}" class="toggle-label">
-            {{ recipient_form.recipient_enabled.label }}
-            <div class="toggle">
-              <div class="toggle__ball"></div>
-            </div>
-          </label>
-        </div>
-
-        {{ recipient_form.submit }}
-        {{ recipient_form.delete_submit(class="btn-danger") }}
-      </form>
-    {% endfor %}
-  {% else %}
-    <p>🙊 No notification recipients configured.</p>
-  {% endif %}
-
-  <h4>Add Another Recipient</h4>
-  <form method="POST" class="formBody">
-    {{ new_recipient_form.hidden_tag() }}
-    {{ new_recipient_form.recipient_email.label }}
-    {{ new_recipient_form.recipient_email }}
-    {% for error in new_recipient_form.recipient_email.errors %}
-      <span class="error">{{ error }}</span>
-    {% endfor %}
-
-    {{ new_recipient_form.recipient_pgp_key.label }}
-    {{ new_recipient_form.recipient_pgp_key }}
-    {% for error in new_recipient_form.recipient_pgp_key.errors %}
-      <span class="error">{{ error }}</span>
-    {% endfor %}
-
-    <div class="checkbox-group toggle-ui">
-      {{ new_recipient_form.recipient_enabled() }}
-      <label for="{{ new_recipient_form.recipient_enabled.id }}" class="toggle-label">
-        {{ new_recipient_form.recipient_enabled.label }}
-        <div class="toggle">
-          <div class="toggle__ball"></div>
-        </div>
-      </label>
-    </div>
-
-    <button type="submit" name="{{ new_recipient_form.submit.name }}">Add Recipient</button>
-  </form>
-
   {% if user.enable_email_notifications %}
-    <form method="POST" class="formBody auto-submit">
-      {{ toggle_include_content_form.hidden_tag() }}
-      <div class="checkbox-group toggle-ui">
-        {{ toggle_include_content_form.include_content }}
-        <label for="{{ toggle_include_content_form.include_content.name }}" class="toggle-label">
-          {{ toggle_include_content_form.include_content.label }}
-          <div class="toggle">
-            <div class="toggle__ball"></div>
-          </div>
-        </label>
-      </div>
-      {{ toggle_include_content_form.submit }}
-    </form>
-  {% endif %}
+    {% if not user.pgp_key %}
+      <p class="info">
+        <a href="{{ url_for('.encryption') }}">Add a public PGP key</a> to keep your tip line message-capable.
+      </p>
+    {% endif %}
 
-  {% if user.email_include_message_content %}
-    <form method="POST" class="formBody auto-submit">
-      {{ toggle_encrypt_entire_body_form.hidden_tag() }}
-      <div class="checkbox-group toggle-ui with-desc">
-        {{ toggle_encrypt_entire_body_form.encrypt_entire_body }}
-          <label for="{{ toggle_include_content_form.include_content.name }}" class="toggle-label">
-            <div class="label-desc">
-            {{ toggle_encrypt_entire_body_form.encrypt_entire_body.label }}
-            <p class="meta">
-              Recommended for compatibility with email clients like Proton Mail or Thunderbird.
-            </p>
+    <h4>Recipients</h4>
+    <p>Notification recipient addresses stay private and are never shown on your public tip line.</p>
+
+    {% if recipient_summaries %}
+      <div class="alias-list">
+        {% for recipient in recipient_summaries %}
+          <div class="alias-entry">
+            <div>
+              <a href="{{ url_for('.notification_recipient', recipient_id=recipient.id) }}" class="stretched-link">
+                {{ recipient.email }}
+              </a>
+              <p class="meta">
+                {{ "Enabled" if recipient.enabled else "Disabled" }} ·
+                {{ "PGP key configured" if recipient.has_pgp_key else "No recipient key configured" }}
+              </p>
             </div>
-            <div class="toggle">
-              <div class="toggle__ball"></div>
-            </div>
-          </label>
+            <div class="icon chevron"></div>
+          </div>
+        {% endfor %}
       </div>
-      {{ toggle_encrypt_entire_body_form.submit }}
-    </form>
+    {% else %}
+      <p>🙊 No notification recipients configured.</p>
+    {% endif %}
+
+    <div class="add-recipient-cta">
+      <a href="{{ url_for('.new_notification_recipient') }}" class="btn">Add Recipient</a>
+    </div>
   {% endif %}
 
   <h4>SMTP Delivery</h4>
-  <form
-    method="POST"
-    class="formBody"
-  >
+  <form method="POST" class="formBody">
     {{ email_forwarding_form.hidden_tag() }}
-
-    {% if default_forwarding_enabled and smtp_forwarding_message_html and not custom_smtp_settings %}
-      <p class="meta">
-        {{ smtp_forwarding_message_html }}
-      </p>
-    {% endif %}
 
     <div class="checkbox-group toggle-ui">
       {{ email_forwarding_form.custom_smtp_settings() }}

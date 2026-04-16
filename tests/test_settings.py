@@ -50,6 +50,7 @@ from hushline.settings.notifications import (
     ToggleEncryptEntireBodyForm,
     ToggleIncludeContentForm,
     ToggleNotificationsForm,
+    ToggleRecipientEnabledForm,
 )
 from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
@@ -742,12 +743,12 @@ def test_add_notification_recipient(client: FlaskClient, user: User) -> None:
         pgp_key = file.read().strip()
 
     response = client.post(
-        url_for("settings.notifications"),
+        url_for("settings.new_notification_recipient"),
         data={
-            "new-recipient-recipient_email": "primary@example.com",
-            "new-recipient-recipient_pgp_key": pgp_key,
-            "new-recipient-recipient_enabled": "y",
-            "new-recipient-save_notification_recipient": "",
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
         },
         follow_redirects=True,
     )
@@ -766,6 +767,7 @@ def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         pgp_key = file.read().strip()
 
+    user.enable_email_notifications = True
     user.email = "primary@example.com"
     user.pgp_key = pgp_key
     db.session.commit()
@@ -773,12 +775,12 @@ def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     assert recipient is not None
 
     response = client.post(
-        url_for("settings.notifications"),
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
         data={
-            f"recipient-{recipient.id}-recipient_email": "secondary@example.com",
-            f"recipient-{recipient.id}-recipient_pgp_key": pgp_key,
-            f"recipient-{recipient.id}-recipient_enabled": "y",
-            f"recipient-{recipient.id}-save_notification_recipient": "",
+            "recipient_email": "secondary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
         },
         follow_redirects=True,
     )
@@ -787,6 +789,35 @@ def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     db.session.refresh(user)
     assert user.primary_notification_recipient is not None
     assert user.primary_notification_recipient.email == "secondary@example.com"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_edit_notification_recipient_syncs_legacy_pgp_key(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    db.session.refresh(user)
+    assert user.primary_notification_recipient is not None
+    assert user.primary_notification_recipient.pgp_key is None
+    assert user.pgp_key is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -805,11 +836,9 @@ def test_disabling_last_notification_recipient_disables_delivery_settings(
     assert recipient is not None
 
     response = client.post(
-        url_for("settings.notifications"),
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
         data={
-            f"recipient-{recipient.id}-recipient_email": "primary@example.com",
-            f"recipient-{recipient.id}-recipient_pgp_key": pgp_key,
-            f"recipient-{recipient.id}-save_notification_recipient": "",
+            ToggleRecipientEnabledForm.submit.name: "",
         },
         follow_redirects=True,
     )
@@ -835,9 +864,9 @@ def test_delete_notification_recipient_removes_it(client: FlaskClient, user: Use
     assert recipient is not None
 
     response = client.post(
-        url_for("settings.notifications"),
+        url_for("settings.delete_notification_recipient", recipient_id=recipient.id),
         data={
-            f"recipient-{recipient.id}-delete_notification_recipient": "",
+            "delete_notification_recipient": "",
         },
         follow_redirects=True,
     )
@@ -857,18 +886,97 @@ def test_enabled_recipient_requires_key_when_content_included(
     db.session.commit()
 
     response = client.post(
-        url_for("settings.notifications"),
+        url_for("settings.new_notification_recipient"),
         data={
-            "new-recipient-recipient_email": "primary@example.com",
-            "new-recipient-recipient_pgp_key": "",
-            "new-recipient-recipient_enabled": "y",
-            "new-recipient-save_notification_recipient": "",
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
         },
         follow_redirects=True,
     )
 
     assert response.status_code == 400
     assert "encryptable PGP key is required" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_page_lists_recipient_drill_ins(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(url_for("settings.notifications"), follow_redirects=True)
+
+    assert response.status_code == 200
+    assert "Add Recipient" in response.text
+    assert "primary@example.com" in response.text
+    assert url_for("settings.notification_recipient", recipient_id=recipient.id) in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_renders_edit_form(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Edit Recipient" in response.text
+    assert "Back to Notifications" in response.text
+    assert "primary@example.com" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_groups_toggles_together(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    toggle_labels = [
+        label.get_text(" ", strip=True)
+        for label in soup.select(".recipient-toggle-group .toggle-label")
+    ]
+
+    assert toggle_labels == [
+        "Recipient Enabled",
+        "Include Message Contents",
+        (
+            "Encrypt Entire Body Recommended for compatibility with email clients "
+            "like Proton Mail or Thunderbird."
+        ),
+    ]
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1061,6 +1169,31 @@ def test_toggle_encrypt_entire_body_setting(client: FlaskClient, user: User) -> 
     assert response.status_code == 200
     assert "👍 The entire body of email messages will be encrypted." in response.text
     assert user.email_encrypt_entire_body
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_recipient_enabled_setting(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+    assert recipient.enabled
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleRecipientEnabledForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "👍 Notification recipient disabled." in response.text
+    assert not recipient.enabled
 
 
 @pytest.mark.usefixtures("_authenticated_user")
