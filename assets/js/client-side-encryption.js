@@ -1,4 +1,4 @@
-import * as openpgp from "./../../node_modules/openpgp/dist/openpgp.mjs";
+import * as openpgp from "openpgp";
 
 function assertClientCryptoSupport() {
   // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.

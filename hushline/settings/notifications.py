@@ -28,8 +28,12 @@ from hushline.settings.forms import (
     DeleteNotificationRecipientForm,
     EmailForwardingForm,
     NotificationRecipientForm,
+    PGPProtonForm,
 )
+from hushline.settings.proton import lookup_proton_pgp_key
 from hushline.utils import redirect_to_self
+
+RECIPIENT_PROTON_LOOKUP_SUBMIT = "search_notification_recipient_proton"
 
 
 class ToggleNotificationsForm(FlaskForm):
@@ -220,18 +224,57 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
 
 def _build_recipient_form(
     recipient: NotificationRecipient | None,
+    *,
+    use_request_data: bool = True,
 ) -> NotificationRecipientForm:
-    if request.method == "POST":
+    if request.method == "POST" and use_request_data:
         return NotificationRecipientForm()
 
-    data = None
+    data = {"recipient_enabled": True}
     if recipient is not None:
-        data = {
-            "recipient_email": recipient.email,
-            "recipient_pgp_key": recipient.pgp_key,
-            "recipient_enabled": recipient.enabled,
-        }
+        data.update(
+            {
+                "recipient_email": recipient.email,
+                "recipient_pgp_key": recipient.pgp_key,
+                "recipient_enabled": recipient.enabled,
+            }
+        )
     return NotificationRecipientForm(data=data)
+
+
+def _build_recipient_proton_form(
+    recipient: NotificationRecipient | None,
+    *,
+    use_request_data: bool = True,
+) -> PGPProtonForm:
+    if request.method == "POST" and use_request_data:
+        return PGPProtonForm()
+
+    data = {"email": recipient.email} if recipient is not None and recipient.email else None
+    return PGPProtonForm(data=data)
+
+
+def _handle_recipient_proton_lookup(
+    *,
+    recipient: NotificationRecipient | None,
+    pgp_proton_form: PGPProtonForm,
+) -> tuple[NotificationRecipientForm, bool]:
+    recipient_form = _build_recipient_form(recipient, use_request_data=False)
+
+    if not pgp_proton_form.validate():
+        flash("⛔️ Invalid email address.")
+        return recipient_form, False
+
+    email = (pgp_proton_form.email.data or "").strip()
+    recipient_form.recipient_email.data = email
+    pgp_key, error_message = lookup_proton_pgp_key(email)
+    if error_message:
+        flash(error_message)
+        return recipient_form, False
+
+    recipient_form.recipient_pgp_key.data = pgp_key
+    flash("👍 Proton PGP key imported. Review and save the recipient.")
+    return recipient_form, True
 
 
 def _recipient_summary(recipient: NotificationRecipient) -> dict[str, int | str | bool]:
@@ -365,19 +408,28 @@ def register_notifications_routes(bp: Blueprint) -> None:
     def new_notification_recipient() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         recipient_form = _build_recipient_form(None)
+        pgp_proton_form = _build_recipient_proton_form(None)
         status_code = 200
 
         if request.method == "POST":
-            if resp := _save_recipient(user, recipient_form):
+            if RECIPIENT_PROTON_LOOKUP_SUBMIT in request.form:
+                recipient_form, lookup_succeeded = _handle_recipient_proton_lookup(
+                    recipient=None,
+                    pgp_proton_form=pgp_proton_form,
+                )
+                status_code = 200 if lookup_succeeded else 400
+            elif resp := _save_recipient(user, recipient_form):
                 return resp
-            form_error()
-            status_code = 400
+            else:
+                form_error()
+                status_code = 400
 
         return render_template(
             "settings/notification-recipient.html",
             user=user,
             recipient=None,
             recipient_form=recipient_form,
+            pgp_proton_form=pgp_proton_form,
             delete_recipient_form=None,
             toggle_recipient_enabled_form=None,
             toggle_include_content_form=None,
@@ -395,13 +447,20 @@ def register_notifications_routes(bp: Blueprint) -> None:
             return _recipient_not_found()
 
         recipient_form = _build_recipient_form(recipient)
+        pgp_proton_form = _build_recipient_proton_form(recipient)
         toggle_recipient_enabled_form = ToggleRecipientEnabledForm()
         toggle_include_content_form = ToggleIncludeContentForm()
         toggle_encrypt_entire_body_form = ToggleEncryptEntireBodyForm()
         status_code = 200
 
         if request.method == "POST":
-            if (
+            if RECIPIENT_PROTON_LOOKUP_SUBMIT in request.form:
+                recipient_form, lookup_succeeded = _handle_recipient_proton_lookup(
+                    recipient=recipient,
+                    pgp_proton_form=pgp_proton_form,
+                )
+                status_code = 200 if lookup_succeeded else 400
+            elif (
                 toggle_recipient_enabled_form.submit.name in request.form
                 and toggle_recipient_enabled_form.validate()
             ):
@@ -462,6 +521,7 @@ def register_notifications_routes(bp: Blueprint) -> None:
             user=user,
             recipient=recipient,
             recipient_form=recipient_form,
+            pgp_proton_form=pgp_proton_form,
             delete_recipient_form=DeleteNotificationRecipientForm(),
             toggle_recipient_enabled_form=toggle_recipient_enabled_form,
             toggle_include_content_form=toggle_include_content_form,

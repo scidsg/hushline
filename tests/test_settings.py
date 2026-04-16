@@ -763,6 +763,44 @@ def test_add_notification_recipient(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_new_notification_recipient_page_renders_proton_lookup(
+    client: FlaskClient,
+) -> None:
+    response = client.get(
+        url_for("settings.new_notification_recipient"),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Proton Key Import" in response.text
+    assert "Search Proton" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.notifications.lookup_proton_pgp_key")
+def test_new_notification_recipient_proton_lookup_prefills_form(
+    lookup_proton_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    lookup_proton_pgp_key.return_value = ("dummy-pgp-key", None)
+
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "email": "proton-user@proton.me",
+            "search_notification_recipient_proton": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Proton PGP key imported. Review and save the recipient." in response.text
+    assert 'value="proton-user@proton.me"' in response.text
+    assert "dummy-pgp-key" in response.text
+    lookup_proton_pgp_key.assert_called_once_with("proton-user@proton.me")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         pgp_key = file.read().strip()
@@ -789,6 +827,42 @@ def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     db.session.refresh(user)
     assert user.primary_notification_recipient is not None
     assert user.primary_notification_recipient.email == "secondary@example.com"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.notifications.lookup_proton_pgp_key")
+def test_edit_notification_recipient_proton_lookup_prefills_form(
+    lookup_proton_pgp_key: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    lookup_proton_pgp_key.return_value = ("replacement-pgp-key", None)
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            "email": "secondary@proton.me",
+            "search_notification_recipient_proton": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Proton PGP key imported. Review and save the recipient." in response.text
+    assert 'value="secondary@proton.me"' in response.text
+    assert "replacement-pgp-key" in response.text
+    db.session.refresh(user)
+    assert user.primary_notification_recipient is not None
+    assert user.primary_notification_recipient.email == "primary@example.com"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

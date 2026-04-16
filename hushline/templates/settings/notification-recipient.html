@@ -9,6 +9,22 @@
   <a href="{{ url_for('.notifications') }}" class="back-button"><span class="icon chevron back"></span> Back to Notifications</a>
   <h2 class="alias-heading">{{ recipient.email if recipient is not none and recipient.email else page_title }}</h2>
 
+    {% if user.enable_email_notifications and toggle_include_content_form is not none %}
+    <form method="POST" class="formBody auto-submit">
+      {{ toggle_include_content_form.hidden_tag() }}
+      <div class="checkbox-group toggle-ui">
+        {{ toggle_include_content_form.include_content }}
+        <label for="{{ toggle_include_content_form.include_content.id }}" class="toggle-label">
+          {{ toggle_include_content_form.include_content.label }}
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
+      {{ toggle_include_content_form.submit }}
+    </form>
+  {% endif %}
+
   {% if recipient is not none and toggle_recipient_enabled_form is not none %}
     <div class="recipient-toggle-group">
       <form method="POST" class="formBody auto-submit">
@@ -24,22 +40,6 @@
         </div>
         {{ toggle_recipient_enabled_form.submit }}
       </form>
-
-      {% if user.enable_email_notifications and toggle_include_content_form is not none %}
-        <form method="POST" class="formBody auto-submit">
-          {{ toggle_include_content_form.hidden_tag() }}
-          <div class="checkbox-group toggle-ui">
-            {{ toggle_include_content_form.include_content }}
-            <label for="{{ toggle_include_content_form.include_content.id }}" class="toggle-label">
-              {{ toggle_include_content_form.include_content.label }}
-              <div class="toggle">
-                <div class="toggle__ball"></div>
-              </div>
-            </label>
-          </div>
-          {{ toggle_include_content_form.submit }}
-        </form>
-      {% endif %}
 
       {% if user.email_include_message_content and toggle_encrypt_entire_body_form is not none %}
         <form method="POST" class="formBody auto-submit">
@@ -63,6 +63,28 @@
       {% endif %}
     </div>
   {% endif %}
+
+  <h3>Proton Key Import</h3>
+  <p>Do you use Proton Mail? We can automatically retrieve this recipient's PGP key from Proton's key server.</p>
+  <form method="POST" class="formBody">
+    {% set proton_email_field = pgp_proton_form.email %}
+    {{ pgp_proton_form.hidden_tag() }}
+    <label for="searchInput">Proton Email Search</label>
+    <div class="search-box">
+      <span id="searchIcon" aria-hidden="true">
+        <img
+          class="searchIcon"
+          src="/static/img/icon-search.png"
+          alt=""
+        />
+      </span>
+      {{ proton_email_field(id='searchInput', type='email') }}
+    </div>
+    {% for error in pgp_proton_form.email.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+    <button type="submit" name="search_notification_recipient_proton">Search Proton</button>
+  </form>
 
   <form method="POST" class="formBody">
     {{ recipient_form.hidden_tag() }}

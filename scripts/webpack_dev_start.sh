@@ -2,10 +2,10 @@
 
 set -eu
 
-cd /app
-
 MAX_ATTEMPTS="${WEBPACK_PACKAGE_WAIT_ATTEMPTS:-30}"
 SLEEP_SECONDS="${WEBPACK_PACKAGE_WAIT_SECONDS:-1}"
+DEPENDENCY_ROOT="${WEBPACK_DEPENDENCY_ROOT:-/workspace-webpack}"
+NODE_MODULES_PATH="${WEBPACK_NODE_MODULES_PATH:-$DEPENDENCY_ROOT/node_modules}"
 
 wait_for_file() {
   path="$1"
@@ -26,7 +26,13 @@ wait_for_file() {
 wait_for_file /app/package.json
 wait_for_file /app/package-lock.json
 
-mkdir -p /app/node_modules
-find /app/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+mkdir -p "$DEPENDENCY_ROOT"
+cp /app/package.json /app/package-lock.json "$DEPENDENCY_ROOT"/
+
+cd "$DEPENDENCY_ROOT"
 npm_config_update_notifier=false npm ci --no-audit --no-fund
-exec npm run build:dev
+
+cd /app
+export PATH="$NODE_MODULES_PATH/.bin:$PATH"
+export WEBPACK_NODE_MODULES_PATH="$NODE_MODULES_PATH"
+exec webpack --config webpack.config.js --watch --env WEBPACK_WATCH=1
