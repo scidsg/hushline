@@ -347,7 +347,6 @@ class User(Model):
     @property
     def message_recipient_keys(self) -> list[str]:
         pgp_keys: list[str] = []
-        expected_key_count = 0
 
         primary_recipient = next(
             (recipient for recipient in self.notification_recipients if recipient.position == 0),
@@ -356,12 +355,12 @@ class User(Model):
         if primary_recipient is None:
             if self.pgp_key:
                 pgp_keys.append(self.pgp_key)
-                expected_key_count += 1
-        elif primary_recipient.enabled and primary_recipient.email:
-            if not primary_recipient.pgp_key:
-                return []
+        elif (
+            primary_recipient.enabled
+            and primary_recipient.email
+            and primary_recipient.pgp_key
+        ):
             pgp_keys.append(primary_recipient.pgp_key)
-            expected_key_count += 1
 
         non_primary_recipients = (
             self.enabled_notification_recipients
@@ -375,10 +374,6 @@ class User(Model):
         pgp_keys.extend(
             recipient.pgp_key for recipient in non_primary_recipients if recipient.pgp_key
         )
-        expected_key_count += len(non_primary_recipients)
-        if len(pgp_keys) != expected_key_count:
-            return []
-
         return list(dict.fromkeys(pgp_keys))
 
     @property

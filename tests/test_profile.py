@@ -327,6 +327,35 @@ def test_profile_submit_message_with_recipient_key_when_legacy_user_key_missing(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_profile_submit_message_ignores_enabled_recipient_without_key(
+    client: FlaskClient, user: User
+) -> None:
+    user.pgp_key = None
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    user.notification_recipients.append(NotificationRecipient(position=2, enabled=True))
+    user.notification_recipients[-1].email = "tertiary@example.com"
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    assert "Sending messages is disabled" not in response.text
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_suspended_state_disables_message_form_with_pgp_key(
     client: FlaskClient, user: User
