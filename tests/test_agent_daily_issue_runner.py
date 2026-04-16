@@ -2207,7 +2207,7 @@ check_pr_feedback_after_delay 2000
 
     assert result.returncode == 0, result.stderr
     assert (
-        "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
+        "Post-PR feedback monitor skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
         in result.stdout
     )
 
@@ -2221,7 +2221,7 @@ check_pr_feedback_after_delay ""
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Post-PR feedback check skipped: PR number unavailable." in result.stdout
+    assert "Post-PR feedback monitor skipped: PR number unavailable." in result.stdout
 
 
 def test_fetch_pr_checks_json_accepts_pending_exit_code() -> None:
@@ -2295,6 +2295,7 @@ def test_check_pr_feedback_after_delay_reports_pr_checks() -> None:
                 "repository": {
                     "pullRequest": {
                         "number": 2000,
+                        "state": "CLOSED",
                         "url": "https://github.com/scidsg/hushline/pull/2000",
                         "reviewDecision": None,
                         "comments": {"nodes": []},
@@ -2319,7 +2320,6 @@ def test_check_pr_feedback_after_delay_reports_pr_checks() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 POST_PR_FEEDBACK_DELAY_SECONDS=1
-sleep() {{ :; }}
 fetch_pr_feedback_json() {{
   printf '%s\\n' {shlex.quote(feedback_json)}
 }}
@@ -2332,12 +2332,122 @@ check_pr_feedback_after_delay 2000
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Waiting 1s before checking PR #2000 for review feedback." in result.stdout
+    assert "Monitoring PR #2000 until it closes; polling every 1s while staying on" in result.stdout
     assert "==> Check PR #2000 feedback and checks" in result.stdout
     assert "failing_checks=1 pending_checks=0" in result.stdout
     assert (
         "Feedback check 1: failing PR check Run Linter and Tests / test (FAILURE)" in result.stdout
     )
+    assert "PR #2000 is CLOSED; returning to main." in result.stdout
+
+
+def test_check_pr_feedback_after_delay_polls_until_pr_closes(tmp_path: Path) -> None:
+    counter_file = tmp_path / "pr-feedback-counter.txt"
+    open_without_feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "OPEN",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    open_with_comment_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "OPEN",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer1"},
+                                    "body": "Please fix the branch handling.",
+                                    "createdAt": "2026-04-15T00:00:00Z",
+                                    "url": "https://example.test/comment/1",
+                                }
+                            ]
+                        },
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    closed_with_comment_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "MERGED",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "reviewer1"},
+                                    "body": "Please fix the branch handling.",
+                                    "createdAt": "2026-04-15T00:00:00Z",
+                                    "url": "https://example.test/comment/1",
+                                }
+                            ]
+                        },
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=60
+counter_file={shlex.quote(str(counter_file))}
+rm -f "$counter_file"
+sleep() {{
+  printf 'sleep:%s\\n' "$1"
+}}
+fetch_pr_feedback_json() {{
+  local fetch_count=0
+  if [[ -f "$counter_file" ]]; then
+    fetch_count="$(cat "$counter_file")"
+  fi
+  fetch_count=$((fetch_count + 1))
+  printf '%s\\n' "$fetch_count" > "$counter_file"
+  case "$fetch_count" in
+    1) printf '%s\\n' {shlex.quote(open_without_feedback_json)} ;;
+    2) printf '%s\\n' {shlex.quote(open_with_comment_json)} ;;
+    *) printf '%s\\n' {shlex.quote(closed_with_comment_json)} ;;
+  esac
+}}
+fetch_pr_checks_json() {{
+  printf '[]\\n'
+}}
+check_pr_feedback_after_delay 2000
+rm -f "$counter_file"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("==> Check PR #2000 feedback and checks") == 3
+    assert result.stdout.count("sleep:60") == 2
+    assert "Feedback comment 1: @reviewer1 :: Please fix the branch handling." in result.stdout
+    assert "PR #2000 is MERGED; returning to main." in result.stdout
 
 
 def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
@@ -2537,6 +2647,97 @@ main
     assert "status:1558:Ready for Review" in calls
     assert "feedback:2000" in calls
     assert "Warning: opened PR but failed to resolve its number" not in result.stdout
+
+
+def test_main_keeps_pr_branch_checked_out_until_feedback_monitor_returns(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+assert_gh_auth() {{ :; }}
+assert_ssh_signing_ready() {{ :; }}
+assert_docker_running() {{ :; }}
+fetch_origin() {{ :; }}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}} ${{5-}}" in
+    "symbolic-ref --quiet --short HEAD ")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "rev-list --count main..codex/daily-issue-1558  ")
+      printf '1\\n'
+      return 0
+      ;;
+    "diff --cached --quiet  ")
+      return 1
+      ;;
+  esac
+  return 0
+}}
+docker() {{ :; }}
+collect_issue_candidates() {{ printf '1558\\n'; }}
+resolve_issue_parent_epic() {{ :; }}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs() {{ printf '0\\n'; }}
+set_issue_project_status() {{ :; }}
+configure_bot_git_identity() {{ :; }}
+start_runtime_stack_and_seed_dev_data() {{ :; }}
+kill_all_docker_containers() {{ :; }}
+kill_processes_on_ports() {{ :; }}
+remote_branch_exists() {{ return 1; }}
+build_issue_prompt() {{ :; }}
+run_issue_attempt_loop() {{ :; }}
+has_non_log_changes() {{ return 0; }}
+persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
+}}
+push_branch_for_pr() {{ :; }}
+write_pr_body() {{ :; }}
+build_pr_title() {{
+  printf '#1558 Title\\n'
+}}
+check_pr_feedback_after_delay() {{
+  printf 'monitor:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
+    local last_arg="${{@: -1}}"
+    case "$last_arg" in
+      .title) printf 'Title\\n' ;;
+      .body) printf 'Body\\n' ;;
+      .url) printf 'https://github.com/scidsg/hushline/issues/1558\\n' ;;
+      '.labels[].name // empty') printf '\\n' ;;
+    esac
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    return 0
+  fi
+  return 0
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "monitor:2000" in calls
+    assert calls.count("git:checkout main") == 1
+    assert calls.index("monitor:2000") > calls.index("git:checkout -B codex/daily-issue-1558 main")
 
 
 def test_fix_attempt_loop_stops_after_max_attempts(tmp_path: Path) -> None:
