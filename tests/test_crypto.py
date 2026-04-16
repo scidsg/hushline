@@ -1,4 +1,5 @@
 from base64 import urlsafe_b64decode
+from unittest.mock import call
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
@@ -77,6 +78,21 @@ def test_pgp_helpers_invalid_key(app: Flask) -> None:
         assert not crypto.is_valid_pgp_key("not-a-key")
         assert not crypto.can_encrypt_with_pgp_key("not-a-key")
         assert crypto.encrypt_bytes(b"hello", "not-a-key") is None
+
+
+def test_encrypt_message_uses_all_recipient_keys(app: Flask, mocker) -> None:  # type: ignore[no-untyped-def]
+    cert_one = object()
+    cert_two = object()
+    with app.app_context():
+        from_bytes = mocker.patch(
+            "hushline.crypto.Cert.from_bytes",
+            side_effect=[cert_one, cert_two],
+        )
+        encrypt = mocker.patch("hushline.crypto.encrypt", return_value="ciphertext")
+
+        assert crypto.encrypt_message("hello", ["key-one", "key-two"]) == "ciphertext"
+        assert from_bytes.call_args_list == [call(b"key-one"), call(b"key-two")]
+        encrypt.assert_called_once_with([cert_one, cert_two], b"hello")
 
 
 def test_gen_reply_slug_uses_diceware_words() -> None:
