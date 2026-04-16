@@ -5,6 +5,7 @@ from hushline.model import (
     FieldValue,
     Message,
     MessageStatusText,
+    NotificationRecipient,
     User,
     Username,
 )
@@ -37,6 +38,7 @@ def delete_user_and_related(user: User) -> None:
     )
     db.session.execute(db.delete(MessageStatusText).filter_by(user_id=user.id))
     db.session.execute(db.delete(AuthenticationLog).filter_by(user_id=user.id))
+    db.session.execute(db.delete(NotificationRecipient).filter_by(user_id=user.id))
 
     # Delete username and finally the user
     db.session.execute(db.delete(Username).filter_by(user_id=user.id))

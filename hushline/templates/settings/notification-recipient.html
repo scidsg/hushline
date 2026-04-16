@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ page_title }}
+{% endblock %}
+
+{% block content %}
+<div class="drill-in">
+  <a href="{{ url_for('.notifications') }}" class="back-button"><span class="icon chevron back"></span> Back to Notifications</a>
+  <h2 class="alias-heading">{{ recipient.email if recipient is not none and recipient.email else page_title }}</h2>
+
+  {% if recipient is not none and toggle_recipient_enabled_form is not none %}
+    <div class="recipient-toggle-group">
+      <form method="POST" class="formBody auto-submit">
+        {{ toggle_recipient_enabled_form.hidden_tag() }}
+        <div class="checkbox-group toggle-ui recipient-enabled-toggle">
+          {{ toggle_recipient_enabled_form.recipient_enabled }}
+          <label for="{{ toggle_recipient_enabled_form.recipient_enabled.id }}" class="toggle-label">
+            {{ toggle_recipient_enabled_form.recipient_enabled.label }}
+            <div class="toggle">
+              <div class="toggle__ball"></div>
+            </div>
+          </label>
+        </div>
+        {{ toggle_recipient_enabled_form.submit }}
+      </form>
+
+      {% if user.enable_email_notifications and toggle_include_content_form is not none %}
+        <form method="POST" class="formBody auto-submit">
+          {{ toggle_include_content_form.hidden_tag() }}
+          <div class="checkbox-group toggle-ui">
+            {{ toggle_include_content_form.include_content }}
+            <label for="{{ toggle_include_content_form.include_content.id }}" class="toggle-label">
+              {{ toggle_include_content_form.include_content.label }}
+              <div class="toggle">
+                <div class="toggle__ball"></div>
+              </div>
+            </label>
+          </div>
+          {{ toggle_include_content_form.submit }}
+        </form>
+      {% endif %}
+
+      {% if user.email_include_message_content and toggle_encrypt_entire_body_form is not none %}
+        <form method="POST" class="formBody auto-submit">
+          {{ toggle_encrypt_entire_body_form.hidden_tag() }}
+          <div class="checkbox-group toggle-ui with-desc">
+            {{ toggle_encrypt_entire_body_form.encrypt_entire_body }}
+            <label for="{{ toggle_encrypt_entire_body_form.encrypt_entire_body.id }}" class="toggle-label">
+              <div class="label-desc">
+                {{ toggle_encrypt_entire_body_form.encrypt_entire_body.label }}
+                <p class="meta">
+                  Recommended for compatibility with email clients like Proton Mail or Thunderbird.
+                </p>
+              </div>
+              <div class="toggle">
+                <div class="toggle__ball"></div>
+              </div>
+            </label>
+          </div>
+          {{ toggle_encrypt_entire_body_form.submit }}
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <form method="POST" class="formBody">
+    {{ recipient_form.hidden_tag() }}
+    {% if recipient is none %}
+      <div class="checkbox-group toggle-ui recipient-enabled-toggle">
+        {{ recipient_form.recipient_enabled() }}
+        <label for="{{ recipient_form.recipient_enabled.id }}" class="toggle-label">
+          {{ recipient_form.recipient_enabled.label }}
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
+    {% endif %}
+
+    {{ recipient_form.recipient_email.label }}
+    {{ recipient_form.recipient_email }}
+    {% for error in recipient_form.recipient_email.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+
+    {{ recipient_form.recipient_pgp_key.label }}
+    {{ recipient_form.recipient_pgp_key }}
+    {% for error in recipient_form.recipient_pgp_key.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+
+    {{ recipient_form.submit(value=submit_label) }}
+  </form>
+
+  {% if recipient is not none %}
+    <div class="danger-zone">
+      <h3>Delete Recipient</h3>
+      <p>
+        Deleting a recipient is permanent. This will remove their notification address and recipient-specific public key from this account.
+      </p>
+      <form
+        method="POST"
+        action="{{ url_for('.delete_notification_recipient', recipient_id=recipient.id) }}"
+        class="formBody"
+      >
+        {{ delete_recipient_form.hidden_tag() }}
+        {{ delete_recipient_form.submit(class="btn-danger") }}
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

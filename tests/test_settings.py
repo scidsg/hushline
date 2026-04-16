@@ -50,6 +50,7 @@ from hushline.settings.notifications import (
     ToggleEncryptEntireBodyForm,
     ToggleIncludeContentForm,
     ToggleNotificationsForm,
+    ToggleRecipientEnabledForm,
 )
 from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
@@ -78,6 +79,22 @@ def test_user_location_persists(user: User) -> None:
     assert updated_user.country == "United States"
     assert updated_user.city == "Chicago"
     assert updated_user.subdivision == "Illinois"
+
+
+def test_notification_recipient_shadow_persists_from_legacy_fields(user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.pgp_key = pgp_key
+    user.email = "primary@example.com"
+    db.session.commit()
+    db.session.expire_all()
+
+    updated_user = db.session.get(User, user.id)
+    assert updated_user is not None
+    assert len(updated_user.notification_recipients) == 1
+    assert updated_user.notification_recipients[0].email == "primary@example.com"
+    assert updated_user.notification_recipients[0].pgp_key == pgp_key
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -670,7 +687,6 @@ def test_update_smtp_settings_reject_private_host(
 ) -> None:
     is_safe_smtp_host.return_value = False
     new_smtp_settings = {
-        "email_address": "primary@example.com",
         "custom_smtp_settings": True,
         "smtp_settings-smtp_server": "localhost",
         "smtp_settings-smtp_port": 587,
@@ -702,8 +718,6 @@ def test_notifications_invalid_email_forwarding_post_shows_only_forwarding_error
     response = client.post(
         url_for("settings.notifications"),
         data={
-            "forwarding_enabled": "y",
-            "email_address": "primary@example.com",
             "custom_smtp_settings": "y",
             "smtp_settings-smtp_encryption": "StartTLS",
             EmailForwardingForm.submit.name: "",
@@ -720,49 +734,249 @@ def test_notifications_invalid_email_forwarding_post_shows_only_forwarding_error
     assert "This field is required." not in response.text
 
     db.session.refresh(user)
-    assert user.email is None
-
-    soup = BeautifulSoup(response.data, "html.parser")
-    email_input = soup.find("input", attrs={"name": "email_address"})
-    assert email_input is not None
-    assert email_input.get("value") == "primary@example.com"
+    assert user.smtp_server is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-@patch("hushline.email.smtplib.SMTP")
-def test_update_smtp_settings_no_pgp(SMTP: MagicMock, client: FlaskClient, user: User) -> None:
-    user.pgp_key = None
-    db.session.commit()
+def test_add_notification_recipient(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
 
     response = client.post(
-        url_for("settings.notifications"),
-        # for some reason using the Form class doesn't work here. why? fuck if i know.
+        url_for("settings.new_notification_recipient"),
         data={
-            "email_address": "primary@example.com",
-            "custom_smtp_settings": True,
-            "smtp_settings-smtp_server": "smtp.example.com",
-            "smtp_settings-smtp_port": 587,
-            "smtp_settings-smtp_username": "user@example.com",
-            "smtp_settings-smtp_password": "securepassword123",
-            "smtp_settings-smtp_encryption": "StartTLS",
-            "smtp_settings-smtp_sender": "sender@example.com",
-            EmailForwardingForm.submit.name: "",
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
         },
         follow_redirects=True,
     )
-    assert response.status_code == 400
-    assert "⛔️ Email forwarding requires a configured PGP key." in response.text, response.text
 
-    updated_user = (
-        db.session.scalars(db.select(Username).filter_by(_username=user.primary_username.username))
-        .one()
-        .user
+    assert response.status_code == 200
+    assert "Notification recipient updated successfully." in response.text
+    db.session.refresh(user)
+    assert len(user.notification_recipients) == 1
+    assert user.notification_recipients[0].email == "primary@example.com"
+    assert user.notification_recipients[0].pgp_key == pgp_key
+    assert user.notification_recipients[0].enabled is True
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            "recipient_email": "secondary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
     )
-    assert updated_user.email is None
-    assert updated_user.smtp_server is None
-    assert updated_user.smtp_port is None
-    assert updated_user.smtp_username is None
-    assert updated_user.smtp_password is None
+
+    assert response.status_code == 200
+    db.session.refresh(user)
+    assert user.primary_notification_recipient is not None
+    assert user.primary_notification_recipient.email == "secondary@example.com"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_edit_notification_recipient_syncs_legacy_pgp_key(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    db.session.refresh(user)
+    assert user.primary_notification_recipient is not None
+    assert user.primary_notification_recipient.pgp_key is None
+    assert user.pgp_key is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_disabling_last_notification_recipient_disables_delivery_settings(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleRecipientEnabledForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    db.session.refresh(user)
+    assert user.notification_recipients[0].enabled is False
+    assert user.enable_email_notifications is False
+    assert user.email_include_message_content is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_notification_recipient_removes_it(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.delete_notification_recipient", recipient_id=recipient.id),
+        data={
+            "delete_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    db.session.refresh(user)
+    assert not user.notification_recipients
+    assert user.enable_email_notifications is False
+    assert user.email_include_message_content is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enabled_recipient_requires_key_when_content_included(
+    client: FlaskClient, user: User
+) -> None:
+    user.email_include_message_content = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "encryptable PGP key is required" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_page_lists_recipient_drill_ins(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(url_for("settings.notifications"), follow_redirects=True)
+
+    assert response.status_code == 200
+    assert "Add Recipient" in response.text
+    assert "primary@example.com" in response.text
+    assert url_for("settings.notification_recipient", recipient_id=recipient.id) in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_renders_edit_form(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Edit Recipient" in response.text
+    assert "Back to Notifications" in response.text
+    assert "primary@example.com" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_groups_toggles_together(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.get(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    toggle_labels = [
+        label.get_text(" ", strip=True)
+        for label in soup.select(".recipient-toggle-group .toggle-label")
+    ]
+
+    assert toggle_labels == [
+        "Recipient Enabled",
+        "Include Message Contents",
+        (
+            "Encrypt Entire Body Recommended for compatibility with email clients "
+            "like Proton Mail or Thunderbird."
+        ),
+    ]
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -777,7 +991,6 @@ def test_update_smtp_settings_starttls(
 ) -> None:
     is_safe_smtp_host.return_value = True
     new_smtp_settings = {
-        "email_address": "primary@example.com",
         "custom_smtp_settings": True,
         "smtp_settings-smtp_server": "smtp.example.com",
         "smtp_settings-smtp_port": 587,
@@ -807,7 +1020,6 @@ def test_update_smtp_settings_starttls(
         .one()
         .user
     )
-    assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
     assert updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
@@ -828,7 +1040,6 @@ def test_update_smtp_settings_ssl(
 ) -> None:
     is_safe_smtp_host.return_value = True
     new_smtp_settings = {
-        "email_address": "primary@example.com",
         "custom_smtp_settings": True,
         "smtp_settings-smtp_server": "smtp.example.com",
         "smtp_settings-smtp_port": 465,
@@ -858,7 +1069,6 @@ def test_update_smtp_settings_ssl(
         .one()
         .user
     )
-    assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server == new_smtp_settings["smtp_settings-smtp_server"]
     assert updated_user.smtp_port == new_smtp_settings["smtp_settings-smtp_port"]
     assert updated_user.smtp_username == new_smtp_settings["smtp_settings-smtp_username"]
@@ -879,7 +1089,6 @@ def test_update_smtp_settings_default_forwarding(
 ) -> None:
     is_safe_smtp_host.return_value = True
     new_smtp_settings = {
-        "email_address": "primary@example.com",
         "smtp_settings-smtp_encryption": "StartTLS",
         EmailForwardingForm.submit.name: "",
     }
@@ -901,7 +1110,6 @@ def test_update_smtp_settings_default_forwarding(
         .one()
         .user
     )
-    assert updated_user.email == new_smtp_settings["email_address"]
     assert updated_user.smtp_server is None
     assert updated_user.smtp_port is None
     assert updated_user.smtp_username is None
@@ -961,6 +1169,31 @@ def test_toggle_encrypt_entire_body_setting(client: FlaskClient, user: User) -> 
     assert response.status_code == 200
     assert "👍 The entire body of email messages will be encrypted." in response.text
     assert user.email_encrypt_entire_body
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_toggle_recipient_enabled_setting(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+    assert recipient.enabled
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleRecipientEnabledForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "👍 Notification recipient disabled." in response.text
+    assert not recipient.enabled
 
 
 @pytest.mark.usefixtures("_authenticated_user")

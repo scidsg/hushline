@@ -1,3 +1,4 @@
+import smtplib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -5,7 +6,7 @@ from flask import Flask
 from wtforms.validators import ValidationError
 
 from hushline.db import db
-from hushline.model import User
+from hushline.model import NotificationRecipient, User
 from hushline.routes import common as routes_common
 
 
@@ -116,6 +117,72 @@ def test_do_send_email_uses_user_custom_smtp(
 
     create_smtp_config.assert_called_once()
     send_email.assert_called_once()
+
+
+def test_do_send_email_sends_to_each_enabled_recipient(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.notification_recipients.append(
+        NotificationRecipient(
+            position=1,
+            enabled=True,
+        )
+    )
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context():
+        routes_common.do_send_email(user, "body")
+
+    assert send_email.call_count == 2
+
+
+def test_do_send_email_continues_after_single_recipient_failure(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock(side_effect=[smtplib.SMTPException("boom"), None])
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context(), patch.object(app.logger, "error") as error_log:
+        routes_common.do_send_email(user, "body")
+
+    create_smtp_config.assert_called_once()
+    assert send_email.call_count == 2
+    error_log.assert_called()
 
 
 def test_do_send_email_uses_default_smtp(

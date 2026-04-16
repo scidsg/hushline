@@ -97,28 +97,24 @@ def test_custom_validators_negative_paths() -> None:
         canonical(form, form.field)
 
 
-def test_email_forwarding_form_requires_email_and_smtp_fields(app: Flask) -> None:
+def test_email_forwarding_form_requires_smtp_fields(app: Flask) -> None:
     with (
         app.test_request_context("/settings/notifications", method="POST"),
         patch("hushline.settings.forms.FlaskForm.validate", new=lambda *_args, **_kwargs: True),
     ):
         app.config["NOTIFICATIONS_ADDRESS"] = ""
         form = EmailForwardingForm(meta={"csrf": False})
-        form.forwarding_enabled.data = True
-        form.email_address.data = ""
         form.custom_smtp_settings.data = True
         form.smtp_settings.smtp_sender.data = ""
         form.smtp_settings.smtp_username.data = ""
         form.smtp_settings.smtp_server.data = ""
         form.smtp_settings.smtp_port.data = None
-        form.email_address.errors = []
         form.smtp_settings.smtp_sender.errors = []
         form.smtp_settings.smtp_username.errors = []
         form.smtp_settings.smtp_server.errors = []
         form.smtp_settings.smtp_port.errors = []
 
         assert form.validate() is False
-        assert any("Email address must be specified" in err for err in form.email_address.errors)
         assert form.smtp_settings.smtp_sender.errors
         assert form.smtp_settings.smtp_username.errors
         assert form.smtp_settings.smtp_server.errors
@@ -393,9 +389,7 @@ def test_encrypt_helpers_branch_types(app: Flask, mocker) -> None:  # type: igno
 
 
 def test_handle_email_forwarding_form_smtp_validation_exception(app: Flask, user: User) -> None:
-    user.pgp_key = "fake-pgp"
     form = EmailForwardingForm(meta={"csrf": False})
-    form.email_address.data = "test@example.com"
     form.custom_smtp_settings.data = True
     form.smtp_settings.smtp_server.data = "smtp.example.com"
     form.smtp_settings.smtp_port.data = 587
@@ -432,7 +426,12 @@ def test_notifications_toggle_false_flash_paths(client) -> None:  # type: ignore
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_notifications_toggle_include_content_true_path(client) -> None:  # type: ignore[no-untyped-def]
+def test_notifications_toggle_include_content_true_path(client, user: User) -> None:  # type: ignore[no-untyped-def]
+    user.email = "content@example.com"
+    with open("tests/test_pgp_key.txt") as file:
+        user.pgp_key = file.read().strip()
+    db.session.commit()
+
     response = client.post(
         url_for("settings.notifications"),
         data={"toggle_include_content": "", "include_content": "y"},

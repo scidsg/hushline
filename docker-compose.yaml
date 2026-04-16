@@ -94,9 +94,7 @@ services:
       - hushline-node-modules:/app/node_modules
     working_dir: /app/
     command:
-      - ash
-      - -c
-      - 'mkdir -p /app/node_modules && find /app/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
+      - ./scripts/webpack_dev_start.sh
     restart: on-failure
 
 volumes:
