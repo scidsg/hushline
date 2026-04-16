@@ -31,8 +31,11 @@ Without a PGP key, people can still see your profile, but they cannot submit tip
 Hush Line can notify you about new tips in the web inbox and, optionally, by email. In Settings you can:
 
 - enable or disable email notifications
+- add multiple notification recipients when one shared account needs to alert a small team
 - include encrypted message content in those emails
 - encrypt the entire email body for compatibility with clients such as Proton Mail or Thunderbird
+
+Each notification recipient can use a different delivery address and PGP key. This lets a newsroom, nonprofit, or legal intake team share one public account while keeping each operator's mail workflow separate.
 
 ## 4. Review your public form
 

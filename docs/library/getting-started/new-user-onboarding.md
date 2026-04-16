@@ -31,6 +31,8 @@ If you are using Proton Mail, Hush Line can look up your public key for you.
 
 Choose where new tips should be sent. Hush Line works best when you add an email address for notifications. If you imported a Proton key in the previous step, using the same address makes email delivery easier to manage.
 
+If a small organization shares one Hush Line account, use the Notifications settings after onboarding to add more recipient addresses and recipient-specific PGP keys so more than one operator can receive alerts without sharing a personal mailbox.
+
 ## Step 4: directory visibility
 
 Choose whether to appear in the public user directory. Directory listings help whistleblowers discover your tip line, and you can change this setting later.
