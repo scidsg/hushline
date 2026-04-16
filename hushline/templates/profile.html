@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-  {% if user.pgp_key %}
+  {% if recipient_public_keys %}
     {{ profile_header }}
   {% else %}
     Profile: {{ display_name_or_username }}
@@ -17,7 +17,7 @@
   </div>
 
   <h2 class="submit">
-    {% if user.pgp_key %}
+    {% if recipient_public_keys %}
       {# Unauthenticated or other users who meet PGP requirements #}
       {{ profile_header }}
     {% else %}
@@ -95,12 +95,12 @@
 
   {% if current_user_id == user.id %}
     <p class="instr">
-      {% if not user.pgp_key %}
+      {% if not recipient_public_keys %}
         <b>👁️ Only visible to you:</b> In order to protect your sources, you need
-        to add a PGP key to your account before anyone can send you tips.
-        Without a PGP key, your profile can still be listed in the Hush Line
-        directory. Make sure to include a secure way to contact you, such as a
-        Signal username, in your profile.
+        to add at least one usable recipient PGP key to your account before
+        anyone can send you tips. Without a recipient key, your profile can
+        still be listed in the Hush Line directory. Make sure to include a
+        secure way to contact you, such as a Signal username, in your profile.
       {% else %}
         <b>👁️ Only visible to you:</b> This is your public tip line. Share the
         address in your browser's address bar on your social media profiles, your
@@ -151,7 +151,7 @@
       {% endif %}
     {% endfor %}
 
-    <input type="hidden" id="publicKey" value="{{ user.pgp_key }}" />
+    <script id="recipientPublicKeys" type="application/json">{{ recipient_public_keys | tojson }}</script>
 
     {% if not message_submission_block_reason %}
       <div class="captcha">
@@ -187,7 +187,7 @@
           {% else %}
             🔒<br />
             Sending messages is disabled until {{ display_name_or_username }} adds
-            a PGP key.
+            a usable recipient PGP key.
           {% endif %}
         </p>
       </div>

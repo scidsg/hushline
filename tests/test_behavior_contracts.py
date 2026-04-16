@@ -222,8 +222,10 @@ def test_contract_notifications_full_body_mode_encrypts_for_all_enabled_recipien
     client_body = (
         "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
     )
+    field_body = "-----BEGIN PGP MESSAGE-----\n\nfield encrypted body\n\n-----END PGP MESSAGE-----"
     with (
         patch("hushline.routes.profile.do_send_email", new=MagicMock()) as send_email_mock,
+        patch("hushline.model.field_value.encrypt_message", new=MagicMock(return_value=field_body)),
         patch(
             "hushline.routes.profile.encrypt_message", new=MagicMock(return_value=server_body)
         ) as encrypt_mock,

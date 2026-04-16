@@ -306,11 +306,13 @@ def test_notifications_full_body_encryption_server_fallback(
 
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.model.field_value.encrypt_message")
 @patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
 def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
     mock_do_send_email: MagicMock,
     mock_encrypt_message: MagicMock,
+    mock_field_value_encrypt_message: MagicMock,
     client: FlaskClient,
     user: User,
 ) -> None:
@@ -327,6 +329,9 @@ def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
     )
     server_encrypted_email_body = (
         "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    mock_field_value_encrypt_message.return_value = (
+        "-----BEGIN PGP MESSAGE-----\n\nfield encrypted body\n\n-----END PGP MESSAGE-----"
     )
     mock_encrypt_message.return_value = server_encrypted_email_body
 

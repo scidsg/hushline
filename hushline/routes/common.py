@@ -155,40 +155,7 @@ def do_send_email(user: User, body: str) -> None:
 
 
 def notification_email_encryption_target(user: User) -> str | list[str] | None:
-    recipients = user.enabled_notification_recipients
-    pgp_keys: list[str] = []
-    expected_key_count = 0
-
-    primary_recipient = next(
-        (recipient for recipient in user.notification_recipients if recipient.position == 0),
-        None,
-    )
-    if primary_recipient is None:
-        if user.pgp_key:
-            pgp_keys.append(user.pgp_key)
-            expected_key_count += 1
-    elif primary_recipient.enabled and primary_recipient.email:
-        if not primary_recipient.pgp_key:
-            return None
-        pgp_keys.append(primary_recipient.pgp_key)
-        expected_key_count += 1
-
-    non_primary_recipients = (
-        recipients
-        if primary_recipient is None
-        else [recipient for recipient in recipients if recipient is not primary_recipient]
-    )
-    pgp_keys.extend(recipient.pgp_key for recipient in non_primary_recipients if recipient.pgp_key)
-    expected_key_count += len(non_primary_recipients)
-    if len(pgp_keys) != expected_key_count:
-        return None
-
-    unique_pgp_keys = list(dict.fromkeys(pgp_keys))
-    if not unique_pgp_keys:
-        return None
-    if len(unique_pgp_keys) == 1:
-        return unique_pgp_keys[0]
-    return unique_pgp_keys
+    return user.message_encryption_target
 
 
 def format_message_email_fields(extracted_fields: Sequence[tuple[str, str]]) -> str:

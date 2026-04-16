@@ -200,6 +200,26 @@ def test_notification_email_encryption_target_falls_back_to_legacy_user_key(
     assert routes_common.notification_email_encryption_target(user) == "primary-key"
 
 
+def test_notification_email_encryption_target_uses_non_primary_recipient_without_legacy_key(
+    user: User,
+) -> None:
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == "secondary-key"
+
+
+def test_notification_email_encryption_target_ignores_enabled_recipient_without_key(
+    user: User,
+) -> None:
+    user.pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+
+    assert routes_common.notification_email_encryption_target(user) == "primary-key"
+
+
 def test_notification_email_encryption_target_collapses_duplicate_keys_to_single_key(
     user: User,
 ) -> None:
