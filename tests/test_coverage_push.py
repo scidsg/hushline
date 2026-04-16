@@ -323,6 +323,22 @@ def test_user_alias_mode_edge_cases(app: Flask, user: User) -> None:
             _ = user.max_aliases
 
 
+def test_user_notification_recipient_limit_edge_cases(app: Flask, user: User) -> None:
+    with app.app_context():
+        user.tier_id = Tier.free_tier_id()
+        assert user.max_notification_recipients == 1
+
+        user.tier_id = 999
+        app.config["FLASK_ENV"] = "production"
+        with patch.object(app.logger, "warning") as warning_log:
+            assert user.max_notification_recipients == 100
+            warning_log.assert_called()
+
+        app.config["FLASK_ENV"] = "development"
+        with pytest.raises(Exception, match="Unknown tier id"):
+            _ = user.max_notification_recipients
+
+
 def test_user_init_rejects_direct_password_hash_assignment() -> None:
     forbidden_hash = "x"
     pw = secrets.token_urlsafe(16)

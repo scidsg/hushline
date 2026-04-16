@@ -144,6 +144,8 @@ class User(Model):
     )
 
     _PREMIUM_ALIAS_COUNT = 100
+    _FREE_NOTIFICATION_RECIPIENT_COUNT = 1
+    _PREMIUM_NOTIFICATION_RECIPIENT_COUNT = 100
 
     @staticmethod
     def new_session_id() -> str:
@@ -273,6 +275,17 @@ class User(Model):
             raise Exception(err_msg)
         current_app.logger.warning(err_msg)
         return self._PREMIUM_ALIAS_COUNT
+
+    @property
+    def max_notification_recipients(self) -> int:
+        if self.is_free_tier:
+            return self._FREE_NOTIFICATION_RECIPIENT_COUNT
+        if not self.is_business_tier:
+            err_msg = f"Programming Error. Unknown tier id: {self.tier_id}"
+            if current_app.config["FLASK_ENV"] == "development":
+                raise Exception(err_msg)
+            current_app.logger.warning(err_msg)
+        return self._PREMIUM_NOTIFICATION_RECIPIENT_COUNT
 
     @property
     def fields_enabled(self) -> bool:

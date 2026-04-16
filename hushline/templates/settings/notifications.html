@@ -50,9 +50,24 @@
       <p>🙊 No notification recipients configured.</p>
     {% endif %}
 
-    <div class="add-recipient-cta">
-      <a href="{{ url_for('.new_notification_recipient') }}" class="btn">Add Recipient</a>
-    </div>
+    {% if can_add_notification_recipient %}
+      <div class="add-recipient-cta">
+        <a href="{{ url_for('.new_notification_recipient') }}" class="btn">Add Recipient</a>
+      </div>
+    {% elif is_premium_enabled and user.is_free_tier %}
+      <div class="alert">
+        <div>
+          <h4>Need More Destinations?</h4>
+          <p class="info">
+            🚀 Upgrade to Super User for
+            ${{ business_tier_display_price }}/mo to add multiple notification destinations.
+          </p>
+        </div>
+        <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
+      </div>
+    {% else %}
+      <p class="meta">Notification destination limit reached for this account.</p>
+    {% endif %}
   {% endif %}
 
   <h4>SMTP Delivery</h4>

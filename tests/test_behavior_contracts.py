@@ -607,6 +607,27 @@ def test_contract_paid_user_alias_vision_and_subscription_controls(
     assert delete_alias_response.status_code == 200
     assert db.session.get(Username, added_alias.id) is None
 
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+
+    add_recipient_response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "secondary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+    assert add_recipient_response.status_code == 200
+    assert len(user.notification_recipients) == 2
+
     vision_response = client.get(url_for("vision"), follow_redirects=True)
     assert vision_response.status_code == 200
     assert "Vision Assistant" in vision_response.text

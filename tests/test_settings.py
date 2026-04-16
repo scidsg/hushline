@@ -763,6 +763,69 @@ def test_add_notification_recipient(client: FlaskClient, user: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_free_user_cannot_add_second_notification_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "secondary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert (
+        "Your current subscription level does not allow more than one notification "
+        "destination." in response.text
+    )
+    db.session.refresh(user)
+    assert len(user.notification_recipients) == 1
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_business_user_can_add_second_notification_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.set_business_tier()
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "secondary@example.com",
+            "recipient_pgp_key": pgp_key,
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Notification recipient updated successfully." in response.text
+    db.session.refresh(user)
+    assert len(user.notification_recipients) == 2
+    assert user.notification_recipients[1].email == "secondary@example.com"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_new_notification_recipient_page_renders_proton_lookup(
     client: FlaskClient,
 ) -> None:
@@ -979,10 +1042,13 @@ def test_enabled_recipient_requires_key_when_content_included(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_notifications_page_lists_recipient_drill_ins(client: FlaskClient, user: User) -> None:
+def test_notifications_page_lists_recipient_drill_ins_for_business_user(
+    client: FlaskClient, user: User
+) -> None:
     with open("tests/test_pgp_key.txt") as file:
         pgp_key = file.read().strip()
 
+    user.set_business_tier()
     user.enable_email_notifications = True
     user.email = "primary@example.com"
     user.pgp_key = pgp_key
@@ -996,6 +1062,27 @@ def test_notifications_page_lists_recipient_drill_ins(client: FlaskClient, user:
     assert "Add Recipient" in response.text
     assert "primary@example.com" in response.text
     assert url_for("settings.notification_recipient", recipient_id=recipient.id) in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_page_shows_upgrade_when_free_user_reaches_recipient_limit(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    app.config["STRIPE_SECRET_KEY"] = "sk_test_123"
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+
+    response = client.get(url_for("settings.notifications"), follow_redirects=True)
+
+    assert response.status_code == 200
+    assert "Need More Destinations?" in response.text
+    assert "Upgrade to Super User" in response.text
+    assert "Add Recipient" not in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

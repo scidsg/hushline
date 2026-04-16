@@ -22,7 +22,7 @@ from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.email import create_smtp_config, is_safe_smtp_host
 from hushline.forms import DisplayNoneButton
-from hushline.model import NotificationRecipient, SMTPEncryption, User
+from hushline.model import NotificationRecipient, SMTPEncryption, Tier, User
 from hushline.settings.common import form_error
 from hushline.settings.forms import (
     DeleteNotificationRecipientForm,
@@ -230,7 +230,7 @@ def _build_recipient_form(
     if request.method == "POST" and use_request_data:
         return NotificationRecipientForm()
 
-    data = {"recipient_enabled": True}
+    data: dict[str, object] = {"recipient_enabled": True}
     if recipient is not None:
         data.update(
             {
@@ -293,6 +293,21 @@ def _recipient_not_found() -> Response:
 
 def _recipient_for_user(user: User, recipient_id: int) -> NotificationRecipient | None:
     return next((item for item in user.notification_recipients if item.id == recipient_id), None)
+
+
+def _recipient_limit_reached(user: User) -> bool:
+    return len(user.notification_recipients) >= user.max_notification_recipients
+
+
+def _business_tier_display_price() -> str:
+    business_tier = Tier.business_tier()
+    if not business_tier:
+        return ""
+
+    price_usd = business_tier.monthly_amount / 100
+    if price_usd % 1 == 0:
+        return str(int(price_usd))
+    return f"{price_usd:.2f}"
 
 
 def register_notifications_routes(bp: Blueprint) -> None:
@@ -395,6 +410,8 @@ def register_notifications_routes(bp: Blueprint) -> None:
             recipient_summaries=[
                 _recipient_summary(recipient) for recipient in user.notification_recipients
             ],
+            can_add_notification_recipient=not _recipient_limit_reached(user),
+            business_tier_display_price=_business_tier_display_price(),
             default_forwarding_enabled=bool(current_app.config.get("NOTIFICATIONS_ADDRESS")),
             custom_smtp_settings=bool(user.smtp_username),
             toggle_notifications_form=toggle_notifications_form,
@@ -407,6 +424,13 @@ def register_notifications_routes(bp: Blueprint) -> None:
     @authentication_required
     def new_notification_recipient() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        if _recipient_limit_reached(user):
+            flash(
+                "⛔️ Your current subscription level does not allow more than one notification "
+                "destination. Upgrade to Super User to add more."
+            )
+            return redirect(url_for(".notifications"))
+
         recipient_form = _build_recipient_form(None)
         pgp_proton_form = _build_recipient_proton_form(None)
         status_code = 200

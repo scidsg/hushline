@@ -35,4 +35,4 @@ npm_config_update_notifier=false npm ci --no-audit --no-fund
 cd /app
 export PATH="$NODE_MODULES_PATH/.bin:$PATH"
 export WEBPACK_NODE_MODULES_PATH="$NODE_MODULES_PATH"
-exec webpack --config webpack.config.js --watch --env WEBPACK_WATCH=1
+exec npm run build:dev
