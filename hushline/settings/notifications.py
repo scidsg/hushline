@@ -15,12 +15,13 @@ from wtforms import BooleanField, SubmitField
 from wtforms.validators import Optional as OptionalField
 
 from hushline.auth import authentication_required
+from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.email import create_smtp_config, is_safe_smtp_host
 from hushline.forms import DisplayNoneButton
-from hushline.model import SMTPEncryption, User
-from hushline.settings.common import form_error, set_input_disabled
-from hushline.settings.forms import EmailForwardingForm
+from hushline.model import NotificationRecipient, SMTPEncryption, User
+from hushline.settings.common import form_error
+from hushline.settings.forms import EmailForwardingForm, NotificationRecipientForm
 from hushline.utils import redirect_to_self
 
 
@@ -39,33 +40,123 @@ class ToggleEncryptEntireBodyForm(FlaskForm):
     submit = SubmitField("Submit", name="toggle_encrypt_entire_body", widget=DisplayNoneButton())
 
 
-def _submitted_notifications_form(
-    toggle_notifications_form: ToggleNotificationsForm,
-    toggle_include_content_form: ToggleIncludeContentForm,
-    toggle_encrypt_entire_body_form: ToggleEncryptEntireBodyForm,
-    email_forwarding_form: EmailForwardingForm,
-) -> FlaskForm | None:
-    for form in (
-        toggle_notifications_form,
-        toggle_include_content_form,
-        toggle_encrypt_entire_body_form,
-        email_forwarding_form,
+def _recipient_form_prefix(recipient: NotificationRecipient | None) -> str:
+    if recipient is None:
+        return "new-recipient"
+    return f"recipient-{recipient.id}"
+
+
+def _normalize_recipient_positions(user: User) -> None:
+    for index, recipient in enumerate(
+        sorted(user.notification_recipients, key=lambda row: (row.position, row.id))
     ):
-        if form.submit.name in request.form:
-            return form
+        recipient.position = index
+
+
+def _normalize_notification_state(user: User) -> None:
+    user.sync_legacy_notification_email()
+    if user.enabled_notification_recipients:
+        return
+    user.enable_email_notifications = False
+    user.email_include_message_content = False
+
+
+def _recipient_key_is_encryptable(pgp_key: str) -> bool:
+    return is_valid_pgp_key(pgp_key) and can_encrypt_with_pgp_key(pgp_key)
+
+
+def _enabled_recipients_support_content(user: User) -> bool:
+    recipients = user.enabled_notification_recipients
+    if not recipients:
+        return False
+    return all(
+        recipient.pgp_key and _recipient_key_is_encryptable(recipient.pgp_key)
+        for recipient in recipients
+    )
+
+
+def _validate_recipient_form(
+    user: User,
+    form: NotificationRecipientForm,
+) -> bool:
+    pgp_key = (form.recipient_pgp_key.data or "").strip()
+    if pgp_key and not is_valid_pgp_key(pgp_key):
+        form.recipient_pgp_key.errors.append("Invalid PGP key format or import failed.")
+        return False
+    if pgp_key and not can_encrypt_with_pgp_key(pgp_key):
+        form.recipient_pgp_key.errors.append(
+            "PGP key cannot be used for encryption. Please provide a key with an encryption subkey."
+        )
+        return False
+    if user.email_include_message_content and form.recipient_enabled.data and not pgp_key:
+        form.recipient_pgp_key.errors.append(
+            "An encryptable PGP key is required for enabled recipients when email content "
+            "is included."
+        )
+        return False
+    return True
+
+
+def _save_recipient(
+    user: User,
+    form: NotificationRecipientForm,
+    recipient: NotificationRecipient | None = None,
+) -> Response | None:
+    if not form.validate() or not _validate_recipient_form(user, form):
+        return None
+
+    if recipient is None:
+        recipient = NotificationRecipient(
+            user=user,
+            enabled=True,
+            position=user.next_notification_recipient_position,
+        )
+        db.session.add(recipient)
+
+    recipient.email = (form.recipient_email.data or "").strip()
+    recipient.pgp_key = (form.recipient_pgp_key.data or "").strip() or None
+    recipient.enabled = bool(form.recipient_enabled.data)
+
+    _normalize_recipient_positions(user)
+    _normalize_notification_state(user)
+    db.session.commit()
+    flash("👍 Notification recipient updated successfully.")
+    return redirect_to_self()
+
+
+def _delete_recipient(user: User, recipient: NotificationRecipient) -> Response:
+    if recipient in user.notification_recipients:
+        user.notification_recipients.remove(recipient)
+    db.session.flush()
+    _normalize_recipient_positions(user)
+    _normalize_notification_state(user)
+    db.session.commit()
+    flash("🗑️ Notification recipient removed.")
+    return redirect_to_self()
+
+
+def _submitted_notifications_form(
+    forms: tuple[FlaskForm, ...],
+    recipient_forms: list[tuple[NotificationRecipient, NotificationRecipientForm]],
+) -> FlaskForm | None:
+    for form in forms:
+        for field_name in ("submit", "delete_submit"):
+            field = getattr(form, field_name, None)
+            if field is not None and field.name in request.form:
+                return form
+
+    for _, form in recipient_forms:
+        for field_name in ("submit", "delete_submit"):
+            field = getattr(form, field_name, None)
+            if field is not None and field.name in request.form:
+                return form
+
     return None
 
 
 def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optional[Response]:
-    if form.email_address.data and not user.pgp_key:
-        flash("⛔️ Email forwarding requires a configured PGP key.")
-        return None
-
     default_forwarding_enabled = bool(current_app.config.get("NOTIFICATIONS_ADDRESS"))
-    forwarding_enabled = form.custom_smtp_settings.data
-    custom_smtp_settings = forwarding_enabled and (
-        form.custom_smtp_settings.data or not default_forwarding_enabled
-    )
+    custom_smtp_settings = form.custom_smtp_settings.data or not default_forwarding_enabled
 
     if custom_smtp_settings:
         try:
@@ -87,12 +178,9 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
             flash("⛔️ Unable to validate SMTP connection settings.")
             return None
 
-    user.email = form.email_address.data
     user.smtp_server = form.smtp_settings.smtp_server.data if custom_smtp_settings else None
     user.smtp_port = form.smtp_settings.smtp_port.data if custom_smtp_settings else None
     user.smtp_username = form.smtp_settings.smtp_username.data if custom_smtp_settings else None
-
-    # Since passwords aren't pre-populated in the form, don't unset it if not provided
     user.smtp_password = (
         form.smtp_settings.smtp_password.data
         if custom_smtp_settings and form.smtp_settings.smtp_password.data
@@ -114,6 +202,25 @@ def handle_email_forwarding_form(user: User, form: EmailForwardingForm) -> Optio
     return redirect_to_self()
 
 
+def _build_recipient_form(
+    recipient: NotificationRecipient | None,
+    *,
+    bind_from_request: bool,
+) -> NotificationRecipientForm:
+    prefix = _recipient_form_prefix(recipient)
+    if bind_from_request:
+        return NotificationRecipientForm(prefix=prefix)
+
+    data = None
+    if recipient is not None:
+        data = {
+            "recipient_email": recipient.email,
+            "recipient_pgp_key": recipient.pgp_key,
+            "recipient_enabled": recipient.enabled,
+        }
+    return NotificationRecipientForm(prefix=prefix, data=data)
+
+
 def register_notifications_routes(bp: Blueprint) -> None:
     @bp.route("/notifications", methods=["GET", "POST"])
     @authentication_required
@@ -123,24 +230,54 @@ def register_notifications_routes(bp: Blueprint) -> None:
         toggle_notifications_form = ToggleNotificationsForm()
         toggle_include_content_form = ToggleIncludeContentForm()
         toggle_encrypt_entire_body_form = ToggleEncryptEntireBodyForm()
-
         email_forwarding_form = EmailForwardingForm(
-            data=dict(
-                email_address=user.email,
-                custom_smtp_settings=user.smtp_server or None,
-            )
+            data=dict(custom_smtp_settings=user.smtp_server or None)
         )
+
+        submitted_prefix: str | None = None
+        if request.method == "POST":
+            if "new-recipient-save_notification_recipient" in request.form:
+                submitted_prefix = "new-recipient"
+            else:
+                for recipient in user.notification_recipients:
+                    prefix = _recipient_form_prefix(recipient)
+                    if (
+                        f"{prefix}-save_notification_recipient" in request.form
+                        or f"{prefix}-delete_notification_recipient" in request.form
+                    ):
+                        submitted_prefix = prefix
+                        break
+
+        new_recipient_form = _build_recipient_form(
+            None,
+            bind_from_request=submitted_prefix == "new-recipient",
+        )
+        recipient_forms = [
+            (
+                recipient,
+                _build_recipient_form(
+                    recipient,
+                    bind_from_request=submitted_prefix == _recipient_form_prefix(recipient),
+                ),
+            )
+            for recipient in user.notification_recipients
+        ]
+
         submitted_form = _submitted_notifications_form(
-            toggle_notifications_form,
-            toggle_include_content_form,
-            toggle_encrypt_entire_body_form,
-            email_forwarding_form,
+            (
+                toggle_notifications_form,
+                toggle_include_content_form,
+                toggle_encrypt_entire_body_form,
+                email_forwarding_form,
+                new_recipient_form,
+            ),
+            recipient_forms,
         )
 
         status_code = 200
         if request.method == "POST":
             if submitted_form is toggle_notifications_form and toggle_notifications_form.validate():
-                user.enable_email_notifications = (
+                user.enable_email_notifications = bool(
                     toggle_notifications_form.enable_email_notifications.data
                 )
                 db.session.commit()
@@ -149,24 +286,34 @@ def register_notifications_routes(bp: Blueprint) -> None:
                 else:
                     flash("👍 Email notifications disabled.")
                 return redirect_to_self()
-            elif (
+            if (
                 submitted_form is toggle_include_content_form
                 and toggle_include_content_form.validate()
             ):
-                user.email_include_message_content = (
+                if (
                     toggle_include_content_form.include_content.data
-                )
-                db.session.commit()
-                if toggle_include_content_form.include_content.data:
-                    flash("👍 Email message content enabled.")
+                    and not _enabled_recipients_support_content(user)
+                ):
+                    flash(
+                        "⛔️ Add at least one enabled recipient with an encryptable PGP key "
+                        "before including message content."
+                    )
+                    status_code = 400
                 else:
-                    flash("👍 Email message content disabled.")
-                return redirect_to_self()
+                    user.email_include_message_content = bool(
+                        toggle_include_content_form.include_content.data
+                    )
+                    db.session.commit()
+                    if toggle_include_content_form.include_content.data:
+                        flash("👍 Email message content enabled.")
+                    else:
+                        flash("👍 Email message content disabled.")
+                    return redirect_to_self()
             elif (
                 submitted_form is toggle_encrypt_entire_body_form
                 and toggle_encrypt_entire_body_form.validate()
             ):
-                user.email_encrypt_entire_body = (
+                user.email_encrypt_entire_body = bool(
                     toggle_encrypt_entire_body_form.encrypt_entire_body.data
                 )
                 db.session.commit()
@@ -176,20 +323,28 @@ def register_notifications_routes(bp: Blueprint) -> None:
                     flash("👍 Only encrypted fields of email messages will be encrypted.")
                 return redirect_to_self()
             elif (
-                submitted_form is email_forwarding_form
-                and email_forwarding_form.validate()
-                and (resp := handle_email_forwarding_form(user, email_forwarding_form))
+                (
+                    submitted_form is email_forwarding_form
+                    and email_forwarding_form.validate()
+                    and (resp := handle_email_forwarding_form(user, email_forwarding_form))
+                )
+                or submitted_form is new_recipient_form
+                and (resp := _save_recipient(user, new_recipient_form))
             ):
                 return resp
             else:
+                for recipient, form in recipient_forms:
+                    if submitted_form is not form:
+                        continue
+                    if form.delete_submit.name in request.form:
+                        return _delete_recipient(user, recipient)
+                    if resp := _save_recipient(user, form, recipient):
+                        return resp
+                    break
+
                 form_error()
                 status_code = 400
         else:
-            # we have to manually populate this because of subforms.
-            # only when request isn't a POST so that failed submissions can be easily recreated
-            email_forwarding_form.forwarding_enabled.data = user.email is not None
-            if not user.pgp_key:
-                set_input_disabled(email_forwarding_form.forwarding_enabled)
             email_forwarding_form.custom_smtp_settings.data = user.smtp_server is not None
             email_forwarding_form.smtp_settings.smtp_server.data = user.smtp_server
             email_forwarding_form.smtp_settings.smtp_port.data = user.smtp_port
@@ -210,4 +365,6 @@ def register_notifications_routes(bp: Blueprint) -> None:
             toggle_include_content_form=toggle_include_content_form,
             toggle_encrypt_entire_body_form=toggle_encrypt_entire_body_form,
             email_forwarding_form=email_forwarding_form,
+            new_recipient_form=new_recipient_form,
+            recipient_forms=recipient_forms,
         ), status_code

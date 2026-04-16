@@ -112,10 +112,6 @@ class SMTPSettingsForm(FlaskForm):
 
 
 class EmailForwardingForm(FlaskForm):
-    forwarding_enabled = BooleanField("Enable Forwarding", validators=[OptionalField()])
-    email_address = StringField(
-        "Email Address", validators=[OptionalField(), Length(max=User.EMAIL_MAX_LENGTH)]
-    )
     custom_smtp_settings = BooleanField("Custom SMTP Settings", validators=[OptionalField()])
     smtp_settings = FormField(SMTPSettingsForm)
     submit = SubmitField("Update Email Forwarding", name="update_email_forwarding", widget=Button())
@@ -125,33 +121,43 @@ class EmailForwardingForm(FlaskForm):
             return False
 
         rv = True
-        if self.forwarding_enabled.data:
-            if not self.email_address.data:
-                self.email_address.errors.append(
-                    "Email address must be specified when forwarding is enabled."
+        if self.custom_smtp_settings.data or not current_app.config.get("NOTIFICATIONS_ADDRESS"):
+            smtp_fields = [
+                self.smtp_settings.smtp_sender,
+                self.smtp_settings.smtp_username,
+                self.smtp_settings.smtp_server,
+                self.smtp_settings.smtp_port,
+            ]
+            unset_smtp_fields = [field for field in smtp_fields if not field.data]
+
+            def remove_tags(text: str) -> str:
+                return re.sub("<[^<]+?>", "", text)
+
+            for field in unset_smtp_fields:
+                field.errors.append(
+                    f"{remove_tags(field.label())} is"
+                    " required if custom SMTP settings are enabled."
                 )
                 rv = False
-            if self.custom_smtp_settings.data or not current_app.config.get(
-                "NOTIFICATIONS_ADDRESS"
-            ):
-                smtp_fields = [
-                    self.smtp_settings.smtp_sender,
-                    self.smtp_settings.smtp_username,
-                    self.smtp_settings.smtp_server,
-                    self.smtp_settings.smtp_port,
-                ]
-                unset_smtp_fields = [field for field in smtp_fields if not field.data]
-
-                def remove_tags(text: str) -> str:
-                    return re.sub("<[^<]+?>", "", text)
-
-                for field in unset_smtp_fields:
-                    field.errors.append(
-                        f"{remove_tags(field.label())} is"
-                        " required if custom SMTP settings are enabled."
-                    )
-                    rv = False
         return rv
+
+
+class NotificationRecipientForm(FlaskForm):
+    recipient_email = StringField(
+        "Recipient Email Address",
+        validators=[DataRequired(), Email(), Length(max=User.EMAIL_MAX_LENGTH)],
+    )
+    recipient_pgp_key = TextAreaField(
+        "Recipient Public PGP Key",
+        validators=[OptionalField(), Length(max=100000)],
+    )
+    recipient_enabled = BooleanField("Recipient Enabled", default=True)
+    submit = SubmitField("Save Recipient", name="save_notification_recipient", widget=Button())
+    delete_submit = SubmitField(
+        "Delete Recipient",
+        name="delete_notification_recipient",
+        widget=Button(),
+    )
 
 
 class PGPProtonForm(FlaskForm):

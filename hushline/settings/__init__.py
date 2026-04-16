@@ -19,6 +19,7 @@ from hushline.settings.forms import (
     DisplayNameForm,
     EmailForwardingForm,
     NewAliasForm,
+    NotificationRecipientForm,
     PGPKeyForm,
     PGPProtonForm,
     ProfileForm,

@@ -25,6 +25,7 @@ from hushline.model.newsroom_directory_listing import (
     get_newsroom_directory_listing,
     get_newsroom_directory_listings,
 )
+from hushline.model.notification_recipient import NotificationRecipient
 from hushline.model.organization_setting import OrganizationSetting
 from hushline.model.public_record_listing import (
     PublicRecordListing,
