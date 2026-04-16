@@ -291,7 +291,7 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS` (default `10`; positive integer)
 - `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `8`; positive integer)
-- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `900`; non-negative integer; set `0` to skip the delayed PR feedback check)
+- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `60`; non-negative integer; set `0` to skip continuous PR feedback monitoring; when enabled, the issue runner keeps the PR branch checked out and polls until the PR closes)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.4`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
 - `HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT` (default `0`; set `1` to print full Codex transcript output to the live console only, without writing it into persisted runner logs)
