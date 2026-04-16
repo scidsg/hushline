@@ -59,7 +59,7 @@ MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
 MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
 RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
-POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-900}"
+POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-60}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -79,6 +79,10 @@ LIGHTHOUSE_PERFORMANCE_REQUIRED=0
 CCPA_COMPLIANCE_REQUIRED=0
 GDPR_COMPLIANCE_REQUIRED=0
 E2EE_PRIVACY_REQUIRED=0
+PR_FEEDBACK_MONITOR_ACTIVE=0
+PR_FEEDBACK_MONITOR_CLOSED=0
+PR_FEEDBACK_MONITOR_PR_NUMBER=""
+PR_FEEDBACK_MONITOR_BRANCH=""
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -123,6 +127,10 @@ cleanup() {
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
   if [[ -d "$REPO_DIR/.git" ]]; then
+    if [[ "${PR_FEEDBACK_MONITOR_ACTIVE:-0}" == "1" && "${PR_FEEDBACK_MONITOR_CLOSED:-0}" != "1" ]]; then
+      echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
+      return
+    fi
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
       return
@@ -788,6 +796,7 @@ fetch_pr_feedback_json() {
         repository(owner: "'"$owner"'", name: "'"$repo"'") {
           pullRequest(number: $prNumber) {
             number
+            state
             url
             reviewDecision
             comments(last: 20) {
@@ -1040,38 +1049,90 @@ resolve_pr_number_from_ref() {
   return 1
 }
 
+pr_feedback_state() {
+  local feedback_json="$1"
+
+  PR_FEEDBACK_JSON="$feedback_json" node <<'EOF'
+const payload = JSON.parse(String(process.env.PR_FEEDBACK_JSON || "{}"));
+const pr =
+  payload &&
+  payload.data &&
+  payload.data.repository &&
+  payload.data.repository.pullRequest
+    ? payload.data.repository.pullRequest
+    : null;
+process.stdout.write(pr && pr.state ? String(pr.state) : "");
+EOF
+}
+
+pr_feedback_summary_has_actionable_items() {
+  local feedback_summary="$1"
+  local summary_line=""
+
+  summary_line="$(printf '%s\n' "$feedback_summary" | sed -n '1p')"
+  if [[ ! "$summary_line" =~ unresolved_review_threads=([0-9]+).*changes_requested_reviews=([0-9]+).*discussion_comments=([0-9]+).*failing_checks=([0-9]+).*pending_checks=([0-9]+) ]]; then
+    return 1
+  fi
+
+  (( BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] + BASH_REMATCH[4] + BASH_REMATCH[5] > 0 ))
+}
+
 check_pr_feedback_after_delay() {
   local pr_number="$1"
   local feedback_json=""
   local checks_json="[]"
   local feedback_summary=""
+  local last_feedback_summary=""
+  local pr_state=""
+  local current_branch=""
 
   if [[ -z "$pr_number" ]]; then
-    echo "Post-PR feedback check skipped: PR number unavailable."
+    echo "Post-PR feedback monitor skipped: PR number unavailable."
     return 0
   fi
 
   if (( POST_PR_FEEDBACK_DELAY_SECONDS == 0 )); then
-    echo "Post-PR feedback check skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
+    echo "Post-PR feedback monitor skipped: HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS=0."
     return 0
   fi
 
-  echo "Waiting ${POST_PR_FEEDBACK_DELAY_SECONDS}s before checking PR #${pr_number} for review feedback."
-  sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
+  current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  PR_FEEDBACK_MONITOR_ACTIVE=1
+  PR_FEEDBACK_MONITOR_CLOSED=0
+  PR_FEEDBACK_MONITOR_PR_NUMBER="$pr_number"
+  PR_FEEDBACK_MONITOR_BRANCH="$current_branch"
 
-  echo "==> Check PR #${pr_number} feedback and checks"
-  if ! feedback_json="$(fetch_pr_feedback_json "$pr_number" 2>/dev/null)"; then
-    echo "Warning: failed to fetch post-PR feedback for PR #${pr_number}."
-    return 0
-  fi
+  echo "Monitoring PR #${pr_number} until it closes; polling every ${POST_PR_FEEDBACK_DELAY_SECONDS}s while staying on ${current_branch:-the current branch}."
 
-  if ! checks_json="$(fetch_pr_checks_json "$pr_number" 2>/dev/null)"; then
-    echo "Warning: failed to fetch post-PR checks for PR #${pr_number}."
-    checks_json='[]'
-  fi
+  while :; do
+    echo "==> Check PR #${pr_number} feedback and checks"
+    if ! feedback_json="$(fetch_pr_feedback_json "$pr_number" 2>/dev/null)"; then
+      echo "Warning: failed to fetch post-PR feedback for PR #${pr_number}; retrying in ${POST_PR_FEEDBACK_DELAY_SECONDS}s."
+      sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
+      continue
+    fi
 
-  feedback_summary="$(summarize_pr_feedback "$feedback_json" "$checks_json")"
-  printf '%s\n' "$feedback_summary"
+    pr_state="$(pr_feedback_state "$feedback_json")"
+
+    if ! checks_json="$(fetch_pr_checks_json "$pr_number" 2>/dev/null)"; then
+      echo "Warning: failed to fetch post-PR checks for PR #${pr_number}."
+      checks_json='[]'
+    fi
+
+    feedback_summary="$(summarize_pr_feedback "$feedback_json" "$checks_json")"
+    if [[ "$feedback_summary" != "$last_feedback_summary" ]]; then
+      printf '%s\n' "$feedback_summary"
+      last_feedback_summary="$feedback_summary"
+    fi
+
+    if [[ "$pr_state" != "OPEN" && -n "$pr_state" ]]; then
+      PR_FEEDBACK_MONITOR_CLOSED=1
+      echo "PR #${pr_number} is ${pr_state}; returning to ${BASE_BRANCH}."
+      return 0
+    fi
+
+    sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
+  done
 }
 
 resolve_issue_parent_epic() {
@@ -2689,18 +2750,16 @@ main() {
     "$ISSUE_NUMBER" \
     "$PROJECT_STATUS_READY_FOR_REVIEW"
 
-  check_pr_feedback_after_delay "$PR_NUMBER"
-
   persist_run_log "$ISSUE_NUMBER"
 
-  # Ensure committed runner log includes PR creation and post-check execution details.
+  # Ensure committed runner log includes PR creation details before the long-lived PR monitor begins.
   git add "$RUN_LOG_GIT_PATH"
   if ! git diff --cached --quiet; then
     git commit -m "chore: append opened PR URL to runner log"
     git push origin "$BRANCH_NAME"
   fi
 
-  run_step "Return to $BASE_BRANCH" git checkout "$BASE_BRANCH"
+  check_pr_feedback_after_delay "$PR_NUMBER"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
