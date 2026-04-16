@@ -29,3 +29,12 @@ def test_lint_target_keeps_format_check_before_ruff_check() -> None:
     assert target_section.index("ruff format --check") < target_section.index(
         "ruff check --output-format full"
     )
+
+
+def test_test_target_writes_html_coverage_to_tmp_by_default() -> None:
+    target_section = _target_section("test")
+
+    assert "COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov" in (REPO_ROOT / "Makefile").read_text(
+        encoding="utf-8"
+    )
+    assert "--cov-report html:$(COVERAGE_HTML_DIR)" in target_section

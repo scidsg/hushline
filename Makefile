@@ -106,9 +106,10 @@ endif
 
 TESTS ?= ./tests/
 PYTEST_DEFAULT_MARK_EXPR ?= not external_network
+COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov
 .PHONY: test
 test: ## Run the test suite
-	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
+	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html:$(COVERAGE_HTML_DIR) -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
 
 .PHONY: test-public-record-links
 test-public-record-links: ## Audit live public-record external links without failing on actionable removals
