@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -10,7 +11,14 @@ from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.exceptions import NotFound
 
 from hushline.db import db
-from hushline.model import AccountCategory, Message, OrganizationSetting, User, Username
+from hushline.model import (
+    AccountCategory,
+    Message,
+    NotificationRecipient,
+    OrganizationSetting,
+    User,
+    Username,
+)
 
 msg_contact_method = "I prefer Signal."
 msg_content = "This is a test message."
@@ -141,6 +149,8 @@ def test_profile_does_not_expose_owner_user_id(client: FlaskClient, user: User) 
     soup = BeautifulSoup(response.data, "html.parser")
     assert soup.find("input", attrs={"name": "username_user_id"}) is None
     assert soup.find("input", attrs={"name": "encrypted_email_body", "type": "hidden"}) is not None
+    assert soup.find("script", attrs={"id": "recipientPublicKeys", "type": "application/json"})
+    assert soup.find("input", attrs={"id": "publicKey"}) is None
 
     nonce_input = soup.find("input", attrs={"name": "owner_guard_nonce"})
     signature_input = soup.find("input", attrs={"name": "owner_guard_signature"})
@@ -267,6 +277,56 @@ def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> No
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_profile_allows_submission_with_recipient_key_when_legacy_user_key_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.pgp_key = None
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    assert "Sending messages is disabled" not in response.text
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    recipient_keys = soup.find("script", attrs={"id": "recipientPublicKeys"})
+    assert recipient_keys is not None
+    assert "BEGIN PGP PUBLIC KEY BLOCK" in recipient_keys.get_text()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_profile_submit_message_with_recipient_key_when_legacy_user_key_missing(
+    client: FlaskClient, user: User
+) -> None:
+    user.pgp_key = None
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
+    assert len(message.field_values) == 2
+    for field_value in message.field_values:
+        assert pgp_message_sig in (field_value.value or "")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 def test_profile_suspended_state_disables_message_form_with_pgp_key(
     client: FlaskClient, user: User
@@ -297,7 +357,7 @@ def test_profile_post_rejects_when_target_has_no_pgp_key(client: FlaskClient, us
         follow_redirects=True,
     )
     assert response.status_code == 400
-    assert "cannot submit messages to users who have not set a PGP key" in response.text
+    assert "do not have any usable recipient PGP keys" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

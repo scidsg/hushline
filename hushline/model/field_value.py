@@ -83,10 +83,10 @@ class FieldValue(Model):
 
             # Encrypt the padded value
             with db.session.no_autoflush:
-                pgp_key = self.message.username.user.pgp_key
-            if not pgp_key:
+                encryption_target = self.message.username.user.message_encryption_target
+            if not encryption_target:
                 raise ValueError("User does not have a PGP key")
-            val_to_save = encrypt_message(padded_value, pgp_key)
+            val_to_save = encrypt_message(padded_value, encryption_target)
         else:
             # Do not encrypt with PGP, and instead only encrypt with db key
             val_to_save = value

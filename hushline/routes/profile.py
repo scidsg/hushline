@@ -72,8 +72,8 @@ def register_profile_routes(app: Flask) -> None:
     def _message_submission_block_reason(uname: Username) -> str | None:
         if bool(getattr(uname.user, "is_suspended", False)):
             return "suspended"
-        if not uname.user.pgp_key:
-            return "missing_pgp_key"
+        if not uname.user.message_encryption_target:
+            return "missing_recipient_keys"
         return None
 
     @app.route("/to/<username>", methods=["GET", "POST"])
@@ -130,7 +130,7 @@ def register_profile_routes(app: Flask) -> None:
                     is_cautious=bool(getattr(uname.user, "is_cautious", False)),
                 ),
                 current_user_id=session.get("user_id"),
-                public_key=uname.user.pgp_key,
+                recipient_public_keys=uname.user.message_recipient_keys,
                 math_problem=math_problem,
                 message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
@@ -163,9 +163,12 @@ def register_profile_routes(app: Flask) -> None:
                 return _render_profile(400)
 
             if form.validate_on_submit():
-                if block_reason == "missing_pgp_key":
+                if block_reason == "missing_recipient_keys":
                     flash(
-                        "⛔️ You cannot submit messages to users who have not set a PGP key.",
+                        (
+                            "⛔️ You cannot submit messages to users who do not have any "
+                            "usable recipient PGP keys."
+                        ),
                         "error",
                     )
                     return _render_profile(400)

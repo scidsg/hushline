@@ -43,6 +43,8 @@ def test_client_side_encryption_has_platform_guards() -> None:
     js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
 
     assert "function assertClientCryptoSupport()" in js
+    assert "function getRecipientPublicKeys()" in js
+    assert 'JSON.parse(recipientPublicKeysEl.textContent || "[]")' in js
     assert "window.isSecureContext" in js
     assert "window.crypto.subtle" in js
     assert "window.ReadableStream" in js
@@ -52,6 +54,7 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "Encryption module failed to initialize." in js
     assert "Encryption padding dictionary is unavailable." in js
     assert "Encrypted email body field is missing." in js
+    assert "const recipientPublicKeys = getRecipientPublicKeys();" in js
     assert "assertClientCryptoSupport();" in js
 
 
@@ -64,6 +67,7 @@ def test_profile_template_avoids_inline_submit_handlers() -> None:
     assert "What's this?" in template
     assert 'class="badge badgeCaution"' in template
     assert 'role="tooltip"' in template
+    assert 'id="recipientPublicKeys"' in template
     assert ".badgeHelpTooltipGroup" in scss
     assert ".badgeHelpTrigger" in scss
     assert ".badgeHelpTooltip" in scss

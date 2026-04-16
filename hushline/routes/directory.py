@@ -406,9 +406,18 @@ def _show_directory_caution_badge(username: Username) -> bool:
     )
 
 
+def _user_message_capable(user: object) -> bool:
+    sentinel = object()
+    encryption_target = getattr(user, "message_encryption_target", sentinel)
+    if encryption_target is not sentinel:
+        return bool(encryption_target)
+    return bool(getattr(user, "pgp_key", None))
+
+
 def _directory_user_row(username: Username) -> dict[str, object | None]:
     user = username.user
     geography = _username_geography(username)
+    message_capable = _user_message_capable(user)
     return {
         "entry_type": "user",
         "primary_username": username.username,
@@ -419,13 +428,13 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "is_admin": user.is_admin,
         "is_verified": username.is_verified,
         "show_caution_badge": _show_directory_caution_badge(username),
-        "has_pgp_key": bool(user.pgp_key),
+        "has_pgp_key": message_capable,
         "is_public_record": False,
         "is_globaleaks": False,
         "is_newsroom": False,
         "is_securedrop": False,
         "is_automated": False,
-        "message_capable": bool(user.pgp_key),
+        "message_capable": message_capable,
         "meta": f"@{username.username}",
         **_geography_fields(
             geography.city,
@@ -787,8 +796,10 @@ def register_directory_routes(app: Flask) -> None:
             filtered_journalism_usernames = journalism_usernames
             all_newsroom_listings = []
             newsroom_listings = []
-        pgp_usernames = [username for username in usernames if username.user.pgp_key]
-        info_usernames = [username for username in usernames if not username.user.pgp_key]
+        pgp_usernames = [username for username in usernames if _user_message_capable(username.user)]
+        info_usernames = [
+            username for username in usernames if not _user_message_capable(username.user)
+        ]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
         all_directory_entries = _build_all_directory_entries(

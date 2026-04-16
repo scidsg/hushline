@@ -233,7 +233,7 @@ def configure_jinja(app: Flask) -> None:
                     not username
                     or not (username.display_name or "").strip()
                     or not (username.bio or "").strip()
-                    or not user.pgp_key
+                    or not user.message_encryption_target
                     or not user.enable_email_notifications
                     or not user.email_include_message_content
                     or not user.email_encrypt_entire_body
