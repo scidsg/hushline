@@ -94,14 +94,15 @@ services:
 
   webpack:
     image: node:20.19.5-alpine3.22
+    environment:
+      WEBPACK_DEPENDENCY_ROOT: /workspace-webpack
+      WEBPACK_NODE_MODULES_PATH: /workspace-webpack/node_modules
     volumes:
       - ./:/app/
-      - hushline-node-modules:/app/node_modules
+      - hushline-node-modules:/workspace-webpack
     working_dir: /app/
     command:
-      - ash
-      - -c
-      - 'mkdir -p /app/node_modules && find /app/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && npm_config_update_notifier=false npm ci --no-audit --no-fund && npm run build:dev'
+      - ./scripts/webpack_dev_start.sh
     restart: on-failure
 
 volumes:

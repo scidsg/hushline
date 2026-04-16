@@ -1,4 +1,4 @@
-import * as openpgp from "./../../node_modules/openpgp/dist/openpgp.mjs";
+import * as openpgp from "openpgp";
 
 function assertClientCryptoSupport() {
   // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.
@@ -56,15 +56,20 @@ function addPadding(value, blockSize = 512) {
 }
 
 async function encryptMessage(publicKeyArmored, message) {
-  if (!publicKeyArmored) {
+  const armoredKeys = Array.isArray(publicKeyArmored)
+    ? publicKeyArmored.filter((key) => typeof key === "string" && key.trim())
+    : [publicKeyArmored].filter((key) => typeof key === "string" && key.trim());
+  if (armoredKeys.length === 0) {
     console.log(
-      "Public key not provided for encryption. Encryption cannot proceed.",
+      "Public keys not provided for encryption. Encryption cannot proceed.",
     );
     return false;
   }
 
   try {
-    const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
+    const publicKey = await Promise.all(
+      armoredKeys.map((armoredKey) => openpgp.readKey({ armoredKey })),
+    );
     const messageText = await openpgp.createMessage({ text: message });
     const encryptedMessage = await openpgp.encrypt({
       message: messageText,
@@ -109,14 +114,32 @@ function getFieldLabel(field) {
   return field.getAttribute("data-label");
 }
 
+function getRecipientPublicKeys() {
+  const recipientPublicKeysEl = document.getElementById("recipientPublicKeys");
+  if (!recipientPublicKeysEl) {
+    return [];
+  }
+
+  try {
+    const recipientPublicKeys = JSON.parse(recipientPublicKeysEl.textContent || "[]");
+    if (!Array.isArray(recipientPublicKeys)) {
+      return [];
+    }
+    return recipientPublicKeys.filter(
+      (key) => typeof key === "string" && key.trim(),
+    );
+  } catch (error) {
+    console.error("Error loading recipient public keys:", error);
+    return [];
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   if (!form) {
     return;
   }
-  const publicKeyArmored = document.getElementById("publicKey")
-    ? document.getElementById("publicKey").value
-    : "";
+  const recipientPublicKeys = getRecipientPublicKeys();
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -144,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function () {
         emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
       });
       const encryptedEmailBody = await encryptMessage(
-        publicKeyArmored,
+        recipientPublicKeys,
         emailBody,
       );
       if (encryptedEmailBody) {
@@ -168,7 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const paddedValue = addPadding(value);
         const encryptedValue = await encryptMessage(
-          publicKeyArmored,
+          recipientPublicKeys,
           paddedValue,
         );
         if (encryptedValue) {

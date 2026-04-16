@@ -17,6 +17,7 @@ from hushline.model import (
     AccountCategory,
     GlobaLeaksDirectoryListing,
     NewsroomDirectoryListing,
+    NotificationRecipient,
     PublicRecordListing,
     SecureDropDirectoryListing,
     User,
@@ -610,6 +611,28 @@ def test_directory_users_json_includes_unverified_info_only_korean_account(
     assert row["show_caution_badge"] is False
     assert row["has_pgp_key"] is False
     assert row["message_capable"] is False
+
+
+def test_directory_users_json_marks_recipient_key_only_account_as_message_capable(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.pgp_key = None
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    row = next(
+        row
+        for row in (response.json or [])
+        if row["primary_username"] == user.primary_username.username
+    )
+    assert row["has_pgp_key"] is True
+    assert row["message_capable"] is True
 
 
 def test_directory_users_json_includes_account_category(client: FlaskClient, user: User) -> None:

@@ -75,11 +75,11 @@ def register_onboarding_routes(app: Flask) -> None:
             not username
             or not (username.display_name or "").strip()
             or not (username.bio or "").strip()
-            or not user.pgp_key
+            or not user.message_encryption_target
             or not user.enable_email_notifications
             or not user.email_include_message_content
             or not user.email_encrypt_entire_body
-            or not user.email
+            or not user.enabled_notification_recipients
             or not username.show_in_directory
         )
 
@@ -120,7 +120,11 @@ def register_onboarding_routes(app: Flask) -> None:
         if submitted_form is not pgp_key_form:
             pgp_key_form.pgp_key.data = user.pgp_key
         if submitted_form is not notifications_form:
-            notifications_form.email_address.data = user.email or ""
+            notifications_form.email_address.data = (
+                user.primary_notification_recipient.email
+                if user.primary_notification_recipient
+                else ""
+            )
         if submitted_form is not directory_form:
             directory_form.show_in_directory.data = True
 

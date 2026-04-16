@@ -114,18 +114,19 @@ The app and public directory support more than individual profiles. Current disc
 
 ### Authenticated Recipients: Paid or Premium Flows
 
-| Actor     | I need to...                                                        | So that...                                                                       | Product Surface                       |
-| --------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------- |
-| Recipient | Choose a free or paid tier after onboarding when billing is enabled | I can intentionally select the feature set I need                                | Premium tier selection                |
-| Recipient | Upgrade to Super User                                               | I can unlock higher-capability intake workflows                                  | Premium checkout                      |
-| Recipient | View invoices and plan state                                        | I can understand my current billing status                                       | Premium dashboard                     |
-| Recipient | Disable auto-renew                                                  | I can let a subscription end without immediate cancellation                      | Premium management                    |
-| Recipient | Re-enable auto-renew                                                | I can keep a plan active after previously scheduling cancellation                | Premium management                    |
-| Recipient | Cancel my subscription                                              | I can return to the free tier intentionally                                      | Premium management                    |
-| Recipient | Create additional aliases                                           | I can operate matter-specific, campaign-specific, or role-based intake endpoints | Settings -> Aliases                   |
-| Recipient | Give each alias its own display name, bio, and directory visibility | Each intake endpoint can present the right public context                        | Alias settings                        |
-| Recipient | Add custom message fields to my primary profile                     | I can tailor intake forms to my workflow instead of relying only on defaults     | Settings -> Profile -> Message Fields |
-| Recipient | Add custom message fields to aliases too                            | Each alias can ask different intake questions                                    | Alias message fields                  |
+| Actor     | I need to...                                                              | So that...                                                                                          | Product Surface                       |
+| --------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Recipient | Choose a free or paid tier after onboarding when billing is enabled       | I can intentionally select the feature set I need                                                   | Premium tier selection                |
+| Recipient | Upgrade to Super User                                                     | I can unlock higher-capability intake workflows                                                     | Premium checkout                      |
+| Recipient | View invoices and plan state                                              | I can understand my current billing status                                                          | Premium dashboard                     |
+| Recipient | Disable auto-renew                                                        | I can let a subscription end without immediate cancellation                                         | Premium management                    |
+| Recipient | Re-enable auto-renew                                                      | I can keep a plan active after previously scheduling cancellation                                   | Premium management                    |
+| Recipient | Cancel my subscription                                                    | I can return to the free tier intentionally                                                         | Premium management                    |
+| Recipient | Create additional aliases                                                 | I can operate matter-specific, campaign-specific, or role-based intake endpoints                    | Settings -> Aliases                   |
+| Recipient | Add multiple notification recipients with different addresses or PGP keys | A small organization can share one account while each operator keeps their own secure mail workflow | Settings -> Notifications             |
+| Recipient | Give each alias its own display name, bio, and directory visibility       | Each intake endpoint can present the right public context                                           | Alias settings                        |
+| Recipient | Add custom message fields to my primary profile                           | I can tailor intake forms to my workflow instead of relying only on defaults                        | Settings -> Profile -> Message Fields |
+| Recipient | Add custom message fields to aliases too                                  | Each alias can ask different intake questions                                                       | Alias message fields                  |
 
 ### Administrators and Instance Operators
 
@@ -159,6 +160,7 @@ These scenarios come directly from `AGENTS.md`, the imported directory data, and
 
 - Investigative reporter publishes a verified public tip line and adds website/social proof
 - Newsroom publishes a shared intake profile and wants region-specific discovery
+- Small newsroom, nonprofit, or legal intake team shares one account but routes notifications to multiple staff mailboxes with separate PGP keys
 - Whistleblower law firm creates aliases for different matters or practice areas
 - Board or ethics office maintains a role-based inbox instead of a single named individual
 - Security team publishes a vulnerability-reporting tip line with tailored intake fields

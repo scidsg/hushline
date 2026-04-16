@@ -2,6 +2,7 @@ import os
 import secrets
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from pathlib import Path
+from typing import Sequence
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -124,26 +125,32 @@ def can_encrypt_with_pgp_key(key: str) -> bool:
         return False
 
 
-def encrypt_message(message: str, user_pgp_key: str) -> str:
+def _load_recipient_certs(user_pgp_keys: str | Sequence[str]) -> list[Cert]:
+    keys = [user_pgp_keys] if isinstance(user_pgp_keys, str) else list(user_pgp_keys)
+    if not keys:
+        raise ValueError("At least one PGP key is required for encryption")
+    return [Cert.from_bytes(key.encode()) for key in keys]
+
+
+def encrypt_message(message: str, user_pgp_keys: str | Sequence[str]) -> str:
     current_app.logger.info("Encrypting message for user with provided PGP key")
-    # Load the user's PGP certificate (public key) from the key data
-    recipient_cert = Cert.from_bytes(user_pgp_key.encode())
+    recipient_certs = _load_recipient_certs(user_pgp_keys)
 
     # Encode the message string to bytes
     message_bytes = message.encode("utf-8")
 
     # Assuming there is no signer (i.e., unsigned encryption).
-    encrypted = encrypt([recipient_cert], message_bytes)
+    encrypted = encrypt(recipient_certs, message_bytes)
     if isinstance(encrypted, bytes):
         return encrypted.decode("utf-8")
     return encrypted
 
 
-def encrypt_bytes(data: bytes, user_pgp_key: str) -> bytes | None:
+def encrypt_bytes(data: bytes, user_pgp_keys: str | Sequence[str]) -> bytes | None:
     current_app.logger.info("Encrypting bytes for user with provided PGP key")
     try:
-        recipient_cert = Cert.from_bytes(user_pgp_key.encode())
-        encrypted = encrypt([recipient_cert], data)
+        recipient_certs = _load_recipient_certs(user_pgp_keys)
+        encrypted = encrypt(recipient_certs, data)
         if isinstance(encrypted, str):
             return encrypted.encode("utf-8")
         return encrypted

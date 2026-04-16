@@ -392,7 +392,6 @@ def handle_change_password_form(
 def handle_pgp_key_form(user: User, form: PGPKeyForm) -> Response:
     if not (pgp_key := (form.pgp_key.data or "").strip()):
         user.pgp_key = None
-        user.email = None
         db.session.commit()
     elif is_valid_pgp_key(pgp_key):
         if not can_encrypt_with_pgp_key(pgp_key):

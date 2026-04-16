@@ -23,7 +23,7 @@ from hushline.model import (
     User,
     Username,
 )
-from hushline.routes.common import do_send_email
+from hushline.routes.common import do_send_email, notification_email_encryption_target
 
 _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
     r"^\s*-----BEGIN PGP MESSAGE-----\r?\n"
@@ -121,6 +121,7 @@ def register_message_routes(app: Flask) -> None:
             for field_value in message.field_values
         ]
         generic_body = "You have a new Hush Line message! Please log in to read it."
+        notification_encryption_target = notification_email_encryption_target(user)
 
         if user.email_include_message_content:
             sent_any = False
@@ -128,13 +129,23 @@ def register_message_routes(app: Flask) -> None:
                 if not value:
                     continue
                 if user.email_encrypt_entire_body:
-                    if _is_armored_pgp_message(value):
+                    value_is_armored = _is_armored_pgp_message(value)
+                    if value_is_armored and isinstance(notification_encryption_target, str):
                         email_body = value
                     else:
                         try:
                             email_body = (
-                                encrypt_message(value, user.pgp_key) if user.pgp_key else None
+                                encrypt_message(value, notification_encryption_target)
+                                if notification_encryption_target and not value_is_armored
+                                else None
                             )
+                            if value_is_armored and not isinstance(
+                                notification_encryption_target, str
+                            ):
+                                current_app.logger.warning(
+                                    "Cannot reuse single-recipient armored resend body for "
+                                    "multi-recipient delivery; sending generic notification."
+                                )
                         except (RuntimeError, TypeError, ValueError) as e:
                             current_app.logger.error(
                                 "Failed to encrypt email body: %s", str(e), exc_info=True

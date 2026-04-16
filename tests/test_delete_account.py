@@ -10,6 +10,9 @@ from hushline.model import (
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_delete_account(client: FlaskClient, user: User) -> None:
+    user.email = "primary@example.com"
+    db.session.commit()
+
     # Make sure the user is there
     user_count = db.session.query(User).filter_by(id=user.id).count()
     assert user_count == 1
