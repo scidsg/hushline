@@ -10,6 +10,24 @@ def test_package_json_declares_node_20_plus() -> None:
     assert engines.get("node") == ">=20"
 
 
+def test_webpack_compose_services_use_lockfile_guard_script() -> None:
+    script = (ROOT / "scripts/webpack_dev_start.sh").read_text(encoding="utf-8")
+
+    assert "wait_for_file /app/package.json" in script
+    assert "wait_for_file /app/package-lock.json" in script
+    assert "npm_config_update_notifier=false npm ci --no-audit --no-fund" in script
+    assert "exec npm run build:dev" in script
+
+    for compose_name in (
+        "docker-compose.yaml",
+        "docker-compose.personal-server.yaml",
+        "docker-compose.stripe.yaml",
+    ):
+        compose = (ROOT / compose_name).read_text(encoding="utf-8")
+        assert "./scripts/webpack_dev_start.sh" in compose
+        assert "npm ci --no-audit --no-fund" not in compose
+
+
 def test_static_js_bundles_avoid_eval_wrappers() -> None:
     webpack_config = (ROOT / "webpack.config.js").read_text(encoding="utf-8")
 
@@ -25,6 +43,8 @@ def test_client_side_encryption_has_platform_guards() -> None:
     js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
 
     assert "function assertClientCryptoSupport()" in js
+    assert "function getRecipientPublicKeys()" in js
+    assert 'JSON.parse(recipientPublicKeysEl.textContent || "[]")' in js
     assert "window.isSecureContext" in js
     assert "window.crypto.subtle" in js
     assert "window.ReadableStream" in js
@@ -34,6 +54,7 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "Encryption module failed to initialize." in js
     assert "Encryption padding dictionary is unavailable." in js
     assert "Encrypted email body field is missing." in js
+    assert "const recipientPublicKeys = getRecipientPublicKeys();" in js
     assert "assertClientCryptoSupport();" in js
 
 
@@ -46,6 +67,7 @@ def test_profile_template_avoids_inline_submit_handlers() -> None:
     assert "What's this?" in template
     assert 'class="badge badgeCaution"' in template
     assert 'role="tooltip"' in template
+    assert 'id="recipientPublicKeys"' in template
     assert ".badgeHelpTooltipGroup" in scss
     assert ".badgeHelpTrigger" in scss
     assert ".badgeHelpTooltip" in scss
@@ -276,16 +298,16 @@ def test_directory_tab_scroll_buttons_clamp_to_valid_bounds() -> None:
     directory_verified_static_js = (ROOT / "hushline/static/js/directory_verified.js").read_text(
         encoding="utf-8"
     )
-    max_scroll_left_line = (
-        "const maxScrollLeft = Math.max("
-        "directoryTabList.scrollWidth - directoryTabList.clientWidth, 0);"
-    )
+    max_scroll_left_prefix = "const maxScrollLeft = Math.max("
+    max_scroll_left_expr = "directoryTabList.scrollWidth - directoryTabList.clientWidth"
 
-    assert max_scroll_left_line in directory_verified_js
+    assert max_scroll_left_prefix in directory_verified_js
+    assert max_scroll_left_expr in directory_verified_js
     assert "const nextScrollLeft = Math.min(" in directory_verified_js
     assert "directoryTabList.scrollTo({" in directory_verified_js
     assert "directoryTabList.scrollBy({" not in directory_verified_js
-    assert max_scroll_left_line in directory_verified_static_js
+    assert max_scroll_left_prefix in directory_verified_static_js
+    assert max_scroll_left_expr in directory_verified_static_js
     assert "const nextScrollLeft = Math.min(" in directory_verified_static_js
     assert "directoryTabList.scrollTo({" in directory_verified_static_js
     assert "directoryTabList.scrollBy({" not in directory_verified_static_js

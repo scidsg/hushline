@@ -32,6 +32,7 @@ from hushline.routes.common import (
     do_send_email,
     format_full_message_email_body,
     format_message_email_fields,
+    notification_email_encryption_target,
     show_directory_caution_badge,
     validate_captcha,
 )
@@ -71,8 +72,8 @@ def register_profile_routes(app: Flask) -> None:
     def _message_submission_block_reason(uname: Username) -> str | None:
         if bool(getattr(uname.user, "is_suspended", False)):
             return "suspended"
-        if not uname.user.pgp_key:
-            return "missing_pgp_key"
+        if not uname.user.message_encryption_target:
+            return "missing_recipient_keys"
         return None
 
     @app.route("/to/<username>", methods=["GET", "POST"])
@@ -129,7 +130,7 @@ def register_profile_routes(app: Flask) -> None:
                     is_cautious=bool(getattr(uname.user, "is_cautious", False)),
                 ),
                 current_user_id=session.get("user_id"),
-                public_key=uname.user.pgp_key,
+                recipient_public_keys=uname.user.message_recipient_keys,
                 math_problem=math_problem,
                 message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
@@ -162,9 +163,12 @@ def register_profile_routes(app: Flask) -> None:
                 return _render_profile(400)
 
             if form.validate_on_submit():
-                if block_reason == "missing_pgp_key":
+                if block_reason == "missing_recipient_keys":
                     flash(
-                        "⛔️ You cannot submit messages to users who have not set a PGP key.",
+                        (
+                            "⛔️ You cannot submit messages to users who do not have any "
+                            "usable recipient PGP keys."
+                        ),
                         "error",
                     )
                     return _render_profile(400)
@@ -204,23 +208,36 @@ def register_profile_routes(app: Flask) -> None:
                     "You have a new Hush Line message! Please log in to read it."
                 )
                 if uname.user.enable_email_notifications:
+                    notification_encryption_target = notification_email_encryption_target(
+                        uname.user
+                    )
                     if uname.user.email_include_message_content:
                         if uname.user.email_encrypt_entire_body:
                             encrypted_email_body = (form.encrypted_email_body.data or "").strip()
-                            if _is_armored_pgp_message(encrypted_email_body):
+                            client_body_is_armored = _is_armored_pgp_message(encrypted_email_body)
+                            if client_body_is_armored and isinstance(
+                                notification_encryption_target, str
+                            ):
                                 email_body = encrypted_email_body
                                 current_app.logger.debug("Sending email with encrypted body")
                             else:
                                 fallback_body = format_full_message_email_body(raw_extracted_fields)
                                 try:
-                                    if fallback_body and uname.user.pgp_key:
+                                    if fallback_body and notification_encryption_target:
                                         email_body = encrypt_message(
-                                            fallback_body, uname.user.pgp_key
+                                            fallback_body, notification_encryption_target
                                         )
-                                        current_app.logger.warning(
-                                            "Missing/invalid client encrypted email body; "
-                                            "used server-side full-body encryption fallback."
-                                        )
+                                        if client_body_is_armored:
+                                            current_app.logger.warning(
+                                                "Received single-recipient encrypted email body; "
+                                                "used server-side full-body encryption for "
+                                                "enabled notification recipients."
+                                            )
+                                        else:
+                                            current_app.logger.warning(
+                                                "Missing/invalid client encrypted email body; "
+                                                "used server-side full-body encryption fallback."
+                                            )
                                     else:
                                         email_body = plaintext_new_message_body
                                         current_app.logger.debug(

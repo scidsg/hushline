@@ -17,7 +17,7 @@ def test_fix_target_runs_ruff_fix_before_formatting() -> None:
     assert "poetry run ruff check --fix || true;" in target_section
     assert "poetry run ruff format;" in target_section
     assert target_section.index("ruff check --fix") < target_section.index("ruff format")
-    assert "prettier --write" in target_section
+    assert "prettier $(PRETTIER_FLAGS) --write" in target_section
     assert "$(MAKE) lint" in target_section
 
 
@@ -29,3 +29,12 @@ def test_lint_target_keeps_format_check_before_ruff_check() -> None:
     assert target_section.index("ruff format --check") < target_section.index(
         "ruff check --output-format full"
     )
+
+
+def test_test_target_writes_html_coverage_to_tmp_by_default() -> None:
+    target_section = _target_section("test")
+
+    assert "COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov" in (REPO_ROOT / "Makefile").read_text(
+        encoding="utf-8"
+    )
+    assert "--cov-report html:$(COVERAGE_HTML_DIR)" in target_section

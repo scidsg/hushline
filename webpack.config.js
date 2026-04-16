@@ -1,5 +1,7 @@
 const path = require('path');
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const nodeModulesPath =
+  process.env.WEBPACK_NODE_MODULES_PATH || path.resolve(__dirname, 'node_modules');
+const MiniCssExtractPlugin = require(path.join(nodeModulesPath, 'mini-css-extract-plugin'));
 
 const entries = new Object();
 modules = [
@@ -49,6 +51,12 @@ module.exports = (env) => {
         filename: "../css/[name].css",
       }),
     ],
+    resolve: {
+      modules: [nodeModulesPath, 'node_modules'],
+    },
+    resolveLoader: {
+      modules: [nodeModulesPath, 'node_modules'],
+    },
     module: {
       rules: [
         {

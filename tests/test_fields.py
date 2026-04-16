@@ -1,10 +1,19 @@
 from typing import List
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, FieldValue, Message, User, Username
+from hushline.model import (
+    FieldDefinition,
+    FieldType,
+    FieldValue,
+    Message,
+    NotificationRecipient,
+    User,
+    Username,
+)
 
 
 @pytest.fixture()
@@ -154,3 +163,44 @@ def test_field_value_unencryption(user: User) -> None:
     db.session.commit()
 
     assert field_value.value == "this is a test value"
+
+
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.model.field_value.encrypt_message")
+def test_field_value_encryption_uses_all_enabled_recipient_keys(
+    mock_encrypt_message: MagicMock, user: User
+) -> None:
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+    db.session.commit()
+
+    mock_encrypt_message.return_value = (
+        "-----BEGIN PGP MESSAGE-----\n\nencrypted for all recipients\n\n-----END PGP MESSAGE-----"
+    )
+
+    field_definition = FieldDefinition(
+        username=user.primary_username,
+        label="Test Field",
+        field_type=FieldType.TEXT,
+        required=False,
+        enabled=True,
+        encrypted=True,
+        choices=[],
+    )
+    db.session.add(field_definition)
+    db.session.commit()
+
+    message = Message(username_id=user.primary_username.id)
+    db.session.add(message)
+    db.session.commit()
+
+    FieldValue(
+        field_definition=field_definition,
+        message=message,
+        value="this is a test value",
+        encrypted=field_definition.encrypted,
+    )
+
+    mock_encrypt_message.assert_called_once()
+    assert mock_encrypt_message.call_args.args[1] == [user.pgp_key, "secondary-key"]

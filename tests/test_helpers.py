@@ -21,7 +21,6 @@ def test_form_to_data_flattens_prefixed_subforms(app: Flask) -> None:
         form = EmailForwardingForm(
             prefix="notifications",
             data={
-                "email_address": "primary@example.com",
                 "custom_smtp_settings": True,
                 "smtp_settings": {
                     "smtp_server": "smtp.example.com",
@@ -36,7 +35,6 @@ def test_form_to_data_flattens_prefixed_subforms(app: Flask) -> None:
 
     data = form_to_data(form)
 
-    assert data["notifications-email_address"] == "primary@example.com"
     assert data["notifications-custom_smtp_settings"] is True
     assert data["notifications-smtp_settings-smtp_server"] == "smtp.example.com"
     assert data["notifications-smtp_settings-smtp_port"] == 587

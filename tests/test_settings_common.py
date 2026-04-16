@@ -770,7 +770,7 @@ def test_handle_change_password_form_rejects_wrong_old_password(
     assert "Incorrect old password." in form.old_password.errors
 
 
-def test_handle_pgp_key_form_empty_value_clears_key_and_email(app: Flask, user: User) -> None:
+def test_handle_pgp_key_form_empty_value_clears_only_public_key(app: Flask, user: User) -> None:
     user.pgp_key = "dummy"
     user.email = "test@example.com"
     db.session.commit()
@@ -782,7 +782,7 @@ def test_handle_pgp_key_form_empty_value_clears_key_and_email(app: Flask, user: 
     assert response.status_code == 302
     db.session.refresh(user)
     assert user.pgp_key is None
-    assert user.email is None
+    assert user.email == "test@example.com"
 
 
 @pytest.mark.asyncio()

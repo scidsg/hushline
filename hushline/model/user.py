@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
     from hushline.model.message import Message
+    from hushline.model.notification_recipient import NotificationRecipient
     from hushline.model.username import Username
 else:
     Model = db.Model
@@ -73,6 +74,11 @@ class User(Model):
     primary_username: Mapped["Username"] = relationship(
         primaryjoin="and_(Username.user_id == User.id, Username.is_primary)",
         back_populates="user",
+    )
+    notification_recipients: Mapped[list["NotificationRecipient"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="NotificationRecipient.position.asc(), NotificationRecipient.id.asc()",
     )
     messages: Mapped[list["Message"]] = relationship(
         secondary="usernames",
@@ -138,6 +144,8 @@ class User(Model):
     )
 
     _PREMIUM_ALIAS_COUNT = 100
+    _FREE_NOTIFICATION_RECIPIENT_COUNT = 1
+    _PREMIUM_NOTIFICATION_RECIPIENT_COUNT = 100
 
     @staticmethod
     def new_session_id() -> str:
@@ -170,11 +178,25 @@ class User(Model):
 
     @property
     def email(self) -> str | None:
+        if recipient := self.preferred_notification_recipient:
+            return recipient.email
         return decrypt_field(self._email)
 
     @email.setter
-    def email(self, value: str) -> None:
-        self._email = encrypt_field(value)
+    def email(self, value: str | None) -> None:
+        old_email = decrypt_field(self._email)
+        self._email = encrypt_field(value) if value is not None else None
+
+        recipient = self.primary_notification_recipient
+        if value is not None:
+            if recipient is None:
+                recipient = self.ensure_primary_notification_recipient()
+            if recipient.email in {None, old_email}:
+                recipient.email = value
+                if recipient.pgp_key is None:
+                    recipient.pgp_key = decrypt_field(self._pgp_key)
+        elif recipient is not None and recipient.email == old_email:
+            recipient.email = None
 
     @property
     def smtp_server(self) -> str | None:
@@ -205,11 +227,16 @@ class User(Model):
         return decrypt_field(self._pgp_key)
 
     @pgp_key.setter
-    def pgp_key(self, value: str) -> None:
+    def pgp_key(self, value: str | None) -> None:
+        old_key = decrypt_field(self._pgp_key)
         if value is None:
             self._pgp_key = None
         else:
             self._pgp_key = encrypt_field(value)
+
+        recipient = self.primary_notification_recipient
+        if recipient is not None and recipient.pgp_key in {None, old_key}:
+            recipient.pgp_key = value
 
     @property
     def is_free_tier(self) -> bool:
@@ -248,6 +275,17 @@ class User(Model):
             raise Exception(err_msg)
         current_app.logger.warning(err_msg)
         return self._PREMIUM_ALIAS_COUNT
+
+    @property
+    def max_notification_recipients(self) -> int:
+        if self.is_free_tier:
+            return self._FREE_NOTIFICATION_RECIPIENT_COUNT
+        if not self.is_business_tier:
+            err_msg = f"Programming Error. Unknown tier id: {self.tier_id}"
+            if current_app.config["FLASK_ENV"] == "development":
+                raise Exception(err_msg)
+            current_app.logger.warning(err_msg)
+        return self._PREMIUM_NOTIFICATION_RECIPIENT_COUNT
 
     @property
     def fields_enabled(self) -> bool:
@@ -298,6 +336,90 @@ class User(Model):
             return ", ".join(rendered_parts)
 
         return geography.location
+
+    @property
+    def primary_notification_recipient(self) -> "NotificationRecipient | None":
+        if not self.notification_recipients:
+            return None
+        return self.notification_recipients[0]
+
+    @property
+    def preferred_notification_recipient(self) -> "NotificationRecipient | None":
+        if self.enabled_notification_recipients:
+            return self.enabled_notification_recipients[0]
+        return self.primary_notification_recipient
+
+    @property
+    def enabled_notification_recipients(self) -> list["NotificationRecipient"]:
+        return [
+            recipient
+            for recipient in self.notification_recipients
+            if recipient.enabled and recipient.email
+        ]
+
+    @property
+    def message_recipient_keys(self) -> list[str]:
+        pgp_keys: list[str] = []
+
+        primary_recipient = next(
+            (recipient for recipient in self.notification_recipients if recipient.position == 0),
+            None,
+        )
+        if primary_recipient is None:
+            if self.pgp_key:
+                pgp_keys.append(self.pgp_key)
+        elif primary_recipient.enabled and primary_recipient.email and primary_recipient.pgp_key:
+            pgp_keys.append(primary_recipient.pgp_key)
+
+        non_primary_recipients = (
+            self.enabled_notification_recipients
+            if primary_recipient is None
+            else [
+                recipient
+                for recipient in self.enabled_notification_recipients
+                if recipient is not primary_recipient
+            ]
+        )
+        pgp_keys.extend(
+            recipient.pgp_key for recipient in non_primary_recipients if recipient.pgp_key
+        )
+        return list(dict.fromkeys(pgp_keys))
+
+    @property
+    def message_encryption_target(self) -> str | list[str] | None:
+        keys = self.message_recipient_keys
+        if not keys:
+            return None
+        if len(keys) == 1:
+            return keys[0]
+        return keys
+
+    @property
+    def next_notification_recipient_position(self) -> int:
+        if not self.notification_recipients:
+            return 0
+        return max(recipient.position for recipient in self.notification_recipients) + 1
+
+    def ensure_primary_notification_recipient(self) -> "NotificationRecipient":
+        from hushline.model.notification_recipient import NotificationRecipient
+
+        recipient = self.primary_notification_recipient
+        if recipient is not None:
+            return recipient
+
+        recipient = NotificationRecipient(
+            enabled=True,
+            position=0,
+        )
+        self.notification_recipients.append(recipient)
+        return recipient
+
+    def sync_legacy_notification_email(self) -> None:
+        recipient = self.preferred_notification_recipient
+        email = recipient.email if recipient is not None else None
+        pgp_key = recipient.pgp_key if recipient is not None else None
+        self._email = encrypt_field(email) if email is not None else None
+        self._pgp_key = encrypt_field(pgp_key) if pgp_key is not None else None
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:
