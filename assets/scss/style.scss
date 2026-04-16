@@ -709,7 +709,8 @@
   }
 
   .alias-entry {
-    border: var(--border)
+    border: var(--border);
+    box-shadow: var(--shadow);
   }
 }
 
@@ -1336,7 +1337,8 @@
   }
 
   .alias-entry {
-    border: var(--border-dark-1)
+    border: var(--border-dark-1);
+    box-shadow: var(--shadow);
   }
 }
 

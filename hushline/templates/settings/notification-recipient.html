@@ -9,22 +9,6 @@
   <a href="{{ url_for('.notifications') }}" class="back-button"><span class="icon chevron back"></span> Back to Notifications</a>
   <h2 class="alias-heading">{{ recipient.email if recipient is not none and recipient.email else page_title }}</h2>
 
-    {% if user.enable_email_notifications and toggle_include_content_form is not none %}
-    <form method="POST" class="formBody auto-submit">
-      {{ toggle_include_content_form.hidden_tag() }}
-      <div class="checkbox-group toggle-ui">
-        {{ toggle_include_content_form.include_content }}
-        <label for="{{ toggle_include_content_form.include_content.id }}" class="toggle-label">
-          {{ toggle_include_content_form.include_content.label }}
-          <div class="toggle">
-            <div class="toggle__ball"></div>
-          </div>
-        </label>
-      </div>
-      {{ toggle_include_content_form.submit }}
-    </form>
-  {% endif %}
-
   {% if recipient is not none and toggle_recipient_enabled_form is not none %}
     <div class="recipient-toggle-group">
       <form method="POST" class="formBody auto-submit">
@@ -40,6 +24,22 @@
         </div>
         {{ toggle_recipient_enabled_form.submit }}
       </form>
+
+      {% if user.enable_email_notifications and toggle_include_content_form is not none %}
+        <form method="POST" class="formBody auto-submit">
+          {{ toggle_include_content_form.hidden_tag() }}
+          <div class="checkbox-group toggle-ui">
+            {{ toggle_include_content_form.include_content }}
+            <label for="{{ toggle_include_content_form.include_content.id }}" class="toggle-label">
+              {{ toggle_include_content_form.include_content.label }}
+              <div class="toggle">
+                <div class="toggle__ball"></div>
+              </div>
+            </label>
+          </div>
+          {{ toggle_include_content_form.submit }}
+        </form>
+      {% endif %}
 
       {% if user.email_include_message_content and toggle_encrypt_entire_body_form is not none %}
         <form method="POST" class="formBody auto-submit">
@@ -62,6 +62,21 @@
         </form>
       {% endif %}
     </div>
+  {% endif %}
+
+  {% if recipient is none %}
+    <form method="POST" class="formBody">
+      {{ recipient_form.hidden_tag() }}
+      <div class="checkbox-group toggle-ui recipient-enabled-toggle">
+        {{ recipient_form.recipient_enabled() }}
+        <label for="{{ recipient_form.recipient_enabled.id }}" class="toggle-label">
+          {{ recipient_form.recipient_enabled.label }}
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
+    </form>
   {% endif %}
 
   <h3>Proton Key Import</h3>
@@ -88,18 +103,6 @@
 
   <form method="POST" class="formBody">
     {{ recipient_form.hidden_tag() }}
-    {% if recipient is none %}
-      <div class="checkbox-group toggle-ui recipient-enabled-toggle">
-        {{ recipient_form.recipient_enabled() }}
-        <label for="{{ recipient_form.recipient_enabled.id }}" class="toggle-label">
-          {{ recipient_form.recipient_enabled.label }}
-          <div class="toggle">
-            <div class="toggle__ball"></div>
-          </div>
-        </label>
-      </div>
-    {% endif %}
-
     {{ recipient_form.recipient_email.label }}
     {{ recipient_form.recipient_email }}
     {% for error in recipient_form.recipient_email.errors %}

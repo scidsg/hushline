@@ -774,6 +774,10 @@ def test_new_notification_recipient_page_renders_proton_lookup(
     assert response.status_code == 200
     assert "Proton Key Import" in response.text
     assert "Search Proton" in response.text
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+    assert "Recipient Enabled" in page_text
+    assert page_text.index("Recipient Enabled") < page_text.index("Proton Key Import")
 
 
 @pytest.mark.usefixtures("_authenticated_user")
