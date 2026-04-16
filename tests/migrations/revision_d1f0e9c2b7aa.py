@@ -74,6 +74,22 @@ class UpgradeTester:
             (3, True, 0, None, "pgp-key-3"),
         ]
 
+        legacy_rows = db.session.execute(
+            text(
+                """
+                SELECT id, email, pgp_key
+                FROM users
+                ORDER BY id ASC
+                """
+            )
+        ).all()
+        assert legacy_rows == [
+            (1, "primary@example.com", "pgp-key-1"),
+            (2, "secondary@example.com", None),
+            (3, None, "pgp-key-3"),
+            (4, None, None),
+        ]
+
 
 class DowngradeTester:
     def load_data(self) -> None:

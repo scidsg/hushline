@@ -16,6 +16,22 @@ def _csrf_token_from_message_page(client: FlaskClient, public_id: str) -> str | 
     return match.group(1) if match else None
 
 
+def _configure_default_smtp(app: Flask) -> None:
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+
+def _add_secondary_recipient(user: User, pgp_key: str = "secondary-key") -> None:
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = pgp_key
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_resend_message_sends_per_field(
     client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
@@ -60,6 +76,67 @@ def test_resend_message_sends_per_field(
     assert "Message resent to your email inbox" in response.text
     assert len(sent) == 2
     assert all(sent_user_id == user.id for sent_user_id, _ in sent)
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_resend_message_sends_per_field_to_all_enabled_recipients(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_recipient(user)
+    db.session.commit()
+
+    message = Message(username_id=user.primary_username.id)
+    db.session.add(message)
+    db.session.flush()
+
+    for index, field_def in enumerate(user.primary_username.message_fields[:2], start=1):
+        field_def.encrypted = False
+        db.session.add(
+            FieldValue(
+                field_def,
+                message,
+                f"test_value_{index}",
+                field_def.encrypted,
+            )
+        )
+    db.session.commit()
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    csrf_token = _csrf_token_from_message_page(client, message.public_id)
+    post_data = {"csrf_token": csrf_token} if csrf_token else {}
+    response = client.post(
+        url_for("resend_message", public_id=message.public_id),
+        data=post_data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Message resent to your email inbox" in response.text
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "test_value_1",
+        "test_value_1",
+        "test_value_2",
+        "test_value_2",
+    ]
+    assert create_smtp_config.call_count == 2
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -565,6 +642,47 @@ def test_resend_message_include_content_false_sends_generic(
     assert response.status_code == 200
     assert "Message resent to your email inbox" in response.text
     assert sent == [(user.id, "You have a new Hush Line message! Please log in to read it.")]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_resend_message_include_content_false_sends_generic_to_all_enabled_recipients(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    message: Message,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    user.enable_email_notifications = True
+    user.email_include_message_content = False
+    user.email = "primary@example.com"
+    _add_secondary_recipient(user)
+    db.session.commit()
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    csrf_token = _csrf_token_from_message_page(client, message.public_id)
+    post_data = {"csrf_token": csrf_token} if csrf_token else {}
+    response = client.post(
+        url_for("resend_message", public_id=message.public_id),
+        data=post_data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Message resent to your email inbox" in response.text
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "You have a new Hush Line message! Please log in to read it.",
+        "You have a new Hush Line message! Please log in to read it.",
+    ]
+    create_smtp_config.assert_called_once()
 
 
 @pytest.mark.usefixtures("_authenticated_user")

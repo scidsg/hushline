@@ -355,11 +355,7 @@ class User(Model):
         if primary_recipient is None:
             if self.pgp_key:
                 pgp_keys.append(self.pgp_key)
-        elif (
-            primary_recipient.enabled
-            and primary_recipient.email
-            and primary_recipient.pgp_key
-        ):
+        elif primary_recipient.enabled and primary_recipient.email and primary_recipient.pgp_key:
             pgp_keys.append(primary_recipient.pgp_key)
 
         non_primary_recipients = (
