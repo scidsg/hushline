@@ -231,6 +231,55 @@ def test_resend_message_full_body_uses_existing_armored_value_without_reencrypti
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.message.encrypt_message")
+def test_resend_message_full_body_reuses_armored_value_for_duplicate_shared_recipient_key(
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.email = "test@example.com"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = user.pgp_key
+    db.session.commit()
+
+    message = Message(username_id=user.primary_username.id)
+    db.session.add(message)
+    db.session.flush()
+
+    armored_value = "-----BEGIN PGP MESSAGE-----\n\nalready encrypted\n\n-----END PGP MESSAGE-----"
+    field_def = user.primary_username.message_fields[0]
+    field_def.encrypted = False
+    db.session.add(FieldValue(field_def, message, armored_value, field_def.encrypted))
+    db.session.commit()
+
+    sent: list[tuple[int, str]] = []
+
+    def fake_send_email(sent_user: User, body: str) -> None:
+        sent.append((sent_user.id, body))
+
+    monkeypatch.setattr("hushline.routes.message.do_send_email", fake_send_email)
+
+    csrf_token = _csrf_token_from_message_page(client, message.public_id)
+    post_data = {"csrf_token": csrf_token} if csrf_token else {}
+    response = client.post(
+        url_for("resend_message", public_id=message.public_id),
+        data=post_data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Message resent to your email inbox" in response.text
+    mock_encrypt_message.assert_not_called()
+    assert sent == [(user.id, armored_value)]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.message.encrypt_message")
 def test_resend_message_full_body_encrypts_value_with_embedded_pgp_header_substring(
     mock_encrypt_message: MagicMock,
     client: FlaskClient,

@@ -200,6 +200,36 @@ def test_notification_email_encryption_target_falls_back_to_legacy_user_key(
     assert routes_common.notification_email_encryption_target(user) == "primary-key"
 
 
+def test_notification_email_encryption_target_collapses_duplicate_keys_to_single_key(
+    user: User,
+) -> None:
+    user.email = "primary@example.com"
+    user.pgp_key = "shared-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "shared-key"
+
+    assert routes_common.notification_email_encryption_target(user) == "shared-key"
+
+
+def test_notification_email_encryption_target_deduplicates_repeated_keys_in_multi_key_mode(
+    user: User,
+) -> None:
+    user.email = "primary@example.com"
+    user.pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=2, enabled=True))
+    user.notification_recipients[-1].email = "tertiary@example.com"
+    user.notification_recipients[-1].pgp_key = "tertiary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == [
+        "primary-key",
+        "tertiary-key",
+    ]
+
+
 def test_do_send_email_continues_after_single_recipient_failure(
     app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:

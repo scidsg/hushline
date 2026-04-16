@@ -183,11 +183,12 @@ def notification_email_encryption_target(user: User) -> str | list[str] | None:
     if len(pgp_keys) != expected_key_count:
         return None
 
-    if not pgp_keys:
+    unique_pgp_keys = list(dict.fromkeys(pgp_keys))
+    if not unique_pgp_keys:
         return None
-    if len(pgp_keys) == 1:
-        return pgp_keys[0]
-    return pgp_keys
+    if len(unique_pgp_keys) == 1:
+        return unique_pgp_keys[0]
+    return unique_pgp_keys
 
 
 def format_message_email_fields(extracted_fields: Sequence[tuple[str, str]]) -> str:
