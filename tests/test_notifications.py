@@ -6,7 +6,7 @@ from flask.testing import FlaskClient
 from helpers import get_profile_submission_data
 
 from hushline.db import db
-from hushline.model import Message, User
+from hushline.model import Message, NotificationRecipient, User
 from hushline.routes.common import format_full_message_email_body
 
 msg_contact_method = "I prefer Signal."
@@ -302,3 +302,51 @@ def test_notifications_full_body_encryption_server_fallback(
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
+@patch("hushline.routes.profile.do_send_email")
+def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
+    mock_do_send_email: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+    db.session.commit()
+
+    client_encrypted_email_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    server_encrypted_email_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    mock_encrypt_message.return_value = server_encrypted_email_body
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "encrypted_email_body": client_encrypted_email_body,
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    expected_fallback_body = format_full_message_email_body(
+        [("Contact Method", msg_contact_method), ("Message", msg_content)]
+    )
+    mock_encrypt_message.assert_called_once_with(
+        expected_fallback_body,
+        [user.pgp_key, "secondary-key"],
+    )
+    mock_do_send_email.assert_called_once_with(user, server_encrypted_email_body)

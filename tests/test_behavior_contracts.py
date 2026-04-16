@@ -17,6 +17,7 @@ from hushline.model import (
     InviteCode,
     Message,
     MessageStatus,
+    NotificationRecipient,
     OrganizationSetting,
     Tier,
     User,
@@ -200,6 +201,41 @@ def test_contract_notifications_full_body_mode_falls_back_to_server_encrypt(
             [("Contact Method", "Signal"), ("Message", "Contract test message")]
         )
         encrypt_mock.assert_called_once_with(expected_plaintext_body, user.pgp_key)
+        send_email_mock.assert_called_once_with(user, server_body)
+
+
+@pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
+def test_contract_notifications_full_body_mode_encrypts_for_all_enabled_recipients(
+    client: FlaskClient, user: User
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+    db.session.commit()
+
+    server_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    client_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
+    )
+    with (
+        patch("hushline.routes.profile.do_send_email", new=MagicMock()) as send_email_mock,
+        patch(
+            "hushline.routes.profile.encrypt_message", new=MagicMock(return_value=server_body)
+        ) as encrypt_mock,
+    ):
+        _submit_message(client, user, encrypted_email_body=client_body)
+        expected_plaintext_body = format_full_message_email_body(
+            [("Contact Method", "Signal"), ("Message", "Contract test message")]
+        )
+        encrypt_mock.assert_called_once_with(
+            expected_plaintext_body,
+            [user.pgp_key, "secondary-key"],
+        )
         send_email_mock.assert_called_once_with(user, server_body)
 
 

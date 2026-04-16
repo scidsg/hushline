@@ -152,7 +152,82 @@ def test_do_send_email_sends_to_each_enabled_recipient(
     with app.app_context():
         routes_common.do_send_email(user, "body")
 
-    assert send_email.call_count == 2
+    assert [args.args[0] for args in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+
+
+def test_notification_email_encryption_target_returns_all_enabled_keys(
+    user: User,
+) -> None:
+    user.email = "primary@example.com"
+    user.pgp_key = "primary-key"
+    user.notification_recipients.append(
+        NotificationRecipient(
+            position=1,
+            enabled=True,
+        )
+    )
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == [
+        "primary-key",
+        "secondary-key",
+    ]
+
+
+def test_notification_email_encryption_target_uses_legacy_key_without_primary_row(
+    user: User,
+) -> None:
+    user.pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "secondary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == [
+        "primary-key",
+        "secondary-key",
+    ]
+
+
+def test_notification_email_encryption_target_falls_back_to_legacy_user_key(
+    user: User,
+) -> None:
+    user.pgp_key = "primary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == "primary-key"
+
+
+def test_notification_email_encryption_target_collapses_duplicate_keys_to_single_key(
+    user: User,
+) -> None:
+    user.email = "primary@example.com"
+    user.pgp_key = "shared-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "shared-key"
+
+    assert routes_common.notification_email_encryption_target(user) == "shared-key"
+
+
+def test_notification_email_encryption_target_deduplicates_repeated_keys_in_multi_key_mode(
+    user: User,
+) -> None:
+    user.email = "primary@example.com"
+    user.pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = "primary-key"
+    user.notification_recipients.append(NotificationRecipient(position=2, enabled=True))
+    user.notification_recipients[-1].email = "tertiary@example.com"
+    user.notification_recipients[-1].pgp_key = "tertiary-key"
+
+    assert routes_common.notification_email_encryption_target(user) == [
+        "primary-key",
+        "tertiary-key",
+    ]
 
 
 def test_do_send_email_continues_after_single_recipient_failure(
