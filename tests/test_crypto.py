@@ -95,6 +95,11 @@ def test_encrypt_message_uses_all_recipient_keys(app: Flask, mocker) -> None:  #
         encrypt.assert_called_once_with([cert_one, cert_two], b"hello")
 
 
+def test_load_recipient_certs_requires_at_least_one_key() -> None:
+    with pytest.raises(ValueError, match="At least one PGP key is required"):
+        crypto._load_recipient_certs([])
+
+
 def test_gen_reply_slug_uses_diceware_words() -> None:
     slug = crypto.gen_reply_slug()
     words = slug.split("-")

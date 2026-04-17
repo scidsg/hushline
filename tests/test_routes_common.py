@@ -1,5 +1,5 @@
 import smtplib
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -343,6 +343,39 @@ def test_do_send_email_uses_notifications_address_as_reply_to_fallback(
         create_smtp_config.return_value,
         "notify@example.com",
     )
+
+
+def test_do_send_email_skips_recipient_without_email(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with (
+        app.app_context(),
+        patch.object(
+            User,
+            "enabled_notification_recipients",
+            new_callable=PropertyMock,
+            return_value=[NotificationRecipient(enabled=True, position=0)],
+        ),
+    ):
+        routes_common.do_send_email(user, "body")
+
+    create_smtp_config.assert_called_once()
+    send_email.assert_not_called()
 
 
 def test_do_send_email_catches_errors(
