@@ -196,7 +196,9 @@ def test_notifications_enabled_yes_content_no_encrypted_body(
     args, _ = mock_do_send_email.call_args
     assert "Contact Method" in args[1]
     assert "Message" in args[1]
-    assert pgp_message_sig in args[1]
+    assert msg_contact_method in args[1]
+    assert msg_content in args[1]
+    assert pgp_message_sig not in args[1]
 
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
@@ -243,7 +245,9 @@ def test_notifications_enabled_yes_content_no_encrypted_body_delivers_to_all_ena
     assert len(set(bodies)) == 1
     assert "Contact Method" in bodies[0]
     assert "Message" in bodies[0]
-    assert pgp_message_sig in bodies[0]
+    assert msg_contact_method in bodies[0]
+    assert msg_content in bodies[0]
+    assert pgp_message_sig not in bodies[0]
     create_smtp_config.assert_called_once()
 
 

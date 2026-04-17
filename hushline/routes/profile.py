@@ -252,9 +252,11 @@ def register_profile_routes(app: Flask) -> None:
                                     )
                                     email_body = plaintext_new_message_body
                         else:
-                            # Keep the existing field-level email behavior
-                            # when full-body encryption is disabled.
-                            email_body = format_message_email_fields(extracted_fields)
+                            # Forward plaintext submitted values when recipients
+                            # want message content but not whole-body PGP email
+                            # encryption. Stored field values remain armored for
+                            # the Hush Line inbox.
+                            email_body = format_message_email_fields(raw_extracted_fields)
                             current_app.logger.debug("Sending email with unencrypted body")
                     else:
                         email_body = plaintext_new_message_body
