@@ -31,7 +31,9 @@ def test_default_users_include_korean_directory_account() -> None:
 def test_default_users_seed_paid_artvandelay_with_three_notification_recipients() -> None:
     dev_data = _load_dev_data_module()
 
-    artvandelay = next(user for user in dev_data.default_users() if user["username"] == "artvandelay")
+    artvandelay = next(
+        user for user in dev_data.default_users() if user["username"] == "artvandelay"
+    )
 
     assert artvandelay["tier"] == "Super User"
     assert artvandelay["email"] == "artvandelay@hushline.app"

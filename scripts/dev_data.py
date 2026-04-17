@@ -8,7 +8,15 @@ from sqlalchemy import func, select
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import FieldValue, Message, MessageStatus, NotificationRecipient, Tier, User, Username
+from hushline.model import (
+    FieldValue,
+    Message,
+    MessageStatus,
+    NotificationRecipient,
+    Tier,
+    User,
+    Username,
+)
 from hushline.storage import S3Driver, public_store
 
 with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:

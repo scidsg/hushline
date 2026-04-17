@@ -17,10 +17,7 @@
       "deviceScaleFactor": 3
     }
   ],
-  "themes": [
-    "light",
-    "dark"
-  ],
+  "themes": ["light", "dark"],
   "sessions": {
     "guest": {
       "username": ""
