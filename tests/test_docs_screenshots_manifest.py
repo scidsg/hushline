@@ -92,6 +92,16 @@ def test_docs_screenshots_manifest_disables_full_page_for_heavy_directory_scenes
     assert scenes["guest-directory-all"]["captureModes"] == ["fold", "scroll"]
 
 
+def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:
+    scenes = _scene_map()
+
+    artvandelay_notifications = scenes["auth-artvandelay-settings-notifications"]
+
+    assert artvandelay_notifications["session"] == "artvandelay"
+    assert artvandelay_notifications["path"] == "/settings/notifications"
+    assert artvandelay_notifications["waitForSelector"] == "a:has-text('board@vandelay.news')"
+
+
 def test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fill() -> None:
     scenes = _scene_map()
 

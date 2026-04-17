@@ -26,3 +26,17 @@ def test_default_users_include_korean_directory_account() -> None:
     assert korean_george["is_admin"] is False
     assert korean_george["is_verified"] is False
     assert "수축 현상" in korean_george["bio"]
+
+
+def test_default_users_seed_paid_artvandelay_with_three_notification_recipients() -> None:
+    dev_data = _load_dev_data_module()
+
+    artvandelay = next(user for user in dev_data.default_users() if user["username"] == "artvandelay")
+
+    assert artvandelay["tier"] == "Super User"
+    assert artvandelay["email"] == "artvandelay@hushline.app"
+    assert artvandelay["notification_recipients"] == [
+        {"email": "editor@vandelay.news", "pgp_key": dev_data.PGP_KEY, "enabled": True},
+        {"email": "standards@vandelay.news", "pgp_key": dev_data.PGP_KEY, "enabled": True},
+        {"email": "board@vandelay.news", "pgp_key": dev_data.PGP_KEY, "enabled": True},
+    ]
