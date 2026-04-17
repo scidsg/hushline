@@ -154,7 +154,9 @@ def test_contract_notifications_field_content_mode(client: FlaskClient, user: Us
         _, body = send_email_mock.call_args.args
         assert "Contact Method" in body
         assert "Message" in body
-        assert PGP_SIG in body
+        assert "Signal" in body
+        assert "Contract test message" in body
+        assert PGP_SIG not in body
 
 
 @pytest.mark.usefixtures("_authenticated_user", "_pgp_user")
