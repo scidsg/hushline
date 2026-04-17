@@ -8,7 +8,15 @@ from sqlalchemy import func, select
 
 from hushline import create_app
 from hushline.db import db
-from hushline.model import FieldValue, Message, MessageStatus, Tier, User, Username
+from hushline.model import (
+    FieldValue,
+    Message,
+    MessageStatus,
+    NotificationRecipient,
+    Tier,
+    User,
+    Username,
+)
 from hushline.storage import S3Driver, public_store
 
 with open(Path(__file__).parent.parent / "tests" / "test_pgp_key.txt") as f:
@@ -20,10 +28,10 @@ OVERRIDES_PATH = Path(__file__).parent / "dev_data_overrides.json"
 def main() -> None:
     print("Adding dev data")
     with create_app().app_context():
+        create_tiers()
         create_users()
         create_org_settings()
         create_sample_messages()
-        create_tiers()
         create_localstack_buckets()
 
 
@@ -53,6 +61,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": True,
+            "tier": "Super User",
             "display_name": "Art Vandelay",
             "bio": (
                 "Art Vandelay is an award-winning investigative reporter covering marine biology, "
@@ -65,6 +74,11 @@ def default_users() -> list[dict[str, object]]:
             "pgp_key": PGP_KEY,
             "onboarding_complete": True,
             "email": "artvandelay@hushline.app",
+            "notification_recipients": [
+                {"email": "editor@vandelay.news", "pgp_key": PGP_KEY, "enabled": True},
+                {"email": "standards@vandelay.news", "pgp_key": PGP_KEY, "enabled": True},
+                {"email": "board@vandelay.news", "pgp_key": PGP_KEY, "enabled": True},
+            ],
         },
         {
             "username": "jerryseinfeld",
@@ -301,6 +315,10 @@ def create_users() -> None:
         pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
         onboarding_complete = cast(bool, data.get("onboarding_complete", True))
         email = cast(Optional[str], data.get("email", f"{username}@hushline.app"))
+        tier_name = cast(str, data.get("tier", "Free"))
+        notification_recipients = cast(
+            list[dict[str, object]], data.get("notification_recipients", [])
+        )
 
         primary = db.session.scalars(
             select(Username).where(
@@ -355,6 +373,23 @@ def create_users() -> None:
             user.email_include_message_content = False
             user.email_encrypt_entire_body = False
             user.email = None
+
+        if tier_name == "Super User":
+            user.set_business_tier()
+        else:
+            user.set_free_tier()
+
+        if notification_recipients:
+            user.notification_recipients.clear()
+            for position, recipient_data in enumerate(notification_recipients):
+                recipient = NotificationRecipient(
+                    enabled=cast(bool, recipient_data.get("enabled", True)),
+                    position=position,
+                )
+                recipient.email = cast(Optional[str], recipient_data.get("email"))
+                recipient.pgp_key = cast(Optional[str], recipient_data.get("pgp_key"))
+                user.notification_recipients.append(recipient)
+            user.sync_legacy_notification_email()
 
         primary.display_name = display_name
         primary.bio = bio

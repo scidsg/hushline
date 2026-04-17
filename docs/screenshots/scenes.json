@@ -550,7 +550,7 @@
       "title": "Settings - Notifications (artvandelay)",
       "path": "/settings/notifications",
       "session": "artvandelay",
-      "waitForSelector": ".settings-tabs"
+      "waitForSelector": "a:has-text('board@vandelay.news')"
     },
     {
       "slug": "auth-artvandelay-settings-advanced",

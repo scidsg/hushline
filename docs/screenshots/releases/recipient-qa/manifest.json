@@ -1,0 +1,125 @@
+{
+  "release": "recipient-qa",
+  "baseUrl": "http://localhost:8080",
+  "capturedAt": "2026-04-17T02:21:10.533Z",
+  "viewports": [
+    {
+      "id": "desktop",
+      "width": 1000,
+      "height": 800
+    },
+    {
+      "id": "mobile",
+      "width": 390,
+      "height": 844,
+      "isMobile": true,
+      "hasTouch": true,
+      "deviceScaleFactor": 3
+    }
+  ],
+  "themes": ["light", "dark"],
+  "sessions": {
+    "guest": {
+      "username": ""
+    },
+    "admin": {
+      "username": "admin"
+    },
+    "artvandelay": {
+      "username": "artvandelay"
+    },
+    "newman": {
+      "username": "newman"
+    }
+  },
+  "scenes": [
+    {
+      "title": "Settings - Notifications (artvandelay)",
+      "slug": "auth-artvandelay-settings-notifications",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "viewport": "desktop",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "full",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-light-full.png"
+        },
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-light-fold.png"
+        },
+        {
+          "mode": "window-02",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-light-window-02.png"
+        }
+      ]
+    },
+    {
+      "title": "Settings - Notifications (artvandelay)",
+      "slug": "auth-artvandelay-settings-notifications",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "viewport": "desktop",
+      "theme": "dark",
+      "files": [
+        {
+          "mode": "full",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-dark-full.png"
+        },
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-dark-fold.png"
+        },
+        {
+          "mode": "window-02",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-desktop-dark-window-02.png"
+        }
+      ]
+    },
+    {
+      "title": "Settings - Notifications (artvandelay)",
+      "slug": "auth-artvandelay-settings-notifications",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "viewport": "mobile",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "full",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-light-full.png"
+        },
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-light-fold.png"
+        },
+        {
+          "mode": "window-02",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-light-window-02.png"
+        }
+      ]
+    },
+    {
+      "title": "Settings - Notifications (artvandelay)",
+      "slug": "auth-artvandelay-settings-notifications",
+      "path": "/settings/notifications",
+      "session": "artvandelay",
+      "viewport": "mobile",
+      "theme": "dark",
+      "files": [
+        {
+          "mode": "full",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-dark-full.png"
+        },
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-dark-fold.png"
+        },
+        {
+          "mode": "window-02",
+          "file": "artvandelay/auth-artvandelay-settings-notifications-mobile-dark-window-02.png"
+        }
+      ]
+    }
+  ]
+}
