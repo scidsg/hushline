@@ -52,6 +52,9 @@ from hushline.settings.notifications import (
     ToggleNotificationsForm,
     ToggleRecipientEnabledForm,
 )
+from hushline.settings.notifications import (
+    _business_tier_display_price as notifications_business_tier_display_price,
+)
 from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
 
@@ -95,6 +98,15 @@ def test_notification_recipient_shadow_persists_from_legacy_fields(user: User) -
     assert len(updated_user.notification_recipients) == 1
     assert updated_user.notification_recipients[0].email == "primary@example.com"
     assert updated_user.notification_recipients[0].pgp_key == pgp_key
+
+
+def test_user_ensure_primary_notification_recipient_returns_existing_recipient(user: User) -> None:
+    user.email = "primary@example.com"
+    db.session.commit()
+
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+    assert user.ensure_primary_notification_recipient() is recipient
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -868,6 +880,91 @@ def test_new_notification_recipient_proton_lookup_prefills_form(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_new_notification_recipient_proton_lookup_invalid_email_returns_400(
+    client: FlaskClient,
+) -> None:
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "email": "invalid-email",
+            "search_notification_recipient_proton": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Invalid email address." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.notifications.lookup_proton_pgp_key")
+def test_new_notification_recipient_proton_lookup_error_returns_400(
+    lookup_proton_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    lookup_proton_pgp_key.return_value = ("", "⛔️ Unable to import Proton PGP key.")
+
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "email": "proton-user@proton.me",
+            "search_notification_recipient_proton": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Unable to import Proton PGP key." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.notifications.is_valid_pgp_key", return_value=False)
+def test_add_notification_recipient_rejects_invalid_pgp_key(
+    is_valid_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "not-a-valid-key",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "Invalid PGP key format or import failed." in response.text
+    is_valid_pgp_key.assert_called_once_with("not-a-valid-key")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@patch("hushline.settings.notifications.can_encrypt_with_pgp_key", return_value=False)
+@patch("hushline.settings.notifications.is_valid_pgp_key", return_value=True)
+def test_add_notification_recipient_rejects_non_encryptable_pgp_key(
+    is_valid_pgp_key: MagicMock,
+    can_encrypt_with_pgp_key: MagicMock,
+    client: FlaskClient,
+) -> None:
+    response = client.post(
+        url_for("settings.new_notification_recipient"),
+        data={
+            "recipient_email": "primary@example.com",
+            "recipient_pgp_key": "valid-but-non-encryptable",
+            "recipient_enabled": "y",
+            "save_notification_recipient": "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "PGP key cannot be used for encryption." in response.text
+    is_valid_pgp_key.assert_called_once_with("valid-but-non-encryptable")
+    can_encrypt_with_pgp_key.assert_called_once_with("valid-but-non-encryptable")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         pgp_key = file.read().strip()
@@ -894,6 +991,20 @@ def test_edit_notification_recipient(client: FlaskClient, user: User) -> None:
     db.session.refresh(user)
     assert user.primary_notification_recipient is not None
     assert user.primary_notification_recipient.email == "secondary@example.com"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_missing_recipient_redirects_to_notifications(
+    client: FlaskClient,
+) -> None:
+    response = client.get(
+        url_for("settings.notification_recipient", recipient_id=999999),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "⛔️ Notification recipient not found." in response.text
+    assert "Notifications" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1020,6 +1131,33 @@ def test_delete_notification_recipient_removes_it(client: FlaskClient, user: Use
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_delete_notification_recipient_returns_404_when_missing(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("settings.delete_notification_recipient", recipient_id=999999),
+        data={"delete_notification_recipient": ""},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_notification_recipient_returns_400_for_invalid_form(
+    client: FlaskClient, user: User
+) -> None:
+    user.email = "primary@example.com"
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.delete_notification_recipient", recipient_id=recipient.id),
+        data={},
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_enabled_recipient_requires_key_when_content_included(
     client: FlaskClient, user: User
 ) -> None:
@@ -1039,6 +1177,28 @@ def test_enabled_recipient_requires_key_when_content_included(
 
     assert response.status_code == 400
     assert "encryptable PGP key is required" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_page_rejects_content_toggle_without_encryptable_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    user.email_include_message_content = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notifications"),
+        data={
+            ToggleIncludeContentForm.submit.name: "",
+            "include_content": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "Add at least one enabled recipient with an encryptable PGP key" in response.text
+    db.session.refresh(user)
+    assert user.email_include_message_content is False
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1142,6 +1302,219 @@ def test_notification_recipient_page_groups_toggles_together(
             "like Proton Mail or Thunderbird."
         ),
     ]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_toggle_enabled_rejects_unencryptable_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    user.email_include_message_content = True
+    user.email = "primary@example.com"
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+    recipient.enabled = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleRecipientEnabledForm.submit.name: "",
+            "recipient_enabled": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "Add an encryptable PGP key before enabling a recipient" in response.text
+    assert "⛔️ Your submitted form could not be processed." in response.text
+    db.session.refresh(recipient)
+    assert recipient.enabled is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_toggle_enabled_can_enable_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+    recipient.enabled = False
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleRecipientEnabledForm.submit.name: "",
+            "recipient_enabled": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 Notification recipient enabled." in response.text
+    db.session.refresh(recipient)
+    assert recipient.enabled is True
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_rejects_content_toggle_without_encryptable_recipient(
+    client: FlaskClient, user: User
+) -> None:
+    user.email = "primary@example.com"
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleIncludeContentForm.submit.name: "",
+            "include_content": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "Add at least one enabled recipient with an encryptable PGP key" in response.text
+    db.session.refresh(user)
+    assert user.email_include_message_content is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_toggle_include_content_enables(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleIncludeContentForm.submit.name: "",
+            "include_content": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 Email message content enabled." in response.text
+    db.session.refresh(user)
+    assert user.email_include_message_content is True
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_toggle_include_content_disables(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    user.email_include_message_content = True
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleIncludeContentForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 Email message content disabled." in response.text
+    db.session.refresh(user)
+    assert user.email_include_message_content is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_toggle_encrypt_entire_body_enables(
+    client: FlaskClient, user: User
+) -> None:
+    user.email = "primary@example.com"
+    user.email_encrypt_entire_body = False
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleEncryptEntireBodyForm.submit.name: "",
+            "encrypt_entire_body": "y",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 The entire body of email messages will be encrypted." in response.text
+    db.session.refresh(user)
+    assert user.email_encrypt_entire_body is True
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_page_toggle_encrypt_entire_body_disables(
+    client: FlaskClient, user: User
+) -> None:
+    user.email = "primary@example.com"
+    user.email_encrypt_entire_body = True
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={
+            ToggleEncryptEntireBodyForm.submit.name: "",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "👍 Only encrypted fields of email messages will be encrypted." in response.text
+    db.session.refresh(user)
+    assert user.email_encrypt_entire_body is False
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_notification_recipient_invalid_post_returns_400(client: FlaskClient, user: User) -> None:
+    user.email = "primary@example.com"
+    db.session.commit()
+    recipient = user.primary_notification_recipient
+    assert recipient is not None
+
+    response = client.post(
+        url_for("settings.notification_recipient", recipient_id=recipient.id),
+        data={"not_a_real_form": "1"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "⛔️ Your submitted form could not be processed." in response.text
+
+
+def test_notifications_business_tier_display_price_handles_missing_and_decimal_tiers() -> None:
+    with patch("hushline.settings.notifications.Tier.business_tier", return_value=None):
+        assert notifications_business_tier_display_price() == ""
+
+    business_tier = Tier(name="Business", monthly_amount=2550)
+    with patch("hushline.settings.notifications.Tier.business_tier", return_value=business_tier):
+        assert notifications_business_tier_display_price() == "25.50"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
