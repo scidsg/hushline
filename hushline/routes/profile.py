@@ -215,9 +215,7 @@ def register_profile_routes(app: Flask) -> None:
                         if uname.user.email_encrypt_entire_body:
                             encrypted_email_body = (form.encrypted_email_body.data or "").strip()
                             client_body_is_armored = _is_armored_pgp_message(encrypted_email_body)
-                            if client_body_is_armored and isinstance(
-                                notification_encryption_target, str
-                            ):
+                            if client_body_is_armored:
                                 email_body = encrypted_email_body
                                 current_app.logger.debug("Sending email with encrypted body")
                             else:
@@ -227,17 +225,10 @@ def register_profile_routes(app: Flask) -> None:
                                         email_body = encrypt_message(
                                             fallback_body, notification_encryption_target
                                         )
-                                        if client_body_is_armored:
-                                            current_app.logger.warning(
-                                                "Received single-recipient encrypted email body; "
-                                                "used server-side full-body encryption for "
-                                                "enabled notification recipients."
-                                            )
-                                        else:
-                                            current_app.logger.warning(
-                                                "Missing/invalid client encrypted email body; "
-                                                "used server-side full-body encryption fallback."
-                                            )
+                                        current_app.logger.warning(
+                                            "Missing/invalid client encrypted email body; "
+                                            "used server-side full-body encryption fallback."
+                                        )
                                     else:
                                         email_body = plaintext_new_message_body
                                         current_app.logger.debug(

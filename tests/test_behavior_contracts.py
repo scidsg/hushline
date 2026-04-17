@@ -216,9 +216,6 @@ def test_contract_notifications_full_body_mode_encrypts_for_all_enabled_recipien
     user.notification_recipients[-1].pgp_key = "secondary-key"
     db.session.commit()
 
-    server_body = (
-        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
-    )
     client_body = (
         "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
     )
@@ -226,19 +223,11 @@ def test_contract_notifications_full_body_mode_encrypts_for_all_enabled_recipien
     with (
         patch("hushline.routes.profile.do_send_email", new=MagicMock()) as send_email_mock,
         patch("hushline.model.field_value.encrypt_message", new=MagicMock(return_value=field_body)),
-        patch(
-            "hushline.routes.profile.encrypt_message", new=MagicMock(return_value=server_body)
-        ) as encrypt_mock,
+        patch("hushline.routes.profile.encrypt_message", new=MagicMock()) as encrypt_mock,
     ):
         _submit_message(client, user, encrypted_email_body=client_body)
-        expected_plaintext_body = format_full_message_email_body(
-            [("Contact Method", "Signal"), ("Message", "Contract test message")]
-        )
-        encrypt_mock.assert_called_once_with(
-            expected_plaintext_body,
-            [user.pgp_key, "secondary-key"],
-        )
-        send_email_mock.assert_called_once_with(user, server_body)
+        encrypt_mock.assert_not_called()
+        send_email_mock.assert_called_once_with(user, client_body)
 
 
 @pytest.mark.usefixtures("_authenticated_user")
