@@ -20,7 +20,7 @@
   </form>
 
   {% if user.enable_email_notifications %}
-    {% if not user.pgp_key %}
+    {% if not user.message_encryption_target %}
       <p class="info">
         <a href="{{ url_for('.encryption') }}">Add a public PGP key</a> to keep your tip line message-capable.
       </p>
@@ -55,16 +55,10 @@
         <a href="{{ url_for('.new_notification_recipient') }}" class="btn">Add Recipient</a>
       </div>
     {% elif is_premium_enabled and user.is_free_tier %}
-      <div class="alert">
-        <div>
-          <h4>Need More Destinations?</h4>
-          <p class="info">
-            🚀 Upgrade to Super User for
-            ${{ business_tier_display_price }}/mo to add multiple notification destinations.
-          </p>
-        </div>
-        <a href="{{ url_for('premium.index') }}" class="btn">Upgrade</a>
-      </div>
+      <p class="info">
+        Need more destinations? <a href="{{ url_for('premium.index') }}">Upgrade to Super User</a>
+        for ${{ business_tier_display_price }}/mo to add multiple notification destinations.
+      </p>
     {% else %}
       <p class="meta">Notification destination limit reached for this account.</p>
     {% endif %}
