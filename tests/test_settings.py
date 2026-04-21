@@ -18,6 +18,7 @@ from hushline.model import (
     FieldDefinition,
     FieldType,
     Message,
+    NotificationRecipient,
     OrganizationSetting,
     SMTPEncryption,
     Tier,
@@ -1225,6 +1226,31 @@ def test_notifications_page_lists_recipient_drill_ins_for_business_user(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_notifications_page_uses_any_message_recipient_key_for_message_capable_warning(
+    client: FlaskClient, user: User
+) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        pgp_key = file.read().strip()
+
+    user.enable_email_notifications = True
+    user.pgp_key = None
+    user.notification_recipients.append(
+        NotificationRecipient(
+            position=1,
+            enabled=True,
+        )
+    )
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = pgp_key
+    db.session.commit()
+
+    response = client.get(url_for("settings.notifications"), follow_redirects=True)
+
+    assert response.status_code == 200
+    assert "Add a public PGP key" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_notifications_page_shows_upgrade_when_free_user_reaches_recipient_limit(
     app: Flask, client: FlaskClient, user: User
 ) -> None:
@@ -1240,8 +1266,9 @@ def test_notifications_page_shows_upgrade_when_free_user_reaches_recipient_limit
     response = client.get(url_for("settings.notifications"), follow_redirects=True)
 
     assert response.status_code == 200
-    assert "Need More Destinations?" in response.text
+    assert "Need more destinations?" in response.text
     assert "Upgrade to Super User" in response.text
+    assert url_for("premium.index") in response.text
     assert "Add Recipient" not in response.text
 
 
