@@ -365,11 +365,14 @@ class User(Model):
             (recipient for recipient in self.notification_recipients if recipient.position == 0),
             None,
         )
-        if primary_recipient is None:
-            if self.pgp_key:
-                pgp_keys.append(self.pgp_key)
-        elif primary_recipient.enabled and primary_recipient.email and primary_recipient.pgp_key:
+        if primary_recipient is not None and (
+            primary_recipient.enabled and primary_recipient.email and primary_recipient.pgp_key
+        ):
             pgp_keys.append(primary_recipient.pgp_key)
+        elif self.pgp_key:
+            # Preserve legacy key behavior for migrated accounts where the primary recipient
+            # row exists but is incomplete or disabled.
+            pgp_keys.append(self.pgp_key)
 
         non_primary_recipients = (
             self.enabled_notification_recipients

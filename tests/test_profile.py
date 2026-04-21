@@ -297,6 +297,28 @@ def test_profile_allows_submission_with_recipient_key_when_legacy_user_key_missi
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_profile_allows_submission_with_legacy_key_when_primary_recipient_lacks_key(
+    client: FlaskClient, user: User
+) -> None:
+    pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    user.email = "primary@example.com"
+    user.pgp_key = pgp_key
+    primary_recipient = user.primary_notification_recipient
+    assert primary_recipient is not None
+    primary_recipient.pgp_key = None
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    assert "Sending messages is disabled" not in response.text
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    recipient_keys = soup.find("script", attrs={"id": "recipientPublicKeys"})
+    assert recipient_keys is not None
+    assert "BEGIN PGP PUBLIC KEY BLOCK" in recipient_keys.get_text()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_profile_submit_message_with_recipient_key_when_legacy_user_key_missing(
     client: FlaskClient, user: User
 ) -> None:
