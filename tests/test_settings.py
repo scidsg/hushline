@@ -18,6 +18,7 @@ from hushline.model import (
     FieldDefinition,
     FieldType,
     Message,
+    NotificationRecipient,
     OrganizationSetting,
     SMTPEncryption,
     Tier,
