@@ -200,7 +200,7 @@ def test_notification_email_encryption_target_falls_back_to_legacy_user_key(
     assert routes_common.notification_email_encryption_target(user) == "primary-key"
 
 
-def test_notification_email_encryption_target_falls_back_to_legacy_user_key_when_primary_row_lacks_key(
+def test_notification_email_encryption_target_uses_legacy_key_when_primary_row_lacks_key(
     user: User,
 ) -> None:
     user.email = "primary@example.com"
