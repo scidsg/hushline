@@ -327,7 +327,10 @@ def test_password_reset_request_is_generic_and_sends_only_for_eligible_account(
         ineligible_captcha = get_captcha_from_session_password_reset(client)
         ineligible_response = client.post(
             url_for("request_password_reset"),
-            data={"username": user2.primary_username.username, "captcha_answer": ineligible_captcha},
+            data={
+                "username": user2.primary_username.username,
+                "captcha_answer": ineligible_captcha,
+            },
         )
         eligible_captcha = get_captcha_from_session_password_reset(client)
         eligible_response = client.post(

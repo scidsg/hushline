@@ -45,8 +45,7 @@ from hushline.password_hasher import (
     emit_password_rehash_on_auth_telemetry,
     prepare_password_rehash_on_auth,
 )
-from hushline.routes.common import send_email_to_user_recipients
-from hushline.routes.common import validate_captcha
+from hushline.routes.common import send_email_to_user_recipients, validate_captcha
 from hushline.routes.forms import (
     LoginForm,
     PasswordResetForm,
@@ -463,7 +462,9 @@ def register_auth_routes(app: Flask) -> None:
         math_problem = _get_math_problem(force_new=request.method == "GET")
         if request.method == "POST" and form.validate():
             if not validate_captcha(form.captcha_answer.data):
-                return render_template("password_reset_request.html", form=form, math_problem=math_problem)
+                return render_template(
+                    "password_reset_request.html", form=form, math_problem=math_problem
+                )
 
             identifier = form.username.data or ""
             identifier_hash = _password_reset_identifier_hash(identifier)
